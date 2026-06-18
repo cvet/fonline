@@ -82,14 +82,14 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(control_step_begin <= control_step_end);
-    FO_RUNTIME_ASSERT(control_step_end <= _steps.size());
+    FO_VERIFY_AND_THROW(control_step_begin <= control_step_end, "Movement control-step segment has inverted boundaries", control_step_begin, control_step_end, _controlSteps.size(), _steps.size());
+    FO_VERIFY_AND_THROW(control_step_end <= _steps.size(), "Movement control-step segment ends past the stored movement steps", control_step_begin, control_step_end, _controlSteps.size(), _steps.size());
 
     segment_end_hex = segment_start_hex;
 
     for (uint16_t j = control_step_begin; j < control_step_end; j++) {
         const auto move_ok = GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize);
-        FO_RUNTIME_ASSERT(move_ok);
+        FO_VERIFY_AND_THROW(move_ok, "Missing required move ok");
     }
 
     auto&& [ox, oy] = GeometryHelper::GetHexOffset(segment_start_hex, segment_end_hex);
@@ -136,14 +136,14 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
             const auto normalized_dist = std::clamp((dist_pos - cur_dist) / clamped_dist, 0.0f, 1.0f);
 
             const auto step_index = control_step_begin + iround<int32_t>(normalized_dist * numeric_cast<float32_t>(_controlSteps[i] - control_step_begin));
-            FO_RUNTIME_ASSERT(step_index >= numeric_cast<int32_t>(control_step_begin));
-            FO_RUNTIME_ASSERT(step_index <= numeric_cast<int32_t>(_controlSteps[i]));
+            FO_VERIFY_AND_THROW(step_index >= numeric_cast<int32_t>(control_step_begin), "Interpolated movement step is before the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
+            FO_VERIFY_AND_THROW(step_index <= numeric_cast<int32_t>(_controlSteps[i]), "Interpolated movement step is after the current control-step segment", step_index, control_step_begin, _controlSteps[i], normalized_dist);
 
             auto current_hex = next_start_hex;
 
             for (int32_t j = control_step_begin; j < step_index; j++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize);
-                FO_RUNTIME_ASSERT(move_ok);
+                FO_VERIFY_AND_THROW(move_ok, "Missing required move ok");
             }
 
             raw_progress.Hex = current_hex;
@@ -168,7 +168,7 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_speed != 0);
+    FO_VERIFY_AND_THROW(_speed != 0, "Speed must be non-zero");
 
     const auto diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
     const auto elapsed_time = _elapsedTime;
@@ -201,10 +201,10 @@ void MovingContext::ValidateRuntimeState() const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_steps.empty());
-    FO_RUNTIME_ASSERT(!_controlSteps.empty());
-    FO_RUNTIME_ASSERT(_wholeTime > 0.0f);
-    FO_RUNTIME_ASSERT(_wholeDist > 0.0f);
+    FO_VERIFY_AND_THROW(!_steps.empty(), "Moving context has no movement steps in runtime state", _startHex, _wholeTime, _wholeDist);
+    FO_VERIFY_AND_THROW(!_controlSteps.empty(), "Moving context has no control steps in runtime state", _startHex, _steps.size(), _wholeTime, _wholeDist);
+    FO_VERIFY_AND_THROW(_wholeTime > 0.0f, "Whole time must be positive");
+    FO_VERIFY_AND_THROW(_wholeDist > 0.0f, "Whole dist must be positive");
 }
 
 auto MovingContext::EvaluateMetrics() const -> MovingMetrics

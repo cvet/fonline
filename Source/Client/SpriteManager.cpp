@@ -38,6 +38,9 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t EGG_ENABLED_FLAG = 1.0f;
+static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET = 0.5f;
+static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS = static_cast<size_t>(DrawOrderType::Last) + 1;
+static constexpr float32_t MAP_LAYER_DEPTH_BIAS = MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS);
 
 Sprite::Sprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {&spr_mngr},
@@ -116,7 +119,7 @@ auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(min_value <= max_value);
+    FO_VERIFY_AND_THROW(min_value <= max_value, "Sprite random integer range has an inverted min/max", min_value, max_value);
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
@@ -299,7 +302,7 @@ void SpriteManager::EndScene()
     Flush();
 
     if (_rtMain) {
-        FO_RUNTIME_ASSERT(_rtMain == _rtMngr.GetCurrentRenderTarget());
+        FO_VERIFY_AND_THROW(_rtMain == _rtMngr.GetCurrentRenderTarget(), "Sprite manager render target was changed unexpectedly");
         _rtMngr.PopRenderTarget();
 
         if (_window->IsVirtual()) {
@@ -311,8 +314,8 @@ void SpriteManager::EndScene()
         }
     }
 
-    FO_RUNTIME_ASSERT(_rtMngr.GetRenderTargetStack().empty());
-    FO_RUNTIME_ASSERT(_scissorStack.empty());
+    FO_VERIFY_AND_THROW(_rtMngr.GetRenderTargetStack().empty(), "Sprite drawing left render targets on the render-target stack", _rtMngr.GetRenderTargetStack().size());
+    FO_VERIFY_AND_THROW(_scissorStack.empty(), "Scissor stack must be empty before this operation");
 }
 
 auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
@@ -360,6 +363,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = 0.0f;
         vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = 0.0f;
         vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -367,6 +371,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = 0.0f;
         vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = 0.0f;
         vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -374,6 +379,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = width_to_f;
         vbuf[vpos].PosY = flip_to ? 0.0f : height_to_f;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = 1.0f;
         vbuf[vpos].TexV = flip_from ? 0.0f : 1.0f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -381,6 +387,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = width_to_f;
         vbuf[vpos].PosY = flip_to ? height_to_f : 0.0f;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = 1.0f;
         vbuf[vpos].TexV = flip_from ? 1.0f : 0.0f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -395,6 +402,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = rect_to.x;
         vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -402,6 +410,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = rect_to.x;
         vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = rect_from.x / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -409,6 +418,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
         vbuf[vpos].PosY = flip_to ? height_to_f - (rect_to.y + rect_to.height) : rect_to.y + rect_to.height;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y + rect_from.height) / height_from_f : (rect_from.y + rect_from.height) / height_from_f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -416,6 +426,7 @@ void SpriteManager::DrawTexture(const RenderTexture* tex, bool alpha_blend, cons
 
         vbuf[vpos].PosX = rect_to.x + rect_to.width;
         vbuf[vpos].PosY = flip_to ? height_to_f - rect_to.y : rect_to.y;
+        vbuf[vpos].PosZ = 0.0f;
         vbuf[vpos].TexU = (rect_from.x + rect_from.width) / width_from_f;
         vbuf[vpos].TexV = flip_from ? 1.0f - (rect_from.y) / height_from_f : rect_from.y / height_from_f;
         vbuf[vpos].EggFlags[0] = 0.0f;
@@ -600,7 +611,7 @@ void SpriteManager::Flush()
     size_t ipos = 0;
 
     for (auto& dip : _dipQueue) {
-        FO_RUNTIME_ASSERT(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite);
+        FO_VERIFY_AND_THROW(dip.SourceEffect->GetUsage() == EffectUsage::QuadSprite, "Draw primitive source effect is not a quad sprite effect");
 
         if (dip.SourceEffect->IsNeedEggBuf()) {
             auto& egg_buf = dip.SourceEffect->EggBuf = RenderEffect::EggBuffer();
@@ -627,7 +638,7 @@ void SpriteManager::Flush()
 
     _dipQueue.clear();
 
-    FO_RUNTIME_ASSERT(ipos == _spritesDrawBuf->IndCount);
+    FO_VERIFY_AND_THROW(ipos == _spritesDrawBuf->IndCount, "Sprite index buffer position is out of sync with draw buffer");
 
     _spritesDrawBuf->VertCount = 0;
     _spritesDrawBuf->IndCount = 0;
@@ -638,7 +649,7 @@ void SpriteManager::DrawSprite(const Sprite* spr, ipos32 pos, ucolor color)
     FO_STACK_TRACE_ENTRY();
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -701,7 +712,7 @@ void SpriteManager::DrawSpriteSizeExt(const Sprite* spr, fpos32 pos, fsize32 siz
     }
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -738,7 +749,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     }
 
     auto* effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     color = ApplyColorBrightness(color);
 
@@ -765,6 +776,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     auto& v0 = vbuf[vpos++];
     v0.PosX = pos.x;
     v0.PosY = pos.y + size.height;
+    v0.PosZ = 0.0f;
     v0.TexU = tex_left;
     v0.TexV = tex_bottom;
     v0.EggFlags[0] = 0.0f;
@@ -774,6 +786,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     auto& v1 = vbuf[vpos++];
     v1.PosX = pos.x;
     v1.PosY = pos.y;
+    v1.PosZ = 0.0f;
     v1.TexU = tex_left;
     v1.TexV = tex_top;
     v1.EggFlags[0] = 0.0f;
@@ -783,6 +796,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     auto& v2 = vbuf[vpos++];
     v2.PosX = pos.x + size.width;
     v2.PosY = pos.y;
+    v2.PosZ = 0.0f;
     v2.TexU = tex_right;
     v2.TexV = tex_top;
     v2.EggFlags[0] = 0.0f;
@@ -792,6 +806,7 @@ auto SpriteManager::DrawSpriteRegion(const Sprite* spr, fpos32 uv0, fpos32 uv1, 
     auto& v3 = vbuf[vpos++];
     v3.PosX = pos.x + size.width;
     v3.PosY = pos.y + size.height;
+    v3.PosZ = 0.0f;
     v3.TexU = tex_right;
     v3.TexV = tex_bottom;
     v3.EggFlags[0] = 0.0f;
@@ -816,8 +831,8 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     const auto* atlas_spr = dynamic_cast<const AtlasSprite*>(spr);
     if (atlas_spr == nullptr) {
@@ -845,7 +860,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
     color = ApplyColorBrightness(color);
 
     auto* effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface.get());
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
     const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;
@@ -877,6 +892,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy + local_height;
+            vbuf[vpos].PosZ = 0.0f;
             vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos].EggFlags[0] = 0.0f;
@@ -885,6 +901,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx;
             vbuf[vpos].PosY = yy;
+            vbuf[vpos].PosZ = 0.0f;
             vbuf[vpos].TexU = atlas_spr->GetAtlasRect().x;
             vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
             vbuf[vpos].EggFlags[0] = 0.0f;
@@ -893,6 +910,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy;
+            vbuf[vpos].PosZ = 0.0f;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = atlas_spr->GetAtlasRect().y;
             vbuf[vpos].EggFlags[0] = 0.0f;
@@ -901,6 +919,7 @@ void SpriteManager::DrawSpritePattern(const Sprite* spr, ipos32 pos, isize32 siz
 
             vbuf[vpos].PosX = xx + local_width;
             vbuf[vpos].PosY = yy + local_height;
+            vbuf[vpos].PosZ = 0.0f;
             vbuf[vpos].TexU = local_right;
             vbuf[vpos].TexV = local_bottom;
             vbuf[vpos].EggFlags[0] = 0.0f;
@@ -1079,16 +1098,29 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     const auto& sprites = mspr_list.GetActiveSprites();
     const bool apply_brightness = _settings->Brightness != 0;
 
+    const auto get_map_sprite_proj = [](const MapSprite* mspr) -> vec3 {
+        const float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
+        return GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(mspr->GetHex(), mspr->GetMapRootOffset(), elevation));
+    };
+    const auto is_ground_tile = [](DrawOrderType draw_order) -> bool { //
+        return draw_order >= DrawOrderType::Tile && draw_order <= DrawOrderType::Tile4;
+    };
+    const auto is_standing_sprite = [](DrawOrderType draw_order) -> bool { //
+        return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
+    };
+
+    _directDrawSprites.clear();
+
     for (uint32_t i = range_begin; i < range_end; i++) {
         const auto& mspr = sprites[i];
-        FO_RUNTIME_ASSERT(mspr->IsValid());
+        FO_VERIFY_AND_THROW(mspr->IsValid(), "Map sprite is invalid");
 
         if (mspr->IsHidden()) {
             continue;
         }
 
         const Sprite* spr = mspr->GetSprite();
-        FO_RUNTIME_ASSERT(spr);
+        FO_VERIFY_AND_THROW(spr, "Missing required sprite");
 
         irect32 mspr_rect = mspr->GetDrawRect();
         mspr_rect.x -= draw_area.x;
@@ -1096,6 +1128,22 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         // Skip not visible
         if (mspr_rect.x > draw_area.width || mspr_rect.x + mspr_rect.width < 0 || mspr_rect.y > draw_area.height || mspr_rect.y + mspr_rect.height < 0) {
+            continue;
+        }
+
+        if (spr->IsDirectDraw()) {
+            const vec3 map_proj = get_map_sprite_proj(mspr.get());
+            // Direct-draw sprites contain real scene geometry; keep only a tiny ground separation instead of
+            // inheriting their late draw-order bias, otherwise particles become closer than critters/scenery.
+            // Proxy-geometry map sprites write unbiased world depth, so one step is enough to avoid terrain
+            // z-fighting without shifting the particle anchor toward the camera.
+            const float32_t direct_layer_bias = MAP_LAYER_DEPTH_BIAS;
+            const float32_t depth = map_proj.z + direct_layer_bias;
+            // scene_pos == GetDrawRootPos() - draw_area == mspr_rect.pos + sprite root offset (already computed
+            // by GetDrawRect above), so reuse mspr_rect instead of calling GetDrawRootPos a second time.
+            const ipos32 root_offset = mspr->GetSpriteRootOffset();
+            const fpos32 scene_pos = {numeric_cast<float32_t>(mspr_rect.x + root_offset.x), numeric_cast<float32_t>(mspr_rect.y + root_offset.y)};
+            _directDrawSprites.emplace_back(DirectDrawSprite {.Spr = spr, .ScenePos = scene_pos, .Depth = depth});
             continue;
         }
 
@@ -1155,21 +1203,35 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t yf = numeric_cast<float32_t>(mspr_rect.y);
         const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
-        const auto start_vpos = _spritesDrawBuf->VertCount;
-        const auto ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
+        const size_t start_vpos = _spritesDrawBuf->VertCount;
+        const size_t ind_count = spr->FillData(_spritesDrawBuf.get(), {xf, yf, wf, hf}, {color_l, color_r});
 
-        // Rotation and map projection.
+        auto& vbuf = _spritesDrawBuf->Vertices;
+        const DrawOrderType draw_order = mspr->GetDrawOrder();
+        const bool ground_tile = is_ground_tile(draw_order);
+        const bool standing_sprite = is_standing_sprite(draw_order);
+        const vec3 sprite_proj = get_map_sprite_proj(mspr.get());
+        // Ground and standing proxy geometry must use pure world depth. A draw-order-sized depth bias moves
+        // vertical sprite planes toward the camera, so particles only appear in front after crossing an
+        // artificial line near the bitmap's lower center instead of the logical root point.
+        const float32_t layer_bias = ground_tile || standing_sprite ? 0.0f : numeric_cast<float32_t>(static_cast<int32_t>(draw_order)) * MAP_LAYER_DEPTH_BIAS;
+        const float32_t pos_z = sprite_proj.z + layer_bias;
+
+        for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+            vbuf[j].PosZ = pos_z;
+        }
+
+        // Rotation and map-projected flattening.
         const int16_t angle_deg = mspr->GetAngle();
-        const bool map_proj = mspr->GetMapProjection();
+        const bool use_map_projected = mspr->GetMapProjected();
 
-        if (angle_deg != 0 || map_proj) {
+        if (angle_deg != 0 || use_map_projected) {
             const float32_t rad = numeric_cast<float32_t>(angle_deg) * (3.14159265f / 180.0f);
             const float32_t cs = angle_deg != 0 ? std::cos(rad) : 1.0f;
             const float32_t sn = angle_deg != 0 ? std::sin(rad) : 0.0f;
-            const float32_t y_scale = map_proj ? std::cos(_settings->MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
+            const float32_t y_scale = use_map_projected ? std::cos(_settings->MapCameraAngle * (3.14159265f / 180.0f)) : 1.0f;
             const float32_t cx = xf + wf * 0.5f;
             const float32_t cy = yf + hf * 0.5f;
-            auto& vbuf = _spritesDrawBuf->Vertices;
 
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
                 const float32_t dx = vbuf[j].PosX - cx;
@@ -1179,13 +1241,41 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             }
         }
 
+        // Ground tiles and standing sprites override the flat per-vertex depth with a real ground/vertical plane
+        // so 3D models and in-scene particles occlude them by world depth. Only these layers consume the sprite
+        // root Y (== mspr_rect.y + root offset, already computed by GetDrawRect above), and the map camera angle
+        // is fixed, so the root and sin/cos are resolved once per sprite here instead of once per vertex. The
+        // per-vertex math is the inlined, hoisted form of GeometryHelper::ProjectMapYTo{Ground,Vertical}Depth.
+        if (ground_tile || standing_sprite) {
+            const float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y);
+            const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+            const float32_t sin_a = std::sin(angle_rad);
+            const float32_t cos_a = std::cos(angle_rad);
+
+            if (ground_tile) {
+                const float32_t cot_a = cos_a / sin_a;
+                const float32_t intercept = numeric_cast<float32_t>(mspr->GetElevation()) / sin_a + layer_bias;
+
+                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                    const float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
+                    vbuf[j].PosZ = map_y * cot_a + intercept;
+                }
+            }
+            else {
+                const float32_t tan_a = sin_a / cos_a;
+
+                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                    const float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
+                    vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a + layer_bias;
+                }
+            }
+        }
+
         // Setup eggs
         const bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr->GetHex(), mspr->GetEggAppearence());
         const bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr->GetHex(), mspr->GetEggAppearence());
 
         if (use_first_egg || use_second_egg) {
-            auto& vbuf = _spritesDrawBuf->Vertices;
-
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
                 vbuf[j].EggFlags[0] = use_first_egg ? EGG_ENABLED_FLAG : 0.0f;
                 vbuf[j].EggFlags[1] = use_second_egg ? EGG_ENABLED_FLAG : 0.0f;
@@ -1207,6 +1297,12 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     }
 
     Flush();
+
+    for (const auto& dd : _directDrawSprites) {
+        dd.Spr->DrawInScene(dd.ScenePos, dd.Depth);
+    }
+
+    _directDrawSprites.clear();
 }
 
 auto SpriteManager::SpriteHitTest(const Sprite* spr, ipos32 pos) const -> bool
@@ -1263,7 +1359,7 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     Flush();
 
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr->Effects.Primitive.get();
-    FO_RUNTIME_ASSERT(effect);
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
 
     // Check primitives
     const auto count = points.size();
@@ -1276,16 +1372,16 @@ void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimi
     case RenderPrimitiveType::PointList:
         break;
     case RenderPrimitiveType::LineList:
-        FO_RUNTIME_ASSERT(count % 2 == 0);
+        FO_VERIFY_AND_THROW(count % 2 == 0, "LineList primitive requires an even number of sprite vertices", count, prim);
         break;
     case RenderPrimitiveType::LineStrip:
-        FO_RUNTIME_ASSERT(count > 1);
+        FO_VERIFY_AND_THROW(count > 1, "Sprite corner count is too small", count);
         break;
     case RenderPrimitiveType::TriangleList:
-        FO_RUNTIME_ASSERT(count % 3 == 0);
+        FO_VERIFY_AND_THROW(count % 3 == 0, "TriangleList primitive requires sprite vertices grouped by triples", count, prim);
         break;
     case RenderPrimitiveType::TriangleStrip:
-        FO_RUNTIME_ASSERT(count > 2);
+        FO_VERIFY_AND_THROW(count > 2, "Sprite triangle corner count is too small", count);
         break;
     }
 
@@ -1342,10 +1438,10 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(spr);
-    FO_RUNTIME_ASSERT(effect);
-    FO_RUNTIME_ASSERT(padding >= 0);
-    FO_RUNTIME_ASSERT(effect->GetUsage() == EffectUsage::QuadSprite);
+    FO_VERIFY_AND_THROW(spr, "Missing required sprite");
+    FO_VERIFY_AND_THROW(effect, "Missing render effect");
+    FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
+    FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::QuadSprite, "Effect usage is not quad sprite");
 
     const auto* source_spr = spr;
 
@@ -1376,6 +1472,7 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 
     vbuf[vpos].PosX = borders.x;
     vbuf[vpos].PosY = borders.y + borders.height;
+    vbuf[vpos].PosZ = 0.0f;
     vbuf[vpos].TexU = textureuv.x;
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggFlags[0] = 0.0f;
@@ -1384,6 +1481,7 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 
     vbuf[vpos].PosX = borders.x;
     vbuf[vpos].PosY = borders.y;
+    vbuf[vpos].PosZ = 0.0f;
     vbuf[vpos].TexU = textureuv.x;
     vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggFlags[0] = 0.0f;
@@ -1392,6 +1490,7 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y;
+    vbuf[vpos].PosZ = 0.0f;
     vbuf[vpos].TexU = textureuv.x + textureuv.width;
     vbuf[vpos].TexV = textureuv.y;
     vbuf[vpos].EggFlags[0] = 0.0f;
@@ -1400,6 +1499,7 @@ void SpriteManager::DrawSpriteWithEffect(const Sprite* spr, ipos32 pos, ucolor c
 
     vbuf[vpos].PosX = borders.x + borders.width;
     vbuf[vpos].PosY = borders.y + borders.height;
+    vbuf[vpos].PosZ = 0.0f;
     vbuf[vpos].TexU = textureuv.x + textureuv.width;
     vbuf[vpos].TexV = textureuv.y + textureuv.height;
     vbuf[vpos].EggFlags[0] = 0.0f;

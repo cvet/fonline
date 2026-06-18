@@ -399,8 +399,8 @@ namespace NativeDataCaller
         else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
             auto* base_entity = *cast_from_void<Entity**>(data);
             auto* target_entity = dynamic_cast<std::remove_pointer_t<raw_t>*>(base_entity);
-            FO_RUNTIME_ASSERT(!base_entity || target_entity);
-            FO_RUNTIME_ASSERT(!target_entity || !target_entity->IsDestroyed());
+            FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
+            FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
             return temp.emplace(target_entity);
         }
         else if constexpr (std::is_reference_v<T>) {
@@ -435,7 +435,7 @@ namespace NativeDataCaller
                 }
             }
             else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
-                FO_RUNTIME_ASSERT(temp.has_value());
+                FO_VERIFY_AND_THROW(temp.has_value(), "Missing required temp has value");
                 *cast_from_void<Entity**>(data) = static_cast<Entity*>(temp.value());
             }
             else {
@@ -468,8 +468,8 @@ namespace NativeDataCaller
     {
         using Traits = NativeCallTraits<decltype(Fn)>;
 
-        FO_RUNTIME_ASSERT(call.ArgsData.size() == Traits::arity);
-        FO_RUNTIME_ASSERT(!!call.RetData == !std::is_void_v<typename Traits::return_type>);
+        FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
+        FO_VERIFY_AND_THROW(!!call.RetData == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
 
         NativeCallImpl(Fn, call, std::make_index_sequence<Traits::arity> {});
     }

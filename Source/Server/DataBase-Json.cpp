@@ -127,7 +127,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database insert received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 
@@ -169,7 +169,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 
@@ -239,13 +239,13 @@ private:
                 using T = std::decay_t<decltype(value)>;
 
                 if constexpr (std::is_same_v<T, ident_t>) {
-                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::IntId);
-                    FO_RUNTIME_ASSERT(value != ident_t {});
+                    FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::IntId, "JSON database key expected a numeric identifier but the collection key type differs", value);
+                    FO_VERIFY_AND_THROW(value != ident_t {}, "JSON database key cannot encode an empty identifier");
                     return strex("{}", value).str();
                 }
                 else {
-                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::String);
-                    FO_RUNTIME_ASSERT(!value.empty());
+                    FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::String, "JSON database key expected a string identifier but the collection key type differs", value);
+                    FO_VERIFY_AND_THROW(!value.empty(), "JSON database key cannot encode an empty string identifier");
                     return value;
                 }
             },

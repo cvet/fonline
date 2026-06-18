@@ -141,7 +141,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "UnQLite database insert received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 
@@ -183,7 +183,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "UnQLite database update received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 

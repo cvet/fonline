@@ -53,7 +53,10 @@ void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+
+    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
+    FO_VERIFY_AND_THROW(it.second, "Duplicate prototype id", type_name, proto->GetProtoId());
 
     if (const auto* loc = dynamic_cast<const ProtoLocation*>(proto.get()); loc != nullptr) {
         _locProtos[proto->GetProtoId()] = loc;
@@ -67,9 +70,6 @@ void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& 
     else if (const auto* item = dynamic_cast<const ProtoItem*>(proto.get()); item != nullptr) {
         _itemProtos[proto->GetProtoId()] = item;
     }
-
-    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
-    FO_RUNTIME_ASSERT(it.second);
 }
 
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
@@ -78,27 +78,19 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties*
 
     const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
         const auto* registrator = _meta->GetPropertyRegistrator(type_name);
-        FO_RUNTIME_ASSERT(registrator);
+        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
-            _locProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
-            _mapProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
-            _crProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
-            _itemProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
         }
         else {
             return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);
@@ -160,7 +152,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                 const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
                 const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
-                FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name));
+                FO_VERIFY_AND_THROW(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name), "Proto file references unknown entity or fixed type");
 
                 for (uint32_t j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16_t>();

@@ -109,6 +109,8 @@ public:
     FO_ENTITY_PROPERTY(ident_t, MapId);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(mpos, Hex);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int16_t, Elevation);
     ///@ MigrationRule Property Item CritId CritterId
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CritterId);
@@ -234,6 +236,8 @@ public:
     FO_ENTITY_PROPERTY(mpos, Hex);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ipos16, HexOffset);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(int16_t, Elevation);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(mdir, Dir);
     ///@ ExportProperty Server Persistent

@@ -194,7 +194,7 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
 
     const auto create_empty_proto = [&](hstring type_name, hstring pid) -> refcount_ptr<ProtoEntity> {
         const auto* registrator = meta->GetPropertyRegistrator(type_name);
-        FO_RUNTIME_ASSERT(registrator);
+        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
             return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
@@ -217,7 +217,7 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
             auto proto = create_empty_proto(type_name, pid);
             meta->RegisterProto(type_name, proto);
             const auto inserted = all_protos[type_name].emplace(pid, std::move(proto)).second;
-            FO_RUNTIME_ASSERT(inserted);
+            FO_VERIFY_AND_THROW(inserted, "Prototype id is registered more than once for the same entity type", type_name, pid);
         }
     }
 
@@ -226,7 +226,7 @@ auto ProtoBaker::BakeProtoFiles(EngineMetadata* meta, const ScriptSystem* script
     // Processing
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
-            FO_RUNTIME_ASSERT(!key.empty());
+            FO_VERIFY_AND_THROW(!key.empty(), "Prototype key/value map contains an empty key while merging inherited data", value);
 
             if (key.front() != '$') {
                 to_kv[key] = value;

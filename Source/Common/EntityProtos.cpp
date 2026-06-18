@@ -41,7 +41,7 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_protoId);
+    FO_STRONG_ASSERT(_protoId, "Proto entity id is empty");
 }
 
 EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
@@ -49,7 +49,7 @@ EntityWithProto::EntityWithProto(const ProtoEntity* proto) noexcept :
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_proto);
+    FO_STRONG_ASSERT(_proto, "EntityWithProto needs proto");
 }
 
 ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator, const Properties* props) :

@@ -59,22 +59,22 @@ Critter::~Critter()
     FO_STACK_TRACE_ENTRY();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_RUNTIME_VERIFY(!_player);
-        FO_RUNTIME_VERIFY(!GetMapId());
-        FO_RUNTIME_VERIFY(!GetIsAttached());
-        FO_RUNTIME_VERIFY(_invItems.empty());
-        FO_RUNTIME_VERIFY(_attachedCritters.empty());
-        FO_RUNTIME_VERIFY(!_globalMapGroup);
-        FO_RUNTIME_VERIFY(_visibleCrWhoSeeMe.empty());
-        FO_RUNTIME_VERIFY(_visibleCr.empty());
-        FO_RUNTIME_VERIFY(_visibleCrWhoSeeMeMap.empty());
-        FO_RUNTIME_VERIFY(_visibleCrMap.empty());
-        FO_RUNTIME_VERIFY(_visibleCrModes.empty());
-        FO_RUNTIME_VERIFY(_visibleCrGroup1.empty());
-        FO_RUNTIME_VERIFY(_visibleCrGroup2.empty());
-        FO_RUNTIME_VERIFY(_visibleCrGroup3.empty());
-        FO_RUNTIME_VERIFY(_visibleItems.empty());
-        FO_RUNTIME_VERIFY(_lockMapTransfers == 0);
+        FO_VERIFY_AND_CONTINUE(!_player, "Server critter still has player during destruction", GetId(), _player ? _player->GetId() : ident_t {});
+        FO_VERIFY_AND_CONTINUE(!GetMapId(), "Server critter still has map during destruction", GetId(), GetMapId());
+        FO_VERIFY_AND_CONTINUE(!GetIsAttached(), "Server critter is still attached during destruction", GetId(), GetAttachMaster());
+        FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
+        FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
+        FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
+        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMe.empty(), "Server critter has reverse visible critters during destruction", GetId(), _visibleCrWhoSeeMe.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCr.empty(), "Server critter has visible critters during destruction", GetId(), _visibleCr.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrWhoSeeMeMap.empty(), "Server critter has reverse visible critter map entries during destruction", GetId(), _visibleCrWhoSeeMeMap.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrMap.empty(), "Server critter has visible critter map entries during destruction", GetId(), _visibleCrMap.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrModes.empty(), "Server critter has visible critter modes during destruction", GetId(), _visibleCrModes.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrGroup1.empty(), "Server critter has visible critter group1 entries during destruction", GetId(), _visibleCrGroup1.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrGroup2.empty(), "Server critter has visible critter group2 entries during destruction", GetId(), _visibleCrGroup2.size());
+        FO_VERIFY_AND_CONTINUE(_visibleCrGroup3.empty(), "Server critter has visible critter group3 entries during destruction", GetId(), _visibleCrGroup3.size());
+        FO_VERIFY_AND_CONTINUE(_visibleItems.empty(), "Server critter has visible items during destruction", GetId(), _visibleItems.size());
+        FO_VERIFY_AND_CONTINUE(_lockMapTransfers == 0, "Server critter has locked map transfers during destruction", GetId(), _lockMapTransfers);
     }
 }
 
@@ -147,14 +147,14 @@ void Critter::MarkIsForPlayer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!GetControlledByPlayer());
+    FO_VERIFY_AND_THROW(!GetControlledByPlayer(), "Controlled by player is already set");
 
     SetControlledByPlayer(true);
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 
     if (GetMapId()) {
         auto map = GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -163,14 +163,14 @@ void Critter::UnmarkIsForPlayer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GetControlledByPlayer());
-    FO_RUNTIME_ASSERT(!_player);
+    FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
+    FO_VERIFY_AND_THROW(!_player, "Player is already set");
 
     SetControlledByPlayer(false);
 
     if (GetMapId()) {
         auto map = GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -179,11 +179,11 @@ void Critter::AttachPlayer(Player* player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GetControlledByPlayer());
-    FO_RUNTIME_ASSERT(player);
-    FO_RUNTIME_ASSERT(!player->GetControlledCritterId());
-    FO_RUNTIME_ASSERT(!_player);
-    FO_RUNTIME_ASSERT(!player->GetViewMap());
+    FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
+    FO_VERIFY_AND_THROW(!player->GetControlledCritterId(), "Player already controls a critter");
+    FO_VERIFY_AND_THROW(!_player, "Player is already set");
+    FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
 
     _player = player;
 
@@ -196,9 +196,9 @@ void Critter::DetachPlayer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GetControlledByPlayer());
-    FO_RUNTIME_ASSERT(_player);
-    FO_RUNTIME_ASSERT(_player->GetControlledCritterId() == GetId());
+    FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
+    FO_VERIFY_AND_THROW(_player, "Missing required player");
+    FO_VERIFY_AND_THROW(_player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
 
     _player->SetControlledCritterId({});
     _player->SetControlledCritter(nullptr);
@@ -254,11 +254,15 @@ void Critter::AttachToCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr != this);
-    FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
-    FO_RUNTIME_ASSERT(!cr->GetIsAttached());
-    FO_RUNTIME_ASSERT(!GetIsAttached());
-    FO_RUNTIME_ASSERT(!HasAttachedCritters());
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot attach an already destroyed critter", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot attach a critter that is being destroyed", GetId());
+    FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot attach to an already destroyed critter", cr->GetId());
+    FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot attach to a critter that is being destroyed", cr->GetId());
+    FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
+    FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
+    FO_VERIFY_AND_THROW(!cr->GetIsAttached(), "Critter is already attached");
+    FO_VERIFY_AND_THROW(!GetIsAttached(), "Is attached is already set");
+    FO_VERIFY_AND_THROW(!HasAttachedCritters(), "Has attached critters is already set");
 
     if (IsMoving()) {
         StopMoving(MovingState::Stopped);
@@ -276,11 +280,11 @@ void Critter::DetachFromCritter()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GetIsAttached());
-    FO_RUNTIME_ASSERT(GetAttachMaster());
+    FO_VERIFY_AND_THROW(GetIsAttached(), "Missing required is attached");
+    FO_VERIFY_AND_THROW(GetAttachMaster(), "Missing required attach master");
 
     auto cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     cr->RemoveAttachedCritter(this);
     SetIsAttached(false);
@@ -300,7 +304,7 @@ void Critter::MoveAttachedCritters()
 
     // Sync position
     auto map = GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     vector<tuple<Critter*, mpos, refcount_ptr<Critter>>> moved_critters;
 
@@ -310,10 +314,10 @@ void Critter::MoveAttachedCritters()
     auto attached = GetAttachedCritters();
 
     for (auto& cr : attached) {
-        FO_RUNTIME_ASSERT(!cr->IsDestroyed());
-        FO_RUNTIME_ASSERT(cr->GetIsAttached());
-        FO_RUNTIME_ASSERT(cr->GetAttachMaster() == GetId());
-        FO_RUNTIME_ASSERT(cr->GetMapId() == map->GetId());
+        FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+        FO_VERIFY_AND_THROW(cr->GetIsAttached(), "Critter is not attached");
+        FO_VERIFY_AND_THROW(cr->GetAttachMaster() == GetId(), "Attached critter has a different master");
+        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
         cr->SetHexOffset(new_hex_offset);
 
@@ -371,20 +375,20 @@ void Critter::ClearVisibleEnitites()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(GetMapId());
+    FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
 
     while (!_visibleCrWhoSeeMe.empty()) {
         auto* cr = _visibleCrWhoSeeMe.front().get();
-        FO_RUNTIME_ASSERT(cr);
+        FO_VERIFY_AND_THROW(cr, "Missing critter instance");
         const auto del_ok = RemoveVisibleCritter(cr);
-        FO_RUNTIME_ASSERT(del_ok);
+        FO_STRONG_ASSERT(del_ok, "Missing required del ok");
         cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
         auto* cr = _visibleCr.front().get();
-        FO_RUNTIME_ASSERT(cr);
+        FO_VERIFY_AND_THROW(cr, "Missing critter instance");
         const auto del_ok2 = cr->RemoveVisibleCritter(this);
-        FO_RUNTIME_ASSERT(del_ok2);
+        FO_STRONG_ASSERT(del_ok2, "Missing required del ok2");
     }
 
     _visibleCrGroup1.clear();
@@ -393,15 +397,15 @@ void Critter::ClearVisibleEnitites()
 
     _visibleItems.clear();
 
-    FO_RUNTIME_ASSERT(_visibleCrWhoSeeMe.empty());
-    FO_RUNTIME_ASSERT(_visibleCrWhoSeeMeMap.empty());
-    FO_RUNTIME_ASSERT(_visibleCr.empty());
-    FO_RUNTIME_ASSERT(_visibleCrMap.empty());
-    FO_RUNTIME_ASSERT(_visibleCrModes.empty());
-    FO_RUNTIME_ASSERT(_visibleCrGroup1.empty());
-    FO_RUNTIME_ASSERT(_visibleCrGroup2.empty());
-    FO_RUNTIME_ASSERT(_visibleCrGroup3.empty());
-    FO_RUNTIME_ASSERT(_visibleItems.empty());
+    FO_STRONG_ASSERT(_visibleCrWhoSeeMe.empty(), "Visible cr who see me must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrWhoSeeMeMap.empty(), "Visible cr who see me map must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCr.empty(), "Visible cr must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrMap.empty(), "Visible cr map must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrModes.empty(), "Visible cr modes must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup1.empty(), "Visible cr group1 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup2.empty(), "Visible cr group2 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleCrGroup3.empty(), "Visible cr group3 must be empty before this operation");
+    FO_STRONG_ASSERT(_visibleItems.empty(), "Visible items must be empty before this operation");
 }
 
 auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
@@ -409,7 +413,7 @@ auto Critter::IsSeeCritter(ident_t cr_id) const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (!GetMapId()) {
-        FO_RUNTIME_ASSERT(_globalMapGroup);
+        FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](auto&& other) { return other->GetId() == cr_id; });
         return it != _globalMapGroup->end() && cr_id != GetId();
     }
@@ -426,7 +430,7 @@ auto Critter::GetCritter(ident_t cr_id, CritterSeeType see_type) -> Critter*
     FO_STACK_TRACE_ENTRY();
 
     if (!GetMapId()) {
-        FO_RUNTIME_ASSERT(_globalMapGroup);
+        FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         const auto it = std::ranges::find_if(*_globalMapGroup, [&cr_id](auto&& other) { return other->GetId() == cr_id; });
         return it != _globalMapGroup->end() && cr_id != GetId() ? it->get() : nullptr;
     }
@@ -455,7 +459,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
     FO_STACK_TRACE_ENTRY();
 
     if (!GetMapId()) {
-        FO_RUNTIME_ASSERT(_globalMapGroup);
+        FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         auto critters = copy(*_globalMapGroup);
         vec_remove_unique_value(critters, this);
         return vec_transform(critters, [](auto&& cr) -> Critter* { return cr.get(); });
@@ -506,8 +510,8 @@ auto Critter::GetGlobalMapGroup() -> span<raw_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!GetMapId());
-    FO_RUNTIME_ASSERT(_globalMapGroup);
+    FO_VERIFY_AND_THROW(!GetMapId(), "Map id is already set");
+    FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
 
     return *_globalMapGroup;
 }
@@ -536,12 +540,12 @@ auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
-    FO_RUNTIME_ASSERT(GetMapId());
-    FO_RUNTIME_ASSERT(cr != this);
-    FO_RUNTIME_ASSERT(cr->GetId() != GetId());
-    FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
-    FO_RUNTIME_ASSERT(mode != CritterVisibilityMode::None);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
+    FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
+    FO_VERIFY_AND_THROW(cr->GetId() != GetId(), "Critter visibility target has the same id as source");
+    FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
+    FO_VERIFY_AND_THROW(mode != CritterVisibilityMode::None, "Critter visibility mode is not set");
 
     ValidateEntityAccess(cr);
 
@@ -552,7 +556,7 @@ auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
     }
 
     const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
-    FO_RUNTIME_ASSERT(inserted2);
+    FO_STRONG_ASSERT(inserted2, "Visible critter graph asymmetry on add", GetId(), cr->GetId());
 
     cr->_visibleCrModes[GetId()] = mode;
     _visibleCrWhoSeeMe.emplace_back(cr);
@@ -565,11 +569,11 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
-    FO_RUNTIME_ASSERT(GetMapId());
-    FO_RUNTIME_ASSERT(cr != this);
-    FO_RUNTIME_ASSERT(cr->GetId() != GetId());
-    FO_RUNTIME_ASSERT(cr->GetMapId() == GetMapId());
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
+    FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
+    FO_VERIFY_AND_THROW(cr->GetId() != GetId(), "Critter visibility target has the same id as source");
+    FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
 
     ValidateEntityAccess(cr);
 
@@ -582,17 +586,17 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     _visibleCrWhoSeeMeMap.erase(it_map);
 
     const auto it_map2 = cr->_visibleCrMap.find(GetId());
-    FO_RUNTIME_ASSERT(it_map2 != cr->_visibleCrMap.end());
+    FO_STRONG_ASSERT(it_map2 != cr->_visibleCrMap.end(), "Lookup failed in critter visible cr map");
     cr->_visibleCrMap.erase(it_map2);
 
     cr->_visibleCrModes.erase(GetId());
 
     const auto it = std::ranges::find(_visibleCrWhoSeeMe, cr);
-    FO_RUNTIME_ASSERT(it != _visibleCrWhoSeeMe.end());
+    FO_STRONG_ASSERT(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
     _visibleCrWhoSeeMe.erase(it);
 
     const auto it2 = std::ranges::find(cr->_visibleCr, this);
-    FO_RUNTIME_ASSERT(it2 != cr->_visibleCr.end());
+    FO_STRONG_ASSERT(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
     cr->_visibleCr.erase(it2);
 
     return true;
@@ -665,7 +669,7 @@ auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (IsDestroyed() || item->IsDestroyed()) {
         return false;
@@ -678,7 +682,7 @@ auto Critter::CanSeeItemOnMap(const Item* item) const -> bool
     }
 
     const auto map = GetParent<Map>();
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     return CheckItemVisibilityHook(_engine.get(), map.get(), this, item);
 }
@@ -694,7 +698,7 @@ void Critter::SetItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     vec_add_unique_value(_invItems, item);
     item->SetParent(this);
@@ -704,7 +708,7 @@ void Critter::RemoveItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     vec_remove_unique_value(_invItems, item);
     item->SetParent(nullptr);

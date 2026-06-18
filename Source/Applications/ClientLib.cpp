@@ -124,7 +124,7 @@ static void RunClientRuntime(int32_t argc, char** argv, ClientRuntimeResult* run
 
         if (runtime_result != nullptr) {
             if (Data->ReloadRequested) {
-                FO_RUNTIME_ASSERT(!Data->StagedRuntimePath.empty());
+                FO_VERIFY_AND_THROW(!Data->StagedRuntimePath.empty(), "Client runtime requested reload but did not provide a staged runtime path", quit_success, Data->ReloadRequested);
                 WriteLog("Client runtime DLL: requesting reload from {}", Data->StagedRuntimePath);
                 runtime_result->ResultKind = ClientRuntimeResultKind::ReloadRequested;
                 runtime_result->Success = true;

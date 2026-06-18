@@ -158,7 +158,7 @@ namespace ServerItemsTest
 
     static auto WaitForStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -176,7 +176,7 @@ namespace ServerItemsTest
 
     static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 

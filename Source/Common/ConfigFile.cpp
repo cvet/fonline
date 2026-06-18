@@ -382,7 +382,7 @@ auto ConfigFile::GetSection(string_view section_name) const -> const map<string_
     FO_STACK_TRACE_ENTRY();
 
     const multimap<string_view, map<string_view, string_view>>::const_iterator it = _sectionKeyValues.find(section_name);
-    FO_RUNTIME_ASSERT(it != _sectionKeyValues.end());
+    FO_VERIFY_AND_THROW(it != _sectionKeyValues.end(), "Lookup failed in section key values");
 
     return it->second;
 }
@@ -455,7 +455,7 @@ auto ConfigFile::GetSectionContent(string_view section_name) const -> string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(IsEnumSet(_options, ConfigFileOption::CollectContent));
+    FO_VERIFY_AND_THROW(IsEnumSet(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
     const auto it_section = _sectionKeyValues.find(section_name);
 

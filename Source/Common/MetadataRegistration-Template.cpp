@@ -81,7 +81,7 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(meta);
+    FO_VERIFY_AND_THROW(meta, "Missing required meta");
 
 #if SERVER_REGISTRATION
     meta->RegisterSide(EngineSideKind::ServerSide);

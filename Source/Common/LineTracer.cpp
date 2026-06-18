@@ -48,7 +48,7 @@ LineTracer::LineTracer(mpos start_hex, float32_t dir_angle, int32_t dist, msize 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(dist >= 0);
+    FO_VERIFY_AND_THROW(dist >= 0, "Dist is negative");
 
     _mapSize = map_size;
 
@@ -198,8 +198,8 @@ auto LineTracer::GetNextHex(mpos& hex) -> optional<mdir>
 
         const auto left_changed = GeometryHelper::MoveHexByDir(left_hex, mdir(_dirLeft), _mapSize);
         const auto right_changed = GeometryHelper::MoveHexByDir(right_hex, mdir(_dirRight), _mapSize);
-        FO_RUNTIME_ASSERT(left_changed == (left_hex != cur_hex));
-        FO_RUNTIME_ASSERT(right_changed == (right_hex != cur_hex));
+        FO_VERIFY_AND_THROW(left_changed == (left_hex != cur_hex), "Left-side line-trace move result does not match the resulting hex", cur_hex, left_hex, left_changed);
+        FO_VERIFY_AND_THROW(right_changed == (right_hex != cur_hex), "Right-side line-trace move result does not match the resulting hex", cur_hex, right_hex, right_changed);
 
         if (!left_changed && !right_changed) {
             return std::nullopt;

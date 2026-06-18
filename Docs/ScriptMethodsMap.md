@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **884** `///@ ExportMethod` declarations across these files.
+The current set contains **932** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -52,7 +52,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonGlobalScriptMethods.cpp`
 
-- Exported methods: 73
+- Exported methods: 76
 - Prefix: `Common_Game_*`
 - Ownership: cross-side global helpers that do not require authoritative server-only state or client-only rendering state.
 - Typical responsibilities:
@@ -80,7 +80,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerGlobalScriptMethods.cpp`
 
-- Exported methods: 105
+- Exported methods: 122
 - Prefix: `Server_Game_*`
 - Ownership: authoritative game/server global operations.
 - Typical responsibilities:
@@ -93,7 +93,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
-- Exported methods: 24
+- Exported methods: 35
 - Prefix: `Server_Entity_*`
 - Ownership: server-side base entity operations.
 - Typical responsibilities:
@@ -151,7 +151,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-- Exported methods: 9
+- Exported methods: 11
 - Prefix: `Server_Player_*`
 - Ownership: connected player/session operations.
 - Typical responsibilities:
@@ -166,7 +166,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 100
+- Exported methods: 104
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -181,7 +181,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientEntityScriptMethods.cpp`
 
-- Exported methods: 22
+- Exported methods: 33
 - Prefix: `Client_Entity_*`
 - Ownership: client-side base entity time-event helpers.
 - Typical responsibilities:
@@ -191,7 +191,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientCritterScriptMethods.cpp`
 
-- Exported methods: 37
+- Exported methods: 38
 - Prefix: `Client_Critter_*`
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
@@ -218,7 +218,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientItemScriptMethods.cpp`
 
-- Exported methods: 15
+- Exported methods: 16
 - Prefix: `Client_Item_*`
 - Ownership: client-side visible item/view operations.
 - Typical responsibilities:
@@ -253,7 +253,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/MapperGlobalScriptMethods.cpp`
 
-- Exported methods: 44
+- Exported methods: 50
 - Prefix: `Mapper_Game_*`
 - Ownership: mapper/editor automation.
 - Typical responsibilities:

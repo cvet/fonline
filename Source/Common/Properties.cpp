@@ -160,8 +160,8 @@ Properties::Properties(const PropertyRegistrator* registrator, const Properties*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator);
-    FO_STRONG_ASSERT(!_baseProps || _registrator == _baseProps->GetRegistrator());
+    FO_STRONG_ASSERT(_registrator, "Properties registrator is null");
+    FO_STRONG_ASSERT(!_baseProps || _registrator == _baseProps->GetRegistrator(), "Base properties registrator mismatch", _registrator->GetTypeName(), _baseProps ? _baseProps->GetRegistrator()->GetTypeName() : hstring {});
 
     if (_registrator->_registeredProperties.size() > 1) {
         AllocData();
@@ -172,8 +172,8 @@ void Properties::AllocData() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(!_podData && !_complexData);
-    FO_STRONG_ASSERT(_registrator->_registeredProperties.size() > 1);
+    FO_STRONG_ASSERT(!_podData && !_complexData, "Property data is already allocated", _registrator->GetTypeName());
+    FO_STRONG_ASSERT(_registrator->_registeredProperties.size() > 1, "Properties registrator has no data properties", _registrator->GetTypeName());
 
     if (!_baseProps) {
         _podData = SafeAlloc::MakeUniqueArr<uint8_t>(_registrator->_wholePodDataSize);
@@ -269,14 +269,14 @@ auto Properties::IsOverlayPropertyIncluded(const Property* prop, bool with_prote
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(prop);
+    FO_STRONG_ASSERT(prop, "Overlay property is null", _registrator->GetTypeName());
 
     if (!prop->IsSynced()) {
         return false;
     }
 
     if (prop->IsPlainData()) {
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+        FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain synced property has no pod data offset", prop->GetName());
         const auto limit = _registrator->_publicPodDataSpace.size() + (with_protected ? _registrator->_protectedPodDataSpace.size() : 0);
         return *prop->_podDataOffset + prop->GetBaseSize() <= limit;
     }
@@ -436,7 +436,7 @@ void Properties::RemoveSyncedOverlayEntries() noexcept
     for (size_t read_pos = 0; read_pos < _overlayEntries.size(); read_pos++) {
         const auto& entry = _overlayEntries[read_pos];
         const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
-        FO_STRONG_ASSERT(prop);
+        FO_STRONG_ASSERT(prop, "Overlay entry references a missing property", read_pos, entry.PropRegIndex, _registrator->GetTypeName());
 
         if (prop->IsSynced()) {
             removed_data_size += entry.DataSize;
@@ -474,8 +474,8 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator == other._registrator);
-    FO_STRONG_ASSERT((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps));
+    FO_STRONG_ASSERT(_registrator == other._registrator, "Properties registrator mismatch in clone", _registrator->GetTypeName(), other._registrator->GetTypeName());
+    FO_STRONG_ASSERT((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps), "Base properties mismatch in clone", _registrator->GetTypeName());
 
     if (_baseProps) {
         _overlayEntries = other._overlayEntries;
@@ -516,9 +516,9 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator == other._registrator);
-    FO_STRONG_ASSERT(_baseProps != nullptr);
-    FO_STRONG_ASSERT(other._baseProps == nullptr);
+    FO_STRONG_ASSERT(_registrator == other._registrator, "Properties registrator mismatch in overlay rebuild", _registrator->GetTypeName(), other._registrator->GetTypeName());
+    FO_STRONG_ASSERT(_baseProps != nullptr, "Overlay rebuild target has no base properties", _registrator->GetTypeName());
+    FO_STRONG_ASSERT(other._baseProps == nullptr, "Overlay rebuild source already has base properties", _registrator->GetTypeName());
 
     ResetOverlayData();
 
@@ -569,7 +569,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
             overlay_index++;
         }
 
-        FO_STRONG_ASSERT(overlay_index == _overlayEntries.size());
+        FO_STRONG_ASSERT(overlay_index == _overlayEntries.size(), "Overlay rebuild entry count mismatch", _registrator->GetTypeName(), _overlayEntries.size(), overlay_index);
     }
 
     RebuildOverlayEntryIndex();
@@ -590,7 +590,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator == other._registrator);
+    FO_STRONG_ASSERT(_registrator == other._registrator, "Properties registrator mismatch in copy", _registrator->GetTypeName(), other._registrator->GetTypeName());
 
     if ((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps)) {
         CloneOwnDataFrom(other);
@@ -603,7 +603,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
         for (const auto& entry : other._overlayEntries) {
             const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
-            FO_STRONG_ASSERT(prop);
+            FO_STRONG_ASSERT(prop, "Overlay copy entry references a missing property", entry.PropRegIndex, _registrator->GetTypeName());
 
             const auto other_raw_data = span<const uint8_t>(entry.DataSize != 0 ? other._overlayData.get() + entry.DataOffset : nullptr, entry.DataSize);
 
@@ -613,7 +613,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
         }
     }
     else {
-        FO_STRONG_ASSERT(false);
+        FO_STRONG_ASSERT(false, "Unsupported properties copy path", _registrator->GetTypeName(), _baseProps != nullptr, other._baseProps != nullptr);
     }
 }
 
@@ -635,7 +635,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
             writer.Write<uint32_t>(entry.DataSize);
 
             if (entry.DataSize != 0) {
-                FO_STRONG_ASSERT(_overlayData);
+                FO_STRONG_ASSERT(_overlayData, "Overlay data is missing while storing a property", entry.PropRegIndex, _registrator->GetTypeName(), entry.DataSize);
                 writer.WritePtr(_overlayData.get() + entry.DataOffset, entry.DataSize);
             }
         }
@@ -678,7 +678,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
         writer.Write<uint32_t>(numeric_cast<uint32_t>(_registrator->_complexProperties.size()));
 
         for (const auto& prop : _registrator->_complexProperties) {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Complex property has no complex data index");
             writer.Write<uint32_t>(numeric_cast<uint32_t>(_complexData[*prop->_complexDataIndex].second));
             writer.WritePtr(_complexData[*prop->_complexDataIndex].first.get(), _complexData[*prop->_complexDataIndex].second);
         }
@@ -741,9 +741,9 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 
     auto reader = DataReader(all_data);
     const auto whole_pod_data_size = reader.Read<uint32_t>();
-    FO_RUNTIME_ASSERT_STR(whole_pod_data_size == _registrator->_wholePodDataSize, "Run BakeResources");
+    FO_VERIFY_AND_THROW(whole_pod_data_size == _registrator->_wholePodDataSize, "Serialized POD property block was baked for a different property layout", _registrator->GetTypeName(), whole_pod_data_size, _registrator->_wholePodDataSize);
     const auto has_overlay_data = reader.Read<bool>();
-    FO_RUNTIME_ASSERT(!!_baseProps == has_overlay_data);
+    FO_VERIFY_AND_THROW(!!_baseProps == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrator->GetTypeName(), has_overlay_data, _baseProps != nullptr);
 
     if (_baseProps) {
         ResetOverlayData();
@@ -752,9 +752,9 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 
         for (uint32_t i = 0; i < overlay_entries_count; i++) {
             const auto prop_index = reader.Read<uint16_t>();
-            FO_RUNTIME_ASSERT(prop_index > 0 && prop_index < _registrator->_registeredProperties.size());
+            FO_VERIFY_AND_THROW(prop_index > 0 && prop_index < _registrator->_registeredProperties.size(), "Serialized overlay property index is outside registrator bounds", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), overlay_entries_count);
             const auto& prop = _registrator->_registeredProperties[prop_index];
-            FO_RUNTIME_ASSERT(prop);
+            FO_VERIFY_AND_THROW(prop, "Serialized overlay property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size());
             const auto data_size = reader.Read<uint32_t>();
             SetRawData(prop.get(), {reader.ReadPtr<uint8_t>(data_size), data_size});
         }
@@ -776,10 +776,10 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 
         // Read complex properties
         const auto complex_props_count = reader.Read<uint32_t>();
-        FO_RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
+        FO_VERIFY_AND_THROW(complex_props_count == _registrator->_complexProperties.size(), "Serialized complex property count does not match the registrator layout", _registrator->GetTypeName(), complex_props_count, _registrator->_complexProperties.size());
 
         for (const auto& prop : _registrator->_complexProperties) {
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Registered complex property has no complex-data slot while restoring data", _registrator->GetTypeName(), prop->GetName(), prop->GetRegIndex());
             const auto data_size = reader.Read<uint32_t>();
             SetRawData(prop.get(), {reader.ReadPtr<uint8_t>(data_size), data_size});
         }
@@ -814,7 +814,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8_t*>** all_dat
     if (_baseProps) {
         for (const auto& entry : _overlayEntries) {
             const auto& prop = _registrator->_registeredProperties[entry.PropRegIndex];
-            FO_STRONG_ASSERT(prop);
+            FO_STRONG_ASSERT(prop, "Store data cache entry references a missing property", entry.PropRegIndex, _registrator->GetTypeName());
 
             if (!IsOverlayPropertyIncluded(prop.get(), with_protected)) {
                 continue;
@@ -846,7 +846,7 @@ void Properties::StoreData(bool with_protected, vector<const uint8_t*>** all_dat
         // Filter complex data to send
         for (size_t i = 0; i < cache.PropertyIndices.size();) {
             const auto& prop = _registrator->_registeredProperties[cache.PropertyIndices[i]];
-            FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+            FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Registered complex property has no complex-data slot while preparing stored data", _registrator->GetTypeName(), prop->GetName(), prop->GetRegIndex());
 
             if (!_complexData[*prop->_complexDataIndex].first) {
                 cache.PropertyIndices.erase(cache.PropertyIndices.begin() + numeric_cast<int32_t>(i));
@@ -876,7 +876,7 @@ void Properties::RestoreData(const vector<const uint8_t*>& all_data, const vecto
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
+    FO_VERIFY_AND_THROW(all_data.size() == all_data_sizes.size(), "Serialized property payload pointer list and size list have different lengths", _registrator->GetTypeName(), all_data.size(), all_data_sizes.size());
 
     const auto apply_separate_props_data = [this](const vector<const uint8_t*>& separate_data, const vector<uint32_t>& separate_sizes) {
         if (separate_data.empty()) {
@@ -884,44 +884,44 @@ void Properties::RestoreData(const vector<const uint8_t*>& all_data, const vecto
         }
 
         const uint32_t property_data_count = separate_sizes[0] / sizeof(uint16_t);
-        FO_RUNTIME_ASSERT(separate_sizes[0] == property_data_count * sizeof(uint16_t));
-        FO_RUNTIME_ASSERT(separate_data.size() == 1 + property_data_count);
+        FO_VERIFY_AND_THROW(separate_sizes[0] == property_data_count * sizeof(uint16_t), "Serialized property index table size is not aligned to uint16 entries", _registrator->GetTypeName(), separate_sizes[0], sizeof(uint16_t));
+        FO_VERIFY_AND_THROW(separate_data.size() == 1 + property_data_count, "Serialized separate property payload count does not match index table count", _registrator->GetTypeName(), separate_data.size(), property_data_count);
 
         for (uint32_t i = 0; i < property_data_count; i++) {
             uint16_t prop_index {};
             MemCopy(&prop_index, separate_data[0] + i * sizeof(uint16_t), sizeof(uint16_t));
 
-            FO_RUNTIME_ASSERT(prop_index > 0);
-            FO_RUNTIME_ASSERT(prop_index < _registrator->_registeredProperties.size());
+            FO_VERIFY_AND_THROW(prop_index > 0, "Serialized separate property payload references the reserved zero property index", _registrator->GetTypeName(), i, property_data_count);
+            FO_VERIFY_AND_THROW(prop_index < _registrator->_registeredProperties.size(), "Serialized separate property index is outside the registrator property table", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), i, property_data_count);
             const auto& prop = _registrator->_registeredProperties[prop_index];
-            FO_RUNTIME_ASSERT(prop);
+            FO_VERIFY_AND_THROW(prop, "Serialized separate property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, i, property_data_count);
             SetRawData(prop.get(), {separate_data[1 + i], separate_sizes[1 + i]});
         }
     };
 
     const auto apply_full_data = [this](Properties& target, const vector<const uint8_t*>& full_data, const vector<uint32_t>& full_sizes) {
-        FO_RUNTIME_ASSERT(!full_sizes.empty());
+        FO_VERIFY_AND_THROW(!full_sizes.empty(), "Serialized full property payload is missing the POD size entry", _registrator->GetTypeName(), full_data.size());
 
         const auto public_size = numeric_cast<uint32_t>(_registrator->_publicPodDataSpace.size());
         const auto protected_size = numeric_cast<uint32_t>(_registrator->_protectedPodDataSpace.size());
         const auto private_size = numeric_cast<uint32_t>(_registrator->_privatePodDataSpace.size());
-        FO_RUNTIME_ASSERT(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size);
+        FO_VERIFY_AND_THROW(full_sizes[0] == public_size || full_sizes[0] == public_size + protected_size || full_sizes[0] == public_size + protected_size + private_size, "Serialized POD property payload size does not match public/protected/private section boundaries", _registrator->GetTypeName(), full_sizes[0], public_size, protected_size, private_size);
 
         if (full_sizes[0] != 0) {
             MemCopy(target._podData.get(), full_data[0], full_sizes[0]);
         }
 
         if (full_data.size() > 1) {
-            const uint32_t comlplex_data_count = full_sizes[1] / sizeof(uint16_t);
-            FO_RUNTIME_ASSERT(comlplex_data_count > 0);
-            vector<uint16_t> complex_indicies(comlplex_data_count);
+            const uint32_t complex_data_count = full_sizes[1] / sizeof(uint16_t);
+            FO_VERIFY_AND_THROW(complex_data_count > 0, "Serialized full property payload contains a complex index table with no entries", _registrator->GetTypeName(), full_sizes[1]);
+            vector<uint16_t> complex_indicies(complex_data_count);
             MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
-                FO_RUNTIME_ASSERT(complex_indicies[i] > 0);
-                FO_RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
+                FO_VERIFY_AND_THROW(complex_indicies[i] > 0, "Serialized complex property index table references the reserved zero property index", _registrator->GetTypeName(), i, complex_indicies.size());
+                FO_VERIFY_AND_THROW(complex_indicies[i] < _registrator->_registeredProperties.size(), "Serialized complex property index is outside the registrator property table", _registrator->GetTypeName(), complex_indicies[i], _registrator->_registeredProperties.size(), i, complex_indicies.size());
                 const auto& prop = _registrator->_registeredProperties[complex_indicies[i]];
-                FO_RUNTIME_ASSERT(prop->_complexDataIndex.has_value());
+                FO_VERIFY_AND_THROW(prop->_complexDataIndex.has_value(), "Serialized complex property index resolved to a property without complex-data slot", _registrator->GetTypeName(), prop->GetName(), complex_indicies[i]);
                 const auto data_size = full_sizes[2 + i];
                 const auto* data = full_data[2 + i];
                 target.SetRawData(prop.get(), {data, data_size});
@@ -937,7 +937,7 @@ void Properties::RestoreData(const vector<const uint8_t*>& all_data, const vecto
         return;
     }
 
-    FO_RUNTIME_ASSERT(all_data_sizes[0] == sizeof(uint8_t));
+    FO_VERIFY_AND_THROW(all_data_sizes[0] == sizeof(uint8_t), "Serialized empty property set marker size does not match store-type byte size", _registrator->GetTypeName(), all_data_sizes[0], sizeof(uint8_t));
 
     uint8_t store_type = 0;
     MemCopy(&store_type, all_data[0], sizeof(store_type));
@@ -953,7 +953,7 @@ void Properties::RestoreData(const vector<const uint8_t*>& all_data, const vecto
         apply_separate_props_data(payload_data, payload_sizes);
     }
     else {
-        FO_RUNTIME_ASSERT(store_type == FULL_DATA_STORE_TYPE);
+        FO_VERIFY_AND_THROW(store_type == FULL_DATA_STORE_TYPE, "Serialized property store type is not full data");
 
         if (_baseProps) {
             RemoveSyncedOverlayEntries();
@@ -1063,7 +1063,7 @@ auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!base || _registrator == base->_registrator);
+    FO_VERIFY_AND_THROW(!base || _registrator == base->_registrator, "Base properties use a different registrator");
 
     map<string, string> key_values;
 
@@ -1110,7 +1110,7 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_registrator == other._registrator);
+    FO_VERIFY_AND_THROW(_registrator == other._registrator, "Property containers use different registrators");
 
     if (this == &other) {
         return true;
@@ -1123,7 +1123,7 @@ auto Properties::CompareData(const Properties& other, span<const Property*> igno
             }
 
             for (const auto& prop : _registrator->_complexProperties) {
-                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while comparing properties", prop->GetName(), _registrator->GetTypeName());
                 const auto index = *prop->_complexDataIndex;
                 const auto& complex_data = _complexData[index];
                 const auto& other_complex_data = other._complexData[index];
@@ -1198,9 +1198,9 @@ void Properties::ApplyPropertyFromText(const Property* prop, string_view text)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop);
-    FO_RUNTIME_ASSERT(_registrator == prop->_registrator);
-    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
+    FO_VERIFY_AND_THROW(_registrator == prop->_registrator, "Property belongs to a different registrator");
+    FO_VERIFY_AND_THROW(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value(), "Property has neither POD offset nor complex data index");
 
     PropertiesSerializator::LoadPropertyFromText(this, prop, text, *_registrator->_hashResolver, *_registrator->_nameResolver);
 }
@@ -1209,9 +1209,9 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop);
-    FO_RUNTIME_ASSERT(_registrator == prop->_registrator);
-    FO_RUNTIME_ASSERT(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value());
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
+    FO_VERIFY_AND_THROW(_registrator == prop->_registrator, "Property belongs to a different registrator");
+    FO_VERIFY_AND_THROW(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value(), "Property has neither POD offset nor complex data index");
 
     return PropertiesSerializator::SavePropertyToText(this, prop, *_registrator->_hashResolver, *_registrator->_nameResolver);
 }
@@ -1240,7 +1240,7 @@ auto Properties::GetRawData(const Property* prop) const noexcept -> span<const u
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator == prop->_registrator);
+    FO_STRONG_ASSERT(prop != nullptr && _registrator == prop->_registrator, "Invalid property for raw data", _registrator->GetTypeName(), prop != nullptr ? string_view {prop->GetName()} : string_view {"<null>"}, prop != nullptr && prop->_registrator ? prop->_registrator->GetTypeName() : hstring {});
 
     if (_baseProps) {
         if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
@@ -1251,11 +1251,11 @@ auto Properties::GetRawData(const Property* prop) const noexcept -> span<const u
     }
 
     if (prop->IsPlainData()) {
-        FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+        FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while reading raw data", prop->GetName(), _registrator->GetTypeName());
         return {&_podData[*prop->_podDataOffset], prop->_baseType.Size};
     }
     else {
-        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+        FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while reading raw data", prop->GetName(), _registrator->GetTypeName());
 
         const auto& complex_data = _complexData[*prop->_complexDataIndex];
         return {complex_data.first.get(), complex_data.second};
@@ -1266,7 +1266,7 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_registrator == prop->_registrator);
+    FO_STRONG_ASSERT(prop != nullptr && _registrator == prop->_registrator, "Invalid property for raw data size", _registrator->GetTypeName(), prop != nullptr ? string_view {prop->GetName()} : string_view {"<null>"}, prop != nullptr && prop->_registrator ? prop->_registrator->GetTypeName() : hstring {});
 
     if (_baseProps) {
         if (const auto* entry = FindOverlayEntry(prop); entry != nullptr) {
@@ -1277,11 +1277,11 @@ auto Properties::GetRawDataSize(const Property* prop) const noexcept -> size_t
     }
     else {
         if (prop->IsPlainData()) {
-            FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+            FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while reading raw data size", prop->GetName(), _registrator->GetTypeName());
             return prop->_baseType.Size;
         }
         else {
-            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while reading raw data size", prop->GetName(), _registrator->GetTypeName());
 
             const auto& complex_data = _complexData[*prop->_complexDataIndex];
             return complex_data.second;
@@ -1334,7 +1334,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
 
     scoped_lock locker {*_dataLocker};
 
-    FO_STRONG_ASSERT(_registrator == prop->_registrator);
+    FO_STRONG_ASSERT(prop != nullptr && _registrator == prop->_registrator, "Invalid property for raw data write", _registrator->GetTypeName(), prop != nullptr ? string_view {prop->GetName()} : string_view {"<null>"}, prop != nullptr && prop->_registrator ? prop->_registrator->GetTypeName() : hstring {});
 
     if (_baseProps) {
         PropertyRawData base_prop_data;
@@ -1404,13 +1404,13 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
     }
     else {
         if (prop->IsPlainData()) {
-            FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
-            FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size());
+            FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while writing raw data", prop->GetName(), _registrator->GetTypeName());
+            FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size(), "Property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
             MemCopy(_podData.get() + *prop->_podDataOffset, raw_data.data(), raw_data.size());
         }
         else {
-            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+            FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while writing raw data", prop->GetName(), _registrator->GetTypeName());
 
             auto& complex_data = _complexData[*prop->_complexDataIndex];
 
@@ -1436,11 +1436,11 @@ void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_da
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
 
     if (prop->IsVirtual()) {
-        FO_RUNTIME_ASSERT(_entity);
-        FO_RUNTIME_ASSERT(!prop->_setters.empty());
+        FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
+        FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual property has no setter while applying raw property data", prop->GetName(), prop_data.GetSize());
 
         for (const auto& setter : prop->_setters) {
             setter(_entity.get(), prop, prop_data);
@@ -1467,7 +1467,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
@@ -1531,7 +1531,7 @@ auto Properties::GetPlainDataValueAsAny(const Property* prop) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
@@ -1598,7 +1598,7 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
@@ -1663,7 +1663,7 @@ void Properties::SetPlainDataValueAsAny(const Property* prop, const any_t& value
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(prop->IsPlainData());
+    FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
@@ -2027,23 +2027,23 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(tokens.size() >= 3);
+    FO_VERIFY_AND_THROW(tokens.size() >= 3, "Property declaration is missing scope, type or name tokens", _typeName, tokens.size());
 
     auto prop = SafeAlloc::MakeUnique<Property>(this);
 
     prop->_isCommon = tokens[0] == "Common";
     prop->_isServerOnly = tokens[0] == "Server";
     prop->_isClientOnly = tokens[0] == "Client";
-    FO_RUNTIME_ASSERT(static_cast<int32_t>(prop->_isCommon) + static_cast<int32_t>(prop->_isServerOnly) + static_cast<int32_t>(prop->_isClientOnly) == 1);
+    FO_VERIFY_AND_THROW(static_cast<int32_t>(prop->_isCommon) + static_cast<int32_t>(prop->_isServerOnly) + static_cast<int32_t>(prop->_isClientOnly) == 1, "Property declaration has an invalid scope token", _typeName, tokens[2], tokens[0]);
 
     const auto type = _nameResolver->ResolveComplexType(tokens[1]);
-    FO_RUNTIME_ASSERT(!type.IsMutable);
-    FO_RUNTIME_ASSERT(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto);
-    FO_RUNTIME_ASSERT(type.Kind != ComplexTypeKind::Callback);
+    FO_VERIFY_AND_THROW(!type.IsMutable, "Property declaration uses a mutable type wrapper where property mutability must be declared by a tag", _typeName, tokens[2], tokens[1]);
+    FO_VERIFY_AND_THROW(!type.BaseType.IsEntity || type.BaseType.IsFixedType || type.BaseType.IsEntityProto, "Property declaration uses an unsupported entity base type", _typeName, tokens[2], tokens[1], type.BaseType.Name);
+    FO_VERIFY_AND_THROW(type.Kind != ComplexTypeKind::Callback, "Property type cannot be a callback", prop->GetName(), tokens[1], type.Kind);
 
     if (type.Kind == ComplexTypeKind::Dict || type.Kind == ComplexTypeKind::DictOfArray) {
-        FO_RUNTIME_ASSERT(type.KeyType.has_value());
-        FO_RUNTIME_ASSERT(!type.KeyType->IsEntity);
+        FO_VERIFY_AND_THROW(type.KeyType.has_value(), "Dictionary property declaration has no key type", _typeName, tokens[2], tokens[1]);
+        FO_VERIFY_AND_THROW(!type.KeyType->IsEntity, "Dictionary property declaration uses an entity type as a key", _typeName, tokens[2], tokens[1], type.KeyType->Name);
 
         prop->_isDict = true;
         prop->_dictKeyType = type.KeyType.value();
@@ -2088,8 +2088,8 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
         prop->_componentName = prop->_propName.substr(0, dot_pos);
         prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
-        FO_RUNTIME_ASSERT(!prop->_componentName.empty());
-        FO_RUNTIME_ASSERT(!prop->_propNameWithoutComponent.empty());
+        FO_VERIFY_AND_THROW(!prop->_componentName.empty(), "Property component-qualified name has an empty component part", _typeName, prop->_propName);
+        FO_VERIFY_AND_THROW(!prop->_propNameWithoutComponent.empty(), "Property component-qualified name has an empty property part", _typeName, prop->_propName);
     }
     else {
         prop->_propNameWithoutComponent = prop->_propName;
@@ -2099,7 +2099,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     for (size_t i = 3; i < tokens.size(); i++) {
         if (tokens[i] == "Group") {
-            FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Group tag must be followed by '=' and a group name", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
 
             const auto group = tokens[i + 2];
             int32_t priority = 0;
@@ -2123,81 +2123,81 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             i += 2;
         }
         else if (tokens[i] == "Mutable") {
-            FO_RUNTIME_ASSERT(!prop->_isMutable);
+            FO_VERIFY_AND_THROW(!prop->_isMutable, "Property declaration contains duplicate Mutable tag", _typeName, prop->GetName(), i);
             prop->_isMutable = true;
         }
         else if (tokens[i] == "CoreProperty") {
-            FO_RUNTIME_ASSERT(!prop->_isCoreProperty);
+            FO_VERIFY_AND_THROW(!prop->_isCoreProperty, "Property declaration contains duplicate CoreProperty tag", _typeName, prop->GetName(), i);
             prop->_isCoreProperty = true;
         }
         else if (tokens[i] == "Component") {
-            FO_RUNTIME_ASSERT(!prop->_isComponentItself);
+            FO_VERIFY_AND_THROW(!prop->_isComponentItself, "Property declaration contains duplicate Component tag", _typeName, prop->GetName(), i);
             prop->_isComponentItself = true;
             is_component_marker = true;
         }
         else if (tokens[i] == "Persistent") {
-            FO_RUNTIME_ASSERT(!prop->_isPersistent);
+            FO_VERIFY_AND_THROW(!prop->_isPersistent, "Property declaration contains duplicate Persistent tag", _typeName, prop->GetName(), i);
             prop->_isPersistent = true;
         }
         else if (tokens[i] == "Virtual") {
-            FO_RUNTIME_ASSERT(!prop->_isVirtual);
+            FO_VERIFY_AND_THROW(!prop->_isVirtual, "Property declaration contains duplicate Virtual tag", _typeName, prop->GetName(), i);
             prop->_isVirtual = true;
         }
         else if (tokens[i] == "OwnerSync") {
-            FO_RUNTIME_ASSERT(!prop->_isOwnerSync);
+            FO_VERIFY_AND_THROW(!prop->_isOwnerSync, "Property declaration contains duplicate OwnerSync tag", _typeName, prop->GetName(), i);
             prop->_isOwnerSync = true;
         }
         else if (tokens[i] == "PublicSync") {
-            FO_RUNTIME_ASSERT(!prop->_isPublicSync);
+            FO_VERIFY_AND_THROW(!prop->_isPublicSync, "Property declaration contains duplicate PublicSync tag", _typeName, prop->GetName(), i);
             prop->_isPublicSync = true;
         }
         else if (tokens[i] == "NoSync") {
-            FO_RUNTIME_ASSERT(!prop->_isNoSync);
+            FO_VERIFY_AND_THROW(!prop->_isNoSync, "Property declaration contains duplicate NoSync tag", _typeName, prop->GetName(), i);
             prop->_isNoSync = true;
         }
         else if (tokens[i] == "ModifiableByClient") {
-            FO_RUNTIME_ASSERT(!prop->_isModifiableByClient);
+            FO_VERIFY_AND_THROW(!prop->_isModifiableByClient, "Property declaration contains duplicate ModifiableByClient tag", _typeName, prop->GetName(), i);
             prop->_isModifiableByClient = true;
         }
         else if (tokens[i] == "ModifiableByAnyClient") {
-            FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient);
+            FO_VERIFY_AND_THROW(!prop->_isModifiableByAnyClient, "Property declaration contains duplicate ModifiableByAnyClient tag", _typeName, prop->GetName(), i);
             prop->_isModifiableByAnyClient = true;
         }
         else if (tokens[i] == "Historical") {
-            FO_RUNTIME_ASSERT(!prop->_isHistorical);
+            FO_VERIFY_AND_THROW(!prop->_isHistorical, "Property declaration contains duplicate Historical tag", _typeName, prop->GetName(), i);
             prop->_isHistorical = true;
         }
         else if (tokens[i] == "Resource") {
-            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
-            FO_RUNTIME_ASSERT(!prop->_isResourceHash);
+            FO_VERIFY_AND_THROW(prop->IsBaseTypeHash(), "Property Resource tag can only be applied to hash-backed properties", _typeName, prop->GetName(), prop->_viewTypeName);
+            FO_VERIFY_AND_THROW(!prop->_isResourceHash, "Property declaration contains duplicate Resource tag", _typeName, prop->GetName(), i);
             prop->_isResourceHash = true;
         }
         else if (tokens[i] == "ScriptFuncType") {
-            FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
-            FO_RUNTIME_ASSERT(prop->IsBaseTypeHash());
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property ScriptFuncType tag must be followed by '=' and a function type", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
+            FO_VERIFY_AND_THROW(prop->IsBaseTypeHash(), "Property ScriptFuncType tag can only be applied to hash-backed properties", _typeName, prop->GetName(), prop->_viewTypeName);
             prop->_scriptFuncType = tokens[i + 2];
             i += 2;
         }
         else if (tokens[i] == "Max") {
-            FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
-            FO_RUNTIME_ASSERT(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat());
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Max tag must be followed by '=' and a value", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
+            FO_VERIFY_AND_THROW(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat(), "Property Max tag can only be applied to numeric properties", _typeName, prop->GetName(), prop->_viewTypeName);
             i += 2;
         }
         else if (tokens[i] == "Min") {
-            FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
-            FO_RUNTIME_ASSERT(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat());
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Min tag must be followed by '=' and a value", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
+            FO_VERIFY_AND_THROW(prop->IsBaseTypeInt() || prop->IsBaseTypeFloat(), "Property Min tag can only be applied to numeric properties", _typeName, prop->GetName(), prop->_viewTypeName);
             i += 2;
         }
         else if (tokens[i] == "Quest") {
-            FO_RUNTIME_ASSERT(i + 2 < tokens.size() && tokens[i + 1] == "=");
+            FO_VERIFY_AND_THROW(i + 2 < tokens.size() && tokens[i + 1] == "=", "Property Quest tag must be followed by '=' and a quest identifier", prop->GetName(), i, tokens.size(), i + 1 < tokens.size() ? tokens[i + 1] : string_view {});
             i += 2;
         }
         else if (tokens[i] == "NullGetterForProto") {
-            FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto);
+            FO_VERIFY_AND_THROW(!prop->_isNullGetterForProto, "Property declaration contains duplicate NullGetterForProto tag", _typeName, prop->GetName(), i);
             prop->_isNullGetterForProto = true;
         }
         else if (tokens[i] == "Nullable") {
-            FO_RUNTIME_ASSERT(!prop->_isNullable);
+            FO_VERIFY_AND_THROW(!prop->_isNullable, "Property declaration contains duplicate Nullable tag", _typeName, prop->GetName(), i);
             prop->_isNullable = true;
         }
         else if (tokens[i] == "SharedProperty") {
@@ -2208,27 +2208,27 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     prop->_isSynced = prop->_isCommon && prop->_isMutable && (prop->_isOwnerSync || prop->_isPublicSync);
 
     if (is_component_marker) {
-        FO_RUNTIME_ASSERT(prop->_componentName.empty());
-        FO_RUNTIME_ASSERT(prop->IsBaseTypeBool());
-        FO_RUNTIME_ASSERT(prop->IsPlainData());
+        FO_VERIFY_AND_THROW(prop->_componentName.empty(), "Component marker property must not itself be component-qualified", _typeName, prop->GetName(), prop->_componentName);
+        FO_VERIFY_AND_THROW(prop->IsBaseTypeBool(), "Component marker property must be backed by bool", _typeName, prop->GetName(), prop->_viewTypeName);
+        FO_VERIFY_AND_THROW(prop->IsPlainData(), "Component marker property must be plain data", _typeName, prop->GetName(), prop->_viewTypeName);
         _registeredComponents.emplace(prop->_propName, prop.get());
     }
 
-    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon);
-    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable);
-    FO_RUNTIME_ASSERT(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || !prop->_isVirtual);
-    FO_RUNTIME_ASSERT(!prop->_isNoSync || !(prop->_isOwnerSync || prop->_isPublicSync));
-    FO_RUNTIME_ASSERT(!prop->_isOwnerSync || !(prop->_isNoSync || prop->_isPublicSync));
-    FO_RUNTIME_ASSERT(!prop->_isPublicSync || !(prop->_isNoSync || prop->_isOwnerSync));
-    FO_RUNTIME_ASSERT(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync));
-    FO_RUNTIME_ASSERT(!prop->_isModifiableByClient || prop->_isSynced);
-    FO_RUNTIME_ASSERT(!prop->_isModifiableByAnyClient || prop->_isPublicSync);
-    FO_RUNTIME_ASSERT(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty));
-    FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isSynced);
-    FO_RUNTIME_ASSERT(!prop->_isVirtual || !prop->_isPersistent);
-    FO_RUNTIME_ASSERT(!prop->_isNullGetterForProto || prop->_isVirtual);
-    FO_RUNTIME_ASSERT(!prop->_isPersistent || !prop->_isClientOnly);
-    FO_RUNTIME_ASSERT(!prop->_isNullable || prop->IsBaseTypeProtoReference());
+    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon, "Synchronized property is not marked as common");
+    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isMutable, "Synchronized property is not mutable");
+    FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || !prop->_isVirtual, "Virtual property cannot be synchronized directly");
+    FO_VERIFY_AND_THROW(!prop->_isNoSync || !(prop->_isOwnerSync || prop->_isPublicSync), "NoSync property also has network sync flags");
+    FO_VERIFY_AND_THROW(!prop->_isOwnerSync || !(prop->_isNoSync || prop->_isPublicSync), "OwnerSync property has conflicting sync flags");
+    FO_VERIFY_AND_THROW(!prop->_isPublicSync || !(prop->_isNoSync || prop->_isOwnerSync), "PublicSync property has conflicting sync flags");
+    FO_VERIFY_AND_THROW(!(prop->_isMutable && prop->_isCommon && !prop->_isVirtual) || (prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync), "Mutable common property has no explicit sync mode");
+    FO_VERIFY_AND_THROW(!prop->_isModifiableByClient || prop->_isSynced, "Client-modifiable property is not synchronized");
+    FO_VERIFY_AND_THROW(!prop->_isModifiableByAnyClient || prop->_isPublicSync, "Any-client-modifiable property is not public synchronized");
+    FO_VERIFY_AND_THROW(!prop->_isPersistent || (prop->_isMutable || prop->_isCoreProperty), "Persistent property must be mutable or core");
+    FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isSynced, "Virtual property cannot be synchronized");
+    FO_VERIFY_AND_THROW(!prop->_isVirtual || !prop->_isPersistent, "Virtual property cannot be persistent");
+    FO_VERIFY_AND_THROW(!prop->_isNullGetterForProto || prop->_isVirtual, "Null getter for proto is allowed only on virtual properties");
+    FO_VERIFY_AND_THROW(!prop->_isPersistent || !prop->_isClientOnly, "Client-only property cannot be persistent");
+    FO_VERIFY_AND_THROW(!prop->_isNullable || prop->IsBaseTypeProtoReference(), "Nullable property must reference a proto type");
 
     const auto reg_index = numeric_cast<uint16_t>(_registeredProperties.size());
 
@@ -2288,7 +2288,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         pod_data_base_offset = space_pos;
 
         _wholePodDataSize = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size();
-        FO_RUNTIME_ASSERT((_wholePodDataSize % 8) == 0);
+        FO_VERIFY_AND_THROW((_wholePodDataSize % 8) == 0, "Property POD storage size lost required 8-byte alignment after registering property", _typeName, prop->GetName(), _wholePodDataSize);
     }
 
     // Complex property data index
@@ -2317,7 +2317,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     prop->_podDataOffset = pod_data_base_offset;
     prop->_isDisabled = disabled;
 
-    FO_RUNTIME_ASSERT(_registeredPropertiesLookup.count(prop->_propName) == 0);
+    FO_VERIFY_AND_THROW(_registeredPropertiesLookup.count(prop->_propName) == 0, "Property name is already registered for this registrator", _typeName, prop->_propName, prop->_regIndex);
     _registeredPropertiesLookup.emplace(prop->_propName, prop.get());
 
     // Fix plain data data offsets
@@ -2347,7 +2347,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     for (auto& data_prop : _dataProperties) {
         if (data_prop.IsPlain) {
-            FO_STRONG_ASSERT(data_prop.Prop->_podDataOffset.has_value());
+            FO_STRONG_ASSERT(data_prop.Prop->_podDataOffset.has_value(), "Plain data property has no pod data offset while finalizing registrator", data_prop.Prop->GetName(), _typeName);
             data_prop.DataIndex = numeric_cast<uint32_t>(*data_prop.Prop->_podDataOffset);
         }
     }
@@ -2355,11 +2355,11 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     if (!prop->IsDisabled()) {
         if (!prop->IsVirtual()) {
             if (prop->IsPlainData()) {
-                FO_STRONG_ASSERT(prop->_podDataOffset.has_value());
+                FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while finalizing registrator", prop->GetName(), _typeName);
                 _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
             }
             else {
-                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value());
+                FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while finalizing registrator", prop->GetName(), _typeName);
                 _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.get(), .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
             }
 

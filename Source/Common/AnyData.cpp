@@ -242,7 +242,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String);
+    FO_VERIFY_AND_THROW(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String, "AnyData value type cannot be converted to raw payload");
 
     if (as_dict) {
         Dict dict;

@@ -420,7 +420,7 @@ namespace EntityLifecycle
 
     static auto WaitForStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -440,15 +440,15 @@ namespace EntityLifecycle
 
     static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         return CreateLoggedPlayer(server, NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected), name);
     }
 
     static auto CreateLoggedPlayer(ServerEngine* server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> Player*
     {
-        FO_RUNTIME_ASSERT(server);
-        FO_RUNTIME_ASSERT(net_connection);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
+        FO_VERIFY_AND_THROW(net_connection, "Missing required net connection");
 
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
 
@@ -465,8 +465,8 @@ namespace EntityLifecycle
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(connection);
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(connection, "Missing required connection");
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         NetOutBuffer packet {numeric_cast<size_t>(server->Settings.NetBufferSize)};
         packet.StartMsg(NetMessage::SendStopCritterMove);
@@ -482,8 +482,8 @@ namespace EntityLifecycle
 
     static auto WaitForUnlockedServerCondition(ServerEngine* server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
     {
-        FO_RUNTIME_ASSERT(server);
-        FO_RUNTIME_ASSERT(locked);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
+        FO_VERIFY_AND_THROW(locked, "Missing required locked");
 
         server->Unlock();
         locked = false;

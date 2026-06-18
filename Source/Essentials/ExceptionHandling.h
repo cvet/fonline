@@ -46,8 +46,6 @@ using ExceptionCallback = function<void(string_view message, const CatchedStackT
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int32_t line) noexcept;
-extern void ReportVerifyFailed(string_view message, const char* file, int32_t line) noexcept;
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
@@ -155,44 +153,67 @@ private:
     StackTraceData _stackTrace {};
 };
 
-#if !FO_NO_EXTRA_ASSERTS
-#define FO_RUNTIME_ASSERT(expr) \
+#define FO_VERIFY_AND_THROW(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        throw FO_NAMESPACE AssertationException(#expr, __FILE__, __LINE__); \
+        throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
     }
-#define FO_RUNTIME_ASSERT_STR(expr, str) \
+
+#define FO_VERIFY_AND_CONTINUE(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
     }
-#define FO_RUNTIME_VERIFY(expr) \
+
+#define FO_VERIFY_AND_RETURN(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
+        return; \
     }
-#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...) \
+
+#define FO_VERIFY_AND_RETURN_VALUE(expr, ret, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
-        return __VA_ARGS__; \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
+        return ret; \
     }
-#define FO_STRONG_ASSERT(expr) \
+
+#define FO_STRONG_ASSERT(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE StrongAssertationException(__VA_ARGS__, __FILE__, __LINE__); \
+        } \
+        catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+        } \
     }
-#else
-#define FO_RUNTIME_ASSERT(expr)
-#define FO_RUNTIME_ASSERT_STR(expr, str)
-#define FO_RUNTIME_VERIFY(expr, ...)
-#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...)
-#define FO_STRONG_ASSERT(expr)
-#endif
 
 #define FO_UNREACHABLE_PLACE() throw FO_NAMESPACE UnreachablePlaceException(__FILE__, __LINE__)
-#define FO_UNKNOWN_EXCEPTION() FO_NAMESPACE ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
+
+#define FO_UNKNOWN_EXCEPTION() \
+    try { \
+        throw FO_NAMESPACE StrongAssertationException("Unknown exception", __FILE__, __LINE__); \
+    } \
+    catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
+        FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+    }
 
 // Common exceptions
 FO_DECLARE_EXCEPTION(GenericException);
-FO_DECLARE_EXCEPTION(AssertationException);
+FO_DECLARE_EXCEPTION(VerificationException);
 FO_DECLARE_EXCEPTION(StrongAssertationException);
-FO_DECLARE_EXCEPTION(VerifyFailedException);
 FO_DECLARE_EXCEPTION(UnreachablePlaceException);
 FO_DECLARE_EXCEPTION(NotSupportedException);
 FO_DECLARE_EXCEPTION(NotImplementedException);

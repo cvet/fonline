@@ -171,7 +171,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
-            FO_RUNTIME_ASSERT(!key.empty());
+            FO_VERIFY_AND_THROW(!key.empty(), "Prototype text key/value map contains an empty key while merging inherited text", value);
 
             if (strvex(key).starts_with("$Text")) {
                 to_kv[key] = value;
@@ -185,7 +185,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
         for (auto&& [pid, file_kv] : file_proto_pids) {
             const auto base_name = pid.as_str();
-            FO_RUNTIME_ASSERT(all_proto_texts[type_name].count(pid) == 0);
+            FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
             map<string, string> proto_kv;
 
@@ -214,7 +214,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            FO_RUNTIME_ASSERT(!_context->Settings->BakeLanguages.empty());
+            FO_VERIFY_AND_THROW(!_context->Settings->BakeLanguages.empty(), "Prototype text baker cannot choose a default language because BakeLanguages is empty", type_name, pid, _context->PackName);
             const string& default_lang = _context->Settings->BakeLanguages.front();
 
             all_proto_texts[type_name][pid] = {};
@@ -236,12 +236,12 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             }();
 
             for (auto&& [key, value] : proto_kv) {
-                FO_RUNTIME_ASSERT(strvex(key).starts_with("$Text"));
+                FO_VERIFY_AND_THROW(strvex(key).starts_with("$Text"), "Proto text key must start with $Text", key);
 
                 const auto key_tok = strex(key).split(' ');
                 const string lang = key_tok.size() >= 2 ? key_tok[1] : default_lang;
 
-                FO_RUNTIME_ASSERT(key_tok.size() <= 4);
+                FO_VERIFY_AND_THROW(key_tok.size() <= 4, "Prototype text key has too many tokens", type_name, pid, key, key_tok.size(), 4);
 
                 const string_view key2 = key_tok.size() >= 3 ? string_view {key_tok[2]} : string_view {};
                 const string_view key3 = key_tok.size() >= 4 ? string_view {key_tok[3]} : string_view {};

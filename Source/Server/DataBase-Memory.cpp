@@ -66,12 +66,12 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database insert received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
-        FO_RUNTIME_ASSERT(!collection.count(id));
+        FO_VERIFY_AND_THROW(!collection.count(id), "Memory database collection already contains the inserted record id", collection_name, id);
 
         collection.emplace(id, doc.Copy());
     }
@@ -80,7 +80,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database update received an empty document", collection_name, id);
 
         scoped_lock locker {_storageLocker};
 

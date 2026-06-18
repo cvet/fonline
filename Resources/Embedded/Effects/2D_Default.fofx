@@ -1,7 +1,8 @@
 [Effect]
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -15,7 +16,7 @@ layout(location = 3) out vec2 ScreenPos;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
     EggFlag = InEggData;
@@ -32,6 +33,8 @@ layout(location = 2) in vec2 EggFlag;
 layout(location = 3) in vec2 ScreenPos;
 
 layout(location = 0) out vec4 FragColor;
+
+const float AlphaDepthCutoff = 1.0 / 255.0;
 
 float GetEggAlpha(vec4 eggData, float transitionStart)
 {
@@ -51,5 +54,8 @@ void main(void)
     }
     if (EggFlag.y > 0.0 && EggData[1].z > 0.0 && EggData[1].w > 0.0) {
         FragColor.a *= GetEggAlpha(EggData[1], transitionStart);
+    }
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
     }
 }

@@ -57,7 +57,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
     }
 
     auto holder = item->GetParent();
-    FO_RUNTIME_ASSERT(holder);
+    FO_VERIFY_AND_THROW(holder, "Missing required holder");
     ValidateEntityAccess(holder.get());
     return holder.get();
 }
@@ -66,8 +66,8 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
-    FO_RUNTIME_ASSERT(holder);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(holder, "Missing required holder");
 
     ValidateEntityAccess(item);
     ValidateEntityAccess(holder);
@@ -108,7 +108,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(count >= 0);
+    FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
 
     const auto* proto = _engine->GetProtoItem(pid);
 
@@ -147,7 +147,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
         throw ItemManagerException("Item destroyed during init", pid);
     }
 
-    FO_RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::Nowhere);
+    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::Nowhere, "Item is already owned by another holder");
 
     return item.get();
 }
@@ -156,7 +156,7 @@ auto ItemManager::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
     refcount_ptr map_holder = map;
     ignore_unused(map_holder);
 
@@ -219,10 +219,10 @@ void ItemManager::DestroyItem(Item* item)
     // Finish events
     ValidateEntityAccess(item);
     _engine->OnItemFinish.Fire(item);
-    FO_RUNTIME_ASSERT(!item->IsDestroyed());
+    FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     // Tear off from environment
-    for (InfinityLoopDetector detector; item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities(); detector.AddLoop()) {
+    for (size_t prev_deps = std::numeric_limits<size_t>::max(); item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {
         try {
             if (item->GetOwnership() != ItemOwnership::Nowhere) {
                 RemoveItemHolder(item, GetItemHolder(item));
@@ -233,7 +233,7 @@ void ItemManager::DestroyItem(Item* item)
                 // Inner item has its own EntityLock; pull it into the current sync context so the
                 // recursive DestroyItem call's ValidateEntityAccess passes.
                 auto* ctx = _engine->GetCurrentSyncContext();
-                FO_RUNTIME_ASSERT(ctx);
+                FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
                 ctx->EnsureEntitySynced(inner);
                 DestroyItem(inner);
             }
@@ -245,6 +245,12 @@ void ItemManager::DestroyItem(Item* item)
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
+
+        // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging
+        // loop is corruption, so terminate rather than leave a half-destroyed "undead" item.
+        const size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
+        FO_STRONG_ASSERT(remaining_deps < prev_deps, "Item destruction made no progress", item->GetId(), remaining_deps, prev_deps);
+        prev_deps = remaining_deps;
     }
 
     _engine->TimeEventMngr.CancelAllForEntity(item);
@@ -260,14 +266,14 @@ auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
     ValidateEntityAccess(item);
 
     const auto item_count = item->GetCount();
-    FO_RUNTIME_ASSERT(item->GetStackable());
-    FO_RUNTIME_ASSERT(count > 0);
-    FO_RUNTIME_ASSERT(count < item_count);
+    FO_VERIFY_AND_THROW(item->GetStackable(), "Item is not stackable");
+    FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
+    FO_VERIFY_AND_THROW(count < item_count, "Count is outside allowed range", count, item_count);
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
     item->SetCount(item_count - count);
-    FO_RUNTIME_ASSERT(!new_item->IsDestroyed());
+    FO_VERIFY_AND_THROW(!new_item->IsDestroyed(), "Newly merged item is already destroyed");
 
     return new_item;
 }
@@ -276,8 +282,8 @@ void ItemManager::RestoreSplitItem(Item* item, Item* splitted_item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
-    FO_RUNTIME_ASSERT(splitted_item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(splitted_item, "Missing required splitted item");
 
     if (!item->IsDestroyed() && item->GetProtoId() == splitted_item->GetProtoId()) {
         item->SetCount(item->GetCount() + splitted_item->GetCount());
@@ -290,7 +296,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(count >= 0);
+    FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cr);
     refcount_ptr item_holder = item;
@@ -333,7 +339,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(count >= 0);
+    FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_map);
     refcount_ptr item_holder = item;
@@ -397,7 +403,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(count >= 0);
+    FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cont);
     refcount_ptr item_holder = item;
@@ -440,8 +446,8 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cont);
-    FO_RUNTIME_ASSERT(count >= 0);
+    FO_VERIFY_AND_THROW(cont, "Missing required cont");
+    FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(cont);
 
     const auto* proto = _engine->GetProtoItem(pid);
@@ -489,7 +495,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(count > 0);
+    FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
     ValidateEntityAccess(cr);
 
     const auto* proto = _engine->GetProtoItem(pid);

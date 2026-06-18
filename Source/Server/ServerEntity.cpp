@@ -147,7 +147,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     // Engine-wide invariant: a primary SyncContext is always active when an event fires.
-    FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread());
+    FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread(), "Server entity event fired without active sync context");
 
     bool had_exception = false;
 

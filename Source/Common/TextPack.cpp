@@ -341,11 +341,11 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
         const auto file_name = text_file.GetNameNoExt();
 
         const auto name_triplet = strvex(file_name).split('.');
-        FO_RUNTIME_ASSERT(name_triplet.size() == 3);
+        FO_VERIFY_AND_THROW(name_triplet.size() == 3, "Baked text filename must contain pack prefix, text pack name and language suffix", text_file_header.GetPath(), file_name, name_triplet.size());
         const auto& pack_name_str = name_triplet[1];
         const auto& lang_name = name_triplet[2];
-        FO_RUNTIME_ASSERT(!pack_name_str.empty());
-        FO_RUNTIME_ASSERT(!lang_name.empty());
+        FO_VERIFY_AND_THROW(!pack_name_str.empty(), "Baked text filename has an empty text pack name segment", text_file_header.GetPath(), file_name);
+        FO_VERIFY_AND_THROW(!lang_name.empty(), "Baked text filename has an empty language segment", text_file_header.GetPath(), file_name);
 
         if (!language.empty() && lang_name != language) {
             continue;
@@ -422,7 +422,7 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!bake_languages.empty());
+    FO_VERIFY_AND_THROW(!bake_languages.empty(), "Text pack normalization cannot choose a base language because BakeLanguages is empty", lang_packs.size());
 
     // Add default language
     if (lang_packs.empty() || lang_packs.front().first != bake_languages.front()) {
@@ -469,12 +469,12 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
             }
         }
 
-        FO_RUNTIME_ASSERT(lang_pack.size() == base_lang_pack.size());
+        FO_VERIFY_AND_THROW(lang_pack.size() == base_lang_pack.size(), "Normalized language pack set does not match the base language pack set", lang_packs[i].first, lang_pack.size(), base_lang_pack.size());
 
         // Normalize texts to the base language
         for (auto&& [pack_name, text_pack] : lang_pack) {
             const auto it = base_lang_pack.find(pack_name);
-            FO_RUNTIME_ASSERT(it != base_lang_pack.end());
+            FO_VERIFY_AND_THROW(it != base_lang_pack.end(), "Lookup failed in base lang pack");
             text_pack.FixStr(it->second);
         }
     }

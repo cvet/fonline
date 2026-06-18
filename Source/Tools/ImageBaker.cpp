@@ -229,7 +229,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 writer.Write<int16_t>(shot.NextX);
                 writer.Write<int16_t>(shot.NextY);
                 writer.WritePtr(shot.Data.data(), shot.Data.size());
-                FO_RUNTIME_ASSERT(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4);
+                FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
             }
             else {
                 writer.Write<uint16_t>(shot.SharedIndex);
@@ -285,7 +285,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
     frm_fps = fofrm.GetAsInt("", "Fps", frm_fps);
     int32_t frm_count = fofrm.GetAsInt("", "count", 1);
     frm_count = fofrm.GetAsInt("", "Count", frm_count);
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     int32_t ox = fofrm.GetAsInt("", "offs_x", 0);
     ox = fofrm.GetAsInt("", "OffsetX", ox);
@@ -419,7 +419,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
 
     reader.SetCurPos(0x8);
     auto frm_count = reader.GetBEUInt16();
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -678,7 +678,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
     reader.SetCurPos(0x8);
     auto frm_count = reader.GetBEUInt16();
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     FrameCollection collection;
     collection.SequenceSize = frm_count;
@@ -1094,7 +1094,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
     auto frm_fps = header.FrameRate;
     auto frm_count = header.FrameCount;
-    FO_RUNTIME_ASSERT(frm_count > 0);
+    FO_VERIFY_AND_THROW(frm_count > 0, "Frame count must be positive", frm_count);
 
     if (frm_from >= frm_count) {
         frm_from = frm_count - 1;
@@ -2250,7 +2250,7 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
     FO_STACK_TRACE_ENTRY();
 
     auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    FO_RUNTIME_ASSERT(png_ptr);
+    FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
 
     try {
         struct PngMessage
@@ -2272,7 +2272,7 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
         png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
 
         auto* info_ptr = png_create_info_struct(png_ptr);
-        FO_RUNTIME_ASSERT(info_ptr);
+        FO_VERIFY_AND_THROW(info_ptr, "Failed to create PNG info structure");
 
         struct PngReader
         {

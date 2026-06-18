@@ -42,8 +42,8 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(vertices > 0);
-        FO_RUNTIME_ASSERT(vertices % 4 == 0);
+        FO_VERIFY_AND_THROW(vertices > 0, "Spark render buffer cannot be created without vertices");
+        FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
 
         _renderBuf = _render->CreateDrawBuffer(false);
 
@@ -59,7 +59,7 @@ namespace SPK::FO
         ibuf.resize(ipos);
 
         if constexpr (sizeof(vindex_t) == 2) {
-            FO_RUNTIME_ASSERT(ibuf.size() <= 0xFFFF);
+            FO_VERIFY_AND_THROW(ibuf.size() <= 0xFFFF, "Spark render buffer index count exceeds 16-bit vertex index capacity", ibuf.size(), 0xFFFF, vertices);
         }
 
         for (size_t i = 0; i < ibuf.size() / 6; i++) {
@@ -133,7 +133,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!_particleMngr);
+        FO_VERIFY_AND_THROW(!_particleMngr, "Particle mngr is already set");
 
         _path = path;
         _particleMngr = &particle_mngr;
@@ -193,14 +193,14 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        FO_RUNTIME_ASSERT(_particleMngr);
+        FO_VERIFY_AND_THROW(_particleMngr, "Missing required particle mngr");
 
-        FO_RUNTIME_ASSERT(renderBuffer);
+        FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         auto& buffer = static_cast<SparkRenderBuffer&>(*renderBuffer);
         buffer.PositionAtStart();
 
-        if (_modelView != _particleMngr->_viewMatColMaj) {
-            _modelView = _particleMngr->_viewMatColMaj;
+        if (_modelView != _particleMngr->_viewMatrix) {
+            _modelView = _particleMngr->_viewMatrix;
             _invModelView = glm::inverse(_modelView);
         }
 
@@ -240,10 +240,10 @@ namespace SPK::FO
             }
         }
 
-        FO_RUNTIME_ASSERT(_effect);
-        FO_RUNTIME_ASSERT(_texture);
+        FO_VERIFY_AND_THROW(_effect, "Missing required effect");
+        FO_VERIFY_AND_THROW(_texture, "Missing required texture");
         _effect->ProjBuf = RenderEffect::ProjBuffer();
-        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_projMatColMaj), sizeof(_effect->ProjBuf->ProjMatrix));
+        MemCopy(_effect->ProjBuf->ProjMatrix, glm::value_ptr(_particleMngr->_viewProjMatrix), sizeof(_effect->ProjBuf->ProjMatrix));
         _effect->MainTex = _texture;
 
         buffer.Render(group.getNbParticles() << 2, _effect.get());
@@ -333,6 +333,20 @@ namespace SPK::FO
         _drawHeight = height;
     }
 
+    auto SparkQuadRenderer::GetDrawInScene() const -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return _drawInScene;
+    }
+
+    void SparkQuadRenderer::SetDrawInScene(bool draw_in_scene)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _drawInScene = draw_in_scene;
+    }
+
     auto SparkQuadRenderer::GetEffectName() const -> const string&
     {
         FO_STACK_TRACE_ENTRY();
@@ -386,6 +400,7 @@ namespace SPK::FO
 
         _drawWidth = 0;
         _drawHeight = 0;
+        _drawInScene = false;
 
         _effectName = "";
         _textureName = "";
@@ -417,6 +432,10 @@ namespace SPK::FO
             default:
                 break;
             }
+        }
+
+        if (const auto* attrib = descriptor.getAttributeWithValue("draw in scene"); attrib != nullptr) {
+            _drawInScene = attrib->getValue<bool>();
         }
 
         if (const auto* attrib = descriptor.getAttributeWithValue("effect"); attrib != nullptr) {
@@ -520,6 +539,10 @@ namespace SPK::FO
         if (_drawWidth != 0 || _drawHeight != 0) {
             const std::vector tmpSize = {_drawWidth, _drawHeight};
             descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
+        }
+
+        if (_drawInScene) {
+            descriptor.getAttribute("draw in scene")->setValue(_drawInScene);
         }
 
         descriptor.getAttribute("effect")->setValue(std::string(_effectName));

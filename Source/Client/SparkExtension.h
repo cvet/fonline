@@ -74,6 +74,7 @@ namespace SPK::FO
         SPK_START_DESCRIPTION
         SPK_PARENT_ATTRIBUTES(Renderer)
         SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
+        SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
         SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
@@ -95,6 +96,9 @@ namespace SPK::FO
         auto GetDrawWidth() const -> int32_t;
         auto GetDrawHeight() const -> int32_t;
         void SetDrawSize(int32_t width, int32_t height);
+
+        auto GetDrawInScene() const -> bool;
+        void SetDrawInScene(bool draw_in_scene);
 
         auto GetEffectName() const -> const string&;
         void SetEffectName(const string& effect_name);
@@ -127,6 +131,7 @@ namespace SPK::FO
 
         int32_t _drawWidth {};
         int32_t _drawHeight {};
+        bool _drawInScene {};
 
         string _effectName {};
         string _textureName {};

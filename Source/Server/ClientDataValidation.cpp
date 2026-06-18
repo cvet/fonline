@@ -206,11 +206,11 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsEnum) {
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
         // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
         // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size.
-        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
+        FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
         int32_t value = 0;
         MemCopy(&value, reader.ReadPtr<uint8_t>(type.Size), type.Size);
@@ -266,9 +266,9 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ref_type.IsRefType);
-    FO_RUNTIME_ASSERT(ref_type.RefType);
-    FO_RUNTIME_ASSERT(ref_type.RefType->FieldsRegistrator);
+    FO_VERIFY_AND_THROW(ref_type.IsRefType, "Missing required reference type is ref type");
+    FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type ref type");
+    FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
     const auto* fields_registrator = ref_type.RefType->FieldsRegistrator.get();
     const auto* pdata = raw_data.data();
@@ -465,9 +465,9 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
         }
     }
     else if (type.IsEnum) {
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
-        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
+        FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
         int32_t value = 0;
         MemCopy(&value, data, type.Size);

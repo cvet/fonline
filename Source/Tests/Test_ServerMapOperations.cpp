@@ -475,13 +475,13 @@ namespace MapOpsTest
         mpos original = hex;
 
         // Move hex by direction (dir 0 = north-ish)
-        bool moved = map.MoveHexByDir(hex, 0);
+        bool moved = map.MoveHexByDir(hex, mdir(0));
         if (!moved) return -3;
         if (hex.x == original.x && hex.y == original.y) return -4;
 
         // Move multiple steps
         mpos hex2(50, 50);
-        int steps = map.MoveHexByDir(hex2, 1, 3);
+        int steps = map.MoveHexByDir(hex2, mdir(1), 3);
         if (steps != 3) return -5;
 
         Game.DestroyLocation(loc);
@@ -3207,6 +3207,98 @@ namespace MapOpsTest
         Game.DestroyLocation(aliveLoc);
         return 0;
     }
+
+    // ========== Script-boundary argument validation (2026-06-16 hardening) ==========
+    // Each function passes an out-of-range argument that must be rejected with an early, clearly
+    // messaged ScriptException at the script-export boundary, instead of reaching a deep numeric_cast
+    // / FO_VERIFY_* / std::string::resize. Driven by RUN_FUNC_THROWS, which asserts the message.
+
+    bool ArgValidationDummyGag(Critter cr, Item item)
+    {
+        return false;
+    }
+
+    void TestArgItemsInRadiusNegativeRadiusThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        map.GetItemsInRadius(mpos(10, 10), -1);
+    }
+
+    void TestArgCrittersInRadiusNegativeRadiusThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        map.GetCrittersInRadius(mpos(10, 10), -1, CritterFindType::Any);
+    }
+
+    void TestArgIsHexesMovableNegativeRadiusThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        map.IsHexesMovable(mpos(10, 10), -1);
+    }
+
+    void TestArgTransferToMapOutOfBoundsHexThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (cr is null) return;
+        cr.TransferToMap(map, mpos(250, 250));
+    }
+
+    void TestArgMoveToHexNegativeSpeedThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (cr is null) return;
+        cr.MoveToHex(mpos(12, 12), 0, -1, ArgValidationDummyGag);
+    }
+
+    void TestArgChangeMovingSpeedNegativeThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (cr is null) return;
+        cr.ChangeMovingSpeed(-1);
+    }
+
+    void TestArgTraceHexLineOffsetOutOfRangeThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return;
+        Game.TraceHexLine(map.Size, mpos(5, 5), mpos(10, 10), 1, 0.0, ipos(100000, 0), ipos(0, 0));
+    }
+
+    void TestArgDestroyEntityPlayerCritterThrows()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
+        if (cr is null) return;
+        Game.DestroyEntity(cr);
+    }
+
+    void TestArgStringRawResizeNegativeThrows()
+    {
+        string text = "abc";
+        text.rawResize(-1);
+    }
 }
 )";
 
@@ -3327,7 +3419,7 @@ namespace MapOpsTest
 
     static auto WaitForStart(ServerEngine* server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
+        FO_VERIFY_AND_THROW(server, "Missing server instance");
 
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
@@ -3838,6 +3930,56 @@ TEST_CASE("MapReentrantEvents")
     SECTION("MapAddedEventMayDestroyMap")
     {
         RUN_FUNC("MapOpsTest::TestMapAddedEventMayDestroyMap");
+    }
+}
+
+TEST_CASE("ScriptArgValidation")
+{
+    MAKE_SERVER;
+
+    SECTION("ItemsInRadiusNegativeRadius")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgItemsInRadiusNegativeRadiusThrows", "Radius arg must not be negative");
+    }
+
+    SECTION("CrittersInRadiusNegativeRadius")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgCrittersInRadiusNegativeRadiusThrows", "Radius arg must not be negative");
+    }
+
+    SECTION("IsHexesMovableNegativeRadius")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgIsHexesMovableNegativeRadiusThrows", "Radius arg must not be negative");
+    }
+
+    SECTION("TransferToMapOutOfBoundsHex")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgTransferToMapOutOfBoundsHexThrows", "Invalid target hex arg");
+    }
+
+    SECTION("MoveToHexNegativeSpeed")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgMoveToHexNegativeSpeedThrows", "Speed arg out of range");
+    }
+
+    SECTION("ChangeMovingSpeedNegative")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgChangeMovingSpeedNegativeThrows", "Speed arg out of range");
+    }
+
+    SECTION("TraceHexLineOffsetOutOfRange")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgTraceHexLineOffsetOutOfRangeThrows", "Hex offset arg out of range");
+    }
+
+    SECTION("DestroyEntityPlayerCritter")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgDestroyEntityPlayerCritterThrows", "Cannot destroy a player-controlled critter");
+    }
+
+    SECTION("StringRawResizeNegative")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestArgStringRawResizeNegativeThrows", "String resize length must not be negative");
     }
 }
 

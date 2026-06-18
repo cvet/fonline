@@ -234,6 +234,7 @@ void WorkThread::ThreadEntry() noexcept
                     }
 
                     _workSignal.wait(locker);
+                    continue;
                 }
 
                 if (!_jobs.empty()) {
@@ -259,6 +260,7 @@ void WorkThread::ThreadEntry() noexcept
                     // Wake / Clear / Pause notify _workSignal, so a new or earlier job breaks the wait.
                     if (!job && has_pending) {
                         _workSignal.wait_until(locker, soonest_fire.value());
+                        continue;
                     }
                 }
             }

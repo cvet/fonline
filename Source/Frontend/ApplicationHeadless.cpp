@@ -60,7 +60,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_ctx);
+    FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
     _ctx = SafeAlloc::MakeUnique<Context>();
 
     ignore_unused(flags);
@@ -203,8 +203,8 @@ void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(window);
-    FO_RUNTIME_ASSERT(window->_isVirtual);
+    FO_VERIFY_AND_THROW(window, "Missing application window");
+    FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
 
     if (size.width <= 0 || size.height <= 0) {
         size = window->_virtualSize;
@@ -268,7 +268,7 @@ void Application::BeginWindowRender(AppWindow* window)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(window);
+    FO_VERIFY_AND_THROW(window, "Missing application window");
 
     if (!window->_isVirtual) {
         _currentRenderingWindow = window;
@@ -732,7 +732,7 @@ auto AppWindow::ResolveWindowHandle() const -> WindowInternalHandle*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_windowHandle);
+    FO_VERIFY_AND_THROW(_windowHandle, "Missing native window handle");
 
     return _windowHandle.get_no_const();
 }
@@ -817,22 +817,32 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
     return _app->_ctx->HeadlessRenderer->CreateEffect(usage, name, file_loader);
 }
 
-auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->HeadlessRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
-auto AppRender::IsRenderTargetFlipped() -> bool
+auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return _app->_ctx->HeadlessRenderer->IsRenderTargetFlipped();
+}
+
+auto AppRender::GetProjMatrix() const -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _app->_ctx->HeadlessRenderer->GetProjMatrix();
+}
+
+void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _app->_ctx->HeadlessRenderer->SetOrthoDepthRange(nearp, farp);
 }
 
 auto AppInput::IsMouseAvailable() const noexcept -> bool
@@ -934,7 +944,7 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 
     [[maybe_unused]] auto unused = std::move(stream_callback);
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
 auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
@@ -948,7 +958,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     ignore_unused(rate);
     ignore_unused(buf);
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     return true;
 }
@@ -964,7 +974,7 @@ void AppAudio::MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t
     ignore_unused(len);
     ignore_unused(volume);
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
 void AppAudio::LockDevice()
@@ -973,7 +983,7 @@ void AppAudio::LockDevice()
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
 void AppAudio::UnlockDevice()
@@ -982,7 +992,7 @@ void AppAudio::UnlockDevice()
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(IsEnabled());
+    FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
 void Application::ShowErrorMessage(string_view message, string_view traceback, bool fatal_error)

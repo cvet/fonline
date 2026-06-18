@@ -490,8 +490,8 @@ namespace
             TotalProps(total_props),
             FillPercent(fill_percent)
         {
-            FO_RUNTIME_ASSERT(total_props > 0);
-            FO_RUNTIME_ASSERT(fill_percent > 0);
+            FO_VERIFY_AND_THROW(total_props > 0, "Total properties must be positive");
+            FO_VERIFY_AND_THROW(fill_percent > 0, "Fill percent must be positive");
 
             Props.reserve(numeric_cast<size_t>(total_props));
 
@@ -509,8 +509,8 @@ namespace
                 }
             }
 
-            FO_RUNTIME_ASSERT(ProbeIntProp != nullptr);
-            FO_RUNTIME_ASSERT(ProbeStringProp != nullptr);
+            FO_VERIFY_AND_THROW(ProbeIntProp != nullptr, "Missing required probe int prop");
+            FO_VERIFY_AND_THROW(ProbeStringProp != nullptr, "Missing required probe string prop");
 
             Proto = unique_ptr<Properties>(new Properties(&Registrator));
 

@@ -88,8 +88,8 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     const auto event_id = ++_timeEventCounter;
     const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
@@ -120,8 +120,8 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), 0);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), 0, "Destroyed entity used to count time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     std::scoped_lock lock {_timeEventLocker};
 
@@ -132,7 +132,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
     }
 
     if (id != 0) {
-        FO_RUNTIME_ASSERT(func_name == ScriptFuncName());
+        FO_VERIFY_AND_THROW(func_name == ScriptFuncName(), "Time event callback function name changed unexpectedly");
 
         for (const auto& te : *timeEvents) {
             if (te->Id == id) {
@@ -161,8 +161,8 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(!entity->IsDestroyed());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     struct ResubmitInfo
     {
@@ -223,8 +223,8 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     vector<uint32_t> cancelled_ids;
 
@@ -508,7 +508,7 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_VERIFY_AND_RETURN(!entity->IsDestroyed(), {});
+    FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), {}, "Destroyed entity tried to fire a time event", entity->GetName(), entity->GetTypeName(), entity->GetId(), te->Id);
 
     uint32_t event_id;
     timespan repeat_duration;
@@ -530,35 +530,35 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     bool call_result = false;
 
     if (auto* func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1 != nullptr) {
-        FO_RUNTIME_ASSERT(entity->IsGlobal());
+        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func1->Call();
     }
     else if (auto* func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); func2 != nullptr) {
-        FO_RUNTIME_ASSERT(entity->IsGlobal());
+        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func2->Call(data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto* func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); func3 != nullptr) {
-        FO_RUNTIME_ASSERT(entity->IsGlobal());
+        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func3->Call(data);
     }
     else if (auto* func4 = std::get_if<ScriptFunc<void, TimeEventContext*>>(&te->Func); func4 != nullptr) {
-        FO_RUNTIME_ASSERT(entity->IsGlobal());
+        FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func4->Call(context.get());
     }
     else if (auto* func5 = std::get_if<ScriptFunc<void, ScriptSelfEntity*>>(&te->Func); func5 != nullptr) {
-        FO_RUNTIME_ASSERT(!entity->IsGlobal());
+        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
         call_result = func5->Call(entity);
     }
     else if (auto* func6 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, any_t>>(&te->Func); func6 != nullptr) {
-        FO_RUNTIME_ASSERT(!entity->IsGlobal());
+        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
         call_result = func6->Call(entity, data.empty() ? _emptyAnyValue : data.front());
     }
     else if (auto* func7 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>(&te->Func); func7 != nullptr) {
-        FO_RUNTIME_ASSERT(!entity->IsGlobal());
+        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
         call_result = func7->Call(entity, data);
     }
     else if (auto* func8 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>(&te->Func); func8 != nullptr) {
-        FO_RUNTIME_ASSERT(!entity->IsGlobal());
+        FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
         call_result = func8->Call(entity, context.get());
     }
     else {

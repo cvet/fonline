@@ -164,8 +164,8 @@ private:
 template<typename T>
 void ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result)
 {
-    FO_RUNTIME_ASSERT(times.size() == values.size());
-    FO_RUNTIME_ASSERT(!times.empty());
+    FO_VERIFY_AND_THROW(times.size() == values.size(), "Animation SRT keyframe time and value tracks have different sizes", time, duration, times.size(), values.size());
+    FO_VERIFY_AND_THROW(!times.empty(), "Animation SRT track has no keyframes to sample", time, duration, values.size());
 
     if (reserved) {
         for (auto i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {

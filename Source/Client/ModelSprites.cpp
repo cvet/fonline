@@ -32,6 +32,8 @@
 //
 
 #include "ModelSprites.h"
+#include "Application.h"
+#include "Geometry.h"
 
 #if FO_ENABLE_3D
 
@@ -70,6 +72,13 @@ auto ModelSprite::GetViewSize() const -> optional<irect32>
     return irect32 {0, -_offset.y + view_height / 8, view_width, view_height};
 }
 
+auto ModelSprite::IsDirectDraw() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _factory->_settings->ModelDirectDraw;
+}
+
 void ModelSprite::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
@@ -105,7 +114,7 @@ auto ModelSprite::Update() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_model->NeedForceDraw() || _model->NeedDraw()) {
+    if (_model->NeedForceDraw() || (!IsDirectDraw() && _model->NeedDraw())) {
         DrawToAtlas();
     }
 
@@ -116,8 +125,8 @@ void ModelSprite::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     if (size == _size) {
         return;
@@ -150,8 +159,22 @@ void ModelSprite::DrawToAtlas()
     _factory->DrawModelToAtlas(this);
 }
 
+void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& settings = *_factory->_settings;
+    const mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
+    const mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    const mat44 proj_base = scene_ortho * cam_view;
+    const mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
+
+    _model->Draw(proj, settings.ModelProjFactor);
+}
+
 ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) :
-    _sprMngr {&spr_mngr}
+    _sprMngr {&spr_mngr},
+    _settings {&settings}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -207,7 +230,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_modelMngr);
+    FO_VERIFY_AND_THROW(_modelMngr, "Missing required model mngr");
 
     // Find place for render
     const auto frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};

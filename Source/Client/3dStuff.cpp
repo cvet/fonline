@@ -231,7 +231,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Load file data
     const auto file = _resources->ReadFile(fname);
-    FO_RUNTIME_ASSERT(file);
+    FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
     auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
@@ -406,144 +406,6 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept;
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept;
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool;
-
-auto ModelManager::MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t in[4];
-    in[0] = objx;
-    in[1] = objy;
-    in[2] = objz;
-    in[3] = 1.0f;
-
-    float32_t out[4];
-    MultMatrixVecf(model_matrix, in, out);
-    MultMatrixVecf(proj_matrix, out, in);
-
-    if (in[3] == 0.0f) {
-        return false;
-    }
-
-    in[0] /= in[3];
-    in[1] /= in[3];
-    in[2] /= in[3];
-
-    in[0] = in[0] * 0.5f + 0.5f;
-    in[1] = in[1] * 0.5f + 0.5f;
-    in[2] = in[2] * 0.5f + 0.5f;
-
-    in[0] = in[0] * numeric_cast<float32_t>(viewport[2] + viewport[0]);
-    in[1] = in[1] * numeric_cast<float32_t>(viewport[3] + viewport[1]);
-
-    *winx = in[0];
-    *winy = in[1];
-    *winz = in[2];
-
-    return true;
-}
-
-auto ModelManager::MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t final_matrix[16];
-    MultMatricesf(model_matrix, proj_matrix, final_matrix);
-
-    if (!InvertMatrixf(final_matrix, final_matrix)) {
-        return false;
-    }
-
-    float32_t in[4];
-    in[0] = winx;
-    in[1] = winy;
-    in[2] = winz;
-    in[3] = 1.0f;
-
-    in[0] = (in[0] - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]);
-    in[1] = (in[1] - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]);
-
-    in[0] = in[0] * 2 - 1;
-    in[1] = in[1] * 2 - 1;
-    in[2] = in[2] * 2 - 1;
-
-    float32_t out[4];
-    MultMatrixVecf(final_matrix, in, out);
-
-    if (out[3] == 0.0f) {
-        return false;
-    }
-
-    out[0] /= out[3];
-    out[1] /= out[3];
-    out[2] /= out[3];
-    *objx = out[0];
-    *objy = out[1];
-    *objz = out[2];
-
-    return true;
-}
-
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        for (auto j = 0; j < 4; j++) {
-            r[i * 4 + j] = a[i * 4 + 0] * b[0 * 4 + j] + a[i * 4 + 1] * b[1 * 4 + j] + a[i * 4 + 2] * b[2 * 4 + j] + a[i * 4 + 3] * b[3 * 4 + j];
-        }
-    }
-}
-
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
-    }
-}
-
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t inv[16];
-    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
-    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
-    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
-    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
-    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
-    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
-    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
-    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
-    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
-    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
-    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
-    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
-    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
-    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
-    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
-    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
-
-    auto det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-
-    if (det == 0.0f) {
-        return false;
-    }
-
-    det = 1.0f / det;
-
-    for (auto i = 0; i < 16; i++) {
-        inv_out[i] = inv[i] * det;
-    }
-
-    return true;
-}
-
 ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
     _modelMngr(&model_mngr),
     _modelInfo {info}
@@ -574,7 +436,6 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    _frameProjColMaj = _frameProj;
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
@@ -583,8 +444,12 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixProject(pos.x, pos.y, pos.z, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!ProjectPoint(pos, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     return {iround<int32_t>(out.x / const_numeric_cast<float32_t>(FRAME_SCALE)), iround<int32_t>(out.y / const_numeric_cast<float32_t>(FRAME_SCALE))};
 }
 
@@ -596,10 +461,50 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
     const auto xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
     const auto yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixUnproject(xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f}, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     out.z = 0.0f;
     return out;
+}
+
+auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+
+    if (clip_pos.w == 0.0f) {
+        return false;
+    }
+
+    const vec3 ndc_pos {clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w, clip_pos.z / clip_pos.w};
+
+    out_pos.x = (ndc_pos.x * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[2]) + numeric_cast<float32_t>(viewport[0]);
+    out_pos.y = (ndc_pos.y * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[3]) + numeric_cast<float32_t>(viewport[1]);
+    out_pos.z = ndc_pos.z * 0.5f + 0.5f;
+    return true;
+}
+
+auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
+    const float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
+    const float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
+    const mat44 clip_to_model = glm::inverse(proj_matrix * model_matrix);
+    const glm::vec<4, float32_t, glm::defaultp> obj_pos = clip_to_model * glm::vec<4, float32_t, glm::defaultp> {ndc_x, ndc_y, ndc_z, 1.0f};
+
+    if (obj_pos.w == 0.0f) {
+        return false;
+    }
+
+    out_pos = vec3 {obj_pos.x / obj_pos.w, obj_pos.y / obj_pos.w, obj_pos.z / obj_pos.w};
+    return true;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -767,12 +672,12 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         }
 
                         if (!available) {
-                            FO_RUNTIME_ASSERT_STR(link.LinkBone, "Particle model link has no target bone");
+                            FO_VERIFY_AND_THROW(link.LinkBone, "Particle model link has no target bone");
                             const auto* to_bone = FindBone(link.LinkBone);
-                            FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Particle model link target bone not found");
+                            FO_VERIFY_AND_THROW(to_bone != nullptr, "Particle model link target bone not found");
 
                             auto particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
-                            FO_RUNTIME_ASSERT_STR(particle, strex("Particle '{}' not found for model link", link.ChildName));
+                            FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
                             _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                         }
 
@@ -793,10 +698,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                             // Link to main bone
                             if (link.LinkBone) {
                                 auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
-                                FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Model link target bone not found");
+                                FO_VERIFY_AND_THROW(to_bone != nullptr, "Model link target bone not found");
 
                                 auto model = _modelMngr->CreateModel(link.ChildName);
-                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
+                                FO_VERIFY_AND_THROW(model, "Child model was not found for a model link", link.ChildName);
 
                                 mesh_changed = true;
                                 model->_parent = this;
@@ -812,7 +717,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                             // Link all bones
                             else {
                                 auto model = _modelMngr->CreateModel(link.ChildName);
-                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
+                                FO_VERIFY_AND_THROW(model, "Child model was not found for a model link", link.ChildName);
 
                                 for (auto& child_bone : model->_modelInfo->_hierarchy->_allBones) {
                                     auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
@@ -823,7 +728,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                                     }
                                 }
 
-                                FO_RUNTIME_ASSERT_STR(!model->_linkBones.empty(), strex("Child model '{}' has no common bones for model link", link.ChildName));
+                                FO_VERIFY_AND_THROW(!model->_linkBones.empty(), "Child model has no common bones for a model link", link.ChildName);
 
                                 mesh_changed = true;
                                 model->_parent = this;
@@ -1012,8 +917,9 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (_isMoving) {
         const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        const bool forbid_back = _modelInfo->_disableBackwardAnim;
 
-        if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
+        if (forbid_back || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
             action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
         }
@@ -1189,8 +1095,8 @@ auto ModelInstance::GetDrawSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_frameSize.width % FRAME_SCALE == 0);
-    FO_RUNTIME_ASSERT(_frameSize.height % FRAME_SCALE == 0);
+    FO_VERIFY_AND_THROW(_frameSize.width % FRAME_SCALE == 0, "3D model frame width is not aligned to the frame scale", _frameSize.width, FRAME_SCALE);
+    FO_VERIFY_AND_THROW(_frameSize.height % FRAME_SCALE == 0, "3D model frame height is not aligned to the frame scale", _frameSize.height, FRAME_SCALE);
 
     return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
@@ -1291,11 +1197,11 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     if (!data.TextureInfo.empty()) {
         for (auto&& [tex_name, mesh_name, tex_num] : data.TextureInfo) {
             MeshTexture* texture = nullptr;
-            FO_RUNTIME_ASSERT_STR(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", tex_num));
+            FO_VERIFY_AND_THROW(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", tex_num);
 
             // Evaluate texture
             if (strex(tex_name).starts_with("Parent")) { // Parent_MeshName
-                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent texture '{}' requested without parent model", tex_name));
+                FO_VERIFY_AND_THROW(_parent != nullptr, "Parent texture was requested without a parent model", tex_name);
 
                 const auto* parent_mesh_name = tex_name.c_str() + 6;
 
@@ -1312,12 +1218,12 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     }
                 }
 
-                FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Parent texture '{}' not found", tex_name));
+                FO_VERIFY_AND_THROW(texture != nullptr, "Parent texture was not found", tex_name);
             }
             else {
                 texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
-            FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Texture '{}' not loaded", tex_name));
+            FO_VERIFY_AND_THROW(texture != nullptr, "Texture was not loaded", tex_name);
 
             // Assign it
             size_t assigned_meshes = 0;
@@ -1329,7 +1235,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Texture '{}' target mesh not found", tex_name));
+            FO_VERIFY_AND_THROW(assigned_meshes != 0, "Texture target mesh was not found", tex_name, mesh_name);
         }
     }
 
@@ -1347,7 +1253,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
             // Get effect
             if (strex(std::get<0>(eff_info)).starts_with("Parent")) { // Parent_MeshName
-                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent effect '{}' requested without parent model", std::get<0>(eff_info)));
+                FO_VERIFY_AND_THROW(_parent != nullptr, "Parent effect was requested without a parent model", std::get<0>(eff_info));
 
                 const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
 
@@ -1364,12 +1270,12 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     }
                 }
 
-                FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Parent effect '{}' not found", std::get<0>(eff_info)));
+                FO_VERIFY_AND_THROW(effect != nullptr, "Parent effect was not found", std::get<0>(eff_info));
             }
             else {
                 effect = _modelInfo->_hierarchy->GetEffect(std::get<0>(eff_info));
             }
-            FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Effect '{}' not loaded", std::get<0>(eff_info)));
+            FO_VERIFY_AND_THROW(effect != nullptr, "Effect was not loaded", std::get<0>(eff_info));
 
             // Assign it
             const auto mesh_name = std::get<1>(eff_info);
@@ -1382,7 +1288,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Effect '{}' target mesh not found", std::get<0>(eff_info)));
+            FO_VERIFY_AND_THROW(assigned_meshes != 0, "Effect target mesh was not found", std::get<0>(eff_info), mesh_name);
         }
     }
 
@@ -1437,7 +1343,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
         RefreshMoveAnimation();
     }
 
-    if (!_modelInfo->_rotationBone) {
+    if (!_modelInfo->_rotationBone || _modelInfo->_disableBackwardAnim) {
         SetLookDir(dir);
     }
 }
@@ -1993,6 +1899,24 @@ void ModelInstance::Draw()
 {
     FO_STACK_TRACE_ENTRY();
 
+    DrawFrame(_frameProj, const_numeric_cast<float32_t>(FRAME_SCALE), false, true);
+}
+
+void ModelInstance::Draw(const mat44& proj, float32_t scale)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DrawFrame(proj, scale, true, true);
+}
+
+void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _drawProj = proj;
+    _directSceneDraw = direct_scene;
+    const auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+
     const auto time = GetTime();
     const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
 
@@ -2002,7 +1926,7 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameSize.width / FRAME_SCALE;
     const auto h = _frameSize.height / FRAME_SCALE;
-    ProcessAnimation(dt, {w / 2, h - h / 4}, const_numeric_cast<float32_t>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, scale);
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
@@ -2010,7 +1934,9 @@ void ModelInstance::Draw()
         }
     }
 
-    DrawAllParticles();
+    if (draw_particles) {
+        DrawAllParticles();
+    }
 }
 
 void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
@@ -2019,12 +1945,13 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Update world matrix, only for root
     if (!_parentBone) {
-        const auto pos3d = Convert2dTo3d(pos);
+        const vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
         const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
         const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
         const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
+        const mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
 
-        _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
+        _parentMatrix = mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -2087,13 +2014,16 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
-    // Particles
     for (auto& model_particle : _modelParticles) {
+        const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+        const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+        const bool tilt_in_proj = _directSceneDraw;
+
         if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
         }
         else {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
     }
 
@@ -2155,7 +2085,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_frameProjColMaj), 16 * sizeof(float32_t));
+    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_drawProj), 16 * sizeof(float32_t));
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
 
@@ -2198,7 +2128,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     }
 
     effect->DisableCulling = _disableCulling;
-    effect->DisableShadow = shadow_disabled;
+    effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
     effect->DrawBuffer(combined_mesh->MeshBuf.get());
@@ -2333,7 +2263,7 @@ auto ModelInformation::Load(string_view name) -> bool
         }
 
         auto reader = DataReader({fo3d.GetBuf(), fo3d.GetSize()});
-        FO_RUNTIME_ASSERT(LoadBaked(name, reader));
+        FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
         return true;
     }
 
@@ -2357,6 +2287,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     const string model = ReadBakedModelDescriptionString(reader);
     const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
+    _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
 
     const int32_t draw_width = reader.Read<int32_t>();
@@ -2364,8 +2295,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const int32_t view_width = reader.Read<int32_t>();
     const int32_t view_height = reader.Read<int32_t>();
 
-    FO_RUNTIME_ASSERT_STR((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), strex("Invalid DrawSize in baked model description '{}'", name));
-    FO_RUNTIME_ASSERT_STR((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), strex("Invalid ViewSize in baked model description '{}'", name));
+    FO_VERIFY_AND_THROW((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), "Baked model description contains invalid DrawSize", name, draw_width, draw_height);
+    FO_VERIFY_AND_THROW((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), "Baked model description contains invalid ViewSize", name, view_width, view_height);
 
     if (draw_width != 0 && draw_height != 0) {
         _drawSize.width = draw_width;
@@ -2387,8 +2318,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     for (uint32_t i = 0; i < links_count; i++) {
         BakedModelDescriptionLink link = ReadBakedModelDescriptionLink(reader);
-        FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range in baked model description '{}'", link.Data.Layer, name));
-        FO_RUNTIME_ASSERT_STR(link.Data.LayerValue != 0, strex("Model link layer value is zero in baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Baked model description contains a model link layer out of range", link.Data.Layer, name);
+        FO_VERIFY_AND_THROW(link.Data.LayerValue != 0, "Baked model description contains a model link with zero layer value", name);
         links.emplace_back(std::move(link));
     }
 
@@ -2406,7 +2337,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         const int32_t state_anim = reader.Read<int32_t>();
         const int32_t action_anim = reader.Read<int32_t>();
         const float32_t speed = reader.Read<float32_t>();
-        FO_RUNTIME_ASSERT_STR(speed > 0.0f, strex("Animation speed for ({}, {}) in baked model description '{}' must be positive", state_anim, action_anim, name));
+        FO_VERIFY_AND_THROW(speed > 0.0f, "Baked model description contains a non-positive animation speed", state_anim, action_anim, name, speed);
         _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim)), speed);
     }
 
@@ -2415,7 +2346,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     for (uint32_t i = 0; i < anim_layer_values_count; i++) {
         const BakedModelDescriptionAnimLayerValue value = ReadBakedModelDescriptionAnimLayerValue(reader);
         const auto index = std::make_pair(static_cast<CritterStateAnim>(value.StateAnim), static_cast<CritterActionAnim>(value.ActionAnim));
-        FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range in baked model description '{}'", value.Layer, name));
+        FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Baked model description contains an animation layer out of range", value.Layer, name);
 
         if (_animLayerValues.count(index) == 0) {
             _animLayerValues.emplace(index, vector<pair<int32_t, int32_t>>());
@@ -2449,23 +2380,23 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     reader.VerifyEnd();
 
-    FO_RUNTIME_ASSERT_STR(!model.empty(), strex("'Model' section not found in baked model description '{}'", name));
+    FO_VERIFY_AND_THROW(!model.empty(), "Baked model description has no Model section", name);
 
     ModelHierarchy* hierarchy = _modelMngr->GetHierarchy(model);
-    FO_RUNTIME_ASSERT_STR(hierarchy != nullptr, strex("Model hierarchy '{}' not found for baked model description '{}'", model, name));
-    FO_RUNTIME_ASSERT_STR(!hierarchy->_allDrawBones.empty(), strex("Model hierarchy '{}' has no drawable meshes for baked model description '{}'", model, name));
+    FO_VERIFY_AND_THROW(hierarchy != nullptr, "Model hierarchy was not found for a baked model description", model, name);
+    FO_VERIFY_AND_THROW(!hierarchy->_allDrawBones.empty(), "Model hierarchy has no drawable meshes for a baked model description", model, name);
 
     _fileName = name;
     _hierarchy = hierarchy;
-    FO_RUNTIME_ASSERT_STR(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, strex("Rotation bone '{}' not found in baked model description '{}'", rotation_bone, name));
+    FO_VERIFY_AND_THROW(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
-        FO_RUNTIME_ASSERT_STR(_hierarchy->_rootBone->Find(bone_name) != nullptr, strex("Fast transition bone not found in baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(_hierarchy->_rootBone->Find(bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
     const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
         ModelHierarchy* area = _modelMngr->GetHierarchy(raw_cut.FileName);
-        FO_RUNTIME_ASSERT_STR(area != nullptr, strex("Cut file '{}' not found", raw_cut.FileName));
+        FO_VERIFY_AND_THROW(area != nullptr, "Cut file was not found", raw_cut.FileName);
 
         auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
         link.CutInfo.emplace_back(cut);
@@ -2488,7 +2419,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(unskin_shape_found, strex("Unskin shape '{}' not found in cut file '{}'", raw_cut.UnskinShape, raw_cut.FileName));
+            FO_VERIFY_AND_THROW(unskin_shape_found, "Unskin shape was not found in a cut file", raw_cut.UnskinShape, raw_cut.FileName);
         }
 
         for (const string& shape : raw_cut.Shapes) {
@@ -2502,10 +2433,10 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(shape_found, strex("Cut shape '{}' not found in cut file '{}'", !shape.empty() ? shape : string {"All"}, raw_cut.FileName));
+            FO_VERIFY_AND_THROW(shape_found, "Cut shape was not found in a cut file", !shape.empty() ? shape : string {"All"}, raw_cut.FileName);
         }
 
-        FO_RUNTIME_ASSERT_STR(!cut->Shapes.empty(), strex("Cut file '{}' produced no cut shapes", raw_cut.FileName));
+        FO_VERIFY_AND_THROW(!cut->Shapes.empty(), "Cut file produced no cut shapes", raw_cut.FileName);
     };
 
     _animDataDefault = std::move(default_link.Data);
@@ -2550,20 +2481,20 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
             const bool reversed = anim_entry.Name.starts_with('~');
             const string anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
             ModelAnimation* anim = _modelMngr->LoadAnimation(anim_path, anim_name);
-            FO_RUNTIME_ASSERT_STR(anim != nullptr, strex("Animation '{}' not found in '{}' for baked model description '{}'", anim_entry.Name, anim_path, name));
+            FO_VERIFY_AND_THROW(anim != nullptr, "Animation was not found for a baked model description", anim_entry.Name, anim_path, name);
 
             const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
             _animIndexes.emplace(anim_pair, anim_index);
         }
 
         const int32_t anim_count = _animController->GetAnimationsCount();
-        FO_RUNTIME_ASSERT_STR(anim_count != 0, strex("No animations registered for baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(anim_count != 0, "No animations registered for a baked model description", name);
 
         for (int32_t i = 0; i < anim_count; i++) {
             const vector<vector<hstring>>& bones_hierarchy = _animController->GetAnimationBones(i);
 
             for (const vector<hstring>& bone_hierarchy : bones_hierarchy) {
-                FO_RUNTIME_ASSERT(!bone_hierarchy.empty());
+                FO_VERIFY_AND_THROW(!bone_hierarchy.empty(), "Baked model animation contains an empty bone hierarchy", name, i, bones_hierarchy.size());
                 ModelBone* bone = _hierarchy->_rootBone.get();
 
                 for (size_t b = 1; b < bone_hierarchy.size(); b++) {
@@ -2595,7 +2526,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     BakedModelDescriptionLink link;
     link.Data.Layer = reader.Read<int32_t>();
     link.Data.LayerValue = reader.Read<int32_t>();
-    FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range", link.Data.Layer));
+    FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Model link layer is out of range", link.Data.Layer);
 
     const string link_bone = ReadBakedModelDescriptionString(reader);
     link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
@@ -2611,11 +2542,11 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.ScaleY = reader.Read<float32_t>();
     link.Data.ScaleZ = reader.Read<float32_t>();
     link.Data.SpeedAjust = reader.Read<float32_t>();
-    FO_RUNTIME_ASSERT_STR(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
+    FO_VERIFY_AND_THROW(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
     link.Data.DisabledLayer = ReadBakedModelDescriptionInt32Vector(reader);
 
     for (const int32_t disabled_layer : link.Data.DisabledLayer) {
-        FO_RUNTIME_ASSERT_STR(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Disabled model layer {} is out of range", disabled_layer));
+        FO_VERIFY_AND_THROW(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Disabled model layer is out of range", disabled_layer);
     }
 
     const uint32_t disabled_mesh_count = reader.Read<uint32_t>();
@@ -2633,7 +2564,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
         string texture_name = ReadBakedModelDescriptionString(reader);
         const string mesh_name = ReadBakedModelDescriptionString(reader);
         const int32_t texture_index = reader.Read<int32_t>();
-        FO_RUNTIME_ASSERT_STR(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", texture_index));
+        FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
         link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
     }
 
@@ -2692,7 +2623,7 @@ auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(DataReader& reade
     value.ActionAnim = reader.Read<int32_t>();
     value.Layer = reader.Read<int32_t>();
     value.LayerValue = reader.Read<int32_t>();
-    FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range", value.Layer));
+    FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Animation layer is out of range", value.Layer);
     return value;
 }
 
@@ -2799,9 +2730,9 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_hierarchy != nullptr);
-    FO_RUNTIME_ASSERT_STR(_drawSize.width > 0 && _drawSize.height > 0, strex("Invalid draw size for model '{}'", _fileName));
-    FO_RUNTIME_ASSERT_STR(_viewSize.width > 0 && _viewSize.height > 0, strex("Invalid view size for model '{}'", _fileName));
+    FO_VERIFY_AND_THROW(_hierarchy != nullptr, "Missing required hierarchy");
+    FO_VERIFY_AND_THROW(_drawSize.width > 0 && _drawSize.height > 0, "Model has invalid draw size", _fileName, _drawSize);
+    FO_VERIFY_AND_THROW(_viewSize.width > 0 && _viewSize.height > 0, "Model has invalid view size", _fileName, _viewSize);
 
     auto* model = SafeAlloc::MakeRaw<ModelInstance>(*_modelMngr, this);
 
@@ -2820,8 +2751,8 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(mesh != nullptr);
-    FO_RUNTIME_ASSERT_STR(!mesh->Vertices.empty(), "Cut mesh has no vertices");
+    FO_VERIFY_AND_THROW(mesh != nullptr, "Missing required mesh");
+    FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Cut mesh has no vertices");
 
     ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
@@ -2932,9 +2863,9 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT_STR(!tex_name.empty(), strex("Empty texture name for model '{}'", _fileName));
+    FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
     auto* texture = _modelMngr->LoadTexture(tex_name, _fileName);
-    FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Can't load texture '{}' for model '{}'", tex_name, _fileName));
+    FO_VERIFY_AND_THROW(texture != nullptr, "Model texture could not be loaded", tex_name, _fileName);
 
     return texture;
 }
@@ -2943,9 +2874,9 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT_STR(!name.empty(), strex("Empty effect name for model '{}'", _fileName));
+    FO_VERIFY_AND_THROW(!name.empty(), "Model effect request has an empty effect name", _fileName);
     auto* effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
-    FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Can't load effect '{}' for model '{}'", name, _fileName));
+    FO_VERIFY_AND_THROW(effect != nullptr, "Model effect could not be loaded", name, _fileName);
 
     return effect;
 }

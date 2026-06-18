@@ -495,7 +495,6 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		$<${expr_WebFullOptimization}:-O3>
 		$<${expr_WebFullOptimization}:-flto>
 		-sDISABLE_EXCEPTION_CATCHING=0
-		-sMAIN_MODULE=2
 		-sSTRICT=0)
 	AddLinkOptionsList(
 		$<${expr_WebDebugInfo}:-g3>
@@ -504,10 +503,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		$<IF:${expr_DebugBuild},-O0,-O2>
 		-sASSERTIONS=$<IF:${expr_DebugBuild},2,0>
 		-sSTACK_OVERFLOW_CHECK=$<IF:${expr_DebugBuild},2,0>
+		-sSTACK_SIZE=16777216
 		-sINITIAL_MEMORY=268435456
+		-sMAXIMUM_MEMORY=4294967296
 		-sABORT_ON_WASM_EXCEPTIONS=1
 		-sERROR_ON_UNDEFINED_SYMBOLS=1
 		-sALLOW_MEMORY_GROWTH=1
+		-sLZ4=1
 		-sMIN_WEBGL_VERSION=2
 		-sMAX_WEBGL_VERSION=2
 		-sUSE_SDL=0
@@ -517,7 +519,7 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-sEXPORTED_RUNTIME_METHODS=${webRuntimeMethods}
 		-sDISABLE_EXCEPTION_CATCHING=0
 		-sWASM_BIGINT=1
-		-sMAIN_MODULE=2
+		-sALLOW_TABLE_GROWTH=1
 		-sSTRICT=0
 		-sSTRICT_JS=1
 		-sIGNORE_MISSING_MAIN=0

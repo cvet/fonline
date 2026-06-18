@@ -187,6 +187,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFog, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnRenderMap_AfterSpritesAndFog, MapView* /*map*/, irect32 /*drawArea*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
@@ -263,6 +265,8 @@ public:
     CacheStorage Cache;
 
     ipos32 MousePos {};
+    ipos32 ForcedMousePos {};
+    bool HasForcedMousePos {};
 
     bool CanDrawInScripts {};
 
@@ -350,12 +354,14 @@ protected:
     void OnSetCritterLookDistance(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop);
     void OnSetCritterHideSprite(Entity* entity, const Property* prop);
+    void OnSetCritterElevation(Entity* entity, const Property* prop);
     void OnSetCritterLight(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop);
     void OnSetItemSomeLight(Entity* entity, const Property* prop);
     void OnSetItemPicMap(Entity* entity, const Property* prop);
     void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
     void OnSetItemHideSprite(Entity* entity, const Property* prop);
+    void OnSetItemElevation(Entity* entity, const Property* prop);
 
     ClientConnection _conn;
     bool _connectionRequest {};

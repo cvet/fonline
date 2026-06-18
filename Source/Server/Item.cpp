@@ -53,7 +53,7 @@ Item::~Item()
     FO_STACK_TRACE_ENTRY();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_RUNTIME_VERIFY(!HasInnerItems());
+        FO_VERIFY_AND_CONTINUE(!HasInnerItems(), "Server item has inner items during destruction", GetId());
     }
 }
 
@@ -123,7 +123,7 @@ auto Item::GetAllInnerItems() -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_innerItems);
+    FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     vector<Item*> result;
     result.reserve(_innerItems->size());
@@ -139,7 +139,7 @@ auto Item::GetAllInnerItems() const -> vector<const Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_innerItems);
+    FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     vector<const Item*> result;
     result.reserve(_innerItems->size());
@@ -155,7 +155,7 @@ auto Item::GetRawInnerItems() -> vector<refcount_ptr<Item>>&
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_innerItems);
+    FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     return *_innerItems;
 }
@@ -164,7 +164,9 @@ void Item::SetItemToContainer(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an item to an already destroyed container", GetId());
+    FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an item to a container that is being destroyed", GetId());
 
     make_if_not_exists(_innerItems);
     vec_add_unique_value(*_innerItems, item);
@@ -180,7 +182,7 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetStackable()) {
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
@@ -213,12 +215,12 @@ void Item::RemoveItemFromContainer(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_innerItems);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     RevertEntityLock(item);
     auto* ctx = _engine->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(item);
 
     item->SetParent(nullptr);

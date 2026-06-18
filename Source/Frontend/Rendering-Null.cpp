@@ -39,22 +39,22 @@ static void ValidateTextureRect(const RenderTexture& tex, ipos32 pos, isize32 si
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(size.width >= 0);
-    FO_RUNTIME_ASSERT(size.height >= 0);
-    FO_RUNTIME_ASSERT(pos.x + size.width <= tex.Size.width);
-    FO_RUNTIME_ASSERT(pos.y + size.height <= tex.Size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+    FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= tex.Size.width, "Texture rectangle right edge is outside texture bounds", pos.x, size.width, tex.Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= tex.Size.height, "Texture rectangle bottom edge is outside texture bounds", pos.y, size.height, tex.Size.height);
 }
 
 static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(pos.x >= 0);
-    FO_RUNTIME_ASSERT(pos.y >= 0);
-    FO_RUNTIME_ASSERT(pos.x < tex.Size.width);
-    FO_RUNTIME_ASSERT(pos.y < tex.Size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x < tex.Size.width, "Position x is outside allowed range", pos.x, tex.Size.width);
+    FO_VERIFY_AND_THROW(pos.y < tex.Size.height, "Position y is outside allowed range", pos.y, tex.Size.height);
 
     return numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(tex.Size.width) + numeric_cast<size_t>(pos.x);
 }
@@ -63,10 +63,10 @@ static void ValidateScissorRect(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(rect.x >= 0);
-    FO_RUNTIME_ASSERT(rect.y >= 0);
-    FO_RUNTIME_ASSERT(rect.width >= 0);
-    FO_RUNTIME_ASSERT(rect.height >= 0);
+    FO_VERIFY_AND_THROW(rect.x >= 0, "Rectangle x is negative", rect.x);
+    FO_VERIFY_AND_THROW(rect.y >= 0, "Rectangle y is negative", rect.y);
+    FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
+    FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
 }
 
 static auto GetFallbackTextureSizeData() -> const float32_t*
@@ -125,7 +125,7 @@ public:
             return;
         }
 
-        FO_RUNTIME_ASSERT(data != nullptr);
+        FO_VERIFY_AND_THROW(data != nullptr, "Missing required data");
 
         const int32_t pitch = use_dest_pitch ? Size.width : size.width;
 
@@ -171,19 +171,19 @@ public:
 
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            FO_RUNTIME_ASSERT(Vertices.empty());
-            FO_RUNTIME_ASSERT(upload_vertices <= Vertices3D.size());
+            FO_VERIFY_AND_THROW(Vertices.empty(), "Null renderer model upload received 2D vertices alongside 3D vertices", Vertices.size(), Vertices3D.size());
+            FO_VERIFY_AND_THROW(upload_vertices <= Vertices3D.size(), "Null renderer model upload requested more 3D vertices than the draw buffer contains", upload_vertices, Vertices3D.size(), VertCount);
         }
         else {
-            FO_RUNTIME_ASSERT(Vertices3D.empty());
-            FO_RUNTIME_ASSERT(upload_vertices <= Vertices.size());
+            FO_VERIFY_AND_THROW(Vertices3D.empty(), "Null renderer 2D upload received 3D vertices alongside 2D vertices", Vertices3D.size(), Vertices.size());
+            FO_VERIFY_AND_THROW(upload_vertices <= Vertices.size(), "Null renderer 2D upload requested more vertices than the draw buffer contains", upload_vertices, Vertices.size(), VertCount);
         }
 #else
         ignore_unused(usage);
-        FO_RUNTIME_ASSERT(upload_vertices <= Vertices.size());
+        FO_VERIFY_AND_THROW(upload_vertices <= Vertices.size(), "Null renderer upload requested more vertices than the draw buffer contains", upload_vertices, Vertices.size(), VertCount);
 #endif
 
-        FO_RUNTIME_ASSERT(upload_indices <= Indices.size());
+        FO_VERIFY_AND_THROW(upload_indices <= Indices.size(), "Null renderer upload requested more indices than the draw buffer contains", upload_indices, Indices.size(), IndCount);
 
         StaticDataChanged = false;
         _lastUploadedVertices = upload_vertices;
@@ -239,21 +239,21 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(dbuf != nullptr);
+        FO_VERIFY_AND_THROW(dbuf != nullptr, "Missing required draw buffer");
 
         const size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
-        FO_RUNTIME_ASSERT(start_index <= dbuf->IndCount);
-        FO_RUNTIME_ASSERT(draw_indices <= dbuf->IndCount - start_index);
+        FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
+        FO_VERIFY_AND_THROW(draw_indices <= dbuf->IndCount - start_index, "Draw buffer index range is outside index buffer bounds", start_index, draw_indices, dbuf->IndCount);
 
 #if FO_ENABLE_3D
         if (_usage == EffectUsage::Model) {
-            FO_RUNTIME_ASSERT(dbuf->VertCount <= dbuf->Vertices3D.size());
+            FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices3D.size(), "Null renderer model draw references more 3D vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices3D.size(), start_index, draw_indices);
         }
         else {
-            FO_RUNTIME_ASSERT(dbuf->VertCount <= dbuf->Vertices.size());
+            FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Null renderer 2D draw references more vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices.size(), start_index, draw_indices);
         }
 #else
-        FO_RUNTIME_ASSERT(dbuf->VertCount <= dbuf->Vertices.size());
+        FO_VERIFY_AND_THROW(dbuf->VertCount <= dbuf->Vertices.size(), "Null renderer draw references more vertices than the draw buffer contains", dbuf->VertCount, dbuf->Vertices.size(), start_index, draw_indices);
 #endif
 
         if (_needMainTex) {
@@ -297,7 +297,7 @@ auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const Rend
     return SafeAlloc::MakeUnique<Null_Effect>(usage, name, loader);
 }
 
-auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -333,14 +333,14 @@ auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t
     return result;
 }
 
-auto Null_Renderer::GetViewPort() -> irect32
+auto Null_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
     return _viewPortRect;
 }
 
-auto Null_Renderer::IsRenderTargetFlipped() -> bool
+auto Null_Renderer::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -353,8 +353,8 @@ void Null_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 
     ignore_unused(window);
 
-    FO_RUNTIME_ASSERT(settings.ScreenWidth > 0);
-    FO_RUNTIME_ASSERT(settings.ScreenHeight > 0);
+    FO_VERIFY_AND_THROW(settings.ScreenWidth > 0, "Settings screen width must be positive");
+    FO_VERIFY_AND_THROW(settings.ScreenHeight > 0, "Settings screen height must be positive");
 
     _viewPortRect = {0, 0, settings.ScreenWidth, settings.ScreenHeight};
     _currentRenderTarget = nullptr;
@@ -390,7 +390,7 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
     }
 
     auto* null_tex = dynamic_cast<Null_Texture*>(_currentRenderTarget.get());
-    FO_RUNTIME_ASSERT(null_tex != nullptr);
+    FO_VERIFY_AND_THROW(null_tex != nullptr, "Missing required null texture");
     null_tex->Clear(color.value());
 }
 
@@ -415,8 +415,8 @@ void Null_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     if (_currentRenderTarget == nullptr) {
         _viewPortRect = {0, 0, size.width, size.height};

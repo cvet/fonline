@@ -44,7 +44,6 @@ FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, b
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
     }
-
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
         throw ScriptException("Call init failed", initFunc.GetName().first);
     }
@@ -65,6 +64,9 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
+    }
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -75,6 +77,9 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, 
 ///@ ExportMethod
 FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId = any_t {})
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
+    }
     if (count <= 0) {
         throw ScriptException("Count arg must be positive", count);
     }
@@ -234,7 +239,7 @@ FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
         auto map = self->GetParent<Map>();
-        FO_RUNTIME_ASSERT(map);
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         map->ChangeViewItem(self);
         map->RecacheHexFlags(self->GetHex());
     }

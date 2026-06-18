@@ -971,7 +971,7 @@ static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto& mehtod = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(mehtod.Call);
+    FO_VERIFY_AND_THROW(mehtod.Call, "Missing required mehtod call");
 
     ScriptGenericCall(gen, false, [&](FuncCallData& call) { mehtod.Call(call); });
 }
@@ -981,7 +981,7 @@ static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto& mehtod = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(mehtod.Call);
+    FO_VERIFY_AND_THROW(mehtod.Call, "Missing required mehtod call");
 
     ScriptGenericCall(gen, true, [&](FuncCallData& call) { mehtod.Call(call); });
 }
@@ -1000,7 +1000,7 @@ static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(self != nullptr);
+    FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     self->AddRef();
 }
 
@@ -1008,7 +1008,7 @@ static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(self != nullptr);
+    FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     self->Release();
 }
 
@@ -1017,7 +1017,7 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* registrator = cast_from_void<const PropertyRegistrator*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(registrator != nullptr);
+    FO_VERIFY_AND_THROW(registrator != nullptr, "Missing required registrator");
 
     auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrator);
     new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
@@ -1029,8 +1029,8 @@ static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
 
     auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(self != nullptr);
-    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
+    FO_VERIFY_AND_THROW(prop != nullptr, "Missing required property");
 
     PropertyRawData prop_data;
     prop_data.Pass(self->GetRawData(prop));
@@ -1042,7 +1042,7 @@ static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
-    FO_RUNTIME_ASSERT(self != nullptr);
+    FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
 
     new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(self);
 }
@@ -1053,8 +1053,8 @@ static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 
     auto* self = cast_from_void<DynamicRefTypeInstance*>(gen->GetObject());
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(self != nullptr);
-    FO_RUNTIME_ASSERT(prop != nullptr);
+    FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
+    FO_VERIFY_AND_THROW(prop != nullptr, "Missing required property");
 
     auto prop_data = ConvertScriptToPropsObject(prop, gen->GetAddressOfArg(0));
     self->SetValue(prop, prop_data);

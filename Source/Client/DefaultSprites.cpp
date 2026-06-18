@@ -119,6 +119,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v0 = vbuf[vpos++];
     v0.PosX = pos.x;
     v0.PosY = pos.y + pos.height;
+    v0.PosZ = 0.0f;
     v0.TexU = _atlasRect.x;
     v0.TexV = _atlasRect.y + _atlasRect.height;
     v0.EggFlags[0] = 0.0f;
@@ -128,6 +129,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v1 = vbuf[vpos++];
     v1.PosX = pos.x;
     v1.PosY = pos.y;
+    v1.PosZ = 0.0f;
     v1.TexU = _atlasRect.x;
     v1.TexV = _atlasRect.y;
     v1.EggFlags[0] = 0.0f;
@@ -137,6 +139,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v2 = vbuf[vpos++];
     v2.PosX = pos.x + pos.width;
     v2.PosY = pos.y;
+    v2.PosZ = 0.0f;
     v2.TexU = _atlasRect.x + _atlasRect.width;
     v2.TexV = _atlasRect.y;
     v2.EggFlags[0] = 0.0f;
@@ -146,6 +149,7 @@ auto AtlasSprite::FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tup
     auto& v3 = vbuf[vpos++];
     v3.PosX = pos.x + pos.width;
     v3.PosY = pos.y + pos.height;
+    v3.PosZ = 0.0f;
     v3.TexU = _atlasRect.x + _atlasRect.width;
     v3.TexV = _atlasRect.y + _atlasRect.height;
     v3.EggFlags[0] = 0.0f;
@@ -160,9 +164,9 @@ SpriteSheet::SpriteSheet(SpriteManager& spr_mngr, int32_t frames, int32_t ticks,
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(frames > 0);
-    FO_RUNTIME_ASSERT(ticks >= 0);
-    FO_RUNTIME_ASSERT(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT);
+    FO_VERIFY_AND_THROW(frames > 0, "Frames must be positive");
+    FO_VERIFY_AND_THROW(ticks >= 0, "Ticks is negative");
+    FO_VERIFY_AND_THROW(dirs == 1 || dirs == GameSettings::MAP_DIR_COUNT, "Default sprite direction count is unsupported", dirs, GameSettings::MAP_DIR_COUNT);
 
     _spr.resize(frames);
     _sprOffset.resize(frames);
@@ -329,7 +333,7 @@ auto SpriteSheet::Update() -> bool
                 }
             }
 
-            FO_RUNTIME_ASSERT(index >= 0 && index < frm_count);
+            FO_VERIFY_AND_THROW(index >= 0 && index < frm_count, "Default sprite animation selected a frame outside the frame table", index, frm_count, _curIndex, frames_passed, _looped, _reversed, _playing, dt, _wholeTicks);
             _curIndex = index;
 
             RefreshParams();
@@ -402,12 +406,12 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     auto reader = file.GetReader();
 
     const auto check_number = reader.GetUInt8();
-    FO_RUNTIME_ASSERT(check_number == 42);
+    FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
     const auto frames_count = reader.GetLEUInt16();
-    FO_RUNTIME_ASSERT(frames_count != 0);
+    FO_VERIFY_AND_THROW(frames_count != 0, "Sprite file contains no frames", frames_count);
     const auto ticks = reader.GetLEUInt16();
     const auto dirs = reader.GetUInt8();
-    FO_RUNTIME_ASSERT(dirs != 0);
+    FO_VERIFY_AND_THROW(dirs != 0, "Sprite file direction count is zero", dirs);
 
     if (frames_count > 1 || dirs > 1) {
         auto anim = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, ticks, dirs);
@@ -455,7 +459,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         }
 
         const auto check_number2 = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(check_number2 == 42);
+        FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
 
         return anim;
     }
@@ -464,7 +468,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         const auto oy = reader.GetLEInt16();
 
         const auto is_spr_ref = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(is_spr_ref == 0);
+        FO_VERIFY_AND_THROW(is_spr_ref == 0, "Sprite file contains unsupported SPR reference record", is_spr_ref);
 
         const auto width = reader.GetLEUInt16();
         const auto height = reader.GetLEUInt16();
@@ -480,7 +484,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         reader.GoForward(numeric_cast<size_t>(width) * height * 4);
 
         const auto check_number2 = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(check_number2 == 42);
+        FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);
 
         return spr;
     }
@@ -490,8 +494,8 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(atlas_type, size);
 

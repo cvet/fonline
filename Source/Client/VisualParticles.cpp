@@ -77,7 +77,7 @@ auto ParticleManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(min_value <= max_value);
+    FO_VERIFY_AND_THROW(min_value <= max_value, "Particle random integer range has an inverted min/max", min_value, max_value);
 
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
@@ -191,6 +191,22 @@ auto ParticleSystem::GetDrawSize() const -> isize32
     return {max_draw_width, max_draw_height};
 }
 
+auto ParticleSystem::GetDrawInScene() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < _impl->System->getNbGroups(); i++) {
+        auto&& group = _impl->System->getGroup(i);
+        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
+
+        if (renderer && renderer->GetDrawInScene()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 auto ParticleSystem::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();
@@ -205,7 +221,7 @@ auto ParticleSystem::NeedDraw() const -> bool
     return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold) && _impl->System->isActive();
 }
 
-void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset)
+void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -213,8 +229,9 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         return;
     }
 
-    _projMat = proj;
+    _projMatrix = proj;
     _viewOffset = view_offset;
+    _tiltInProj = tilt_in_proj;
 
     const auto pos_offset_mat = glm::translate(mat44 {1.0f}, pos_offset);
     const auto view_offset_mat = glm::translate(mat44 {1.0f}, view_offset);
@@ -276,6 +293,8 @@ void ParticleSystem::Respawn()
     _impl->System->initialize();
 
     _elapsedTime = 0.0;
+    _lastDrawTime = GetTime();
+    _forceDraw = true;
 }
 
 void ParticleSystem::Draw()
@@ -283,7 +302,11 @@ void ParticleSystem::Draw()
     FO_STACK_TRACE_ENTRY();
 
     const auto time = GetTime();
-    const auto dt = (time - _lastDrawTime).to_ms<float32_t>() * 0.001f;
+    float32_t dt = (time - _lastDrawTime).to_ms<float32_t>() * 0.001f;
+
+    if (_forceDraw && dt <= 0.0f) {
+        dt = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;
+    }
 
     _lastDrawTime = time;
     _forceDraw = false;
@@ -299,12 +322,12 @@ void ParticleSystem::Draw()
     }
 
     const auto view_offset_mat = glm::translate(mat44 {1.0f}, vec3 {-_viewOffset.x, -_viewOffset.y, -_viewOffset.z});
-    const auto cam_rot_mat = glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    const auto cam_rot_mat = _tiltInProj ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     mat44 view = cam_rot_mat * view_offset_mat;
-    mat44 proj = _projMat;
+    mat44 proj = _projMatrix;
 
-    _particleMngr->_projMatColMaj = proj * view;
-    _particleMngr->_viewMatColMaj = view;
+    _particleMngr->_viewProjMatrix = proj * view;
+    _particleMngr->_viewMatrix = view;
 
     _impl->System->renderParticles();
 }

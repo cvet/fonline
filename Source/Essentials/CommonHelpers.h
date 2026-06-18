@@ -129,7 +129,7 @@ public:
 
     void add(T ref)
     {
-        FO_RUNTIME_ASSERT(ref);
+        FO_VERIFY_AND_THROW(ref, "Missing required reference");
         ref->AddRef();
         _vec.emplace_back(ref);
     }
@@ -239,7 +239,7 @@ template<std::ranges::range T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
 {
     const auto it = std::ranges::find(vec, value);
-    FO_RUNTIME_ASSERT(it == vec.end());
+    FO_VERIFY_AND_THROW(it == vec.end(), "Unexpected entry found in vec");
     vec.emplace_back(std::move(value));
 }
 
@@ -247,7 +247,7 @@ template<std::ranges::range T>
 constexpr void vec_remove_unique_value(T& vec, typename T::value_type value)
 {
     const auto it = std::ranges::find(vec, value);
-    FO_RUNTIME_ASSERT(it != vec.end());
+    FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
 
@@ -255,7 +255,7 @@ template<std::ranges::range T, typename U>
 constexpr void vec_remove_unique_value_if(T& vec, const U& predicate)
 {
     const auto it = std::ranges::find_if(vec, predicate);
-    FO_RUNTIME_ASSERT(it != vec.end());
+    FO_VERIFY_AND_THROW(it != vec.end(), "Lookup failed in vec");
     vec.erase(it);
 }
 

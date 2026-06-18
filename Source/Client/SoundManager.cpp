@@ -474,7 +474,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     }
 
     const auto* vi = ov_info(sound->OggStream.get(), -1);
-    FO_RUNTIME_ASSERT(vi != nullptr);
+    FO_VERIFY_AND_THROW(vi != nullptr, "Missing required vi");
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;

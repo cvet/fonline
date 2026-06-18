@@ -124,7 +124,7 @@ static void AdvanceCritterDir(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
     cr->ChangeDir(GetNextCritterDir(cr->GetDir()));
 }
 
@@ -147,11 +147,8 @@ static auto ContainsCaseInsensitive(string_view text, string_view filter) -> boo
         return true;
     }
 
-    auto lower_text = string(text);
-    auto lower_filter = string(filter);
-
-    std::ranges::transform(lower_text, lower_text.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
-    std::ranges::transform(lower_filter, lower_filter.begin(), [](char c) { return numeric_cast<char>(std::tolower(numeric_cast<unsigned char>(c))); });
+    const string lower_text = strex(text).lower_utf8();
+    const string lower_filter = strex(filter).lower_utf8();
 
     return lower_text.find(lower_filter) != string::npos;
 }
@@ -1103,9 +1100,7 @@ void MapperEngine::HandlePrimaryMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::F10:
-        if (_curMap) {
-            _curMap->SwitchShowHex();
-        }
+        ToggleMapperHexOverlay();
         break;
     case KeyCode::F11:
         SprMngr.ToggleFullscreen();
@@ -1220,9 +1215,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         }
         break;
     case KeyCode::B:
-        if (_curMap) {
-            _curMap->MarkBlockedHexes();
-        }
+        MarkBlockedHexes();
         break;
     default:
         break;
@@ -1448,7 +1441,7 @@ void MapperEngine::PushUndoOp(MapView* map, UndoOp op)
     }
 
     auto* ctx = GetUndoContext(map, true);
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
 
     ctx->RedoStack.clear();
     ctx->UndoStack.emplace_back(std::move(op));
@@ -1629,7 +1622,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (owner == nullptr) {
         if (entity_buf.IsCritter) {
@@ -1884,7 +1877,7 @@ void MapperEngine::DrawMainPanelImGui()
 
         if (ImGui::BeginMenu("Tools")) {
             run_menu_action_with_message(ImGui::MenuItem("Rebuild map", nullptr, false, _curMap != nullptr), [&] { _curMap->RebuildMap(); }, "Map rebuilt");
-            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, _curMap != nullptr), [&] { _curMap->MarkBlockedHexes(); }, "Blocked hexes marked");
+            run_menu_action_with_message(ImGui::MenuItem("Mark blocked hexes", nullptr, false, _curMap != nullptr), [&] { MarkBlockedHexes(); }, "Blocked hexes marked");
             run_menu_action_with_message(ImGui::MenuItem("Reverse lights", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* reverse-light"); }, "Reverse lights done");
             run_menu_action_with_message(ImGui::MenuItem("Merge by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* merge-items"); }, "Merge items command done");
             run_menu_action_with_message(ImGui::MenuItem("Break by command", nullptr, false, _curMap != nullptr), [&] { ParseCommand("* break-items"); }, "Break items command done");
@@ -2710,7 +2703,7 @@ void MapperEngine::DrawMapWindowImGui()
 
     ImGui::SameLine();
     if (ImGui::Button("Toggle hex")) {
-        _curMap->SwitchShowHex();
+        ToggleMapperHexOverlay();
     }
 
     const auto current_zoom = _curMap->GetSpritesZoomTarget();
@@ -3679,7 +3672,7 @@ void MapperEngine::HandleLeftMouseUp()
     if (MouseHoldMode == INT_SELECT) {
         if (_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (SelectHex1 != SelectHex2) {
-                _curMap->ClearHexTrack();
+                ClearMapperTrackOverlay();
 
                 vector<mpos> hexes;
 
@@ -3775,10 +3768,11 @@ void MapperEngine::HandleSelectionMouseDrag()
         return;
     }
 
-    _curMap->ClearHexTrack();
+    const bool had_track_overlay = !MapperTrackOverlayHexes.empty();
+    ClearMapperTrackOverlay();
 
     if (!_curMap->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
-        if (!SelectHex2.is_zero()) {
+        if (!SelectHex2.is_zero() || had_track_overlay) {
             _curMap->RebuildMap();
             SelectHex2 = {};
         }
@@ -3790,7 +3784,7 @@ void MapperEngine::HandleSelectionMouseDrag()
         if (SelectHex1 != SelectHex2) {
             if (SelectAxialGrid) {
                 for (const auto hex : GeometryHelper::GetAxialHexes(SelectHex1, SelectHex2, _curMap->GetSize())) {
-                    _curMap->GetHexTrack(hex) = 1;
+                    AddMapperTrackOverlayHex(hex, 1);
                 }
             }
             else {
@@ -3802,11 +3796,14 @@ void MapperEngine::HandleSelectionMouseDrag()
 
                 for (auto i = fx; i <= tx; i++) {
                     for (auto j = fy; j <= ty; j++) {
-                        _curMap->GetHexTrack(map_size.from_raw_pos(i, j)) = 1;
+                        AddMapperTrackOverlayHex(map_size.from_raw_pos(i, j), 1);
                     }
                 }
             }
 
+            _curMap->RebuildMap();
+        }
+        else if (had_track_overlay) {
             _curMap->RebuildMap();
         }
     }
@@ -3823,6 +3820,83 @@ void MapperEngine::HandleSelectionMouseDrag()
             _curMap->RebuildMap();
         }
     }
+}
+
+void MapperEngine::SetMapperHexOverlayVisible(bool visible)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (MapperHexOverlayVisible == visible) {
+        return;
+    }
+
+    MapperHexOverlayVisible = visible;
+
+    if (_curMap != nullptr) {
+        _curMap->RebuildMap();
+    }
+}
+
+void MapperEngine::ToggleMapperHexOverlay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SetMapperHexOverlayVisible(!MapperHexOverlayVisible);
+}
+
+void MapperEngine::ClearMapperTrackOverlay()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    MapperTrackOverlayHexes.clear();
+    MapperTrackOverlayKinds.clear();
+}
+
+void MapperEngine::AddMapperTrackOverlayHex(mpos hex, int32_t kind)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_curMap != nullptr && !_curMap->GetSize().is_valid_pos(hex)) {
+        return;
+    }
+
+    const int32_t normalized_kind = kind == 2 ? 2 : 1;
+
+    MapperTrackOverlayHexes.emplace_back(hex);
+    MapperTrackOverlayKinds.emplace_back(normalized_kind);
+}
+
+void MapperEngine::MarkBlockedHexes()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ClearMapperTrackOverlay();
+
+    if (!_curMap) {
+        return;
+    }
+
+    const msize map_size = _curMap->GetSize();
+
+    for (int32_t hx = 0; hx < map_size.width; hx++) {
+        for (int32_t hy = 0; hy < map_size.height; hy++) {
+            const mpos hex = map_size.from_raw_pos(hx, hy);
+            const MapView::Field& field = _curMap->GetField(hex);
+            int32_t kind = 0;
+
+            if (field.MoveBlocked) {
+                kind = 2;
+            }
+            if (field.ShootBlocked) {
+                kind = 1;
+            }
+            if (kind != 0) {
+                AddMapperTrackOverlayHex(hex, kind);
+            }
+        }
+    }
+
+    _curMap->RebuildMap();
 }
 
 auto MapperEngine::GetActiveSubTab() -> SubTab*
@@ -4509,7 +4583,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> CritterView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (!_curMap->GetSize().is_valid_pos(hex)) {
         throw GenericException("Invalid hex for critter spawn", pid, hex.x, hex.y);
@@ -4552,7 +4626,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     const auto* proto = GetProtoItem(pid);
 
@@ -4649,7 +4723,7 @@ auto MapperEngine::CloneEntity(Entity* entity) -> Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_curMap);
+    FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
 
     if (const auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         auto* cr_clone = _curMap->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDir(), &cr->GetProperties());
@@ -5895,7 +5969,8 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "merge-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             MergeItemsToMultihexMeshes(_curMap.get());
-            FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(_curMap.get()) == 0);
+            const auto merge_items_repeat_count = MergeItemsToMultihexMeshes(_curMap.get());
+            FO_VERIFY_AND_THROW(merge_items_repeat_count == 0, "Mapper merge-items command is not idempotent for current map", _curMap->GetName(), merge_items_repeat_count);
             SetMapDirty(_curMap.get());
 
             if (!before_snapshot.empty()) {
@@ -5908,7 +5983,8 @@ void MapperEngine::ParseCommand(string_view command)
         else if (command_ext == "break-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(_curMap.get()) : string {};
             BreakItemsMultihexMeshes(_curMap.get());
-            FO_RUNTIME_ASSERT(BreakItemsMultihexMeshes(_curMap.get()) == 0);
+            const auto break_items_repeat_count = BreakItemsMultihexMeshes(_curMap.get());
+            FO_VERIFY_AND_THROW(break_items_repeat_count == 0, "Mapper break-items command is not idempotent for current map", _curMap->GetName(), break_items_repeat_count);
             SetMapDirty(_curMap.get());
 
             if (!before_snapshot.empty()) {
@@ -5960,7 +6036,8 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     }
 
     MergeItemsToMultihexMeshes(new_map.get());
-    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(new_map.get()) == 0);
+    const auto load_merge_repeat_count = MergeItemsToMultihexMeshes(new_map.get());
+    FO_VERIFY_AND_THROW(load_merge_repeat_count == 0, "Loaded map merge-items normalization is not idempotent", map_name, load_merge_repeat_count);
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
     OnEditMapLoad.Fire(new_map.get());
@@ -6003,10 +6080,10 @@ void MapperEngine::ShowMap(MapView* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot show a destroyed map", map->GetName(), LoadedMaps.size());
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper show requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size());
 
     WorkspaceWindowVisible = true;
     MapListWindowVisible = false;
@@ -6017,6 +6094,7 @@ void MapperEngine::ShowMap(MapView* map)
         }
 
         _curMap = map;
+        ClearMapperTrackOverlay();
         RefreshActiveProtoLists();
     }
 }
@@ -6081,18 +6159,19 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot save a destroyed map", map->GetName(), custom_name);
 
     MergeItemsToMultihexMeshes(map);
-    FO_RUNTIME_ASSERT(MergeItemsToMultihexMeshes(map) == 0);
+    const auto save_merge_repeat_count = MergeItemsToMultihexMeshes(map);
+    FO_VERIFY_AND_THROW(save_merge_repeat_count == 0, "Map save merge-items normalization is not idempotent", map->GetName(), custom_name, save_merge_repeat_count);
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper save requested for a map that is not tracked as loaded", map->GetName(), custom_name, LoadedMaps.size());
 
     const auto fomap_content = map->SaveToText();
 
     const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
-    FO_RUNTIME_ASSERT(!fomap_name.empty());
+    FO_VERIFY_AND_THROW(!fomap_name.empty(), "Mapper cannot determine a .fomap file name for saving", map->GetName(), custom_name, map->GetProto() != nullptr ? map->GetProto()->GetName() : hstring {});
 
     string fomap_path;
     const auto fomap_files = MapsFileSys.FilterFiles("fomap");
@@ -6114,13 +6193,13 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
 
     if (!dir.empty()) {
         const auto dir_ok = fs_create_directories(dir);
-        FO_RUNTIME_ASSERT(dir_ok);
+        FO_VERIFY_AND_THROW(dir_ok, "Mapper failed to create .fomap output directory", dir, fomap_path, fomap_name);
     }
 
     std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
-    FO_RUNTIME_ASSERT(fomap_file);
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
     fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
-    FO_RUNTIME_ASSERT(fomap_file);
+    FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
 
     OnEditMapSave.Fire(map);
     auto* ctx = GetUndoContext(map, true);
@@ -6132,15 +6211,16 @@ void MapperEngine::UnloadMap(MapView* map, bool clear_undo)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Mapper cannot unload a destroyed map", map->GetName(), clear_undo);
 
     if (_curMap == map) {
         SelectClear();
+        ClearMapperTrackOverlay();
         _curMap = nullptr;
     }
 
     const auto it = std::ranges::find(LoadedMaps, map);
-    FO_RUNTIME_ASSERT(it != LoadedMaps.end());
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Mapper unload requested for a map that is not tracked as loaded", map->GetName(), LoadedMaps.size(), clear_undo);
 
     SetMapDirty(map, false);
 
@@ -6156,7 +6236,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!map->IsDestroyed());
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(map) : string {};
 
@@ -6168,6 +6248,7 @@ void MapperEngine::ResizeMap(MapView* map, int32_t width, int32_t height)
 
     if (_curMap == map) {
         SelectClear();
+        ClearMapperTrackOverlay();
     }
 
     SetMapDirty(map);

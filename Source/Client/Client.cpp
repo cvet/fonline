@@ -166,6 +166,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterElevation(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
@@ -184,6 +185,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemPicMap(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemOffsetCoords(entity, prop); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemElevation(entity, prop); });
     }
 
     _eventUnsubscriber += window.GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
@@ -229,18 +231,18 @@ void ClientEngine::Shutdown()
     _chosen = nullptr;
 
     if (_curMap) {
-        _curMap->DestroySelf();
-        _curMap = nullptr;
+        auto cur_map = std::move(_curMap);
+        cur_map->DestroySelf();
     }
 
     if (_curLocation) {
-        _curLocation->DestroySelf();
-        _curLocation = nullptr;
+        auto cur_location = std::move(_curLocation);
+        cur_location->DestroySelf();
     }
 
     if (_curPlayer) {
-        _curPlayer->DestroySelf();
-        _curPlayer = nullptr;
+        auto cur_player = std::move(_curPlayer);
+        cur_player->DestroySelf();
     }
 
     for (auto& cr : _globalMapCritters) {
@@ -253,7 +255,7 @@ void ClientEngine::Shutdown()
 
     ShutdownBackends();
 
-    FO_RUNTIME_ASSERT(GetRefCount() == 1);
+    FO_VERIFY_AND_THROW(GetRefCount() == 1, "Client engine still has external references after shutdown", GetRefCount());
 }
 
 void ClientEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
@@ -422,6 +424,10 @@ void ClientEngine::ProcessInputEvents()
 
         OnInputLost.Fire();
     }
+
+    if (HasForcedMousePos) {
+        MousePos = ForcedMousePos;
+    }
 }
 
 void ClientEngine::ProcessInputEvent(const InputEvent& ev)
@@ -493,7 +499,7 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
     FO_STACK_TRACE_ENTRY();
 
     if (result == ClientConnection::ConnectResult::Success) {
-        FO_RUNTIME_ASSERT(!_curPlayer);
+        FO_VERIFY_AND_THROW(!_curPlayer, "Cur player is already set");
         _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
         OnConnected.Fire();
     }
@@ -566,10 +572,10 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(cr->IsMoving());
+    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
     auto* moving = cr->GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
     if (std::cmp_greater(moving->GetSteps().size(), Settings.MaxPathFindLength)) {
         BreakIntoDebugger();
@@ -611,7 +617,7 @@ void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     const auto& props = entity->GetProperties();
     props.ValidateForRawData(prop);
@@ -624,25 +630,25 @@ void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, cons
     switch (type) {
     case NetProperty::CritterItem: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_RUNTIME_ASSERT(client_entity);
+        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
         const auto* item = dynamic_cast<const ItemView*>(client_entity);
-        FO_RUNTIME_ASSERT(item);
+        FO_VERIFY_AND_THROW(item, "Missing item instance");
         _conn.OutBuf->Write(item->GetCritterId());
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_RUNTIME_ASSERT(client_entity);
+        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_RUNTIME_ASSERT(client_entity);
+        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
         const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_RUNTIME_ASSERT(client_entity);
+        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     default:
@@ -684,7 +690,7 @@ void ClientEngine::Net_OnInitData()
                 break;
             }
 
-            FO_RUNTIME_ASSERT(name_len > 0);
+            FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
             const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
             const auto size = reader.Read<uint64_t>();
             const auto hash = reader.Read<uint64_t>();
@@ -744,12 +750,12 @@ void ClientEngine::Net_OnLoginSuccess()
 
     RestoreData(_globalsPropertiesData);
 
-    FO_RUNTIME_ASSERT(_curPlayer);
-    FO_RUNTIME_ASSERT(!_curPlayer->GetId());
+    FO_VERIFY_AND_THROW(_curPlayer, "Missing required cur player");
+    FO_VERIFY_AND_THROW(!_curPlayer->GetId(), "Current player already has an assigned id");
     _curPlayer->SetId(player_id, true);
     _curPlayer->RestoreData(_playerPropertiesData);
 
-    FO_RUNTIME_ASSERT(!HasInnerEntities());
+    FO_VERIFY_AND_THROW(!HasInnerEntities(), "Has inner entities is already set");
     ReceiveCustomEntities(this);
 
     OnLoginSuccess.Fire();
@@ -775,13 +781,13 @@ void ClientEngine::Net_OnAddCritter()
 
     if (_curMap) {
         hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
-        FO_RUNTIME_ASSERT(hex_cr);
+        FO_VERIFY_AND_THROW(hex_cr, "Missing required hex critter");
 
         cr = hex_cr;
     }
     else {
         const auto* proto = GetProtoCritter(pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
         const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
 
@@ -816,7 +822,7 @@ void ClientEngine::Net_OnAddCritter()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = GetProtoItem(item_pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
         auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
@@ -1024,7 +1030,7 @@ void ClientEngine::Net_OnCritterMoveSpeed()
         return;
     }
     auto* moving = cr->GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
     if (speed == moving->GetSpeed()) {
         return;
@@ -1052,7 +1058,7 @@ void ClientEngine::Net_OnCritterAction()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = GetProtoItem(item_pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
         context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         context_item->RestoreData(_tempPropertiesData);
@@ -1096,7 +1102,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
         const auto* proto = GetProtoItem(item_pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
         moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         moved_item->RestoreData(_tempPropertiesData);
@@ -1133,7 +1139,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
-        FO_RUNTIME_ASSERT(!cr->GetIsChosen());
+        FO_VERIFY_AND_THROW(!cr->GetIsChosen(), "Critter is already marked as chosen");
 
         cr->DeleteAllInvItems();
 
@@ -1144,7 +1150,7 @@ void ClientEngine::Net_OnCritterMoveItem()
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
             const auto* proto = GetProtoItem(item_pid);
-            FO_RUNTIME_ASSERT(proto);
+            FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
             auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
@@ -1208,7 +1214,7 @@ void ClientEngine::Net_OnCritterPos()
         return;
     }
 
-    FO_RUNTIME_ASSERT(_curMap->GetSize().is_valid_pos(hex));
+    FO_VERIFY_AND_THROW(_curMap->GetSize().is_valid_pos(hex), "Received critter movement target is outside the current client map bounds", cr_id, hex, _curMap->GetId(), _curMap->GetSize());
 
     auto* cr = _curMap->GetCritter(cr_id);
 
@@ -1325,7 +1331,7 @@ void ClientEngine::Net_OnChosenAddItem()
     }
 
     const auto* proto = GetProtoItem(item_pid);
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
@@ -1397,7 +1403,7 @@ void ClientEngine::Net_OnAddItemOnMap()
     }
 
     auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     ReceiveCustomEntities(item);
 
@@ -1544,8 +1550,8 @@ void ClientEngine::Net_OnProperty()
         return;
     }
 
-    FO_RUNTIME_ASSERT(!prop->IsDisabled());
-    FO_RUNTIME_ASSERT(!prop->IsVirtual());
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
     {
         _sendIgnoreEntity = entity;
@@ -1594,9 +1600,9 @@ void ClientEngine::Net_OnLoadMap()
 
     if (map_pid) {
         const auto* loc_proto = GetProtoLocation(loc_pid);
-        FO_RUNTIME_ASSERT(loc_proto);
+        FO_VERIFY_AND_THROW(loc_proto, "Missing required location prototype");
         const auto* map_proto = GetProtoMap(map_pid);
-        FO_RUNTIME_ASSERT(map_proto);
+        FO_VERIFY_AND_THROW(map_proto, "Missing required map prototype");
 
         isize32 screen_size = {Settings.ScreenWidth, Settings.ScreenHeight};
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
@@ -1634,10 +1640,10 @@ void ClientEngine::Net_OnSomeItems()
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
-        FO_RUNTIME_ASSERT(item_id);
+        FO_VERIFY_AND_THROW(item_id, "Missing required item id");
 
         const auto* proto = GetProtoItem(pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
         auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
@@ -1703,7 +1709,7 @@ void ClientEngine::Net_OnAddCustomEntity()
     }
 
     auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
-    FO_RUNTIME_ASSERT(entity);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     OnCustomEntityIn.Fire(entity);
 }
@@ -1771,7 +1777,7 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
 
             if (holder != nullptr) {
                 auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
-                FO_RUNTIME_ASSERT(entity);
+                FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
                 ReceiveCustomEntities(entity);
             }
@@ -1788,18 +1794,18 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
 
     const auto type_name = GetEntityType(holder->GetTypeName()).HolderEntries.at(entry).TargetType;
 
-    FO_RUNTIME_ASSERT(IsValidEntityType(type_name));
+    FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
     const bool has_protos = GetEntityType(type_name).HasProtos;
     const ProtoEntity* proto = nullptr;
 
     if (pid) {
-        FO_RUNTIME_ASSERT(has_protos);
+        FO_VERIFY_AND_THROW(has_protos, "Missing required has protos");
         proto = GetProtoEntity(type_name, pid);
-        FO_RUNTIME_ASSERT(proto);
+        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
     }
     else {
-        FO_RUNTIME_ASSERT(!has_protos);
+        FO_VERIFY_AND_THROW(!has_protos, "Has protos is already set");
     }
 
     const auto* registrator = GetPropertyRegistrator(type_name);
@@ -1819,7 +1825,7 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
-        FO_RUNTIME_ASSERT(holder == this);
+        FO_VERIFY_AND_THROW(holder == this, "Custom client entity holder must be a client entity or the client engine", id, entry, holder != nullptr ? holder->GetTypeName() : hstring {}, holder != nullptr ? holder->GetId() : ident_t {});
     }
 
     entity->SetCustomHolderEntry(entry);
@@ -1890,8 +1896,8 @@ void ClientEngine::RegisterEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(entity->GetId());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     _allEntities[entity->GetId()] = entity;
 }
@@ -1900,8 +1906,8 @@ void ClientEngine::UnregisterEntity(ClientEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(entity->GetId());
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     _allEntities.erase(entity->GetId());
 }
@@ -1973,7 +1979,7 @@ void ClientEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity == this);
+    FO_VERIFY_AND_THROW(entity == this, "Global property sender received an entity different from the client engine", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {});
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -1991,7 +1997,7 @@ void ClientEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity == _curPlayer.get());
+    FO_VERIFY_AND_THROW(entity == _curPlayer.get(), "Player property sender received an entity different from the current player", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curPlayer ? _curPlayer->GetId() : ident_t {});
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2013,7 +2019,7 @@ void ClientEngine::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 
     const auto* cr = dynamic_cast<CritterView*>(entity);
-    FO_RUNTIME_ASSERT(cr);
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
@@ -2066,7 +2072,7 @@ void ClientEngine::OnSendMapValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity == _curMap.get());
+    FO_VERIFY_AND_THROW(entity == _curMap.get(), "Map property sender received an entity different from the current map", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curMap ? _curMap->GetId() : ident_t {});
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2084,7 +2090,7 @@ void ClientEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity == _curLocation.get());
+    FO_VERIFY_AND_THROW(entity == _curLocation.get(), "Location property sender received an entity different from the current location", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curLocation ? _curLocation->GetId() : ident_t {});
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
         return;
@@ -2142,6 +2148,19 @@ void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         cr->SetSpriteVisiblity(!cr->GetHideSprite());
+    }
+}
+
+void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        cr->RefreshSprite();
     }
 }
 
@@ -2248,6 +2267,20 @@ void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
     }
 }
 
+void ClientEngine::OnSetItemElevation(Entity* entity, const Property* prop)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    ignore_unused(prop);
+
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->RefreshSprite();
+        item->GetMap()->MeasureMapBorders(item);
+    }
+}
+
 void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2290,8 +2323,8 @@ void ClientEngine::UnloadMap()
     Settings.ScrollMouseUp = false;
 
     if (_curMap) {
-        _curMap->DestroySelf();
-        _curMap = nullptr;
+        auto cur_map = std::move(_curMap);
+        cur_map->DestroySelf();
 
         CleanupSpriteCache();
     }
@@ -2408,7 +2441,7 @@ void ClientEngine::DestroyInnerEntities()
         for (auto& entities : GetInnerEntities() | std::views::values) {
             for (auto& entity : entities) {
                 auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                FO_RUNTIME_ASSERT(custom_entity);
+                FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
                 custom_entity->DestroySelf();
             }
@@ -2550,7 +2583,7 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
     }
 
     const auto names = strex(video_name).split('|');
-    FO_RUNTIME_ASSERT(!names.empty());
+    FO_VERIFY_AND_THROW(!names.empty(), "Video playback request produced no resource candidates after splitting the video name", video_name, can_interrupt);
     const auto file = Resources.ReadFile(names.front());
 
     if (!file) {

@@ -43,6 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t MAX_VALIDATE_ATTEMPTS = 32;
+static constexpr int32_t MAX_SYNC_RETRIES = 128;
 
 static thread_local SyncContext* CurrentContext {};
 static std::atomic<uint64_t> TicketCounter {};
@@ -77,7 +78,7 @@ void EntityLock::Acquire(uint64_t ticket)
     // shared holders to drain, including this very thread). The property paths never do this (a
     // getter releases its shared hold before any setter runs); assert so a future caller that
     // breaks the rule is caught immediately instead of hanging.
-    FO_RUNTIME_ASSERT(!_sharedHolders.contains(this_thread));
+    FO_VERIFY_AND_THROW(!_sharedHolders.contains(this_thread), "Entity lock cannot be upgraded from shared to exclusive by the same thread", std::hash<std::thread::id> {}(this_thread), _sharedHolders.size());
 
     // Grant immediately only when the lock is fully free: no exclusive owner and no shared readers.
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && _sharedHolders.empty()) {
@@ -115,8 +116,9 @@ void EntityLock::Acquire(uint64_t ticket)
         throw EntityLockWaitAbortedException("EntityLock::Acquire aborted: shutdown in progress");
     }
 
-    FO_RUNTIME_ASSERT(state == WaitEntry::STATE_GRANTED);
-    FO_RUNTIME_ASSERT(_ownerThread.load(std::memory_order_acquire) == this_thread);
+    FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
+    const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
+    FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)
@@ -177,7 +179,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
         throw EntityLockWaitAbortedException("EntityLock::AcquireShared aborted: shutdown in progress");
     }
 
-    FO_RUNTIME_ASSERT(state == WaitEntry::STATE_GRANTED);
+    FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it.
 }
 
@@ -205,7 +207,7 @@ void EntityLock::Release() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(_ownerThread.load(std::memory_order_relaxed) == std::this_thread::get_id());
+    FO_STRONG_ASSERT(_ownerThread.load(std::memory_order_relaxed) == std::this_thread::get_id(), "Entity lock release called from non-owner thread");
 
     scoped_lock locker {_mutex};
 
@@ -235,7 +237,7 @@ void EntityLock::ReleaseShared() noexcept
     scoped_lock locker {_mutex};
 
     const auto it = _sharedHolders.find(this_thread);
-    FO_STRONG_ASSERT(it != _sharedHolders.end());
+    FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
         _sharedHolders.erase(it);
@@ -366,7 +368,7 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
     }
 
     const auto* current_ctx = SyncContext::GetCurrentOnThisThread();
-    FO_STRONG_ASSERT(current_ctx);
+    FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
 
     if (current_ctx->IsEmpty()) {
         return true;
@@ -379,6 +381,22 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         }
         else {
             return {};
+        }
+    };
+
+    const auto dump_uncovered = [&try_hold_entity](const ServerEntity* e, string_view where) {
+        WriteLog("SyncDiag access-without-sync [{}]: entity '{}' id={} destroyed={}", where, e != nullptr ? e->GetName() : string_view {}, e != nullptr ? e->GetId() : ident_t {}, e != nullptr && e->IsDestroyed());
+
+        for (auto walk = try_hold_entity(e); walk; walk = walk->GetParentRaw()) {
+            const auto* walk_lock = walk->GetEntityLock();
+            WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), walk_lock == nullptr ? string_view {"none"} : (walk_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
+        }
+
+        auto* widen = e != nullptr ? const_cast<ServerEntity*>(e)->GetSyncWidenEntity() : nullptr;
+
+        if (widen != nullptr) {
+            const auto* widen_lock = widen->GetEntityLock();
+            WriteLog("SyncDiag   widen: '{}' id={} lock={}", widen->GetName(), widen->GetId(), widen_lock == nullptr ? string_view {"none"} : (widen_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
         }
     };
 
@@ -420,6 +438,7 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
                 }
             }
 
+            dump_uncovered(entity, "no-lock-found");
             return false;
         }
 
@@ -442,7 +461,9 @@ auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool
         // different held lock (e.g. caller holds multiple ancestors and the new chain hits one).
     }
 
-    FO_RUNTIME_VERIFY(false);
+    dump_uncovered(entity, "retry-exhausted");
+    FO_VERIFY_AND_CONTINUE(false, "Unable to prove entity is covered by a held sync lock", entity ? entity->GetId() : ident_t {}, MAX_VALIDATE_ATTEMPTS);
+
     return false;
 }
 
@@ -463,8 +484,8 @@ SyncContext::~SyncContext()
     // acquired locks and didn't call `Release()` — that path is buggy. `FO_STRONG_ASSERT`
     // logs and aborts the process so the violation is visible without the destructor
     // having to throw (which would `terminate` during unwind anyway).
-    FO_STRONG_ASSERT(_heldLocks.empty());
-    FO_STRONG_ASSERT(_singletonLocks.empty());
+    FO_STRONG_ASSERT(_heldLocks.empty(), "SyncContext destroyed with held entity locks", _heldLocks.size());
+    FO_STRONG_ASSERT(_singletonLocks.empty(), "SyncContext destroyed with held singleton locks", _singletonLocks.size());
 
     if (CurrentContext == this) {
         CurrentContext = _previousContext;
@@ -512,6 +533,29 @@ static auto FindLockOwner(ServerEntity* entity, const EntityLock* lock) noexcept
     return owner;
 }
 
+// Bounded back-off between SyncEntities verify-after-acquire retries. A failed verify means a
+// concurrent reparent (e.g. MapManager::Transfer) moved a requested entity out of the cover we
+// just acquired; recomputing immediately re-races the same in-flight transfer, the busy-spin that
+// exhausts the retry budget under sustained map-transfer churn. The first attempts only yield (the
+// transfer usually completes within a scheduler slice), later attempts add a short, capped sleep so
+// a longer transfer window can settle. Mirrors the stage-1 non-parking back-off in AcquireLocks and
+// keeps the common single-retry case latency-free. Called with no locks held.
+static void BackoffBeforeSyncRetry(int32_t attempt) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    constexpr int32_t yield_only_attempts = 8;
+    constexpr int32_t max_backoff_shift = 6;
+
+    if (attempt < yield_only_attempts) {
+        std::this_thread::yield();
+    }
+    else {
+        const int32_t shift = std::min(attempt - yield_only_attempts, max_backoff_shift);
+        std::this_thread::sleep_for(std::chrono::microseconds(int64_t {50} << shift));
+    }
+}
+
 void SyncContext::SyncEntities(span<ServerEntity*> entities)
 {
     FO_STACK_TRACE_ENTRY();
@@ -533,9 +577,11 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
     // the wait time of AcquireLocks. After we hold the computed lock set we walk each
     // requested entity's current parent chain and verify that at least one held lock still
     // covers it; if anyone escaped (was reparented out of the cover during the wait), we
-    // release, recompute the cover from the now-current parent layout, and try again.
-    constexpr int32_t max_sync_retries = 16;
-
+    // release, recompute the cover from the now-current parent layout, and try again. A failed
+    // verify backs off (BackoffBeforeSyncRetry) before recomputing so the racing reparent can
+    // complete instead of being re-raced immediately; the budget is generous because each retry
+    // is cheap (recompute the cover) and, with back-off, far more likely to make progress. The
+    // give-up budget (MAX_SYNC_RETRIES) remains a livelock safety valve.
     for (int32_t attempt = 0;; attempt++) {
         // Collect all entity locks, then reduce to minimal covering set:
         // if two entities share a common ancestor, use the ancestor's lock
@@ -796,12 +842,17 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             return;
         }
 
-        if (attempt + 1 >= max_sync_retries) {
+        if (attempt + 1 >= MAX_SYNC_RETRIES) {
             ReleaseLocks();
             throw EntitySyncException("SyncEntities retry budget exhausted — entity reparenting raced lock acquisition repeatedly");
         }
 
-        // Some entity escaped the cover; loop and recompute against the current parent layout.
+        // Some entity escaped the cover during AcquireLocks: a concurrent reparent is in flight.
+        // Release the stale cover (so we don't block other threads while waiting) and back off
+        // briefly before recomputing against the current parent layout — without this the
+        // immediate recompute re-races the same transfer and exhausts the budget under churn.
+        ReleaseLocks();
+        BackoffBeforeSyncRetry(attempt);
     }
 }
 
@@ -905,7 +956,7 @@ void SyncContext::LockSingleton(EntityLock* lock)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(lock);
+    FO_VERIFY_AND_THROW(lock, "Missing required lock");
 
     // Allocate a fresh ticket so this call participates in FIFO fairness exactly like a normal
     // Sync acquisition. EntityLock handles the recursion-on-same-thread bookkeeping internally,
@@ -923,13 +974,13 @@ void SyncContext::UnlockSingleton(EntityLock* lock)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(lock);
-    FO_RUNTIME_ASSERT(lock->IsLockedByCurrentThread());
+    FO_VERIFY_AND_THROW(lock, "Missing required lock");
+    FO_VERIFY_AND_THROW(lock->IsLockedByCurrentThread(), "Entity lock is not held by current thread");
 
     // Pop the most recent matching entry — paired LIFO with LockSingleton. If the script side
     // mismatches Lock/Unlock counts the leftover entries get drained at job exit.
     const auto rit = std::ranges::find(std::ranges::reverse_view(_singletonLocks), lock);
-    FO_RUNTIME_ASSERT(rit != _singletonLocks.rend());
+    FO_VERIFY_AND_THROW(rit != _singletonLocks.rend(), "Singleton entity lock release does not match any lock held by this sync context", static_cast<const void*>(lock), _singletonLocks.size());
     _singletonLocks.erase(std::next(rit).base());
 
     lock->Release();
@@ -968,7 +1019,7 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(locks.size() == owners.size());
+    FO_VERIFY_AND_THROW(locks.size() == owners.size(), "Entity lock list and owner list have different sizes before lock acquisition", locks.size(), owners.size());
 
     // Dedup `locks` while keeping `owners` aligned. A simple sort-unique on `locks` would lose
     // the lock↔owner correspondence, so we do an explicit two-pass dedup that mirrors the
@@ -1185,8 +1236,8 @@ void PropagateEntityLock(Item* item, EntityLock* parent_lock)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
-    FO_RUNTIME_ASSERT(parent_lock);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    FO_VERIFY_AND_THROW(parent_lock, "Missing required parent lock");
 
     item->SetEntityLock(parent_lock);
 
@@ -1201,7 +1252,7 @@ void RevertEntityLock(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(item);
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     item->SetEntityLock(&item->GetOwnedLock());
 

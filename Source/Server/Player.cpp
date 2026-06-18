@@ -58,11 +58,11 @@ Player::~Player()
     FO_STACK_TRACE_ENTRY();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_RUNTIME_VERIFY(!_controlledCr);
-        FO_RUNTIME_VERIFY(!_viewMap);
-        FO_RUNTIME_VERIFY(!_viewMapTarget);
-        FO_RUNTIME_VERIFY(!_sendIgnoreEntity);
-        FO_RUNTIME_VERIFY(!_sendIgnoreProperty);
+        FO_VERIFY_AND_CONTINUE(!_controlledCr, "Player still controls a critter during destruction", GetId(), _controlledCr ? _controlledCr->GetId() : ident_t {});
+        FO_VERIFY_AND_CONTINUE(!_viewMap, "Player still has view map context during destruction", GetId());
+        FO_VERIFY_AND_CONTINUE(!_viewMapTarget, "Player still has view map target during destruction", GetId(), _viewMapTarget ? _viewMapTarget->GetId() : ident_t {});
+        FO_VERIFY_AND_CONTINUE(!_sendIgnoreEntity, "Player still has send-ignore entity during destruction", GetId(), _sendIgnoreEntity ? _sendIgnoreEntity->GetId() : ident_t {});
+        FO_VERIFY_AND_CONTINUE(!_sendIgnoreProperty, "Player still has send-ignore property during destruction", GetId());
     }
 }
 
@@ -100,8 +100,8 @@ void Player::SwapConnection(Player* other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_STRONG_ASSERT(other);
-    FO_STRONG_ASSERT(other != this);
+    FO_STRONG_ASSERT(other, "Player connection swap target is null");
+    FO_STRONG_ASSERT(other != this, "Player connection swap target is the same player");
 
     std::swap(_connection, other->_connection);
 }
@@ -118,8 +118,8 @@ void Player::SetViewMap(Map* map, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_controlledCr);
-    FO_RUNTIME_ASSERT(map);
+    FO_VERIFY_AND_THROW(!_controlledCr, "Controlled cr is already set");
+    FO_VERIFY_AND_THROW(map, "Missing map instance");
 
     if (_viewMapTarget != map) {
         if (_viewMapTarget) {
@@ -295,8 +295,8 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(entity);
-    FO_RUNTIME_ASSERT(prop);
+    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
@@ -315,29 +315,29 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
     case NetProperty::CritterItem: {
         const auto* item = dynamic_cast<const Item*>(entity);
         const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
-        FO_RUNTIME_ASSERT(item);
-        FO_RUNTIME_ASSERT(server_entity);
+        FO_VERIFY_AND_THROW(item, "Missing item instance");
+        FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(item->GetCritterId());
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::Critter: {
         const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
-        FO_RUNTIME_ASSERT(server_entity);
+        FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::MapItem: {
         const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
-        FO_RUNTIME_ASSERT(server_entity);
+        FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
         const auto* server_entity = dynamic_cast<const ServerEntity*>(entity);
-        FO_RUNTIME_ASSERT(server_entity);
+        FO_VERIFY_AND_THROW(server_entity, "Missing server entity instance");
         out_buf->Write(server_entity->GetId());
     } break;
     case NetProperty::CustomEntity: {
         const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity);
-        FO_RUNTIME_ASSERT(custom_entity);
+        FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
         out_buf->Write(custom_entity->GetId());
     } break;
     default:
@@ -514,7 +514,7 @@ void Player::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_viewMap);
+    FO_VERIFY_AND_THROW(_viewMap, "Player has no visible map");
 
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
@@ -577,11 +577,11 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
     out_buf->Write(entity->GetId());
 
     if (const auto* entity_with_proto = dynamic_cast<CustomEntityWithProto*>(entity); entity_with_proto != nullptr) {
-        FO_RUNTIME_ASSERT(_engine->GetEntityType(entity->GetTypeName()).HasProtos);
+        FO_VERIFY_AND_THROW(_engine->GetEntityType(entity->GetTypeName()).HasProtos, "Entity type has no prototypes but a proto entity was requested");
         out_buf->Write(entity_with_proto->GetProtoId());
     }
     else {
-        FO_RUNTIME_ASSERT(!_engine->GetEntityType(entity->GetTypeName()).HasProtos);
+        FO_VERIFY_AND_THROW(!_engine->GetEntityType(entity->GetTypeName()).HasProtos, "Custom entity type requires a proto id but the entity is not proto-backed", entity->GetTypeName(), entity->GetId());
         out_buf->Write(hstring());
     }
 
@@ -659,7 +659,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 
         for (const auto& entity : entities) {
             const auto* custom_entity = dynamic_cast<const CustomEntity*>(entity.get());
-            FO_RUNTIME_ASSERT(custom_entity);
+            FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
             vector<const uint8_t*>* data = nullptr;
             vector<uint32_t>* data_sizes = nullptr;
@@ -688,10 +688,10 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NON_CONST_METHOD_HINT();
 
-    FO_RUNTIME_ASSERT(cr->IsMoving());
+    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
     auto* moving = cr->GetMoving();
-    FO_RUNTIME_ASSERT(moving);
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
 
     out_buf.Write(iround<int32_t>(std::ceil(moving->GetWholeTime())));
     out_buf.Write(iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime())));

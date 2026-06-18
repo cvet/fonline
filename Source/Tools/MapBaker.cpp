@@ -219,7 +219,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
                 if (is_static) {
                     const auto* client_proto = client_engine.GetProtoItem(proto->GetProtoId());
-                    FO_RUNTIME_ASSERT(client_proto);
+                    FO_VERIFY_AND_THROW(client_proto, "Missing required client prototype");
 
                     auto client_props = client_proto->GetProperties().Copy();
                     client_props.ApplyFromText(kv);

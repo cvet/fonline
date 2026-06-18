@@ -202,9 +202,6 @@ private:
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
     [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
-    static auto MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool;
-    static auto MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool;
-
     raw_ptr<RenderSettings> _settings;
     raw_ptr<FileSystem> _resources;
     raw_ptr<EffectManager> _effectMngr;
@@ -278,6 +275,7 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
+    void Draw(const mat44& proj, float32_t scale);
     void MoveModel(ipos32 offset);
     void UpdatePose(bool staying_pose, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
@@ -305,6 +303,8 @@ private:
     };
 
     [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
+    [[nodiscard]] auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
+    [[nodiscard]] auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float32_t;
     [[nodiscard]] auto GetMovementSpeed() const -> float32_t;
     [[nodiscard]] auto GetTime() const -> nanotime;
@@ -316,6 +316,7 @@ private:
     void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
+    void DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
@@ -325,7 +326,7 @@ private:
     raw_ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
     mat44 _frameProj {};
-    mat44 _frameProjColMaj {};
+    mat44 _drawProj {};
     CritterStateAnim _curStateAnim {};
     CritterActionAnim _curActionAnim {};
     vector<unique_ptr<CombinedMesh>> _combinedMeshes {};
@@ -372,6 +373,7 @@ private:
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
+    bool _directSceneDraw {};
     bool _nonConstHelper {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
@@ -463,6 +465,7 @@ private:
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
     bool _shadowDisabled {};
+    bool _disableBackwardAnim {};
     isize32 _drawSize {};
     isize32 _viewSize {};
     hstring _rotationBone {};

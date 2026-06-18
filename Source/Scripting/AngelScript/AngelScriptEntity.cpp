@@ -261,6 +261,7 @@ static void Entity_HasComponent(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    // May call on unsynced entity
     CheckScriptEntityNonDestroyed(entity);
     const auto* prop = cast_from_void<const Property*>(gen->GetAuxiliary());
     const auto& props = entity->GetProperties();
@@ -325,8 +326,8 @@ static auto Entity_DownCast(Entity* entity) -> Entity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    CheckScriptEntityNonDestroyed(entity);
-
+    // May call on unsynced entity
+    // May call on destroyed entity
     return entity;
 }
 
@@ -335,8 +336,9 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
+    // May call on unsynced entity
+    // May call on destroyed entity
     const auto entity_type_name = entity->GetTypeName();
-    CheckScriptEntityNonDestroyed(entity);
     const auto& target_type_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     bool valid_cast = false;
 
@@ -351,7 +353,7 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
             valid_cast = true;
         }
         else {
-            FO_RUNTIME_ASSERT(target_type_name == entity_type_name.as_str());
+            FO_VERIFY_AND_THROW(target_type_name == entity_type_name.as_str(), "Event target type name does not match entity type");
             valid_cast = dynamic_cast<ProtoEntity*>(entity) == nullptr && !!entity->GetId();
         }
     }
@@ -379,7 +381,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     }
 
     const auto* casted_proto = dynamic_cast<const ProtoCustomEntity*>(proto);
-    FO_RUNTIME_ASSERT(casted_proto);
+    FO_VERIFY_AND_THROW(casted_proto, "Missing required casted prototype");
     auto* mutable_proto = const_cast<ProtoCustomEntity*>(casted_proto);
     auto* entity = static_cast<Entity*>(mutable_proto);
     new (gen->GetAddressOfReturnLocation()) Entity*(entity);
@@ -429,7 +431,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     const auto prop_enum = static_cast<int32_t>(*cast_from_void<ScriptEnum_uint16*>(gen->GetAddressOfArg(0)));
     const auto& prop_value = *cast_from_void<const any_t*>(gen->GetAddressOfArg(1));
     const auto* registrator = engine->GetPropertyRegistrator(entity_name);
-    FO_RUNTIME_ASSERT(registrator);
+    FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
     const auto* prop = registrator->GetPropertyByIndex(prop_enum);
 
     if (prop == nullptr) {
@@ -522,6 +524,7 @@ static void CustomEntity_HasAny(AngelScript::asIScriptGeneric* gen)
 
     const auto& entry = *cast_from_void<const hstring*>(gen->GetAuxiliary());
     const auto* holder = cast_from_void<Entity*>(gen->GetObject());
+    CheckScriptEntityAccessAndNonDestroyed(holder);
     const auto* entities = holder->GetInnerEntities(entry);
 
     new (gen->GetAddressOfReturnLocation()) bool(entities != nullptr);
@@ -608,7 +611,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
     }
 
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
-    FO_RUNTIME_ASSERT(prop);
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     if (const auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -651,7 +654,8 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
 
         auto* context_mngr = backend->GetContextMngr();
         auto* ctx = context_mngr->PrepareContext(func);
-        auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+        const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+        auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
         ctx->SetArgObject(0, entity); // May be null for protos
 
         if (func->GetParamCount() == 2) {
@@ -659,7 +663,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         }
 
         const auto run_ok = context_mngr->RunContext(ctx, false);
-        FO_RUNTIME_ASSERT(run_ok);
+        FO_VERIFY_AND_THROW(run_ok, "Missing required run ok");
 
         auto prop_data = ConvertScriptToPropsObject(prop, ctx->GetAddressOfReturnValue());
         prop_data.StoreIfPassed();
@@ -683,7 +687,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     }
 
     const auto* prop = registrator->GetPropertyByIndex(static_cast<int32_t>(prop_enum));
-    FO_RUNTIME_ASSERT(prop);
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     if (const auto* as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); as_type_info == nullptr || as_type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -745,7 +749,8 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto* context_mngr = backend->GetContextMngr();
             auto* ctx = context_mngr->PrepareContext(func);
-            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+            const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+            auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
             FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
@@ -759,7 +764,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
             FO_AS_VERIFY(ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr));
 
             const auto run_ok = context_mngr->RunContext(ctx, false);
-            FO_RUNTIME_ASSERT(run_ok);
+            FO_VERIFY_AND_THROW(run_ok, "Missing required run ok");
 
             prop_data = ConvertScriptToPropsObject(prop, construct_addr);
             prop_data.StoreIfPassed();
@@ -775,7 +780,8 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto* context_mngr = backend->GetContextMngr();
             auto* ctx = context_mngr->PrepareContext(func);
-            auto return_ctx = scope_exit([&]() noexcept { context_mngr->ReturnContext(ctx); });
+            const auto ctx_generation = context_mngr->GetContextGeneration(ctx);
+            auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
             FO_AS_VERIFY(ctx->SetArgObject(0, entity));
 
@@ -813,7 +819,7 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     const auto& entity_name = *cast_from_void<const string*>(gen->GetAuxiliary());
     const auto* registrator = engine->GetPropertyRegistrator(entity_name);
     const auto* prop = registrator->GetPropertyByIndex(prop_enum);
-    FO_RUNTIME_ASSERT(prop);
+    FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
     is_disabled = prop->IsDisabled();
     is_virtual = prop->IsVirtual();
@@ -835,7 +841,7 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityAccessAndNonDestroyed(entity);
     const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(method.Call);
+    FO_VERIFY_AND_THROW(method.Call, "Missing required method call");
 
     ScriptGenericCall(gen, true, [&](FuncCallData& call) { method.Call(call); });
 }
@@ -845,10 +851,10 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* engine = GetGameEngine(gen->GetEngine());
-    FO_RUNTIME_ASSERT(engine);
+    FO_VERIFY_AND_THROW(engine, "Missing required engine");
 
     const auto& method = *cast_from_void<const MethodDesc*>(gen->GetAuxiliary());
-    FO_RUNTIME_ASSERT(method.Call);
+    FO_VERIFY_AND_THROW(method.Call, "Missing required method call");
 
     ScriptGenericCall(gen, false, [&](FuncCallData& base_call) {
         FuncCallData call = base_call;
@@ -902,11 +908,11 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     const auto return_type_id = func->GetReturnTypeId();
     const auto* return_type = return_type_id != AngelScript::asTYPEID_VOID ? func->GetEngine()->GetTypeInfoById(return_type_id) : nullptr;
-    FO_RUNTIME_ASSERT(return_type_id == AngelScript::asTYPEID_VOID || (return_type != nullptr && return_type->GetName() == string_view("EventResult")));
+    FO_VERIFY_AND_THROW(return_type_id == AngelScript::asTYPEID_VOID || (return_type != nullptr && return_type->GetName() == string_view("EventResult")), "Entity event callback has unsupported return type", return_type_id);
     const auto& priority = *cast_from_void<Entity::EventPriority*>(gen->GetAddressOfArg(1));
 
     const auto* func_desc = IndexScriptFunc(func);
-    FO_RUNTIME_ASSERT(func_desc->Call);
+    FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
     Entity::EventCallbackData event_data;
 
@@ -934,6 +940,7 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
     auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (entity->IsDestroyed()) {
         return;
@@ -949,6 +956,7 @@ static void EntityEvent_UnsubscribeAll(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (entity->IsDestroyed()) {
         return;
@@ -964,6 +972,7 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
 
+    // May call on unsynced entity
     // May call on destroyed entity
     if (!entity->IsDestroyed() && entity->HasEventCallbacks(event.Name)) {
         ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
@@ -1323,10 +1332,10 @@ void RegisterAngelScriptEntity(AngelScript::asIScriptEngine* as_engine)
             int32_t registered_id = -1;
 
             if (method.GlobalGetter) {
-                FO_RUNTIME_ASSERT(type_name.as_str() == "Game");
-                FO_RUNTIME_ASSERT(method.Getter);
-                FO_RUNTIME_ASSERT(!method.Setter);
-                FO_RUNTIME_ASSERT(method.Args.empty());
+                FO_VERIFY_AND_THROW(type_name.as_str() == "Game", "Global property access is bound to a non-Game type");
+                FO_VERIFY_AND_THROW(method.Getter, "Missing required method getter");
+                FO_VERIFY_AND_THROW(!method.Setter, "Method setter is already set");
+                FO_VERIFY_AND_THROW(method.Args.empty(), "Method arguments must be empty before this operation");
 
                 const string getter_decl = strex("{} get_{}()", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), method.Name);
                 registered_id = as_engine->RegisterGlobalFunction(getter_decl.c_str(), FO_SCRIPT_GENERIC(Entity_GlobalMethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method));

@@ -619,6 +619,10 @@ FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, string_view langN
 ///@ ExportMethod
 FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textKey, int32_t skipCount = 0)
 {
+    if (skipCount < 0) {
+        throw ScriptException("Skip count arg must not be negative", skipCount);
+    }
+
     return client->GetCurLang().GetText(textKey, numeric_cast<size_t>(skipCount));
 }
 
@@ -655,7 +659,7 @@ FO_SCRIPT_API void Client_Game_Preload3dFiles(ClientEngine* client, readonly_vec
 {
 #if FO_ENABLE_3D
     auto* model_spr_factory = dynamic_cast<ModelSpriteFactory*>(client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)));
-    FO_RUNTIME_ASSERT(model_spr_factory);
+    FO_VERIFY_AND_THROW(model_spr_factory, "Missing model sprite factory");
 
     for (const auto& fname : fnames) {
         model_spr_factory->GetModelMngr()->PreloadModel(fname);
@@ -1274,12 +1278,43 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveScreenshot(ClientEngine* client, string_view filePath)
 {
-    ignore_unused(client);
-    ignore_unused(filePath);
+    if (filePath.empty()) {
+        throw ScriptException("Screenshot file path is empty");
+    }
 
-    throw NotImplementedException(FO_LINE_STR);
+    auto* main_rt = client->SprMngr.GetMainRenderTarget();
 
-    // client->SprMngr.SaveTexture(nullptr, strex(filePath).formatPath(), true);
+    if (main_rt == nullptr) {
+        throw ScriptException("SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
+    }
+
+    auto* texture = main_rt->GetTexture();
+    const auto size = texture->Size;
+    auto pixels = texture->GetTextureRegion({0, 0}, size);
+
+    if (texture->FlippedHeight) {
+        const auto width = numeric_cast<size_t>(size.width);
+        vector<ucolor> row_buf(width);
+
+        for (int32_t y = 0; y < size.height / 2; y++) {
+            const auto top = numeric_cast<size_t>(y) * width;
+            const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
+            MemCopy(row_buf.data(), pixels.data() + top, width * sizeof(ucolor));
+            MemCopy(pixels.data() + top, pixels.data() + bottom, width * sizeof(ucolor));
+            MemCopy(pixels.data() + bottom, row_buf.data(), width * sizeof(ucolor));
+        }
+    }
+
+    const auto path = strex(filePath).format_path().str();
+    const auto dir = strex(path).extract_dir().str();
+
+    if (!dir.empty()) {
+        if (!fs_create_directories(dir)) {
+            throw ScriptException("Can't create directory for screenshot", filePath);
+        }
+    }
+
+    WriteSimpleTga(path, size, std::move(pixels));
 }
 
 ///@ ExportMethod
@@ -1387,6 +1422,19 @@ FO_SCRIPT_API void Client_Game_SetUserConfig(ClientEngine* client, readonly_vect
 FO_SCRIPT_API void Client_Game_SetMousePos(ClientEngine* client, ipos32 pos)
 {
     client->SprMngr.SetMousePosition(pos);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SetForcedMousePos(ClientEngine* client, ipos32 pos)
+{
+    client->ForcedMousePos = pos;
+    client->HasForcedMousePos = true;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_ClearForcedMousePos(ClientEngine* client)
+{
+    client->HasForcedMousePos = false;
 }
 
 ///@ ExportMethod

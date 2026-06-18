@@ -159,7 +159,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_owner);
+    FO_VERIFY_AND_THROW(_owner, "Missing required owner");
 
     _bindHost = "0.0.0.0";
 
@@ -190,7 +190,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
     }
 
     const bool sockets_startup = net_sockets::startup();
-    FO_RUNTIME_ASSERT(sockets_startup);
+    FO_VERIFY_AND_THROW(sockets_startup, "Missing required sockets startup");
 
     constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
@@ -294,7 +294,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     FO_STACK_TRACE_ENTRY();
 
     auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     if (reason == AngelScriptContextSetupReason::Create) {
         int32_t as_result = 0;
@@ -304,7 +304,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     else if (reason == AngelScriptContextSetupReason::Request) {
         if (ctx_ext->Parent != nullptr) {
             auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
-            FO_RUNTIME_ASSERT(parent_ctx_ext);
+            FO_VERIFY_AND_THROW(parent_ctx_ext, "Missing required parent context ext");
 
             ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::In ? DebuggerStepMode::In : DebuggerStepMode::None;
         }
@@ -312,7 +312,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     else if (reason == AngelScriptContextSetupReason::Return) {
         if (ctx_ext->Parent != nullptr) {
             auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
-            FO_RUNTIME_ASSERT(parent_ctx_ext);
+            FO_VERIFY_AND_THROW(parent_ctx_ext, "Missing required parent context ext");
 
             if (ctx_ext->StepState->Mode == DebuggerStepMode::None) {
                 parent_ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::Out ? DebuggerStepMode::Out : DebuggerStepMode::None;
@@ -1154,7 +1154,7 @@ void DebuggerEndpointServer::AngelScriptLine(AngelScript::asIScriptContext* ctx,
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* debugger = cast_from_void<DebuggerEndpointServer*>(param);
-    FO_RUNTIME_ASSERT(debugger);
+    FO_VERIFY_AND_THROW(debugger, "Missing required debugger");
     debugger->_impl->ProcessLine(ctx);
 }
 

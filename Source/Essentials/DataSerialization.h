@@ -57,7 +57,8 @@ public:
             throw DataReadingException("Unexpected end of buffer");
         }
 
-        T data = *reinterpret_cast<const T*>(_dataBuf.data() + _readPos);
+        T data;
+        MemCopy(&data, _dataBuf.data() + _readPos, sizeof(T));
         _readPos += sizeof(T);
         return data;
     }
@@ -117,7 +118,8 @@ public:
             throw DataReadingException("Unexpected end of buffer");
         }
 
-        T data = *reinterpret_cast<const T*>(_dataBuf.data() + _readPos);
+        T data;
+        MemCopy(&data, _dataBuf.data() + _readPos, sizeof(T));
         _readPos += sizeof(T);
         return data;
     }

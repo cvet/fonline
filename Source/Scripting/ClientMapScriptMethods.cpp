@@ -94,8 +94,8 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(MapView* self, MapSpriteHolder* mapS
     if (mapSpr->Angle != 0) {
         mspr->SetAngle(mapSpr->Angle);
     }
-    if (mapSpr->MapProjection) {
-        mspr->SetMapProjection(true);
+    if (mapSpr->MapProjected) {
+        mspr->SetMapProjected(true);
     }
     if (!no_light) {
         mspr->SetLight(corner, self->GetLightData(), self->GetSize());
@@ -647,6 +647,16 @@ FO_SCRIPT_API ipos32 Client_Map_GetHexScreenPos(MapView* self, mpos hex)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API ipos32 Client_Map_GetHexMapPos(MapView* self, mpos hex)
+{
+    if (!self->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid hex provided");
+    }
+
+    return self->GetHexMapPos(hex);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API fpos32 Client_Map_GetHexScreenPosF(MapView* self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -731,6 +741,26 @@ FO_SCRIPT_API FO_NULLABLE ClientEntity* Client_Map_GetEntityAtScreenPos(MapView*
 FO_SCRIPT_API bool Client_Map_IsHexValid(MapView* self, mpos hex)
 {
     return self->GetSize().is_valid_pos(hex);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Client_Map_GetVisibleHexes(MapView* self)
+{
+    const msize map_size = self->GetSize();
+    vector<mpos> hexes;
+    hexes.reserve(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height));
+
+    for (int32_t hy = 0; hy < map_size.height; hy++) {
+        for (int32_t hx = 0; hx < map_size.width; hx++) {
+            const mpos hex = map_size.from_raw_pos(hx, hy);
+
+            if (self->IsHexToDraw(hex)) {
+                hexes.emplace_back(hex);
+            }
+        }
+    }
+
+    return hexes;
 }
 
 ///@ ExportMethod
@@ -826,18 +856,6 @@ FO_SCRIPT_API ItemView* Client_Map_CreateLocalItem(MapView* self, hstring pid, m
 FO_SCRIPT_API void Client_Map_SetHiddenRoof(MapView* self, mpos hex)
 {
     self->SetHiddenRoof(hex);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SwitchShowTrack(MapView* self)
-{
-    self->SwitchShowTrack();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SwitchShowHex(MapView* self)
-{
-    self->SwitchShowHex();
 }
 
 FO_END_NAMESPACE

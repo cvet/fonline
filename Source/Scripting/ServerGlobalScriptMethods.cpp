@@ -487,7 +487,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_ve
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId);
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -495,7 +495,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto)
 {
     auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId());
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -503,7 +503,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLo
 FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -523,7 +523,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -537,7 +537,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLo
     }
 
     auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -557,7 +557,7 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
     }
 
     auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
     return loc;
 }
 
@@ -1252,7 +1252,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, hstri
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, ProtoCritter* proto)
 {
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     vector<Critter*> result;
 
@@ -1294,16 +1294,16 @@ FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEn
 ///@ ExportMethod
 FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ServerEngine* server, ProtoMap* proto)
 {
-    FO_RUNTIME_ASSERT(proto);
+    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
     const auto* static_map = server->MapMngr.GetStaticMap(proto);
     vector<ProtoCritter*> proto_critters;
     proto_critters.reserve(static_map->CritterBillets.size());
 
     for (const pair<ident_t, refcount_ptr<Critter>>& billet : static_map->CritterBillets) {
-        FO_RUNTIME_ASSERT(billet.second);
+        FO_VERIFY_AND_THROW(billet.second, "Missing required billet second");
         const auto* proto_cr = dynamic_cast<const ProtoCritter*>(billet.second->GetProto());
-        FO_RUNTIME_ASSERT(proto_cr);
+        FO_VERIFY_AND_THROW(proto_cr, "Missing required prototype critter");
         proto_critters.emplace_back(const_cast<ProtoCritter*>(proto_cr));
     }
 
@@ -1466,7 +1466,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view c
 FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ServerEntity* entities[] = {entity};
     ctx->SyncEntities(entities);
 }
@@ -1475,7 +1475,7 @@ FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity)
 FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity1, ServerEntity* entity2)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ServerEntity* entities[] = {entity1, entity2};
     ctx->SyncEntities(entities);
 }
@@ -1484,7 +1484,7 @@ FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity1,
 FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, ServerEntity* entity1, ServerEntity* entity2, ServerEntity* entity3)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ServerEntity* entities[] = {entity1, entity2, entity3};
     ctx->SyncEntities(entities);
 }
@@ -1504,15 +1504,23 @@ FO_SCRIPT_API void Server_Game_Sync(ServerEngine* server, readonly_vector<Server
     }
 
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->SyncEntities(non_null);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncEnsure(ServerEngine* server, ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    ctx->EnsureEntitySynced(entity);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->Release();
 }
 
@@ -1520,15 +1528,23 @@ FO_SCRIPT_API void Server_Game_SyncRelease(ServerEngine* server)
 FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     return ctx->GetHeldEntities();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsEntityLocked(ServerEngine* server, FO_NULLABLE ServerEntity* entity)
+{
+    auto* ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    return IsEntityAccessValid(entity);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Lock(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->LockSingleton(server->GetEntityLock());
 }
 
@@ -1536,7 +1552,7 @@ FO_SCRIPT_API void Server_Game_Lock(ServerEngine* server)
 FO_SCRIPT_API void Server_Game_Unlock(ServerEngine* server)
 {
     auto* ctx = server->GetCurrentSyncContext();
-    FO_RUNTIME_ASSERT(ctx);
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->UnlockSingleton(server->GetEntityLock());
 }
 

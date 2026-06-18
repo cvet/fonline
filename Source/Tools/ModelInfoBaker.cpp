@@ -106,6 +106,7 @@ struct BakerModelDescription
 
     string Model {};
     bool DisableAnimationInterpolation {};
+    bool DisableBackwardAnim {};
     bool ShadowDisabled {};
     int32_t DrawWidth {};
     int32_t DrawHeight {};
@@ -224,7 +225,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_context->BakedFiles);
+    FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
 
     // The both-sides ModelAnimInfo pack emits a single ConfigFile of per-model animation cycle durations
     // (read server-side via Game.ReadConfigSection); the full model-info binary stays client-only in CrittersArt.
@@ -732,6 +733,9 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     }
     else if (token == "DisableAnimationInterpolation") {
         description.DisableAnimationInterpolation = true;
+    }
+    else if (token == "DisableBackwardAnim") {
+        description.DisableBackwardAnim = true;
     }
     else if (token == "RotationBone") {
         description.RotationBone = TakeModelDescriptionToken(tokens, index, token, fname, line);
@@ -1457,6 +1461,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
 
     BakerModelDescriptionCut::WriteString(writer, Model);
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
+    writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
     writer.Write<int32_t>(DrawWidth);
     writer.Write<int32_t>(DrawHeight);

@@ -924,6 +924,7 @@ class Packager:
 			'--preload',
 			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
 			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
+			'--lz4',
 		]
 		log('Call emscripten packager:')
 		for arg in packager_args:

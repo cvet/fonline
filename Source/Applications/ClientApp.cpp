@@ -222,7 +222,7 @@ static auto RunReloadedRuntime(int32_t argc, char** argv, const HostClientRuntim
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!previous.RequestedRuntimePath.empty());
+    FO_VERIFY_AND_THROW(!previous.RequestedRuntimePath.empty(), "Client runtime host received a reload result without a requested runtime path", previous.LoadedBuildHash, previous.RequestedCompatibilityVersion);
 
     WriteLog("Client runtime host: starting reload from build {} to {} with compatibility {}", previous.LoadedBuildHash, previous.RequestedRuntimePath, previous.RequestedCompatibilityVersion);
 
