@@ -141,8 +141,10 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
+    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
+    void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
@@ -165,6 +167,15 @@ public:
         string result;
         uint32_t len = 0;
         Pop(&len, sizeof(len));
+
+        // A declared string can never be longer than the bytes still buffered; reject before allocating
+        const auto unread = GetUnreadSize();
+
+        if (len > unread) {
+            ResetBuf();
+            throw NetBufferException("String length exceeds remaining buffer", len, unread);
+        }
+
         result.resize(len);
         Pop(result.data(), len);
         return result;
@@ -185,6 +196,7 @@ private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
 
     size_t _bufReadPos {};
+    size_t _maxMsgLen {};
 };
 
 FO_END_NAMESPACE

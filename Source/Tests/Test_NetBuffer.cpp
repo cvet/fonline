@@ -194,6 +194,42 @@ TEST_CASE("NetBuffer")
         CHECK(in_buf.GetDataSize() == 0);
         CHECK(in_buf.GetReadPos() == 0);
     }
+
+    SECTION("StringLengthExceedingBufferThrowsBeforeAllocating")
+    {
+        // A client-declared string length larger than the bytes actually buffered must be rejected
+        // before the resize, so a tiny message cannot amplify into a multi-GB allocation
+        NetInBuffer in_buf {8};
+        const uint32_t bogus_len = 0xFFFFFFFF;
+        in_buf.AddData({reinterpret_cast<const uint8_t*>(&bogus_len), sizeof(bogus_len)});
+
+        CHECK_THROWS_AS(in_buf.Read<string>(), NetBufferException);
+        CHECK(in_buf.GetDataSize() == 0);
+        CHECK(in_buf.GetReadPos() == 0);
+    }
+
+    SECTION("MaxMsgLenRejectsOversizedMessage")
+    {
+        NetOutBuffer out_buf {8};
+        out_buf.StartMsg(NetMessage::Ping);
+        out_buf.Write<uint32_t>(0);
+        out_buf.EndMsg();
+        const auto data = out_buf.GetData();
+
+        NetInBuffer in_buf {8};
+        in_buf.SetMaxMsgLen(data.size() - 1);
+        in_buf.AddData(data);
+
+        CHECK_THROWS_AS(in_buf.NeedProcess(), UnknownMessageException);
+        CHECK(in_buf.GetDataSize() == 0);
+
+        // The same message is accepted when the cap admits it
+        NetInBuffer in_buf_ok {8};
+        in_buf_ok.SetMaxMsgLen(data.size());
+        in_buf_ok.AddData(data);
+        CHECK(in_buf_ok.NeedProcess());
+        CHECK(in_buf_ok.ReadMsg() == NetMessage::Ping);
+    }
 }
 
 FO_END_NAMESPACE

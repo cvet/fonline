@@ -1829,7 +1829,17 @@ void ServerEngine::ProcessPlayer(Player* player)
         return;
     }
 
+    // Bound the messages drained per job pass so one flooding connection cannot monopolize a worker
+    // thread (the pool is shared with world jobs). PlayerJob reschedules periodically and wakes on
+    // new data, so any leftover buffered messages are processed on the next pass.
+    const auto max_per_pass = Settings.MaxMessagesPerProcessPass;
+    int32_t processed_msgs = 0;
+
     while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
+        if (max_per_pass != 0 && processed_msgs >= max_per_pass) {
+            break;
+        }
+
         auto in_buf = connection->ReadBuf();
 
         if (!in_buf->NeedProcess()) {
@@ -1872,6 +1882,8 @@ void ServerEngine::ProcessPlayer(Player* player)
         in_buf->ShrinkReadBuf();
 
         connection->RegisterActivity(GameTime.GetFrameTime());
+
+        processed_msgs++;
     }
 }
 
@@ -4309,8 +4321,9 @@ void ServerEngine::Process_RemoteCall(Player* player)
     const auto remote_call_name = in_buf->Read<hstring>(Hashes);
     const auto remote_call_data_size = in_buf->Read<int32_t>();
 
-    if (remote_call_data_size < 0) {
-        throw GenericException("Invalid data size", remote_call_data_size);
+    // The payload can never be larger than the bytes still buffered; reject before allocating
+    if (remote_call_data_size < 0 || numeric_cast<size_t>(remote_call_data_size) > in_buf->GetUnreadSize()) {
+        throw GenericException("Invalid remote call data size", remote_call_data_size);
     }
 
     vector<uint8_t> remote_call_data;

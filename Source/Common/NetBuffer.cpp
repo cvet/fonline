@@ -311,10 +311,26 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
     FO_STACK_TRACE_ENTRY();
 
     const auto data_count = Read<uint16_t>();
+
+    // Each entry carries at least its uint32 size prefix, so the count can never exceed unread/4; reject before allocating
+    if (data_count > GetUnreadSize() / sizeof(uint32_t)) {
+        ResetBuf();
+        throw NetBufferException("Property data count exceeds remaining buffer", data_count, GetUnreadSize());
+    }
+
     props_data.resize(data_count);
 
     for (uint16_t i = 0; i < data_count; i++) {
         const auto data_size = Read<uint32_t>();
+
+        // A declared block can never be longer than the bytes still buffered; reject before allocating
+        const auto unread = GetUnreadSize();
+
+        if (data_size > unread) {
+            ResetBuf();
+            throw NetBufferException("Property data size exceeds remaining buffer", data_size, unread);
+        }
+
         props_data[i].resize(data_size);
         Pop(props_data[i].data(), data_size);
     }
@@ -392,6 +408,12 @@ auto NetInBuffer::NeedProcess() -> bool
     if (msg_len < sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage)) {
         ResetBuf();
         throw UnknownMessageException("Invalid message length", msg_len);
+    }
+
+    // Reject an oversized message at the header so the receive buffer never accumulates the whole payload
+    if (_maxMsgLen != 0 && msg_len > _maxMsgLen) {
+        ResetBuf();
+        throw UnknownMessageException("Message length exceeds maximum", msg_len, _maxMsgLen);
     }
 
     return _bufReadPos + msg_len <= _bufEndPos;

@@ -92,6 +92,9 @@ FIXED_SETTING(bool, ServerNetwork, RejectUdpConnections, false); // If true, UDP
 FIXED_SETTING(bool, ServerNetwork, UpdateFilesInMemory, false); // If true, updater files are served from memory, otherwise from disk
 FIXED_SETTING(int32_t, ServerNetwork, ClientPingTime, 10000); // Client ping time in milliseconds
 FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivity disconnect time in milliseconds
+FIXED_SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
+FIXED_SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
+FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();

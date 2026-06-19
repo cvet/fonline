@@ -62,6 +62,17 @@ Important constants:
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
+## Inbound hardening (untrusted client → server)
+
+The server treats all inbound bytes as hostile. Two layers guard against resource-exhaustion and malformed input:
+
+- **Length-before-allocation rule.** Any client-declared length/count must be validated against the bytes actually remaining in the buffer *before* a `resize()`. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message can no longer amplify into a multi-GB allocation. Hand-rolled reads that pop a size and then `resize()` (e.g. the server's remote-call payload read) must apply the same `GetUnreadSize()` precheck. A declared value can never legitimately exceed the unread bytes, so this never rejects a conforming client and therefore does **not** require a compatibility-version bump.
+- **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
+- **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
+- **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
+
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, non-negative sizes, and enum/hash/proto resolution. It does not cap maximum string length or element count, so length/flood ceilings live in the buffer/transport layer above.
+
 ## Hashes
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.

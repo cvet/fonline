@@ -247,6 +247,13 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
         return;
     }
 
+    // Bound the out-of-order reorder window: drop payloads too far ahead of the next expected
+    // sequence so a peer that never sends the in-order packet cannot grow _receivedPackets without
+    // limit. The sender retransmits dropped packets, so an in-window gap still reassembles.
+    if (_options.MaxReorderAhead != 0 && packet.Sequence - _nextIncomingSequence > _options.MaxReorderAhead) {
+        return;
+    }
+
     if (_receivedPackets.count(packet.Sequence) == 0) {
         _receivedPackets.emplace(packet.Sequence, vector<uint8_t>(packet.Payload.begin(), packet.Payload.end()));
         RebuildAckBits();

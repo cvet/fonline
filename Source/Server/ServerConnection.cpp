@@ -125,7 +125,12 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
         WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
         AsyncReceiveData({});
     };
+
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
+
+    if (_settings->MaxMessageSize != 0) {
+        _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
+    }
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 }

@@ -222,6 +222,7 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
     options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
     options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
+    options.MaxReorderAhead = numeric_cast<uint32_t>(std::max(_settings->MaxUdpReorderAhead, 0));
     return options;
 }
 
