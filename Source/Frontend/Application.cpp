@@ -2978,12 +2978,10 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
 
     SDL_MessageBoxButtonData exit_button;
     SDL_zero(exit_button);
-    exit_button.buttonID = 2;
+    exit_button.buttonID = 3;
     exit_button.text = "Exit";
-    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
-    exit_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
 
-    const SDL_MessageBoxButtonData buttons_with_ignore[] = {copy_button, ignore_all_button, ignore_button};
+    const SDL_MessageBoxButtonData buttons_with_ignore[] = {copy_button, ignore_all_button, ignore_button, exit_button};
     const SDL_MessageBoxButtonData buttons_with_exit[] = {copy_button, exit_button};
 
     SDL_MessageBoxData data;
@@ -2991,7 +2989,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
     data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
     data.title = title;
     data.message = verb_message.c_str();
-    data.numbuttons = fatal_error ? 2 : 3;
+    data.numbuttons = fatal_error ? 2 : 4;
     data.buttons = fatal_error ? buttons_with_exit : buttons_with_ignore;
 
     int32_t buttonid = 0;
@@ -3002,6 +3000,12 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
         else if (buttonid == 1) {
             scoped_lock locker {ignore_entries_locker};
             ignore_entries.emplace(verb_message);
+            break;
+        }
+        else if (buttonid == 3) {
+            if (App) {
+                App->RequestQuit(false);
+            }
             break;
         }
         else {
