@@ -51,6 +51,10 @@ Default behaviour is build in current directory plus `Workspace`.
 
 Optional explicit Android SDK and NDK overrides for BuildTools. If not set, BuildTools uses prepared workspace locations and then the system `/usr/lib/android-sdk` fallback on Linux when available.
 
+#### FO_CLANG_FORMAT
+
+Optional explicit path to the `clang-format` binary used by `buildtools.py format-source`. The binary must still satisfy the version-20 gate. When unset, BuildTools searches the system `PATH` for `clang-format-20` then `clang-format`. Embedding projects use this to point the engine source formatter at a bundled binary instead of a system install (Last Frontier passes its bundled `Tools/Formatter/clang-format-20.exe` on Windows).
+
 ## Shared workspace preparation
 
 Shared workspace parts are prepared through `buildtools.py` and wrapped by the platform-specific scripts.
@@ -179,6 +183,10 @@ Android release APK packaging signs the artifact. Configure signing through `And
 APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace output tree instead of the shared `~/.gradle`, so parallel CI package jobs do not contend for global Gradle caches.
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
+
+## Source formatting
+
+`buildtools.py format-source` formats the engine `Source/` tree with `clang-format`. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. This keeps the command usable both from CI (clang-format-20 on `PATH`) and from an embedding project that supplies a bundled binary through `FO_CLANG_FORMAT`.
 
 ## Pipeline documentation
 

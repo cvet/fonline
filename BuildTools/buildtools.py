@@ -1740,8 +1740,14 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 
 def discover_clang_format() -> str:
-	for executable in ('clang-format-20', 'clang-format'):
-		path = shutil.which(executable)
+	# An embedding project can point BuildTools at a specific clang-format binary
+	# (e.g. a bundled one) through FO_CLANG_FORMAT; it still has to satisfy the
+	# version-20 gate below. When unset, fall back to the system PATH lookup.
+	override = os.environ.get('FO_CLANG_FORMAT', '').strip()
+	candidates = [override] if override else []
+	candidates.extend(shutil.which(executable) for executable in ('clang-format-20', 'clang-format'))
+
+	for path in candidates:
 		if not path:
 			continue
 
@@ -1754,7 +1760,7 @@ def discover_clang_format() -> str:
 		if match is not None and int(match.group(1)) == 20:
 			return path
 
-	raise SystemExit('clang-format version 20 not found in system PATH')
+	raise SystemExit('clang-format version 20 not found (set FO_CLANG_FORMAT or install clang-format-20 on PATH)')
 
 
 def read_text_strip_bom(path: Path) -> tuple[str, bool]:
