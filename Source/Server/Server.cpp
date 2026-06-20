@@ -1008,44 +1008,58 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearTimeEvents (entityCount={})", EntityMngr.GetEntitiesCount());
     TimeEventMngr.ClearTimeEvents();
 
-    // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
-    // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
-    // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
-    // strand it and hang WaitIdle, so the main worker is always torn down last.
-    WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
-    TimeEventMngr.ClearDispatcherHooks();
-    WriteLog("Shutdown stage: workerPool.Clear");
-    _workerPool->Clear();
+    // `_workerPool` is created at the end of InitMetadataJob — after InitStorageJob connected the
+    // database and game time was synchronized. Its presence is therefore the marker that startup
+    // reached a running state. If a mandatory startup job aborted earlier (e.g. the database was
+    // unreachable and InitStorageJob threw), the pool is null, `DbStorage` is unconnected and game
+    // time is unsynchronized; Shutdown must still be safe to call on that half-initialized engine —
+    // both when an admin quits it and when the host fails fast on the start error itself. Without
+    // this guard the drain below dereferenced a null pool (SIGSEGV in WorkerPool::Clear, locking the
+    // pool mutex through a null `this`) and the database flushes further down tripped their
+    // connected/synchronized invariants. Networking is already stopped above, and with no world or
+    // players the remaining teardown is a no-op.
+    const bool reached_running_state = _workerPool != nullptr;
 
-    // Graceful drain: give in-flight worker jobs a grace window to finish on their own. A job parked
-    // inside `EntityLock::Acquire` still counts as active, so `WaitIdle` blocks on it. If the drain
-    // does not complete within `Server.ShutdownGraceMs`, wake every parked waiter via
-    // `AbortPendingWaiters` — each wakes with `STATE_ABORTED` and throws `EntityLockWaitAbortedException`,
-    // which unwinds its job (the `WorkerPool` run loop swallows it because shutdown is in progress).
-    // Nothing converts the abort into a return value; the exception alone stops the work.
-    WriteLog("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings.ShutdownGraceMs);
+    if (reached_running_state) {
+        // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
+        // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
+        // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
+        // strand it and hang WaitIdle, so the main worker is always torn down last.
+        WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
+        TimeEventMngr.ClearDispatcherHooks();
+        WriteLog("Shutdown stage: workerPool.Clear");
+        _workerPool->Clear();
 
-    if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings.ShutdownGraceMs})) {
-        WriteLog("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
+        // Graceful drain: give in-flight worker jobs a grace window to finish on their own. A job parked
+        // inside `EntityLock::Acquire` still counts as active, so `WaitIdle` blocks on it. If the drain
+        // does not complete within `Server.ShutdownGraceMs`, wake every parked waiter via
+        // `AbortPendingWaiters` — each wakes with `STATE_ABORTED` and throws `EntityLockWaitAbortedException`,
+        // which unwinds its job (the `WorkerPool` run loop swallows it because shutdown is in progress).
+        // Nothing converts the abort into a return value; the exception alone stops the work.
+        WriteLog("Shutdown stage: workerPool.WaitIdle (graceMs={})", Settings.ShutdownGraceMs);
 
-        const auto entities = EntityMngr.GetEntities();
-        size_t aborted_locks = 0;
+        if (!_workerPool->WaitIdle(std::chrono::milliseconds {Settings.ShutdownGraceMs})) {
+            WriteLog("Shutdown stage: drain exceeded grace, AbortPendingWaiters on entity locks");
 
-        for (const auto& entity : entities) {
-            if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
-                lock->AbortPendingWaiters();
-                aborted_locks++;
+            const auto entities = EntityMngr.GetEntities();
+            size_t aborted_locks = 0;
+
+            for (const auto& entity : entities) {
+                if (auto* lock = entity->GetEntityLock(); lock != nullptr) {
+                    lock->AbortPendingWaiters();
+                    aborted_locks++;
+                }
             }
+
+            WriteLog("Shutdown stage: AbortPendingWaiters complete (locks={})", aborted_locks);
+
+            WriteLog("Shutdown stage: workerPool.WaitIdle (post-abort)");
+            _workerPool->WaitIdle();
         }
 
-        WriteLog("Shutdown stage: AbortPendingWaiters complete (locks={})", aborted_locks);
-
-        WriteLog("Shutdown stage: workerPool.WaitIdle (post-abort)");
-        _workerPool->WaitIdle();
+        WriteLog("Shutdown stage: workerPool.reset");
+        _workerPool.reset();
     }
-
-    WriteLog("Shutdown stage: workerPool.reset");
-    _workerPool.reset();
 
     WriteLog("Shutdown stage: mainWorker.Clear");
     _mainWorker.Clear();
@@ -1082,13 +1096,19 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: ShutdownBackends");
     ShutdownBackends();
 
-    WriteLog("Shutdown stage: FlushExactEntityId");
-    EntityMngr.FlushExactEntityId();
-    WriteLog("Shutdown stage: FlushExactSyncTime");
-    FlushExactSyncTime();
+    // Persisting the exact entity-id / synchronized-time marks and committing pending writes all
+    // require a connected database and synchronized game time, which only exist once startup reached
+    // the running state (see `reached_running_state` above). After a failed start there is nothing to
+    // persist and `DbStorage` is unconnected, so skip them.
+    if (reached_running_state) {
+        WriteLog("Shutdown stage: FlushExactEntityId");
+        EntityMngr.FlushExactEntityId();
+        WriteLog("Shutdown stage: FlushExactSyncTime");
+        FlushExactSyncTime();
 
-    WriteLog("Shutdown stage: DbStorage.WaitCommitChanges");
-    DbStorage.WaitCommitChanges();
+        WriteLog("Shutdown stage: DbStorage.WaitCommitChanges");
+        DbStorage.WaitCommitChanges();
+    }
 
     // Logined players
     WriteLog("Shutdown stage: disconnect logined players (count={})", EntityMngr.GetPlayersCount());

@@ -444,6 +444,29 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count);
 }
 
+TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
+{
+    // Regression for the cvet-server-1 Staging crash: MongoDB was down, so InitStorageJob threw and
+    // startup aborted before the worker pool, database connection and time-sync were established. A
+    // later quit ran Shutdown(), which dereferenced the null worker pool — SIGSEGV in
+    // WorkerPool::Clear() locking the pool mutex through a null `this`. Shutdown() must be safe to
+    // call on such a partially-initialized engine. An unrecognized DbStorage makes ConnectToDataBase
+    // throw "Wrong storage options", reproducing the same aborted-startup state deterministically.
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
+
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    CHECK_FALSE(startup_error.empty()); // startup must fail, not complete or time out
+    CHECK(server->IsStartingError());
+    CHECK_FALSE(server->IsStarted());
+
+    // The fix under test: tearing down the half-initialized engine must not crash or throw.
+    REQUIRE_NOTHROW(server->Shutdown());
+}
+
 TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 {
     auto settings = MakeServerTestSettings();

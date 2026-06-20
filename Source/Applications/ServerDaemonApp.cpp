@@ -54,7 +54,16 @@ int main(int argc, char** argv)
 
         {
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
-            App->WaitForRequestedQuit();
+
+            while (!App->IsQuitRequested() && !server->IsStartingError()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+            }
+
+            if (server->IsStartingError()) {
+                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                App->RequestQuit(false);
+            }
+
             server->Shutdown();
         }
 

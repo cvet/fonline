@@ -62,11 +62,18 @@ int main(int argc, char** argv)
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;
 
-            if (App->Settings.AutoStartClientOnServer > 0) {
+            if (App->Settings.AutoStartClientOnServer != 0) {
                 ServerWithClientsLoop(server.get(), client_settings, clients);
             }
             else {
-                App->WaitForRequestedQuit();
+                while (!App->IsQuitRequested() && !server->IsStartingError()) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds {10});
+                }
+            }
+
+            if (server->IsStartingError()) {
+                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                App->RequestQuit(false);
             }
 
             for (auto& client : std::exchange(clients, {})) {
@@ -97,7 +104,7 @@ static void ServerWithClientsLoop(ServerEngine* server, vector<unique_ptr<Global
 
     FrameBalancer balancer {false, 0, 100}; // 100 fps
 
-    while (!App->IsQuitRequested()) {
+    while (!App->IsQuitRequested() && !server->IsStartingError()) {
         balancer.StartLoop();
         App->BeginFrame();
 
