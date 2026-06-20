@@ -71,7 +71,7 @@ The server treats all inbound bytes as hostile. Two layers guard against resourc
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
 
-The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, non-negative sizes, and enum/hash/proto resolution. It does not cap maximum string length or element count, so length/flood ceilings live in the buffer/transport layer above.
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, and enum/hash/proto resolution. It does not cap maximum string length or element count, so length/flood ceilings live in the buffer/transport layer above.
 
 ## Hashes
 

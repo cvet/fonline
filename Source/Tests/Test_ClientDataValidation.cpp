@@ -155,6 +155,20 @@ TEST_CASE("ClientDataValidation")
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
 
+    SECTION("Rejects strings with embedded NUL")
+    {
+        // 'a','b','\0','c' is valid UTF-8 but an embedded NUL is never legitimate client text
+        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
+        vector<uint8_t> data;
+        DataWriter writer(data);
+        const uint8_t bytes[] = {'a', 'b', 0x00, 'c'};
+
+        writer.Write<int32_t>(4);
+        writer.WritePtr(bytes, std::size(bytes));
+
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+    }
+
     SECTION("Rejects invalid enum values")
     {
         const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(enum_type)});

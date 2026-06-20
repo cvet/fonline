@@ -91,9 +91,15 @@ void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data,
     const auto& base_type = prop->GetBaseType();
 
     if (prop->IsString()) {
-        if (!strvex(string_view {reinterpret_cast<const char*>(data.data()), data.size()}).is_valid_utf8()) {
+        const string_view str {reinterpret_cast<const char*>(data.data()), data.size()};
+
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("Property string is not valid UTF-8", prop->GetName());
         }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("Property string contains NUL character", prop->GetName());
+        }
+
         return;
     }
 
@@ -231,10 +237,13 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
 
         const size_t str_size = numeric_cast<size_t>(str_len);
-        const char* str = reader.ReadPtr<char>(str_size);
+        const string_view str {reader.ReadPtr<char>(str_size), str_size};
 
-        if (!strvex(string_view {str, str_size}).is_valid_utf8()) {
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("String is not valid UTF-8", type.Name);
+        }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("String contains NUL character", type.Name);
         }
     }
     else if (type.IsHashedString) {
@@ -324,8 +333,14 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
         if (numeric_cast<size_t>(pdata_end - pdata) < str_len) {
             throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
-        if (!strvex(string_view {reinterpret_cast<const char*>(pdata), str_len}).is_valid_utf8()) {
+
+        const string_view str {reinterpret_cast<const char*>(pdata), str_len};
+
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("String in packed property data is not valid UTF-8", owner_name);
+        }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("String in packed property data contains NUL character", owner_name);
         }
 
         pdata += str_len;
