@@ -1,5 +1,6 @@
 #include "catch_amalgamated.hpp"
 
+#include "Application.h"
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "Settings.h"
@@ -150,6 +151,56 @@ TEST_CASE("Settings")
         settings.ApplySubConfigSection("Staging");
 
         CHECK_FALSE(settings.UpdateFilesInMemory);
+    }
+
+    SECTION("ResolveUserWritablePathInstalledExplicitPathCreatesTree")
+    {
+        GlobalSettings settings {false};
+
+        // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
+        // cache + resource-overlay subdirs under it.
+        const auto root = MakeTempSettingsDir("settings_writable_root");
+        ignore_unused(fs_remove_dir_tree(root));
+
+        settings.UserWritablePath = root;
+        ResolveUserWritablePath(settings);
+
+        CHECK(settings.UserWritablePath == fs_resolve_path(root));
+        CHECK(fs_is_dir(settings.UserWritablePath));
+        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources)));
+        CHECK(fs_is_dir(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources)));
+
+        ignore_unused(fs_remove_dir_tree(root));
+    }
+
+    SECTION("ResolveUserWritablePathPortableStaysEmpty")
+    {
+        GlobalSettings settings {false};
+
+        // No explicit path and no installer marker next to the test exe: stay portable (empty).
+        settings.UserWritablePath = "";
+        ResolveUserWritablePath(settings);
+
+        CHECK(settings.UserWritablePath.empty());
+    }
+
+    SECTION("ResolveUserWritablePathFailsafeRevertsToPortable")
+    {
+        GlobalSettings settings {false};
+
+        // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
+        // rather than brick startup.
+        const auto temp_dir = MakeTempSettingsDir("settings_writable_blocker");
+        ignore_unused(fs_remove_dir_tree(temp_dir));
+        const auto blocker = strex(temp_dir).combine_path("blocker").str();
+        REQUIRE(fs_write_file(blocker, string_view {"x"}));
+
+        settings.UserWritablePath = strex(blocker).combine_path("sub").str();
+        ResolveUserWritablePath(settings);
+
+        CHECK(settings.UserWritablePath.empty());
+
+        ignore_unused(fs_remove_dir_tree(temp_dir));
     }
 }
 

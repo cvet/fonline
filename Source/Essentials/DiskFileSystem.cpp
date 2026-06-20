@@ -89,6 +89,19 @@ auto fs_is_relative_path(string_view path) noexcept -> bool
     return path.empty() || std::filesystem::path {fs_make_path(path)}.is_relative();
 }
 
+auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Portable layout, or an already-absolute path: leave it as-is (written next to the exe / as given).
+    if (user_writable_path.empty() || fs_is_absolute_path(relative)) {
+        return string(relative);
+    }
+
+    // Installed layout: layer the relative writable path under the writable root.
+    return strex(user_writable_path).combine_path(relative).str();
+}
+
 auto fs_create_directories(string_view dir) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();

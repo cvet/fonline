@@ -158,6 +158,34 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #endif
 }
 
+auto Platform::GetUserDataBase() noexcept -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != '\0') {
+        return local;
+    }
+    if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != '\0') {
+        return roaming;
+    }
+    return "";
+#elif FO_MAC || FO_IOS
+    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
+        return strex(home).combine_path("Library/Application Support").str();
+    }
+    return "";
+#else
+    if (const char* xdg = std::getenv("XDG_DATA_HOME"); xdg != nullptr && xdg[0] != '\0') {
+        return xdg;
+    }
+    if (const char* home = std::getenv("HOME"); home != nullptr && home[0] != '\0') {
+        return strex(home).combine_path(".local/share").str();
+    }
+    return "";
+#endif
+}
+
 auto Platform::ForkProcess() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
 {
     FO_STACK_TRACE_ENTRY();

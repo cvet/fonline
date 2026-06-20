@@ -50,6 +50,7 @@ auto fs_exists(string_view path) noexcept -> bool;
 auto fs_is_dir(string_view path) noexcept -> bool;
 auto fs_is_absolute_path(string_view path) noexcept -> bool;
 auto fs_is_relative_path(string_view path) noexcept -> bool;
+auto fs_make_writable_path(string_view user_writable_path, string_view relative) -> string;
 auto fs_create_directories(string_view dir) noexcept -> bool;
 auto fs_last_write_time(string_view path) noexcept -> uint64_t;
 auto fs_file_size(string_view path) noexcept -> optional<uint64_t>;

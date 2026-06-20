@@ -88,7 +88,7 @@ static auto RunClientRuntime(int32_t argc, char** argv) noexcept -> ClientRuntim
 static void MainEntry(void* data);
 static void CleanupClientApp() noexcept;
 static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, ClientRuntimeExports& exports) -> void*;
-static auto ApplyStagedBinaryUpdate() -> bool;
+static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool;
 static auto ResolveRequestedClientRuntime(int32_t argc, char** argv) -> RequestedClientRuntime;
 static auto ResolveBundledRuntimePath() -> string;
 static void CaptureRuntimeResultStrings(HostClientRuntimeResult& runtime_result);
@@ -166,7 +166,7 @@ static auto RunClientFromLibrary(int32_t argc, char** argv, const RequestedClien
 
     WriteLog("Client runtime host: preparing DLL {}, compatibility check {}, previous build {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled", requested_runtime.PreviousBuildHash.empty() ? "none" : requested_runtime.PreviousBuildHash);
 
-    if (!ApplyStagedBinaryUpdate()) {
+    if (!ApplyStagedBinaryUpdate(requested_runtime.Path)) {
         WriteLog("Client runtime host: failed to apply staged binary update before loading {}", requested_runtime.Path);
         return std::nullopt;
     }
@@ -374,6 +374,9 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     const auto result = Data->ResourceUpdater->GetResult();
+                    // The updater stages the new runtime under its own binary dir (the writable root
+                    // for an installed client, the exe dir for a portable one); reload that exact path.
+                    const auto staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -382,7 +385,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         Data->ResourcesSynced = true;
                         break;
                     case UpdaterResult::BinariesStaged:
-                        Data->StagedRuntimePath = GetClientRuntimeLivePath();
+                        Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
                         WriteLog("Client runtime embedded: updater staged binaries at {}", Data->StagedRuntimePath);
                         App->RequestQuit();
@@ -491,19 +494,23 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     return runtime_module;
 }
 
-static auto ApplyStagedBinaryUpdate() -> bool
+static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto staged_path = GetClientRuntimeStagingPath();
+    // The runtime being loaded decides where staging lives: the install-dir base DLL on the initial
+    // load, or the writable-root DLL on an installed client's reload. Portable clients use the exe dir
+    // in both passes, so this is identical to the previous exe-dir-only behavior for them.
+    const auto staged_path = MakeClientRuntimeStagingPath(runtime_live_path);
+    const auto binary_dir = strex(runtime_live_path).extract_dir().str();
 
     if (!fs_exists(staged_path)) {
         WriteLog("Client runtime host: no staged DLL at {}", staged_path);
-        PromoteStagedRuntimeCompanions();
+        PromoteStagedRuntimeCompanions(binary_dir);
         return true;
     }
 
-    const auto final_path = GetClientRuntimeLivePath();
+    const auto final_path = string(runtime_live_path);
     const auto backup_path = strex("{}.bak", final_path).str();
     const auto final_exists = fs_exists(final_path);
 
@@ -529,7 +536,7 @@ static auto ApplyStagedBinaryUpdate() -> bool
         fs_remove_file(backup_path);
     }
 
-    PromoteStagedRuntimeCompanions();
+    PromoteStagedRuntimeCompanions(binary_dir);
     WriteLog("Client runtime host: promoted staged DLL to {}", final_path);
 
     return true;

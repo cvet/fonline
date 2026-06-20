@@ -39,6 +39,7 @@
 #endif
 
 #include "Platform.h"
+#include "StringUtils.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -116,6 +117,81 @@ TEST_CASE("Platform")
 #else
         CHECK(snapshot.Cores.empty());
         CHECK(snapshot.ProcessTimeNs == 0);
+#endif
+    }
+
+    SECTION("GetUserDataBaseResolvesFromEnvironment")
+    {
+        const auto save_env = [](const char* name) -> optional<string> {
+            const char* value = std::getenv(name);
+            return value != nullptr ? optional<string> {string(value)} : optional<string> {};
+        };
+
+        const auto set_env = [](const char* name, const char* value) {
+#if FO_WINDOWS
+            _putenv_s(name, value);
+#else
+            if (value[0] != '\0') {
+                setenv(name, value, 1);
+            }
+            else {
+                unsetenv(name);
+            }
+#endif
+        };
+
+        const auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
+
+        // The resolver reads the OS user-data env vars directly (no SDL/shell32). Drive each platform's
+        // primary var and its documented fallback, capture the results, then restore the real env.
+#if FO_WINDOWS
+        const auto saved_local = save_env("LOCALAPPDATA");
+        const auto saved_roaming = save_env("APPDATA");
+
+        const auto local_dir = strex("C:").combine_path("AppData/Local").str();
+        const auto roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
+
+        set_env("LOCALAPPDATA", local_dir.c_str());
+        const auto from_local = Platform::GetUserDataBase();
+
+        set_env("LOCALAPPDATA", "");
+        set_env("APPDATA", roaming_dir.c_str());
+        const auto from_roaming = Platform::GetUserDataBase();
+
+        restore_env("LOCALAPPDATA", saved_local);
+        restore_env("APPDATA", saved_roaming);
+
+        CHECK(from_local == local_dir);
+        CHECK(from_roaming == roaming_dir);
+#elif FO_MAC || FO_IOS
+        const auto saved_home = save_env("HOME");
+        const auto home_dir = strex("/Users").combine_path("test").str();
+
+        set_env("HOME", home_dir.c_str());
+        const auto from_home = Platform::GetUserDataBase();
+
+        restore_env("HOME", saved_home);
+
+        CHECK(from_home == strex(home_dir).combine_path("Library/Application Support").str());
+#else
+        const auto saved_xdg = save_env("XDG_DATA_HOME");
+        const auto saved_home = save_env("HOME");
+
+        const auto xdg_dir = strex("/tmp").combine_path("xdg_data").str();
+        const auto home_dir = strex("/home").combine_path("test").str();
+
+        set_env("XDG_DATA_HOME", xdg_dir.c_str());
+        const auto from_xdg = Platform::GetUserDataBase();
+
+        set_env("XDG_DATA_HOME", "");
+        set_env("HOME", home_dir.c_str());
+        const auto from_home = Platform::GetUserDataBase();
+
+        restore_env("XDG_DATA_HOME", saved_xdg);
+        restore_env("HOME", saved_home);
+
+        CHECK(from_xdg == xdg_dir);
+        CHECK(from_home == strex(home_dir).combine_path(".local/share").str());
 #endif
     }
 }

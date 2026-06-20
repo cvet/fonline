@@ -69,6 +69,13 @@ struct Platform
     // Other: nullopt
     static auto GetExePath() noexcept -> optional<string>;
 
+    // Base directory for per-user writable application data, from environment only (no SDL/shell32).
+    // Windows: %LOCALAPPDATA% (else %APPDATA%)
+    // Mac & iOS: $HOME/Library/Application Support
+    // Linux, Android & other: $XDG_DATA_HOME (else $HOME/.local/share)
+    // Not found: empty string
+    static auto GetUserDataBase() noexcept -> string;
+
     // Linux & Mac: fork
     // Other: warning log message
     static auto ForkProcess() noexcept -> bool;

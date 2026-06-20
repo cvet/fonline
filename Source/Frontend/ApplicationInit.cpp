@@ -40,6 +40,10 @@
 
 FO_BEGIN_NAMESPACE
 
+// File the installer drops next to the exe to mark an installed (non-portable) build. The portable
+// zip has no marker and keeps writing next to the exe.
+static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
+
 unique_ptr<Application> App {};
 
 extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
@@ -85,6 +89,16 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 
     // Load settings
     auto settings = LoadAppSettings(argc, argv);
+
+    // Installed client: the install dir is read-only, so move the log file into the per-user writable
+    // data dir now that settings (and the resolved writable path) are known.
+    if (!settings.UserWritablePath.empty()) {
+        const auto log_path = fs_make_writable_path(settings.UserWritablePath, GetExeLogFileName());
+        WriteLog("Switch log to path '{}'", log_path);
+        LogToFile(log_path, IsEnumSet(flags, AppInitFlags::AppendLogFile));
+        WriteLog("Starting {}", FO_NICE_NAME);
+    }
+
     WriteLog("Version: {}", settings.GameVersion);
 
     // Disable message box on exception if headless window is used
@@ -230,8 +244,19 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    if (fs_is_dir(settings.CacheResources)) {
-        const auto cache = CacheStorage(settings.CacheResources);
+    // Apply command-line settings once before local-config lookup so writable-root overrides (and any
+    // related path knobs) affect the cache path itself. ApplyCommandLine runs again later for normal
+    // precedence over local config.
+    settings.ApplyCommandLine(argc, argv);
+
+    // Resolve the installed-client writable root now that the config is applied, so the local-config
+    // cache below — and all later cache/log/update writes — land in the per-user writable directory.
+    ResolveUserWritablePath(settings);
+
+    const auto cache_dir = fs_make_writable_path(settings.UserWritablePath, settings.CacheResources);
+
+    if (fs_is_dir(cache_dir)) {
+        const auto cache = CacheStorage(cache_dir);
 
         if (cache.HasEntry(LOCAL_CONFIG_NAME)) {
             auto config = ConfigFile(LOCAL_CONFIG_NAME, cache.GetString(LOCAL_CONFIG_NAME));
@@ -242,6 +267,56 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
     settings.ApplyCommandLine(argc, argv);
     settings.ApplyAutoSettings();
     return settings;
+}
+
+void ResolveUserWritablePath(GlobalSettings& settings)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Resolve settings.UserWritablePath to an absolute writable root, or "" to stay portable.
+    string root = string(settings.UserWritablePath);
+
+    if (root.empty()) {
+        // No explicit path: switch to the per-user writable layout only when the installer marker is
+        // present next to the exe; otherwise stay portable.
+        const auto exe_path = Platform::GetExePath();
+
+        if (!exe_path.has_value() || !fs_exists(strex(*exe_path).extract_dir().combine_path(INSTALLED_MARKER_NAME).str())) {
+            settings.UserWritablePath = "";
+            return;
+        }
+
+        root = "*";
+    }
+
+    if (root == "*") {
+        const string base = Platform::GetUserDataBase();
+
+        if (base.empty()) {
+            WriteLog(LogType::Warning, "Client user-writable path requested but no user data dir found; using portable layout");
+            settings.UserWritablePath = "";
+            return;
+        }
+
+        root = strex(base).combine_path(settings.GameName).str();
+    }
+
+    root = fs_resolve_path(root);
+
+    if (!fs_create_directories(root)) {
+        WriteLog(LogType::Warning, "Can't create client user-writable path '{}'; using portable layout", root);
+        settings.UserWritablePath = "";
+        return;
+    }
+
+    settings.UserWritablePath = root;
+
+    // Pre-create the writable cache + resource-overlay subdirs so the cache and the self-update
+    // resource writer never fail on a missing parent directory.
+    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources));
+    fs_create_directories(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources));
+
+    WriteLog("Client user-writable data path: {}", root);
 }
 
 static void PrebakeResources(BakingSettings& settings)

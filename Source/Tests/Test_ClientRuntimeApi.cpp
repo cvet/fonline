@@ -143,7 +143,7 @@ TEST_CASE("ClientRuntimeApi")
         // Both helpers depend on Platform::GetExePath, so the test only validates the
         // structural contract: staging is the live path with a non-empty suffix appended.
         const auto live = GetClientRuntimeLivePath();
-        const auto staging = GetClientRuntimeStagingPath();
+        const auto staging = MakeClientRuntimeStagingPath(live);
 
         CHECK_FALSE(live.empty());
         CHECK_FALSE(staging.empty());

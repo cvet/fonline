@@ -50,8 +50,8 @@ static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _settings {&settings},
     _conn(*_settings),
-    _cache(settings.CacheResources),
-    _binaryDir {GetClientBinaryDir()},
+    _cache(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources)),
+    _binaryDir {settings.UserWritablePath.empty() ? GetClientBinaryDir() : string(settings.UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, _resources, window.GetRender()),
     _sprMngr(settings, window, _resources, _gameTime, _effectMngr, _hashStorage),
@@ -66,6 +66,9 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
     _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
+    if (!settings.UserWritablePath.empty()) {
+        _resources.AddDirSource(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources), false, true, true);
+    }
     if (!_settings->DefaultSplashPack.empty()) {
         _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
     }
@@ -216,7 +219,7 @@ void Updater::GetNextFile()
     FO_STACK_TRACE_ENTRY();
 
     const auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
-    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : string(_settings->ClientResources); };
+    const auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : fs_make_writable_path(_settings->UserWritablePath, _settings->ClientResources); };
     const auto make_temp_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(strex("~{}", f.Name)).str(); };
     const auto make_live_path = [&](const UpdateFile& f) -> string { return strex(file_output_dir(f)).combine_path(f.Name).str(); };
     const auto make_final_path = [&](const UpdateFile& f) -> string {
@@ -378,9 +381,11 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
         AddText(StrConnectionEstablished);
         AddText(StrCheckUpdates);
-        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", CanSelfUpdateNativeModules(GetCurrentUpdatePlatform()) ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
 
-        if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        const bool can_self_update_binaries = CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
+        WriteLog("Client updater: server reported CompatibilityOutdated, native self-update {} for {}", can_self_update_binaries ? "supported" : "unsupported", GetCurrentBinaryUpdateTargetName());
+
+        if (!can_self_update_binaries) {
             _result = UpdaterResult::PlatformUnsupported;
             _fileListReceived = true;
             _conn.Disconnect();
@@ -765,9 +770,16 @@ auto Updater::GetClientBinaryDir() -> string
     }
 }
 
+auto Updater::GetRuntimeLivePath() const -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex("{}{}", strex(_binaryDir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
+}
+
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
     return UpdatePlatform::Windows;
@@ -788,7 +800,7 @@ auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 
 auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
     switch (platform) {
     case UpdatePlatform::Windows:
@@ -811,7 +823,7 @@ auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 
 auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
@@ -886,21 +898,6 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
     }
 }
 
-static auto GetClientRuntimeLibraryExtension() noexcept -> string_view
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-#if FO_WINDOWS
-    return ".dll";
-#elif FO_LINUX
-    return ".so";
-#elif FO_MAC
-    return ".dylib";
-#else
-    return {};
-#endif
-}
-
 auto GetClientRuntimeLivePath() -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -920,22 +917,20 @@ auto GetClientRuntimeLivePath() -> string
     return strex("{}{}", strex(binary_dir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
-auto GetClientRuntimeStagingPath() -> string
+auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex("{}{}", GetClientRuntimeLivePath(), ClientBinaryStagingSuffix).str();
+    return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
 }
 
-void PromoteStagedRuntimeCompanions() noexcept
+void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     try {
-        const auto runtime_live = GetClientRuntimeLivePath();
-        const auto binary_dir = strex(runtime_live).extract_dir().str();
-        const auto runtime_primary_name = strex(runtime_live).extract_file_name().str();
         const auto runtime_name = GetCurrentClientRuntimeLibraryName();
+        const auto runtime_primary_name = strex("{}{}", runtime_name, GetClientRuntimeLibraryExtension()).str();
 
         vector<pair<string, string>> renames;
 
@@ -1010,6 +1005,21 @@ void ShowUpdaterFailure(UpdaterResult result)
     default:
         break;
     }
+}
+
+auto GetClientRuntimeLibraryExtension() noexcept -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return ".dll";
+#elif FO_LINUX
+    return ".so";
+#elif FO_MAC
+    return ".dylib";
+#else
+    return {};
+#endif
 }
 
 FO_END_NAMESPACE

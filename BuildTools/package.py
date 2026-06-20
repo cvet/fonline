@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import glob
 import io
+import json
 import os
+import re
 import shutil
 import stat
 import struct
@@ -1159,8 +1161,85 @@ class Packager:
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
 
+		if self.has_pack('Wix'):
+			self.make_wix_installer()
+
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
+
+	def make_wix_installer(self) -> None:
+		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
+		# the deep-link URI scheme so site login works without the client editing the registry at
+		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
+		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). ADDITIVE and
+		# FAILURE-TOLERANT: any problem (non-Windows-client target, missing WiX/wixl toolset, generator
+		# error) logs a warning and leaves the Raw/Zip artifacts untouched — it never fails the package.
+		# Validated on the Windows build host by the owner (WiX/wixl is not present in headless CI).
+		if self.args.platform != 'Windows' or self.args.target != 'Client':
+			log('Wix: skipped (only the Windows client is packaged as an MSI)')
+			return
+
+		try:
+			scheme = 'lastfrontier'
+			exe_name = self.args.nicename + '.exe'
+			try:
+				version = (self.fomain.mainSection().getStr('Common.GameVersion') or '0.0.0').strip()
+			except Exception:
+				version = '0.0.0'
+			# WiX ProductVersion must be numeric x.y.z[.w]; fall back if the fomain value is non-numeric.
+			if not re.match(r'^\d+(\.\d+){1,3}$', version):
+				version = '0.0.0'
+
+			command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
+			registry_entries = [
+				{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+				 'name': '', 'type': 'string', 'value': 'URL:Last Frontier Protocol', 'key_path': 'yes'},
+				{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+				 'name': 'URL Protocol', 'type': 'string', 'value': '', 'key_path': 'no'},
+				{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
+				 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
+			]
+
+			staged_dir = os.path.basename(self.target_output_path)
+			work_dir = os.path.dirname(self.target_output_path)
+			config = {
+				'product_name': 'Last Frontier',
+				'manufacturer': 'Last Frontier',
+				'name': 'Last Frontier',
+				'name_base': self.args.nicename,
+				'version': version,
+				'comments': 'Last Frontier game client',
+				'installdir': 'LastFrontier',
+				'license_file': '',
+				'upgrade_guid': 'B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D',
+				'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
+				'arch': 64,
+				'registry_entries': registry_entries,
+				'parts': [{'id': 'MainProgram', 'title': 'Last Frontier', 'description': 'Game client', 'staged_dir': staged_dir}],
+			}
+
+			config_path = os.path.join(work_dir, self.args.nicename + '.wix.json')
+			with open(config_path, 'w', encoding='utf-8') as config_file:
+				json.dump(config, config_file)
+
+			# Drop the installed-build marker into the staged payload so the MSI-installed client uses
+			# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
+			# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
+			# portable artifacts (already finalized earlier in finalize_output) stay portable.
+			marker_path = os.path.join(self.target_output_path, 'INSTALLED')
+			try:
+				with open(marker_path, 'w', encoding='utf-8') as marker_file:
+					marker_file.write('installed\n')
+
+				createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
+				log('Wix: building MSI installer', config_path)
+				subprocess.run([sys.executable, createmsi, config_path], cwd=work_dir, check=True)
+				log('Wix: MSI built (registers %s:// URI scheme, installs writable-data marker)' % scheme)
+			finally:
+				if os.path.exists(marker_path):
+					os.remove(marker_path)
+		except Exception as wix_error:  # noqa: BLE001 - additive step must never fail the package
+			log('Wix: MSI build skipped:', repr(wix_error))
 
 	def run(self) -> None:
 		log(f'Make {self.args.target} ({self.args.config}) for {self.args.platform}')

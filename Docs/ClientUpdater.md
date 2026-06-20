@@ -192,7 +192,7 @@ The bundled runtime library name is **derived from the host executable name** at
 
 A runtime that wants to hand control back for reload sets `ResultKind = ReloadRequested` and fills `RequestedRuntimePath`; the host then re-loads with that path. The host does **not** validate the new module's compatibility version against its own built-in `FO_COMPATIBILITY_VERSION` on a reload â€” by definition the just-staged DLL is the carrier of a *new* compat version, so the new module's metadata is the authority.
 
-The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is `GetClientRuntimeLivePath()` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll`). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's reload/startup pass. The host promotes via `GetClientRuntimeStagingPath()` â†’ `GetClientRuntimeLivePath()` rename. `RequestedRuntimePath` in the returned `ClientRuntimeResult` is the post-swap path (`<live>`), not the staging path, because `LoadModule` is called *after* the host applies the swap.
+The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is the updater's binary output path `Updater::GetRuntimeLivePath()` = `<Updater::_binaryDir>/<runtime_name><ext>` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll` for a portable client, or `<UserWritablePath>/LastFrontier.dll` for an installed one). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's reload/startup pass. The host promotes via `MakeClientRuntimeStagingPath(runtime_live_path)` â†’ `runtime_live_path` rename, where `runtime_live_path` is the path the host is about to load — `GetClientRuntimeLivePath()` (the exe-dir base) on the initial load, or the runtime-supplied `RequestedRuntimePath` on a reload. `RequestedRuntimePath` in the returned `ClientRuntimeResult` is the post-swap path (`<live>`), not the staging path, because `LoadModule` is called *after* the host applies the swap.
 
 A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) is staged side-by-side as `<live>.pdb-staging` and usually promotes immediately because PDBs are not held by the loaded runtime module; if it is locked by a debugger or another process, `ApplyStagedBinaryUpdate` retries after the main DLL swap succeeds. The PDB swap is best-effort â€” failure only degrades stack traces, so it never blocks the runtime swap, while the DLL swap remains backup-rename-rollback atomic. The client-side filter accepts a server file whose basename starts with `<runtime_name>.`, so the DLL (`LastFrontier.dll`) and its PDB sibling (`LastFrontier.dll.pdb`) both match and ride the same `UpdateFileTarget::ClientBinaries` channel. **The runtime DLL and its `<live>.pdb` are fetched only together, in binaries mode** (when the DLL is actually being updated) — a client whose DLL is already current does not pull `<live>.pdb` on its own. **The host PDB (`<host_name>.pdb`, e.g. `LastFrontier.pdb`) is also delivered, but the client fetches it only to recover a *missing* local copy and never overwrites a present one.** The host exe is frozen and its PDB is build-specific, so the server's host PDB matches only an up-to-date host: an up-to-date client re-downloads a matching PDB, while an older host's matching local PDB is never clobbered (a non-matching server-build PDB is written only when the local one is absent, where the debugger ignores it by GUID). `accept_binaries` is `_binariesMode || CanSelfUpdateNativeModules(...)`, so host-PDB recovery also works on a normal resource-sync connect.
 
@@ -280,8 +280,57 @@ auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<u
 | `Network.UpdateFileMaxPortionSize` | top-level | Maximum bytes per `UpdateFileData` response. Drives both transfer throughput and per-message memory pressure. Default 1 MB (engine) / 5 MB (this project). |
 | `ServerNetwork.UpdateFilesInMemory` | top-level + `[SubConfig]` | `True` keeps every packaged update file in RAM (low CPU under load). `False` serves from disk on demand (low RAM, more I/O). Public `[SubConfig]`s in this project: `PublicGame = True`, `DailyTest = True`, `Staging = True`. |
 | `Baking.PlatformBinaries` | top-level | Directory the server reads per-target client runtime libraries from, and the packager writes them to. Default `PlatformBinaries`, resolved relative to the server's working directory / package root. |
+| `Client.UserWritablePath` | client | Writable data root for an **installed** client whose install dir is read-only. Empty (default) = **portable** (cache/logs/updates next to the exe). `*` = the per-OS user data dir. Otherwise an explicit absolute path. See the section below. |
 
 There is no auto-detection of memory vs disk mode in C++. Choose explicitly per environment.
+
+## Installed vs portable writable data
+
+A **portable** build writes its cache, log, and self-update files next to the exe — fine for a zip the
+user unpacks anywhere. An **installed** build (MSI in `Program Files`, a package under `/usr/...`) sits
+in a read-only directory, so those writes must go to a per-user writable location instead.
+
+`Client.UserWritablePath` selects the model, resolved at startup by `GlobalSettings::ResolveUserWritablePath()` (`Settings.cpp`, called from `LoadAppSettings`):
+
+- **empty → portable** (default): writable paths stay relative to the exe / working dir (unchanged behaviour).
+- **`*` → per-OS user data dir** (`Platform::GetUserDataBase()` via env, no SDL/shell32 dependency): Windows `%LOCALAPPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_DATA_HOME` or `~/.local/share`, then `/<Common.GameName>`.
+- **explicit path** → that absolute writable root.
+
+Resolution is idempotent, creates the directory + the `Cache`/`<ClientResources>` subdirs, and is
+**fail-safe**: if the dir can't be determined or created it logs a warning and reverts to portable, so a
+bad install config never bricks startup.
+
+What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
+in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
+secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
+patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
+read-only install-dir base as a higher-priority resource source (`Updater.cpp`, `Client.cpp`), so the base
+resources are read from the install dir and patches override from the user dir — and the **self-updated native
+runtime** (see below).
+
+**Native binary self-update for installed builds writes the runtime into the writable root**
+(`Updater.cpp`). The updater's binary output dir (`Updater::_binaryDir`) is `<root>` for an installed client
+and the exe dir for a portable one, so a self-updated runtime lands at `<root>/<runtime_name><ext>` (mirroring
+the install-dir layout, `<exe_dir>/<runtime_name><ext>`) alongside its `-staging` and `<...>.pdb` siblings. It
+is **not** gated off — both portable and installed clients self-update on every platform where
+`CanSelfUpdateNativeModules()` is true.
+
+Because the host resolves and loads the runtime DLL *before* settings (so it cannot compute `<root>` itself —
+`Common.GameName` is only known after `InitApp`), the switch to the writable runtime rides the existing
+**reload channel**: the host always loads the install-dir base DLL first, then the runtime (which has settings,
+so it knows `<root>`) stages/promotes the update under `<root>` and returns `<root>/<runtime_name><ext>` as
+`ClientRuntimeResult::RequestedRuntimePath`; the host reloads exactly that path (`Updater::GetRuntimeLivePath`
+feeds `Data->StagedRuntimePath`). A consequence: an installed client that has self-updated loads its frozen
+install-dir base DLL on every launch, then reloads to the current writable DLL — the updater confirms the
+writable copy by its cached hash, so there is no re-download, just one extra module load/unload (the build-hash
+reload guard sees different builds, so it proceeds). For an installed client the writable DLL is never the
+loaded module (the host loaded the exe-dir base), so the updater's immediate post-download promote always
+succeeds and the host's reload-pass `ApplyStagedBinaryUpdate` is a no-op on the already-promoted file.
+
+**Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
+is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
+marker. The MSI packager adds the marker to the MSI payload only (`package.py::make_wix_installer`, added
+then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay portable).
 
 ## Packaging
 

@@ -60,10 +60,11 @@ extern auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_vi
 extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool;
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 extern auto GetClientRuntimeLivePath() -> string;
-extern auto GetClientRuntimeStagingPath() -> string;
+extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
-extern void PromoteStagedRuntimeCompanions() noexcept;
+extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);
+extern auto GetClientRuntimeLibraryExtension() noexcept -> string_view;
 
 class Updater final
 {
@@ -79,6 +80,7 @@ public:
     [[nodiscard]] auto IsFinished() const noexcept -> bool { return _fileListReceived && _filesToUpdate.empty(); }
     [[nodiscard]] auto IsAborted() const noexcept -> bool { return _aborted; }
     [[nodiscard]] auto GetResult() const noexcept -> UpdaterResult { return _result.value_or(UpdaterResult::Failed); }
+    [[nodiscard]] auto GetRuntimeLivePath() const -> string;
 
     // One iteration of network processing + UI rendering. Returns true once the updater
     // reached a terminal state and the caller should inspect GetResult().

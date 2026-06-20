@@ -59,7 +59,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     FontMngr(SprMngr),
     ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources, window.GetAudio()),
-    Cache(Settings.CacheResources),
+    Cache(fs_make_writable_path(Settings.UserWritablePath, Settings.CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -198,7 +198,7 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     FontMngr(SprMngr),
     ResMngr(Settings, Resources, SprMngr, *this),
     SndMngr(Settings, Resources, window.GetAudio()),
-    Cache(Settings.CacheResources),
+    Cache(fs_make_writable_path(Settings.UserWritablePath, Settings.CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -680,6 +680,12 @@ void ClientEngine::Net_OnInitData()
     if (!data.empty()) {
         FileSystem resources;
         resources.AddDirSource(Settings.ClientResources, false, true, true);
+
+        if (!Settings.UserWritablePath.empty()) {
+            // Installed client: self-update resource patches live in the per-user writable dir; layer
+            // it on top so the up-to-date file wins the size/hash check below.
+            resources.AddDirSource(fs_make_writable_path(Settings.UserWritablePath, Settings.ClientResources), false, true, true);
+        }
 
         auto reader = DataReader(data);
 
