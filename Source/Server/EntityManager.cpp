@@ -1422,13 +1422,14 @@ void EntityManager::UnregisterEntity(ServerEntity* entity, bool delete_from_db)
     // Caller must hold _registryLock (unique) for the erase portion.
     const auto entity_id = entity->GetId();
     const auto type_name_plural = entity->GetTypeNamePlural();
+    const bool is_persistent = entity->IsPersistent();
     FO_VERIFY_AND_THROW(entity_id, "Missing required entity id");
 
     const auto it = _allEntities.find(entity_id);
     FO_STRONG_ASSERT(it != _allEntities.end(), "Lookup failed in all entities");
-    _allEntities.erase(it);
+    _allEntities.erase(it); // This may be the last ptr to the entity, so it may be destroyed here.
 
-    if (delete_from_db && entity->IsPersistent()) {
+    if (delete_from_db && is_persistent) {
         _engine->DbStorage.Delete(type_name_plural, entity_id);
     }
 }

@@ -809,10 +809,13 @@ void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
             }
 
             const bool is_funcdef = type_info->GetFuncdefSignature() != nullptr;
-            const bool is_object = (type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0;
+            // Only funcdef handles and reference-typed object globals store a pointer in the slot. Value-type
+            // object globals keep their instance inline (as do enums/primitives), so reading the slot as a
+            // pointer would over-read the inline value; those are destructed by the standard module teardown.
+            const bool is_ref_object = (type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_info->GetFlags() & AngelScript::asOBJ_REF) != 0;
 
-            if (!is_funcdef && !is_object) {
-                continue; // Enum or other non-pointer global
+            if (!is_funcdef && !is_ref_object) {
+                continue;
             }
 
             auto* slot = static_cast<void**>(mod->GetAddressOfGlobalVar(var_index));
