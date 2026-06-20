@@ -1316,6 +1316,12 @@ FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey t
     return server->GetLangPack().IsTextPresent(textKey);
 }
 
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetTextCount(ServerEngine* server, TextPackKey textKey)
+{
+    return numeric_cast<int32_t>(server->GetLangPack().GetTextCount(textKey));
+}
+
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {

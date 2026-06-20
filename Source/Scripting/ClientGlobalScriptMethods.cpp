@@ -627,9 +627,9 @@ FO_SCRIPT_API string Client_Game_GetText(ClientEngine* client, TextPackKey textK
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint32_t Client_Game_GetTextCount(ClientEngine* client, TextPackKey textKey)
+FO_SCRIPT_API int32_t Client_Game_GetTextCount(ClientEngine* client, TextPackKey textKey)
 {
-    return numeric_cast<uint32_t>(client->GetCurLang().GetTextCount(textKey));
+    return numeric_cast<int32_t>(client->GetCurLang().GetTextCount(textKey));
 }
 
 ///@ ExportMethod
