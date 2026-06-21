@@ -722,6 +722,7 @@ private:
     uint64_t _time {};
     uint64_t _timeFrequency {};
     bool _isTablet {};
+    bool _clientMode {};
     bool _nativeCursorHidden {};
     bool _mouseCanUseGlobalState {};
     int32_t _pendingMouseLeaveFrame {};

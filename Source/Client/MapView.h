@@ -204,7 +204,7 @@ public:
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
 
     void EnableMapperMode();
-    void SetScrollCheck(bool enabled) noexcept { _scrollCheckEnabled = enabled; }
+    void SetScrollCheck(bool enabled);
     void LoadFromFile(string_view map_name, const string& str);
     void LoadStaticData();
     void Process();
@@ -352,6 +352,7 @@ private:
     auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
     void DrawSpritesWithFog(const irect32& draw_area);
+    void DrawFoggedSpriteRange(const irect32& draw_area, DrawOrderType from, DrawOrderType to, ucolor day_color);
     void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
 
     void UpdateTransparentEgg(TransparentEggSlot slot);

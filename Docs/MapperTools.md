@@ -32,11 +32,25 @@ Important source areas:
 - `MapperEngine::ProcessMapperInputEvent()` and cursor helpers — input-to-map interactions.
 - `DrawMainPanelImGui()`, `DrawWorkspaceWindowImGui()`, `DrawContentWindowImGui()`, `DrawMapListWindowImGui()`, `DrawMapWindowImGui()`, `DrawInspectorImGui()`, `DrawHistoryWindowImGui()`, `DrawSettingsWindowImGui()`, and `DrawConsoleImGui()` — major ImGui UI panels.
 - `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()` — map file lifecycle.
+- `UnloadMap()` and `Shutdown()` — map teardown. `MapView`'s destructor enforces empty-state invariants (entity/item lists cleared, render targets released) that only `MapView::DestroySelf()` (invoked via `UnloadMap()`) satisfies. `MapperEngine` overrides `ClientEngine::Shutdown()` (called by `MapperApp` before the engine is destroyed) to unload every still-open map in `LoadedMaps` — `ClientEngine::Shutdown()` alone only cleans the single `_curMap` — and then chains to `ClientEngine::Shutdown()` for the rest of the client teardown (events, network, render target, location/player). Quitting with maps open therefore neither trips the `MapView` invariants nor skips base shutdown.
 - `Source/Scripting/MapperGlobalScriptMethods.cpp` — mapper-side native script helpers exposed through `Mapper_Game_*` methods.
 
 ## Extension points and boundaries
 
 Use mapper script methods for editor automation that acts on mapper-owned state: adding/deleting/moving/selecting entities, adding tiles, loading/unloading/saving/showing maps, resizing maps, and managing mapper tabs. The current method group is mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md).
+
+### Programmatic / AI authoring exports
+
+For building maps from scratch (e.g. an AI authoring pipeline; see the embedding project's `Docs/MapAuthoring.md`), these `Mapper_Game_*` methods complete the authoring loop:
+
+| Method | Purpose |
+|--------|---------|
+| `Game.NewMap(name, width, height)` â†’ `MapView*` | Create a blank map from a synthesized `[ProtoMap]` header (Size + centered WorkHex). The only create-blank-map entry point; wraps the internal `MapperEngine::LoadMapFromText`. |
+| `Game.NewMapFromText(name, text)` â†’ `MapView*` | Create a map from caller-authored `[ProtoMap]` header text (full control of Size/WorkHex/ScrollAxialArea/Outside/FixedTime/â€¦). Pre-checked for a `[ProtoMap]` section. |
+| `Game.SetEntityProperty(entity, propName, valueText)` â†’ `bool` | Set any per-instance property by name/text on a placed item/critter (Dir, MapEntry.*, SpawnData.*, Light*, Locker.*, Offset, InitScript, ContainerId, Ownership, â€¦). Routes through the inspector apply path (`ApplyEntityPropertyText`), so multihex `SameSibling` siblings and offset/anim refresh are handled. Returns false if the text cannot be parsed for the property type. |
+| `Game.SaveMapToPath(map, subDir, name)` | Save `map` into `<MapsRoot>/<subDir>/<name>.fomap` (resolved from the Maps data-source disk root). Refuses path separators in `name` and any `..` traversal. Use this for a sandboxed authoring area (e.g. `Generated`) instead of `SaveMap`, whose fall-back places brand-new names next to an arbitrary existing map. |
+
+Placement (`AddItem`/`AddCritter`) returns the live view; set direction and other per-instance fields with `SetEntityProperty` (or the view's typed property accessors) after the call. These are mapper-only editor methods (no server connection, no network message, no serialized-contract change), so they do not affect client/server compatibility.
 
 Do not put authoritative gameplay policy in mapper helpers. The mapper can inspect and author map content, but server runtime rules, persistence authority, and gameplay validation remain server-side; see [ServerRuntime.md](ServerRuntime.md) and [EntityModel.md](EntityModel.md).
 
@@ -62,11 +76,11 @@ Native helpers in [../Source/Scripting/MapperGlobalScriptMethods.cpp](../Source/
 | `Game.CenterMapperOnHex(hex)` | Snap the camera to a hex (wraps `MapView::InstantScrollTo`) |
 | `Game.CenterMapperOnRawHex(rawHex)` | Snap the camera to a raw hex without validating it against the authored map rectangle. Use this for preview frames whose visual center follows `ScrollAxialArea`, because that area can extend outside normal map hex bounds. |
 | `Game.SetMapperZoom(zoom)` | Set the camera zoom and zoom target (wraps `MapView::InstantZoom`) so warmup frames do not interpolate back to the previous mapper zoom |
-| `Game.CalcMapperFitZoom(viewport)` â†’ `float` | Zoom factor needed for the playable area (`ScrollAxialArea`, axial basis; falls back to hex bounding box) to fit a given viewport in pixels â€” same basis as the engine's `MapView::RefreshMinZoom`. |
+| `Game.CalcMapperFitZoom(viewport)` â†’ `float` | Zoom factor needed for the playable area (`ScrollAxialArea`, axial basis; falls back to hex bounding box) to fit a given viewport in pixels â€” same basis as the engine's `MapView::RefreshMinZoom`. NB: this preview helper returns the RAW fit zoom (so a small area fills the frame); `RefreshMinZoom` branches on mode for a SUB-viewport `ScrollAxialArea`: in the live GAME it DROPS the scroll min-zoom (a blocker-constrained map zooms out normally, the client `Camera.SpritesZoomMin` floor governs) instead of forcing a zoom-in, while in the MAPPER it KEEPS the SAA-fit floor so an editor wheel zoom-out (with `Scroll check` enabled) BUMPS into the playable-area border. |
 | `Game.SetMapperOverlayVisible(visible)` | Toggle mapper-only scroll-block markers. They are drawn by `Scripts/MapperOverlay.fos` through `Map.DrawMapSprite`, so off means clean previews; defaults to on for normal mapper use. |
 | `Game.SetMapperHiddenSpritesVisible(visible)` | Toggle mapper rendering of `AlwaysHideSprite` items. The normal mapper can still show them for editing, while the preview driver disables them by default for client-like captures without invisible blockers / entry markers. |
 | `Game.AddMapperIgnoredItemPids(itemPids)` | Add item prototypes to the active map's mapper ignore list and rebuild the map. The preview driver uses this for explicit special marker suppression (`Entrance`, `Trigger`, `ExitGrid`, blockers, lights). |
-| `Game.SetMapperScrollCheckEnabled(enabled)` | Toggle mapper scroll clamping. The render driver disables it before centering so large/low-zoom captures are not clamped back to `ScrollAxialArea`. |
+| `Game.SetMapperScrollCheckEnabled(enabled)` | Toggle mapper scroll clamping (`MapView::SetScrollCheck`). Switching it ON updates the camera IMMEDIATELY: `RefreshMinZoom` raises the zoom *target* to the scroll min-zoom (SAA-fit), `SetScrollCheck` applies it through `InstantZoom` (which rebuilds the rendered view — writing `SpritesZoom` directly only moves the readout and leaves the view stuck at the old zoom) and re-clamps the scroll offset inside `ScrollAxialArea`. The render driver disables it before centering so large/low-zoom captures are not clamped back to `ScrollAxialArea`. |
 | `Game.SaveMapperScreenshot(filePath)` | Dump the active main render target to a TGA file (RGBA, Y-flipped to match the renderer) via the engine-shared `WriteSimpleTga` helper |
 
 Mapper exit is the common `Game.RequestQuit()` from [CommonGlobalScriptMethods.cpp](../Source/Scripting/CommonGlobalScriptMethods.cpp) â€” no mapper-specific wrapper.
@@ -121,6 +135,8 @@ Or, if you prefer not to touch the CLI on every call, override `Mapper.RenderMap
 **Backend caveat.** `Game.SaveMapperScreenshot` redraws one mapper frame and reads the sprite manager's main render target (`_rtMain`). If a backend is built without a readable main render target, the save path needs an engine-side framebuffer readback before headless screenshots can work there.
 
 **Frame timing.** `OnLoop` fires before `MapperEngine::DrawMapperFrame()` ([../Source/Tools/Mapper.cpp:730-746](../Source/Tools/Mapper.cpp#L730)), so the first `OnLoop` after `OnStart` reads the previous frame's pixels. `Mapper.RenderWarmupFrames=4` skips a handful of ticks so the new map actually paints into the readable surface; bump it if the dumped TGA looks blank or stale.
+
+**Static item animations.** In mapper mode the editor is a static surface, so `ItemHexView::RefreshAnim` pins every item sprite to its first frame (`Stop()` + `SetTime(0)`) instead of playing the default loop — gated on `MapView::IsMapperMode()`, which is enabled before items load. Doors and containers therefore render closed rather than mid-open, and a capture is identical regardless of `RenderWarmupFrames`. Frame-sequence (FOFRM) and Spine sprites freeze cleanly; model (`.fo3d`) and particle (`.fopts`) sprites keep animating (their `Stop`/`SetTime` are no-ops), but normal walls/doors/containers are frame-sequence sprites.
 
 **View bounds.** The preview pipeline renders one mapper frame per map. If a large map is clipped, use a larger viewport, a lower `Mapper.RenderZoomOverride`, an explicit `Mapper.RenderCenterRawHexX/Y`, or a per-map `ViewportCrop` over a larger one-frame viewport; do not stitch several captures together for checkpoint previews.
 

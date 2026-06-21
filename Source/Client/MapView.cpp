@@ -216,6 +216,8 @@ void MapView::EnableMapperMode()
 
     _mapperMode = true;
     _scrollCheckEnabled = false;
+
+    RefreshMinZoom();
 }
 
 void MapView::LoadFromFile(string_view map_name, const string& str)
@@ -1238,9 +1240,15 @@ void MapView::ShowHex(const ViewField& vf)
             }
 
             const auto* spr = pattern->Sprites.at((hex.y * (pattern->Sprites.size() / 5) + hex.x) % pattern->Sprites.size()).get();
-            auto* mspr = _mapSprites.AddSprite(pattern->InteractWithRoof && field.RoofNum != 0 ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
-                {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2 + (pattern->InteractWithRoof && field.RoofNum != 0 ? _engine->Settings.MapRoofOffsY : 0)}, &field.Offset, //
+            const bool on_roof = pattern->InteractWithRoof && field.RoofNum != 0;
+            auto* mspr = _mapSprites.AddSprite(on_roof ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
+                {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}, &field.Offset, //
                 spr, nullptr, nullptr, nullptr, nullptr, nullptr);
+
+            if (on_roof) {
+                mspr->SetElevation(numeric_cast<int16_t>(_engine->Settings.MapRoofElevation));
+            }
+
             AddSpriteToChain(field, mspr);
         }
     }
@@ -2569,9 +2577,11 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
     FO_STACK_TRACE_ENTRY();
 
     const ucolor day_color = GetMapDayColor();
+    const auto below_roof = static_cast<DrawOrderType>(static_cast<int32_t>(DrawOrderType::Roof) - 1);
 
     if (_engine->Settings.DisableFog || _mapperMode || !HasFogLayers()) {
-        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, DrawOrderType::Last, day_color);
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, below_roof, day_color);
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Roof, DrawOrderType::Last, day_color);
         return;
     }
 
@@ -2580,22 +2590,31 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
         DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
     }
 
-    // Walk the main sprite pass [Ligth, Last), blitting each occupied fog slot at its draw order so a
-    // layer is drawn over the sprites of its own order and below the sprites of higher orders
-    DrawOrderType segment_from = DrawOrderType::Ligth;
+    DrawFoggedSpriteRange(draw_area, DrawOrderType::Ligth, below_roof, day_color);
+    DrawFoggedSpriteRange(draw_area, DrawOrderType::Roof, DrawOrderType::Last, day_color);
+}
 
-    for (size_t order = static_cast<size_t>(DrawOrderType::Ligth); order < static_cast<size_t>(DrawOrderType::Last); order++) {
+void MapView::DrawFoggedSpriteRange(const irect32& draw_area, DrawOrderType from, DrawOrderType to, ucolor day_color)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Walk the sprite range [from, to], blitting each occupied fog slot at its draw order so a layer is drawn over
+    // the sprites of its own order and below the sprites of higher orders.
+    DrawOrderType segment_from = from;
+
+    for (size_t order = static_cast<size_t>(from); order < static_cast<size_t>(to); order++) {
         if (_fogs[order].empty()) {
             continue;
         }
 
-        const DrawOrderType boundary = static_cast<DrawOrderType>(order);
+        const auto boundary = static_cast<DrawOrderType>(order);
         _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, boundary, day_color);
         DrawFogSlot(draw_area, boundary);
+
         segment_from = static_cast<DrawOrderType>(order + 1);
     }
 
-    _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, DrawOrderType::Last, day_color);
+    _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, to, day_color);
 }
 
 void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
@@ -3114,14 +3133,45 @@ void MapView::RefreshMinZoom()
         constexpr float32_t min_zoom_bias = 1.1f;
         const float32_t min_zoom_x = numeric_cast<float32_t>(_screenSize.width) / numeric_cast<float32_t>(scroll_area.width * (GameSettings::MAP_HEX_WIDTH / 2)) * min_zoom_bias;
         const float32_t min_zoom_y = numeric_cast<float32_t>(_screenSize.height) / numeric_cast<float32_t>(scroll_area.height * GameSettings::MAP_HEX_LINE_HEIGHT) * min_zoom_bias;
+
         _minZoomScroll = std::max(min_zoom_x, min_zoom_y);
+
+        if (!_mapperMode && _minZoomScroll > 1.0f) {
+            _minZoomScroll = GameSettings::MIN_ZOOM;
+        }
+
+        _minZoomScroll = std::min(_minZoomScroll, GameSettings::MAX_ZOOM);
     }
     else {
         _minZoomScroll = GameSettings::MIN_ZOOM;
     }
 
-    SetSpritesZoom(std::max(_minZoomScroll, GetSpritesZoom()));
-    SetSpritesZoomTarget(std::max(_minZoomScroll, GetSpritesZoomTarget()));
+    if (_scrollCheckEnabled) {
+        SetSpritesZoomTarget(std::max(_minZoomScroll, GetSpritesZoomTarget()));
+    }
+}
+
+void MapView::SetScrollCheck(bool enabled)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_scrollCheckEnabled == enabled) {
+        return;
+    }
+
+    _scrollCheckEnabled = enabled;
+
+    if (enabled) {
+        RefreshMinZoom();
+
+        const float32_t target_zoom = GetSpritesZoomTarget();
+
+        if (!is_float_equal(GetSpritesZoom(), target_zoom)) {
+            InstantZoom(target_zoom, {0.5f, 0.5f});
+        }
+
+        InstantScroll({});
+    }
 }
 
 void MapView::AddCritterToField(CritterHexView* cr)

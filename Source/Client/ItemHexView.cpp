@@ -67,7 +67,7 @@ void ItemHexView::SetupSprite(MapSprite* mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetElevation(GetElevation());
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings.MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
@@ -220,7 +220,11 @@ void ItemHexView::RefreshAnim()
     }
 
     if (_anim) {
-        if (is_anim_init) {
+        if (_map->IsMapperMode()) {
+            _anim->Stop();
+            _anim->SetTime(0.0f);
+        }
+        else if (is_anim_init) {
             _anim->PlayDefault();
         }
         else {
@@ -269,19 +273,7 @@ void ItemHexView::RefreshOffs()
     FO_STACK_TRACE_ENTRY();
 
     const auto offset = GetOffset();
-
     _sprOffset = ipos32 {offset.x, offset.y};
-
-    if (GetIsTile()) {
-        if (GetIsRoofTile()) {
-            _sprOffset.x += _engine->Settings.MapRoofOffsX;
-            _sprOffset.y += _engine->Settings.MapRoofOffsY;
-        }
-        else {
-            _sprOffset.x += _engine->Settings.MapTileOffsX;
-            _sprOffset.y += _engine->Settings.MapTileOffsY;
-        }
-    }
 
     if (_isMoving) {
         _sprOffset.x += iround<int32_t>(_moveCurOffset.x);

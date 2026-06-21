@@ -182,6 +182,8 @@ public:
     auto operator=(MapperEngine&&) noexcept = delete;
     ~MapperEngine() override = default;
 
+    void Shutdown() override;
+
     void InitIface();
     auto GetPreviewSprite(hstring fname) -> Sprite*;
     void SetInputLocked(bool locked) noexcept;
@@ -298,6 +300,7 @@ public:
     void SaveCurrentMap();
     void ResetCurrentMapChanges();
     void SaveMap(MapView* map, string_view custom_name);
+    void SaveMapToDir(MapView* map, string_view sub_dir, string_view name);
     void UnloadMap(MapView* map, bool clear_undo = true);
     void ResizeMap(MapView* map, int32_t width, int32_t height);
 
@@ -434,6 +437,7 @@ public:
     size_t MaxUndoDepth {100};
     bool SpritesCanDraw {};
     uint8_t SelectAlpha {100};
+    ucolor SelectContourColor {255, 215, 40};
 };
 
 FO_END_NAMESPACE

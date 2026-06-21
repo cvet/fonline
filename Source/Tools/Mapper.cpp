@@ -642,6 +642,17 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     ConsoleHistoryCur = numeric_cast<int32_t>(ConsoleHistory.size());
 }
 
+void MapperEngine::Shutdown()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    while (!LoadedMaps.empty()) {
+        UnloadMap(LoadedMaps.back().get(), false);
+    }
+
+    ClientEngine::Shutdown();
+}
+
 void MapperEngine::InitIface()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1861,13 +1872,19 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (ImGui::BeginMenu("View")) {
-            ImGui::MenuItem("Items", nullptr, &Settings.ShowItem);
-            ImGui::MenuItem("Scenery", nullptr, &Settings.ShowScen);
-            ImGui::MenuItem("Walls", nullptr, &Settings.ShowWall);
-            ImGui::MenuItem("Critters", nullptr, &Settings.ShowCrit);
-            ImGui::MenuItem("Tiles", nullptr, &Settings.ShowTile);
-            ImGui::MenuItem("Roof", nullptr, &Settings.ShowRoof);
-            ImGui::MenuItem("Fast", nullptr, &Settings.ShowFast);
+            bool view_layer_changed = false;
+
+            view_layer_changed |= ImGui::MenuItem("Items", nullptr, &Settings.ShowItem);
+            view_layer_changed |= ImGui::MenuItem("Scenery", nullptr, &Settings.ShowScen);
+            view_layer_changed |= ImGui::MenuItem("Walls", nullptr, &Settings.ShowWall);
+            view_layer_changed |= ImGui::MenuItem("Critters", nullptr, &Settings.ShowCrit);
+            view_layer_changed |= ImGui::MenuItem("Tiles", nullptr, &Settings.ShowTile);
+            view_layer_changed |= ImGui::MenuItem("Roof", nullptr, &Settings.ShowRoof);
+            view_layer_changed |= ImGui::MenuItem("Fast", nullptr, &Settings.ShowFast);
+
+            if (view_layer_changed && _curMap) {
+                _curMap->RebuildMap();
+            }
 
             ImGui::Separator();
             ImGui::MenuItem("Axial grid selection", nullptr, &SelectAxialGrid);
@@ -4122,6 +4139,20 @@ void MapperEngine::DeleteEntity(ClientEntity* entity)
             }});
 }
 
+static void SetSelectionContour(ClientEntity* entity, ucolor color)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Selection outline goes through the same script contour pipeline as the client (ContourPipeline.fos):
+    // write the entity's Contour property; the script's property-setter caches it and OnRenderMap_AfterSprites
+    // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter.
+    const Property* prop = entity->GetProperties().GetRegistrator()->FindProperty("Contour");
+
+    if (prop != nullptr) {
+        entity->GetPropertiesForEdit().SetValue<ucolor>(prop, color);
+    }
+}
+
 void MapperEngine::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip_refresh)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4150,9 +4181,10 @@ void MapperEngine::SelectAdd(ClientEntity* entity, optional<mpos> hex, bool skip
     SelectedEntitiesSet.emplace(corrected_entity);
     InspectorVisible = true;
 
-    // Make transparent
+    // Make transparent + outline the selection (contour via the script pipeline)
     if (auto* hex_view = dynamic_cast<HexView*>(corrected_entity); hex_view != nullptr) {
         hex_view->SetTargetAlpha(SelectAlpha);
+        SetSelectionContour(corrected_entity, SelectContourColor);
     }
 
     if (!skip_refresh) {
@@ -4224,10 +4256,11 @@ void MapperEngine::SelectRemove(ClientEntity* entity, bool skip_refresh)
         }
     }
 
-    // Restore alpha
+    // Restore alpha + drop the selection outline
     if (!entity->IsDestroyed()) {
         if (auto* hex_view = dynamic_cast<HexView*>(entity); hex_view != nullptr) {
             hex_view->RestoreAlpha();
+            SetSelectionContour(entity, ucolor::clear);
         }
     }
 
@@ -5431,15 +5464,11 @@ void MapperEngine::CurDraw()
             pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(Settings.MapHexWidth / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(Settings.MapHexHeight) * zoom));
             pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom));
 
-            if (proto->GetIsTile()) {
-                if (PreviewRoofTiles) {
-                    pos.x += iround<int32_t>(numeric_cast<float32_t>(Settings.MapRoofOffsX) * zoom);
-                    pos.y += iround<int32_t>(numeric_cast<float32_t>(Settings.MapRoofOffsY) * zoom);
-                }
-                else {
-                    pos.x += iround<int32_t>(numeric_cast<float32_t>(Settings.MapTileOffsX) * zoom);
-                    pos.y += iround<int32_t>(numeric_cast<float32_t>(Settings.MapTileOffsY) * zoom);
-                }
+            if (proto->GetIsTile() && PreviewRoofTiles) {
+                // The flat tile/roof XY offset already came from the prototype Offset above; a roof preview rides the
+                // same 3D elevation as a placed roof tile, so raise it on screen by that elevation's projection.
+                const auto elev_y = GeometryHelper::ProjectWorldToMap(vec3 {0.0F, numeric_cast<float32_t>(Settings.MapRoofElevation), 0.0F}).y;
+                pos.y += iround<int32_t>(elev_y * zoom);
             }
 
             const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
@@ -6200,6 +6229,57 @@ void MapperEngine::SaveMap(MapView* map, string_view custom_name)
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
     fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
+
+    OnEditMapSave.Fire(map);
+    auto* ctx = GetUndoContext(map, true);
+    ctx->CleanUndoDepth = numeric_cast<int32_t>(ctx->UndoStack.size());
+    SetMapDirty(map, false);
+}
+
+void MapperEngine::SaveMapToDir(MapView* map, string_view sub_dir, string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot save a destroyed map");
+    FO_VERIFY_AND_THROW(!name.empty(), "Map save name is empty");
+
+    MergeItemsToMultihexMeshes(map);
+    FO_VERIFY_AND_THROW(MergeItemsToMultihexMeshes(map) == 0, "Failed to merge items to multihex meshes before save");
+
+    const auto it = std::ranges::find(LoadedMaps, map);
+    FO_VERIFY_AND_THROW(it != LoadedMaps.end(), "Map to save is not in the loaded maps list");
+
+    const auto fomap_content = map->SaveToText();
+
+    // Resolve the on-disk Maps root from an existing fomap disk path, then write the new map
+    // under <MapsRoot>/<sub_dir>/<name>.fomap. The AI authoring loop targets a checked-in
+    // Maps/Generated/ area, so this avoids SaveMap's "first file's directory" fallback that
+    // could scatter generated maps next to unrelated content.
+    const auto fomap_files = MapsFileSys.FilterFiles("fomap");
+    FO_VERIFY_AND_THROW(fomap_files.GetFilesCount() != 0, "No fomap file found to resolve the Maps root directory");
+
+    string maps_root = strex(fomap_files.GetFileByIndex(0).GetDiskPath()).extract_dir().str();
+    std::ranges::replace(maps_root, '\\', '/');
+
+    if (const auto pos = maps_root.rfind("/Maps/"); pos != string::npos) {
+        maps_root = maps_root.substr(0, pos + 5); // keep ".../Maps"
+    }
+    // else: best-effort fallback keeps the reference file's directory (incl. a path already ending in /Maps)
+
+    const string target_dir = !sub_dir.empty() ? strex("{}/{}", maps_root, sub_dir).str() : maps_root;
+    const string fomap_path = strex("{}/{}.fomap", target_dir, name).format_path().str();
+
+    const auto dir = strex(fomap_path).extract_dir().str();
+
+    if (!dir.empty()) {
+        const auto dir_ok = fs_create_directories(dir);
+        FO_VERIFY_AND_THROW(dir_ok, "Unable to create the target map directory", dir);
+    }
+
+    std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
+    FO_VERIFY_AND_THROW(fomap_file, "Unable to open the fomap file for writing", fomap_path);
+    fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
+    FO_VERIFY_AND_THROW(fomap_file, "Unable to write the fomap file", fomap_path);
 
     OnEditMapSave.Fire(map);
     auto* ctx = GetUndoContext(map, true);

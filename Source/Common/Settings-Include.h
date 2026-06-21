@@ -147,10 +147,7 @@ FIXED_SETTING(int32_t, Geometry, MapHexWidth, 32); // Hex/square width
 FIXED_SETTING(int32_t, Geometry, MapHexHeight, 16); // Hex/square height
 FIXED_SETTING(int32_t, Geometry, MapHexLineHeight, 12); // Hex/square line height
 FIXED_SETTING(int32_t, Geometry, MapTileStep, 2); // Tile step value
-FIXED_SETTING(int32_t, Geometry, MapTileOffsX, -8); // Tile default X offset
-FIXED_SETTING(int32_t, Geometry, MapTileOffsY, 32); // Tile default Y offset
-FIXED_SETTING(int32_t, Geometry, MapRoofOffsX, -8); // Roof default X offset
-FIXED_SETTING(int32_t, Geometry, MapRoofOffsY, -66); // Roof default Y offset
+FIXED_SETTING(int32_t, Geometry, MapRoofElevation, 98); // Roof tile 3D elevation, applied to every roof tile (a roof is just a tile lifted in 3D so it draws above the walls). Replaces the old 2D MapRoofOffs* raise; the flat tile/roof XY offset now lives on the BaseTile prototype Offset
 FIXED_SETTING(float32_t, Geometry, MapCameraAngle, 25.6589f); // Angle for critters moving/rendering
 FIXED_SETTING(bool, Geometry, MapFreeMovement, false); // If true, free movement on the map is enabled
 FIXED_SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothing

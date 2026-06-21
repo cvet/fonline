@@ -214,6 +214,34 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(MapperEngine
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API FO_NULLABLE ClientEntity* Mapper_Game_FindEntityById(MapperEngine* mapper, ident_t id)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* map = mapper->GetCurMap();
+
+    if (map == nullptr) {
+        throw ScriptException("No current map shown in the mapper");
+    }
+
+    return mapper->FindEntityById(map, id);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(MapperEngine* mapper, ClientEntity* entity, string_view propName, string_view valueText)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto* prop = entity->GetProperties().GetRegistrator()->FindProperty(propName);
+
+    if (prop == nullptr) {
+        throw ScriptException("Unknown property", propName);
+    }
+
+    return mapper->ApplyEntityPropertyText(entity, prop, valueText);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, mpos hex, int32_t layer, bool roof)
 {
     if (mapper->GetCurMap() == nullptr) {
@@ -232,6 +260,40 @@ FO_SCRIPT_API ItemView* Mapper_Game_AddTile(MapperEngine* mapper, hstring pid, m
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API MapView* Mapper_Game_NewMap(MapperEngine* mapper, string_view name, int32_t width, int32_t height)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (name.empty()) {
+        throw ScriptException("Map name is empty");
+    }
+
+    const auto corrected_width = std::clamp(width, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
+    const auto corrected_height = std::clamp(height, GameSettings::MIN_MAP_SIZE, GameSettings::MAX_MAP_SIZE);
+
+    const string map_text = strex("[ProtoMap]\nSize = {} {}\nWorkHex = {} {}\n", //
+        corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
+                                .str();
+
+    return mapper->LoadMapFromText(name, map_text);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API MapView* Mapper_Game_NewMapFromText(MapperEngine* mapper, string_view name, string_view text)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (name.empty()) {
+        throw ScriptException("Map name is empty");
+    }
+    if (text.find("[ProtoMap]") == string_view::npos) {
+        throw ScriptException("Map text has no [ProtoMap] section");
+    }
+
+    return mapper->LoadMapFromText(name, string(text));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API MapView* Mapper_Game_LoadMap(MapperEngine* mapper, string_view fileName)
 {
     return mapper->LoadMap(fileName);
@@ -247,6 +309,27 @@ FO_SCRIPT_API void Mapper_Game_UnloadMap(MapperEngine* mapper, MapView* map)
 FO_SCRIPT_API void Mapper_Game_SaveMap(MapperEngine* mapper, MapView* map, string_view customName)
 {
     mapper->SaveMap(map, customName);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Mapper_Game_SaveMapToPath(MapperEngine* mapper, MapView* map, string_view subDir, string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Sandbox-disciplined save into <MapsRoot>/<subDir>/<name>.fomap (subDir defaults to the
+    // AI authoring area "Generated" at the caller). Refuse path separators in the name and any
+    // ".." traversal so an authoring agent cannot escape the Maps tree.
+    if (name.empty()) {
+        throw ScriptException("Map name is empty");
+    }
+    if (name.find('/') != string_view::npos || name.find('\\') != string_view::npos) {
+        throw ScriptException("Map name must not contain path separators", name);
+    }
+    if (subDir.find("..") != string_view::npos || name.find("..") != string_view::npos) {
+        throw ScriptException("Path traversal is not allowed");
+    }
+
+    mapper->SaveMapToDir(map, subDir, name);
 }
 
 ///@ ExportMethod

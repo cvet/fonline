@@ -257,9 +257,11 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 - Prefix: `Mapper_Game_*`
 - Ownership: mapper/editor automation.
 - Typical responsibilities:
+  - create a blank map (`NewMap` / `NewMapFromText`, wrapping the internal `LoadMapFromText`);
   - add/delete/move/select entities;
+  - set any per-instance entity property by name/text (`SetEntityProperty`, via the inspector apply path);
   - add tiles;
-  - load/unload/save/show maps;
+  - load/unload/save/show maps, plus a sandboxed save into a sub-directory (`SaveMapToPath`);
   - query loaded map files;
   - resize maps;
   - manage mapper tabs and tab pid filters.

@@ -399,6 +399,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
+    _clientMode = IsEnumSet(flags, AppInitFlags::ClientMode);
+
     if (IsEnumSet(flags, AppInitFlags::ClientMode)) {
         SDL_DisableScreenSaver();
     }
@@ -1268,7 +1270,7 @@ void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
         should_hide_cursor = false;
     }
     else {
-        should_hide_cursor = Settings.HideNativeCursor && !imguiOverlayWantsCursor;
+        should_hide_cursor = _clientMode && Settings.HideNativeCursor && !imguiOverlayWantsCursor;
     }
 
     if (should_hide_cursor == _nativeCursorHidden) {
