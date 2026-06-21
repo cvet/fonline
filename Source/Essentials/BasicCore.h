@@ -44,6 +44,9 @@
 #if __cplusplus < 202002L
 #error "Invalid __cplusplus version, must be at least C++20 (202002)"
 #endif
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
 
 // Standard API
 #include <algorithm>
@@ -167,7 +170,7 @@
 #endif
 
 // Compiler instrumentation
-#if (defined(__has_feature) && __has_feature(memory_sanitizer)) || defined(__SANITIZE_MEMORY__)
+#if __has_feature(memory_sanitizer) || defined(__SANITIZE_MEMORY__)
 #define FO_MEMORY_SANITIZER 1
 #else
 #define FO_MEMORY_SANITIZER 0
