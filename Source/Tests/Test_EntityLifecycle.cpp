@@ -1039,11 +1039,13 @@ TEST_CASE("CritterCppApi")
 
     SECTION("CritterDestroyState")
     {
-        auto cr = server->CreateCritter(fn("TestCritter"), false);
+        // Hold a ref so the critter object survives DestroyCritter (which drops the manager's last
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        refcount_ptr<Critter> cr = server->CreateCritter(fn("TestCritter"), false);
         REQUIRE(cr != nullptr);
 
         CHECK_FALSE(cr->IsDestroyed());
-        server->CrMngr.DestroyCritter(cr);
+        server->CrMngr.DestroyCritter(cr.get());
         CHECK(cr->IsDestroyed());
     }
 }
@@ -1072,14 +1074,16 @@ TEST_CASE("ItemCppApi")
 
     SECTION("ItemCreationAndDestruction")
     {
-        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
+        // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
+        // frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        refcount_ptr<Item> item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr);
         REQUIRE(item != nullptr);
 
         CHECK(item->GetId() != ident_t {});
         CHECK(item->GetProtoId() == fn("TestItem"));
         CHECK_FALSE(item->IsDestroyed());
 
-        server->ItemMngr.DestroyItem(item);
+        server->ItemMngr.DestroyItem(item.get());
         CHECK(item->IsDestroyed());
     }
 
@@ -1165,14 +1169,16 @@ TEST_CASE("LocationCppApi")
 
     SECTION("CreateAndDestroyLocation")
     {
-        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"));
+        // Hold a ref so the location survives DestroyLocation (which drops the manager's last
+        // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
+        refcount_ptr<Location> loc = server->MapMngr.CreateLocation(fn("TestLocation"));
         REQUIRE(loc != nullptr);
 
         CHECK(loc->GetId() != ident_t {});
         CHECK(loc->GetProtoId() == fn("TestLocation"));
         CHECK_FALSE(loc->IsDestroyed());
 
-        server->MapMngr.DestroyLocation(loc);
+        server->MapMngr.DestroyLocation(loc.get());
         CHECK(loc->IsDestroyed());
     }
 

@@ -49,6 +49,24 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
+### Unit tests under sanitizers
+
+The unit tests also run under Clang sanitizers via dedicated validators, which select
+the matching `San_*` build type and run `RunUnitTests` instrumented:
+
+```bash
+Engine/BuildTools/validate.sh unit-tests-san-address    # AddressSanitizer (+LeakSanitizer)
+Engine/BuildTools/validate.sh unit-tests-san-undefined  # UndefinedBehaviorSanitizer
+Engine/BuildTools/validate.sh unit-tests-san-thread     # ThreadSanitizer
+```
+
+The `validate.yml` CI workflow runs all three as a `unit-tests-sanitizers` matrix job
+(`UBSAN_OPTIONS`/`TSAN_OPTIONS` set `halt_on_error=1` so a finding fails the job). The
+`San_Memory`/`San_MemoryWithOrigins` (MSan) and `San_DataFlow` build configs exist but
+are intentionally not wired into CI: MSan needs the entire linked image (including an
+instrumented libc++ and all dependencies) instrumented to avoid false positives, and
+DataFlowSanitizer is a taint-tracking framework, not a defect detector.
+
 ## Code coverage
 
 When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects the backend from the compiler:

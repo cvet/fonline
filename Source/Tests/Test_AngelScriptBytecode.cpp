@@ -2817,4 +2817,55 @@ void CallCalleeNullableWithNull()
     }
 }
 
+TEST_CASE("AngelScriptInitListSubDwordValueType", "[angelscript][bytecode]")
+{
+    // Regression for the init-list buffer overflow with a value type smaller than a
+    // dword (FOnline Patch in as_compiler.cpp's CompileListConstructor). The compiler
+    // sized the list buffer as count(4) + sum of EXACT element sizes, but each
+    // value-type element is written with asBC_COPY using the dword-rounded size; for a
+    // sub-dword element the final copy spilled past the buffer end — a heap-buffer-
+    // overflow caught by AddressSanitizer. The fix rounds the buffer up to a dword.
+    //
+    // A 2-byte value type with 3 elements yields a 4 + 3*2 = 10-byte buffer; the last
+    // element's dword-rounded (4-byte) copy lands at offset 8..11 and previously
+    // overflowed at offset 10..11.
+    using namespace AngelScript;
+
+    unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
+                                                if (e != nullptr) {
+                                                    e->ShutDownAndRelease();
+                                                }
+                                            }};
+    REQUIRE(engine);
+    RegisterTestApi(engine.get());
+    RegisterAngelScriptArray(engine.get());
+
+    // 2-byte POD value type (sub-dword) — the trigger condition for the overflow.
+    CHECK(engine->RegisterObjectType("Word2", 2, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
+
+    static constexpr string_view InitListScript = R"(
+int RunInitList()
+{
+    array<Word2> a = {Word2(), Word2(), Word2()};
+    array<Word2> b = {Word2(), Word2(), Word2(), Word2(), Word2()};
+    return int(a.length()) + int(b.length());
+}
+)";
+
+    auto* module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
+    REQUIRE(module != nullptr);
+    CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
+    REQUIRE(module->Build() >= 0);
+
+    auto* func = module->GetFunctionByDecl("int RunInitList()");
+    REQUIRE(func != nullptr);
+
+    auto* ctx = engine->CreateContext();
+    REQUIRE(ctx != nullptr);
+    CHECK(ctx->Prepare(func) >= 0);
+    REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
+    CHECK(ctx->GetReturnDWord() == 8U);
+    ctx->Release();
+}
+
 FO_END_NAMESPACE

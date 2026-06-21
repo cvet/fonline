@@ -211,14 +211,27 @@ if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		$<$<CONFIG:Release_Debugging>:/dynamicdeopt>)
 	AddLinkOptionsList($<$<CONFIG:Release_Debugging>:/DYNAMICDEOPT>)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
-	AddCompileDefinitionsList(
-		$<$<CONFIG:San_Address>:LLVM_USE_SANITIZER=Address>
-		$<$<CONFIG:San_Memory>:LLVM_USE_SANITIZER=Memory>
-		$<$<CONFIG:San_MemoryWithOrigins>:LLVM_USE_SANITIZER=MemoryWithOrigins>
-		$<$<CONFIG:San_Undefined>:LLVM_USE_SANITIZER=Undefined>
-		$<$<CONFIG:San_Thread>:LLVM_USE_SANITIZER=Thread>
-		$<$<CONFIG:San_DataFlow>:LLVM_USE_SANITIZER=DataFlow>
-		$<$<CONFIG:San_Address_Undefined>:LLVM_USE_SANITIZER=Address$<SEMICOLON>Undefined>)
+	# Sanitizers require the real -fsanitize= flags at BOTH compile and link time (the matching runtime is
+	# linked into the image). LLVM_USE_SANITIZER is LLVM's own project build switch and has no effect on a
+	# normal project, so set the actual Clang flags per config. rpmalloc is already disabled for these
+	# configs (see expr_RpmallocEnabled) so the sanitizer allocator can interpose.
+	AddCompileOptionsList(
+		$<$<CONFIG:San_Address>:-fsanitize=address>
+		$<$<CONFIG:San_Memory>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize-memory-track-origins=2>
+		$<$<CONFIG:San_Undefined>:-fsanitize=undefined>
+		$<$<CONFIG:San_Thread>:-fsanitize=thread>
+		$<$<CONFIG:San_DataFlow>:-fsanitize=dataflow>
+		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
+	AddLinkOptionsList(
+		$<$<CONFIG:San_Address>:-fsanitize=address>
+		$<$<CONFIG:San_Memory>:-fsanitize=memory>
+		$<$<CONFIG:San_MemoryWithOrigins>:-fsanitize=memory>
+		$<$<CONFIG:San_Undefined>:-fsanitize=undefined>
+		$<$<CONFIG:San_Thread>:-fsanitize=thread>
+		$<$<CONFIG:San_DataFlow>:-fsanitize=dataflow>
+		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
 endif()
 
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
