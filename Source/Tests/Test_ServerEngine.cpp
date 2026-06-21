@@ -116,12 +116,20 @@ namespace ServerEngineTest
     int ImmediateInitOrder = 0;
     int DeferredInitOrder = 0;
 
+    // Deterministic seam for the item-move conservation regression: when armed, the next OnItemInit
+    // (which fires from inside CreateItem) mutates the SOURCE stack's count. CreateItem runs between
+    // SplitItem's count read and its write, so this reproduces — single-threaded and deterministically —
+    // the exact effect of a concurrent split/merge landing during CreateItem's sync-cover yield.
+    ident SplitInjectSourceId;
+    int SplitInjectAmount = 0;
+
     [[ModuleInit]]
     void RegisterHooks()
     {
         ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
+        Game.OnItemInit.Subscribe(OnItemInit);
     }
 
     [[ModuleInit(2)]]
@@ -142,6 +150,25 @@ namespace ServerEngineTest
         CritterInitCalls++;
         LastCritterId = cr.Id.value;
         LastCritterFirstTime = firstTime;
+    }
+
+    [[Event]]
+    void OnItemInit(Item item, bool firstTime)
+    {
+        if (SplitInjectAmount != 0) {
+            int amount = SplitInjectAmount;
+            SplitInjectAmount = 0; // fire exactly once
+            Item? src = Game.GetItem(SplitInjectSourceId);
+            if (src !is null) {
+                src.Count += amount; // mutate the source mid-split, before SplitItem's write
+            }
+        }
+    }
+
+    void UnitTestArmSplitInjection(ident sourceId, int amount)
+    {
+        SplitInjectSourceId = sourceId;
+        SplitInjectAmount = amount;
     }
 
     void UnitTestNoop() {}
@@ -271,6 +298,36 @@ namespace ServerEngineTest
             });
     }
 
+    // `MakeSingleProtoResourceBlob` builds a proto with default properties, which leaves `Stackable`
+    // false. The conservation stress (ServerEngineConcurrentItemTransferConservesTotal) needs a
+    // stackable item so `MoveItem` exercises the split/merge `count` read-modify-write. Mirror of the
+    // helper in Test_ServerMapOperations.cpp.
+    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
+    {
+        vector<uint8_t> props_data;
+        set<hstring> str_hashes;
+
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        proto.SetStackable(true);
+        proto.GetProperties().StoreAllData(props_data, str_hashes);
+
+        vector<uint8_t> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32_t>(uint32_t {0});
+        ignore_unused(str_hashes);
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
+
+        return protos_data;
+    }
+
     static auto MakeServerTestResources() -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -290,6 +347,7 @@ namespace ServerEngineTest
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
         const auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
         const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
+        const auto stackable_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "UnitTestStackable");
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
@@ -299,6 +357,7 @@ namespace ServerEngineTest
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
+        runtime_source->AddFile("UnitTestStackable.fopro-bin-server", stackable_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile("ServerEngineTest.fos-bin-server", script_blob);
 
@@ -392,6 +451,50 @@ namespace ServerEngineTest
         }
 
         return condition();
+    }
+}
+
+TEST_CASE("ServerEngineConnectionAcceptPredicates")
+{
+    // Pure accept-path decision logic for the network population cap + per-source rate guard
+    // (launch-network-load-test-and-caps Track 1). Static + side-effect-free, so no live server is needed.
+
+    SECTION("PopulationCapAcceptsUnderLimitAndRejectsAtOrOver")
+    {
+        // 0 means unlimited on both axes.
+        CHECK(ServerEngine::ShouldAcceptConnection(1000, 1000, 0, 0));
+
+        // Connection cap.
+        CHECK(ServerEngine::ShouldAcceptConnection(9, 5, 10, 0));
+        CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 5, 10, 0));
+        CHECK_FALSE(ServerEngine::ShouldAcceptConnection(11, 5, 10, 0));
+
+        // Player cap.
+        CHECK(ServerEngine::ShouldAcceptConnection(100, 4, 0, 5));
+        CHECK_FALSE(ServerEngine::ShouldAcceptConnection(100, 5, 0, 5));
+
+        // Either ceiling rejects.
+        CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 1, 10, 5));
+        CHECK_FALSE(ServerEngine::ShouldAcceptConnection(1, 5, 10, 5));
+    }
+
+    SECTION("RateGuardCountsPerSecondBucketAndResetsOnRollover")
+    {
+        ServerEngine::ConnRateState state {};
+
+        // 0 disables the guard (always accept) and does not touch the bucket.
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 0));
+
+        // Up to the limit within the same second is accepted; beyond it is rejected.
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
+        CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
+        CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
+
+        // A new second rolls the window over and accepts again.
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
+        CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
     }
 }
 
@@ -1233,6 +1336,91 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 // retry deliberately gives up rather than livelock.
 // ============================================================================
 
+TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
+{
+    // Load-bearing design invariant (mt-additional-test-coverage, Critical): covering a map (ancestor) and
+    // flat-locking a critter parented to it are not mutually exclusive in a way that can deadlock. Two
+    // threads — one repeatedly covering the map, the other repeatedly taking the descendant critter's own
+    // lock — must both make full progress. A model that wrongly serialized them into a lock cycle would
+    // hang here (the joins never return); completion is the deterministic deadlock-freedom proof.
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool flat_locked = true;
+    auto flat_unlock = scope_exit([&server, &flat_locked]() noexcept {
+        safe_call([&server, &flat_locked] {
+            if (flat_locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* flat_loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(flat_loc != nullptr);
+    auto* flat_map = flat_loc->GetMapByIndex(0);
+    REQUIRE(flat_map != nullptr);
+
+    auto* flat_critter = server->CreateCritter(critter_pid, false);
+    REQUIRE(flat_critter != nullptr);
+    flat_critter->SetParent(flat_map);
+
+    server->Unlock();
+    flat_locked = false;
+
+    constexpr int32_t FLAT_ITERS = 20000;
+    std::atomic<int64_t> ancestor_progress {0};
+    std::atomic<int64_t> sibling_progress {0};
+
+    const auto ancestor_fn = [&]() {
+        SyncContext ctx;
+        ctx.Activate();
+        vector<ServerEntity*> req {flat_map};
+        for (int32_t i = 0; i < FLAT_ITERS; i++) {
+            ctx.SyncEntities(req);
+            ancestor_progress.fetch_add(1, std::memory_order_relaxed);
+            ctx.Release();
+        }
+        ctx.Deactivate();
+    };
+
+    const auto sibling_fn = [&]() {
+        SyncContext ctx;
+        ctx.Activate();
+        vector<ServerEntity*> req {flat_critter};
+        for (int32_t i = 0; i < FLAT_ITERS; i++) {
+            ctx.SyncEntities(req);
+            sibling_progress.fetch_add(1, std::memory_order_relaxed);
+            ctx.Release();
+        }
+        ctx.Deactivate();
+    };
+
+    std::thread ancestor_thread(ancestor_fn);
+    std::thread sibling_thread(sibling_fn);
+    ancestor_thread.join();
+    sibling_thread.join();
+
+    CHECK(ancestor_progress.load() == FLAT_ITERS);
+    CHECK(sibling_progress.load() == FLAT_ITERS);
+}
+
 TEST_CASE("ServerEngineSyncContextReparentStress")
 {
     auto settings = MakeServerTestSettings();
@@ -1367,6 +1555,253 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     for (auto* cr : critters) {
         cr->SetParent(nullptr);
     }
+}
+
+// ============================================================================
+// Item-transfer conservation (#12 launch MT gap): concurrent MoveItem of stackable units between
+// holders must conserve the total count. ItemManager::SplitItem reads the pre-split count, then
+// CreateItem can release+re-acquire the sync cover (EnsureEntitySynced) so a concurrent split/merge
+// of the same stack lands a lost update (199/200). Red before the leaf-lock fix, green after. Mirrors
+// the script-stress sync_stress.concurrent_item_transfer_conserves_total. High-contention iteration
+// rather than a strict-deterministic interleave: many threads × many moves so the window is hit.
+// ============================================================================
+
+TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    const auto coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map = loc->GetMapByIndex(0);
+    REQUIRE(map != nullptr);
+
+    constexpr int32_t HOLDER_COUNT = 8;
+    constexpr int32_t COINS_PER_HOLDER = 25;
+    constexpr int64_t EXPECTED_TOTAL = int64_t {HOLDER_COUNT} * int64_t {COINS_PER_HOLDER};
+
+    vector<Critter*> holders;
+    for (int32_t i = 0; i < HOLDER_COUNT; i++) {
+        auto* cr = server->CreateCritter(critter_pid, false);
+        REQUIRE(cr != nullptr);
+        cr->SetParent(map); // parent only — keeps the critter (and its inventory) covered via the map
+        auto* coins = server->ItemMngr.AddItemCritter(cr, coin_pid, COINS_PER_HOLDER);
+        REQUIRE(coins != nullptr);
+        REQUIRE(coins->GetCount() == COINS_PER_HOLDER);
+        holders.push_back(cr);
+    }
+
+    server->Unlock();
+    locked = false;
+
+    constexpr int32_t MOVER_THREADS = 6;
+    constexpr int32_t MOVES_PER_THREAD = 30000;
+
+    std::atomic<int64_t> moves_done {0};
+    std::atomic<int64_t> move_skips {0};
+
+    const auto mover_fn = [&](int32_t tid) {
+        SyncContext ctx;
+        ctx.Activate();
+
+        // Per-thread LCG — deterministic per thread but overlaps other threads' holder pairs so the
+        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid).
+        uint64_t rng = numeric_cast<uint64_t>(tid) * 0x9E3779B97F4A7C15ULL + 1U;
+
+        vector<ServerEntity*> req(2);
+        for (int32_t it = 0; it < MOVES_PER_THREAD; it++) {
+            rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
+            const int32_t from = numeric_cast<int32_t>((rng >> 33) % numeric_cast<uint64_t>(HOLDER_COUNT));
+            const int32_t step = numeric_cast<int32_t>((rng >> 17) % numeric_cast<uint64_t>(HOLDER_COUNT - 1));
+            const int32_t to = (from + 1 + step) % HOLDER_COUNT;
+
+            auto* from_cr = holders[numeric_cast<size_t>(from)];
+            auto* to_cr = holders[numeric_cast<size_t>(to)];
+
+            try {
+                req[0] = from_cr;
+                req[1] = to_cr;
+                ctx.SyncEntities(req);
+
+                auto* stack = from_cr->GetInvItemByPid(coin_pid);
+                if (stack != nullptr && stack->GetCount() > 0) {
+                    server->ItemMngr.MoveItem(stack, 1, to_cr);
+                    moves_done.fetch_add(1, std::memory_order_relaxed);
+                }
+                else {
+                    move_skips.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            catch (const EntitySyncException&) {
+                move_skips.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            ctx.Release();
+        }
+
+        ctx.Deactivate();
+    };
+
+    vector<std::thread> movers;
+    for (int32_t i = 0; i < MOVER_THREADS; i++) {
+        movers.emplace_back(mover_fn, i);
+    }
+    for (auto& t : movers) {
+        t.join();
+    }
+
+    // Sum the surviving stacks under a single cover — conservation must hold regardless of how the
+    // coins redistributed across holders.
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    locked = true;
+
+    int64_t total = 0;
+    for (auto* cr : holders) {
+        auto* stack = cr->GetInvItemByPid(coin_pid);
+        total += (stack != nullptr) ? int64_t {stack->GetCount()} : int64_t {0};
+    }
+
+    INFO("moves_done=" << moves_done.load() << " skips=" << move_skips.load() << " total=" << total << " expected=" << EXPECTED_TOTAL);
+    CHECK(moves_done.load() > 0);
+    CHECK(total == EXPECTED_TOTAL);
+
+    // Detach so item/critter refcounts drop before Shutdown.
+    for (auto* cr : holders) {
+        cr->SetParent(nullptr);
+    }
+}
+
+// ============================================================================
+// Deterministic conservation regression for the item-move fix. The contention stress above only
+// reproduces the lost update by a rare timing coincidence; this drives the exact stale-snapshot effect
+// deterministically: an OnItemInit script handler mutates the SOURCE stack from inside CreateItem —
+// i.e. between SplitItem's count read and its write, the same point a concurrent split/merge would
+// land during CreateItem's sync-cover yield. Pre-fix, SplitItem's stale write clobbers the mutation
+// (a lost unit when the source grew, a duplicated unit when it shrank); the reorder fix re-reads fresh
+// and conserves. This is the only engine-resident test that covers the fix's fresh-read invariant AND
+// its post-yield re-validation (drain -> DestroyItem -> nullptr) cleanup branch.
+// ============================================================================
+
+TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    const auto location_pid = server->Hashes.ToHashedString("UnitTestLocation");
+    const auto map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    const auto coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
+    const auto arm_func = server->Hashes.ToHashedString("ServerEngineTest::UnitTestArmSplitInjection");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    REQUIRE(loc != nullptr);
+    auto* map = loc->GetMapByIndex(0);
+    REQUIRE(map != nullptr);
+
+    auto* h1 = server->CreateCritter(critter_pid, false);
+    auto* h2 = server->CreateCritter(critter_pid, false);
+    REQUIRE(h1 != nullptr);
+    REQUIRE(h2 != nullptr);
+    h1->SetParent(map);
+    h2->SetParent(map);
+
+    SECTION("source grows mid-split: fresh read conserves the injected units")
+    {
+        auto* source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
+        REQUIRE(source != nullptr);
+
+        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split.
+        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
+
+        auto* moved = server->ItemMngr.MoveItem(source, 1, h2);
+        REQUIRE(moved != nullptr);
+
+        auto* src_after = h1->GetInvItemByPid(coin_pid);
+        auto* dst_after = h2->GetInvItemByPid(coin_pid);
+        const int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
+        const int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
+
+        INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
+        // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
+        // by SplitItem writing the stale pre-CreateItem count).
+        CHECK(src_count + dst_count == 25);
+    }
+
+    SECTION("source drained below the split count mid-split: re-validation undoes the move")
+    {
+        auto* source = server->ItemMngr.AddItemCritter(h1, coin_pid, 2);
+        REQUIRE(source != nullptr);
+
+        // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
+        // re-validation (count >= GetCount()) trips and the split is undone.
+        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
+
+        auto* moved = server->ItemMngr.MoveItem(source, 1, h2);
+        CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
+
+        auto* src_after = h1->GetInvItemByPid(coin_pid);
+        auto* dst_after = h2->GetInvItemByPid(coin_pid);
+        const int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
+        const int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
+
+        INFO("src=" << src_count << " dst=" << dst_count);
+        // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the
+        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit).
+        CHECK(src_count == 1);
+        CHECK(dst_count == 0);
+    }
+
+    h1->SetParent(nullptr);
+    h2->SetParent(nullptr);
 }
 
 // ============================================================================

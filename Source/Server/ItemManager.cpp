@@ -265,15 +265,23 @@ auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
 
     ValidateEntityAccess(item);
 
-    const auto item_count = item->GetCount();
     FO_VERIFY_AND_THROW(item->GetStackable(), "Item is not stackable");
     FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
-    FO_VERIFY_AND_THROW(count < item_count, "Count is outside allowed range", count, item_count);
+    FO_VERIFY_AND_THROW(count < item->GetCount(), "Count is outside allowed range", count, item->GetCount());
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
-    item->SetCount(item_count - count);
-    FO_VERIFY_AND_THROW(!new_item->IsDestroyed(), "Newly merged item is already destroyed");
+    refcount_ptr new_item_holder = new_item;
+    ignore_unused(new_item_holder);
+
+    if (item->IsDestroyed() || item->IsDestroying() || count >= item->GetCount()) {
+        DestroyItem(new_item);
+        return nullptr;
+    }
+
+    const int32_t fresh_count = item->GetCount();
+    item->SetCount(fresh_count - count);
+    FO_VERIFY_AND_THROW(!new_item->IsDestroyed(), "Newly split item is already destroyed");
 
     return new_item;
 }
@@ -323,6 +331,11 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     }
     else {
         auto* splitted_item = SplitItem(item, count);
+
+        if (splitted_item == nullptr) {
+            return nullptr;
+        }
+
         refcount_ptr splitted_item_holder = splitted_item;
         ignore_unused(splitted_item_holder);
 
@@ -378,6 +391,11 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
     }
     else {
         auto* splitted_item = SplitItem(item, count);
+
+        if (splitted_item == nullptr) {
+            return nullptr;
+        }
+
         refcount_ptr splitted_item_holder = splitted_item;
         ignore_unused(splitted_item_holder);
 
@@ -430,6 +448,11 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     }
     else {
         auto* splitted_item = SplitItem(item, count);
+
+        if (splitted_item == nullptr) {
+            return nullptr;
+        }
+
         refcount_ptr splitted_item_holder = splitted_item;
         ignore_unused(splitted_item_holder);
 

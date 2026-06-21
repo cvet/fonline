@@ -717,6 +717,9 @@ auto ServerEngine::SyncPointJob() -> std::optional<timespan>
         _stats.MaxOnline = std::max(_stats.MaxOnline, _stats.CurOnline);
     }
 
+    _stats.RejectedConnections = _rejectedConnections.load(std::memory_order_relaxed);
+    _stats.RejectedByRate = _rejectedByRate.load(std::memory_order_relaxed);
+
     const auto cur_time = nanotime::now();
     _stats.Uptime = cur_time - _stats.ServerStartTime;
     UpdateJobStats(cur_time);
@@ -1704,6 +1707,38 @@ auto ServerEngine::GetHealthInfo() const -> string
     return buf;
 }
 
+auto ServerEngine::ShouldAcceptConnection(size_t cur_connections, size_t cur_players, int32_t max_connections, int32_t max_players) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (max_connections > 0 && cur_connections >= numeric_cast<size_t>(max_connections)) {
+        return false;
+    }
+    if (max_players > 0 && cur_players >= numeric_cast<size_t>(max_players)) {
+        return false;
+    }
+
+    return true;
+}
+
+auto ServerEngine::EvaluateConnectionRate(ConnRateState& state, int64_t now_sec, int32_t rate_per_sec) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (rate_per_sec <= 0) {
+        return true;
+    }
+
+    if (state.WindowSec != now_sec) {
+        state.WindowSec = now_sec;
+        state.Count = 1;
+        return true;
+    }
+
+    state.Count++;
+    return state.Count <= rate_per_sec;
+}
+
 void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_connection)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1711,6 +1746,51 @@ void ServerEngine::OnNewConnection(shared_ptr<NetworkServerConnection> net_conne
     if (!_started || _shutdownInProgress) {
         net_connection->Disconnect();
         return;
+    }
+
+    // Anti-flood: drop bursts from a single source before any per-connection allocation.
+    if (Settings.NewConnectionRatePerSec > 0) {
+        constexpr size_t MAX_CONN_RATE_ENTRIES = 50000;
+        const int64_t now_sec = nanotime::now().seconds();
+        const string source_key {net_connection->GetHost()};
+        bool accept_rate;
+
+        {
+            scoped_lock locker {_connRateLocker};
+
+            // Bound the per-source map: when it grows large, drop entries whose one-second window has rolled
+            // over (so a spoofed-IP flood cannot turn the rate guard itself into an unbounded-memory vector).
+            if (_connRates.size() > MAX_CONN_RATE_ENTRIES) {
+                std::erase_if(_connRates, [now_sec](const auto& entry) { return entry.second.WindowSec != now_sec; });
+            }
+
+            accept_rate = EvaluateConnectionRate(_connRates[source_key], now_sec, Settings.NewConnectionRatePerSec);
+        }
+
+        if (!accept_rate) {
+            _rejectedByRate.fetch_add(1, std::memory_order_relaxed);
+            net_connection->Disconnect();
+            return;
+        }
+    }
+
+    // Population cap: reject when the connection or player ceiling is reached, before creating a player.
+    if (Settings.MaxConnections > 0 || Settings.MaxPlayers > 0) {
+        size_t cur_connections;
+        size_t cur_players;
+
+        {
+            scoped_lock locker {_unloginedPlayersLocker};
+            cur_players = EntityMngr.GetPlayersCount();
+            cur_connections = _unloginedPlayers.size() + cur_players;
+        }
+
+        if (!ShouldAcceptConnection(cur_connections, cur_players, Settings.MaxConnections, Settings.MaxPlayers)) {
+            _rejectedConnections.fetch_add(1, std::memory_order_relaxed);
+            WriteLog("Rejected new connection from {}: population cap reached (connections={}, players={}, max_connections={}, max_players={})", net_connection->GetHost(), cur_connections, cur_players, Settings.MaxConnections, Settings.MaxPlayers);
+            net_connection->Disconnect();
+            return;
+        }
     }
 
     CreateUnloginedPlayer(std::move(net_connection));

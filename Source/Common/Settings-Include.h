@@ -95,6 +95,9 @@ FIXED_SETTING(int32_t, ServerNetwork, InactivityDisconnectTime, 0); // Inactivit
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessageSize, 1048576); // Max single inbound message size in bytes (0 = unlimited); rejected at the header
 FIXED_SETTING(int32_t, ServerNetwork, MaxMessagesPerProcessPass, 256); // Max messages drained per connection per worker job pass (0 = unlimited)
 FIXED_SETTING(int32_t, ServerNetwork, MaxUdpReorderAhead, 1024); // Max UDP packets buffered ahead of the next expected sequence (0 = unlimited)
+FIXED_SETTING(int32_t, ServerNetwork, MaxConnections, 0); // Max simultaneous connections incl. unlogined (0 = unlimited); over this, new connections are rejected at accept
+FIXED_SETTING(int32_t, ServerNetwork, MaxPlayers, 0); // Max simultaneous logined players (0 = unlimited); over this, new connections are rejected at accept
+FIXED_SETTING(int32_t, ServerNetwork, NewConnectionRatePerSec, 0); // Max new connections accepted per source host per second (0 = unlimited); bursts above this are dropped at accept
 FIXED_SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 FIXED_SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
 SETTING_GROUP_END();

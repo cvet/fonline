@@ -196,6 +196,15 @@ public:
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
 
+    struct ConnRateState
+    {
+        int64_t WindowSec {};
+        int32_t Count {};
+    };
+
+    static auto ShouldAcceptConnection(size_t cur_connections, size_t cur_players, int32_t max_connections, int32_t max_players) noexcept -> bool;
+    static auto EvaluateConnectionRate(ConnRateState& state, int64_t now_sec, int32_t rate_per_sec) noexcept -> bool;
+
 private:
     struct ServerStats
     {
@@ -204,6 +213,8 @@ private:
 
         size_t MaxOnline {};
         size_t CurOnline {};
+        size_t RejectedConnections {};
+        size_t RejectedByRate {};
 
         uint64_t JobsTotal {};
         uint64_t JobsPerSecond {};
@@ -321,12 +332,16 @@ private:
     std::atomic_bool _started {};
     std::atomic_bool _startingError {};
     std::atomic_bool _shutdownInProgress {};
+    std::atomic<size_t> _rejectedConnections {};
+    std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
     unique_ptr<UpdaterBackend> _updaterBackend {};
     TextPack _defaultLang {Hashes};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _unloginedPlayersLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
+    mutable mutex _connRateLocker {};
+    unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 
     mutable mutex _reportedHashesLocker {};
     unordered_set<string> _reportedStrings FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
