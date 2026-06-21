@@ -203,6 +203,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
         _appliedSettings.emplace("Baking.MapperResourceEntries");
         _appliedSettings.emplace("Baking.ServerResourceEntries");
         _appliedSettings.emplace("ClientNetwork.Ping");
+        _appliedSettings.emplace("Client.UserWritablePath");
         _appliedSettings.emplace("Hex.ScrollMouseUp");
         _appliedSettings.emplace("Hex.ScrollMouseDown");
         _appliedSettings.emplace("Hex.ScrollMouseLeft");
