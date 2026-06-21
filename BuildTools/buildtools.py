@@ -28,6 +28,8 @@ class ValidationTarget(TypedDict):
 	config: str
 	compiler: NotRequired[str]
 	run_target: NotRequired[str]
+	workspace_parts: NotRequired[tuple[str, ...]]
+	msan_libcxx: NotRequired[bool]
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
@@ -40,6 +42,8 @@ def make_validation_target(
 	config_name: str,
 	compiler_name: str | None = None,
 	run_target_name: str | None = None,
+	workspace_parts: Sequence[str] = (),
+	msan_libcxx: bool = False,
 ) -> ValidationTarget:
 	validation_target: ValidationTarget = {
 		'platform': platform_name,
@@ -50,6 +54,10 @@ def make_validation_target(
 		validation_target['compiler'] = compiler_name
 	if run_target_name is not None:
 		validation_target['run_target'] = run_target_name
+	if workspace_parts:
+		validation_target['workspace_parts'] = tuple(workspace_parts)
+	if msan_libcxx:
+		validation_target['msan_libcxx'] = True
 	return validation_target
 
 
@@ -130,6 +138,8 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
 	'unit-tests': make_validation_target('linux', 'unit-tests', 'Debug', run_target_name='RunUnitTests'),
 	'unit-tests-san-address': make_validation_target('linux', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
+	'unit-tests-san-memory': make_validation_target('linux', 'unit-tests', 'San_Memory', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
+	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-undefined': make_validation_target('linux', 'unit-tests', 'San_Undefined', run_target_name='RunUnitTests'),
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
@@ -158,6 +168,7 @@ FORMAT_PATTERNS = [
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
+CLANG_VERSION_RE = re.compile(r'\bversion\s+(\d+\.\d+\.\d+)\b')
 XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 XWIN_HTTP_RETRY_COUNT = '5'
@@ -213,8 +224,8 @@ def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'10',
-		['clang-20', 'clang-format-20', 'build-essential', 'git', 'cmake', 'python3', 'python3-pytest', 'wget', 'unzip', 'binutils-dev'],
+		'11',
+		['clang-20', 'clang-format-20', 'llvm-20', 'build-essential', 'git', 'cmake', 'python3', 'python3-pytest', 'wget', 'unzip', 'binutils-dev'],
 	),
 	'linux-packages': (
 		'7',
@@ -289,6 +300,10 @@ def resolve_validation_project_source(env: Mapping[str, str]) -> Path:
 
 def resolve_workspace_path(env: Mapping[str, str], *parts: str) -> Path:
 	return Path(env['FO_WORKSPACE']) / Path(*parts)
+
+
+def resolve_msan_libcxx_root(env: Mapping[str, str]) -> Path:
+	return resolve_workspace_path(env, 'msan-libcxx')
 
 
 def resolve_toolset_build_dir(env: Mapping[str, str]) -> Path:
@@ -713,6 +728,16 @@ def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
 				extracted_path.chmod(mode)
 
 
+def extract_tar_safely(archive_path: Path, output_dir: Path) -> None:
+	output_root = output_dir.resolve()
+	with tarfile.open(archive_path, 'r:*') as archive:
+		for member in archive.getmembers():
+			member_path = (output_dir / member.name).resolve()
+			if member_path != output_root and output_root not in member_path.parents:
+				raise SystemExit(f'Archive member escapes output directory: {member.name}')
+		archive.extractall(output_dir)
+
+
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', ' '.join(str(part) for part in cmd))
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
@@ -848,6 +873,24 @@ def build_xwin_version(env: Mapping[str, str]) -> str:
 
 def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
 	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
+
+
+def discover_clang_version(executable: str = 'clang++-20') -> str:
+	clang = shutil.which(executable) or f'/usr/bin/{executable}'
+	try:
+		output = run_capture_text([clang, '--version'])
+	except (FileNotFoundError, subprocess.CalledProcessError) as ex:
+		raise SystemExit(f'{executable} not found; install clang-20 before preparing MSan libc++') from ex
+
+	match = CLANG_VERSION_RE.search(output)
+	if not match:
+		raise SystemExit(f'Unable to parse {executable} version from: {output.splitlines()[0] if output else "<empty>"}')
+	return match.group(1)
+
+
+def build_msan_libcxx_version(env: Mapping[str, str]) -> str:
+	_ = env
+	return f'clang-{discover_clang_version()}-msan-libcxx-v2'
 
 
 def workspace_version_marker(workspace: Path, part_name: str) -> Path:
@@ -1170,19 +1213,81 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(xwin_extra_splat_dir)
 
 
+def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
+	if os.name == 'nt':
+		raise SystemExit('MSan libc++ can only be prepared on Linux/Clang hosts')
+
+	workspace = Path(env['FO_WORKSPACE'])
+	clang_version = discover_clang_version()
+	archive_name = f'llvm-project-{clang_version}.src.tar.xz'
+	archive_path = workspace / archive_name
+	source_dir = workspace / f'llvm-project-{clang_version}.src'
+	build_dir = workspace / f'msan-libcxx-build-{clang_version}'
+	install_dir = resolve_msan_libcxx_root(env)
+	runtime_ignorelist = Path(env['FO_ENGINE_ROOT']) / 'BuildTools' / 'sanitizers' / 'msan-runtime-ignorelist.txt'
+
+	ensure_dir(workspace)
+	if not archive_path.is_file():
+		url = f'https://github.com/llvm/llvm-project/releases/download/llvmorg-{clang_version}/{archive_name}'
+		download_file(url, archive_path, 'LLVM project sources')
+
+	if not source_dir.is_dir():
+		remove_path_if_exists(source_dir)
+		log('Unpack LLVM project sources:', archive_path)
+		extract_tar_safely(archive_path, workspace)
+	if not (source_dir / 'runtimes').is_dir():
+		raise SystemExit(f'Unexpected LLVM source archive layout: {source_dir / "runtimes"} not found')
+
+	ensure_empty_dir(build_dir)
+	ensure_empty_dir(install_dir)
+
+	build_env = make_linux_build_env('clang')
+	configure_cmd = [
+		'cmake',
+		'-G', 'Unix Makefiles',
+		'-S', to_cmake_path(source_dir / 'runtimes'),
+		'-B', to_cmake_path(build_dir),
+		'-DCMAKE_C_COMPILER=/usr/bin/clang-20',
+		'-DCMAKE_CXX_COMPILER=/usr/bin/clang++-20',
+		'-DCMAKE_BUILD_TYPE=Release',
+		f'-DCMAKE_C_FLAGS=-fsanitize-ignorelist={to_cmake_path(runtime_ignorelist)}',
+		f'-DCMAKE_CXX_FLAGS=-fsanitize-ignorelist={to_cmake_path(runtime_ignorelist)}',
+		f'-DCMAKE_INSTALL_PREFIX={to_cmake_path(install_dir)}',
+		'-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind',
+		'-DLLVM_USE_SANITIZER=Memory',
+		'-DLLVM_ENABLE_ASSERTIONS=OFF',
+		'-DLLVM_INCLUDE_BENCHMARKS=OFF',
+		'-DLLVM_INCLUDE_DOCS=OFF',
+		'-DLLVM_INCLUDE_TESTS=OFF',
+		'-DLIBCXX_ENABLE_SHARED=ON',
+		'-DLIBCXX_ENABLE_STATIC=ON',
+		'-DLIBCXX_ENABLE_WERROR=OFF',
+		'-DLIBCXXABI_ENABLE_SHARED=ON',
+		'-DLIBCXXABI_ENABLE_STATIC=ON',
+		'-DLIBCXXABI_ENABLE_WERROR=OFF',
+		'-DLIBCXXABI_USE_LLVM_UNWINDER=ON',
+		'-DLIBUNWIND_ENABLE_SHARED=ON',
+		'-DLIBUNWIND_ENABLE_STATIC=ON',
+		'-DLIBUNWIND_ENABLE_WERROR=OFF',
+	]
+	run(configure_cmd, env=build_env)
+	run_cmake_target(build_dir, 'Release', 'install', env=build_env)
+
+
 def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	output = Path(env['FO_OUTPUT'])
 	ensure_dir(workspace)
 	ensure_dir(output)
 
-	part_versions = {
-		'toolset': build_toolset_version(),
-		'emscripten': build_emscripten_version(env),
-		'android-sdk': build_android_sdk_version(env),
-		'android-ndk': build_android_ndk_version(env),
-		'dotnet': build_dotnet_version(env),
-		'xwin': build_xwin_workspace_version(env),
+	part_versions: dict[str, Callable[[], str]] = {
+		'toolset': build_toolset_version,
+		'emscripten': lambda: build_emscripten_version(env),
+		'android-sdk': lambda: build_android_sdk_version(env),
+		'android-ndk': lambda: build_android_ndk_version(env),
+		'dotnet': lambda: build_dotnet_version(env),
+		'xwin': lambda: build_xwin_workspace_version(env),
+		'msan-libcxx': lambda: build_msan_libcxx_version(env),
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
@@ -1191,10 +1296,11 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
 		'xwin': prepare_xwin_workspace,
+		'msan-libcxx': prepare_msan_libcxx_workspace,
 	}
 
 	for part_name in parts:
-		ensure_workspace_part(workspace, part_name, part_versions[part_name], check_only, part_actions[part_name], env)
+		ensure_workspace_part(workspace, part_name, part_versions[part_name](), check_only, part_actions[part_name], env)
 
 
 def has_feature(features: Sequence[str], *names: str) -> bool:
@@ -1225,6 +1331,7 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 		'android-x86': ['android-sdk', 'android-ndk'],
 		'dotnet': ['dotnet'],
 		'windows-cross': ['xwin'],
+		'msan-libcxx': ['msan-libcxx'],
 		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'],
 	},
 	'windows': {
@@ -1670,10 +1777,27 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 	if name not in VALIDATION_TARGETS:
 		raise SystemExit(f'Invalid validation target: {name}')
 	validation = VALIDATION_TARGETS[name]
+	workspace_parts = validation.get('workspace_parts', ())
+	if workspace_parts:
+		prepare_workspace(workspace_parts, False, env)
+
 	validation_root = prepare_validation_project(env)
 	platform_name = validation['platform']
 	target_name = validation['target']
 	config = validation['config']
+	compiler_name = validation.get('compiler', 'clang')
+	extra_cmake_args: list[str] = []
+	run_env = make_platform_configure_env(platform_name, compiler_name)
+
+	if validation.get('msan_libcxx'):
+		msan_libcxx_root = resolve_msan_libcxx_root(env)
+		msan_libcxx_lib = msan_libcxx_root / 'lib'
+		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(msan_libcxx_root)}')
+		if run_env is None:
+			run_env = os.environ.copy()
+		ld_library_path = run_env.get('LD_LIBRARY_PATH')
+		run_env['LD_LIBRARY_PATH'] = str(msan_libcxx_lib) if not ld_library_path else f'{msan_libcxx_lib}:{ld_library_path}'
+
 	build_dir = resolve_validation_build_dir(env, name)
 	ensure_dir(build_dir)
 
@@ -1684,13 +1808,14 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 		build_dir,
 		config,
 		env,
-		compiler_name=validation.get('compiler', 'clang'),
+		extra_cmake_args=extra_cmake_args,
+		compiler_name=compiler_name,
 	)
 
 	run_target = validation.get('run_target')
 	if run_target:
 		log('Run', run_target)
-		run_cmake_target(build_dir, config, run_target)
+		run_cmake_target(build_dir, config, run_target, env=run_env)
 
 		if name == 'code-coverage' and os.environ.get('CODECOV_TOKEN'):
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
@@ -2011,7 +2136,7 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser.add_argument('target')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
@@ -2046,6 +2171,7 @@ def create_parser() -> argparse.ArgumentParser:
 			'toolset',
 			'dotnet',
 			'windows-cross',
+			'msan-libcxx',
 			'all',
 		],
 	)

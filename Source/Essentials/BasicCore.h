@@ -166,6 +166,13 @@
 #define FO_KEEP_DATA_SYMBOL alignas(uint32_t) static volatile
 #endif
 
+// Compiler instrumentation
+#if (defined(__has_feature) && __has_feature(memory_sanitizer)) || defined(__SANITIZE_MEMORY__)
+#define FO_MEMORY_SANITIZER 1
+#else
+#define FO_MEMORY_SANITIZER 0
+#endif
+
 // Namespace management
 #if FO_USE_NAMESPACE
 #define FO_NAMESPACE_NAME fo

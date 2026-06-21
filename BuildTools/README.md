@@ -70,6 +70,7 @@ At the moment the shared flow covers:
 - `android-ndk`
 - `dotnet`
 - `xwin`
+- `msan-libcxx`
 
 Linux system package installation is explicit and separate from workspace preparation:
 
@@ -102,9 +103,19 @@ Examples:
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
+python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
+
+`msan-libcxx` is Linux-only and intentionally excluded from the default `all`
+workspace feature because it downloads matching LLVM sources and builds
+`libc++`, `libc++abi`, and `libunwind` with MemorySanitizer instrumentation. The
+runtime build also passes `BuildTools/sanitizers/msan-runtime-ignorelist.txt` so
+libunwind does not self-report on ABI register snapshots during C++ exception or
+sanitizer-report unwinding. The `unit-tests-san-memory` validator prepares it
+automatically before configuring `San_Memory`; use the explicit workspace command
+only when pre-warming a CI host or debugging the runtime build.
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 

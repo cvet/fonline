@@ -1,0 +1,4 @@
+# MemorySanitizer ignorelist.
+#
+# Keep this file empty by default. Add only narrow, documented entries for code
+# that cannot be rebuilt with MSan instrumentation.

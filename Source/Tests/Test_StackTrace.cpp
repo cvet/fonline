@@ -334,8 +334,12 @@ TEST_CASE("StackTrace")
         CaptureNativeStackFrames(frames, count, truncated, 0);
 
         CHECK_FALSE(truncated);
+#if FO_MEMORY_SANITIZER
+        CHECK(count == 0);
+#else
         CHECK(count > 0);
         CHECK(count < STACK_TRACE_MAX_NATIVE_FRAMES);
+#endif
     }
 
     SECTION("CaptureOverflowDegradesGracefullyAndPushesScriptBeforeNatives")

@@ -56,16 +56,23 @@ the matching `San_*` build type and run `RunUnitTests` instrumented:
 
 ```bash
 Engine/BuildTools/validate.sh unit-tests-san-address    # AddressSanitizer (+LeakSanitizer)
+Engine/BuildTools/validate.sh unit-tests-san-memory     # MemorySanitizer (requires Workspace/msan-libcxx)
 Engine/BuildTools/validate.sh unit-tests-san-undefined  # UndefinedBehaviorSanitizer
 Engine/BuildTools/validate.sh unit-tests-san-thread     # ThreadSanitizer
 ```
 
-The `validate.yml` CI workflow runs all three as a `unit-tests-sanitizers` matrix job
-(`UBSAN_OPTIONS`/`TSAN_OPTIONS` set `halt_on_error=1` so a finding fails the job). The
-`San_Memory`/`San_MemoryWithOrigins` (MSan) and `San_DataFlow` build configs exist but
-are intentionally not wired into CI: MSan needs the entire linked image (including an
-instrumented libc++ and all dependencies) instrumented to avoid false positives, and
-DataFlowSanitizer is a taint-tracking framework, not a defect detector.
+The `validate.yml` workflow runs these as a `unit-tests-sanitizers` matrix job.
+ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator prepares
+`Workspace/msan-libcxx` by building LLVM's `libc++`, `libc++abi`, and `libunwind`
+with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
+The runtime build applies a narrow libunwind ignorelist so C++ exception and
+sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
+native stack capture and the backward-cpp signal handler are disabled under
+`FO_MEMORY_SANITIZER` so MSan owns fatal reports. `unit-tests-san-memory-with-origins`
+is available locally as the slower diagnostic variant when a future MSan finding
+needs origin tracking. `San_DataFlow` remains
+intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
+defect detector.
 
 ## Code coverage
 

@@ -28,6 +28,8 @@ DeclareValueOptions(
 	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
 	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
+	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
+	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -234,6 +236,47 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC)
 		$<$<CONFIG:San_Address_Undefined>:-fsanitize=address$<COMMA>undefined>)
 endif()
 
+SetValue(expr_MemorySanitizerConfigs $<CONFIG:San_Memory,San_MemoryWithOrigins>)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+	if(NOT FO_MULTICONFIG AND CMAKE_BUILD_TYPE MATCHES "^San_Memory" AND "${FO_MSAN_LIBCXX_ROOT}" STREQUAL "")
+		AbortMessage("${CMAKE_BUILD_TYPE} requires FO_MSAN_LIBCXX_ROOT pointing to an MSan-instrumented libc++ install prefix. Prepare it with BuildTools msan-libcxx.")
+	endif()
+
+	if(NOT "${FO_MSAN_LIBCXX_ROOT}" STREQUAL "")
+		GetFilenameComponent(FO_MSAN_LIBCXX_ROOT "${FO_MSAN_LIBCXX_ROOT}" ABSOLUTE)
+		SetValue(FO_MSAN_LIBCXX_INCLUDE_DIR "${FO_MSAN_LIBCXX_ROOT}/include/c++/v1")
+		SetValue(FO_MSAN_LIBCXX_LIBRARY_DIR "${FO_MSAN_LIBCXX_ROOT}/lib")
+
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_INCLUDE_DIR}")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain include/c++/v1: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libc++ under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++abi.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libc++abi.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libc++abi under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+		if(NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libunwind.so" AND NOT EXISTS "${FO_MSAN_LIBCXX_LIBRARY_DIR}/libunwind.a")
+			AbortMessage("FO_MSAN_LIBCXX_ROOT does not contain libunwind under lib/: ${FO_MSAN_LIBCXX_ROOT}")
+		endif()
+
+		StatusMessage("MSan libc++ root: ${FO_MSAN_LIBCXX_ROOT}")
+		add_compile_options(
+			$<$<AND:${expr_MemorySanitizerConfigs},$<COMPILE_LANGUAGE:CXX>>:-nostdinc++>
+			$<$<AND:${expr_MemorySanitizerConfigs},$<COMPILE_LANGUAGE:CXX>>:-isystem${FO_MSAN_LIBCXX_INCLUDE_DIR}>)
+		AddLinkOptionsList(
+			$<${expr_MemorySanitizerConfigs}:-stdlib=libc++>
+			$<${expr_MemorySanitizerConfigs}:-L${FO_MSAN_LIBCXX_LIBRARY_DIR}>
+			$<${expr_MemorySanitizerConfigs}:-Wl$<COMMA>-rpath$<COMMA>${FO_MSAN_LIBCXX_LIBRARY_DIR}>
+			$<${expr_MemorySanitizerConfigs}:-lc++abi>
+			$<${expr_MemorySanitizerConfigs}:-lunwind>)
+	endif()
+
+	if(EXISTS "${FO_MSAN_IGNORELIST}")
+		AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fsanitize-ignorelist=${FO_MSAN_IGNORELIST}>)
+	endif()
+endif()
+
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
 # Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
 # FO_TSA_* annotation macros are no-ops on MSVC/GCC, and third-party code is silenced via DisableLibWarnings, so the
@@ -413,10 +456,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
 		AddCompileOptionsList(-fPIC)
 	else()
-		AddLinkOptionsList(-no-pie)
+		AddLinkOptionsList($<$<NOT:${expr_MemorySanitizerConfigs}>:-no-pie>)
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
+		AddLinkOptionsList($<${expr_MemorySanitizerConfigs}:-pie>)
+
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
 		# Bug somehow connected with rpmalloc new operators overloading
 		# add_compile_options_C_CXX(-stdlib=libc++)

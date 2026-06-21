@@ -333,7 +333,8 @@ asCString asCString::SubString(size_t in_start, size_t in_length) const
 	if( in_start >= GetLength() || in_length == 0 )
 		return asCString("");
 
-	if( in_length == (size_t)(-1) ) in_length = GetLength() - in_start;
+	if( in_length == (size_t)(-1) || in_length > GetLength() - in_start ) // (FOnline Patch)
+		in_length = GetLength() - in_start;
 
 	asCString tmp;
 	tmp.Assign(AddressOf() + in_start, in_length);

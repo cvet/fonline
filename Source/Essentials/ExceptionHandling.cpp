@@ -36,7 +36,7 @@
 #include "GlobalData.h"
 #include "StringUtils.h"
 
-#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER
 #if !FO_WINDOWS
 #if __has_include(<libunwind.h>) && !(FO_MAC && defined(__aarch64__))
 #define BACKWARD_HAS_LIBUNWIND 1

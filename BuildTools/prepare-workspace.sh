@@ -17,7 +17,7 @@ if [[ -z "$PYTHON_BIN" ]]; then
 fi
 
 BUILDTOOLS_ARGS=(prepare-host-workspace linux)
-KNOWN_FEATURES=(common-packages linux-packages web-packages android-packages windows-cross-packages all-packages linux web android-arm32 android-arm64 android-x86 toolset dotnet windows-cross all)
+KNOWN_FEATURES=(common-packages linux-packages web-packages android-packages windows-cross-packages all-packages linux web android-arm32 android-arm64 android-x86 toolset dotnet windows-cross msan-libcxx all)
 
 for arg in "$@"; do
     if [[ "$arg" == "check" ]]; then

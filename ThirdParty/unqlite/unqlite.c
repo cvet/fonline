@@ -56756,6 +56756,7 @@ static int unqliteOpenJournal(Pager *pPager)
 		rc = UNQLITE_NOMEM;
 		goto fail;
 	}
+	SyZero(zHeader,(sxu32)pPager->iSectorSize); /* // (FOnline Patch) Keep journal sector padding initialized. */
 	pager_write_journal_header(pPager,zHeader);
 	/* Perform the disk write */
 	rc = unqliteOsWrite(pPager->pjfd,zHeader,pPager->iSectorSize,0);

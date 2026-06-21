@@ -1,0 +1,8 @@
+# MemorySanitizer runtime ignorelist.
+#
+# LLVM libunwind reads architecture register snapshots whose padding/register
+# slots are not fully initialized by the OS ABI. If libunwind itself is MSan
+# instrumented, ordinary C++ exception unwinding trips MSan inside the sanitizer
+# reporter and can recurse before the real application report is printed.
+
+src:*/libunwind/*
