@@ -94,9 +94,9 @@ Scope:
 Source areas checked:
 
 - `Source/Applications/ClientApp.cpp` and `Source/Applications/ClientLib.cpp` for host/runtime loading, fallback, staged binary promotion, reload results, and platform gating.
-- `Source/Client/ClientRuntimeApi.*`, `Source/Client/Updater.*`, `Source/Common/Common.h`, and `Source/Common/Settings-Include.h` for runtime ABI, updater protocol versioning, update targets, disk hashing/cache behavior, and updater settings.
+- `Source/Client/ClientRuntimeApi.*`, `Source/Client/Updater.*`, `Source/Frontend/ApplicationInit.cpp`, `Source/Essentials/DiskFileSystem.*`, `Source/Essentials/Platform.*`, `Source/Common/Common.h`, and `Source/Common/Settings-Include.h` for runtime ABI, updater protocol versioning, update targets, installed-client writable paths, disk hashing/cache behavior, and updater settings.
 - `Source/Server/UpdaterBackend.*` and `Source/Server/Server.cpp` for server-side descriptor generation, file serving, target-specific binaries, and `UpdateFileMaxPortionSize` use.
-- `BuildTools/cmake/stages/Applications.cmake` and `BuildTools/package.py` for client host/library build gates and runtime binary packaging/staging.
+- `BuildTools/cmake/stages/Applications.cmake`, `BuildTools/package.py`, and `BuildTools/msicreator/createmsi.py` for client host/library build gates, runtime binary packaging/staging, and Windows MSI installer metadata.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` for runtime ABI coverage. Embedding-project updater pipeline tests are project-owned supplemental checks and are not engine documentation dependencies.
 
 Results:
@@ -104,7 +104,7 @@ Results:
 - Added a `Source paths inspected` section to `Docs/ClientUpdater.md`.
 - Replaced obsolete package-entry wording with the current `build_runtime_update_target_name` owner in `BuildTools/package.py`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `GetClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
+- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs_make_writable_path`, `Platform::GetUserDataBase`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
 - Promoted in `Docs/DocumentationBacklog.md`: `ClientUpdater.md` from `drafted` to `verified`.
 
 Follow-up:

@@ -72,7 +72,7 @@ Major responsibilities:
 A typical client lifetime has these phases:
 
 1. **Application initialization** happens in the frontend layer. `Application` owns the main window, renderer, input, and audio. See [FrontendAndRendering.md](FrontendAndRendering.md).
-2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers.
+2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers. Installed clients may add a higher-priority writable resource overlay above the read-only base resources; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) and [ClientUpdater.md](ClientUpdater.md).
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
 4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.

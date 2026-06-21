@@ -28,6 +28,11 @@ Read this together with:
 - `Source/Common/CacheStorage.cpp`
 - `Source/Essentials/DiskFileSystem.h`
 - `Source/Essentials/DiskFileSystem.cpp`
+- `Source/Essentials/Platform.h`
+- `Source/Essentials/Platform.cpp`
+- `Source/Frontend/ApplicationInit.cpp`
+- `Source/Client/Client.cpp`
+- `Source/Client/Updater.cpp`
 - `Source/Client/ResourceManager.h`
 - `Source/Client/ResourceManager.cpp`
 - `Source/Tools/Baker.h`
@@ -75,6 +80,8 @@ The parser stores owned strings internally and returns `string_view` values from
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
 
+Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read, then command-line settings are applied again for final precedence. Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
+
 ## Resource packs and data sources
 
 `ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
@@ -93,9 +100,11 @@ Do not document one embedding project's `.fomain` contents as universal engine b
 
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
+Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).
+
 ## Cache storage
 
-`Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs.
+`Source/Common/CacheStorage.*` stores named binary/string cache entries behind `HasEntry()`, `GetString()`, `GetData()`, `SetString()`, `SetData()`, and `RemoveEntry()`. It is separate from resource packs: cache entries are mutable runtime/tool artifacts, while baked resources are generated from configured inputs. Client-side cache consumers resolve relative cache paths through `fs_make_writable_path(UserWritablePath, CacheResources)`, so portable clients keep cache next to the executable and installed clients write under the per-user root.
 
 ## Build and package routing
 
@@ -122,6 +131,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 
 - Config grammar and parsed section/key behavior: `Source/Common/ConfigFile.*`.
 - Setting groups, defaults, command-line/config/sub-config application: `Source/Common/Settings.*` and `Settings-Include.h`.
+- Installed-client writable-root resolution: `Source/Frontend/ApplicationInit.cpp`, `Source/Essentials/Platform.*`, and `Source/Essentials/DiskFileSystem.*`.
 - Mounted resource lookup: `Source/Common/DataSource.*` and `FileSystem.*`.
 - Raw disk operations: `Source/Essentials/DiskFileSystem.*`.
 - Runtime resource consumption: `Source/Client/ResourceManager.*` plus owning runtime docs.

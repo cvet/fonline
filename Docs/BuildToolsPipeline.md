@@ -27,6 +27,7 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/package.py`
+- `BuildTools/msicreator/createmsi.py`
 
 Important consequences:
 
@@ -108,7 +109,9 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-Start here when platform package layout, package target naming, or package script arguments change.
+`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` as an additive MSI step after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution and can register URI-scheme registry entries through the generated WiX config. This step is failure-tolerant by design when WiX/wixl is not available; Raw/Zip output remains the primary package artifact.
+
+Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
 
 ### `Finalize.cmake`
 
@@ -146,7 +149,7 @@ Use hooks when an embedding project or a later refactor needs to extend stage be
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and [Scripting.md](Scripting.md).
 - New executable/tool entry point: `Applications.cmake` and [Applications.md](Applications.md).
-- New package layout: `Packages.cmake` plus platform docs.
+- New package layout or installer metadata: `Packages.cmake`, `BuildTools/package.py`, `BuildTools/msicreator/createmsi.py`, plus platform docs.
 - Final target organization or verbose diagnostics: `Finalize.cmake`.
 
 ## Validation checklist
@@ -158,6 +161,6 @@ For BuildTools changes:
 3. For source-list changes, verify the affected target builds.
 4. For codegen changes, verify generated files and script API consumers.
 5. For baking changes, run normal and forced bake paths when relevant.
-6. For package changes, run the affected package target and inspect output layout.
+6. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
 7. Run documentation link checks if docs changed.
 8. Run `git diff --check` before reporting completion.
