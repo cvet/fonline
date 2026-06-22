@@ -242,17 +242,29 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32_t, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    struct RemoteCallPlainArgData
+    {
+        alignas(uint64_t) uint8_t Bytes[sizeof(uint64_t)] {};
+    };
+
+    using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
+
+    const auto read_plain_data = [&](size_t size) -> void* {
+        FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
+        RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
+        reader.ReadPtr(storage.Bytes, size);
+        return cast_to_void(storage.Bytes);
+    };
 
     const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
         if (type.IsPrimitive) {
-            return reader.ReadPtr<void>(type.Size);
+            return read_plain_data(type.Size);
         }
         else if (type.IsEnum) {
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
-            return reader.ReadPtr<void>(type.Size);
+            return read_plain_data(type.Size);
         }
         else if (type.IsString) {
             const auto str_len = reader.Read<int32_t>();

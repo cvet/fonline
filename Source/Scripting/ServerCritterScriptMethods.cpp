@@ -683,8 +683,6 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controlla
         if (self->GetControlledByPlayer()) {
             return;
         }
-
-        self->MarkIsForPlayer();
     }
     else {
         if (!self->GetControlledByPlayer()) {
@@ -694,7 +692,21 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controlla
         if (self->GetPlayer() != nullptr) {
             self->DetachPlayer();
         }
+    }
 
+    if (self->GetMapId()) {
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+        auto* ctx = self->GetEngine()->GetCurrentSyncContext();
+        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+        ctx->EnsureEntitySynced(map.get());
+    }
+
+    if (controllable) {
+        self->MarkIsForPlayer();
+    }
+    else {
         self->UnmarkIsForPlayer();
     }
 }

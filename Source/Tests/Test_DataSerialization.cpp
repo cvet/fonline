@@ -37,6 +37,18 @@
 
 FO_BEGIN_NAMESPACE
 
+template<typename T>
+consteval auto IsZeroCopyReadPtrAvailable() -> bool
+{
+    return requires(DataReader& reader) { reader.template ReadPtr<T>(0); };
+}
+
+static_assert(IsZeroCopyReadPtrAvailable<uint8_t>());
+static_assert(IsZeroCopyReadPtrAvailable<char>());
+static_assert(IsZeroCopyReadPtrAvailable<void>());
+static_assert(!IsZeroCopyReadPtrAvailable<uint32_t>());
+static_assert(!IsZeroCopyReadPtrAvailable<float32_t>());
+
 TEST_CASE("DataSerialization")
 {
     SECTION("ReadWriteRoundtrip")

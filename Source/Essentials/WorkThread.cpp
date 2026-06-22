@@ -275,8 +275,6 @@ void WorkThread::ThreadEntry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
-
                     // Exception handling
                     {
                         scoped_lock locker {_dataLocker};
@@ -292,6 +290,8 @@ void WorkThread::ThreadEntry() noexcept
                             }
                         }
                     }
+
+                    ReportExceptionAndContinue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();

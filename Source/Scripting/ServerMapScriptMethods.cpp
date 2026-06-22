@@ -789,7 +789,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(Map* self, mpos h
     vector<Critter*> critters;
     auto map_critters = self->GetCritters();
 
-    for (auto cr : map_critters) {
+    for (auto& cr : map_critters) {
         if (cr->CheckFind(findType) && GeometryHelper::CheckDist(cr->GetHex(), hex, cr->GetLookDistance())) {
             critters.emplace_back(cr.get());
         }

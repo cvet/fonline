@@ -149,12 +149,18 @@ void Critter::MarkIsForPlayer()
 
     FO_VERIFY_AND_THROW(!GetControlledByPlayer(), "Controlled by player is already set");
 
+    refcount_ptr<Map> map;
+
+    if (GetMapId()) {
+        map = GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ValidateEntityAccess(map.get());
+    }
+
     SetControlledByPlayer(true);
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 
-    if (GetMapId()) {
-        auto map = GetParent<Map>();
-        FO_VERIFY_AND_THROW(map, "Missing map instance");
+    if (map) {
         map->RefreshCritterPlayerState(this);
     }
 }
@@ -166,11 +172,17 @@ void Critter::UnmarkIsForPlayer()
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     FO_VERIFY_AND_THROW(!_player, "Player is already set");
 
-    SetControlledByPlayer(false);
+    refcount_ptr<Map> map;
 
     if (GetMapId()) {
-        auto map = GetParent<Map>();
+        map = GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ValidateEntityAccess(map.get());
+    }
+
+    SetControlledByPlayer(false);
+
+    if (map) {
         map->RefreshCritterPlayerState(this);
     }
 }
