@@ -2118,8 +2118,12 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
                     vector<ServerEntity*> nested_req {own, peer};
                     nested.SyncEntities(nested_req);
-                    CHECK(IsEntityAccessValid(own));
-                    CHECK(IsEntityAccessValid(peer));
+                    // Catch2's CHECK/REQUIRE macros are not thread-safe (they race on RunContext's assertion
+                    // fast-path, a process-global), and this runs on a worker thread. Record the result through
+                    // the `failed` atomic instead; the main thread reports it via CHECK_FALSE(failed.load()).
+                    if (!IsEntityAccessValid(own) || !IsEntityAccessValid(peer)) {
+                        failed.store(true, std::memory_order_release);
+                    }
                 }
             }
             catch (const std::exception&) {
