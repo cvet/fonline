@@ -64,6 +64,7 @@ public:
     }
 
     template<typename T>
+        requires(std::same_as<std::remove_cv_t<T>, uint8_t> || std::same_as<std::remove_cv_t<T>, char> || std::is_void_v<T>)
     auto ReadPtr(size_t size) -> const T*
     {
         if (_readPos + size > _dataBuf.size()) {
@@ -125,6 +126,7 @@ public:
     }
 
     template<typename T>
+        requires(std::same_as<std::remove_cv_t<T>, uint8_t> || std::same_as<std::remove_cv_t<T>, char> || std::is_void_v<T>)
     auto ReadPtr(size_t size) -> T*
     {
         if (_readPos + size > _dataBuf.size()) {
@@ -179,7 +181,7 @@ public:
     void Write(U data) noexcept
     {
         GrowBuf(sizeof(T));
-        *reinterpret_cast<T*>(_dataBuf->data() + _dataBuf->size() - sizeof(T)) = data;
+        MemCopy(_dataBuf->data() + _dataBuf->size() - sizeof(T), &data, sizeof(T));
     }
 
     template<typename T>
