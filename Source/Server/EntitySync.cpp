@@ -1292,9 +1292,9 @@ void PropagateEntityLock(Item* item, EntityLock* parent_lock)
 
     item->SetEntityLock(parent_lock);
 
-    if (item->HasInnerItems()) {
-        for (auto* inner : item->GetAllInnerItems()) {
-            PropagateEntityLock(inner, parent_lock);
+    if (item->_innerItems) {
+        for (auto& inner : *item->_innerItems) {
+            PropagateEntityLock(inner.get(), parent_lock);
         }
     }
 }
@@ -1305,11 +1305,11 @@ void RevertEntityLock(Item* item)
 
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
-    item->SetEntityLock(&item->GetOwnedLock());
+    item->SetEntityLock(&item->_ownedLock);
 
-    if (item->HasInnerItems()) {
-        for (auto* inner : item->GetAllInnerItems()) {
-            PropagateEntityLock(inner, &item->GetOwnedLock());
+    if (item->_innerItems) {
+        for (auto& inner : *item->_innerItems) {
+            PropagateEntityLock(inner.get(), &item->_ownedLock);
         }
     }
 }

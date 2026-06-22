@@ -537,6 +537,13 @@ static void ScriptString_RawResize(string& str, int32_t length)
     FO_NO_STACK_TRACE_ENTRY();
 
     if (length < 0) {
+        auto* ctx = AngelScript::asGetActiveContext();
+
+        if (ctx != nullptr) {
+            ctx->SetException("String resize length must not be negative");
+            return;
+        }
+
         throw ScriptException("String resize length must not be negative", length);
     }
 

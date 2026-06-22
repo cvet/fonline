@@ -406,6 +406,17 @@ namespace ServerEngineTest
 
         auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings));
         auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+
+        SyncContext ctx;
+        ctx.Activate();
+        auto release = scope_exit([&ctx]() noexcept {
+            safe_call([&ctx] {
+                ctx.Release();
+                ctx.Deactivate();
+            });
+        });
+
+        ctx.SyncEntity(player.get());
         player->SetName(name);
         return player;
     }
@@ -1180,13 +1191,19 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     auto* loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
     REQUIRE(loc != nullptr);
+    auto* setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(setup_ctx != nullptr);
+    setup_ctx->EnsureEntitySynced(loc);
     auto* map = loc->GetMapByIndex(0);
     REQUIRE(map != nullptr);
+    setup_ctx->EnsureEntitySynced(map);
 
     auto* cr_a = server->CreateCritter(critter_pid, true);
     auto* cr_b = server->CreateCritter(critter_pid, true);
     REQUIRE(cr_a != nullptr);
     REQUIRE(cr_b != nullptr);
+    setup_ctx->EnsureEntitySynced(cr_a);
+    setup_ctx->EnsureEntitySynced(cr_b);
 
     auto player_a_holder = CreateStandalonePlayer(server.get(), "SyncWidenPlayerA");
     auto player_b_holder = CreateStandalonePlayer(server.get(), "SyncWidenPlayerB");
@@ -1194,6 +1211,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     auto* player_b = player_b_holder.get();
     REQUIRE(player_a != nullptr);
     REQUIRE(player_b != nullptr);
+    setup_ctx->EnsureEntitySynced(player_a);
+    setup_ctx->EnsureEntitySynced(player_b);
 
     cr_a->AttachPlayer(player_a);
     player_a->SetControlledCritter(cr_a);

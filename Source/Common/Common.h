@@ -55,6 +55,18 @@ extern bool IsTestingInProgress;
 #define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_DEFERRED // Lambda annotation
 
+// Entity access validation.
+// Todo: remove entire system after multitheaded logic stabilization.
+// These checks are expensive diagnostics; fix trips at the top-level sync/job boundary.
+class Entity;
+inline void ValidateEntityAccess(const Entity* entity);
+inline void ValidateEntityAccessStrong(const Entity* entity) noexcept;
+#define FO_VALIDATE_ENTITY_ACCESS() ValidateEntityAccess(this)
+#define FO_VALIDATE_ENTITY_ACCESS_STRONG() ValidateEntityAccessStrong(this)
+// Generated value accessors include noexcept getters, so value validation must be strong.
+#define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccessStrong(entity)
+#define FO_NO_VALIDATE_ENTITY_ACCESS()
+
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);

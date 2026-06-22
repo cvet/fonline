@@ -34,6 +34,7 @@
 #include "ItemManager.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
+#include "EntitySync.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
 #include "Server.h"
@@ -117,6 +118,10 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
+
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    ctx->EnsureEntitySynced(item.get());
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);

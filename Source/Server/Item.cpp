@@ -45,6 +45,7 @@ Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Prope
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     SetEntityLock(&_ownedLock);
 }
 
@@ -52,14 +53,18 @@ Item::~Item()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+
     if (!_engine->IsShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!HasInnerItems(), "Server item has inner items during destruction", GetId());
+        FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
     }
 }
 
 auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
 
     if (!_innerItems) {
         return nullptr;
@@ -78,6 +83,8 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Ite
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+
     if (!_innerItems) {
         return nullptr;
     }
@@ -95,6 +102,7 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<Item*> result;
 
     if (!_innerItems) {
@@ -116,6 +124,7 @@ auto Item::HasInnerItems() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
     return _innerItems && !_innerItems->empty();
 }
 
@@ -123,6 +132,7 @@ auto Item::GetAllInnerItems() -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     vector<Item*> result;
@@ -139,6 +149,7 @@ auto Item::GetAllInnerItems() const -> vector<const Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     vector<const Item*> result;
@@ -155,6 +166,7 @@ auto Item::GetRawInnerItems() -> vector<refcount_ptr<Item>>&
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
     return *_innerItems;
@@ -164,6 +176,7 @@ void Item::SetItemToContainer(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(item, "Missing item instance");
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an item to an already destroyed container", GetId());
     FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an item to a container that is being destroyed", GetId());
@@ -182,6 +195,7 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetStackable()) {
@@ -215,6 +229,7 @@ void Item::RemoveItemFromContainer(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
@@ -242,6 +257,10 @@ void Item::RemoveItemFromContainer(Item* item)
 
 auto Item::CanSendItem(bool as_public) const noexcept -> bool
 {
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         const auto slot = GetCritterSlot();
@@ -275,6 +294,8 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 void Item::SetMultihexEntries(vector<mpos> entries)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (!entries.empty()) {
         make_if_not_exists(_multihexEntries);

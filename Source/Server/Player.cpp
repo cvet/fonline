@@ -50,12 +50,15 @@ Player::Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> co
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     SetEntityLock(&_ownedLock);
 }
 
 Player::~Player()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (!_engine->IsShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(!_controlledCr, "Player still controls a critter during destruction", GetId(), _controlledCr ? _controlledCr->GetId() : ident_t {});
@@ -70,6 +73,7 @@ void Player::SetName(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     _name = name;
 }
 
@@ -77,6 +81,7 @@ void Player::SetControlledCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     _controlledCr = cr;
 }
 
@@ -84,12 +89,15 @@ auto Player::GetSyncWidenEntity() noexcept -> ServerEntity*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     return _controlledCr.get();
 }
 
 void Player::DetachCritter()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (_controlledCr) {
         _controlledCr->DetachPlayer();
@@ -100,6 +108,8 @@ void Player::SwapConnection(Player* other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    ValidateEntityAccessStrong(other);
     FO_STRONG_ASSERT(other, "Player connection swap target is null");
     FO_STRONG_ASSERT(other != this, "Player connection swap target is the same player");
 
@@ -110,6 +120,7 @@ void Player::SetIgnoreSendEntityProperty(const Entity* entity, const Property* p
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
     _sendIgnoreEntity = entity;
     _sendIgnoreProperty = prop;
 }
@@ -118,6 +129,7 @@ void Player::SetViewMap(Map* map, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(!_controlledCr, "Controlled cr is already set");
     FO_VERIFY_AND_THROW(map, "Missing map instance");
 
@@ -137,6 +149,7 @@ void Player::ResetViewMap() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
     if (_viewMapTarget) {
         _viewMapTarget->RemoveSpectatorPlayer(this);
         _viewMapTarget = nullptr;
@@ -149,6 +162,7 @@ void Player::Send_LoginSuccess()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<const uint8_t*>* global_vars_data = nullptr;
     vector<uint32_t>* global_vars_data_sizes = nullptr;
     _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
@@ -169,6 +183,7 @@ void Player::Send_AddCritter(const Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto is_chosen = cr == GetControlledCritter();
 
     vector<const uint8_t*>* cr_data = nullptr;
@@ -234,6 +249,7 @@ void Player::Send_RemoveCritter(const Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCritter);
 
     out_buf->Write(cr->GetId());
@@ -243,6 +259,7 @@ void Player::Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::CritterVisibilityMode);
 
     out_buf->Write(cr->GetId());
@@ -253,6 +270,7 @@ void Player::Send_LoadMap(const Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     const Location* loc = nullptr;
     hstring pid_map;
     hstring pid_loc;
@@ -295,6 +313,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, const Entity*
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(prop, "Missing property instance");
 
@@ -352,6 +371,7 @@ void Player::Send_Moving(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     if (from_cr->IsMoving()) {
         auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
 
@@ -372,6 +392,7 @@ void Player::Send_MovingSpeed(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
 
     out_buf->Write(from_cr->GetId());
@@ -382,6 +403,7 @@ void Player::Send_Dir(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::CritterDir);
 
     out_buf->Write(from_cr->GetId());
@@ -392,6 +414,7 @@ void Player::Send_Action(const Critter* from_cr, CritterAction action, int32_t a
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto is_chosen = from_cr == GetControlledCritter();
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAction);
@@ -410,6 +433,7 @@ void Player::Send_MoveItem(const Critter* from_cr, const Item* moved_item, Critt
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto is_chosen = from_cr == GetControlledCritter();
 
     vector<const Item*> send_items;
@@ -448,6 +472,7 @@ void Player::Send_AddItemOnMap(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::AddItemOnMap);
 
     out_buf->Write(item->GetHex());
@@ -458,6 +483,7 @@ void Player::Send_RemoveItemFromMap(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveItemFromMap);
 
     out_buf->Write(item->GetId());
@@ -467,6 +493,7 @@ void Player::Send_ChosenAddItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenAddItem);
 
     SendItem(*out_buf, item, true, true, true);
@@ -476,6 +503,7 @@ void Player::Send_ChosenRemoveItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::ChosenRemoveItem);
 
     out_buf->Write(item->GetId());
@@ -485,6 +513,7 @@ void Player::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::CritterTeleport);
 
     out_buf->Write(cr->GetId());
@@ -495,6 +524,7 @@ void Player::Send_TimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::TimeSync);
 
     out_buf->Write(_engine->GameTime.GetSynchronizedTime());
@@ -504,6 +534,7 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::InfoMessage);
 
     out_buf->Write(info_message);
@@ -514,6 +545,7 @@ void Player::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(_viewMap, "Player has no visible map");
 
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
@@ -525,6 +557,7 @@ void Player::Send_PlaceToGameComplete()
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     _connection->WriteMsg(NetMessage::PlaceToGameComplete);
 }
 
@@ -532,6 +565,7 @@ void Player::Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::SomeItems);
 
     out_buf->Write(string(context_param));
@@ -546,6 +580,7 @@ void Player::Send_Attachments(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::CritterAttachments);
 
     out_buf->Write(from_cr->GetId());
@@ -565,6 +600,7 @@ void Player::Send_AddCustomEntity(CustomEntity* entity, bool owned)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<const uint8_t*>* data = nullptr;
     vector<uint32_t>* data_sizes = nullptr;
 
@@ -592,6 +628,7 @@ void Player::Send_RemoveCustomEntity(ident_t id)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto out_buf = _connection->WriteMsg(NetMessage::RemoveCustomEntity);
 
     out_buf->Write(id);
@@ -601,6 +638,7 @@ void Player::SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool 
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     out_buf.Write(item->GetId());
     out_buf.Write(item->GetProtoId());
 
@@ -625,6 +663,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     if (!holder->HasInnerEntities()) {
         out_buf.Write(numeric_cast<uint16_t>(0));
         return;
@@ -686,6 +725,7 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");

@@ -67,15 +67,47 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr.get(); }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _name;
+    }
+    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _controlledCr.get();
+    }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _controlledCr.get();
+    }
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> ServerEntity* override;
-    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
-    [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection* { return _connection.get(); }
-    [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext* { return _viewMap.get(); }
-    [[nodiscard]] auto GetViewMapTarget() const noexcept -> const Map* { return _viewMapTarget.get(); }
-    [[nodiscard]] auto GetViewMapTarget() noexcept -> Map* { return _viewMapTarget.get(); }
+    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _connection.get();
+    }
+    [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _connection.get();
+    }
+    [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _viewMap.get();
+    }
+    [[nodiscard]] auto GetViewMapTarget() const noexcept -> const Map*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _viewMapTarget.get();
+    }
+    [[nodiscard]] auto GetViewMapTarget() noexcept -> Map*
+    {
+        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        return _viewMapTarget.get();
+    }
 
     void SetName(string_view name);
     void SetControlledCritter(Critter* cr);

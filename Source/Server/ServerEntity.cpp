@@ -42,11 +42,15 @@ ServerEntity::ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegis
     _id {id}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 }
 
 ServerEntity::~ServerEntity()
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
@@ -60,6 +64,7 @@ void ServerEntity::SetId(ident_t id) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     _id = id;
 }
 
@@ -67,6 +72,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     _isPersistent = persistent;
 }
 
@@ -74,6 +80,7 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
     auto& props = const_cast<Properties&>(GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
 }
@@ -82,12 +89,15 @@ void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     EntityProperties(GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
 }
 
 void ServerEntity::ValidateAccess() const
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (!IsEntityAccessValid(this)) {
         throw ScriptException("Entity access without sync", GetName());
@@ -98,7 +108,7 @@ auto ServerEntity::GetParent() -> refcount_ptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(this);
+    FO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
@@ -106,7 +116,7 @@ auto ServerEntity::GetParent() const -> refcount_ptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(this);
+    FO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<const ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
@@ -114,6 +124,7 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_ptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     ServerEntity* p = _parent.load(std::memory_order_acquire);
 
     if (p == nullptr || !p->TryAddRef()) {
@@ -126,6 +137,8 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_ptr<ServerEntity>
 void ServerEntity::SetParent(ServerEntity* parent) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (parent != nullptr) {
         parent->AddRef();
@@ -142,6 +155,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS_STRONG();
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
     }

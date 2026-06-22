@@ -269,6 +269,8 @@ void CritterManager::DestroyCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     FO_VERIFY_AND_THROW(!cr->GetControlledByPlayer(), "Critter is controlled by a player in an NPC-only operation");
 
     // Skip redundant calls
@@ -279,9 +281,21 @@ void CritterManager::DestroyCritter(Critter* cr)
     cr->MarkAsDestroying();
 
     // Finish event
+    if (cr->GetMapId()) {
+        auto map = cr->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ctx->EnsureEntitySynced(map.get());
+    }
+
     ValidateEntityAccess(cr);
     _engine->OnCritterFinish.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+
+    if (cr->GetMapId()) {
+        auto map = cr->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ctx->EnsureEntitySynced(map.get());
+    }
 
     // Tear off from environment
     {
@@ -309,8 +323,6 @@ void CritterManager::DestroyCritter(Critter* cr)
                 if (cr->GetMapId()) {
                     auto map = cr->GetParent<Map>();
                     FO_VERIFY_AND_THROW(map, "Missing map instance");
-                    auto* ctx = _engine->GetCurrentSyncContext();
-                    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
                     ctx->EnsureEntitySynced(map.get());
                     _engine->MapMngr.RemoveCritterFromMap(cr, map.get());
                 }

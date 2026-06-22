@@ -55,14 +55,17 @@ FO_BEGIN_NAMESPACE
     } \
     inline auto Get##prop() const noexcept \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetValueFast<prop_type>(GetProperty##prop()); \
     } \
     inline void Set##prop(const prop_type& value) \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         _propsRef->SetValue(GetProperty##prop(), value); \
     } \
     inline bool IsNonEmpty##prop() const noexcept \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
     static uint16_t prop##_RegIndex
@@ -341,6 +344,24 @@ inline void ValidateEntityAccess(const Entity* entity)
 {
     if (entity != nullptr) {
         entity->ValidateAccess();
+    }
+}
+
+// Null-tolerant strong validation for noexcept entity methods.
+inline void ValidateEntityAccessStrong(const Entity* entity) noexcept
+{
+    if (entity == nullptr) {
+        return;
+    }
+
+    try {
+        entity->ValidateAccess();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 

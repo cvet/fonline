@@ -993,6 +993,12 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             return;
         }
 
+        if (map != nullptr) {
+            auto* loc = map->GetLocation();
+            FO_VERIFY_AND_THROW(loc, "Missing location instance");
+            sync_ctx->EnsureEntitySynced(loc);
+        }
+
         cr->Send_LoadMap(map);
         cr->Send_AddCritter(cr);
 
@@ -1016,6 +1022,9 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
                 return;
             }
 
+            sync_ctx->EnsureEntitySynced(map);
+            sync_ctx->EnsureEntitySynced(cr);
+
             FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in the target map after map-enter event", map->GetId(), cr->GetId(), cr->GetMapId());
         }
         else {
@@ -1029,8 +1038,13 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
                 return;
             }
 
+            sync_ctx->EnsureEntitySynced(cr);
+
             FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
         }
+
+        sync_ctx->EnsureEntitySynced(map);
+        sync_ctx->EnsureEntitySynced(cr);
 
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
@@ -1039,12 +1053,16 @@ void MapManager::Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<in
             return;
         }
 
-        ValidateEntityAccess(cr);
+        sync_ctx->EnsureEntitySynced(map);
+        sync_ctx->EnsureEntitySynced(cr);
         _engine->OnCritterSendInitialInfo.Fire(cr);
 
         if (cr->IsDestroyed()) {
             return;
         }
+
+        sync_ctx->EnsureEntitySynced(map);
+        sync_ctx->EnsureEntitySynced(cr);
 
         if (map != nullptr) {
             if (map->IsDestroyed() || cr->GetMapId() != map->GetId() || map->GetCritter(cr->GetId()) != cr) {
@@ -1167,6 +1185,9 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* ctx = _engine->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+
     ValidateEntityAccess(cr);
     ValidateEntityAccess(map);
 
@@ -1188,6 +1209,9 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
             return;
         }
 
+        ctx->EnsureEntitySynced(map);
+        ctx->EnsureEntitySynced(cr);
+
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
         FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in its map before map-exit notification", map->GetId(), cr->GetId(), cr->GetMapId());
 
@@ -1204,9 +1228,15 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
                 return;
             }
 
+            ctx->EnsureEntitySynced(map);
+            ctx->EnsureEntitySynced(cr);
+
             FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
             FO_VERIFY_AND_THROW(map->GetCritter(cr->GetId()) == cr, "Critter is not registered in its map after disappearance notification", map->GetId(), cr->GetId(), cr->GetMapId());
         }
+
+        ctx->EnsureEntitySynced(map);
+        ctx->EnsureEntitySynced(cr);
 
         cr->ClearVisibleEnitites();
 
@@ -1235,6 +1265,8 @@ void MapManager::RemoveCritterFromMap(Critter* cr, Map* map)
         if (cr->IsDestroyed()) {
             return;
         }
+
+        ctx->EnsureEntitySynced(cr);
 
         FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
         FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");

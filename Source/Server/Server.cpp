@@ -747,7 +747,19 @@ void ServerEngine::OnPlayerConnected(Player* unlogined_player)
 
     const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(reinterpret_cast<uintptr_t>(unlogined_player))};
 
-    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    {
+        SyncContext ctx;
+        ctx.Activate();
+        auto release = scope_exit([&ctx]() noexcept {
+            safe_call([&ctx] {
+                ctx.Release();
+                ctx.Deactivate();
+            });
+        });
+
+        ctx.SyncEntity(unlogined_player);
+        unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    }
 
     _workerPool->Submit(key, [this, unlogined_player_ = refcount_ptr<Player>(unlogined_player)]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_.get()); });
 }
@@ -2450,6 +2462,12 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         }
     }
     else {
+        if (map) {
+            auto* loc = map->GetLocation();
+            FO_VERIFY_AND_THROW(loc, "Missing location instance");
+            ctx->EnsureEntitySynced(loc);
+        }
+
         cr->Send_LoadMap(map.get());
     }
 
