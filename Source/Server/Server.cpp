@@ -152,7 +152,7 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 
     FO_NON_CONST_METHOD_HINT();
 
-    return [this, body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+    return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         SyncContext sync_ctx;
         sync_ctx.Activate();
         auto cleanup = scope_exit([&]() noexcept {

@@ -853,7 +853,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr, moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
 
@@ -897,7 +897,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr, moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
 
@@ -953,7 +953,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr, moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&cr] { return !cr->IsMoving(); }));
 

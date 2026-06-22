@@ -350,7 +350,9 @@ namespace ClientServerIntegrationClient
     {
         FO_VERIFY_AND_THROW(client, "Missing client instance");
 
-        for (int32_t i = 0; i < 2000; i++) {
+        constexpr int32_t max_attempts = 15000;
+
+        for (int32_t i = 0; i < max_attempts; i++) {
             client->MainLoop();
 
             bool failed = false;

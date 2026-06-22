@@ -119,6 +119,7 @@ public:
     [[nodiscard]] constexpr auto end() noexcept { return _vec.end(); }
     [[nodiscard]] constexpr auto cbegin() const noexcept { return _vec.cbegin(); }
     [[nodiscard]] constexpr auto cend() const noexcept { return _vec.cend(); }
+    [[nodiscard]] constexpr auto size() const noexcept -> size_t { return _vec.size(); }
 
     ~ref_hold_vector()
     {
