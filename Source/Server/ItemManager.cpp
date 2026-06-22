@@ -328,7 +328,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
 
-        if (item->IsDestroyed() || to_cr->IsDestroyed()) {
+        if (item->IsDestroyed() || to_cr->IsDestroyed() || to_cr->IsDestroying()) {
             return nullptr;
         }
 
@@ -344,7 +344,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
         refcount_ptr splitted_item_holder = splitted_item;
         ignore_unused(splitted_item_holder);
 
-        if (to_cr->IsDestroyed()) {
+        if (to_cr->IsDestroyed() || to_cr->IsDestroying()) {
             RestoreSplitItem(item, splitted_item);
             return nullptr;
         }
@@ -445,7 +445,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
 
-        if (item->IsDestroyed() || to_cont->IsDestroyed()) {
+        if (item->IsDestroyed() || to_cont->IsDestroyed() || to_cont->IsDestroying()) {
             return nullptr;
         }
 
@@ -461,7 +461,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
         refcount_ptr splitted_item_holder = splitted_item;
         ignore_unused(splitted_item_holder);
 
-        if (to_cont->IsDestroyed()) {
+        if (to_cont->IsDestroyed() || to_cont->IsDestroying()) {
             RestoreSplitItem(item, splitted_item);
             return nullptr;
         }
