@@ -175,6 +175,13 @@
 #else
 #define FO_MEMORY_SANITIZER 0
 #endif
+#if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define FO_THREAD_SANITIZER 1
+extern "C" void __tsan_acquire(void* addr);
+extern "C" void __tsan_release(void* addr);
+#else
+#define FO_THREAD_SANITIZER 0
+#endif
 
 // Namespace management
 #if FO_USE_NAMESPACE
@@ -273,6 +280,24 @@ extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 {
+}
+
+FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_acquire(addr);
+#else
+    ignore_unused(addr);
+#endif
+}
+
+FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_release(addr);
+#else
+    ignore_unused(addr);
+#endif
 }
 
 // Explicit copying

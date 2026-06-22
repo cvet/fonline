@@ -84,6 +84,7 @@ void EntityLock::Acquire(uint64_t ticket)
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && _sharedHolders.empty()) {
         _ownerThread.store(this_thread, std::memory_order_release);
         _recursionCount = 1;
+        TSanAcquire(this);
         return;
     }
 
@@ -119,6 +120,7 @@ void EntityLock::Acquire(uint64_t ticket)
     FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
     const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
+    TSanAcquire(this);
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)
@@ -153,6 +155,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && !exclusive_waiter_ahead) {
         _sharedHolders.emplace(this_thread, 1);
+        TSanAcquire(this);
         return;
     }
 
@@ -181,6 +184,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it.
+    TSanAcquire(this);
 }
 
 void EntityLock::AbortPendingWaiters() noexcept
@@ -217,6 +221,7 @@ void EntityLock::Release() noexcept
         return;
     }
 
+    TSanRelease(this);
     _ownerThread.store(std::thread::id {}, std::memory_order_release);
     GrantWaiters();
 }
@@ -240,6 +245,7 @@ void EntityLock::ReleaseShared() noexcept
     FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
+        TSanRelease(this);
         _sharedHolders.erase(it);
 
         // A queued exclusive waiter can only proceed once the last reader has left.
@@ -325,6 +331,7 @@ auto EntityLock::TryAcquire() -> bool
 
     _ownerThread.store(this_thread, std::memory_order_release);
     _recursionCount = 1;
+    TSanAcquire(this);
     return true;
 }
 
