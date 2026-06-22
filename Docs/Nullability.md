@@ -180,13 +180,15 @@ MethodDesc::Call(call)
   → NativeDataProvider::CheckReturnNotNull(call, "...", "...")                                  // for non-nullable entity return
 ```
 
-Doing it at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered — the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. The check has no per-call lookup cost beyond a single pointer compare.
+Array parameters and returns are not blanket-scanned at this boundary. Script arrays can intentionally contain null handle cells (for sparse grids, nullable-element arrays, or caller-owned filtering), and the native export metadata currently has no per-element nullability bit that can distinguish `array<T>` from `array<T?>` for generated C++ wrappers. If a particular API requires non-null elements, enforce that invariant in the API-specific producer/consumer and document it there; do not rely on a global codegen check that would reject legitimate nullable arrays.
+
+Doing scalar checks at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered — the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. Scalar checks cost a single pointer compare.
 
 Violation surface: `ScriptException`, propagated to the calling AngelScript context. Three distinct messages:
 
 - *"Null assignment to non-nullable handle"* — raised by `asBC_RefCpyChk` (the new AS-side check on bare-handle writes). Distinct from the generic null-deref so stack traces clearly point at the bad assignment rather than a downstream method call.
 - *"Null pointer access"* — the original AS message, raised by `asBC_CHKREF` / `asBC_ChkRefS` / `asBC_ChkNullV` / `asBC_ChkNullS` for dereferences, indexing, and method calls on a null handle.
-- Native-boundary checks emit the method name, parameter name, and type via the codegen-generated `NativeDataProvider::Check{Arg,Return}NotNull`.
+- Native-boundary scalar checks emit the method name, parameter name when applicable, and type via the codegen-generated `NativeDataProvider::CheckArgNotNull` / `CheckReturnNotNull`.
 
 ### Compile-time guarantees
 
@@ -326,7 +328,9 @@ A reference cast can fail at runtime: `cast<T>(expr)` yields `null` when `expr` 
 
 A bare `cast<T>(x)` keeps the non-nullable "this cast is known to succeed" contract (like a `static_cast`): you may chain `cast<T>(x).Member` directly, but `cast<T>(x) != null` is flagged redundant (#5) — switch to `cast<T?>(x)` there. The `?` is honored by `CompileConversion` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp), which applies `to.IsNullable()` to the cast result (including the early-return path where an implicit conversion already produced the target type).
 
-`cast<T?>(x)` also covers a **same-type** read that is statically non-null but can be null at runtime: a member field declared `array<T>` keeps the element type `T`, yet `resize`/grid growth default-initializes new cells to **null**. Reading such a cell into a non-nullable `T` (`T v = field[i];`) throws `Null pointer access`, and writing `T? v = field[i];` is flagged a redundant widening (#3) because the element type is non-null. Spell the read `cast<T?>(field[i])` — it is both null-safe and exempt from #3. (A nullable-element field `array<T?>` / `T?[]` does **not** parse as a member field in this fork, so the cast at the read site is the working pattern; a single `T?` field such as `Critter? Target` is fine.)
+`cast<T?>(x)` also covers a **same-type** read that is statically non-null but can be null at runtime: a legacy/sparse field declared `array<T>` keeps the element type `T`, yet `resize`/grid growth can leave empty handle cells as **null**. Reading such a cell into a non-nullable `T` (`T v = field[i];`) throws `Null pointer access`, and writing `T? v = field[i];` is flagged a redundant widening (#3) because the element type is non-null. Prefer declaring nullable-element storage as `array<T?>` / `T?[]` when the array is allowed to contain holes; when working with an existing `array<T>` sparse container, spell the read `cast<T?>(field[i])` so the source type tells the truth.
+
+For API parameters, native returns, and sync/lock scopes, null-element policy belongs to that specific API contract. Use nullable-element arrays when null is meaningful; otherwise validate at the producer or at the API entry point that owns the invariant.
 
 ### Nullable property handles
 
