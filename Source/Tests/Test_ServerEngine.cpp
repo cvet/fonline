@@ -1912,9 +1912,12 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             ctx.Deactivate();
         });
 
-        // Bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A model that
-        // made the ancestor cover EXCLUDE the descendant lock would leave t2_got_cr false here.
-        for (int i = 0; i < 2000 && !t2_got_cr.load(std::memory_order_acquire); i++) {
+        // Wall-clock-bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A
+        // model that made the ancestor cover EXCLUDE the descendant lock leaves t2_got_cr false until
+        // the deadline. The deadline is generous so scheduler jitter on a loaded host cannot turn a
+        // slow-but-correct acquire into a false failure; a real exclusion never sets the flag at all.
+        const auto t2_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+        while (!t2_got_cr.load(std::memory_order_acquire) && nanotime::now() < t2_deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         CHECK(t2_got_cr.load());
@@ -2082,22 +2085,25 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
             try {
                 primary.SyncEntities(primary_req);
 
-                // Inner rendezvous holding ONLY the primary: spin (bounded, no lock-ordering hazard —
+                // Inner rendezvous holding ONLY the primary: busy-yield (no lock-ordering hazard —
                 // just an atomic) until the peer also holds its primary. This makes the nested
                 // cross-acquire below near-deterministically collide: both threads request {own, peer}
                 // in OPPOSITE order while each holds (via its primary) the lock the other needs — a
                 // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
                 // escalation; an unfixed engine spins forever (regression caught by the watchdog).
+                // The give-up threshold is a generous wall-clock deadline, not a fixed spin count, so a
+                // descheduled-but-progressing peer on a loaded host cannot trip a false "setup broken".
                 primary_held.fetch_add(1, std::memory_order_acq_rel);
-                for (int32_t spin = 0; spin < 100000 && primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire); spin++) {
+                const auto rendezvous_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+                while (primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire) && nanotime::now() < rendezvous_deadline) {
                     std::this_thread::yield();
                 }
 
                 // The rendezvous MUST be met before the nested cross-acquire: if the peer never
                 // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
-                // never forms, and even a broken engine would slip through as a false PASS. The budget
-                // is very generous (the peer only has to take one uncontended primary lock), so a miss
-                // means the setup is broken — fail hard instead of running a non-diagnostic acquire.
+                // never forms, and even a broken engine would slip through as a false PASS. The peer
+                // only has to take one uncontended primary lock, so missing the generous deadline means
+                // the setup is broken — fail hard instead of running a non-diagnostic acquire.
                 if (primary_held.load(std::memory_order_acquire) < 2) {
                     failed.store(true, std::memory_order_release);
                 }

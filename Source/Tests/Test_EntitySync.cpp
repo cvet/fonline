@@ -185,13 +185,11 @@ TEST_CASE("EntityLock")
     SECTION("AbortPendingWaitersAbortsSharedWaiter")
     {
         EntityLock lock;
-        std::atomic_bool started {false};
         std::atomic_bool threw {false};
 
         lock.Acquire(0); // exclusive held so the reader must park
 
         std::thread reader([&]() {
-            started.store(true);
             try {
                 lock.AcquireShared(10);
                 lock.ReleaseShared();
@@ -201,10 +199,12 @@ TEST_CASE("EntityLock")
             }
         });
 
-        while (!started.load()) {
+        // Wait until the reader is actually parked as a waiter before aborting. A fixed sleep here
+        // could, under load, call AbortPendingWaiters before the reader parks — the abort would then
+        // find nothing to abort and the reader would block forever (join hangs).
+        while (lock.WaiterCount() != 1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(30)); // reader now parked
 
         lock.AbortPendingWaiters();
         reader.join();
@@ -325,7 +325,11 @@ TEST_CASE("EntityLock")
             lock.Release();
         });
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        // Wait until both waiters are fully enqueued before releasing, so the grant order is
+        // determined purely by ticket value and not by thread-startup timing under load.
+        while (lock.WaiterCount() != 2) {
+            std::this_thread::yield();
+        }
 
         lock.Release();
 
