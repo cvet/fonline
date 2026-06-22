@@ -42,6 +42,13 @@ function(DisableLibWarnings)
 				-Wno-error=int-conversion
 				-Wno-error=implicit-function-declaration
 				-Wno-error=implicit-int>
+			# UBSan's -fsanitize=function (part of -fsanitize=undefined) flags calls made through a generic /
+			# mismatched function-pointer type as undefined behaviour. Several vendored libraries do this by design
+			# (AngelScript's whole script-call dispatch invokes registered C functions through bool(*)(void*,void*)
+			# and friends; mongo-c/zlib-style C callbacks do the same), so it is a third-party idiom, not a bug in
+			# our code. Exclude vendored libs from this one check on the San_Undefined configs; every other UBSan
+			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
+			$<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function>
 			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
 	endforeach()
 endfunction()

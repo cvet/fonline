@@ -74,6 +74,15 @@ needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
 defect detector.
 
+Vendored third-party libraries are excluded from UBSan's `-fsanitize=function`
+check (the rest of `-fsanitize=undefined` still applies to them). `DisableLibWarnings`
+adds `-fno-sanitize=function` on the `San_Undefined`/`San_Address_Undefined` configs
+because several vendored libraries call through generic/mismatched function-pointer
+types by design — AngelScript's script-call dispatch invokes registered C functions
+through `bool(*)(void*,void*)` and similar signatures, and C callback APIs do the same.
+That is a third-party idiom, not undefined behaviour in engine code, so it must not
+fail the UBSan leg (which CI runs with `halt_on_error=1`).
+
 ## Code coverage
 
 When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects the backend from the compiler:
