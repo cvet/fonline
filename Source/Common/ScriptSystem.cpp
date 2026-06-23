@@ -61,6 +61,24 @@ static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, strin
     }
 }
 
+static auto AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (func_type.Kind != caller_type.Kind) {
+        return false;
+    }
+    if (func_type.BaseType != caller_type.BaseType) {
+        return false;
+    }
+    if (func_type.KeyType != caller_type.KeyType) {
+        return false;
+    }
+
+    // Not comparing IsMutable.
+    return true;
+}
+
 DynamicRefTypeInstance::DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept :
     _registrator {registrator},
     _props {SafeAlloc::MakeUnique<Properties>(registrator)}
@@ -353,21 +371,6 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 
     const auto range = _globalFuncMap.equal_range(func_name);
 
-    const auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
-        if (func_arg.Kind != caller_arg.Kind) {
-            return false;
-        }
-        if (func_arg.BaseType != caller_arg.BaseType) {
-            return false;
-        }
-        if (func_arg.KeyType != caller_arg.KeyType) {
-            return false;
-        }
-
-        // Not comparing IsMutable.
-        return true;
-    };
-
     for (auto it = range.first; it != range.second; ++it) {
         const auto* func = it->second.get();
 
@@ -378,7 +381,7 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
         bool args_match = true;
 
         for (size_t i = 0; i < arg_types.size(); i++) {
-            if (!args_compatible(func->Args[i].Type, arg_types[i])) {
+            if (!AreComplexScriptTypesCompatible(func->Args[i].Type, arg_types[i])) {
                 args_match = false;
                 break;
             }
@@ -390,6 +393,50 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
     }
 
     return nullptr;
+}
+
+auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types, const ComplexTypeDesc& ret_type) noexcept -> ScriptFuncDesc*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto range = _globalFuncMap.equal_range(func_name);
+
+    for (auto it = range.first; it != range.second; ++it) {
+        const auto* func = it->second.get();
+
+        if (!func->Call || func->Ret.Kind == ComplexTypeKind::None || !AreComplexScriptTypesCompatible(func->Ret, ret_type) || func->Args.size() != arg_types.size()) {
+            continue;
+        }
+
+        bool args_match = true;
+
+        for (size_t i = 0; i < arg_types.size(); i++) {
+            if (!AreComplexScriptTypesCompatible(func->Args[i].Type, arg_types[i])) {
+                args_match = false;
+                break;
+            }
+        }
+
+        if (args_match) {
+            return it->second.get();
+        }
+    }
+
+    return nullptr;
+}
+
+auto ScriptSystem::FindFuncCandidates(hstring func_name) noexcept -> vector<ScriptFuncDesc*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<ScriptFuncDesc*> result;
+    const auto range = _globalFuncMap.equal_range(func_name);
+
+    for (auto it = range.first; it != range.second; ++it) {
+        result.emplace_back(it->second.get());
+    }
+
+    return result;
 }
 
 void ScriptSystem::AddGlobalScriptFunc(ScriptFuncDesc* func)

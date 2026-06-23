@@ -34,6 +34,7 @@
 #include "Client.h"
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
+#include "Managed/ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "Movement.h"
@@ -88,6 +89,9 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, Settings, Resources);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, Resources);
 #endif
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
@@ -217,6 +221,8 @@ void ClientEngine::Shutdown()
 
     OnFinish.Fire();
 
+    _eventUnsubscriber.Unsubscribe();
+
     UnsubscribeAllEvents();
     ClearAllTimeEvents();
 
@@ -227,6 +233,7 @@ void ClientEngine::Shutdown()
     _conn.Disconnect();
 
     SprMngr.GetRender().SetRenderTarget(nullptr);
+    SprMngr.UnsubscribeWindowEvents();
 
     _chosen = nullptr;
 

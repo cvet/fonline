@@ -609,18 +609,20 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_PREPROCESSOR_DIR}")
 endif()
 
-# Mono scripting
-if(FO_MONO_SCRIPTING)
-    StatusMessage("+ Mono")
+# Managed scripting runtime (Mono)
+if(FO_MANAGED_SCRIPTING)
+    StatusMessage("+ Managed runtime (Mono)")
 
     SetValue(FO_MONO_CONFIGURATION $<IF:${expr_DebugBuild},Debug,Release>)
     SetValue(FO_MONO_TRIPLET ${FO_MONO_OS}.${FO_MONO_ARCH}.${FO_MONO_CONFIGURATION})
+    SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_TRIPLET}_mono_runtime_corelib)
 
     SetValue(FO_DOTNET_DIR ${CMAKE_CURRENT_BINARY_DIR}/dotnet)
+    SetValue(FO_MANAGED_RUNTIME_DIR ${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET})
     FileMakeDirectory(${FO_DOTNET_DIR})
 
-    AddIncludeDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/include/mono-2.0)
-    AddLinkDirectories(${FO_DOTNET_DIR}/output/mono/${FO_MONO_TRIPLET}/lib)
+    AddIncludeDirectories(${FO_MANAGED_RUNTIME_DIR}/include/mono-2.0)
+    AddLinkDirectories(${FO_MANAGED_RUNTIME_DIR}/lib)
 
     if(FO_WINDOWS)
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.cmd)
@@ -628,15 +630,15 @@ if(FO_MONO_SCRIPTING)
         SetValue(FO_MONO_SETUP_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/setup-mono.sh)
     endif()
 
-    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
-        COMMAND ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
+    AddCustomCommand(OUTPUT ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
+        COMMAND ${CMAKE_COMMAND} -E env "FO_WORKSPACE=${FO_DOTNET_DIR}" ${FO_MONO_SETUP_SCRIPT} ${FO_MONO_OS} ${FO_MONO_ARCH} ${FO_MONO_CONFIGURATION}
         WORKING_DIRECTORY ${FO_DOTNET_DIR}
-        COMMENT "Setup Mono")
+        COMMENT "Setup Managed runtime")
 
-    AddCommandTarget(SetupMono
-        DEPENDS ${FO_DOTNET_DIR}/READY_${FO_MONO_TRIPLET}
+    AddCommandTarget(SetupManagedRuntime
+        DEPENDS ${FO_DOTNET_DIR}/${FO_MONO_READY_MARKER}
         WORKING_DIRECTORY ${FO_DOTNET_DIR})
-    AppendList(FO_GEN_DEPENDENCIES SetupMono)
+    AppendList(FO_GEN_DEPENDENCIES SetupManagedRuntime)
 
     AppendList(FO_COMMON_SYSTEM_LIBS
         monosgen-2.0

@@ -803,7 +803,7 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(MapView* self, mpos hex)
     return self->IsOutsideArea(hex);
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, FO_NULLABLE CritterView* cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
     RenderEffect* customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype) : nullptr;
@@ -811,7 +811,7 @@ FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, FO_NULLABLE CritterView
     return self->AddFog(cr, drawOrder, customFlushEffect);
 }
 
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API FogLayer* Client_Map_AddFog(MapView* self, mpos hex, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
     if (!self->GetSize().is_valid_pos(hex)) {

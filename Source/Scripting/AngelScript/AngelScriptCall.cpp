@@ -132,6 +132,20 @@ void ScriptDataAccessor::AddDictElement(void* data, void* key, void* value) cons
     dict->Set(key, value);
 }
 
+static auto GetGenericCallArgData(AngelScript::asIScriptGeneric* gen, AngelScript::asUINT arg_index) -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    AngelScript::asDWORD flags = 0;
+    (void)gen->GetArgTypeId(arg_index, &flags);
+
+    if ((flags & AngelScript::asTM_INOUTREF) != 0) {
+        return gen->GetArgAddress(arg_index);
+    }
+
+    return gen->GetAddressOfArg(arg_index);
+}
+
 auto ResolveScriptFuncType(AngelScript::asIScriptEngine* as_engine, int32_t type_id, uint32_t flags, bool is_ret) -> ComplexTypeDesc
 {
     FO_STACK_TRACE_ENTRY();
@@ -303,12 +317,12 @@ void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const f
         FO_VERIFY_AND_THROW(this_obj, "Missing required this obj");
 
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data[index] = index == 0 ? static_cast<void*>(&this_obj) : gen->GetAddressOfArg(index - 1);
+            args_data[index] = index == 0 ? static_cast<void*>(&this_obj) : GetGenericCallArgData(gen, index - 1);
         }
     }
     else {
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data[index] = gen->GetAddressOfArg(index);
+            args_data[index] = GetGenericCallArgData(gen, index);
         }
     }
 

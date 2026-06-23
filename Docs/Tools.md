@@ -29,6 +29,7 @@ The tool layer is not one monolithic editor. It contains:
 - `Source/Tools/ParticleEditor.cpp`
 - `Source/Applications/BakerApp.cpp`
 - `Source/Applications/ASCompilerApp.cpp`
+- `Source/Applications/ManagedScriptBakerApp.cpp`
 - `Source/Applications/MapperApp.cpp`
 - `Source/Applications/EditorApp.cpp`
 - `Source/Applications/TestingApp.cpp`
@@ -38,7 +39,7 @@ The tool layer is not one monolithic editor. It contains:
 
 The tool layer has three main shapes:
 
-1. **Batch command tools** — `BakerApp.cpp` and `ASCompilerApp.cpp` run deterministic file transformations from project settings and resource packs.
+1. **Batch command tools** — `BakerApp.cpp`, `ASCompilerApp.cpp`, and `ManagedScriptBakerApp.cpp` run deterministic file transformations from project settings and resource packs.
 2. **Interactive runtime tools** — `MapperApp.cpp` and `EditorApp.cpp` create windows through the frontend/application layer and drive a per-frame main loop.
 3. **Reusable processors** — `Source/Tools/*Baker.*`, `Mapper.*`, `Editor.*`, `AssetExplorer.*`, and `ParticleEditor.*` implement the reusable work behind the apps.
 
@@ -57,6 +58,12 @@ Use it for full resource baking. `BuildTools/cmake/stages/ScriptsAndBaking.cmake
 `Source/Applications/ASCompilerApp.cpp` prepares metadata and compiles AngelScript resource packs. It runs metadata baking first for resource packs that include `MetadataBaker`, then compiles packs that include `AngelScriptBaker`.
 
 Use it for the `CompileAngelScript` build path. The broader script runtime is documented in [Scripting.md](Scripting.md).
+
+### Managed script baker app
+
+`Source/Applications/ManagedScriptBakerApp.cpp` (built as `<FO_DEV_NAME>_ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled) prepares metadata first for resource packs that include `MetadataBaker`, then runs `ManagedScriptBaker` for packs that include the `Managed` baker — generating the C# API/project files and compiling the managed assemblies. Because it does not bake other resource types, it can regenerate the managed project environment without a full resource bake.
+
+Use it for the `CompileManagedScripts` build path; it is suitable as a pre-build environment-generation step or a manual task, mirroring the AngelScript compiler app.
 
 ### Mapper app
 
@@ -98,6 +105,7 @@ Built-in baker implementations:
 - `Source/Tools/ModelMeshBaker.*` — bakes model mesh data when 3D support is enabled.
 - `Source/Tools/ModelInfoBaker.*` — bakes model description/animation metadata when 3D support is enabled.
 - `Source/Tools/AngelScriptBaker.*` — compiles/bakes AngelScript bytecode resources when AngelScript support is enabled.
+- `Source/Tools/ManagedScriptBaker.*` — when Managed support is enabled, generates C# API scaffolding from engine metadata, copies managed core support into project-local generated C# files, writes one unified IDE project (`.gen.csproj`, with per-target `Configuration` blocks) plus a matching solution (`.gen.sln`), compiles target-specific managed assemblies, and relies on the CMake `SetupManagedRuntime` target to prepare the Mono runtime used by managed-linked applications.
 
 Detailed bake ordering, settings, output writing, and validation live in [BakingPipeline.md](BakingPipeline.md).
 

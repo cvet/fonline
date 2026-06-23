@@ -46,6 +46,19 @@ ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const
     FO_STACK_TRACE_ENTRY();
 }
 
+void ItemHexView::OnDestroySelf()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ItemView::OnDestroySelf();
+
+    // Release atlas-backed sprites at logical destroy so a wrapper-retained entity (managed scripts hold a strong
+    // ref past destroy) has a memory-only final destructor — its dtor must not free atlas space after the
+    // SpriteManager is gone. Mirrors CritterHexView::OnDestroySelf.
+    _spr = nullptr;
+    _anim = nullptr;
+}
+
 void ItemHexView::Init()
 {
     FO_STACK_TRACE_ENTRY();

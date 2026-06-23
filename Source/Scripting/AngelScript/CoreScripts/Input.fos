@@ -1,6 +1,8 @@
 namespace Input
 {
 
+// FO_MANAGED_MODULE_INIT_OWNER
+
 #if CLIENT
 
 funcdef bool KeyDownCallback(KeyCode key, string text);
@@ -58,15 +60,17 @@ bool[] GetMousePressed()
 [[ModuleInit]]
 void InitInput()
 {
+    KeyPressed.resize(0x100);
+    MousePressed.resize(MouseButton::Ext4 + 1);
+
+#if !MANAGED
     Game.OnMouseDown.Subscribe(OnMouseDown);
     Game.OnMouseUp.Subscribe(OnMouseUp);
     Game.OnMouseMove.Subscribe(OnMouseMove);
     Game.OnKeyDown.Subscribe(OnKeyDown);
     Game.OnKeyUp.Subscribe(OnKeyUp);
     Game.OnInputLost.Subscribe(OnInputLost);
-
-    KeyPressed.resize(0x100);
-    MousePressed.resize(MouseButton::Ext4 + 1);
+#endif
 }
 
 void ReleaseKeys()

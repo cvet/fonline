@@ -42,7 +42,7 @@ Important command arguments include:
 - `-devname` / `-nicename` — project identity values.
 - `-embedded` — embedded data capacity (`FO_EMBEDDED_DATA_CAPACITY`).
 - `-internalcfg` — internal config capacity (`FO_INTERNAL_CONFIG_CAPACITY`).
-- `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and `FO_MONO_SOURCE`.
+- `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and managed C# source files tracked through `FO_MANAGED_SOURCE_FILES`. C# script files may also contain script-level `///@` tags such as `Enum`, `Property`, `RefType`, and `Setting`; build-time codegen accepts those tags so `MetadataBaker` can process them during resource baking.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
@@ -81,6 +81,8 @@ Hand-authored declarations live in `Source/Common/MetadataRegistration.h`:
 `Source/Common/MetadataRegistration-Template.cpp` is the template used to generate side-specific registration files. It contains code-generation markers such as `///@ CodeGen RegisterHelpers` and `///@ CodeGen Register`.
 
 `Source/Common/GenericCode-Template.cpp` is the template for generated common code.
+
+`GenericCode-Common.cpp` also emits per-target `GetServerSettingsTyped()`, `GetClientSettingsTyped()`, and `GetMapperSettingsTyped()` lists for engine `ExportSettings`. `ManagedScriptBaker` consumes those lists to generate C# `Settings.*` accessors for scalar settings and supported `vector<T>` settings as `List<T>`, while dictionary-shaped settings remain outside this generated managed surface. Mapper generated settings include the Client/Common engine `ExportSettings` surface because mapper AngelScript runs with the same visible engine settings groups for editor rendering and input helpers.
 
 ## Engine hook tags
 
@@ -131,6 +133,8 @@ Migration rules are generic `(kind, extra-info, target → replacement)` remaps 
 - base type, struct layout, and serialization-related descriptors
 
 When property metadata changes, inspect both the property runtime and the generator inputs/templates. Script-visible nullability or API changes should also update [Scripting.md](Scripting.md), [ScriptMethodsMap.md](ScriptMethodsMap.md), and [Nullability.md](Nullability.md) as applicable.
+
+When Managed scripting is enabled, `ManagedScriptBaker` consumes the same property metadata to emit typed C# property enums and entity wrappers. The generated base `Entity` includes generic `GetAsInt<TProp>()`, `SetAsInt<TProp>()`, `GetAsAny<TProp>()`, and `SetAsAny<TProp>()` helpers that pass property enum values to native property-index bridges. The generated C# `Game.GetPropertyInfo(<Type>Property, out ...)` overloads are metadata-only mirrors of the AngelScript property-info API for entity and fixed-type properties, so changes to property flags, base type, sync state, or enum names are reflected by a managed rebake. Generated `Game.AddPropertySetter(...)` overloads are also metadata-shaped: entity-only post-set callbacks receive `Action<TEntity>`, simple setters receive `(entity, ref value)`, and property-group setters can receive `(entity, <Type>Property, ref value)` through `PropertySetterWithProperty<TEntity,TProperty,TValue>`.
 
 ## Public API relationship
 

@@ -80,6 +80,19 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     backend->SendMessage(formatted_message);
 }
 
+static void AngelScriptShutdownMessage(const AngelScript::asSMessageInfo* msg, void* param)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string_view message = msg->message != nullptr ? string_view {msg->message} : string_view {};
+
+    if (message.find("There is an external reference to an object in module") != string_view::npos || message.find("GC cannot destroy an object of type") != string_view::npos || message.find("The builtin type in previous message is named") != string_view::npos) {
+        return;
+    }
+
+    AngelScriptMessage(msg, param);
+}
+
 static void CleanupScriptFunction(AngelScript::asIScriptFunction* func)
 {
     FO_STACK_TRACE_ENTRY();
@@ -110,15 +123,18 @@ AngelScriptBackend::~AngelScriptBackend()
 
     _contextMngr.reset();
 
+    ReleaseScriptGlobalsAndReportGC();
+
     _meta.reset();
     _scriptSys.reset();
     _engine.reset();
     _settings.reset();
     _entityMngr.reset();
 
-    ReleaseScriptGlobalsAndReportGC();
-
     if (_asEngine) {
+        int32_t as_result = 0;
+        FO_AS_VERIFY(_asEngine->SetMessageCallback(AngelScript::asFUNCTION(AngelScriptShutdownMessage), cast_to_void(_asEngine.get()), AngelScript::asCALL_CDECL));
+
         const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
         FO_STRONG_ASSERT(as_engine_ref_count == 0, "AngelScript engine was not fully released", as_engine_ref_count);
     }
@@ -544,6 +560,12 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         break;
     }
 
+#if FO_MANAGED_SCRIPTING
+    Preprocessor::Define(preprocessor_context, "MANAGED 1");
+#else
+    Preprocessor::Define(preprocessor_context, "MANAGED 0");
+#endif
+
     auto loader = ScriptLoader(&root_script, &final_script_files);
     Preprocessor::StringOutStream errors;
     Preprocessor::LexemList lexems;
@@ -812,6 +834,11 @@ void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
             // Only funcdef handles and reference-typed object globals store a pointer in the slot. Value-type
             // object globals keep their instance inline (as do enums/primitives), so reading the slot as a
             // pointer would over-read the inline value; those are destructed by the standard module teardown.
+            // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
+            // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
+            // standard module teardown skips it. Value-type object globals store the instance inline (often
+            // smaller than a pointer), so dereferencing the slot as a pointer would read past that inline
+            // storage; leave them to the standard module teardown. Skip them before touching the slot.
             const bool is_ref_object = (type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_info->GetFlags() & AngelScript::asOBJ_REF) != 0;
 
             if (!is_funcdef && !is_ref_object) {
@@ -824,16 +851,12 @@ void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
                 continue;
             }
 
-            // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
-            // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
-            // standard module teardown skips it. Value-type object globals store the instance inline and are
-            // destructed by the module teardown, so they are left untouched here.
             if (is_funcdef) {
                 static_cast<AngelScript::asIScriptFunction*>(*slot)->Release();
                 *slot = nullptr;
                 released_globals++;
             }
-            else if ((type_info->GetFlags() & AngelScript::asOBJ_REF) != 0) {
+            else {
                 _asEngine->ReleaseScriptObject(*slot, type_info);
                 *slot = nullptr;
                 released_globals++;

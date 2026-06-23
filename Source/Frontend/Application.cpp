@@ -351,13 +351,13 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_METAL
     else if (Settings.ForceMetal) {
         _ctx->ActiveRendererType = RenderType::Metal;
-        throw NotImplementedException(FO_LINE_STR);
+        throw AppInitException("Metal renderer is not available");
     }
 #endif
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
-        throw NotImplementedException(FO_LINE_STR);
+        throw AppInitException("Vulkan renderer is not available");
     }
 #endif
 

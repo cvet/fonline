@@ -1179,11 +1179,20 @@ void BaseEngine::SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t
     HandleOutboundRemoteCall(name, caller, data);
 }
 
-void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler)
+auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    return _inboundRemoteCallHandlers.contains(name);
+}
+
+void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!replace) {
+        FO_VERIFY_AND_THROW(!_inboundRemoteCallHandlers.contains(name), "Inbound remote call handler is already registered", name);
+    }
 
     _inboundRemoteCallHandlers[name] = std::move(handler);
 }

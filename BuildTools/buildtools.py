@@ -686,8 +686,11 @@ def download_file(url: str, target_path: Path, label: str) -> None:
 	urllib.request.urlretrieve(url, target_path)
 
 
-def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:
-	command: list[object] = ['git', 'clone', repo_url]
+def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None, long_paths: bool = False) -> None:
+	command: list[object] = ['git']
+	if long_paths:
+		command.extend(['-c', 'core.longpaths=true'])
+	command.extend(['clone', repo_url])
 	if depth is not None:
 		command.extend(['--depth', str(depth)])
 	if branch_name is not None:
@@ -696,8 +699,63 @@ def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = N
 	run(command)
 
 
-def resolve_runtime_build_script() -> str:
-	return 'build.cmd' if os.name == 'nt' else './build.sh'
+def resolve_visual_studio_2022_dev_cmd() -> Path | None:
+	if os.name != 'nt':
+		return None
+
+	program_files_x86 = os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')
+	vswhere = Path(program_files_x86) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+	if not vswhere.exists():
+		return None
+
+	try:
+		output = subprocess.check_output(
+			[
+				str(vswhere),
+				'-latest',
+				'-products',
+				'*',
+				'-version',
+				'[17.0,18.0)',
+				'-requires',
+				'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+				'-property',
+				'installationPath',
+			],
+			text=True,
+			encoding='utf-8',
+			errors='replace',
+		).strip()
+	except (OSError, subprocess.CalledProcessError):
+		return None
+
+	if not output:
+		return None
+
+	dev_cmd = Path(output) / 'Common7' / 'Tools' / 'VsDevCmd.bat'
+	return dev_cmd if dev_cmd.exists() else None
+
+
+def run_runtime_build(build_args: list[str], runtime_root: Path) -> None:
+	if os.name != 'nt':
+		run(['./build.sh', *build_args], cwd=runtime_root)
+		return
+
+	wrapper = runtime_root / 'fo-build-runtime.cmd'
+	wrapper_lines = ['@echo off']
+	vs_dev_cmd = resolve_visual_studio_2022_dev_cmd()
+	if vs_dev_cmd is not None:
+		wrapper_lines.extend([
+			f'call "{vs_dev_cmd}" -no_logo',
+			'if errorlevel 1 exit /b %ERRORLEVEL%',
+		])
+	wrapper_lines.extend([
+		'call build.cmd %*',
+		'if errorlevel 1 exit /b %ERRORLEVEL%',
+	])
+	wrapper.write_text('\n'.join(wrapper_lines) + '\n', encoding='utf-8')
+
+	run(['cmd', '/d', '/c', wrapper.name, *build_args], cwd=runtime_root)
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
@@ -1826,12 +1884,14 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
 	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent.
 	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
-	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	runtime_triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	publish_triplet = f'{os_name}.{arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
 	runtime_root = workspace / 'runtime'
-	clone_marker = workspace / 'CLONED'
-	built_marker = workspace / f'BUILT_{triplet}'
-	ready_marker = workspace / f'READY_{triplet}'
+	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
+	clone_marker = workspace / f'CLONED_{runtime_version}'
+	built_marker = workspace / f'BUILT_{runtime_triplet}_mono_runtime_corelib'
+	ready_marker = workspace / f'READY_{publish_triplet}_mono_runtime_corelib'
 
 	def clone_runtime() -> None:
 		if runtime_root.exists():
@@ -1843,27 +1903,44 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 			copy_directory(dotnet_runtime_root, runtime_root)
 		else:
 			log('Clone runtime')
-			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1)
+			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1, long_paths=True)
 
 	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
-		build_script = resolve_runtime_build_script()
-		run([build_script, '-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
+		run_runtime_build(['-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime+mono.corelib'], runtime_root)
 
 	run_marker_step(built_marker, 'Build runtime', build_runtime)
 
 	def publish_runtime() -> None:
-		output_dir = workspace / 'output' / 'mono' / triplet
-		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / triplet / 'out'
+		output_dir = workspace / 'output' / 'mono' / publish_triplet
+		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
 		log('Copy from', input_dir, 'to', output_dir)
 		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
 
-	run_marker_step(ready_marker, f'Publish runtime {triplet}', publish_runtime)
+		shared_framework_root = runtime_root / '.dotnet' / 'shared' / 'Microsoft.NETCore.App'
+		if not shared_framework_root.is_dir():
+			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
+		shared_framework_dirs = sorted((path for path in shared_framework_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+		if not shared_framework_dirs:
+			raise SystemExit(f'Microsoft.NETCore.App shared framework not found: {shared_framework_root}')
 
-	log(f'Runtime {triplet} is ready!')
+		shared_framework_dir = shared_framework_dirs[-1]
+		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
+		if not corelib_path.is_file():
+			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
+
+		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
+		ensure_empty_dir(netcoreapp_dir)
+		for assembly_path in shared_framework_dir.glob('*.dll'):
+			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
+		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
+
+	run_marker_step(ready_marker, f'Publish runtime {publish_triplet}', publish_runtime)
+
+	log(f'Runtime {publish_triplet} is ready!')
 
 
 

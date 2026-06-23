@@ -144,7 +144,22 @@ static auto ResolveInvokeArgTypes(AngelScript::asIScriptGeneric* gen, AngelScrip
     return arg_types;
 }
 
-static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asIScriptGeneric* gen, AngelScript::asUINT first_arg) -> bool
+static auto ResolveInvokeResultType(AngelScript::asIScriptGeneric* gen, AngelScript::asUINT result_arg) -> ComplexTypeDesc
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* as_engine = gen->GetEngine();
+    const int32_t result_type_id = gen->GetArgTypeId(result_arg);
+    auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
+
+    if (!result_type) {
+        throw ScriptException(strex("Unsupported invoke result type '{}'", as_engine->GetTypeDeclaration(result_type_id, true)).str());
+    }
+
+    return result_type;
+}
+
+static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asIScriptGeneric* gen, AngelScript::asUINT first_arg, void* ret_data = nullptr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -177,6 +192,7 @@ static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asISc
 
     FuncCallData call {.Accessor = &SCRIPT_DATA_ACCESSOR};
     call.ArgsData = span(args_data).subspan(0, args_count);
+    call.RetData = ret_data;
 
     try {
         func_desc->Call(call);
@@ -238,6 +254,25 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 
+static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* engine = GetGameEngine(gen->GetEngine());
+    const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
+    const auto hashed_func_name = engine->Hashes.ToHashedString(func_name);
+    const auto result_type = ResolveInvokeResultType(gen, 1);
+    const auto arg_types = ResolveInvokeArgTypes(gen, 2);
+    auto* func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
+
+    if (func_desc == nullptr) {
+        throw ScriptException("Script function not found", func_name);
+    }
+
+    const bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));
+    new (gen->GetAddressOfReturnLocation()) bool(result);
+}
+
 static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -270,6 +305,7 @@ static void Global_GetPropertyGroup(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto* arr = cast_from_void<ScriptArray*>(gen->GetAuxiliary());
+    arr->AddRef();
     new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr);
 }
 
@@ -685,6 +721,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool Invoke(string funcName, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByName), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool InvokeResult(string funcName, ?&out result, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByNameWithResult), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string NameOf(?&in obj)", FO_SCRIPT_GENERIC(Global_NameOf), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers

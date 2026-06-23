@@ -42,6 +42,8 @@
 #include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 
+#include "RemoteCallWire.h"
+
 #include <angelscript.h>
 #include <preprocessor.h>
 
@@ -134,45 +136,16 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
     vector<uint8_t> data;
     DataWriter writer(data);
 
-    const function<void(const void*, const BaseTypeDesc&)> write_simple = [&](const void* ptr, const BaseTypeDesc& type) {
-        if (type.IsPrimitive) {
-            VisitBaseTypePrimitive(ptr, type, [&](auto&& v) {
-                using t = std::decay_t<decltype(v)>;
-                writer.Write<t>(v);
-            });
-        }
-        else if (type.IsEnum) {
-            FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
-            FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
-            writer.WritePtr(static_cast<const uint8_t*>(ptr), type.Size);
-        }
-        else if (type.IsString) {
-            const auto& str = *cast_from_void<const string*>(ptr);
-            writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
-            writer.WritePtr(str.c_str(), str.length());
-        }
-        else if (type.IsHashedString) {
-            const auto& hstr = *cast_from_void<const hstring*>(ptr);
-            writer.Write<hstring::hash_t>(hstr.as_hash());
-        }
-        else if (type.IsRefType) {
+    // Scalar wire I/O is shared with the managed backend (RemoteCallWire.h); only the AngelScript ref-type ->
+    // raw-bytes conversion is backend-specific, supplied here as a hook. Collection framing stays below.
+    const RemoteCallWireHooks hooks {
+        .RefTypeToRaw = [](const BaseTypeDesc& type, const void* ptr) -> vector<uint8_t> {
             const auto ref_obj = ptr != nullptr ? *static_cast<void* const*>(const_cast<void*>(ptr)) : nullptr;
-            const auto raw_data = ConvertRefTypeScriptObjectToRawData(type, ref_obj);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
-
-            if (!raw_data.empty()) {
-                writer.WritePtr(raw_data.data(), raw_data.size());
-            }
-        }
-        else if (type.IsStruct) {
-            for (const auto& field : type.StructLayout->Fields) {
-                write_simple(static_cast<const uint8_t*>(ptr) + field.Offset, field.Type);
-            }
-        }
-        else {
-            throw NotSupportedException(FO_LINE_STR);
-        }
+            return ConvertRefTypeScriptObjectToRawData(type, ref_obj);
+        },
     };
+
+    const auto write_simple = [&](const void* ptr, const BaseTypeDesc& type) { WriteRemoteCallSimple(writer, ptr, type, hooks); };
 
     for (size_t i = 0; i < outbound_call.Args.size(); i++) {
         const auto& arg = outbound_call.Args[i];
@@ -242,61 +215,22 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, Entity*
     auto* as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    struct RemoteCallPlainArgData
-    {
-        alignas(uint64_t) uint8_t Bytes[sizeof(uint64_t)] {};
-    };
-
-    using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    using possible_types = variant<refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
 
-    const auto read_plain_data = [&](size_t size) -> void* {
-        FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
-        RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
-        reader.ReadPtr(storage.Bytes, size);
-        return cast_to_void(storage.Bytes);
-    };
-
-    const function<void*(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> void* {
-        if (type.IsPrimitive) {
-            return read_plain_data(type.Size);
-        }
-        else if (type.IsEnum) {
-            FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required type enum underlying type");
-            FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
-            return read_plain_data(type.Size);
-        }
-        else if (type.IsString) {
-            const auto str_len = reader.Read<int32_t>();
-            FO_VERIFY_AND_THROW(str_len >= 0, "Str len is negative", str_len);
-            const auto* s = reader.ReadPtr<char>(str_len);
-            return cast_to_void(&std::get<string>(temp_data.emplace_back(string(s, str_len))));
-        }
-        else if (type.IsHashedString) {
-            const auto hash = reader.Read<hstring::hash_t>();
-            const auto hstr = engine->Hashes.ResolveHash(hash);
-            return cast_to_void(&std::get<hstring>(temp_data.emplace_back(hstring(hstr))));
-        }
-        else if (type.IsRefType) {
-            const uint32_t raw_size = reader.Read<uint32_t>();
-            const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
-
-            auto* ref_obj = CreateRefTypeScriptObjectFromRawData(type, {raw_data, raw_size});
+    // Scalar wire I/O is shared with the managed backend (RemoteCallWire.h): deserialized scalars live in
+    // `storage`, while ref-type objects (via the hook) and collections (below) keep AngelScript-specific
+    // lifetimes in `temp_data`.
+    RemoteCallReadStorage storage;
+    const RemoteCallWireHooks hooks {
+        .RawToRefType = [&](const BaseTypeDesc& type, span<const uint8_t> raw_data) -> void* {
+            auto* ref_obj = CreateRefTypeScriptObjectFromRawData(type, raw_data);
             auto&& ref_obj_ptr = std::get<refcount_ptr<DynamicRefTypeInstance>>(temp_data.emplace_back(refcount_ptr<DynamicRefTypeInstance>(refcount_ptr<DynamicRefTypeInstance>::adopt, cast_from_void<DynamicRefTypeInstance*>(ref_obj))));
             return cast_to_void(ref_obj_ptr.get_pp());
-        }
-        else if (type.IsStruct) {
-            auto& buf = std::get<vector<uint8_t>>(temp_data.emplace_back(vector<uint8_t>(type.Size, 0)));
-            for (const auto& field : type.StructLayout->Fields) {
-                void* field_data = read_simple(field.Type);
-                MemCopy(buf.data() + field.Offset, field_data, field.Type.Size);
-            }
-            return cast_to_void(buf.data());
-        }
-        else {
-            FO_UNREACHABLE_PLACE();
-        }
+        },
     };
+
+    const auto read_simple = [&](const BaseTypeDesc& type) -> void* { return ReadRemoteCallSimple(reader, type, engine->Hashes, storage, hooks); };
 
     FuncCallData call {.Accessor = &SCRIPT_DATA_ACCESSOR};
     const size_t args_count = inbound_call.Args.size() + (engine->GetSide() == EngineSideKind::ServerSide ? 1 : 0);
@@ -428,6 +362,9 @@ void BindAngelScriptRemoteCalls(AngelScript::asIScriptEngine* as_engine)
         if (auto* func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call); func != nullptr) {
             if (backend->HasGameEngine()) {
                 auto* engine = backend->GetGameEngine();
+                if (engine->HasRemoteCallHandler(inbound_call.Name)) {
+                    continue;
+                }
                 engine->SetRemoteCallHandler(inbound_call.Name, [&inbound_call, engine, func](hstring name, Entity* entity, span<uint8_t> data) FO_DEFERRED {
                     FO_VERIFY_AND_THROW(name == inbound_call.Name, "Inbound remote call name changed while dispatching");
                     InboundRemoteCallHandler(inbound_call, entity, data, engine, func);

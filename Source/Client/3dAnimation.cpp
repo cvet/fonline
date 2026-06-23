@@ -102,7 +102,7 @@ ModelAnimationController::ModelAnimationController(int32_t track_count)
 
     if (track_count != 0) {
         _anims = SafeAlloc::MakeShared<vector<pair<ModelAnimation*, bool>>>();
-        _outputs = SafeAlloc::MakeShared<vector<Output>>();
+        _outputs = SafeAlloc::MakeShared<deque<Output>>();
         _tracks.resize(track_count);
     }
 }
@@ -113,7 +113,7 @@ auto ModelAnimationController::Copy() const -> unique_ptr<ModelAnimationControll
 
     auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
     clone->_anims = _anims;
-    clone->_outputs = _outputs;
+    clone->_outputs = SafeAlloc::MakeShared<deque<Output>>(*_outputs);
     clone->_tracks.resize(_tracks.size());
     clone->_eventsTime = 0.0f;
     clone->_interpolationDisabled = _interpolationDisabled;
@@ -129,8 +129,8 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
     o.Matrix = &output_matrix;
     o.Valid.resize(_tracks.size());
     o.Factor.resize(_tracks.size());
-    o.Scale.resize(_tracks.size());
-    o.Rotation.resize(_tracks.size());
+    o.Scale.resize(_tracks.size(), vec3 {1.0f, 1.0f, 1.0f});
+    o.Rotation.resize(_tracks.size(), quaternion {1.0f, 0.0f, 0.0f, 0.0f});
     o.Translation.resize(_tracks.size());
 }
 
@@ -210,26 +210,30 @@ void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_ind
 
     const auto* anim = (*_anims)[anim_index].first;
     const auto reversed = (*_anims)[anim_index].second;
+    const size_t invalid_output_index = std::numeric_limits<size_t>::max();
 
     _tracks[track].Anim = anim;
     _tracks[track].Reversed = reversed;
     const auto& outputs = anim->GetBoneOutputs();
-    _tracks[track].AnimOutput.resize(outputs.size());
+    _tracks[track].AnimOutput.assign(outputs.size(), invalid_output_index);
 
     for (size_t i = 0; i < outputs.size(); i++) {
         const auto link_name = outputs[i].BoneName;
-        Output* output = nullptr;
+        size_t output_index = invalid_output_index;
 
         if (allowed_bones == nullptr || allowed_bones->count(link_name) != 0) {
+            size_t candidate_index = 0;
             for (auto& o : *_outputs) {
                 if (o.BoneName == link_name) {
-                    output = &o;
+                    output_index = candidate_index;
                     break;
                 }
+
+                candidate_index++;
             }
         }
 
-        _tracks[track].AnimOutput[i] = output;
+        _tracks[track].AnimOutput[i] = output_index;
     }
 }
 
@@ -247,10 +251,21 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
                 continue;
             }
 
+            const size_t invalid_output_index = std::numeric_limits<size_t>::max();
+
             for (size_t j = 0; j < _tracks[i].AnimOutput.size(); j++) {
-                if (_tracks[i].AnimOutput[j] && _tracks[i].AnimOutput[j]->BoneName == bone_name) {
-                    _tracks[i].AnimOutput[j]->Valid[i] = false;
-                    _tracks[i].AnimOutput[j] = nullptr;
+                const size_t output_index = _tracks[i].AnimOutput[j];
+
+                if (output_index != invalid_output_index && output_index < _outputs->size()) {
+                    Output& output = (*_outputs)[output_index];
+
+                    if (output.BoneName == bone_name) {
+                        if (output.Valid.size() > i) {
+                            output.Valid[i] = false;
+                        }
+
+                        _tracks[i].AnimOutput[j] = invalid_output_index;
+                    }
                 }
             }
         }
@@ -396,8 +411,28 @@ void ModelAnimationController::AdvanceTime(float32_t time)
         }
     }
 
+    const size_t track_count = _tracks.size();
+
+    for (auto& output : *_outputs) {
+        if (output.Valid.size() != track_count) {
+            output.Valid.resize(track_count);
+        }
+        if (output.Factor.size() != track_count) {
+            output.Factor.resize(track_count);
+        }
+        if (output.Scale.size() != track_count) {
+            output.Scale.resize(track_count, vec3 {1.0f, 1.0f, 1.0f});
+        }
+        if (output.Rotation.size() != track_count) {
+            output.Rotation.resize(track_count, quaternion {1.0f, 0.0f, 0.0f, 0.0f});
+        }
+        if (output.Translation.size() != track_count) {
+            output.Translation.resize(track_count);
+        }
+    }
+
     // Track animation
-    for (size_t i = 0; i < _tracks.size(); i++) {
+    for (size_t i = 0; i < track_count; i++) {
         auto& track = _tracks[i];
 
         for (auto& o : *_outputs) {
@@ -409,22 +444,41 @@ void ModelAnimationController::AdvanceTime(float32_t time)
         }
 
         const auto& anim_outputs = track.Anim->GetBoneOutputs();
+        FO_VERIFY_AND_THROW(anim_outputs.size() == track.AnimOutput.size(), "Animation output count must match the track");
 
-        for (size_t j = 0; j < anim_outputs.size(); j++) {
-            if (!track.AnimOutput[j]) {
+        const size_t anim_output_count = std::min(anim_outputs.size(), track.AnimOutput.size());
+        const size_t invalid_output_index = std::numeric_limits<size_t>::max();
+
+        for (size_t j = 0; j < anim_output_count; j++) {
+            const size_t output_index = track.AnimOutput[j];
+
+            if (output_index == invalid_output_index || output_index >= _outputs->size()) {
                 continue;
             }
 
+            Output* output = &(*_outputs)[output_index];
+
             const auto& anim_output = anim_outputs[j];
             const auto duration = track.Anim->GetDuration();
+
+            if (duration <= 0.0f) {
+                continue;
+            }
+
             const auto pos = std::fmod(track.Position, duration);
 
-            FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, track.AnimOutput[j]->Scale[i]);
-            FindSrtValue<quaternion>(pos, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, track.AnimOutput[j]->Rotation[i]);
-            FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.TranslationTime, anim_output.TranslationValue, track.AnimOutput[j]->Translation[i]);
+            output->Scale[i] = vec3 {1.0f, 1.0f, 1.0f};
+            output->Rotation[i] = quaternion {1.0f, 0.0f, 0.0f, 0.0f};
+            output->Translation[i] = {};
 
-            track.AnimOutput[j]->Valid[i] = true;
-            track.AnimOutput[j]->Factor[i] = track.Weight;
+            const bool has_scale = FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.ScaleTime, anim_output.ScaleValue, output->Scale[i]);
+            const bool has_rotation = FindSrtValue<quaternion>(pos, duration, track.Reversed, anim_output.RotationTime, anim_output.RotationValue, output->Rotation[i]);
+            const bool has_translation = FindSrtValue<vec3>(pos, duration, track.Reversed, anim_output.TranslationTime, anim_output.TranslationValue, output->Translation[i]);
+
+            if (has_scale || has_rotation || has_translation) {
+                output->Valid[i] = true;
+                output->Factor[i] = track.Weight;
+            }
         }
     }
 

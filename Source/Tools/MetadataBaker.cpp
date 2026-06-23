@@ -65,7 +65,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
     for (const auto& file_header : files) {
         const string ext = strex(file_header.GetPath()).get_file_extension();
 
-        if (ext != "fos") {
+        if (ext != "fos" && ext != "cs") {
             continue;
         }
 

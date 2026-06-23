@@ -103,14 +103,14 @@ CMake contributions included to main CMakeLists.txt scope.
   + GAME_VERSION - any string that describe current version of game
   + NATIVE_SCRIPTING - allow native C++ scripting
   + ANGELSCRIPT_SCRIPTING - allow AngelScript scripting
-  + MONO_SCRIPTING - allow Mono C# scripting
+  + MANAGED_SCRIPTING - allow Managed C# scripting
 * AddContent dir(s)
 * AddResources packName dir(s)
 * AddRawResources dir(s)
 * AddNativeSource pathPattern(s)
-* AddMonoAssembly assembly
-* AddMonoReference assembly target ref(s)
-* AddMonoSource assembly target pathPattern(s)
+* AddManagedAssembly assembly
+* AddManagedReference assembly target ref(s)
+* AddManagedSource assembly target pathPattern(s)
 * CreatePackage package config debug
 * AddToPackage package binary platform arch packType [customConfig]
 
