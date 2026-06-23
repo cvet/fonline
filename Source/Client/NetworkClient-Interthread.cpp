@@ -35,10 +35,28 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto InterthreadBufferBytes(vector<uint8_t>& data) noexcept -> ptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!data.empty(), "Interthread buffer is empty");
+
+    return data.data();
+}
+
+[[maybe_unused]] static auto InterthreadBufferBytes(const vector<uint8_t>& data) noexcept -> ptr<const uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!data.empty(), "Interthread buffer is empty");
+
+    return data.data();
+}
+
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection_Interthread(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection_Interthread(const NetworkClientConnection_Interthread&) = delete;
     NetworkClientConnection_Interthread(NetworkClientConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_Interthread&) = delete;
@@ -57,14 +75,14 @@ private:
     std::atomic_bool _interthreadRequestDisconnect {};
 };
 
-auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
 }
 
-NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientNetworkSettings& settings) :
+NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -138,7 +156,9 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
         buf.resize(buf.size() * 2);
     }
 
-    MemCopy(buf.data(), _interthreadReceived.data(), recv_size);
+    auto target = InterthreadBufferBytes(buf);
+    auto source = InterthreadBufferBytes(_interthreadReceived);
+    MemCopy(target.get(), source.get(), recv_size);
     _interthreadReceived.clear();
 
     return recv_size;

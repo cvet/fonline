@@ -88,10 +88,10 @@ TEST_CASE("NetBuffer")
         const auto partial_size = data.size() - 1;
 
         NetInBuffer in_buf {8};
-        in_buf.AddData({data.data(), partial_size});
+        in_buf.AddData(data.first(partial_size));
         CHECK_FALSE(in_buf.NeedProcess());
 
-        in_buf.AddData({data.data() + partial_size, 1});
+        in_buf.AddData(data.subspan(partial_size, 1));
         CHECK(in_buf.NeedProcess());
         CHECK(in_buf.ReadMsg() == NetMessage::Ping);
         CHECK(in_buf.Read<uint16_t>() == 321);

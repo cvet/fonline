@@ -25,9 +25,6 @@ TEST_CASE("DataSource")
         const auto non_recursive = DataSource::MountDir(temp_dir, false, true, false);
         const auto recursive = DataSource::MountDir(temp_dir, true, false, false);
 
-        REQUIRE(non_recursive);
-        REQUIRE(recursive);
-
         CHECK(non_recursive->IsDiskDir());
         CHECK(recursive->IsDiskDir());
         CHECK(non_recursive->IsFileExists("root.txt"));
@@ -42,7 +39,7 @@ TEST_CASE("DataSource")
 
         const auto buf = recursive->OpenFile("nested/child.txt", size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "child");
+        CHECK(span_to_string({buf.get(), size}) == "child");
 
         const auto non_recursive_names = non_recursive->GetFileNames("", false, "txt");
         REQUIRE(non_recursive_names.size() == 1);
@@ -64,9 +61,8 @@ TEST_CASE("DataSource")
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("entry.bin").str(), string_view {"abc"}));
 
         const auto mounted = DataSource::MountDir(temp_dir, false, false, false);
-        REQUIRE(mounted);
 
-        const DataSourceRef ds_ref {mounted.get()};
+        const DataSourceRef ds_ref {mounted.as_ptr()};
         size_t size = 0;
         uint64_t write_time = 0;
 
@@ -79,7 +75,7 @@ TEST_CASE("DataSource")
 
         const auto buf = ds_ref.OpenFile("entry.bin", size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "abc");
+        CHECK(span_to_string({buf.get(), size}) == "abc");
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }
@@ -88,9 +84,6 @@ TEST_CASE("DataSource")
     {
         const auto maybe_dir = DataSource::MountDir("/tmp/lf_data_source_missing_dir", false, false, true);
         const auto maybe_pack = DataSource::MountPack("/tmp/lf_data_source_missing_pack", "MissingPack", true);
-
-        REQUIRE(maybe_dir);
-        REQUIRE(maybe_pack);
 
         size_t size = 123;
         uint64_t write_time = 456;
@@ -122,7 +115,6 @@ TEST_CASE("DataSource")
         REQUIRE(fs_write_file(manifest_path, strex("{}\n{}\n", listed_file, nested_file).str()));
 
         const auto files_list = DataSource::MountPack("ignored", "FilesList", false);
-        REQUIRE(files_list);
 
         size_t size = 0;
         uint64_t write_time = 0;
@@ -134,7 +126,7 @@ TEST_CASE("DataSource")
 
         const auto buf = files_list->OpenFile(listed_file, size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "listed-data");
+        CHECK(span_to_string({buf.get(), size}) == "listed-data");
 
         const auto filtered = files_list->GetFileNames(temp_dir, true, "bin");
         REQUIRE(filtered.size() == 1);

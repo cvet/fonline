@@ -616,7 +616,7 @@ namespace ScriptMethodsTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -630,7 +630,7 @@ namespace ScriptMethodsTest
         const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
@@ -643,10 +643,8 @@ namespace ScriptMethodsTest
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -660,12 +658,18 @@ namespace ScriptMethodsTest
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 TEST_CASE("ServerCritterInventoryOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -675,7 +679,7 @@ TEST_CASE("ServerCritterInventoryOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -721,7 +725,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 TEST_CASE("ServerCritterStateOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -731,7 +735,7 @@ TEST_CASE("ServerCritterStateOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -777,7 +781,7 @@ TEST_CASE("ServerCritterStateOperations")
 TEST_CASE("ServerGameCritterQueries")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -787,7 +791,7 @@ TEST_CASE("ServerGameCritterQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -825,7 +829,7 @@ TEST_CASE("ServerGameCritterQueries")
 TEST_CASE("ServerGameItemOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -835,7 +839,7 @@ TEST_CASE("ServerGameItemOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -897,7 +901,7 @@ TEST_CASE("ServerGameItemOperations")
 TEST_CASE("ServerEntityLifecycle")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -907,7 +911,7 @@ TEST_CASE("ServerEntityLifecycle")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -969,7 +973,7 @@ TEST_CASE("ServerEntityLifecycle")
 TEST_CASE("ServerMiscScriptOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -979,7 +983,7 @@ TEST_CASE("ServerMiscScriptOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

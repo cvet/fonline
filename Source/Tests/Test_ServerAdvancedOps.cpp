@@ -1021,7 +1021,7 @@ namespace AdvOps
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -1036,7 +1036,7 @@ namespace AdvOps
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AdvOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("AdvOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("AdvOpsItem.fopro-bin-server", item_blob);
@@ -1049,10 +1049,8 @@ namespace AdvOps
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1066,11 +1064,17 @@ namespace AdvOps
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 #define MAKE_SERVER() \
     auto settings = MakeSettings(); \
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources()); \
+    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1078,7 +1082,7 @@ namespace AdvOps
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.get()); \
+    const auto startup_error = WaitForStart(server.as_ptr()); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

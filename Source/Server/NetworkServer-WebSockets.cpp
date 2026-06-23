@@ -55,6 +55,18 @@ using ssl_context = asio::ssl::context;
 
 FO_BEGIN_NAMESPACE
 
+static auto PayloadBytesAsSpan(string_view payload) noexcept -> const_span<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (payload.empty()) {
+        return {};
+    }
+
+    ptr<const char> chars = payload.data();
+    return {chars.reinterpret_as<const uint8_t>().get(), payload.size()};
+}
+
 template<bool Secured>
 class NetworkServerConnection_WebSockets final : public NetworkServerConnection
 {
@@ -63,7 +75,7 @@ class NetworkServerConnection_WebSockets final : public NetworkServerConnection
     using message_ptr = web_server_t::message_ptr;
 
 public:
-    explicit NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection);
+    explicit NetworkServerConnection_WebSockets(ptr<ServerNetworkSettings> settings, connection_ptr connection);
     NetworkServerConnection_WebSockets(const NetworkServerConnection_WebSockets&) = delete;
     NetworkServerConnection_WebSockets(NetworkServerConnection_WebSockets&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_WebSockets&) = delete;
@@ -81,7 +93,6 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    raw_ptr<web_server_t> _server {};
     connection_ptr _connection {};
 };
 
@@ -91,7 +102,7 @@ class NetworkServer_WebSockets : public NetworkServer
     using web_server_t = std::conditional_t<Secured, web_sockets_tls, web_sockets_no_tls>;
 
 public:
-    explicit NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback);
+    explicit NetworkServer_WebSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback);
     NetworkServer_WebSockets(const NetworkServer_WebSockets&) = delete;
     NetworkServer_WebSockets(NetworkServer_WebSockets&&) noexcept = delete;
     auto operator=(const NetworkServer_WebSockets&) = delete;
@@ -108,19 +119,19 @@ private:
     [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
     [[nodiscard]] auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>;
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
     web_server_t _server {};
     thread _runThread {};
 };
 
-auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const uint16_t ws_port = numeric_cast<uint16_t>(settings.WebSocketPort);
+    const uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
 
-    if (settings.SecuredWebSockets) {
+    if (settings->SecuredWebSockets) {
         WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
 
         return SafeAlloc::MakeUnique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
@@ -133,9 +144,8 @@ auto NetworkServer::StartWebSocketsServer(ServerNetworkSettings& settings, NewCo
 }
 
 template<bool Secured>
-NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(ServerNetworkSettings& settings, web_server_t* server, connection_ptr connection) :
+NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(ptr<ServerNetworkSettings> settings, connection_ptr connection) :
     NetworkServerConnection(settings),
-    _server {server},
     _connection {std::move(connection)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -154,7 +164,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
         _port = 0;
     }
 
-    if (settings.DisableTcpNagle) {
+    if (settings->DisableTcpNagle) {
         std::error_code no_delay_error;
         raw_socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
@@ -203,7 +213,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback({reinterpret_cast<const uint8_t*>(payload.data()), payload.length()});
+        ReceiveCallback(PayloadBytesAsSpan(payload));
     }
 }
 
@@ -246,7 +256,8 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+        ptr<const uint8_t> send_data = buf.data();
+        const auto error = _connection->send(send_data.get(), buf.size(), websocketpp::frame::opcode::binary);
 
         if (!error) {
             DispatchImpl();
@@ -268,8 +279,8 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 }
 
 template<bool Secured>
-NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {&settings}
+NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
+    _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -295,7 +306,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ServerNetworkSetting
         _server.set_tls_init_handler([this](auto&& hdl) FO_DEFERRED { return OnTlsInit(hdl); });
     }
 
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.WebSocketPort));
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort));
     _server.start_accept();
 
     _runThread = run_thread("Network-WebSockets", [this] { Run(); });
@@ -335,7 +346,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(*_settings, &_server, connection));
+            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection));
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -379,7 +390,7 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
 
     ignore_unused(hdl);
 
-    auto ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tls_server));
+    websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::shared_ptr<ssl_context>(SafeAlloc::MakeRaw<ssl_context>(ssl_context::tls_server));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
     ctx->use_certificate_chain_file(std::string(_settings->WssCertificate));

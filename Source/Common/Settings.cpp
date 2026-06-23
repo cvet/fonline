@@ -40,6 +40,14 @@
 FO_BEGIN_NAMESPACE
 
 template<typename T>
+static auto FixedSettingForEdit(const T& value) noexcept -> ptr<T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return const_cast<T*>(&value);
+}
+
+template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)
 {
     FO_STACK_TRACE_ENTRY();
@@ -74,7 +82,7 @@ static void SetEntry(T& entry, string_view value, bool append)
     }
     else if constexpr (some_property_plain_type<T>) {
         const auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        istringstream istr(any_value.AsString());
+        istringstream istr {string(any_value.AsString())};
         istr >> entry;
     }
     else {
@@ -151,24 +159,6 @@ static void DrawEditableEntry(string_view name, T& entry)
 }
 
 GlobalSettings::GlobalSettings(bool baking_mode) :
-    Common {static_cast<CommonSettings&>(*this)},
-    Network {static_cast<NetworkSettings&>(*this)},
-    ServerNetwork {static_cast<ServerNetworkSettings&>(*this)},
-    ClientNetwork {static_cast<ClientNetworkSettings&>(*this)},
-    Audio {static_cast<AudioSettings&>(*this)},
-    View {static_cast<ViewSettings&>(*this)},
-    Geometry {static_cast<GeometrySettings&>(*this)},
-    Render {static_cast<RenderSettings&>(*this)},
-    Timer {static_cast<TimerSettings&>(*this)},
-    Baking {static_cast<BakingSettings&>(*this)},
-    Critter {static_cast<CritterSettings&>(*this)},
-    CritterView {static_cast<CritterViewSettings&>(*this)},
-    Hex {static_cast<HexSettings&>(*this)},
-    Platform {static_cast<PlatformSettings&>(*this)},
-    Input {static_cast<InputSettings&>(*this)},
-    Mapper {static_cast<MapperSettings&>(*this)},
-    Client {static_cast<ClientSettings&>(*this)},
-    Server {static_cast<ServerSettings&>(*this)},
     _bakingMode {baking_mode}
 {
     FO_STACK_TRACE_ENTRY();
@@ -248,18 +238,26 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
+void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (int32_t i = 0; i < argc; i++) {
-        if (i == 0 && argv[0][0] != '-') {
+    for (size_t i = 0; i < args.size(); i++) {
+        auto arg = GetCommandLineArg(args, i);
+
+        if (!arg) {
             continue;
         }
 
-        if (argv[i][0] == '-') {
-            const string key = strex("{}", argv[i]).trim().str().substr(argv[i][1] == '-' ? 2 : 1);
-            const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? strex("{}", argv[i + 1]).trim().str() : "1";
+        if (i == 0 && !IsCommandLineOption(arg)) {
+            continue;
+        }
+
+        if (IsCommandLineOption(arg)) {
+            auto next_arg = GetCommandLineArg(args, i + 1);
+            const string arg_text = strex("{}", arg.get()).trim().str();
+            const string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
+            const string value = next_arg && !IsCommandLineOption(next_arg) ? strex("{}", next_arg.get()).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
                 WriteLog(LogType::Info, "Set {} to {}", key, value);
@@ -292,7 +290,7 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = {__VA_ARGS__}
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = {__VA_ARGS__}
 #define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
 #include "Settings-Include.h"
     FO_DISABLE_WARNINGS_POP()
@@ -302,64 +300,64 @@ void GlobalSettings::ApplyAutoSettings()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_cast<bool&>(Packaged) = IsPackaged();
+    *FixedSettingForEdit(Packaged) = IsPackaged();
 
 #if FO_WEB
-    const_cast<bool&>(WebBuild) = true;
+    *FixedSettingForEdit(WebBuild) = true;
 #else
-    const_cast<bool&>(WebBuild) = false;
+    *FixedSettingForEdit(WebBuild) = false;
 #endif
 #if FO_WINDOWS
-    const_cast<bool&>(WindowsBuild) = true;
+    *FixedSettingForEdit(WindowsBuild) = true;
 #else
-    const_cast<bool&>(WindowsBuild) = false;
+    *FixedSettingForEdit(WindowsBuild) = false;
 #endif
 #if FO_LINUX
-    const_cast<bool&>(LinuxBuild) = true;
+    *FixedSettingForEdit(LinuxBuild) = true;
 #else
-    const_cast<bool&>(LinuxBuild) = false;
+    *FixedSettingForEdit(LinuxBuild) = false;
 #endif
 #if FO_MAC
-    const_cast<bool&>(MacOsBuild) = true;
+    *FixedSettingForEdit(MacOsBuild) = true;
 #else
-    const_cast<bool&>(MacOsBuild) = false;
+    *FixedSettingForEdit(MacOsBuild) = false;
 #endif
 #if FO_ANDROID
-    const_cast<bool&>(AndroidBuild) = true;
+    *FixedSettingForEdit(AndroidBuild) = true;
 #else
-    const_cast<bool&>(AndroidBuild) = false;
+    *FixedSettingForEdit(AndroidBuild) = false;
 #endif
 #if FO_IOS
-    const_cast<bool&>(IOsBuild) = true;
+    *FixedSettingForEdit(IOsBuild) = true;
 #else
-    const_cast<bool&>(IOsBuild) = false;
+    *FixedSettingForEdit(IOsBuild) = false;
 #endif
-    const_cast<bool&>(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
-    const_cast<bool&>(TabletBuild) = AndroidBuild || IOsBuild;
+    *FixedSettingForEdit(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
+    *FixedSettingForEdit(TabletBuild) = AndroidBuild || IOsBuild;
 
 #if FO_WINDOWS
     if (::GetSystemMetrics(SM_TABLETPC) != 0) {
-        const_cast<bool&>(DesktopBuild) = false;
-        const_cast<bool&>(TabletBuild) = true;
+        *FixedSettingForEdit(DesktopBuild) = false;
+        *FixedSettingForEdit(TabletBuild) = true;
     }
 #endif
 
-    const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
-    const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;
-    const_cast<int32_t&>(MapDirCount) = GameSettings::MAP_DIR_COUNT;
+    *FixedSettingForEdit(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
+    *FixedSettingForEdit(MapSquare) = GameSettings::SQUARE_GEOMETRY;
+    *FixedSettingForEdit(MapDirCount) = GameSettings::MAP_DIR_COUNT;
 
 #if FO_DEBUG
-    const_cast<bool&>(DebugBuild) = true;
-    const_cast<bool&>(RenderDebug) = true;
+    *FixedSettingForEdit(DebugBuild) = true;
+    *FixedSettingForEdit(RenderDebug) = true;
 #endif
 
     if (MapDirectDraw) {
-        const_cast<bool&>(MapZoomEnabled) = false;
+        *FixedSettingForEdit(MapZoomEnabled) = false;
     }
 
-    const_cast<string&>(GitBranch) = FO_GIT_BRANCH;
-    const_cast<string&>(GitCommit) = FO_BUILD_HASH;
-    const_cast<string&>(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
+    *FixedSettingForEdit(GitBranch) = FO_GIT_BRANCH;
+    *FixedSettingForEdit(GitCommit) = FO_BUILD_HASH;
+    *FixedSettingForEdit(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
 void GlobalSettings::CopyFrom(const GlobalSettings& other)
@@ -376,7 +374,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#define FIXED_SETTING(type, group, name, ...) const_cast<type&>(name) = other.name
+#define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = other.name
 #define VARIABLE_SETTING(type, group, name, ...) name = other.name
 #include "Settings-Include.h"
 }
@@ -408,6 +406,19 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
     }
 
     return it->second;
+}
+
+auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto it = _customSettings.find(name);
+
+    if (it == _customSettings.end()) {
+        return nullptr;
+    }
+
+    return &it->second;
 }
 
 void GlobalSettings::SetCustomSetting(string_view name, any_t value)
@@ -445,10 +456,10 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     const string name = setting_value.substr(pos, end_pos - pos);
 
                     if (is_env || is_target_env) {
-                        const char* env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        const nptr<const char> env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
 
-                        if (env != nullptr) {
-                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env);
+                        if (env) {
+                            resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());
                             end_pos++;
                         }
                         else {
@@ -495,7 +506,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define FIXED_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
-        SET_SETTING(const_cast<type&>(name))
+        SET_SETTING(*FixedSettingForEdit(name))
 #define VARIABLE_SETTING(type, group, name, ...) \
     case const_hash(#name): \
     case const_hash(#group "." #name): \
@@ -517,11 +528,11 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
     }
 }
 
-void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir)
+void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* res_pack : res_packs) {
+    for (ptr<const map<string_view, string_view>> res_pack : res_packs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = res_pack->find(key);
             return it != res_pack->end() ? string(it->second) : string();
@@ -566,17 +577,17 @@ void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>
         }
 
         if (pack_info.ServerOnly) {
-            const_cast<vector<string>&>(ServerResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.ClientOnly) {
-            const_cast<vector<string>&>(ClientResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
         }
         else if (pack_info.MapperOnly) {
-            const_cast<vector<string>&>(MapperResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(MapperResourceEntries)->emplace_back(pack_info.Name);
         }
         else {
-            const_cast<vector<string>&>(ServerResourceEntries).emplace_back(pack_info.Name);
-            const_cast<vector<string>&>(ClientResourceEntries).emplace_back(pack_info.Name);
+            FixedSettingForEdit(ServerResourceEntries)->emplace_back(pack_info.Name);
+            FixedSettingForEdit(ClientResourceEntries)->emplace_back(pack_info.Name);
         }
 
         if (auto bakers = get_map_value("Bakers"); !bakers.empty()) {
@@ -589,11 +600,11 @@ void GlobalSettings::AddResourcePacks(const vector<map<string_view, string_view>
     }
 }
 
-void GlobalSettings::AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir)
+void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* sub_config : sub_configs) {
+    for (ptr<const map<string_view, string_view>> sub_config : sub_configs) {
         const auto get_map_value = [&](string_view key) -> string {
             const auto it = sub_config->find(key);
             return it != sub_config->end() ? string(it->second) : string();
@@ -636,7 +647,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(_bakingMode, "Missing required baking mode");
+    FO_VERIFY_AND_THROW(_bakingMode, "Settings can only be saved in baking mode");
 
     map<string, string> result;
 
@@ -667,7 +678,7 @@ void GlobalSettings::Draw(bool editable)
 
 #define FIXED_SETTING(type, group, name, ...) \
     if (editable) { \
-        DrawEditableEntry(#group "." #name, const_cast<type&>(name)); \
+        DrawEditableEntry(#group "." #name, *FixedSettingForEdit(name)); \
     } \
     else { \
         DrawEntry(#group "." #name, name); \

@@ -921,7 +921,7 @@ namespace CommonMethods
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -938,7 +938,7 @@ namespace CommonMethods
         const auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("CommonMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("CommonMethodsItem.fopro-bin-server", item_blob);
@@ -952,10 +952,8 @@ namespace CommonMethods
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -969,11 +967,17 @@ namespace CommonMethods
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 #define MAKE_CM_SERVER() \
     auto settings = MakeSettings(); \
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources()); \
+    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -981,7 +985,7 @@ namespace CommonMethods
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.get()); \
+    const auto startup_error = WaitForStart(server.as_ptr()); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -1301,9 +1305,6 @@ TEST_CASE("CommonCppApiTests")
         auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr1 != nullptr);
-        REQUIRE(cr2 != nullptr);
-        REQUIRE(cr3 != nullptr);
 
         CHECK(server->EntityMngr.GetCrittersCount() >= 3);
 
@@ -1316,16 +1317,17 @@ TEST_CASE("CommonCppApiTests")
     SECTION("ItemManagerContainerOps")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        auto item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
-        REQUIRE(item1 != nullptr);
-        REQUIRE(item2 != nullptr);
+        auto nullable_item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
+        auto nullable_item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
+        REQUIRE(static_cast<bool>(nullable_item1));
+        REQUIRE(static_cast<bool>(nullable_item2));
 
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
+        auto item2 = nullable_item2.as_ptr();
+        auto item1 = nullable_item1.as_ptr();
         server->ItemMngr.DestroyItem(item2);
         server->ItemMngr.DestroyItem(item1);
         server->CrMngr.DestroyCritter(cr);

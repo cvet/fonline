@@ -49,7 +49,7 @@ class Location final : public ServerEntity, public EntityWithProto, public Locat
 {
 public:
     Location() = delete;
-    Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr) noexcept;
+    Location(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoLocation> proto, nptr<const Properties> props = nullptr) noexcept;
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
@@ -57,18 +57,18 @@ public:
     ~Location() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation* { return static_cast<const ProtoLocation*>(_proto.get()); }
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> ptr<const ProtoLocation> { return _proto.dyn_cast<ProtoLocation>().as_ptr(); }
     [[nodiscard]] auto HasMaps() const -> bool;
-    [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
-    [[nodiscard]] auto GetRawMaps() noexcept -> auto& { return _locMaps; }
-    [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> Map*;
+    [[nodiscard]] auto GetMaps() const -> vector<ptr<const Map>>;
+    [[nodiscard]] auto GetMaps() -> vector<ptr<Map>>;
+    [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> nptr<Map>;
     [[nodiscard]] auto GetMapsCount() const -> size_t;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> nptr<Map>;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> size_t;
 
-    void AddMap(Map* map);
-    void RemoveMap(Map* map);
+    void RestoreMap(ptr<Map> map);
+    void AddMap(ptr<Map> map);
+    void RemoveMap(ptr<Map> map);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

@@ -34,6 +34,7 @@
 #include "ExceptionHandling.h"
 #include "BaseLogging.h"
 #include "GlobalData.h"
+#include "SmartPointers.h"
 #include "StringUtils.h"
 
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER
@@ -98,9 +99,9 @@ private:
 static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData;
 static void SetCrashInfo(string info) noexcept;
 static auto SafeWriteCrashInfo() noexcept -> bool;
-static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, const void* address) -> string;
-static auto FormatSignalCrashInfo(int32_t signum, int32_t code, const void* address) -> string;
-static auto FormatRuntimeCrashInfo(const char* reason) -> string;
+static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, nptr<const void> address) -> string;
+static auto FormatSignalCrashInfo(int32_t signum, int32_t code, nptr<const void> address) -> string;
+static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string;
 static auto GetSehExceptionName(uint32_t code) noexcept -> string_view;
 static auto GetSignalName(int32_t signum) noexcept -> string_view;
 
@@ -172,7 +173,7 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
             callback(ex.what(), st, true);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
+            WriteBaseLog(strex("{}\n", ex.what()), st);
             WriteBaseLog("Shutdown!\n\n");
         }
     }
@@ -194,7 +195,7 @@ extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
             callback(ex.what(), st, false);
         }
         else {
-            WriteBaseLog(strex("{}\n", ex.what()), &st);
+            WriteBaseLog(strex("{}\n", ex.what()), st);
             WriteBaseLog("\n\n");
         }
     }
@@ -226,7 +227,8 @@ static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedSta
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (const auto* base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); base_engine_ex != nullptr) {
+    if (nptr<const BaseEngineException> nullable_base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); nullable_base_engine_ex) {
+        auto base_engine_ex = nullable_base_engine_ex.as_ptr();
         return CatchedStackTraceData {base_engine_ex->stack_trace(), GetStackTrace()};
     }
     else {
@@ -310,25 +312,25 @@ static auto SafeWriteCrashInfo() noexcept -> bool
     return false;
 }
 
-static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, const void* address) -> string
+static auto FormatSehCrashInfo(uint32_t code, uint32_t flags, nptr<const void> address) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex("SEH exception code: 0x{:08X} ({}) flags: 0x{:08X} address: {}", code, GetSehExceptionName(code), flags, address).str();
+    return strex("SEH exception code: 0x{:08X} ({}) flags: 0x{:08X} address: {}", code, GetSehExceptionName(code), flags, address.get()).str();
 }
 
-static auto FormatSignalCrashInfo(int32_t signum, int32_t code, const void* address) -> string
+static auto FormatSignalCrashInfo(int32_t signum, int32_t code, nptr<const void> address) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return strex("Signal {} ({}) code: {} address: {}", signum, GetSignalName(signum), code, address).str();
+    return strex("Signal {} ({}) code: {} address: {}", signum, GetSignalName(signum), code, address.get()).str();
 }
 
-static auto FormatRuntimeCrashInfo(const char* reason) -> string
+static auto FormatRuntimeCrashInfo(nptr<const char> reason) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    string info = strex("Runtime termination: {}", reason != nullptr ? reason : "unknown").str();
+    string info = strex("Runtime termination: {}", reason ? string_view {reason.get()} : string_view {"unknown"}).str();
     const std::exception_ptr current_exception = std::current_exception();
 
     if (current_exception) {

@@ -13,6 +13,13 @@ static void InitTestMapLoaderMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Item", true, false, true, true, true);
 }
 
+static auto GetTestMapLoaderRegistrator(EngineMetadata& meta, string_view type_name) -> ptr<const PropertyRegistrator>
+{
+    auto nullable_registrator = meta.GetPropertyRegistrator(type_name);
+    REQUIRE(static_cast<bool>(nullable_registrator));
+    return nullable_registrator.as_ptr();
+}
+
 TEST_CASE("MapLoader")
 {
     SECTION("RejectsOldMapFormat")
@@ -20,7 +27,7 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { }, [](ident_t, const ProtoItem*, const map<string_view, string_view>&) { }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("RejectsMapsWithoutProtoMapSection")
@@ -28,7 +35,7 @@ TEST_CASE("MapLoader")
         EngineMetadata meta {[] { }};
         HashStorage hashes {};
 
-        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "[Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { }, [](ident_t, const ProtoItem*, const map<string_view, string_view>&) { }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "[Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("MissingProtosAccumulateErrorsAndSkipCallbacks")
@@ -47,7 +54,7 @@ TEST_CASE("MapLoader")
                                "$Id = 2\n"
                                "$Proto = MissingItem\n";
 
-        CHECK_THROWS_AS(MapLoader::Load("MissingProtoMap", map_buf, meta, hashes, [&](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { critter_calls++; }, [&](ident_t, const ProtoItem*, const map<string_view, string_view>&) { item_calls++; }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("MissingProtoMap", map_buf, meta, hashes, [&](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { critter_calls++; }, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }), MapLoaderException);
 
         CHECK(critter_calls == 0);
         CHECK(item_calls == 0);
@@ -65,15 +72,15 @@ TEST_CASE("MapLoader")
                                "[Item]\n"
                                "$Id = 2\n";
 
-        CHECK_THROWS_AS(MapLoader::Load("InvalidEntriesMap", map_buf, meta, hashes, [](ident_t, const ProtoCritter*, const map<string_view, string_view>&) { }, [](ident_t, const ProtoItem*, const map<string_view, string_view>&) { }), MapLoaderException);
+        CHECK_THROWS_AS(MapLoader::Load("InvalidEntriesMap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
     }
 
     SECTION("ValidEntriesLoadAndDuplicateIdsAreReassigned")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), meta.GetPropertyRegistrator("Critter"));
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), meta.GetPropertyRegistrator("Item"));
+        refcount_ptr<ProtoCritter> critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrator(meta, "Critter"));
+        refcount_ptr<ProtoItem> item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 
@@ -104,15 +111,15 @@ TEST_CASE("MapLoader")
 
         CHECK_NOTHROW(MapLoader::Load(
             "ValidMap", map_buf, meta, hashes,
-            [&](ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv) {
+            [&](ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv) {
                 critter_ids.emplace_back(id);
                 critter_proto_names.emplace_back(proto->GetProtoId().as_str());
-                CHECK(kv.at("$Proto") == "TestCritter");
+                CHECK(kv->at("$Proto") == "TestCritter");
             },
-            [&](ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv) {
+            [&](ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv) {
                 item_ids.emplace_back(id);
                 item_proto_names.emplace_back(proto->GetProtoId().as_str());
-                CHECK(kv.at("$Proto") == "TestItem");
+                CHECK(kv->at("$Proto") == "TestItem");
             }));
 
         CHECK(critter_ids == vector<ident_t> {ident_t {1}, ident_t {2}});

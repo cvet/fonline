@@ -35,7 +35,7 @@ TEST_CASE("ExceptionHandling")
         layers.push_back(std::move(layer));
 
         StackTraceData st {};
-        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
+        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
 
         const auto formatted = FormatStackTrace(st);
 

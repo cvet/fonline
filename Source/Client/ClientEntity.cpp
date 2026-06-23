@@ -36,8 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) :
-    Entity(registrator, props, engine->Settings.ClientPropertiesPackData ? base_props : nullptr),
+ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) :
+    Entity(registrator, props, engine->Settings->ClientPropertiesPackData ? base_props : nullptr),
     _engine {engine},
     _id {id}
 {
@@ -46,7 +46,8 @@ ClientEntity::ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegis
     _name = GetTypeName();
 
     if (_id) {
-        _engine->RegisterEntity(this);
+        ptr<ClientEntity> entity = this;
+        _engine->RegisterEntity(entity);
         _registered = true;
     }
 }
@@ -56,12 +57,13 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_id, "Id is already set");
-    FO_VERIFY_AND_THROW(id, "Missing required id");
+    FO_VERIFY_AND_THROW(id, "Id is empty");
 
     _id = id;
 
     if (register_entity) {
-        _engine->RegisterEntity(this);
+        ptr<ClientEntity> entity = this;
+        _engine->RegisterEntity(entity);
         _registered = true;
     }
 }
@@ -82,16 +84,18 @@ void ClientEntity::DestroySelf()
     OnDestroySelf();
 
     if (_registered) {
-        _engine->UnregisterEntity(this);
+        ptr<ClientEntity> entity = this;
+        _engine->UnregisterEntity(entity);
         _registered = false;
     }
 
     if (HasInnerEntities()) {
-        for (auto& entities : GetInnerEntities() | std::views::values) {
-            for (auto& entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
+        auto inner_entities = GetInnerEntities().as_ptr();
 
+        for (auto& entities : *inner_entities | std::views::values) {
+            for (auto& entity : entities) {
+                auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
+                auto custom_entity = custom_entity_holder.as_ptr();
                 custom_entity->DestroySelf();
             }
         }

@@ -47,20 +47,21 @@ enum class AnimFrameFlag : uint32_t
 static constexpr isize32 DUMMY_SPRITE_SIZE {1, 1};
 static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
 
-static auto MakeBuiltInDummyAtlasSprite(SpriteManager& spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
+static auto MakeBuiltInDummyAtlasSprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto [atlas, atlas_node, pos] = spr_mngr.GetAtlasMngr().FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
-    auto* tex = atlas->GetTexture();
+    auto [atlas, atlas_node, pos] = spr_mngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
+    auto tex = atlas->GetTexture();
+    const const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
 
-    tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, &DUMMY_SPRITE_COLOR);
-    tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, &DUMMY_SPRITE_COLOR);
-    tex->UpdateTextureRegion({pos.x, pos.y + 1}, {1, 1}, &DUMMY_SPRITE_COLOR);
+    tex->UpdateTextureRegion(pos, DUMMY_SPRITE_SIZE, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y - 1}, {1, 1}, dummy_color);
+    tex->UpdateTextureRegion({pos.x, pos.y + 1}, {1, 1}, dummy_color);
 
     const ucolor vertical_border[3] = {DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR, DUMMY_SPRITE_COLOR};
-    tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, vertical_border);
-    tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, vertical_border);
+    tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
+    tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
 
     atlas->GetRenderTarget()->ClearLastPixelPicks();
 
@@ -70,15 +71,15 @@ static auto MakeBuiltInDummyAtlasSprite(SpriteManager& spr_mngr, AtlasType atlas
     atlas_rect.width = 1.0f / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = 1.0f / numeric_cast<float32_t>(atlas->GetSize().height);
 
-    vector<bool> hit_test_data(1, spr_mngr.CheckHitTest(numeric_cast<int32_t>(DUMMY_SPRITE_COLOR.comp.a)));
+    vector<bool> hit_test_data(1, spr_mngr->CheckHitTest(numeric_cast<int32_t>(DUMMY_SPRITE_COLOR.comp.a)));
     return SafeAlloc::MakeShared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, atlas_node, atlas_rect, std::move(hit_test_data));
 }
 
-ResourceManager::ResourceManager(RenderSettings& settings, FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) :
-    _settings {&settings},
-    _resources {&resources},
-    _sprMngr {&spr_mngr},
-    _animNameResolver {&anim_name_resolver}
+ResourceManager::ResourceManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr, ptr<AnimationResolver> anim_name_resolver) :
+    _settings {settings},
+    _resources {resources},
+    _sprMngr {spr_mngr},
+    _animNameResolver {anim_name_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -87,33 +88,35 @@ void ResourceManager::IndexFiles()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
+    constexpr array<string_view, 3> sound_extensions = {"wav", "acm", "ogg"};
+
+    for (const string_view sound_ext : sound_extensions) {
         const auto sound_files = _resources->FilterFiles(sound_ext);
 
         for (const auto& file_header : sound_files) {
-            _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), file_header.GetPath());
+            _soundNames.emplace(strex(file_header.GetPath()).erase_file_extension().lower(), string(file_header.GetPath()));
         }
     }
 
-    auto any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : nullptr;
+    shared_ptr<Sprite> any_spr = !_settings->CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
 
     if (!any_spr) {
-        any_spr = MakeBuiltInDummyAtlasSprite(*_sprMngr, AtlasType::MapSprites);
+        any_spr = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
     }
 
-    auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+    shared_ptr<AtlasSprite> atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
-    _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, 1, 100, 1);
+    _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
-    FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Missing required critter dummy anim frames");
+    FO_VERIFY_AND_THROW(_critterDummyAnimFrames, "Critter dummy animation frames are null");
 
     _itemHexDummyAnim = !_settings->ItemStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->ItemStubSpriteName, AtlasType::MapSprites, true) : nullptr;
 
     if (!_itemHexDummyAnim) {
-        _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(*_sprMngr, AtlasType::MapSprites);
+        _itemHexDummyAnim = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
     }
 
-    FO_VERIFY_AND_THROW(_itemHexDummyAnim, "Missing required item hex dummy anim");
+    FO_VERIFY_AND_THROW(_itemHexDummyAnim, "Item hex dummy animation is null");
 }
 
 auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
@@ -123,11 +126,11 @@ auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
     return _itemHexDummyAnim;
 }
 
-auto ResourceManager::GetCritterDummyFrames() -> const SpriteSheet*
+auto ResourceManager::GetCritterDummyFrames() -> ptr<const SpriteSheet>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _critterDummyAnimFrames.get();
+    return _critterDummyAnimFrames.as_ptr();
 }
 
 void ResourceManager::CleanupCritterFrames()
@@ -142,7 +145,8 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
-    return hashing_ex::hash(parts, sizeof(parts));
+    ptr<const hstring::hash_t> parts_data = parts;
+    return HashStorage::DefaultHash(parts_data, sizeof(parts));
 }
 
 static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> hstring::hash_t
@@ -150,10 +154,11 @@ static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t a
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
-    return hashing_ex::hash(parts, sizeof(parts));
+    ptr<const hstring::hash_t> parts_data = parts;
+    return HashStorage::DefaultHash(parts_data, sizeof(parts));
 }
 
-auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> const SpriteSheet*
+auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -161,14 +166,17 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     const auto id = AnimMapId(model_name, state_anim, action_anim);
 
     if (const auto it = _critterFrames.find(id); it != _critterFrames.end()) {
-        auto* anim_ = it->second.get();
+        auto nullable_anim = it->second.as_nptr();
 
-        if (anim_ != nullptr) {
-            if (anim_->GetDir(dir) != nullptr) {
-                return anim_->GetDir(dir);
+        if (nullable_anim) {
+            auto anim = nullable_anim.as_ptr();
+            auto dir_anim = anim->GetDir(dir);
+
+            if (dir_anim) {
+                return dir_anim;
             }
 
-            return anim_;
+            return anim;
         }
 
         return nullptr;
@@ -204,7 +212,9 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
                         const auto frame_flag = static_cast<AnimFrameFlag>(flags);
 
                         for (int32_t d = 0; anim && d < anim->_dirCount; d++) {
-                            auto* dir_anim = anim->GetDir(hdir(d));
+                            auto nullable_dir_anim = anim->GetDir(hdir(d));
+                            FO_VERIFY_AND_THROW(nullable_dir_anim, "Missing animation direction");
+                            auto dir_anim = nullable_dir_anim.as_ptr();
 
                             // Process flags
                             if (flags != 0) {
@@ -232,7 +242,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                             if (ox != 0 || oy != 0) {
                                 for (int32_t i = 0; i < dir_anim->GetFramesCount(); i++) {
-                                    auto* spr = dir_anim->GetSpr(i);
+                                    auto spr = dir_anim->GetSpr(i);
                                     bool fixed = false;
 
                                     for (int32_t j = 0; j < i; j++) {
@@ -268,7 +278,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
         const auto state_anim_ = state_anim;
         const auto action_anim_ = action_anim;
 
-        if (anim == nullptr && _animNameResolver->ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim)) {
+        if (!anim && _animNameResolver->ResolveCritterAnimationSubstitute(base_model_name, base_state_anim, base_action_anim, model_name, state_anim, action_anim)) {
             if (model_name_ != model_name || state_anim != state_anim_ || action_anim != action_anim_) {
                 continue;
             }
@@ -279,23 +289,29 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
     }
 
     // Store resulted animation indices
-    if (anim != nullptr) {
+    if (anim) {
         for (int32_t d = 0; d < anim->_dirCount; d++) {
-            anim->GetDir(hdir(d))->_stateAnim = state_anim;
-            anim->GetDir(hdir(d))->_actionAnim = action_anim;
+            auto nullable_dir_anim = anim->GetDir(hdir(d));
+            FO_VERIFY_AND_THROW(nullable_dir_anim, "Missing animation direction");
+            auto dir_anim = nullable_dir_anim.as_ptr();
+            dir_anim->_stateAnim = state_anim;
+            dir_anim->_actionAnim = action_anim;
         }
     }
 
-    auto* anim_ = anim.get();
+    auto nullable_anim = anim.as_nptr();
 
     _critterFrames.emplace(id, std::move(anim));
 
-    if (anim_ != nullptr) {
-        if (anim_->GetDir(dir) != nullptr) {
-            return anim_->GetDir(dir);
+    if (nullable_anim) {
+        auto anim_loaded = nullable_anim.as_ptr();
+        auto dir_anim = anim_loaded->GetDir(dir);
+
+        if (dir_anim) {
+            return dir_anim;
         }
 
-        return anim_;
+        return anim_loaded;
     }
 
     return nullptr;
@@ -314,27 +330,37 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
     if (_animNameResolver->ResolveCritterAnimationFallout(model_name, state_anim, action_anim, f_state_anim, f_action_anim, f_state_anim_ex, f_action_anim_ex, flags)) {
         // Load
-        const auto* anim = LoadFalloutAnimSubFrames(model_name, f_state_anim, f_action_anim);
+        auto nullable_anim = LoadFalloutAnimSubFrames(model_name, f_state_anim, f_action_anim);
 
-        if (anim == nullptr) {
+        if (!nullable_anim) {
             return nullptr;
         }
 
+        auto anim = nullable_anim.as_ptr();
+
         // Merge
         if (f_state_anim_ex != 0 && f_action_anim_ex != 0) {
-            const auto* animex = LoadFalloutAnimSubFrames(model_name, f_state_anim_ex, f_action_anim_ex);
+            auto nullable_animex = LoadFalloutAnimSubFrames(model_name, f_state_anim_ex, f_action_anim_ex);
 
-            if (animex == nullptr) {
+            if (!nullable_animex) {
                 return nullptr;
             }
 
+            auto animex = nullable_animex.as_ptr();
+
             const auto frames_count = anim->GetFramesCount() + animex->GetFramesCount();
-            auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
+            shared_ptr<SpriteSheet> anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
 
             for (int32_t d = 0; d < anim->_dirCount; d++) {
-                auto* anim_merge = anim_merge_base->GetDir(hdir(d));
-                const auto* anim_ = anim->GetDir(hdir(d));
-                const auto* animex_ = animex->GetDir(hdir(d));
+                auto nullable_anim_merge = anim_merge_base->GetDir(hdir(d));
+                auto nullable_anim_ = anim->GetDir(hdir(d));
+                auto nullable_animex_ = animex->GetDir(hdir(d));
+                FO_VERIFY_AND_THROW(nullable_anim_merge, "Missing merged animation direction");
+                FO_VERIFY_AND_THROW(nullable_anim_, "Missing base animation direction");
+                FO_VERIFY_AND_THROW(nullable_animex_, "Missing extra animation direction");
+                auto anim_merge = nullable_anim_merge.as_ptr();
+                auto anim_ = nullable_anim_.as_ptr();
+                auto animex_ = nullable_animex_.as_ptr();
 
                 for (int32_t i = 0; i < anim_->GetFramesCount(); i++) {
                     anim_merge->_spr[i] = anim_->GetSpr(i)->MakeCopy();
@@ -364,11 +390,15 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         const auto frame_flag = static_cast<AnimFrameFlag>(flags);
         const auto first_or_last_mask = CombineEnum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
         const auto frames_count = !IsEnumSet(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
-        auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(*_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
+        shared_ptr<SpriteSheet> anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
-            auto* anim_clone = anim_clone_base->GetDir(hdir(d));
-            const auto* anim_ = anim->GetDir(hdir(d));
+            auto nullable_anim_clone = anim_clone_base->GetDir(hdir(d));
+            auto nullable_anim_ = anim->GetDir(hdir(d));
+            FO_VERIFY_AND_THROW(nullable_anim_clone, "Missing cloned animation direction");
+            FO_VERIFY_AND_THROW(nullable_anim_, "Missing base animation direction");
+            auto anim_clone = nullable_anim_clone.as_ptr();
+            auto anim_ = nullable_anim_.as_ptr();
 
             if (!IsEnumSet(frame_flag, first_or_last_mask)) {
                 for (int32_t i = 0; i < anim_->GetFramesCount(); i++) {
@@ -396,41 +426,53 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
     return nullptr;
 }
 
-void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base)
+void ResourceManager::FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (stay_frm_base == nullptr) {
+    if (!nullable_stay_frm_base) {
         return;
     }
 
+    auto stay_frm_base = nullable_stay_frm_base.as_ptr();
+
     for (int32_t d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(hdir(d));
-        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
-        const auto* stay_spr = stay_frm->GetSpr(0);
+        auto nullable_frames = frames_base->GetDir(hdir(d));
+        auto nullable_stay_frm = stay_frm_base->GetDir(hdir(d));
+        FO_VERIFY_AND_THROW(nullable_frames, "Missing frames animation direction");
+        FO_VERIFY_AND_THROW(nullable_stay_frm, "Missing stay frame animation direction");
+        auto frames = nullable_frames.as_ptr();
+        auto stay_frm = nullable_stay_frm.as_ptr();
+        auto stay_spr = stay_frm->GetSpr(0);
 
         for (int32_t i = 0; i < frames->GetFramesCount(); i++) {
-            auto* spr = frames->GetSpr(i);
+            auto spr = frames->GetSpr(i);
             spr->SetOffset(spr->GetOffset() + stay_spr->GetOffset());
         }
     }
 }
 
-void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base)
+void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    if (stay_frm_base == nullptr) {
+    if (!nullable_stay_frm_base) {
         return;
     }
 
+    auto stay_frm_base = nullable_stay_frm_base.as_ptr();
+
     for (int32_t d = 0; d < stay_frm_base->_dirCount; d++) {
-        auto* frames = frames_base->GetDir(hdir(d));
-        const auto* stay_frm = stay_frm_base->GetDir(hdir(d));
+        auto nullable_frames = frames_base->GetDir(hdir(d));
+        auto nullable_stay_frm = stay_frm_base->GetDir(hdir(d));
+        FO_VERIFY_AND_THROW(nullable_frames, "Missing frames animation direction");
+        FO_VERIFY_AND_THROW(nullable_stay_frm, "Missing stay frame animation direction");
+        auto frames = nullable_frames.as_ptr();
+        auto stay_frm = nullable_stay_frm.as_ptr();
         ipos32 next_offset;
 
         for (int32_t i = 0; i < stay_frm->GetFramesCount(); i++) {
@@ -438,18 +480,18 @@ void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const Spri
         }
 
         for (int32_t i = 0; i < frames->GetFramesCount(); i++) {
-            auto* spr = frames->GetSpr(i);
+            auto spr = frames->GetSpr(i);
             spr->SetOffset(spr->GetOffset() + next_offset);
         }
     }
 }
 
-auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> const SpriteSheet*
+auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> nptr<const SpriteSheet>
 {
     FO_STACK_TRACE_ENTRY();
 
-#define LOADSPR_ADDOFFS(a1, a2) FixAnimFramesOffs(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
-#define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_, LoadFalloutAnimSubFrames(model_name, a1, a2))
+#define LOADSPR_ADDOFFS(a1, a2) FixAnimFramesOffs(anim_loaded, LoadFalloutAnimSubFrames(model_name, a1, a2))
+#define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_loaded, LoadFalloutAnimSubFrames(model_name, a1, a2))
 
     // Fallout animations
     static constexpr uint32_t ANIM1_FALLOUT_UNARMED = 1;
@@ -479,7 +521,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
 
     const auto it = _critterFrames.find(FalloutAnimMapId(model_name, state_anim, action_anim));
     if (it != _critterFrames.end()) {
-        return it->second.get();
+        return it->second.as_nptr();
     }
 
     // Try load fofrm
@@ -504,20 +546,22 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
         anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true));
     }
 
-    auto* anim_ = _critterFrames.emplace(FalloutAnimMapId(model_name, state_anim, action_anim), std::move(anim)).first->second.get();
+    auto nullable_anim = _critterFrames.emplace(FalloutAnimMapId(model_name, state_anim, action_anim), std::move(anim)).first->second.as_nptr();
 
-    if (anim_ == nullptr) {
+    if (!nullable_anim) {
         return nullptr;
     }
 
+    auto anim_loaded = nullable_anim.as_ptr();
+
     if (state_anim == ANIM1_FALLOUT_AIM) {
-        return anim_; // Aim, 'N'
+        return nullable_anim; // Aim, 'N'
     }
 
     // Empty offsets
     if (state_anim == ANIM1_FALLOUT_UNARMED) {
         if (action_anim == ANIM2_FALLOUT_STAY || action_anim == ANIM2_FALLOUT_WALK || action_anim == ANIM2_FALLOUT_RUN) {
-            return anim_;
+            return nullable_anim;
         }
         LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
     }
@@ -528,7 +572,7 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
         }
         else if (action_anim == ANIM2_FALLOUT_WALK) {
-            return anim_;
+            return nullable_anim;
         }
         else if (action_anim == ANIM2_FALLOUT_STAY) {
             LOADSPR_ADDOFFS(ANIM1_FALLOUT_UNARMED, ANIM2_FALLOUT_STAY);
@@ -578,26 +622,36 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
         LOADSPR_ADDOFFS_NEXT(ANIM1_FALLOUT_DEAD, anim2_);
     }
 
-    return anim_;
+    return nullable_anim;
 
 #undef LOADSPR_ADDOFFS
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
-auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32_t* layers3d) -> const Sprite*
+auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
     const string ext = strex(model_name).get_file_extension();
 
     if (ext != "fo3d") {
-        const auto* frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
-        return frames != nullptr ? frames : _critterDummyAnimFrames.get();
+        auto nullable_frames = GetCritterAnimFrames(model_name, state_anim, action_anim, dir);
+
+        if (nullable_frames) {
+            return nullable_frames.as_ptr();
+        }
+
+        return _critterDummyAnimFrames.as_ptr();
     }
     else {
 #if FO_ENABLE_3D
-        const auto* model_spr = GetCritterPreviewModelSpr(model_name, state_anim, action_anim, dir, layers3d);
-        return model_spr != nullptr ? static_cast<const Sprite*>(model_spr) : static_cast<const Sprite*>(_critterDummyAnimFrames.get());
+        auto nullable_model_spr = GetCritterPreviewModelSpr(model_name, state_anim, action_anim, dir, layers3d);
+
+        if (nullable_model_spr) {
+            return nullable_model_spr.as_ptr();
+        }
+
+        return _critterDummyAnimFrames.as_ptr();
 #else
         ignore_unused(layers3d);
         throw NotEnabled3DException("3D submodule not enabled");
@@ -606,7 +660,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32_t* layers3d) -> const ModelSprite*
+auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -618,16 +672,17 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
 
         model_spr->DrawToAtlas();
 
-        return model_spr.get();
+        return model_spr.as_nptr();
     }
 
-    auto model_spr = dynamic_ptr_cast<ModelSprite>(_sprMngr->LoadSprite(model_name, AtlasType::MapSprites));
+    shared_ptr<Sprite> loaded_spr = _sprMngr->LoadSprite(model_name, AtlasType::MapSprites);
+    shared_ptr<ModelSprite> model_spr = dynamic_ptr_cast<ModelSprite>(std::move(loaded_spr));
 
     if (!model_spr) {
         return nullptr;
     }
 
-    auto* model = model_spr->GetModel();
+    auto model = model_spr->GetModel();
 
     model->PlayAnim(state_anim, action_anim, layers3d, 0.0f, CombineEnum(ModelAnimFlags::Freeze, ModelAnimFlags::NoSmooth));
     model->SetDir(dir, false);
@@ -636,7 +691,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
 
     model_spr->DrawToAtlas();
 
-    return _critterModels.emplace(model_name, std::move(model_spr)).first->second.get();
+    return _critterModels.emplace(model_name, std::move(model_spr)).first->second.as_nptr();
 }
 #endif
 

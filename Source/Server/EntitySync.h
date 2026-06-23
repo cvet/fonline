@@ -44,7 +44,7 @@ class ServerEngine;
 class ServerEntity;
 
 [[nodiscard]] auto NextSyncTicket() noexcept -> uint64_t;
-[[nodiscard]] auto IsEntityAccessValid(const ServerEntity* entity) noexcept -> bool;
+[[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity) noexcept -> bool;
 
 class EntityLock final
 {
@@ -128,18 +128,18 @@ public:
     auto operator=(SyncContext&&) noexcept = delete;
     ~SyncContext();
 
-    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> SyncContext*;
-    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> SyncContext*;
+    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
+    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
 
-    [[nodiscard]] auto ValidateAccess(const ServerEntity* entity) const noexcept -> bool;
+    [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
-    [[nodiscard]] auto GetHeldEntities() -> vector<ServerEntity*>;
+    [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
 
     void Activate() noexcept;
     void Deactivate() noexcept;
-    void SyncEntities(span<ServerEntity*> entities);
-    void SyncEntity(ServerEntity* entity);
-    void EnsureEntitySynced(ServerEntity* entity);
+    void SyncEntities(const_span<nptr<ServerEntity>> entities);
+    void SyncEntity(nptr<ServerEntity> entity);
+    void EnsureEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;
 
     // Singleton-lock acquisition (e.g. `Game.Lock()`). Acquires the supplied EntityLock and
@@ -148,11 +148,11 @@ public:
     // feet. Recursion is supported per the EntityLock primitive — repeated LockSingleton calls
     // bump recursion, matched UnlockSingleton calls release. Job-exit (SyncContext destructor)
     // drains both buckets so leaked singleton locks can't outlive a worker job.
-    void LockSingleton(EntityLock* lock);
-    void UnlockSingleton(EntityLock* lock);
+    void LockSingleton(ptr<EntityLock> lock);
+    void UnlockSingleton(ptr<EntityLock> lock);
 
 private:
-    void AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<ServerEntity>>&& owners);
+    void AcquireLocks(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>&& owners);
     // Deadlock-breaking escalation used by AcquireLocks when the non-parking back-off cannot make
     // progress (typically a nested context cross-holding locks against another thread's parent
     // cover). Releases the full thread-held lock union (this context's prefix is already released by
@@ -162,28 +162,28 @@ private:
     // deadlock-free regardless of what the thread (or its ancestors) already held. If the blocking
     // re-acquire is aborted by shutdown, it rolls the whole union back to zero and clears the ancestor
     // bookkeeping so the unwinding contexts don't release locks they no longer hold.
-    void AcquireLocksOrderedFair(const vector<EntityLock*>& locks);
+    void AcquireLocksOrderedFair(const vector<ptr<EntityLock>>& locks);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 
-    vector<EntityLock*> _heldLocks {};
+    vector<ptr<EntityLock>> _heldLocks {};
     // Parallel to `_heldLocks`. Each entry pins the ServerEntity whose `_ownedLock` (or whose
-    // SetParent-chain reaches it) backs the corresponding `EntityLock*`. Without this, an entity
+    // SetParent-chain reaches it) backs the corresponding EntityLock. Without this, an entity
     // destroyed by the same thread that holds its lock (e.g. `Game.DestroyCritter(cr)` from inside
-    // a `Sync::Lock(cr)` block) leaves a dangling `EntityLock*` here; the next SyncEntities call
+    // a `Sync::Lock(cr)` block) leaves a stale held-lock entry here; the next SyncEntities call
     // would `ReleaseLocks` and crash. Keeping the owner alive via refcount until `ReleaseLocks`
     // runs guarantees the EntityLock storage outlives the held-lock list. May be null for the
     // engine singleton lock (the engine is not a ServerEntity).
     vector<refcount_ptr<ServerEntity>> _heldLockOwners {};
     // Singleton locks acquired via LockSingleton; survive SyncEntities replacement. Each entry
     // is one outstanding LockSingleton call (so recursion tracking matches paired Unlock calls).
-    vector<EntityLock*> _singletonLocks {};
+    vector<ptr<EntityLock>> _singletonLocks {};
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
     // event-callback's nested context can pop back to the dispatcher's primary context cleanly.
-    SyncContext* _previousContext {nullptr};
+    nptr<SyncContext> _previousContext {};
 };
 
-void PropagateEntityLock(class Item* item, EntityLock* parent_lock);
-void RevertEntityLock(class Item* item);
+void PropagateEntityLock(ptr<class Item> item, ptr<EntityLock> parent_lock);
+void RevertEntityLock(ptr<class Item> item);
 
 FO_END_NAMESPACE

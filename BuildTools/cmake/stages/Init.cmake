@@ -51,7 +51,10 @@ DeclareBoolOptions(
 	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
-	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
+	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF
+	FO_STRICT_PTR_NONNULL "Enforce non-null API for ptr<T>" ON
+	FO_STRICT_OWNING_NONNULL "Enforce non-null API for unique_ptr<T> and refcount_ptr<T>" ON
+	FO_STRICT_REFCOUNT_EXPLICIT "Require explicit raw/refcount bridge APIs" ON)
 
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
@@ -308,6 +311,9 @@ AddCompileDefinitionsList(
 	FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}
 	FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}
 	FO_NO_EXTRA_ASSERTS=0
+	FO_STRICT_PTR_NONNULL=$<BOOL:${FO_STRICT_PTR_NONNULL}>
+	FO_STRICT_OWNING_NONNULL=$<BOOL:${FO_STRICT_OWNING_NONNULL}>
+	FO_STRICT_REFCOUNT_EXPLICIT=$<BOOL:${FO_STRICT_REFCOUNT_EXPLICIT}>
 	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
 # Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.
 AddCompileDefinitionsList(FO_NO_TEXTURE_LOOKUP=0) # Todo: FO_NO_TEXTURE_LOOKUP need option for enable

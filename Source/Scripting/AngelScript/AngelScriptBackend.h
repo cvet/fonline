@@ -38,6 +38,7 @@
 #if FO_ANGELSCRIPT_SCRIPTING
 
 #include "AngelScriptContext.h"
+#include "AngelScriptDebugger.h"
 #include "ScriptSystem.h"
 
 class ScriptArray;
@@ -45,30 +46,29 @@ class ScriptArray;
 FO_BEGIN_NAMESPACE
 
 struct ScriptSettings;
-class DebuggerEndpointServer;
 
 class AngelScriptBackend : public ScriptSystemBackend
 {
 public:
-    explicit AngelScriptBackend(const ScriptSettings& settings);
+    explicit AngelScriptBackend(ptr<const ScriptSettings> settings);
     AngelScriptBackend(const AngelScriptBackend&) noexcept = delete;
     auto operator=(const AngelScriptBackend&) noexcept -> AngelScriptBackend& = delete;
     AngelScriptBackend(AngelScriptBackend&&) noexcept = delete;
     auto operator=(AngelScriptBackend&&) noexcept -> AngelScriptBackend& = delete;
     ~AngelScriptBackend() override;
 
-    [[nodiscard]] auto GetMetadata() const noexcept -> const EngineMetadata* { return _meta.get(); }
-    [[nodiscard]] auto GetScriptSys() const noexcept -> const ScriptSystem* { return _scriptSys.get(); }
+    [[nodiscard]] auto GetMetadata() const noexcept -> nptr<const EngineMetadata> { return _meta; }
+    [[nodiscard]] auto GetScriptSys() const noexcept -> nptr<const ScriptSystem> { return _scriptSys; }
     [[nodiscard]] auto HasGameEngine() const noexcept -> bool { return !!_engine; } // Not present in baker/compiler
-    [[nodiscard]] auto GetGameEngine() -> BaseEngine*; // Assert if not specified
-    [[nodiscard]] auto GetGameEngine() const -> const BaseEngine*; // Assert if not specified
+    [[nodiscard]] auto GetGameEngine() -> ptr<BaseEngine>; // Assert if not specified
+    [[nodiscard]] auto GetGameEngine() const -> ptr<const BaseEngine>; // Assert if not specified
     [[nodiscard]] auto HasEntityMngr() const noexcept -> bool { return !!_entityMngr; } // Not present on client
-    [[nodiscard]] auto GetEntityMngr() -> EntityManagerApi*; // Assert if not specified
-    [[nodiscard]] auto GetContextMngr() noexcept -> AngelScriptContextManager* { return _contextMngr.get(); }
-    [[nodiscard]] auto GetContextMngr() const noexcept -> const AngelScriptContextManager* { return _contextMngr.get(); }
+    [[nodiscard]] auto GetEntityMngr() -> ptr<EntityManagerApi>; // Assert if not specified
+    [[nodiscard]] auto GetContextMngr() noexcept -> nptr<AngelScriptContextManager> { return _contextMngr ? nptr<AngelScriptContextManager>(&*_contextMngr) : nullptr; }
+    [[nodiscard]] auto GetContextMngr() const noexcept -> nptr<const AngelScriptContextManager> { return _contextMngr ? nptr<const AngelScriptContextManager>(&*_contextMngr) : nullptr; }
     [[nodiscard]] auto GetExceptionCounter() const noexcept -> int32_t { return _exceptionCounter.load(); }
 
-    void RegisterMetadata(EngineMetadata* meta);
+    void RegisterMetadata(ptr<EngineMetadata> meta);
     void SetMessageCallback(function<void(string_view)> message_callback);
     void SendMessage(string_view message) const;
     void LoadBinaryScripts(const FileSystem& resources);
@@ -83,17 +83,22 @@ private:
 
     void ReleaseScriptGlobalsAndReportGC();
 
-    raw_ptr<const ScriptSettings> _settings;
-    raw_ptr<EngineMetadata> _meta {};
-    raw_ptr<ScriptSystem> _scriptSys {}; // Maybe null
-    raw_ptr<BaseEngine> _engine {}; // Maybe null
-    raw_ptr<EntityManagerApi> _entityMngr {}; // Maybe null
-    raw_ptr<AngelScript::asIScriptEngine> _asEngine {};
-    unique_ptr<AngelScriptContextManager> _contextMngr {};
+    struct DebuggerEndpointState
+    {
+        unique_ptr<DebuggerEndpointServer> Server;
+    };
+
+    ptr<const ScriptSettings> _settings;
+    nptr<EngineMetadata> _meta {};
+    nptr<ScriptSystem> _scriptSys {}; // Maybe null
+    nptr<BaseEngine> _engine {}; // Maybe null
+    nptr<EntityManagerApi> _entityMngr {}; // Maybe null
+    nptr<AngelScript::asIScriptEngine> _asEngine {};
+    optional<AngelScriptContextManager> _contextMngr {};
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
     vector<function<void()>> _postCleanupCallbacks {};
-    unique_ptr<DebuggerEndpointServer> _debuggerEndpointServer {};
+    optional<DebuggerEndpointState> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
 };
 

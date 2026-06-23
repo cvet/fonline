@@ -41,18 +41,24 @@ FO_USING_NAMESPACE();
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
-[[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto BakerApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_TESTING_APP
+    const vector<CommandLineArg> args_holder = MakeCommandLineArgs(numeric_cast<int32_t>(argc), argv);
+    const CommandLineArgs args {args_holder};
+#endif
+
     try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
+        InitApp(args, AppInitFlags::DisableLogTags);
 
         bool baking_result;
 
         {
-            auto baker = MasterBaker(App->Settings);
+            ptr<BakingSettings> settings = &GetApp()->Settings;
+            auto baker = MasterBaker(settings);
             baking_result = baker.BakeAll();
         }
 

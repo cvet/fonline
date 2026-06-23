@@ -54,18 +54,18 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
     [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }
-    [[nodiscard]] auto GetEngine() const noexcept -> const ClientEngine* { return _engine.get(); }
-    [[nodiscard]] auto GetEngine() noexcept -> ClientEngine* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() const noexcept -> ptr<const ClientEngine> { return _engine; }
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<ClientEngine> { return _engine; }
 
     void SetId(ident_t id, bool register_entity);
     void DestroySelf();
 
 protected:
-    ClientEntity(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props);
+    ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props);
 
     virtual void OnDestroySelf() = 0;
 
-    raw_ptr<ClientEngine> _engine;
+    ptr<ClientEngine> _engine;
     string _name {};
 
 private:
@@ -76,9 +76,9 @@ private:
 class CustomEntityView : public ClientEntity, public EntityProperties
 {
 public:
-    CustomEntityView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) :
+    CustomEntityView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) :
         ClientEntity(engine, id, registrator, props, base_props),
-        EntityProperties(GetInitRef())
+        EntityProperties(*GetInitRef())
     {
     }
 
@@ -88,7 +88,7 @@ public:
 class CustomEntityWithProtoView : public CustomEntityView, public EntityWithProto
 {
 public:
-    CustomEntityWithProtoView(ClientEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) :
+    CustomEntityWithProtoView(ptr<ClientEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) :
         CustomEntityView(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {

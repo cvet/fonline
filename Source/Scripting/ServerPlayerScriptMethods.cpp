@@ -37,32 +37,39 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto ReturnControlledCritter(nptr<Critter> cr) noexcept -> Critter*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cr.get_no_const();
+}
+
 ///@ ExportMethod
-FO_SCRIPT_API string Server_Player_GetHost(Player* self)
+FO_SCRIPT_API string Server_Player_GetHost(ptr<Player> self)
 {
     return string(self->GetConnection()->GetHost());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Player_GetPort(Player* self)
+FO_SCRIPT_API int32_t Server_Player_GetPort(ptr<Player> self)
 {
     return numeric_cast<int32_t>(self->GetConnection()->GetPort());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
+FO_SCRIPT_API void Server_Player_Disconnect(ptr<Player> self)
 {
     self->GetConnection()->GracefulDisconnect();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_HardDisconnect(Player* self)
+FO_SCRIPT_API void Server_Player_HardDisconnect(ptr<Player> self)
 {
     self->GetConnection()->HardDisconnect();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
+FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 {
     if (name.empty()) {
         throw ScriptException("Player name arg is empty");
@@ -78,19 +85,21 @@ FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* self)
+FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
-    return self->GetControlledCritter();
+    auto controlled_cr = self->GetControlledCritter();
+
+    return ReturnControlledCritter(controlled_cr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
+FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -100,10 +109,12 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
 
     ident_t player_map_id {};
 
-    if (const Critter* controlled_cr = self->GetControlledCritter(); controlled_cr != nullptr) {
+    if (nptr<const Critter> nullable_controlled_cr = self->GetControlledCritter(); nullable_controlled_cr) {
+        auto controlled_cr = nullable_controlled_cr.as_ptr();
         player_map_id = controlled_cr->GetMapId();
     }
-    else if (const ViewMapContext* view_map = self->GetViewMap(); view_map != nullptr) {
+    else if (nptr<const ViewMapContext> nullable_view_map = self->GetViewMap(); nullable_view_map) {
+        auto view_map = nullable_view_map.as_ptr();
         player_map_id = view_map->MapId;
     }
 
@@ -115,9 +126,9 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
+FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos hex)
 {
-    if (self->GetControlledCritter() != nullptr) {
+    if (nptr<const Critter> controlled_cr = self->GetControlledCritter(); controlled_cr) {
         throw ScriptException("Player controls critter");
     }
     if (!map->GetSize().is_valid_pos(hex)) {
@@ -132,15 +143,15 @@ FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ResetViewMap(Player* self)
+FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)
 {
     self->ResetViewMap();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_UnloadMap(Player* self)
+FO_SCRIPT_API void Server_Player_UnloadMap(ptr<Player> self)
 {
-    if (self->GetControlledCritter() != nullptr) {
+    if (nptr<const Critter> controlled_cr = self->GetControlledCritter(); controlled_cr) {
         throw ScriptException("Player controls critter");
     }
 

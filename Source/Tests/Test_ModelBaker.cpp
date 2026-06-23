@@ -24,7 +24,7 @@ static void WriteTestModelString(DataWriter& writer, string_view value)
     FO_STACK_TRACE_ENTRY();
 
     writer.Write<uint32_t>(numeric_cast<uint32_t>(value.length()));
-    writer.WritePtr(value.data(), value.length());
+    writer.WriteStringBytes(value);
 }
 
 static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names)
@@ -34,8 +34,8 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
     WriteTestModelString(writer, name);
 
     const mat44 matrix {1.0f};
-    writer.WritePtr(&matrix, sizeof(matrix));
-    writer.WritePtr(&matrix, sizeof(matrix));
+    writer.Write<mat44>(matrix);
+    writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
 
     if (attached_mesh) {
@@ -50,7 +50,7 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bone offsets
         for (size_t i = 0; i < skin_bone_names.size(); i++) {
-            writer.WritePtr(&matrix, sizeof(matrix));
+            writer.Write<mat44>(matrix);
         }
     }
 
@@ -138,7 +138,7 @@ TEST_CASE("ModelBakers")
     const uint32_t model_name_len = reader.Read<uint32_t>();
     string model_name;
     model_name.resize(model_name_len);
-    reader.ReadPtr(model_name.data(), model_name_len);
+    reader.ReadStringBytes(model_name);
     CHECK(model_name == "Critters/Body.fbx");
     CHECK(rig.Outputs.count("Critters/TEMPLATE_Test.fo3d") == 0);
 

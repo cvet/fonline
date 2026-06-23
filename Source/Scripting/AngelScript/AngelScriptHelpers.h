@@ -83,40 +83,58 @@ FO_BEGIN_NAMESPACE
 
 class BaseEngine;
 class AngelScriptBackend;
-using ScriptFastCompareFunc = int32_t (*)(const void* a, const void* b);
+using ScriptFastCompareFunc = int32_t (*)(ptr<const void> a, ptr<const void> b);
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result);
-auto GetScriptBackend(BaseEngine* engine) -> AngelScriptBackend*;
-auto GetScriptBackend(AngelScript::asIScriptEngine* as_engine) -> AngelScriptBackend*;
-auto GetEngineMetadata(AngelScript::asIScriptEngine* as_engine) -> const EngineMetadata*;
-auto GetGameEngine(AngelScript::asIScriptEngine* as_engine) -> BaseEngine*;
-void CheckScriptEntityNonNull(const Entity* entity);
-void CheckScriptEntityNonDestroyed(const Entity* entity);
-void CheckScriptEntityAccessAndNonDestroyed(const Entity* entity);
+auto GetScriptBackend(ptr<BaseEngine> engine) -> ptr<AngelScriptBackend>;
+auto GetScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<AngelScriptBackend>;
+auto GetEngineMetadata(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<const EngineMetadata>;
+auto GetGameEngine(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<BaseEngine>;
+void CheckScriptEntityNonNull(nptr<const Entity> entity);
+void CheckScriptEntityNonDestroyed(nptr<const Entity> nullable_entity);
+void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> nullable_entity);
+
+template<typename T>
+[[nodiscard]] auto ScriptMutablePtr(ptr<const T> value) noexcept -> T*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return const_cast<T*>(std::addressof(*value));
+}
+
+template<typename T>
+[[nodiscard]] auto ScriptMutablePtr(nptr<const T> value) noexcept -> T*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(value, "Script value pointer is null");
+    return ScriptMutablePtr(value.as_ptr());
+}
+
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string;
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string;
 auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable = false) -> string;
 auto MakeScriptArgsName(const_span<ArgDesc> args) -> string;
 auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership = false, bool nullable = false) -> string;
-auto MakeScriptPropertyName(const Property* prop) -> string;
+auto MakeScriptPropertyName(ptr<const Property> prop) -> string;
 auto NormalizeScriptPropertyDecl(string_view decl) -> string;
-auto CreateScriptArray(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptArray*;
-auto CreateScriptDict(AngelScript::asIScriptEngine* as_engine, const char* type) -> ScriptDict*;
-auto CalcConstructAddrSpace(const Property* prop) -> size_t;
-void FreeConstructAddrSpace(const Property* prop, void* construct_addr);
-void ConvertPropsToScriptObject(const Property* prop, PropertyRawData& prop_data, void* construct_addr, AngelScript::asIScriptEngine* as_engine);
-auto ConvertScriptToPropsObject(const Property* prop, void* as_obj) -> PropertyRawData;
-auto GetScriptObjectInfo(const void* ptr, int32_t type_id) -> string;
-auto ReadEnumValueAsInt32(const void* ptr, const BaseTypeDesc& enum_type) -> int32_t;
-void WriteEnumValueFromInt32(void* ptr, const BaseTypeDesc& enum_type, int32_t value);
-auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver& hash_resolver) -> hstring;
+auto CreateScriptArray(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> refcount_ptr<ScriptArray>;
+auto CreateScriptDict(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> refcount_ptr<ScriptDict>;
+auto CalcConstructAddrSpace(ptr<const Property> prop) -> size_t;
+void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr);
+void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_data, ptr<void> construct_addr, ptr<AngelScript::asIScriptEngine> as_engine);
+auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> PropertyRawData;
+auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string;
+auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) -> int32_t;
+void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32_t value);
+auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, HashResolver& hash_resolver) -> hstring;
 auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool;
-auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> void*;
-auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, void* as_obj) -> vector<uint8_t>;
-auto CreateRefTypeScriptObjectFromProperty(const Property* prop, span<const uint8_t> raw_data) -> void*;
-auto ConvertRefTypeScriptObjectToProperty(const Property* prop, void* as_obj) -> PropertyRawData;
-void SetScriptTypeFastCompare(AngelScript::asITypeInfo* type, ScriptFastCompareFunc func);
-auto GetScriptTypeFastCompare(const AngelScript::asITypeInfo* type) -> ScriptFastCompareFunc;
+auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> nullable_as_obj) -> vector<uint8_t>;
+auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
+auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> as_obj) -> PropertyRawData;
+void SetScriptTypeFastCompare(ptr<AngelScript::asITypeInfo> type, ScriptFastCompareFunc func);
+auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> ScriptFastCompareFunc;
 
 #ifdef AS_MAX_PORTABILITY
 
@@ -137,6 +155,84 @@ FO_BEGIN_NAMESPACE
 
 namespace aswrap
 {
+    static auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return gen->GetArgAddress(arg_index);
+    }
+
+    static auto GetGenericAddressOfArg(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return gen->GetAddressOfArg(arg_index);
+    }
+
+    static auto GetGenericObjectAddress(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return gen->GetObject();
+    }
+
+    static auto ReturnGenericAddress(ptr<void> address) noexcept -> void*
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return address.get_no_const();
+    }
+
+    static auto ReturnNullableGenericAddress(nptr<void> address) noexcept -> void*
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return address.get_no_const();
+    }
+
+    template<typename T>
+    static auto GenericAddressAsPointer(ptr<void> address) noexcept -> T
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        static_assert(std::is_pointer_v<T>);
+
+        if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+            static_assert(sizeof(T) == sizeof(void*));
+            return std::bit_cast<T>(address.get());
+        }
+        else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+            return ReturnGenericAddress(address);
+        }
+        else {
+            return cast_from_void<T>(address.get());
+        }
+    }
+
+    template<typename T>
+    static auto GetGenericArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return cast_from_void<T*>(GetGenericArgAddress(gen, arg_index).get());
+    }
+
+    template<typename T>
+    static auto GetGenericAddressArgValue(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return cast_from_void<T*>(GetGenericAddressOfArg(gen, arg_index).get());
+    }
+
+    template<typename T>
+    static auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return cast_from_void<T*>(GetGenericObjectAddress(gen).get());
+    }
+
     template<typename T>
     struct ArgReader
     {
@@ -146,14 +242,14 @@ namespace aswrap
 
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
-                return *static_cast<BaseType*>(gen->GetArgAddress(arg_index));
+                return *GetGenericArgObject<BaseType>(gen, arg_index);
             }
             else if constexpr (std::is_pointer_v<T>) {
-                return static_cast<T>(gen->GetArgAddress(arg_index));
+                return GenericAddressAsPointer<T>(GetGenericArgAddress(gen, arg_index));
             }
             else {
                 using BaseType = std::remove_cv_t<T>;
-                return *static_cast<BaseType*>(gen->GetAddressOfArg(arg_index));
+                return *GetGenericAddressArgValue<BaseType>(gen, arg_index);
             }
         }
     };
@@ -165,29 +261,62 @@ namespace aswrap
         {
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
-                return *static_cast<BaseType*>(gen->GetObject());
+                return *GetGenericObject<BaseType>(gen);
             }
             else if constexpr (std::is_pointer_v<T>) {
-                return static_cast<T>(gen->GetObject());
+                return GenericAddressAsPointer<T>(GetGenericObjectAddress(gen));
             }
             else {
                 using BaseType = std::remove_cv_t<T>;
-                return *static_cast<BaseType*>(gen->GetObject());
+                return *GetGenericObject<BaseType>(gen);
             }
         }
     };
 
     template<typename T>
+    static auto PointerReturnValueAsAddress(T value) noexcept -> void*
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+            static_assert(sizeof(T) == sizeof(void*));
+            return std::bit_cast<void*>(value);
+        }
+        else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+            return const_cast<void*>(static_cast<const void*>(value));
+        }
+        else {
+            nptr<void> return_address = cast_to_void(value);
+            return ReturnNullableGenericAddress(return_address);
+        }
+    }
+
+    template<typename T>
+    static auto ReferenceReturnValueAsAddress(T& value) noexcept -> void*
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if constexpr (std::is_function_v<T>) {
+            static_assert(sizeof(T*) == sizeof(void*));
+            return std::bit_cast<void*>(std::addressof(value));
+        }
+        else {
+            ptr<void> return_address = cast_to_void(std::addressof(value));
+            return ReturnGenericAddress(return_address);
+        }
+    }
+
+    template<typename T>
     static void StoreReturnValue(AngelScript::asIScriptGeneric* gen, T value)
     {
         if constexpr (std::is_lvalue_reference_v<T>) {
-            const auto as_result = gen->SetReturnAddress(const_cast<void*>(static_cast<const void*>(std::addressof(value))));
+            const auto as_result = gen->SetReturnAddress(ReferenceReturnValueAsAddress(value));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
         }
         else if constexpr (std::is_pointer_v<T>) {
-            const auto as_result = gen->SetReturnAddress(const_cast<void*>(reinterpret_cast<const void*>(value)));
+            const auto as_result = gen->SetReturnAddress(PointerReturnValueAsAddress(value));
             if (as_result < 0) {
                 ThrowScriptCoreException(__FILE__, __LINE__, as_result);
             }
@@ -236,7 +365,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            auto* object = static_cast<C*>(gen->GetObject());
+            auto object = GetGenericObject<C>(gen);
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
@@ -256,7 +385,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            const auto* object = static_cast<const C*>(gen->GetObject());
+            auto object = GetGenericObject<const C>(gen);
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
@@ -326,14 +455,14 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            new (gen->GetObject()) T(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+            new (GetGenericObject<T>(gen).get()) T(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
         }
     };
 
     template<typename T>
     void destroy(AngelScript::asIScriptGeneric* gen)
     {
-        static_cast<T*>(gen->GetObject())->~T();
+        GetGenericObject<T>(gen)->~T();
     }
 }
 

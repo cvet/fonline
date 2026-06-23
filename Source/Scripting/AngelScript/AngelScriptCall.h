@@ -51,24 +51,25 @@ FO_BEGIN_NAMESPACE
 struct ScriptDataAccessor final : DataAccessor
 {
     [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX; }
-    [[nodiscard]] auto GetArraySize(void* data) const -> size_t override;
-    [[nodiscard]] auto GetArrayElement(void* data, size_t index) const -> void* override;
-    [[nodiscard]] auto GetDictSize(void* data) const -> size_t override;
-    [[nodiscard]] auto GetDictElement(void* data, size_t index) const -> pair<void*, void*> override;
-    [[nodiscard]] auto GetCallback(void* data) const -> unique_del_ptr<ScriptFuncDesc> override;
+    [[nodiscard]] auto GetArraySize(ptr<void> data) const -> size_t override;
+    [[nodiscard]] auto GetArrayElement(ptr<void> data, size_t index) const -> ptr<void> override;
+    [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override;
+    [[nodiscard]] auto GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>> override;
+    [[nodiscard]] auto GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc> override;
 
-    void ClearArray(void* data) const override;
-    void AddArrayElement(void* data, void* value) const override;
-    void ClearDict(void* data) const override;
-    void AddDictElement(void* data, void* key, void* value) const override;
+    void ClearArray(ptr<void> data) const override;
+    void AddArrayElement(ptr<void> data, ptr<void> value) const override;
+    void ClearDict(ptr<void> data) const override;
+    void AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const override;
 };
 
 static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;
 
-auto ResolveScriptFuncType(AngelScript::asIScriptEngine* as_engine, int32_t type_id, uint32_t flags = 0, bool is_ret = false) -> ComplexTypeDesc;
-auto IndexScriptFunc(AngelScript::asIScriptFunction* func) -> ScriptFuncDesc*;
-void ScriptGenericCall(AngelScript::asIScriptGeneric* gen, bool add_obj, const function<void(FuncCallData&)>& callback);
-void ScriptFuncCall(AngelScript::asIScriptFunction* func, FuncCallData& call);
+auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, uint32_t flags = 0, bool is_ret = false) -> ComplexTypeDesc;
+auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFuncDesc>;
+auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
+void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const function<void(FuncCallData&)>& callback);
+void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call);
 
 FO_END_NAMESPACE
 

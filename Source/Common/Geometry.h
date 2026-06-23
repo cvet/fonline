@@ -203,7 +203,7 @@ public:
     [[nodiscard]] static auto MakeMapAnchoredProj(const mat44& base_proj, const mat44& map_ortho, fpos32 anchor_pos, float32_t anchor_depth) -> mat44;
     [[nodiscard]] static auto GetHexAxialCoord(mpos hex) -> ipos32;
     [[nodiscard]] static auto GetHexAxialCoord(ipos32 raw_hex) -> ipos32;
-    [[nodiscard]] static auto GetHexPosCoord(ipos32 pos, ipos32* hex_offset = nullptr) -> ipos32;
+    [[nodiscard]] static auto GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset = nullptr) -> ipos32;
     [[nodiscard]] static auto NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool;
     [[nodiscard]] static auto GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32;
     [[nodiscard]] static auto GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32;

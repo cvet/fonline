@@ -35,6 +35,26 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto BytesAsFileChars(const_span<uint8_t> bytes) -> ptr<const char>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
+
+    ptr<const uint8_t> data = bytes.data();
+    return data.reinterpret_as<const char>();
+}
+
+static auto TextAsFileChars(string_view text) -> ptr<const char>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!text.empty(), "Text is empty");
+
+    ptr<const char> chars = text.data();
+    return chars;
+}
+
 auto fs_make_path(string_view path) -> std::u8string
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -158,7 +178,8 @@ auto fs_read_file(string_view path) -> optional<string>
     content.resize(static_cast<size_t>(file_size));
 
     if (!content.empty()) {
-        file.read(content.data(), static_cast<std::streamsize>(content.size()));
+        ptr<char> content_data = content.data();
+        file.read(content_data.get(), static_cast<std::streamsize>(content.size()));
 
         if (!file || file.gcount() != static_cast<std::streamsize>(content.size())) {
             return std::nullopt;
@@ -178,7 +199,13 @@ auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> b
         return false;
     }
 
-    return MemCompare(existing_content->data(), content.data(), content.size());
+    if (content.empty()) {
+        return true;
+    }
+
+    auto existing_data = TextAsFileChars(*existing_content);
+    ptr<const uint8_t> content_data = content.data();
+    return MemCompare(existing_data.get(), content_data.get(), content.size());
 }
 
 auto fs_write_file(string_view path, string_view content) -> bool
@@ -198,7 +225,8 @@ auto fs_write_file(string_view path, string_view content) -> bool
     }
 
     if (!content.empty()) {
-        file.write(content.data(), static_cast<std::streamsize>(content.size()));
+        auto content_data = TextAsFileChars(content);
+        file.write(content_data.get(), static_cast<std::streamsize>(content.size()));
     }
 
     file.flush();
@@ -222,7 +250,7 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
     }
 
     if (!content.empty()) {
-        file.write(reinterpret_cast<const char*>(content.data()), static_cast<std::streamsize>(content.size()));
+        file.write(BytesAsFileChars(content).get(), static_cast<std::streamsize>(content.size()));
     }
 
     file.flush();
@@ -294,7 +322,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
@@ -311,12 +339,14 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     uint64_t hash = offset;
 
     while (stream) {
-        stream.read(buf.data(), numeric_cast<std::streamsize>(buf.size()));
+        ptr<char> read_buf = buf.data();
+        stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
 
         const auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
-            hash = step(hash, reinterpret_cast<const uint8_t*>(buf.data()), read_size);
+            ptr<const uint8_t> hash_bytes = read_buf.reinterpret_as<const uint8_t>();
+            hash = step(hash, hash_bytes, read_size);
         }
 
         if (stream.bad()) {
@@ -327,7 +357,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     return hash;
 }
 
-auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t
+auto fs_hash_data(nptr<const void> nullable_data, size_t size) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -335,14 +365,22 @@ auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
         return hash;
     };
 
-    return step(offset, static_cast<const uint8_t*>(data), size);
+    if (size == 0) {
+        return offset;
+    }
+
+    FO_STRONG_ASSERT(nullable_data, "Data pointer is null for non-zero size");
+
+    auto source = nullable_data.as_ptr();
+    ptr<const uint8_t> bytes = cast_from_void<const uint8_t*>(source.get());
+    return step(offset, bytes, size);
 }
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
@@ -378,7 +416,7 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
     RecursiveDirLook(dir, "", recursive, visitor);
 }
 
-auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool
+auto stream_read_exact(std::istream& stream, nptr<void> nullable_buf, size_t len) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -386,8 +424,13 @@ auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool
         return true;
     }
 
-    stream.read(static_cast<char*>(buf), static_cast<std::streamsize>(len));
-    return !!stream && stream.gcount() == static_cast<std::streamsize>(len);
+    FO_VERIFY_AND_THROW(nullable_buf, "Destination buffer is null for non-zero length");
+
+    const std::streamsize stream_len = numeric_cast<std::streamsize>(len);
+    auto target = nullable_buf.as_ptr();
+    ptr<char> target_chars = cast_from_void<char*>(target.get());
+    stream.read(target_chars.get(), stream_len);
+    return !!stream && stream.gcount() == stream_len;
 }
 
 auto stream_get_size(std::istream& stream) -> size_t

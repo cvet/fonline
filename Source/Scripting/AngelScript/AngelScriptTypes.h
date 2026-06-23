@@ -44,7 +44,7 @@ namespace AngelScript
 
 FO_BEGIN_NAMESPACE
 
-void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine);
+void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine);
 
 FO_END_NAMESPACE
 

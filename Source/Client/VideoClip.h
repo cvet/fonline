@@ -44,7 +44,7 @@ class VideoClip
 public:
     explicit VideoClip(vector<uint8_t> video_data);
     VideoClip(const VideoClip&) = delete;
-    VideoClip(VideoClip&&) noexcept = default;
+    VideoClip(VideoClip&&) noexcept;
     auto operator=(const VideoClip&) = delete;
     auto operator=(VideoClip&&) noexcept = delete;
     ~VideoClip();
@@ -65,10 +65,25 @@ public:
 
 private:
     struct Impl;
+    struct State
+    {
+        State() = delete;
+        explicit State(unique_ptr<Impl>&& instance) noexcept;
+        State(const State&) = delete;
+        State(State&&) noexcept;
+        auto operator=(const State&) = delete;
+        auto operator=(State&&) noexcept -> State&;
+        ~State();
 
+        unique_ptr<Impl> Instance;
+    };
+
+    [[nodiscard]] static auto MakeImpl() -> unique_ptr<Impl>;
+    [[nodiscard]] auto GetImpl() noexcept -> ptr<Impl>;
+    [[nodiscard]] auto GetImpl() const noexcept -> ptr<const Impl>;
     auto DecodePacket() -> int32_t;
 
-    unique_ptr<Impl> _impl;
+    optional<State> _impl {};
 };
 
 FO_END_NAMESPACE

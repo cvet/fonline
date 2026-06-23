@@ -92,8 +92,8 @@ TEST_CASE("Platform")
 
     SECTION("LoadModuleReturnsNullForMissingLibrary")
     {
-        void* module = Platform::LoadModule("lf_missing_platform_module_for_tests");
-        CHECK(module == nullptr);
+        nptr<void> module = Platform::LoadModule("lf_missing_platform_module_for_tests");
+        CHECK_FALSE(static_cast<bool>(module));
         Platform::UnloadModule(module);
     }
 

@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientRuntimeApi.h"
+#include "Settings.h"
 #include "Updater.h"
 
 FO_BEGIN_NAMESPACE
@@ -55,13 +56,15 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("ValidExportsAreAccepted")
     {
-        const ClientRuntimeRunFunc stub_run = +[](int32_t /*argc*/, char** /*argv*/, ClientRuntimeResult* runtime_result) noexcept {
-            if (runtime_result != nullptr) {
-                runtime_result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
-                runtime_result->ResultKind = ClientRuntimeResultKind::Shutdown;
-                runtime_result->Success = true;
-                runtime_result->RequestedRuntimePath = nullptr;
-                runtime_result->RequestedCompatibilityVersion = nullptr;
+        const ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
+            const vector<CommandLineArg> args = MakeCommandLineArgs(argc, argv);
+            if (raw_runtime_result != nullptr) {
+                ptr<ClientRuntimeResult> result = raw_runtime_result;
+                result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
+                result->ResultKind = ClientRuntimeResultKind::Shutdown;
+                result->Success = args.empty();
+                result->RequestedRuntimePath = nullptr;
+                result->RequestedCompatibilityVersion = nullptr;
             }
         };
 
@@ -78,6 +81,10 @@ TEST_CASE("ClientRuntimeApi")
         exports.Run = stub_run;
 
         CHECK(IsValidClientRuntimeExports(exports));
+
+        exports.Run(0, nullptr, &result);
+
+        CHECK(result.Success);
         CHECK(IsValidClientRuntimeResult(result));
     }
 

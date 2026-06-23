@@ -43,6 +43,35 @@ FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ClientEngine*);
 
+static auto EffectScriptValueSpan(const float32_t& value) noexcept -> const_span<float32_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<const float32_t> value_ptr = &value;
+    return {value_ptr.get(), 1};
+}
+
+static auto EffectScriptValuesSpan(const_span<float32_t> values, size_t offset, size_t count) noexcept -> const_span<float32_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (count == 0) {
+        return {};
+    }
+
+    FO_STRONG_ASSERT(offset <= values.size(), "Offset out of values range");
+    FO_STRONG_ASSERT(count <= values.size() - offset, "Count out of values range");
+
+    return values.subspan(offset, count);
+}
+
+static auto BorrowScriptReceivedItem(ptr<ItemView> item) noexcept -> ItemView*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return item.get_no_const();
+}
+
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
@@ -52,14 +81,19 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
     return resources;
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window) :
-    BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
-    EffectMngr(Settings, Resources, window.GetRender()),
-    SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    FontMngr(SprMngr),
-    ResMngr(Settings, Resources, SprMngr, *this),
-    SndMngr(Settings, Resources, window.GetAudio()),
-    Cache(fs_make_writable_path(Settings.UserWritablePath, Settings.CacheResources)),
+ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
+    BaseEngine(settings, std::move(resources),
+        [&] {
+            ptr<EngineMetadata> meta = this;
+            ptr<const FileSystem> resources_ptr = &resources;
+            RegisterClientMetadata(meta, resources_ptr);
+        }),
+    EffectMngr(Settings, ptr<FileSystem> {&Resources}, window->GetRender()),
+    SprMngr(Settings, window, ptr<FileSystem> {&Resources}, ptr<GameTimer> {&GameTime}, ptr<EffectManager> {&EffectMngr}, ptr<HashResolver> {&Hashes}),
+    FontMngr(ptr<SpriteManager> {&SprMngr}),
+    ResMngr(Settings, ptr<FileSystem> {&Resources}, ptr<SpriteManager> {&SprMngr}, ptr<AnimationResolver> {this}),
+    SndMngr(Settings, ptr<FileSystem> {&Resources}, window->GetAudio()),
+    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -69,10 +103,17 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(SprMngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes));
+    ptr<SpriteManager> spr_mngr = &SprMngr;
+    ptr<EffectManager> effect_mngr = &EffectMngr;
+    ptr<GameTimer> game_time = &GameTime;
+    ptr<HashResolver> hash_resolver = &Hashes;
+
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(spr_mngr));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver));
 #if FO_ENABLE_3D
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(SprMngr, Settings, EffectMngr, GameTime, Hashes, *this, *this));
+    ptr<NameResolver> name_resolver = this;
+    ptr<AnimationResolver> anim_name_resolver = this;
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver));
 #endif
 
     ResMngr.IndexFiles();
@@ -85,18 +126,20 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-    MapScriptTypes(this);
+    ptr<EngineMetadata> meta = this;
+    MapScriptTypes(meta);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(this, Settings, Resources);
+    InitAngelScriptScripting(meta, *settings, Resources);
 #endif
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
-    _curLang = TextPack {Hashes};
-    _curLang.LoadFromResources(Resources, Settings.Language);
+    _curLang = TextPack {hash_resolver};
+    _curLang.LoadFromResources(Resources, Settings->Language);
 
     // Modules initialization
-    ClientInitHook(this);
+    ptr<ClientEngine> client = this;
+    ClientInitHook(client.get());
 
     InitModules();
 
@@ -136,9 +179,22 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
     // Properties that sending to clients
     {
-        const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
+        const auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
+            return [this, callback](nptr<Entity> nullable_entity, ptr<const Property> prop) FO_DEFERRED {
+                FO_VERIFY_AND_THROW(nullable_entity, "Property owner entity is null");
+                auto entity = nullable_entity.as_ptr();
+                (this->*callback)(entity, prop);
+            };
+        };
+
+        const auto set_send_callbacks = [](nptr<const PropertyRegistrator> nullable_registrator, const PropertyPostSetCallback& callback) {
+            FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
+            auto registrator = nullable_registrator.as_ptr();
+
             for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-                const auto* prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                auto nullable_prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                FO_VERIFY_AND_THROW(nullable_prop, "Missing property by index");
+                auto prop = nullable_prop.as_ptr();
 
                 if (!prop->IsModifiableByClient() && !prop->IsModifiableByAnyClient()) {
                     continue;
@@ -148,57 +204,70 @@ ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAp
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendGlobalValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendPlayerValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendItemValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendCritterValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendMapValue(entity, prop); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSendLocationValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendGlobalValue));
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendPlayerValue));
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendItemValue));
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendCritterValue));
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendMapValue));
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), wrap_post_setter(&ClientEngine::OnSendLocationValue));
     }
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int32_t prop_index, PropertyPostSetCallback callback) {
-            const auto* prop = registrator->GetPropertyByIndex(prop_index);
+        const auto wrap_post_setter = [this](void (ClientEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
+            return [this, callback](nptr<Entity> nullable_entity, ptr<const Property> prop) FO_DEFERRED {
+                FO_VERIFY_AND_THROW(nullable_entity, "Property owner entity is null");
+                auto entity = nullable_entity.as_ptr();
+                (this->*callback)(entity, prop);
+            };
+        };
+
+        const auto set_callback = [](nptr<const PropertyRegistrator> nullable_registrator, int32_t prop_index, PropertyPostSetCallback callback) {
+            FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
+            auto registrator = nullable_registrator.as_ptr();
+
+            auto nullable_prop = registrator->GetPropertyByIndex(prop_index);
+            FO_VERIFY_AND_THROW(nullable_prop, "Missing property by index");
+            auto prop = nullable_prop.as_ptr();
             prop->AddPostSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLookDistance(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterModelName(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterElevation(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetCritterLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemFlags(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemSomeLight(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemPicMap(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemOffsetCoords(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemHideSprite(entity, prop); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, [this](Entity* entity, const Property* prop) FO_DEFERRED { OnSetItemElevation(entity, prop); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LookDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLookDistance));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::ModelName_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterModelName));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterHideSprite));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterElevation));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), CritterView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetCritterLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Colorize_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ColorizeColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::ShootThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightThru_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::NoBlock_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemFlags));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightSource_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightIntensity_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightDistance_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightFlags_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemPicMap));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemOffsetCoords));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
     }
 
-    _eventUnsubscriber += window.GetOnScreenSizeChanged() += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
+    _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
 }
 
-ClientEngine::ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window, const MeatdataRegistrator& mapper_registrator) :
+ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator) :
     BaseEngine(settings, std::move(resources), mapper_registrator),
-    EffectMngr(Settings, Resources, window.GetRender()),
-    SprMngr(Settings, window, Resources, GameTime, EffectMngr, Hashes),
-    FontMngr(SprMngr),
-    ResMngr(Settings, Resources, SprMngr, *this),
-    SndMngr(Settings, Resources, window.GetAudio()),
-    Cache(fs_make_writable_path(Settings.UserWritablePath, Settings.CacheResources)),
+    EffectMngr(Settings, ptr<FileSystem> {&Resources}, window->GetRender()),
+    SprMngr(Settings, window, ptr<FileSystem> {&Resources}, ptr<GameTimer> {&GameTime}, ptr<EffectManager> {&EffectMngr}, ptr<HashResolver> {&Hashes}),
+    FontMngr(ptr<SpriteManager> {&SprMngr}),
+    ResMngr(Settings, ptr<FileSystem> {&Resources}, ptr<SpriteManager> {&SprMngr}, ptr<AnimationResolver> {this}),
+    SndMngr(Settings, ptr<FileSystem> {&Resources}, window->GetAudio()),
+    Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -228,24 +297,28 @@ void ClientEngine::Shutdown()
 
     SprMngr.GetRender().SetRenderTarget(nullptr);
 
-    _chosen = nullptr;
+    _chosen.reset();
 
     if (_curMap) {
-        auto cur_map = std::move(_curMap);
-        cur_map->DestroySelf();
+        auto map = GetCurMapPtr();
+        map->DestroySelf();
+        _curMap.reset();
     }
 
     if (_curLocation) {
-        auto cur_location = std::move(_curLocation);
-        cur_location->DestroySelf();
+        auto location = GetCurLocationPtr();
+        location->DestroySelf();
+        _curLocation.reset();
     }
 
     if (_curPlayer) {
-        auto cur_player = std::move(_curPlayer);
-        cur_player->DestroySelf();
+        auto player = GetCurPlayerPtr();
+        player->DestroySelf();
+        _curPlayer.reset();
     }
 
-    for (auto& cr : _globalMapCritters) {
+    for (size_t i = 0; i < _globalMapCritters.size(); i++) {
+        auto cr = _globalMapCritters[i].as_ptr();
         cr->DestroySelf();
     }
 
@@ -329,30 +402,47 @@ auto ClientEngine::IsConnected() const noexcept -> bool
     return _conn.IsConnected();
 }
 
-auto ClientEngine::GetChosen() noexcept -> CritterView*
+auto ClientEngine::GetChosen() noexcept -> nptr<CritterView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_chosen && _chosen->IsDestroyed()) {
-        _chosen = nullptr;
+    if (_chosen) {
+        auto chosen = _chosen.as_ptr();
+
+        if (chosen->IsDestroyed()) {
+            _chosen.reset();
+        }
     }
 
-    return _chosen.get();
+    return _chosen.as_nptr();
 }
 
-auto ClientEngine::GetMapChosen() noexcept -> CritterHexView*
+auto ClientEngine::GetMapChosen() noexcept -> nptr<CritterHexView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return dynamic_cast<CritterHexView*>(GetChosen());
+    auto chosen = GetChosen();
+
+    if (!chosen) {
+        return nullptr;
+    }
+
+    return chosen.dyn_cast<CritterHexView>();
 }
 
-auto ClientEngine::GetGlobalMapCritter(ident_t cr_id) -> CritterView*
+auto ClientEngine::GetGlobalMapCritter(ident_t cr_id) -> nptr<CritterView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
-    return it != _globalMapCritters.end() ? it->get() : nullptr;
+    for (size_t i = 0; i < _globalMapCritters.size(); i++) {
+        auto cr = _globalMapCritters[i].as_ptr();
+
+        if (cr->GetId() == cr_id) {
+            return cr;
+        }
+    }
+
+    return nullptr;
 }
 
 void ClientEngine::MainLoop()
@@ -378,10 +468,18 @@ void ClientEngine::MainLoop()
     OnLoop.Fire();
 
     if (_curMap) {
-        _curMap->Process();
+        auto map = GetCurMapPtr();
+        map->Process();
     }
 
-    SprMngr.GetWindow().GrabInput(_curMap && _curMap->IsManualScrolling());
+    bool manual_scrolling = false;
+
+    if (_curMap) {
+        auto map = GetCurMapPtr();
+        manual_scrolling = map->IsManualScrolling();
+    }
+
+    SprMngr.GetWindow()->GrabInput(manual_scrolling);
 
     // Render
     EffectMngr.UpdateEffects(GameTime);
@@ -411,16 +509,16 @@ void ClientEngine::ProcessInputEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& input = SprMngr.GetInput();
+    auto input = SprMngr.GetInput();
 
     if (SprMngr.IsWindowFocused()) {
         InputEvent ev;
-        while (input.PollEvent(ev)) {
+        while (input->PollEvent(ev)) {
             ProcessInputEvent(ev);
         }
     }
     else {
-        MousePos = input.GetMousePosition();
+        MousePos = input->GetMousePosition();
 
         OnInputLost.Fire();
     }
@@ -434,9 +532,9 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_video && !_video->IsStopped() && _videoCanInterrupt) {
+    if (_video && !_video->Clip.IsStopped() && _videoCanInterrupt) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent || ev.Type == InputEvent::EventType::TouchTapEvent || ev.Type == InputEvent::EventType::TouchDoubleTapEvent || ev.Type == InputEvent::EventType::TouchScrollEvent || ev.Type == InputEvent::EventType::TouchZoomEvent) {
-            _video->Stop();
+            _video->Clip.Stop();
         }
     }
 
@@ -500,7 +598,8 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
 
     if (result == ClientConnection::ConnectResult::Success) {
         FO_VERIFY_AND_THROW(!_curPlayer, "Cur player is already set");
-        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
+        ptr<ClientEngine> engine = this;
+        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(engine, ident_t {});
         OnConnected.Fire();
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
@@ -521,8 +620,9 @@ void ClientEngine::Net_OnDisconnect()
     UnloadMap();
 
     if (_curPlayer) {
-        _curPlayer->DestroySelf();
-        _curPlayer = nullptr;
+        auto player = GetCurPlayerPtr();
+        player->DestroySelf();
+        _curPlayer.reset();
     }
 
     DestroyInnerEntities();
@@ -531,7 +631,7 @@ void ClientEngine::Net_OnDisconnect()
     OnDisconnected.Fire();
 }
 
-void ClientEngine::HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data)
+void ClientEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -559,32 +659,40 @@ void ClientEngine::HandleUnresolvedHash(hstring::hash_t hash)
     _conn.FlushPendingData();
 }
 
-void ClientEngine::Net_SendDir(CritterHexView* cr)
+void ClientEngine::Net_SendDir(ptr<CritterHexView> cr)
 {
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_curMap, "No current map");
+    auto map = GetCurMapPtr();
+
     _conn.OutBuf->StartMsg(NetMessage::SendCritterDir);
-    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(map->GetId());
     _conn.OutBuf->Write(cr->GetId());
     _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
 }
 
-void ClientEngine::Net_SendMove(CritterHexView* cr)
+void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
+    FO_VERIFY_AND_THROW(_curMap, "No current map");
 
-    auto* moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
+    auto map = GetCurMapPtr();
+    auto nullable_moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
+    auto moving = nullable_moving.as_ptr();
 
-    if (std::cmp_greater(moving->GetSteps().size(), Settings.MaxPathFindLength)) {
+    if (std::cmp_greater(moving->GetSteps().size(), Settings->MaxPathFindLength)) {
         BreakIntoDebugger();
         cr->StopMoving();
         return;
     }
 
     _conn.OutBuf->StartMsg(NetMessage::SendCritterMove);
-    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(map->GetId());
     _conn.OutBuf->Write(cr->GetId());
     _conn.OutBuf->Write(moving->GetSpeed());
     _conn.OutBuf->Write(moving->GetStartHex());
@@ -600,12 +708,15 @@ void ClientEngine::Net_SendMove(CritterHexView* cr)
     _conn.OutBuf->EndMsg();
 }
 
-void ClientEngine::Net_SendStopMove(CritterHexView* cr)
+void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(_curMap, "No current map");
+    auto map = GetCurMapPtr();
+
     _conn.OutBuf->StartMsg(NetMessage::SendStopCritterMove);
-    _conn.OutBuf->Write(_curMap->GetId());
+    _conn.OutBuf->Write(map->GetId());
     _conn.OutBuf->Write(cr->GetId());
     _conn.OutBuf->Write(cr->GetHex());
     _conn.OutBuf->Write(cr->GetHexOffset());
@@ -613,11 +724,9 @@ void ClientEngine::Net_SendStopMove(CritterHexView* cr)
     _conn.OutBuf->EndMsg();
 }
 
-void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity)
+void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
 
     const auto& props = entity->GetProperties();
     props.ValidateForRawData(prop);
@@ -629,26 +738,31 @@ void ClientEngine::Net_SendProperty(NetProperty type, const Property* prop, cons
 
     switch (type) {
     case NetProperty::CritterItem: {
-        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
-        const auto* item = dynamic_cast<const ItemView*>(client_entity);
-        FO_VERIFY_AND_THROW(item, "Missing item instance");
+        auto nullable_client_entity = entity.dyn_cast<const ClientEntity>();
+        FO_VERIFY_AND_THROW(nullable_client_entity, "Missing client entity instance");
+        auto nullable_item = nullable_client_entity.dyn_cast<const ItemView>();
+        FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
+        auto client_entity = nullable_client_entity.as_ptr();
+        auto item = nullable_item.as_ptr();
         _conn.OutBuf->Write(item->GetCritterId());
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::Critter: {
-        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
+        auto nullable_client_entity = entity.dyn_cast<const ClientEntity>();
+        FO_VERIFY_AND_THROW(nullable_client_entity, "Missing client entity instance");
+        auto client_entity = nullable_client_entity.as_ptr();
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::MapItem: {
-        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
+        auto nullable_client_entity = entity.dyn_cast<const ClientEntity>();
+        FO_VERIFY_AND_THROW(nullable_client_entity, "Missing client entity instance");
+        auto client_entity = nullable_client_entity.as_ptr();
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     case NetProperty::ChosenItem: {
-        const auto* client_entity = dynamic_cast<const ClientEntity*>(entity);
-        FO_VERIFY_AND_THROW(client_entity, "Missing client entity instance");
+        auto nullable_client_entity = entity.dyn_cast<const ClientEntity>();
+        FO_VERIFY_AND_THROW(nullable_client_entity, "Missing client entity instance");
+        auto client_entity = nullable_client_entity.as_ptr();
         _conn.OutBuf->Write(client_entity->GetId());
     } break;
     default:
@@ -668,7 +782,9 @@ void ClientEngine::Net_OnInitData()
 
     vector<uint8_t> data;
     data.resize(data_size);
-    _conn.InBuf->Pop(data.data(), data_size);
+
+    ptr<uint8_t> data_ptr = data.data();
+    _conn.InBuf->Pop(data_ptr, data_size);
 
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
     const auto time = _conn.InBuf->Read<synctime>();
@@ -679,12 +795,12 @@ void ClientEngine::Net_OnInitData()
 
     if (!data.empty()) {
         FileSystem resources;
-        resources.AddDirSource(Settings.ClientResources, false, true, true);
+        resources.AddDirSource(Settings->ClientResources, false, true, true);
 
-        if (!Settings.UserWritablePath.empty()) {
+        if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
             // it on top so the up-to-date file wins the size/hash check below.
-            resources.AddDirSource(fs_make_writable_path(Settings.UserWritablePath, Settings.ClientResources), false, true, true);
+            resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
         }
 
         auto reader = DataReader(data);
@@ -697,7 +813,10 @@ void ClientEngine::Net_OnInitData()
             }
 
             FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
-            const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
+            const size_t fname_size = numeric_cast<size_t>(name_len);
+            string fname;
+            fname.resize(fname_size);
+            reader.ReadStringBytes(fname);
             const auto size = reader.Read<uint64_t>();
             const auto hash = reader.Read<uint64_t>();
             const auto target = reader.Read<UpdateFileTarget>();
@@ -756,13 +875,15 @@ void ClientEngine::Net_OnLoginSuccess()
 
     RestoreData(_globalsPropertiesData);
 
-    FO_VERIFY_AND_THROW(_curPlayer, "Missing required cur player");
-    FO_VERIFY_AND_THROW(!_curPlayer->GetId(), "Current player already has an assigned id");
-    _curPlayer->SetId(player_id, true);
-    _curPlayer->RestoreData(_playerPropertiesData);
+    FO_VERIFY_AND_THROW(_curPlayer, "Current player is null");
+    auto player = GetCurPlayerPtr();
+    FO_VERIFY_AND_THROW(!player->GetId(), "Current player already has an assigned id");
+    player->SetId(player_id, true);
+    player->RestoreData(_playerPropertiesData);
 
     FO_VERIFY_AND_THROW(!HasInnerEntities(), "Has inner entities is already set");
-    ReceiveCustomEntities(this);
+    ptr<Entity> holder = this;
+    ReceiveCustomEntities(holder);
 
     OnLoginSuccess.Fire();
 }
@@ -782,35 +903,47 @@ void ClientEngine::Net_OnAddCritter()
     const auto is_chosen = _conn.InBuf->Read<bool>();
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-    refcount_ptr<CritterView> cr;
-    CritterHexView* hex_cr;
+    nptr<CritterHexView> nullable_hex_cr;
+    refcount_ptr<CritterView> cr = [&]() -> refcount_ptr<CritterView> {
+        if (_curMap) {
+            auto map = GetCurMapPtr();
+            auto added_cr = map->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
+            nullable_hex_cr = added_cr;
 
-    if (_curMap) {
-        hex_cr = _curMap->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
-        FO_VERIFY_AND_THROW(hex_cr, "Missing required hex critter");
-
-        cr = hex_cr;
-    }
-    else {
-        const auto* proto = GetProtoCritter(pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
-
-        const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr2) { return cr2->GetId() == cr_id; });
-
-        if (it != _globalMapCritters.end()) {
-            BreakIntoDebugger();
-            (*it)->MarkAsDestroyed();
-            _globalMapCritters.erase(it);
+            return added_cr.hold_ref();
         }
 
-        cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto);
-        cr->RestoreData(_tempPropertiesData);
-        _globalMapCritters.emplace_back(cr);
+        auto nullable_proto = GetProtoCritter(pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
+        auto proto = nullable_proto.as_ptr();
 
-        hex_cr = nullptr;
-    }
+        size_t erase_index = _globalMapCritters.size();
 
-    ReceiveCustomEntities(cr.get());
+        for (size_t i = 0; i < _globalMapCritters.size(); i++) {
+            auto cr2 = _globalMapCritters[i].as_ptr();
+
+            if (cr2->GetId() == cr_id) {
+                erase_index = i;
+                break;
+            }
+        }
+
+        if (erase_index != _globalMapCritters.size()) {
+            BreakIntoDebugger();
+            auto cr2 = _globalMapCritters[erase_index].as_ptr();
+            cr2->MarkAsDestroyed();
+            _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
+        }
+
+        ptr<ClientEngine> engine = this;
+        refcount_ptr<CritterView> global_cr = SafeAlloc::MakeRefCounted<CritterView>(engine, cr_id, proto);
+        global_cr->RestoreData(_tempPropertiesData);
+        _globalMapCritters.emplace_back(global_cr);
+
+        return global_cr;
+    }();
+
+    ReceiveCustomEntities(cr.as_nptr());
 
     cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
@@ -827,10 +960,11 @@ void ClientEngine::Net_OnAddCritter()
         const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = GetProtoItem(item_pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+        auto nullable_proto = GetProtoItem(item_pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
+        auto proto = nullable_proto.as_ptr();
 
-        auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
+        auto item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
     }
@@ -854,8 +988,14 @@ void ClientEngine::Net_OnAddCritter()
     cr->SetAttachedCritters(std::move(attached_critters));
 
     if (_curMap) {
+        auto map = GetCurMapPtr();
+
         if (is_attached) {
-            for (auto& map_cr : _curMap->GetCritters()) {
+            span<refcount_ptr<CritterHexView>> map_critters = map->GetCritters();
+
+            for (size_t i = 0; i < map_critters.size(); i++) {
+                auto map_cr = map_critters[i].as_ptr();
+
                 if (map_cr->IsAttachedCritter(cr_id)) {
                     map_cr->MoveAttachedCritters();
                     break;
@@ -863,6 +1003,7 @@ void ClientEngine::Net_OnAddCritter()
             }
         }
 
+        auto hex_cr = nullable_hex_cr.as_ptr();
         if (hex_cr->HasAttachedCritters()) {
             hex_cr->MoveAttachedCritters();
         }
@@ -872,34 +1013,41 @@ void ClientEngine::Net_OnAddCritter()
     const auto is_moving = _conn.InBuf->Read<bool>();
 
     if (is_moving) {
-        ReceiveCritterMoving(hex_cr);
+        ReceiveCritterMoving(nullable_hex_cr);
     }
 
-    if (hex_offset != ipos16 {} && hex_cr != nullptr) {
-        hex_cr->RefreshOffs();
+    if (hex_offset != ipos16 {} && nullable_hex_cr) {
+        nullable_hex_cr->RefreshOffs();
     }
 
     if (is_chosen) {
         _chosen = cr;
     }
 
-    if (hex_cr != nullptr) {
+    if (nullable_hex_cr) {
+        auto hex_cr = nullable_hex_cr.as_ptr();
+        FO_VERIFY_AND_THROW(_curMap, "No current map");
+        auto map = GetCurMapPtr();
+
 #if FO_ENABLE_3D
         if (hex_cr->IsModel()) {
-            hex_cr->GetModel()->PrewarmParticles();
-            hex_cr->GetModel()->StartMeshGeneration();
+            auto nullable_model = hex_cr->GetModel();
+            FO_VERIFY_AND_THROW(nullable_model, "Critter model is null");
+            auto model = nullable_model.as_ptr();
+            model->PrewarmParticles();
+            model->StartMeshGeneration();
         }
 #endif
 
         if (is_chosen) {
-            _curMap->RebuildFog();
+            map->RebuildFog();
         }
 
         hex_cr->RefreshView(true);
         hex_cr->RefreshOffs();
 
         if (items_count != 0 && !is_chosen) {
-            _curMap->UpdateCritterLightSource(hex_cr);
+            map->UpdateCritterLightSource(hex_cr);
         }
     }
 
@@ -913,36 +1061,49 @@ void ClientEngine::Net_OnRemoveCritter()
     const auto cr_id = _conn.InBuf->Read<ident_t>();
 
     if (_curMap) {
-        auto* cr = _curMap->GetCritter(cr_id);
+        auto map = GetCurMapPtr();
+        auto nullable_cr = map->GetCritter(cr_id);
 
-        if (cr == nullptr) {
+        if (!nullable_cr) {
             BreakIntoDebugger();
             return;
         }
 
+        auto cr = nullable_cr.as_ptr();
         cr->Finish();
 
-        OnCritterOut.Fire(cr);
+        OnCritterOut.Fire(cr.get());
 
-        if (_chosen == cr) {
-            _chosen = nullptr;
+        nptr<CritterView> removed_cr = cr;
+
+        if (GetChosen() == removed_cr) {
+            _chosen.reset();
         }
     }
     else {
-        const auto it = std::ranges::find_if(_globalMapCritters, [cr_id](auto&& cr) { return cr->GetId() == cr_id; });
+        size_t erase_index = _globalMapCritters.size();
 
-        if (it == _globalMapCritters.end()) {
+        for (size_t i = 0; i < _globalMapCritters.size(); i++) {
+            auto cr = _globalMapCritters[i].as_ptr();
+
+            if (cr->GetId() == cr_id) {
+                erase_index = i;
+                break;
+            }
+        }
+
+        if (erase_index == _globalMapCritters.size()) {
             BreakIntoDebugger();
             return;
         }
 
-        auto cr = copy(*it);
+        refcount_ptr<CritterView> cr = copy(_globalMapCritters[erase_index]);
 
         OnCritterOut.Fire(cr.get());
-        _globalMapCritters.erase(it);
+        _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
 
-        if (_chosen == cr) {
-            _chosen = nullptr;
+        if (GetChosen() == cr.as_nptr()) {
+            _chosen.reset();
         }
 
         cr->DestroySelf();
@@ -957,9 +1118,12 @@ void ClientEngine::Net_OnCritterVisibilityMode()
     const auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
 
     if (_curMap) {
-        if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
+        auto map = GetCurMapPtr();
+
+        if (nptr<CritterHexView> nullable_cr = map->GetCritter(cr_id)) {
+            auto cr = nullable_cr.as_ptr();
             cr->SetVisibilityMode(mode);
-            OnCritterVisibilityModeChanged.Fire(cr, mode);
+            OnCritterVisibilityModeChanged.Fire(cr.get(), mode);
         }
         else {
             BreakIntoDebugger();
@@ -989,9 +1153,12 @@ void ClientEngine::Net_OnCritterDir()
         return;
     }
 
-    auto* cr = _curMap->GetCritter(cr_id);
+    auto map = GetCurMapPtr();
+    auto nullable_cr = map->GetCritter(cr_id);
 
-    if (cr != nullptr) {
+    if (nullable_cr) {
+        auto cr = nullable_cr.as_ptr();
+
         if (cr->GetControlledByPlayer()) {
             cr->ChangeLookDir(dir);
         }
@@ -1006,11 +1173,17 @@ void ClientEngine::Net_OnCritterMove()
     FO_STACK_TRACE_ENTRY();
 
     const auto cr_id = _conn.InBuf->Read<ident_t>();
-    auto* cr = _curMap->GetCritter(cr_id);
+    nptr<CritterHexView> nullable_cr;
 
-    ReceiveCritterMoving(cr);
+    if (_curMap) {
+        auto map = GetCurMapPtr();
+        nullable_cr = map->GetCritter(cr_id);
+    }
 
-    if (cr != nullptr) {
+    ReceiveCritterMoving(nullable_cr);
+
+    if (nullable_cr) {
+        auto cr = nullable_cr.as_ptr();
         cr->RefreshView();
     }
 }
@@ -1027,16 +1200,21 @@ void ClientEngine::Net_OnCritterMoveSpeed()
         return;
     }
 
-    auto* cr = _curMap->GetCritter(cr_id);
+    auto map = GetCurMapPtr();
+    auto nullable_cr = map->GetCritter(cr_id);
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         return;
     }
+
+    auto cr = nullable_cr.as_ptr();
     if (!cr->IsMoving()) {
         return;
     }
-    auto* moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
+
+    auto nullable_moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
+    auto moving = nullable_moving.as_ptr();
 
     if (speed == moving->GetSpeed()) {
         return;
@@ -1056,36 +1234,42 @@ void ClientEngine::Net_OnCritterAction()
     const auto action_ext = _conn.InBuf->Read<int32_t>();
     const auto is_context_item = _conn.InBuf->Read<bool>();
 
-    refcount_ptr<ItemView> context_item;
+    refcount_nptr<ItemView> nullable_context_item {};
 
     if (is_context_item) {
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = GetProtoItem(item_pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+        auto nullable_proto = GetProtoItem(item_pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
+        auto proto = nullable_proto.as_ptr();
 
-        context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
+        ptr<ClientEngine> engine = this;
+        nullable_context_item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
+        auto context_item = nullable_context_item.as_ptr();
         context_item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(context_item.get());
+        ReceiveCustomEntities(context_item);
     }
 
     if (!_curMap) {
         return;
     }
 
-    auto* cr = _curMap->GetCritter(cr_id);
+    auto map = GetCurMapPtr();
+    auto nullable_cr = map->GetCritter(cr_id);
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         BreakIntoDebugger();
         return;
     }
 
-    cr->Action(action, action_ext, context_item.get(), false);
+    auto cr = nullable_cr.as_ptr();
+    cr->Action(action, action_ext, nullable_context_item.as_nptr(), false);
 
-    if (context_item) {
+    if (nullable_context_item) {
+        auto context_item = nullable_context_item.as_ptr();
         context_item->MarkAsDestroyed();
     }
 }
@@ -1100,32 +1284,36 @@ void ClientEngine::Net_OnCritterMoveItem()
     const auto cur_slot = _conn.InBuf->Read<CritterItemSlot>();
     const auto is_moved_item = _conn.InBuf->Read<bool>();
 
-    refcount_ptr<ItemView> moved_item;
+    refcount_nptr<ItemView> nullable_moved_item {};
 
     if (is_moved_item) {
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto item_pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-        const auto* proto = GetProtoItem(item_pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+        auto nullable_proto = GetProtoItem(item_pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
+        auto proto = nullable_proto.as_ptr();
 
-        moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
+        ptr<ClientEngine> engine = this;
+        nullable_moved_item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
+        auto moved_item = nullable_moved_item.as_ptr();
         moved_item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(moved_item.get());
+        ReceiveCustomEntities(moved_item);
     }
 
-    CritterView* cr;
+    nptr<CritterView> nullable_cr;
 
     if (_curMap) {
-        cr = _curMap->GetCritter(cr_id);
+        auto map = GetCurMapPtr();
+        nullable_cr = map->GetCritter(cr_id);
     }
     else {
-        cr = GetGlobalMapCritter(cr_id);
+        nullable_cr = GetGlobalMapCritter(cr_id);
     }
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         BreakIntoDebugger();
 
         // Skip rest data
@@ -1142,6 +1330,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         return;
     }
 
+    auto cr = nullable_cr.as_ptr();
     const auto items_count = _conn.InBuf->Read<uint32_t>();
 
     if (items_count != 0) {
@@ -1155,29 +1344,39 @@ void ClientEngine::Net_OnCritterMoveItem()
             const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
             _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-            const auto* proto = GetProtoItem(item_pid);
-            FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+            auto nullable_proto = GetProtoItem(item_pid);
+            FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
 
-            auto* item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
+            auto proto = nullable_proto.as_ptr();
+            auto item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
         }
     }
 
-    if (auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
+    if (nptr<CritterHexView> nullable_hex_cr = cr.dyn_cast<CritterHexView>()) {
+        auto hex_cr = nullable_hex_cr.as_ptr();
         hex_cr->RefreshView();
-        hex_cr->Action(action, static_cast<int32_t>(prev_slot), moved_item.get(), false);
+        hex_cr->Action(action, static_cast<int32_t>(prev_slot), nullable_moved_item.as_nptr(), false);
     }
 
-    if (moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
-        if (auto* item = cr->GetInvItem(moved_item->GetId()); item != nullptr) {
+    if (nullable_moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
+        auto moved_item = nullable_moved_item.as_ptr();
+
+        if (nptr<ItemView> nullable_item = cr->GetInvItem(moved_item->GetId())) {
+            auto item = nullable_item.as_ptr();
             item->SetCritterSlot(cur_slot);
             moved_item->SetCritterSlot(prev_slot);
         }
     }
 
-    if (const auto* hex_cr = dynamic_cast<CritterHexView*>(cr); hex_cr != nullptr) {
-        _curMap->UpdateCritterLightSource(hex_cr);
+    if (_curMap) {
+        auto map = GetCurMapPtr();
+
+        if (nptr<CritterHexView> nullable_hex_cr = cr.dyn_cast<CritterHexView>()) {
+            auto hex_cr = nullable_hex_cr.as_ptr();
+            map->UpdateCritterLightSource(hex_cr);
+        }
     }
 }
 
@@ -1193,16 +1392,18 @@ void ClientEngine::Net_OnCritterTeleport()
         return;
     }
 
-    auto* cr = _curMap->GetCritter(cr_id);
+    auto map = GetCurMapPtr();
+    auto nullable_cr = map->GetCritter(cr_id);
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         return;
     }
 
-    _curMap->MoveCritter(cr, to_hex, false);
+    auto cr = nullable_cr.as_ptr();
+    map->MoveCritter(cr, to_hex, false);
 
     if (cr->GetIsChosen()) {
-        _curMap->ScrollToHex(cr->GetHex(), cr->GetHexOffset(), 100, false);
+        map->ScrollToHex(cr->GetHex(), cr->GetHexOffset(), 100, false);
     }
 }
 
@@ -1220,13 +1421,16 @@ void ClientEngine::Net_OnCritterPos()
         return;
     }
 
-    FO_VERIFY_AND_THROW(_curMap->GetSize().is_valid_pos(hex), "Received critter movement target is outside the current client map bounds", cr_id, hex, _curMap->GetId(), _curMap->GetSize());
+    auto map = GetCurMapPtr();
+    FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Received critter movement target is outside the current client map bounds", cr_id, hex, map->GetId(), map->GetSize());
 
-    auto* cr = _curMap->GetCritter(cr_id);
+    auto nullable_cr = map->GetCritter(cr_id);
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         return;
     }
+
+    auto cr = nullable_cr.as_ptr();
 
     cr->StopMoving();
 
@@ -1234,10 +1438,10 @@ void ClientEngine::Net_OnCritterPos()
     cr->ChangeMoveDir(dir);
 
     if (cr->GetHex() != hex) {
-        _curMap->MoveCritter(cr, hex, true);
+        map->MoveCritter(cr, hex, true);
 
         if (cr->GetIsChosen()) {
-            _curMap->RebuildFog();
+            map->RebuildFog();
         }
     }
 
@@ -1269,20 +1473,26 @@ void ClientEngine::Net_OnCritterAttachments()
     }
 
     if (_curMap) {
-        auto* cr = _curMap->GetCritter(cr_id);
+        auto map = GetCurMapPtr();
+        auto nullable_cr = map->GetCritter(cr_id);
 
-        if (cr == nullptr) {
+        if (!nullable_cr) {
             BreakIntoDebugger();
             return;
         }
 
+        auto cr = nullable_cr.as_ptr();
         cr->SetAttachMaster(attach_master);
 
         if (cr->GetIsAttached() != is_attached) {
             cr->SetIsAttached(is_attached);
 
             if (is_attached) {
-                for (auto& map_cr : _curMap->GetCritters()) {
+                span<refcount_ptr<CritterHexView>> map_critters = map->GetCritters();
+
+                for (size_t i = 0; i < map_critters.size(); i++) {
+                    auto map_cr = map_critters[i].as_ptr();
+
                     if (map_cr->IsAttachedCritter(cr_id)) {
                         map_cr->MoveAttachedCritters();
                         break;
@@ -1298,13 +1508,14 @@ void ClientEngine::Net_OnCritterAttachments()
         }
     }
     else {
-        auto* cr = GetGlobalMapCritter(cr_id);
+        auto nullable_cr = GetGlobalMapCritter(cr_id);
 
-        if (cr == nullptr) {
+        if (!nullable_cr) {
             BreakIntoDebugger();
             return;
         }
 
+        auto cr = nullable_cr.as_ptr();
         cr->SetIsAttached(is_attached);
         cr->SetAttachMaster(attach_master);
         cr->SetAttachedCritters(std::move(attached_critters));
@@ -1320,9 +1531,9 @@ void ClientEngine::Net_OnChosenAddItem()
     const auto item_slot = _conn.InBuf->Read<CritterItemSlot>();
     _conn.InBuf->ReadPropsData(_tempPropertiesData);
 
-    auto* chosen = GetChosen();
+    auto nullable_chosen = GetChosen();
 
-    if (chosen == nullptr) {
+    if (!nullable_chosen) {
         WriteLog("Chosen is not created on add item");
         BreakIntoDebugger();
 
@@ -1332,27 +1543,33 @@ void ClientEngine::Net_OnChosenAddItem()
         return;
     }
 
-    if (auto* prev_item = chosen->GetInvItem(item_id); prev_item != nullptr) {
+    auto chosen = nullable_chosen.as_ptr();
+
+    if (nptr<ItemView> nullable_prev_item = chosen->GetInvItem(item_id)) {
+        auto prev_item = nullable_prev_item.as_ptr();
         chosen->DeleteInvItem(prev_item);
     }
 
-    const auto* proto = GetProtoItem(item_pid);
-    FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+    auto nullable_proto = GetProtoItem(item_pid);
+    FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
 
-    auto* item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
+    auto proto = nullable_proto.as_ptr();
+    auto item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
 
     if (_curMap) {
-        _curMap->RebuildFog();
+        auto map = GetCurMapPtr();
+        map->RebuildFog();
 
-        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+        if (nptr<CritterHexView> nullable_hex_chosen = chosen.dyn_cast<CritterHexView>()) {
+            auto hex_chosen = nullable_hex_chosen.as_ptr();
             hex_chosen->RefreshView();
-            _curMap->UpdateCritterLightSource(hex_chosen);
+            map->UpdateCritterLightSource(hex_chosen);
         }
     }
 
-    OnItemInvIn.Fire(item);
+    OnItemInvIn.Fire(item.get());
 }
 
 void ClientEngine::Net_OnChosenRemoveItem()
@@ -1361,31 +1578,35 @@ void ClientEngine::Net_OnChosenRemoveItem()
 
     const auto item_id = _conn.InBuf->Read<ident_t>();
 
-    auto* chosen = GetChosen();
+    auto nullable_chosen = GetChosen();
 
-    if (chosen == nullptr) {
+    if (!nullable_chosen) {
         WriteLog("Chosen is not created in remove item");
         BreakIntoDebugger();
         return;
     }
 
-    auto* item = chosen->GetInvItem(item_id);
+    auto chosen = nullable_chosen.as_ptr();
+    auto nullable_item = chosen->GetInvItem(item_id);
 
-    if (item == nullptr) {
+    if (!nullable_item) {
         // Valid case, item may be removed locally
         return;
     }
 
+    auto item = nullable_item.as_ptr();
     auto item_clone = item->CreateRefClone();
-
     chosen->DeleteInvItem(item);
 
     OnItemInvOut.Fire(item_clone.get());
 
     if (_curMap) {
-        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+        auto map = GetCurMapPtr();
+
+        if (nptr<CritterHexView> nullable_hex_chosen = chosen.dyn_cast<CritterHexView>()) {
+            auto hex_chosen = nullable_hex_chosen.as_ptr();
             hex_chosen->RefreshView();
-            _curMap->UpdateCritterLightSource(hex_chosen);
+            map->UpdateCritterLightSource(hex_chosen);
         }
     }
 }
@@ -1408,12 +1629,12 @@ void ClientEngine::Net_OnAddItemOnMap()
         return;
     }
 
-    auto* item = _curMap->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
+    auto map = GetCurMapPtr();
+    auto item = map->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
 
     ReceiveCustomEntities(item);
 
-    OnItemMapIn.Fire(item);
+    OnItemMapIn.Fire(item.get());
 }
 
 void ClientEngine::Net_OnRemoveItemFromMap()
@@ -1427,14 +1648,16 @@ void ClientEngine::Net_OnRemoveItemFromMap()
         return;
     }
 
-    auto* item = _curMap->GetItem(item_id);
+    auto map = GetCurMapPtr();
+    auto nullable_item = map->GetItem(item_id);
 
-    if (item != nullptr) {
-        OnItemMapOut.Fire(item);
+    if (nullable_item) {
+        auto item = nullable_item.as_ptr();
+        OnItemMapOut.Fire(item.get());
 
         // Refresh borders
         if (!item->GetShootThru()) {
-            _curMap->RebuildFog();
+            map->RebuildFog();
         }
 
         item->Finish();
@@ -1447,15 +1670,19 @@ void ClientEngine::Net_OnPlaceToGameComplete()
 
     _mapLoaded = true;
 
-    auto* chosen = GetChosen();
+    auto nullable_chosen = GetChosen();
 
-    if (_curMap && chosen != nullptr) {
-        _curMap->InstantScrollTo(chosen->GetHex());
+    if (_curMap && nullable_chosen) {
+        auto map = GetCurMapPtr();
+        auto chosen = nullable_chosen.as_ptr();
 
-        if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr) {
+        map->InstantScrollTo(chosen->GetHex());
+
+        if (nptr<CritterHexView> nullable_hex_chosen = chosen.dyn_cast<CritterHexView>()) {
+            auto hex_chosen = nullable_hex_chosen.as_ptr();
             hex_chosen->RefreshView();
             hex_chosen->RefreshOffs();
-            _curMap->UpdateCritterLightSource(hex_chosen);
+            map->UpdateCritterLightSource(hex_chosen);
         }
     }
 
@@ -1501,60 +1728,73 @@ void ClientEngine::Net_OnProperty()
     PropertyRawData prop_data;
     _conn.InBuf->Pop(prop_data.Alloc(data_size), data_size);
 
-    Entity* entity = nullptr;
+    nptr<Entity> nullable_entity {};
 
     switch (type) {
     case NetProperty::Game:
-        entity = this;
+        nullable_entity = this;
         break;
     case NetProperty::Player:
-        entity = _curPlayer.get();
+        nullable_entity = GetCurPlayer();
         break;
     case NetProperty::Critter:
-        entity = _curMap ? _curMap->GetCritter(cr_id) : nullptr;
+        if (_curMap) {
+            auto map = GetCurMapPtr();
+            nullable_entity = map->GetCritter(cr_id);
+        }
         break;
     case NetProperty::Chosen:
-        entity = GetChosen();
+        nullable_entity = GetChosen();
         break;
     case NetProperty::MapItem:
-        entity = _curMap->GetItem(item_id);
+        if (_curMap) {
+            auto map = GetCurMapPtr();
+            nullable_entity = map->GetItem(item_id);
+        }
         break;
     case NetProperty::CritterItem:
         if (_curMap) {
-            if (auto* cr = _curMap->GetCritter(cr_id); cr != nullptr) {
-                entity = cr->GetInvItem(item_id);
+            auto map = GetCurMapPtr();
+
+            if (nptr<CritterHexView> nullable_cr = map->GetCritter(cr_id)) {
+                auto cr = nullable_cr.as_ptr();
+                nullable_entity = cr->GetInvItem(item_id);
             }
         }
         break;
     case NetProperty::ChosenItem:
-        if (auto* chosen = GetChosen(); chosen != nullptr) {
-            entity = chosen->GetInvItem(item_id);
+        if (nptr<CritterView> nullable_chosen = GetChosen()) {
+            auto chosen = nullable_chosen.as_ptr();
+            nullable_entity = chosen->GetInvItem(item_id);
         }
         break;
     case NetProperty::Map:
-        entity = _curMap.get();
+        nullable_entity = GetCurMap();
         break;
     case NetProperty::Location:
-        entity = _curLocation.get();
+        nullable_entity = GetCurLocation();
         break;
     case NetProperty::CustomEntity:
-        entity = GetEntity(entity_id);
+        nullable_entity = GetEntity(entity_id);
         break;
     default:
         FO_UNREACHABLE_PLACE();
     }
 
-    if (entity == nullptr) {
+    if (!nullable_entity) {
         BreakIntoDebugger();
         return;
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(property_index);
+    auto entity = nullable_entity.as_ptr();
+    auto nullable_prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(property_index);
 
-    if (prop == nullptr) {
+    if (!nullable_prop) {
         BreakIntoDebugger();
         return;
     }
+
+    auto prop = nullable_prop.as_ptr();
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
@@ -1605,23 +1845,28 @@ void ClientEngine::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        const auto* loc_proto = GetProtoLocation(loc_pid);
-        FO_VERIFY_AND_THROW(loc_proto, "Missing required location prototype");
-        const auto* map_proto = GetProtoMap(map_pid);
-        FO_VERIFY_AND_THROW(map_proto, "Missing required map prototype");
+        auto nullable_loc_proto = GetProtoLocation(loc_pid);
+        FO_VERIFY_AND_THROW(nullable_loc_proto, "Missing required location prototype");
+        auto nullable_map_proto = GetProtoMap(map_pid);
+        FO_VERIFY_AND_THROW(nullable_map_proto, "Missing required map prototype");
+        auto loc_proto = nullable_loc_proto.as_ptr();
+        auto map_proto = nullable_map_proto.as_ptr();
 
-        isize32 screen_size = {Settings.ScreenWidth, Settings.ScreenHeight};
+        isize32 screen_size = {Settings->ScreenWidth, Settings->ScreenHeight};
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
 
-        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
-        _curLocation->RestoreData(_tempPropertiesDataExt);
+        ptr<ClientEngine> engine = this;
+        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(engine, loc_id, loc_proto);
+        auto location = GetCurLocationPtr();
+        location->RestoreData(_tempPropertiesDataExt);
 
-        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto, screen_size);
-        _curMap->RestoreData(_tempPropertiesData);
-        _curMap->LoadStaticData();
+        _curMap = SafeAlloc::MakeRefCounted<MapView>(engine, map_id, map_proto, screen_size);
+        auto map = GetCurMapPtr();
+        map->RestoreData(_tempPropertiesData);
+        map->LoadStaticData();
 
-        ReceiveCustomEntities(_curLocation.get());
-        ReceiveCustomEntities(_curMap.get());
+        ReceiveCustomEntities(location);
+        ReceiveCustomEntities(map);
 
         WriteLog("Start load map");
     }
@@ -1646,20 +1891,25 @@ void ClientEngine::Net_OnSomeItems()
         const auto item_id = _conn.InBuf->Read<ident_t>();
         const auto pid = _conn.InBuf->Read<hstring>(Hashes);
         _conn.InBuf->ReadPropsData(_tempPropertiesData);
-        FO_VERIFY_AND_THROW(item_id, "Missing required item id");
+        FO_VERIFY_AND_THROW(item_id, "Item id is empty");
 
-        const auto* proto = GetProtoItem(pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+        auto nullable_proto = GetProtoItem(pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
+        auto proto = nullable_proto.as_ptr();
 
-        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
+        ptr<ClientEngine> engine = this;
+        refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(item.get());
+        ReceiveCustomEntities(item.as_nptr());
 
         items.emplace_back(item);
     }
 
-    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* { return item.get(); });
+    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* {
+        auto item_ptr = item.as_ptr();
+        return BorrowScriptReceivedItem(item_ptr);
+    });
     OnReceiveItems.Fire(items2, context_param);
 }
 
@@ -1685,7 +1935,9 @@ void ClientEngine::Net_OnRemoteCall()
     const auto data_size = _conn.InBuf->Read<int32_t>();
 
     _remoteCallData.resize(data_size);
-    _conn.InBuf->Pop(_remoteCallData.data(), data_size);
+
+    ptr<uint8_t> remote_call_data = _remoteCallData.data();
+    _conn.InBuf->Pop(remote_call_data, data_size);
 
     HandleInboundRemoteCall(remote_call_name, nullptr, _remoteCallData);
 }
@@ -1700,24 +1952,24 @@ void ClientEngine::Net_OnAddCustomEntity()
     const auto pid = _conn.InBuf->Read<hstring>(Hashes);
     _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
-    Entity* holder;
+    nptr<Entity> nullable_holder;
 
     if (holder_id) {
-        holder = GetEntity(holder_id);
+        nullable_holder = GetEntity(holder_id);
 
-        if (holder == nullptr) {
+        if (!nullable_holder) {
             BreakIntoDebugger();
             return;
         }
     }
     else {
-        holder = this;
+        nullable_holder = this;
     }
 
-    auto* entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+    auto holder = nullable_holder.as_ptr();
+    auto entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
 
-    OnCustomEntityIn.Fire(entity);
+    OnCustomEntityIn.Fire(entity.get());
 }
 
 void ClientEngine::Net_OnRemoveCustomEntity()
@@ -1726,34 +1978,39 @@ void ClientEngine::Net_OnRemoveCustomEntity()
 
     const auto id = _conn.InBuf->Read<ident_t>();
 
-    auto* entity = GetEntity(id);
+    auto entity = GetEntity(id);
 
-    if (entity == nullptr) {
+    if (!entity) {
         BreakIntoDebugger();
         return;
     }
 
-    refcount_ptr entity_ref_holder = entity;
-    auto* custom_entity = dynamic_cast<CustomEntityView*>(entity);
+    auto entity_ref_holder = entity.hold_ref();
+    auto nullable_custom_entity = entity.dyn_cast<CustomEntityView>();
 
-    if (custom_entity == nullptr) {
+    if (!nullable_custom_entity) {
         BreakIntoDebugger();
         return;
     }
 
-    OnCustomEntityOut.Fire(custom_entity);
+    auto custom_entity = nullable_custom_entity.as_ptr();
 
-    Entity* holder;
+    OnCustomEntityOut.Fire(custom_entity.get());
+
+    nptr<Entity> nullable_holder;
 
     if (custom_entity->GetCustomHolderId()) {
-        holder = GetEntity(custom_entity->GetCustomHolderId());
+        nullable_holder = GetEntity(custom_entity->GetCustomHolderId());
     }
     else {
-        holder = this;
+        nullable_holder = this;
     }
 
-    if (holder != nullptr) {
-        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
+    if (nullable_holder) {
+        auto holder = nullable_holder.as_ptr();
+        ptr<Entity> custom_entity_entity = custom_entity;
+
+        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity_entity);
     }
     else {
         BreakIntoDebugger();
@@ -1762,7 +2019,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
     custom_entity->DestroySelf();
 }
 
-void ClientEngine::ReceiveCustomEntities(Entity* holder)
+void ClientEngine::ReceiveCustomEntities(nptr<Entity> nullable_holder)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1781,9 +2038,9 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
             const auto pid = _conn.InBuf->Read<hstring>(Hashes);
             _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
-            if (holder != nullptr) {
-                auto* entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
-                FO_VERIFY_AND_THROW(entity, "Missing entity instance");
+            if (nullable_holder) {
+                auto holder = nullable_holder.as_ptr();
+                auto entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
 
                 ReceiveCustomEntities(entity);
             }
@@ -1794,7 +2051,7 @@ void ClientEngine::ReceiveCustomEntities(Entity* holder)
     }
 }
 
-auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> CustomEntityView*
+auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1803,43 +2060,51 @@ auto ClientEngine::CreateCustomEntityView(Entity* holder, hstring entry, ident_t
     FO_VERIFY_AND_THROW(IsValidEntityType(type_name), "Invalid entity type name");
 
     const bool has_protos = GetEntityType(type_name).HasProtos;
-    const ProtoEntity* proto = nullptr;
+    nptr<const ProtoEntity> nullable_proto;
 
     if (pid) {
-        FO_VERIFY_AND_THROW(has_protos, "Missing required has protos");
-        proto = GetProtoEntity(type_name, pid);
-        FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
+        FO_VERIFY_AND_THROW(has_protos, "Pid provided for an entity type without protos");
+        nullable_proto = GetProtoEntity(type_name, pid);
+        FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
     }
     else {
         FO_VERIFY_AND_THROW(!has_protos, "Has protos is already set");
     }
 
-    const auto* registrator = GetPropertyRegistrator(type_name);
+    auto nullable_registrator = GetPropertyRegistrator(type_name);
+    FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
+    auto registrator = nullable_registrator.as_ptr();
 
-    refcount_ptr<CustomEntityView> entity;
+    refcount_ptr<CustomEntityView> entity = [&]() -> refcount_ptr<CustomEntityView> {
+        ptr<ClientEngine> engine = this;
 
-    if (proto != nullptr) {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
-    }
-    else {
-        entity = SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
-    }
+        if (nullable_proto) {
+            auto proto = nullable_proto.as_ptr();
+
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(engine, id, registrator, proto);
+        }
+
+        return SafeAlloc::MakeRefCounted<CustomEntityView>(engine, id, registrator, nullptr, nullptr);
+    }();
 
     entity->RestoreData(data);
 
-    if (const auto* holder_with_id = dynamic_cast<ClientEntity*>(holder); holder_with_id != nullptr) {
+    if (nptr<const ClientEntity> nullable_holder_with_id = holder.dyn_cast<ClientEntity>()) {
+        auto holder_with_id = nullable_holder_with_id.as_ptr();
+
         entity->SetCustomHolderId(holder_with_id->GetId());
     }
     else {
-        FO_VERIFY_AND_THROW(holder == this, "Custom client entity holder must be a client entity or the client engine", id, entry, holder != nullptr ? holder->GetTypeName() : hstring {}, holder != nullptr ? holder->GetId() : ident_t {});
+        FO_VERIFY_AND_THROW(holder == this, "Custom client entity holder must be a client entity or the client engine", id, entry, holder->GetTypeName(), holder->GetId());
     }
 
     entity->SetCustomHolderEntry(entry);
-    holder->AddInnerEntity(entry, entity.get());
-    return entity.get();
+    auto custom_entity = entity.as_ptr();
+    holder->AddInnerEntity(entry, custom_entity);
+    return custom_entity;
 }
 
-void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
+void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> nullable_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1871,48 +2136,56 @@ void ClientEngine::ReceiveCritterMoving(CritterHexView* cr)
         return;
     }
 
-    if (cr == nullptr) {
+    if (!nullable_cr) {
         BreakIntoDebugger();
         return;
     }
 
+    auto map = GetCurMapPtr();
+    auto cr = nullable_cr.as_ptr();
+
     cr->StopMoving();
 
-    auto start_hex_offset = cr->GetHexOffset();
+    ipos16 start_hex_offset = cr->GetHexOffset();
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
         const auto cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
         start_hex_offset = {numeric_cast<int16_t>(start_hex_offset.x + cr_offset.x), numeric_cast<int16_t>(start_hex_offset.y + cr_offset.y)};
     }
 
-    cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(_curMap->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
-    cr->GetMoving()->ValidateRuntimeState();
+    cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+    auto nullable_moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
+    auto moving = nullable_moving.as_ptr();
+    moving->ValidateRuntimeState();
 }
 
-auto ClientEngine::GetEntity(ident_t id) -> ClientEntity*
+auto ClientEngine::GetEntity(ident_t id) -> nptr<ClientEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto it = _allEntities.find(id);
 
-    return it != _allEntities.end() ? it->second.get() : nullptr;
+    if (it == _allEntities.end()) {
+        return nullptr;
+    }
+
+    return it->second;
 }
 
-void ClientEngine::RegisterEntity(ClientEntity* entity)
+void ClientEngine::RegisterEntity(ptr<ClientEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
-    _allEntities[entity->GetId()] = entity;
+    _allEntities.insert_or_assign(entity->GetId(), entity);
 }
 
-void ClientEngine::UnregisterEntity(ClientEntity* entity)
+void ClientEngine::UnregisterEntity(ptr<ClientEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
     _allEntities.erase(entity->GetId());
@@ -1933,7 +2206,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
         return _ifaceAnimCounter;
     }
 
-    auto anim = SprMngr.LoadSprite(name, atlas_type);
+    shared_ptr<Sprite> anim = SprMngr.LoadSprite(name, atlas_type);
 
     if (!anim) {
         BreakIntoDebugger();
@@ -1942,7 +2215,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
 
     anim->PlayDefault();
 
-    auto iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
+    unique_ptr<IfaceAnim> iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
 
     iface_anim->Name = name;
     iface_anim->Anim = anim;
@@ -1966,7 +2239,7 @@ void ClientEngine::AnimFree(uint32_t anim_id)
     }
 }
 
-auto ClientEngine::AnimGetSpr(uint32_t anim_id) -> Sprite*
+auto ClientEngine::AnimGetSpr(uint32_t anim_id) -> nptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1975,57 +2248,63 @@ auto ClientEngine::AnimGetSpr(uint32_t anim_id) -> Sprite*
     }
 
     if (const auto it = _ifaceAnimations.find(anim_id); it != _ifaceAnimations.end()) {
-        return it->second->Anim.get();
+        return it->second->Anim.as_nptr();
     }
 
     return nullptr;
 }
 
-void ClientEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity == this, "Global property sender received an entity different from the client engine", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {});
+    FO_VERIFY_AND_THROW(entity == this, "Global property sender received an entity different from the client engine", string_view {prop->GetName()}, entity->GetTypeName(), entity->GetId());
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
     if (prop->IsModifiableByAnyClient()) {
-        Net_SendProperty(NetProperty::Game, prop, this);
+        ptr<const Entity> global_entity = this;
+        Net_SendProperty(NetProperty::Game, prop, global_entity);
     }
     else {
         throw GenericException("Unable to send global modifiable property", prop->GetName());
     }
 }
 
-void ClientEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity == _curPlayer.get(), "Player property sender received an entity different from the current player", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curPlayer ? _curPlayer->GetId() : ident_t {});
+    nptr<const Entity> cur_player = GetCurPlayer();
+    FO_VERIFY_AND_THROW(cur_player == entity, "Player property sender received an entity different from the current player", prop->GetName(), entity->GetTypeName(), entity->GetId(), _curPlayer ? _curPlayer->GetId() : ident_t {});
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
-    if (!_curPlayer->GetId()) {
+    FO_VERIFY_AND_THROW(_curPlayer, "No current player");
+    auto player = GetCurPlayerPtr();
+
+    if (!player->GetId()) {
         throw ScriptException("Can't modify player public/protected property on unlogined player");
     }
 
-    Net_SendProperty(NetProperty::Player, prop, _curPlayer.get());
+    Net_SendProperty(NetProperty::Player, prop, player);
 }
 
-void ClientEngine::OnSendCritterValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
-    const auto* cr = dynamic_cast<CritterView*>(entity);
-    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
+    auto nullable_cr = entity.dyn_cast<CritterView>();
+    FO_VERIFY_AND_THROW(nullable_cr, "Missing critter instance");
+    auto cr = nullable_cr.as_ptr();
 
     if (cr->GetIsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
@@ -2038,27 +2317,49 @@ void ClientEngine::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSendItemValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
-    if (const auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && !item->GetStatic() && item->GetId()) {
-        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-            const auto* cr = _curMap ? _curMap->GetCritter(item->GetCritterId()) : GetGlobalMapCritter(item->GetCritterId());
+    auto nullable_item = entity.dyn_cast<const ItemView>();
 
-            if (cr != nullptr && cr->GetIsChosen()) {
-                Net_SendProperty(NetProperty::ChosenItem, prop, item);
-            }
-            else if (cr != nullptr && prop->IsModifiableByAnyClient()) {
-                Net_SendProperty(NetProperty::CritterItem, prop, item);
+    if (nullable_item) {
+        auto item = nullable_item.as_ptr();
+
+        if (item->GetStatic() || !item->GetId()) {
+            return;
+        }
+
+        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
+            nptr<const CritterView> nullable_cr;
+
+            if (_curMap) {
+                auto map = GetCurMapPtr();
+                nullable_cr = map->GetCritter(item->GetCritterId());
             }
             else {
-                throw GenericException("Unable to send item (critter) modifiable property", prop->GetName());
+                nullable_cr = GetGlobalMapCritter(item->GetCritterId());
             }
+
+            if (nullable_cr) {
+                auto cr = nullable_cr.as_ptr();
+
+                if (cr->GetIsChosen()) {
+                    Net_SendProperty(NetProperty::ChosenItem, prop, item);
+                    return;
+                }
+
+                if (prop->IsModifiableByAnyClient()) {
+                    Net_SendProperty(NetProperty::CritterItem, prop, item);
+                    return;
+                }
+            }
+
+            throw GenericException("Unable to send item (critter) modifiable property", prop->GetName());
         }
         else if (item->GetOwnership() == ItemOwnership::MapHex) {
             if (prop->IsModifiableByAnyClient()) {
@@ -2074,43 +2375,49 @@ void ClientEngine::OnSendItemValue(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSendMapValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity == _curMap.get(), "Map property sender received an entity different from the current map", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curMap ? _curMap->GetId() : ident_t {});
+    nptr<const Entity> cur_map_entity = GetCurMap();
+    FO_VERIFY_AND_THROW(cur_map_entity == entity, "Map property sender received an entity different from the current map", prop->GetName(), entity->GetTypeName(), entity->GetId(), _curMap ? _curMap->GetId() : ident_t {});
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
+    auto cur_map = GetCurMapPtr();
+
     if (prop->IsModifiableByAnyClient()) {
-        Net_SendProperty(NetProperty::Map, prop, _curMap.get());
+        Net_SendProperty(NetProperty::Map, prop, cur_map);
     }
     else {
         throw GenericException("Unable to send map modifiable property", prop->GetName());
     }
 }
 
-void ClientEngine::OnSendLocationValue(Entity* entity, const Property* prop)
+void ClientEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity == _curLocation.get(), "Location property sender received an entity different from the current location", prop != nullptr ? string_view {prop->GetName()} : string_view {}, entity != nullptr ? entity->GetTypeName() : hstring {}, entity != nullptr ? entity->GetId() : ident_t {}, _curLocation ? _curLocation->GetId() : ident_t {});
+    nptr<const Entity> cur_location_entity = GetCurLocation();
+    FO_VERIFY_AND_THROW(cur_location_entity == entity, "Location property sender received an entity different from the current location", prop->GetName(), entity->GetTypeName(), entity->GetId(), _curLocation ? _curLocation->GetId() : ident_t {});
 
-    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+    if (_sendIgnoreEntity == entity && _sendIgnoreProperty == prop) {
         return;
     }
 
+    auto cur_location = GetCurLocationPtr();
+
     if (prop->IsModifiableByAnyClient()) {
-        Net_SendProperty(NetProperty::Location, prop, _curLocation.get());
+        Net_SendProperty(NetProperty::Location, prop, cur_location);
     }
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
     }
 }
 
-void ClientEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2118,12 +2425,17 @@ void ClientEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop
 
     ignore_unused(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
-        cr->GetMap()->RebuildFog();
+    if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+        auto cr = nullable_cr.as_ptr();
+
+        if (cr->GetIsChosen()) {
+            auto map = cr->GetMap();
+            map->RebuildFog();
+        }
     }
 }
 
-void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2131,12 +2443,17 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+    if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+        auto cr = nullable_cr.as_ptr();
+
 #if FO_ENABLE_3D
         cr->RefreshModel();
 
         if (cr->IsModel()) {
-            cr->GetModel()->StartMeshGeneration();
+            auto nullable_model = cr->GetModel();
+            FO_VERIFY_AND_THROW(nullable_model, "Critter model is null");
+            auto model = nullable_model.as_ptr();
+            model->StartMeshGeneration();
         }
 #endif
 
@@ -2144,7 +2461,7 @@ void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
     }
 }
 
-void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2152,12 +2469,13 @@ void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+    if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+        auto cr = nullable_cr.as_ptr();
         cr->SetSpriteVisiblity(!cr->GetHideSprite());
     }
 }
 
-void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2165,12 +2483,13 @@ void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+    if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+        auto cr = nullable_cr.as_ptr();
         cr->RefreshSprite();
     }
 }
 
-void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2178,32 +2497,42 @@ void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 
     // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        auto rebuild_cache = false;
+    if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
+        auto item = nullable_item.as_ptr();
+        bool rebuild_cache = false;
 
-        if (prop == item->GetPropertyColorize() || prop == item->GetPropertyColorizeColor()) {
+        ptr<const Property> colorize_prop = item->GetPropertyColorize();
+        ptr<const Property> colorize_color_prop = item->GetPropertyColorizeColor();
+        ptr<const Property> shoot_thru_prop = item->GetPropertyShootThru();
+        ptr<const Property> light_thru_prop = item->GetPropertyLightThru();
+        ptr<const Property> no_block_prop = item->GetPropertyNoBlock();
+
+        if (prop == colorize_prop || prop == colorize_color_prop) {
             item->RefreshAlpha();
             item->RefreshSprite();
         }
-        else if (prop == item->GetPropertyShootThru()) {
-            _curMap->RebuildFog();
+        else if (prop == shoot_thru_prop) {
+            auto map = item->GetMap();
+            map->RebuildFog();
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyLightThru()) {
-            item->GetMap()->UpdateHexLightSources(item->GetHex());
+        else if (prop == light_thru_prop) {
+            auto map = item->GetMap();
+            map->UpdateHexLightSources(item->GetHex());
             rebuild_cache = true;
         }
-        else if (prop == item->GetPropertyNoBlock()) {
+        else if (prop == no_block_prop) {
             rebuild_cache = true;
         }
 
         if (rebuild_cache) {
-            item->GetMap()->RecacheHexFlags(item->GetHex());
+            auto map = item->GetMap();
+            map->RecacheHexFlags(item->GetHex());
         }
     }
 }
 
-void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2213,12 +2542,14 @@ void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
-        hex_item->GetMap()->UpdateItemLightSource(hex_item);
+    if (nptr<ItemHexView> nullable_hex_item = entity.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
+        auto map = hex_item->GetMap();
+        map->UpdateItemLightSource(hex_item);
     }
 }
 
-void ClientEngine::OnSetCritterLight(Entity* entity, const Property* prop)
+void ClientEngine::OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2228,12 +2559,14 @@ void ClientEngine::OnSetCritterLight(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* hex_cr = dynamic_cast<CritterHexView*>(entity); hex_cr != nullptr && hex_cr->GetMap() != nullptr) {
-        hex_cr->GetMap()->UpdateCritterLightSource(hex_cr);
+    if (nptr<CritterHexView> nullable_hex_cr = entity.dyn_cast<CritterHexView>()) {
+        auto hex_cr = nullable_hex_cr.as_ptr();
+        auto map = hex_cr->GetMap();
+        map->UpdateCritterLightSource(hex_cr);
     }
 }
 
-void ClientEngine::OnSetItemPicMap(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemPicMap(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2241,12 +2574,13 @@ void ClientEngine::OnSetItemPicMap(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+    if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
+        auto item = nullable_item.as_ptr();
         item->RefreshAnim();
     }
 }
 
-void ClientEngine::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2254,13 +2588,15 @@ void ClientEngine::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+    if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
+        auto item = nullable_item.as_ptr();
         item->RefreshOffs();
-        item->GetMap()->MeasureMapBorders(item);
+        auto map = item->GetMap();
+        map->MeasureMapBorders(item);
     }
 }
 
-void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2268,12 +2604,13 @@ void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+    if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
+        auto item = nullable_item.as_ptr();
         item->SetSpriteVisiblity(!item->GetHideSprite());
     }
 }
 
-void ClientEngine::OnSetItemElevation(Entity* entity, const Property* prop)
+void ClientEngine::OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2281,9 +2618,11 @@ void ClientEngine::OnSetItemElevation(Entity* entity, const Property* prop)
 
     ignore_unused(prop);
 
-    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+    if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
+        auto item = nullable_item.as_ptr();
         item->RefreshSprite();
-        item->GetMap()->MeasureMapBorders(item);
+        auto map = item->GetMap();
+        map->MeasureMapBorders(item);
     }
 }
 
@@ -2291,18 +2630,19 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto lang_pack = TextPack {Hashes};
+    ptr<HashResolver> hash_resolver = &Hashes;
+    auto lang_pack = TextPack {hash_resolver};
     lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
-    Settings.Language = lang_name;
+    Settings->Language = lang_name;
 }
 
 auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (lang_name.empty() || lang_name == Settings.Language) {
+    if (lang_name.empty() || lang_name == Settings->Language) {
         return _curLang;
     }
 
@@ -2312,7 +2652,8 @@ auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
         }
     }
 
-    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {Hashes});
+    ptr<HashResolver> hash_resolver = &Hashes;
+    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {hash_resolver});
     cached_pack.LoadFromResources(Resources, lang_name);
     return cached_pack;
 }
@@ -2323,24 +2664,27 @@ void ClientEngine::UnloadMap()
 
     OnMapUnload.Fire();
 
-    Settings.ScrollMouseRight = false;
-    Settings.ScrollMouseLeft = false;
-    Settings.ScrollMouseDown = false;
-    Settings.ScrollMouseUp = false;
+    Settings->ScrollMouseRight = false;
+    Settings->ScrollMouseLeft = false;
+    Settings->ScrollMouseDown = false;
+    Settings->ScrollMouseUp = false;
 
     if (_curMap) {
-        auto cur_map = std::move(_curMap);
-        cur_map->DestroySelf();
+        auto map = GetCurMapPtr();
+        map->DestroySelf();
+        _curMap.reset();
 
         CleanupSpriteCache();
     }
 
     if (_curLocation) {
-        _curLocation->DestroySelf();
-        _curLocation = nullptr;
+        auto location = GetCurLocationPtr();
+        location->DestroySelf();
+        _curLocation.reset();
     }
 
-    for (auto& cr : _globalMapCritters) {
+    for (size_t i = 0; i < _globalMapCritters.size(); i++) {
+        auto cr = _globalMapCritters[i].as_ptr();
         cr->DestroySelf();
     }
 
@@ -2362,11 +2706,14 @@ void ClientEngine::LmapPrepareMap()
         return;
     }
 
-    const auto* chosen = GetMapChosen();
+    auto map = GetCurMapPtr();
+    auto nullable_chosen = GetMapChosen();
 
-    if (chosen == nullptr) {
+    if (!nullable_chosen) {
         return;
     }
+
+    auto chosen = nullable_chosen.as_ptr();
 
     const auto hex = chosen->GetHex();
     const auto maxpixx = _lmapWMap.width / 2 / _lmapZoom;
@@ -2384,11 +2731,11 @@ void ClientEngine::LmapPrepareMap()
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
 
-            if (!_curMap->GetSize().is_valid_pos(i1, i2)) {
+            if (!map->GetSize().is_valid_pos(i1, i2)) {
                 continue;
             }
 
-            const auto hex2 = _curMap->GetSize().from_raw_pos(i1, i2);
+            const auto hex2 = map->GetSize().from_raw_pos(i1, i2);
 
             bool is_far = false;
             const auto dist = GeometryHelper::GetDistance(hex.x, hex.y, i1, i2);
@@ -2397,10 +2744,11 @@ void ClientEngine::LmapPrepareMap()
                 is_far = true;
             }
 
-            const auto& field = _curMap->GetField(hex2);
+            const auto& field = map->GetField(hex2);
             ucolor cur_color;
 
-            if (const auto* cr = _curMap->GetNonDeadCritter(hex2); cr != nullptr) {
+            if (nptr<const CritterHexView> nullable_cr = map->GetNonDeadCritter(hex2)) {
+                auto cr = nullable_cr.as_ptr();
                 cur_color = cr == chosen ? ucolor {0, 0, 255} : ucolor {255, 0, 0};
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x + (_lmapZoom - 1), _lmapWMap.y + pix_y}, .PointColor = cur_color});
                 _lmapPrepPix.emplace_back(PrimitivePoint {.PointPos = {_lmapWMap.x + pix_x, _lmapWMap.y + pix_y + (_lmapZoom - 1) / 2}, .PointColor = cur_color});
@@ -2444,11 +2792,12 @@ void ClientEngine::DestroyInnerEntities()
     FO_STACK_TRACE_ENTRY();
 
     if (HasInnerEntities()) {
-        for (auto& entities : GetInnerEntities() | std::views::values) {
-            for (auto& entity : entities) {
-                auto* custom_entity = dynamic_cast<CustomEntityView*>(entity.get());
-                FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
+        auto inner_entities = GetInnerEntities().as_ptr();
 
+        for (auto& entities : *inner_entities | std::views::values) {
+            for (auto& entity : entities) {
+                auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
+                auto custom_entity = custom_entity_holder.as_ptr();
                 custom_entity->DestroySelf();
             }
         }
@@ -2491,7 +2840,7 @@ void ClientEngine::Disconnect()
     _conn.Disconnect();
 }
 
-void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
+void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2507,6 +2856,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
 
     cr->StopMoving();
     cr->NormalizeHexOffset();
+    auto map = cr->GetMap();
 
     bool try_move = false;
     mpos hex;
@@ -2519,7 +2869,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
             hex = std::get<0>(std::get<0>(pos_or_dir));
             const auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
             const auto cut = std::get<2>(std::get<0>(pos_or_dir));
-            const auto find_path = cr->GetMap()->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
+            const auto find_path = map->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
 
             if (find_path && !find_path->DirSteps.empty()) {
                 steps = find_path->DirSteps;
@@ -2535,7 +2885,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
             end_hex_offset = cr->GetHexOffset();
             vector<mdir> raw_steps;
 
-            if (cr->GetMap()->TraceMoveWay(hex, end_hex_offset, raw_steps, dir, cr->GetMultihex())) {
+            if (map->TraceMoveWay(hex, end_hex_offset, raw_steps, dir, cr->GetMultihex())) {
                 steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
                 control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
                 try_move = true;
@@ -2544,8 +2894,11 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
     }
 
     if (try_move) {
-        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(cr->GetMap()->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
-        cr->GetMoving()->ValidateRuntimeState();
+        cr->SetMoving(SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), timespan {}, cr->GetHex(), cr->GetHexOffset(), end_hex_offset));
+        auto nullable_moving = cr->GetMoving();
+        FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
+        auto moving = nullable_moving.as_ptr();
+        moving->ValidateRuntimeState();
         cr->RefreshView();
         Net_SendMove(cr);
     }
@@ -2557,7 +2910,7 @@ void ClientEngine::CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16,
     }
 }
 
-void ClientEngine::CritterLookTo(CritterHexView* cr, mdir dir)
+void ClientEngine::CritterLookTo(ptr<CritterHexView> cr, mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2580,7 +2933,6 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
     }
 
     _video.reset();
-    _videoTex.reset();
     _videoQueue.clear();
     _videoCanInterrupt = can_interrupt;
 
@@ -2596,8 +2948,9 @@ void ClientEngine::PlayVideo(string_view video_name, bool can_interrupt, bool en
         return;
     }
 
-    _video = SafeAlloc::MakeUnique<VideoClip>(file.GetData());
-    _videoTex = SprMngr.GetRender().CreateTexture(_video->GetSize(), true, false);
+    VideoClip video_clip {file.GetData()};
+    auto video_tex = SprMngr.GetRender().CreateTexture(video_clip.GetSize(), true, false);
+    _video.emplace(std::move(video_clip), std::move(video_tex));
 
     if (names.size() > 1) {
         SndMngr.StopMusic();
@@ -2613,12 +2966,12 @@ void ClientEngine::ProcessVideo()
     FO_STACK_TRACE_ENTRY();
 
     if (_video) {
-        _videoTex->UpdateTextureRegion({}, _videoTex->Size, _video->RenderFrame().data());
-        SprMngr.DrawTexture(_videoTex.get(), false);
+        _video->Tex->UpdateTextureRegion({}, _video->Tex->Size, _video->Clip.RenderFrame());
+        auto video_tex = _video->Tex.as_ptr();
+        SprMngr.DrawTexture(video_tex, false);
 
-        if (_video->IsStopped()) {
+        if (_video->Clip.IsStopped()) {
             _video.reset();
-            _videoTex.reset();
             SndMngr.StopMusic();
         }
     }
@@ -2637,90 +2990,94 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto reload_effect = [this, effectPath](raw_ptr<RenderEffect> def_effect) -> RenderEffect* { return EffectMngr.ResolveEffect(def_effect, effectPath); };
+    const auto reload_effect = [this, effectPath](ptr<RenderEffect> def_effect) -> ptr<RenderEffect> { return EffectMngr.ResolveEffect(def_effect, effectPath); };
 
     const uint32_t eff_type = static_cast<uint32_t>(effectType);
 
     if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype != 0) {
-        MapView* map = GetCurMap();
+        auto nullable_map = GetCurMap();
 
-        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+        if (nullable_map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            auto map = nullable_map.as_ptr();
+            auto nullable_item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
 
-            if (item != nullptr) {
-                item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic));
+            if (nullable_item) {
+                auto item = nullable_item.as_ptr();
+                item->SetDrawEffect(reload_effect(EffectMngr.Effects.Generic.as_ptr()));
             }
         }
     }
     if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype != 0) {
-        MapView* map = GetCurMap();
+        auto nullable_map = GetCurMap();
 
-        if (map != nullptr && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
-            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+        if (nullable_map && effectSubtype >= 0 && effectSubtype <= std::numeric_limits<uint32_t>::max()) {
+            auto map = nullable_map.as_ptr();
+            auto nullable_cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
 
-            if (cr != nullptr) {
-                cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter));
+            if (nullable_cr) {
+                auto cr = nullable_cr.as_ptr();
+                cr->SetDrawEffect(reload_effect(EffectMngr.Effects.Critter.as_ptr()));
             }
         }
     }
 
     if (((eff_type & static_cast<uint32_t>(EffectType::GenericSprite)) != 0) && effectSubtype == 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Generic, EffectMngr.Effects.GenericDefault, effectPath);
+        EffectMngr.Effects.Generic = EffectMngr.ResolveEffect(EffectMngr.Effects.GenericDefault.as_ptr(), effectPath);
     }
     if (((eff_type & static_cast<uint32_t>(EffectType::CritterSprite)) != 0) && effectSubtype == 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Critter, EffectMngr.Effects.CritterDefault, effectPath);
+        EffectMngr.Effects.Critter = EffectMngr.ResolveEffect(EffectMngr.Effects.CritterDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::TileSprite)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Tile, EffectMngr.Effects.TileDefault, effectPath);
+        EffectMngr.Effects.Tile = EffectMngr.ResolveEffect(EffectMngr.Effects.TileDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::RoofSprite)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Roof, EffectMngr.Effects.RoofDefault, effectPath);
+        EffectMngr.Effects.Roof = EffectMngr.ResolveEffect(EffectMngr.Effects.RoofDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::RainSprite)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Rain, EffectMngr.Effects.RainDefault, effectPath);
+        EffectMngr.Effects.Rain = EffectMngr.ResolveEffect(EffectMngr.Effects.RainDefault.as_ptr(), effectPath);
     }
 
 #if FO_ENABLE_3D
     if ((eff_type & static_cast<uint32_t>(EffectType::SkinnedMesh)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.SkinnedModel, EffectMngr.Effects.SkinnedModelDefault, effectPath);
+        EffectMngr.Effects.SkinnedModel = EffectMngr.ResolveEffect(EffectMngr.Effects.SkinnedModelDefault.as_ptr(), effectPath);
     }
 #endif
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Interface)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Iface, EffectMngr.Effects.IfaceDefault, effectPath);
+        EffectMngr.Effects.Iface = EffectMngr.ResolveEffect(EffectMngr.Effects.IfaceDefault.as_ptr(), effectPath);
     }
 
     if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype == -1) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Font, EffectMngr.Effects.FontDefault, effectPath);
+        EffectMngr.Effects.Font = EffectMngr.ResolveEffect(EffectMngr.Effects.FontDefault.as_ptr(), effectPath);
     }
     if (((eff_type & static_cast<uint32_t>(EffectType::Font)) != 0) && effectSubtype >= 0) {
-        FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(EffectMngr.Effects.Font));
+        FontMngr.SetFontEffect(static_cast<FontType>(effectSubtype), reload_effect(EffectMngr.Effects.Font.as_ptr()));
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Primitive)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Primitive, EffectMngr.Effects.PrimitiveDefault, effectPath);
+        EffectMngr.Effects.Primitive = EffectMngr.ResolveEffect(EffectMngr.Effects.PrimitiveDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::Light)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Light, EffectMngr.Effects.LightDefault, effectPath);
+        EffectMngr.Effects.Light = EffectMngr.ResolveEffect(EffectMngr.Effects.LightDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::Fog)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.Fog, EffectMngr.Effects.FogDefault, effectPath);
+        EffectMngr.Effects.Fog = EffectMngr.ResolveEffect(EffectMngr.Effects.FogDefault.as_ptr(), effectPath);
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushRenderTarget)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.FlushRenderTarget, EffectMngr.Effects.FlushRenderTargetDefault, effectPath);
+        EffectMngr.Effects.FlushRenderTarget = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushRenderTargetDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushPrimitive)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.FlushPrimitive, EffectMngr.Effects.FlushPrimitiveDefault, effectPath);
+        EffectMngr.Effects.FlushPrimitive = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushPrimitiveDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushMap)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.FlushMap, EffectMngr.Effects.FlushMapDefault, effectPath);
+        EffectMngr.Effects.FlushMap = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushMapDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushLight)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.FlushLight, EffectMngr.Effects.FlushLightDefault, effectPath);
+        EffectMngr.Effects.FlushLight = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushLightDefault.as_ptr(), effectPath);
     }
     if ((eff_type & static_cast<uint32_t>(EffectType::FlushFog)) != 0) {
-        EffectMngr.SetEffect(EffectMngr.Effects.FlushFog, EffectMngr.Effects.FlushFogDefault, effectPath);
+        EffectMngr.Effects.FlushFog = EffectMngr.ResolveEffect(EffectMngr.Effects.FlushFogDefault.as_ptr(), effectPath);
     }
 
     if ((eff_type & static_cast<uint32_t>(EffectType::Offscreen)) != 0) {
@@ -2729,7 +3086,7 @@ void ClientEngine::SetEffect(EffectType effectType, int64_t effectSubtype, strin
         }
 
         OffscreenEffects.resize(std::max(OffscreenEffects.size(), numeric_cast<size_t>(effectSubtype) + 1));
-        OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault);
+        OffscreenEffects[numeric_cast<size_t>(effectSubtype)] = reload_effect(EffectMngr.Effects.GenericDefault.as_ptr());
     }
 }
 
@@ -2737,7 +3094,7 @@ void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSub
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effectType, effectSubtype, valueIndex, const_span<float32_t> {&value, 1});
+    SetEffectScriptValues(effectType, effectSubtype, valueIndex, EffectScriptValueSpan(value));
 }
 
 void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset, int32_t valuesCount)
@@ -2765,12 +3122,8 @@ void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSu
         throw ScriptException("Effect script value range is out of range", valueStartIndex, actual_values_count);
     }
 
-    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
-    const_span<float32_t> selected_values {};
-
-    if (actual_values_count != 0) {
-        selected_values = const_span<float32_t> {values.data() + valuesOffset, numeric_cast<size_t>(actual_values_count)};
-    }
+    auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    const_span<float32_t> selected_values = EffectScriptValuesSpan(values, numeric_cast<size_t>(valuesOffset), numeric_cast<size_t>(actual_values_count));
 
     EffectMngr.SetEffectScriptValues(effect, valueStartIndex, selected_values);
 }
@@ -2779,23 +3132,23 @@ void ClientEngine::ClearEffectScriptValues(EffectType effectType, int64_t effect
 {
     FO_STACK_TRACE_ENTRY();
 
-    RenderEffect* effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
+    auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
 
     EffectMngr.ClearEffectScriptValues(effect);
 }
 
-auto ClientEngine::GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*
+auto ClientEngine::GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || OffscreenEffects[numeric_cast<size_t>(effectSubtype)] == nullptr) {
+    if (effectSubtype < 0 || effectSubtype >= numeric_cast<int32_t>(OffscreenEffects.size()) || !OffscreenEffects[numeric_cast<size_t>(effectSubtype)]) {
         throw ScriptException("Invalid effect subtype");
     }
 
-    return OffscreenEffects[numeric_cast<size_t>(effectSubtype)].get();
+    return OffscreenEffects[numeric_cast<size_t>(effectSubtype)].as_ptr();
 }
 
-auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> nptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2806,20 +3159,22 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Invalid generic sprite effect subtype", effectSubtype);
             }
 
-            MapView* map = GetCurMap();
-            if (map == nullptr) {
+            auto nullable_map = GetCurMap();
+            if (!nullable_map) {
                 throw ScriptException("Current map is not available");
             }
 
-            ItemHexView* item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
-            if (item == nullptr) {
+            auto map = nullable_map.as_ptr();
+            auto nullable_item = map->GetItem(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (!nullable_item) {
                 throw ScriptException("Generic sprite effect target item not found", effectSubtype);
             }
 
+            auto item = nullable_item.as_ptr();
             return item->GetDrawEffect();
         }
 
-        return EffectMngr.Effects.Generic.get();
+        return EffectMngr.Effects.Generic;
 
     case EffectType::CritterSprite:
         if (effectSubtype != 0) {
@@ -2827,68 +3182,70 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
                 throw ScriptException("Invalid critter sprite effect subtype", effectSubtype);
             }
 
-            MapView* map = GetCurMap();
-            if (map == nullptr) {
+            auto nullable_map = GetCurMap();
+            if (!nullable_map) {
                 throw ScriptException("Current map is not available");
             }
 
-            CritterHexView* cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
-            if (cr == nullptr) {
+            auto map = nullable_map.as_ptr();
+            auto nullable_cr = map->GetCritter(ident_t {numeric_cast<uint32_t>(effectSubtype)});
+            if (!nullable_cr) {
                 throw ScriptException("Critter sprite effect target critter not found", effectSubtype);
             }
 
+            auto cr = nullable_cr.as_ptr();
             return cr->GetDrawEffect();
         }
 
-        return EffectMngr.Effects.Critter.get();
+        return EffectMngr.Effects.Critter;
 
     case EffectType::TileSprite:
-        return EffectMngr.Effects.Tile.get();
+        return EffectMngr.Effects.Tile;
 
     case EffectType::RoofSprite:
-        return EffectMngr.Effects.Roof.get();
+        return EffectMngr.Effects.Roof;
 
     case EffectType::RainSprite:
-        return EffectMngr.Effects.Rain.get();
+        return EffectMngr.Effects.Rain;
 
 #if FO_ENABLE_3D
     case EffectType::SkinnedMesh:
-        return EffectMngr.Effects.SkinnedModel.get();
+        return EffectMngr.Effects.SkinnedModel;
 #endif
 
     case EffectType::Interface:
-        return EffectMngr.Effects.Iface.get();
+        return EffectMngr.Effects.Iface;
 
     case EffectType::Font:
         if (effectSubtype != -1) {
             throw ScriptException("Per-font script values are not supported");
         }
 
-        return EffectMngr.Effects.Font.get();
+        return EffectMngr.Effects.Font;
 
     case EffectType::Primitive:
-        return EffectMngr.Effects.Primitive.get();
+        return EffectMngr.Effects.Primitive;
 
     case EffectType::Light:
-        return EffectMngr.Effects.Light.get();
+        return EffectMngr.Effects.Light;
 
     case EffectType::Fog:
-        return EffectMngr.Effects.Fog.get();
+        return EffectMngr.Effects.Fog;
 
     case EffectType::FlushRenderTarget:
-        return EffectMngr.Effects.FlushRenderTarget.get();
+        return EffectMngr.Effects.FlushRenderTarget;
 
     case EffectType::FlushPrimitive:
-        return EffectMngr.Effects.FlushPrimitive.get();
+        return EffectMngr.Effects.FlushPrimitive;
 
     case EffectType::FlushMap:
-        return EffectMngr.Effects.FlushMap.get();
+        return EffectMngr.Effects.FlushMap;
 
     case EffectType::FlushLight:
-        return EffectMngr.Effects.FlushLight.get();
+        return EffectMngr.Effects.FlushLight;
 
     case EffectType::FlushFog:
-        return EffectMngr.Effects.FlushFog.get();
+        return EffectMngr.Effects.FlushFog;
 
     case EffectType::Offscreen:
         if (effectSubtype < 0 || effectSubtype > std::numeric_limits<int32_t>::max()) {
@@ -2902,20 +3259,20 @@ auto ClientEngine::ResolveEffectScriptValueTarget(EffectType effectType, int64_t
     }
 }
 
-auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*
+auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    RenderEffect* effect = ResolveEffectScriptValueTarget(effectType, effectSubtype);
+    auto nullable_effect = ResolveEffectScriptValueTarget(effectType, effectSubtype);
 
-    if (effect == nullptr) {
+    if (!nullable_effect) {
         throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effectType), effectSubtype);
     }
-    if (!effect->IsNeedScriptValueBuf()) {
+    if (!nullable_effect->IsNeedScriptValueBuf()) {
         throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effectType), effectSubtype);
     }
 
-    return effect;
+    return nullable_effect.as_ptr();
 }
 
 FO_END_NAMESPACE

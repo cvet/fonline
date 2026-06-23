@@ -40,13 +40,13 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemManager::ItemManager(ServerEngine* engine) :
+ItemManager::ItemManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ItemManager::GetItemHolder(Item* item) -> Entity*
+auto ItemManager::GetItemHolder(ptr<Item> item) -> ptr<Entity>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -56,25 +56,24 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
         throw ItemManagerException("Item does not have a holder", item->GetId(), item->GetProtoId());
     }
 
-    auto holder = item->GetParent();
-    FO_VERIFY_AND_THROW(holder, "Missing required holder");
-    ValidateEntityAccess(holder.get());
-    return holder.get();
+    auto nullable_holder = item->GetParent();
+    FO_VERIFY_AND_THROW(nullable_holder, "Missing required holder");
+    auto holder = nullable_holder.as_ptr();
+    ValidateEntityAccess(holder);
+    return holder;
 }
 
-void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
+void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
-    FO_VERIFY_AND_THROW(holder, "Missing required holder");
 
     ValidateEntityAccess(item);
     ValidateEntityAccess(holder);
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (auto* cr = dynamic_cast<Critter*>(holder); cr != nullptr) {
+        if (nptr<Critter> nullable_cr = holder.dyn_cast<Critter>(); nullable_cr) {
+            auto cr = nullable_cr.as_ptr();
             _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
         else {
@@ -82,7 +81,8 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (auto* map = dynamic_cast<Map*>(holder); map != nullptr) {
+        if (nptr<Map> nullable_map = holder.dyn_cast<Map>(); nullable_map) {
+            auto map = nullable_map.as_ptr();
             map->RemoveItem(item->GetId());
         }
         else {
@@ -90,7 +90,8 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
         }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (auto* cont = dynamic_cast<Item*>(holder); cont != nullptr) {
+        if (nptr<Item> nullable_cont = holder.dyn_cast<Item>(); nullable_cont) {
+            auto cont = nullable_cont.as_ptr();
             cont->RemoveItemFromContainer(item);
         }
         else {
@@ -104,25 +105,25 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
     item->SetOwnership(ItemOwnership::Nowhere);
 }
 
-auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props) -> Item*
+auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
 
-    const auto* proto = _engine->GetProtoItem(pid);
+    auto proto = _engine->GetProtoItem(pid);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto.as_ptr(), props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
 
     // Reset ownership properties
-    if (props != nullptr) {
+    if (props) {
         item->SetMapId({});
         item->SetHex({});
         item->SetCritterId({});
@@ -132,7 +133,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
         item->SetInnerItemIds({});
     }
 
-    _engine->EntityMngr.RegisterItem(item.get());
+    _engine->EntityMngr.RegisterItem(item.as_ptr());
 
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
@@ -141,7 +142,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
         item->SetCount(1);
     }
 
-    _engine->EntityMngr.CallInit(item.get(), true);
+    _engine->EntityMngr.CallInit(item.as_ptr(), true);
 
     if (item->IsDestroyed()) {
         throw ItemManagerException("Item destroyed during init", pid);
@@ -149,30 +150,29 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
 
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::Nowhere, "Item is already owned by another holder");
 
-    return item.get();
+    return item.as_ptr();
 }
 
-auto ItemManager::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count, Properties* props) -> Item*
+auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-    refcount_ptr map_holder = map;
+    auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
 
     if (count <= 0) {
         throw ItemManagerException("Invalid items cound");
     }
 
-    const auto* proto = _engine->GetProtoItem(pid);
+    auto proto = _engine->GetProtoItem(pid);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    const auto add_item = [&]() -> Item* {
-        auto* item = CreateItem(pid, proto->GetStackable() ? count : 1, props);
-        refcount_ptr item_holder = item;
+    const auto add_item = [&]() -> ptr<Item> {
+        auto item = CreateItem(pid, proto->GetStackable() ? count : 1, props);
+        auto item_holder = item.hold_ref();
         ignore_unused(item_holder);
 
         map->AddItem(item, hex, nullptr);
@@ -187,25 +187,26 @@ auto ItemManager::CreateItemOnHex(Map* map, mpos hex, hstring pid, int32_t count
         return item;
     };
 
-    auto* item = add_item();
+    ptr<Item> item = add_item();
 
     // Non-stacked items
-    if (item != nullptr && !proto->GetStackable() && count > 1) {
-        const auto fixed_count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+    if (!proto->GetStackable() && count > 1) {
+        const auto fixed_count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
 
         for (int32_t i = 0; i < fixed_count; i++) {
-            if (add_item() == nullptr) {
-                break;
-            }
+            (void)add_item();
         }
     }
 
     return item;
 }
 
-void ItemManager::DestroyItem(Item* item)
+void ItemManager::DestroyItem(ptr<Item> item)
 {
     FO_STACK_TRACE_ENTRY();
+
+    auto item_holder = item.hold_ref();
+    ignore_unused(item_holder);
 
     ValidateEntityAccess(item);
 
@@ -218,7 +219,7 @@ void ItemManager::DestroyItem(Item* item)
 
     // Finish events
     ValidateEntityAccess(item);
-    _engine->OnItemFinish.Fire(item);
+    _engine->OnItemFinish.Fire(item.get());
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     // Tear off from environment
@@ -229,11 +230,10 @@ void ItemManager::DestroyItem(Item* item)
             }
 
             while (item->HasInnerItems()) {
-                auto* inner = item->GetAllInnerItems().front();
+                ptr<Item> inner = item->GetAllInnerItems().front();
                 // Inner item has its own EntityLock; pull it into the current sync context so the
                 // recursive DestroyItem call's ValidateEntityAccess passes.
-                auto* ctx = _engine->GetCurrentSyncContext();
-                FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+                auto ctx = _engine->RequireCurrentSyncContext();
                 ctx->EnsureEntitySynced(inner);
                 DestroyItem(inner);
             }
@@ -259,7 +259,7 @@ void ItemManager::DestroyItem(Item* item)
     _engine->EntityMngr.UnregisterItem(item, true);
 }
 
-auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
+auto ItemManager::SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -269,9 +269,9 @@ auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
     FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
     FO_VERIFY_AND_THROW(count < item->GetCount(), "Count is outside allowed range", count, item->GetCount());
 
-    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
+    auto new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
 
-    refcount_ptr new_item_holder = new_item;
+    auto new_item_holder = new_item.hold_ref();
     ignore_unused(new_item_holder);
 
     if (item->IsDestroyed() || item->IsDestroying() || count >= item->GetCount()) {
@@ -286,12 +286,9 @@ auto ItemManager::SplitItem(Item* item, int32_t count) -> Item*
     return new_item;
 }
 
-void ItemManager::RestoreSplitItem(Item* item, Item* splitted_item)
+void ItemManager::RestoreSplitItem(ptr<Item> item, ptr<Item> splitted_item)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
-    FO_VERIFY_AND_THROW(splitted_item, "Missing required splitted item");
 
     if (!item->IsDestroyed() && item->GetProtoId() == splitted_item->GetProtoId()) {
         item->SetCount(item->GetCount() + splitted_item->GetCount());
@@ -300,15 +297,15 @@ void ItemManager::RestoreSplitItem(Item* item, Item* splitted_item)
     DestroyItem(splitted_item);
 }
 
-auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
+auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cr);
-    refcount_ptr item_holder = item;
-    refcount_ptr to_cr_holder = to_cr;
+    auto item_holder = item.hold_ref();
+    auto to_cr_holder = to_cr.hold_ref();
     ignore_unused(item_holder);
     ignore_unused(to_cr_holder);
 
@@ -316,8 +313,8 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
         return item;
     }
 
-    auto* holder = GetItemHolder(item);
-    refcount_ptr holder_holder = holder;
+    auto holder = GetItemHolder(item);
+    auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
@@ -330,13 +327,14 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
         return _engine->CrMngr.AddItemToCritter(to_cr, item, true);
     }
     else {
-        auto* splitted_item = SplitItem(item, count);
+        auto nullable_splitted_item = SplitItem(item, count);
 
-        if (splitted_item == nullptr) {
+        if (!nullable_splitted_item) {
             return nullptr;
         }
 
-        refcount_ptr splitted_item_holder = splitted_item;
+        auto splitted_item = nullable_splitted_item.as_ptr();
+        auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
         if (to_cr->IsDestroyed()) {
@@ -348,15 +346,15 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     }
 }
 
-auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) -> Item*
+auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos to_hex) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_map);
-    refcount_ptr item_holder = item;
-    refcount_ptr to_map_holder = to_map;
+    auto item_holder = item.hold_ref();
+    auto to_map_holder = to_map.hold_ref();
     ignore_unused(item_holder);
     ignore_unused(to_map_holder);
 
@@ -364,11 +362,11 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
         return item;
     }
 
-    auto* holder = GetItemHolder(item);
-    refcount_ptr holder_holder = holder;
+    auto holder = GetItemHolder(item);
+    auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
-    Critter* dropper = dynamic_cast<Critter*>(holder);
-    refcount_ptr dropper_holder = dropper;
+    auto dropper = holder.dyn_cast<Critter>();
+    auto dropper_holder = dropper.try_hold_ref();
     ignore_unused(dropper_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
@@ -390,13 +388,14 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
         return item;
     }
     else {
-        auto* splitted_item = SplitItem(item, count);
+        auto nullable_splitted_item = SplitItem(item, count);
 
-        if (splitted_item == nullptr) {
+        if (!nullable_splitted_item) {
             return nullptr;
         }
 
-        refcount_ptr splitted_item_holder = splitted_item;
+        auto splitted_item = nullable_splitted_item.as_ptr();
+        auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
         if (to_map->IsDestroyed()) {
@@ -417,15 +416,15 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
     }
 }
 
-auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t& stack_id) -> Item*
+auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, const any_t& stack_id) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(item);
     ValidateEntityAccess(to_cont);
-    refcount_ptr item_holder = item;
-    refcount_ptr to_cont_holder = to_cont;
+    auto item_holder = item.hold_ref();
+    auto to_cont_holder = to_cont.hold_ref();
     ignore_unused(item_holder);
     ignore_unused(to_cont_holder);
 
@@ -433,8 +432,8 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
         return item;
     }
 
-    auto* holder = GetItemHolder(item);
-    refcount_ptr holder_holder = holder;
+    auto holder = GetItemHolder(item);
+    auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
 
     if (count >= item->GetCount() || !item->GetStackable()) {
@@ -447,13 +446,14 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
         return to_cont->AddItemToContainer(item, stack_id);
     }
     else {
-        auto* splitted_item = SplitItem(item, count);
+        auto nullable_splitted_item = SplitItem(item, count);
 
-        if (splitted_item == nullptr) {
+        if (!nullable_splitted_item) {
             return nullptr;
         }
 
-        refcount_ptr splitted_item_holder = splitted_item;
+        auto splitted_item = nullable_splitted_item.as_ptr();
+        auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
         if (to_cont->IsDestroyed()) {
@@ -465,47 +465,46 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const any_t& stack_id) -> Item*
+auto ItemManager::AddItemContainer(ptr<Item> cont, hstring pid, int32_t count, const any_t& stack_id) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(cont, "Missing required cont");
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
     ValidateEntityAccess(cont);
 
-    const auto* proto = _engine->GetProtoItem(pid);
+    auto proto = _engine->GetProtoItem(pid);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto* item = cont->GetInnerItemByPid(pid, stack_id);
-    Item* result = nullptr;
+    auto item = cont->GetInnerItemByPid(pid, stack_id);
+    nptr<Item> result = nullptr;
 
-    if (item != nullptr) {
+    if (item) {
         if (item->GetStackable()) {
             item->SetCount(item->GetCount() + count);
             result = item;
         }
         else {
-            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                auto* new_item = CreateItem(pid, 0, nullptr);
+                auto new_item = CreateItem(pid, 0, nullptr);
                 result = cont->AddItemToContainer(new_item, stack_id);
             }
         }
     }
     else {
         if (proto->GetStackable()) {
-            auto* new_item = CreateItem(pid, count, nullptr);
+            auto new_item = CreateItem(pid, count, nullptr);
             result = cont->AddItemToContainer(new_item, stack_id);
         }
         else {
-            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                auto* new_item = CreateItem(pid, 0, nullptr);
+                auto new_item = CreateItem(pid, 0, nullptr);
                 result = cont->AddItemToContainer(new_item, stack_id);
             }
         }
@@ -514,36 +513,36 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, int32_t count, const
     return result;
 }
 
-auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Item*
+auto ItemManager::AddItemCritter(ptr<Critter> cr, hstring pid, int32_t count) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
     ValidateEntityAccess(cr);
 
-    const auto* proto = _engine->GetProtoItem(pid);
+    auto proto = _engine->GetProtoItem(pid);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto* item = cr->GetInvItemByPid(pid);
-    Item* result = nullptr;
+    auto item = cr->GetInvItemByPid(pid);
+    nptr<Item> result = nullptr;
 
-    if (item != nullptr && item->GetStackable()) {
+    if (item && item->GetStackable()) {
         item->SetCount(item->GetCount() + count);
         result = item;
     }
     else {
         if (proto->GetStackable()) {
-            auto* new_item = CreateItem(pid, count, nullptr);
+            auto new_item = CreateItem(pid, count, nullptr);
             result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
         }
         else {
-            count = std::min(count, _engine->Settings.MaxAddUnstackableItems);
+            count = std::min(count, _engine->Settings->MaxAddUnstackableItems);
 
             for (int32_t i = 0; i < count; ++i) {
-                auto* new_item = CreateItem(pid, 0, nullptr);
+                auto new_item = CreateItem(pid, 0, nullptr);
                 result = _engine->CrMngr.AddItemToCritter(cr, new_item, true);
             }
         }
@@ -552,7 +551,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, int32_t count) -> Ite
     return result;
 }
 
-void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
+void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -562,34 +561,36 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
         return;
     }
 
-    auto* item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+    auto nullable_item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
 
-    if (item == nullptr) {
+    if (!nullable_item) {
         return;
     }
 
-    if (item->GetStackable()) {
-        if (count >= item->GetCount()) {
+    if (nullable_item->GetStackable()) {
+        if (count >= nullable_item->GetCount()) {
+            auto item = nullable_item.as_ptr();
             DestroyItem(item);
         }
         else {
-            item->SetCount(item->GetCount() - count);
+            nullable_item->SetCount(nullable_item->GetCount() - count);
         }
     }
     else {
         for (int32_t i = 0; i < count; ++i) {
+            auto item = nullable_item.as_ptr();
             DestroyItem(item);
 
-            item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+            nullable_item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
 
-            if (item == nullptr) {
+            if (!nullable_item) {
                 break;
             }
         }
     }
 }
 
-void ItemManager::SetItemCritter(Critter* cr, hstring pid, int32_t count)
+void ItemManager::SetItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
 {
     FO_STACK_TRACE_ENTRY();
 

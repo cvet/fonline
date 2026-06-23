@@ -785,7 +785,10 @@ namespace LocEntity
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        auto registrator = proto_engine.GetPropertyRegistrator(type_name);
+        REQUIRE(static_cast<bool>(registrator));
+
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
         proto.SetSize(map_size);
         proto.GetProperties().StoreAllData(props_data, str_hashes);
 
@@ -797,11 +800,14 @@ namespace LocEntity
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.WriteStringBytes(type_name.as_str());
         writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WritePtr(props_data.data(), props_data.size());
+        if (!props_data.empty()) {
+            ptr<const uint8_t> props_data_ptr = props_data.data();
+            writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+        }
 
         return protos_data;
     }
@@ -810,7 +816,7 @@ namespace LocEntity
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -829,7 +835,7 @@ namespace LocEntity
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("LocEntityCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("LocEntityItem.fopro-bin-server", item_blob);
@@ -844,10 +850,8 @@ namespace LocEntity
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -861,11 +865,17 @@ namespace LocEntity
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 #define MAKE_LEM_SERVER() \
     auto settings = MakeSettings(); \
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources()); \
+    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -873,7 +883,7 @@ namespace LocEntity
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.get()); \
+    const auto startup_error = WaitForStart(server.as_ptr()); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -1133,11 +1143,8 @@ TEST_CASE("LocationCppApiTests")
         const auto initial_count = server->EntityMngr.GetLocationsCount();
 
         auto loc1 = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        REQUIRE(loc1 != nullptr);
         auto loc2 = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        REQUIRE(loc2 != nullptr);
         auto loc3 = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        REQUIRE(loc3 != nullptr);
 
         CHECK(server->EntityMngr.GetLocationsCount() == initial_count + 3);
         CHECK(loc1->GetId() != loc2->GetId());
@@ -1154,11 +1161,12 @@ TEST_CASE("LocationCppApiTests")
     SECTION("LocationById")
     {
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        REQUIRE(loc != nullptr);
 
         const auto loc_id = loc->GetId();
-        auto found = server->EntityMngr.GetLocation(loc_id);
-        CHECK(found == loc);
+        auto nullable_found_loc = server->EntityMngr.GetLocation(loc_id);
+        REQUIRE(nullable_found_loc);
+        auto found_loc = nullable_found_loc.as_ptr();
+        CHECK(found_loc == loc);
 
         server->MapMngr.DestroyLocation(loc);
     }
@@ -1166,7 +1174,6 @@ TEST_CASE("LocationCppApiTests")
     SECTION("LocationProtoId")
     {
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
-        REQUIRE(loc != nullptr);
 
         CHECK(loc->GetProtoId() == get_func("TestLocation"));
 
@@ -1186,10 +1193,6 @@ TEST_CASE("CritterCppApiAdvanced")
         auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
 
-        REQUIRE(cr1 != nullptr);
-        REQUIRE(cr2 != nullptr);
-        REQUIRE(cr3 != nullptr);
-
         CHECK(server->EntityMngr.GetCrittersCount() >= initial_count + 3);
         CHECK(cr1->GetId() != cr2->GetId());
         CHECK(cr2->GetId() != cr3->GetId());
@@ -1202,7 +1205,6 @@ TEST_CASE("CritterCppApiAdvanced")
     SECTION("CritterConditionCpp")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
         CHECK(cr->IsAlive());
         CHECK_FALSE(cr->IsDead());
@@ -1214,10 +1216,9 @@ TEST_CASE("CritterCppApiAdvanced")
     SECTION("CritterItemsCpp")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
         auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        REQUIRE(item != nullptr);
+        REQUIRE(static_cast<bool>(item));
 
         const auto inv_items = cr->GetInvItems();
         CHECK_FALSE(inv_items.empty());
@@ -1228,11 +1229,12 @@ TEST_CASE("CritterCppApiAdvanced")
     SECTION("CritterById")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
         const auto cr_id = cr->GetId();
-        auto found = server->EntityMngr.GetCritter(cr_id);
-        CHECK(found == cr);
+        auto nullable_found_cr = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(nullable_found_cr);
+        auto found_cr = nullable_found_cr.as_ptr();
+        CHECK(found_cr == cr);
 
         server->CrMngr.DestroyCritter(cr);
     }
@@ -1245,17 +1247,17 @@ TEST_CASE("ItemCppApiAdvanced")
     SECTION("CreateItemOnCritter")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
         const auto initial_item_count = server->EntityMngr.GetItemsCount();
 
         auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 10);
-        REQUIRE(item != nullptr);
+        REQUIRE(static_cast<bool>(item));
         CHECK(server->EntityMngr.GetItemsCount() >= initial_item_count + 1);
 
         const auto item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
-        CHECK(found == item);
+        REQUIRE(found);
+        CHECK(found.as_nptr() == item);
 
         server->CrMngr.DestroyCritter(cr);
     }
@@ -1263,16 +1265,16 @@ TEST_CASE("ItemCppApiAdvanced")
     SECTION("DestroyItemCpp")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
-        auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
-        REQUIRE(item != nullptr);
+        auto nullable_item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
+        REQUIRE(static_cast<bool>(nullable_item));
 
-        const auto item_id = item->GetId();
+        const auto item_id = nullable_item->GetId();
+        auto item = nullable_item.as_ptr();
         server->ItemMngr.DestroyItem(item);
 
         auto gone = server->EntityMngr.GetItem(item_id);
-        CHECK(gone == nullptr);
+        CHECK_FALSE(static_cast<bool>(gone));
 
         server->CrMngr.DestroyCritter(cr);
     }

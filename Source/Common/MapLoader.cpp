@@ -79,29 +79,29 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
 
     // Critters
     for (const auto& pkv : map_data.GetSections("Critter")) {
-        auto& kv = *pkv;
+        ptr<map<string_view, string_view>> kv = pkv;
 
-        const auto proto_it = kv.find("$Proto");
+        const auto proto_it = kv->find("$Proto");
 
-        if (proto_it == kv.end()) {
+        if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto critter invalid data");
             errors++;
             continue;
         }
 
-        const auto id_it = kv.find("$Id");
-        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
+        const auto id_it = kv->find("$Id");
+        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
-        const auto* proto = meta.GetProtoCritter(hashed_proto_name);
+        auto proto = meta.GetProtoCritter(hashed_proto_name);
 
-        if (proto == nullptr) {
+        if (!proto) {
             WriteLog(LogType::Warning, "Proto critter '{}' not found", proto_name);
             errors++;
         }
         else {
             try {
-                cr_load(id, proto, kv);
+                cr_load(id, proto.as_ptr(), kv);
             }
             catch (const std::exception& ex) {
                 WriteLog(LogType::Warning, "Unable to load critter '{}'", proto_name);
@@ -113,29 +113,29 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
 
     // Items
     for (const auto& pkv : map_data.GetSections("Item")) {
-        auto& kv = *pkv;
+        ptr<map<string_view, string_view>> kv = pkv;
 
-        const auto proto_it = kv.find("$Proto");
+        const auto proto_it = kv->find("$Proto");
 
-        if (proto_it == kv.end()) {
+        if (proto_it == kv->end()) {
             WriteLog(LogType::Warning, "Proto item invalid data");
             errors++;
             continue;
         }
 
-        const auto id_it = kv.find("$Id");
-        const auto id = process_id(id_it != kv.end() ? strex(id_it->second).to_int64() : 0);
+        const auto id_it = kv->find("$Id");
+        const auto id = process_id(id_it != kv->end() ? strex(id_it->second).to_int64() : 0);
         const auto& proto_name = proto_it->second;
         const auto hashed_proto_name = hash_resolver.ToHashedString(proto_name);
-        const auto* proto = meta.GetProtoItem(hashed_proto_name);
+        auto proto = meta.GetProtoItem(hashed_proto_name);
 
-        if (proto == nullptr) {
+        if (!proto) {
             WriteLog(LogType::Warning, "Proto item '{}' not found", proto_name);
             errors++;
         }
         else {
             try {
-                item_load(id, proto, kv);
+                item_load(id, proto.as_ptr(), kv);
             }
             catch (const std::exception& ex) {
                 WriteLog(LogType::Warning, "Unable to load item '{}'", proto_name);

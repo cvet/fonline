@@ -170,7 +170,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     cr_hexes.reserve(128);
 
     const auto grid_offset = input.FromHex;
-    const auto grid_at = [&](mpos hex) -> int16_t& { return grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
+    const auto grid_at = [&](mpos hex) -> ptr<int16_t> { return &grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
 
     size_t next_hexes_read = 0;
     size_t gag_hexes_read = 0;
@@ -178,7 +178,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Begin BFS
     auto to_hex = input.ToHex;
-    grid_at(input.FromHex) = 1;
+    *grid_at(input.FromHex) = 1;
     next_hexes.emplace_back(input.FromHex);
 
     while (true) {
@@ -196,7 +196,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 break;
             }
 
-            const auto next_hex_index = numeric_cast<int16_t>(grid_at(cur_hex) + 1);
+            const auto next_hex_index = numeric_cast<int16_t>(*grid_at(cur_hex) + 1);
 
             if (next_hex_index > max_len) {
                 output.Result = FindPathOutput::ResultType::TooFar;
@@ -212,9 +212,9 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
 
                 const auto next_hex = map_size.from_raw_pos(raw_next_hex);
-                auto& grid_cell = grid_at(next_hex);
+                ptr<int16_t> grid_cell = grid_at(next_hex);
 
-                if (grid_cell != 0) {
+                if (*grid_cell != 0) {
                     continue;
                 }
 
@@ -222,18 +222,18 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
                 if (block == HexBlockResult::Passable) {
                     next_hexes.emplace_back(next_hex);
-                    grid_cell = next_hex_index;
+                    *grid_cell = next_hex_index;
                 }
                 else if (block == HexBlockResult::DeferGag) {
-                    grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
+                    *grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
                     gag_hexes.emplace_back(next_hex);
                 }
                 else if (block == HexBlockResult::DeferCritter) {
-                    grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
+                    *grid_cell = numeric_cast<int16_t>(next_hex_index | 0x4000);
                     cr_hexes.emplace_back(next_hex);
                 }
                 else {
-                    grid_cell = -1;
+                    *grid_cell = -1;
                 }
             }
         }
@@ -247,12 +247,12 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
         // Add gag hex after some distance
         if (gag_hexes_read < gag_hexes.size() && next_hexes_read < next_hexes.size()) {
-            const auto last_index = grid_at(next_hexes.back());
+            const auto last_index = *grid_at(next_hexes.back());
             const auto& gag_hex = gag_hexes[gag_hexes_read];
-            const auto gag_index = numeric_cast<int16_t>(grid_at(gag_hex) ^ 0x4000);
+            const auto gag_index = numeric_cast<int16_t>(*grid_at(gag_hex) ^ 0x4000);
 
             if (gag_index + 10 < last_index) {
-                grid_at(gag_hex) = gag_index;
+                *grid_at(gag_hex) = gag_index;
                 next_hexes.emplace_back(gag_hex);
                 gag_hexes_read++;
             }
@@ -262,13 +262,13 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         if (next_hexes_read >= next_hexes.size()) {
             if (gag_hexes_read < gag_hexes.size()) {
                 auto& gag_hex = gag_hexes[gag_hexes_read];
-                grid_at(gag_hex) ^= 0x4000;
+                *grid_at(gag_hex) ^= 0x4000;
                 next_hexes.emplace_back(gag_hex);
                 gag_hexes_read++;
             }
             else if (cr_hexes_read < cr_hexes.size()) {
                 auto& cr_hex = cr_hexes[cr_hexes_read];
-                grid_at(cr_hex) ^= 0x4000;
+                *grid_at(cr_hex) ^= 0x4000;
                 next_hexes.emplace_back(cr_hex);
                 cr_hexes_read++;
             }
@@ -282,7 +282,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     // Reconstruct path (backtrack from target to source using angle-based direction selection)
     vector<mdir> raw_steps;
-    auto hex_index = grid_at(to_hex);
+    auto hex_index = *grid_at(to_hex);
     auto cur_hex = to_hex;
     raw_steps.resize(hex_index - 1);
     float32_t base_angle = GeometryHelper::GetDirAngle(to_hex, input.FromHex);
@@ -302,7 +302,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
             const auto step_hex = map_size.from_raw_pos(step_raw_hex);
 
-            if (grid_at(step_hex) != hex_index) {
+            if (*grid_at(step_hex) != hex_index) {
                 return;
             }
 
@@ -370,7 +370,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                         break;
                     }
 
-                    if (grid_at(next_hex) <= 0) {
+                    if (*grid_at(next_hex) <= 0) {
                         failed = true;
                         break;
                     }

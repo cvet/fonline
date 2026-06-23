@@ -41,6 +41,11 @@
 
 FO_BEGIN_NAMESPACE
 
+struct SoundOggStreamState
+{
+    unique_del_ptr<OggVorbis_File> Stream;
+};
+
 struct SoundManager::Sound
 {
     vector<uint8_t> BaseBuf {};
@@ -53,7 +58,20 @@ struct SoundManager::Sound
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
-    unique_del_ptr<OggVorbis_File> OggStream {};
+    optional<SoundOggStreamState> OggStream {};
+};
+
+struct OggFileContext
+{
+    explicit OggFileContext(File&& file) :
+        Holder {std::move(file)},
+        Reader {Holder.GetReader()}
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+
+    File Holder;
+    FileReader Reader;
 };
 
 static constexpr auto MakeUInt(uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t
@@ -61,10 +79,105 @@ static constexpr auto MakeUInt(uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileSystem& resources, IAppAudio& audio) :
-    _settings {&settings},
-    _resources {&resources},
-    _audio {&audio}
+static void CleanupOggVorbisFile(ptr<OggVorbis_File> vf) FO_DEFERRED
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto owned_vf = adopt_unique_ptr(vf);
+    ov_clear(owned_vf.get());
+}
+
+static auto MakeOggVorbisFileHolder(ptr<OggVorbis_File> vf) -> unique_del_ptr<OggVorbis_File>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return make_unique_del_ptr(vf, CleanupOggVorbisFile);
+}
+
+static void CleanupOggFileContext(ptr<OggFileContext> file_context) FO_DEFERRED
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto owned_file_context = adopt_unique_ptr(file_context);
+    ignore_unused(owned_file_context);
+}
+
+static auto SoundBytesAsSamples16(span<uint8_t> data) noexcept -> ptr<uint16_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!data.empty(), "Sound data is empty");
+    FO_STRONG_ASSERT(data.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
+
+    ptr<uint8_t> bytes = data.data();
+    return bytes.reinterpret_as<uint16_t>();
+}
+
+static auto SoundSpanBytes(span<uint8_t> data) noexcept -> ptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!data.empty(), "Sound data is empty");
+
+    return data.data();
+}
+
+static auto SoundSpanBytesAt(span<uint8_t> data, size_t pos) noexcept -> ptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(pos < data.size(), "Sound data position out of range");
+
+    auto data_begin = SoundSpanBytes(data);
+    return data_begin.get() + pos;
+}
+
+static auto SoundBytesAsCharsAt(span<uint8_t> data, size_t pos) noexcept -> ptr<char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto bytes = SoundSpanBytesAt(data, pos);
+    return bytes.reinterpret_as<char>();
+}
+
+static auto SoundVectorBytesAt(const vector<uint8_t>& data, size_t pos) noexcept -> ptr<const uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(pos < data.size(), "Sound data position out of range");
+
+    ptr<const uint8_t> data_begin = data.data();
+    return data_begin.get() + pos;
+}
+
+static auto SoundVectorSpan(vector<uint8_t>& data, size_t size) noexcept -> span<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (size == 0) {
+        return {};
+    }
+
+    FO_STRONG_ASSERT(size <= data.size(), "Requested span exceeds sound data size");
+
+    ptr<uint8_t> data_ptr = data.data();
+    return {data_ptr.get(), size};
+}
+
+template<typename T>
+static auto SoundObjectBytes(T& object) noexcept -> span<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<T> object_ptr = &object;
+    ptr<uint8_t> bytes = object_ptr.reinterpret_as<uint8_t>();
+    return {bytes.get(), sizeof(T)};
+}
+
+SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
+    _settings {settings},
+    _resources {resources},
+    _audio {audio}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -112,11 +225,12 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
     }
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
-        auto& sound = *it;
+        auto sound = it->as_ptr();
+        span<uint8_t> mix_buffer = SoundVectorSpan(_outputBuf, output.size());
 
-        if (ProcessSound(sound.get(), silence, {_outputBuf.data(), output.size()})) {
+        if (ProcessSound(sound, silence, mix_buffer)) {
             const auto volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
-            _audio->MixAudio(output.data(), _outputBuf.data(), output.size(), numeric_cast<int32_t>(volume));
+            _audio->MixAudio(output, mix_buffer, numeric_cast<int32_t>(volume));
             ++it;
         }
         else {
@@ -125,7 +239,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
     }
 }
 
-auto SoundManager::ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> output) -> bool
+auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -134,7 +248,9 @@ auto SoundManager::ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> out
         if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            MemCopy(output.data(), &sound->ConvertedBuf[sound->ConvertedBufCur], offset);
+            auto target = SoundSpanBytesAt(output, 0);
+            auto source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+            MemCopy(target.get(), source.get(), offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -145,19 +261,26 @@ auto SoundManager::ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> out
                     write = output.size() - offset;
                 }
 
-                MemCopy(output.data() + offset, &sound->ConvertedBuf[sound->ConvertedBufCur], write);
+                auto stream_target = SoundSpanBytesAt(output, offset);
+                auto stream_source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+                MemCopy(stream_target.get(), stream_source.get(), write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
 
             // Cut off end
             if (offset < output.size()) {
-                MemFill(output.data() + offset, silence, output.size() - offset);
+                auto silence_target = SoundSpanBytesAt(output, offset);
+                MemFill(silence_target.get(), silence, output.size() - offset);
             }
         }
         else {
             // Copy
-            MemCopy(output.data(), &sound->ConvertedBuf[sound->ConvertedBufCur], output.size());
+            if (!output.empty()) {
+                auto target = SoundSpanBytesAt(output, 0);
+                auto source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+                MemCopy(target.get(), source.get(), output.size());
+            }
             sound->ConvertedBufCur += output.size();
         }
 
@@ -180,7 +303,8 @@ auto SoundManager::ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> out
             sound->ConvertedBufCur = 0;
 
             if (sound->OggStream) {
-                ov_raw_seek(sound->OggStream.get(), 0);
+                auto ogg_stream = sound->OggStream->Stream.as_ptr();
+                ov_raw_seek(ogg_stream.get(), 0);
             }
 
             // Drop timer
@@ -191,12 +315,18 @@ auto SoundManager::ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> out
         }
 
         // Give silent
-        MemFill(output.data(), silence, output.size());
+        if (!output.empty()) {
+            auto silence_target = SoundSpanBytesAt(output, 0);
+            MemFill(silence_target.get(), silence, output.size());
+        }
         return true;
     }
 
     // Give silent
-    MemFill(output.data(), silence, output.size());
+    if (!output.empty()) {
+        auto silence_target = SoundSpanBytesAt(output, 0);
+        MemFill(silence_target.get(), silence, output.size());
+    }
 
     return false;
 }
@@ -214,15 +344,15 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
         fixed_fname += "." + ext;
     }
 
-    auto sound = SafeAlloc::MakeUnique<Sound>();
+    unique_ptr<Sound> sound = SafeAlloc::MakeUnique<Sound>();
 
-    if (ext == "wav" && !LoadWav(sound.get(), fixed_fname)) {
+    if (ext == "wav" && !LoadWav(sound.as_ptr(), fixed_fname)) {
         return false;
     }
-    if (ext == "acm" && !LoadAcm(sound.get(), fixed_fname, is_music)) {
+    if (ext == "acm" && !LoadAcm(sound.as_ptr(), fixed_fname, is_music)) {
         return false;
     }
-    if (ext == "ogg" && !LoadOgg(sound.get(), fixed_fname)) {
+    if (ext == "ogg" && !LoadOgg(sound.as_ptr(), fixed_fname)) {
         return false;
     }
 
@@ -236,7 +366,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
     return true;
 }
 
-auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
+auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -289,14 +419,22 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         uint16_t CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
-    reader.CopyData(&waveformatex, 16);
+    constexpr size_t wave_format_base_size = 16;
+
+    if (dw_buf < wave_format_base_size) {
+        WriteLog("Unknown format");
+        return false;
+    }
+
+    span<uint8_t> wave_format_bytes = SoundObjectBytes(waveformatex).first(wave_format_base_size);
+    reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
         WriteLog("Compressed files not supported");
         return false;
     }
 
-    reader.GoForward(dw_buf - 16);
+    reader.GoForward(numeric_cast<size_t>(dw_buf) - wave_format_base_size);
 
     dw_buf = reader.GetLEUInt32();
 
@@ -332,12 +470,13 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     // Convert
-    reader.CopyData(sound->BaseBuf.data(), sound->BaseBufLen);
+    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBufLen);
+    reader.ReadBytes(base_buf);
 
     return ConvertData(sound);
 }
 
-auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool
+auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -347,10 +486,14 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
         return false;
     }
 
+    vector<uint8_t> acm_data = file.GetData();
+
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(const_cast<uint8_t*>(file.GetBuf()), numeric_cast<int32_t>(file.GetSize()), channels, freq, samples);
+    nptr<uint8_t> acm_data_ptr = acm_data.data();
+    FO_VERIFY_AND_THROW(acm_data.empty() || !!acm_data_ptr, "Non-empty ACM data has a null pointer");
+    unique_ptr<CACMUnpacker> acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -359,8 +502,9 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    auto* buf = reinterpret_cast<uint16_t*>(sound->BaseBuf.data());
-    const auto dec_data = acm->readAndDecompress(buf, buf_size);
+    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
+    auto buf = SoundBytesAsSamples16(base_buf);
+    const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");
@@ -370,7 +514,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     return ConvertData(sound);
 }
 
-auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
+auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -380,32 +524,27 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    struct OggFileContext
-    {
-        explicit OggFileContext(File&& file) :
-            Holder {std::move(file)},
-            Reader {Holder.GetReader()}
-        {
-        }
-        File Holder;
-        FileReader Reader;
-    };
-
     ov_callbacks callbacks;
 
-    callbacks.read_func = [](void* ptr, size_t size, size_t count, void* datasource) -> size_t {
-        auto* file_context = cast_from_void<OggFileContext*>(datasource);
-        const auto bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
+    callbacks.read_func = [](void* output_buf, size_t size, size_t count, void* datasource) -> size_t {
+        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
+        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
+        auto file_context = nullable_file_context.as_ptr();
+        const size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
-            file_context->Reader.CopyData(ptr, bytes_read);
+            nptr<void> output = output_buf;
+            FO_VERIFY_AND_THROW(output, "Ogg read output buffer is null");
+            file_context->Reader.CopyData(output, bytes_read);
         }
 
         return bytes_read;
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32_t whence) -> int32_t {
-        auto* file_context = cast_from_void<OggFileContext*>(datasource);
+        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
+        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
+        auto file_context = nullable_file_context.as_ptr();
 
         switch (whence) {
         case SEEK_SET:
@@ -430,23 +569,29 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     };
 
     callbacks.close_func = [](void* datasource) -> int32_t {
-        const auto* file_context = cast_from_void<OggFileContext*>(datasource);
-        delete file_context;
+        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
+        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
+        auto file_context = nullable_file_context.as_ptr();
+        CleanupOggFileContext(file_context);
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        const auto* file_context = cast_from_void<OggFileContext*>(datasource);
+        nptr<const OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
+        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
+        auto file_context = nullable_file_context.as_ptr();
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    sound->OggStream = unique_del_ptr<OggVorbis_File>(SafeAlloc::MakeRaw<OggVorbis_File>(), [](auto* vf) FO_DEFERRED {
-        ov_clear(vf);
-        delete vf;
-    });
+    unique_ptr<OggVorbis_File> ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
+    ptr<OggVorbis_File> released_ogg_stream = std::move(ogg_stream_owner).release();
+    sound->OggStream.emplace(SoundOggStreamState {MakeOggVorbisFileHolder(released_ogg_stream)});
+    auto ogg_stream = sound->OggStream->Stream.as_ptr();
 
-    auto file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
-    const auto error = ov_open_callbacks(cast_to_void(file_context.release()), sound->OggStream.get(), nullptr, 0, callbacks);
+    unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
+    auto file_context_ptr = file_context.as_ptr();
+    ptr<void> file_context_userdata = cast_to_void(file_context_ptr.get());
+    const auto error = ov_open_callbacks(file_context_userdata.get(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);
@@ -473,8 +618,11 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    const auto* vi = ov_info(sound->OggStream.get(), -1);
-    FO_VERIFY_AND_THROW(vi != nullptr, "Missing required vi");
+    ptr<OggFileContext> released_file_context = std::move(file_context).release();
+    ignore_unused(released_file_context);
+
+    nptr<const vorbis_info> vi = ov_info(ogg_stream.get(), -1);
+    FO_VERIFY_AND_THROW(vi, "Vorbis info is null");
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;
@@ -484,10 +632,12 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     int32_t result;
     int32_t decoded = 0;
+    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
 
     while (true) {
-        auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
-        result = numeric_cast<int32_t>(ov_read(sound->OggStream.get(), buf + decoded, numeric_cast<int32_t>(_streamingPortion - decoded), 0, 2, 1, nullptr));
+        auto output = SoundBytesAsCharsAt(base_buf, numeric_cast<size_t>(decoded));
+        const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        result = numeric_cast<int32_t>(ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr));
 
         if (result <= 0) {
             break;
@@ -508,22 +658,26 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     // No need streaming
     if (result == 0) {
-        sound->OggStream = nullptr;
+        sound->OggStream.reset();
     }
 
     return ConvertData(sound);
 }
 
-auto SoundManager::StreamOgg(Sound* sound) -> bool
+auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(sound->OggStream, "Sound has no Ogg stream to read");
+    auto ogg_stream = sound->OggStream->Stream.as_ptr();
     long result;
     int32_t decoded = 0;
+    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
 
     while (true) {
-        auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);
-        result = ov_read(sound->OggStream.get(), buf, numeric_cast<int32_t>(_streamingPortion - decoded), 0, 2, 1, nullptr);
+        auto output = SoundBytesAsCharsAt(base_buf, numeric_cast<size_t>(decoded));
+        const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
+        result = ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr);
 
         if (result <= 0) {
             break;
@@ -545,7 +699,7 @@ auto SoundManager::StreamOgg(Sound* sound) -> bool
     return ConvertData(sound);
 }
 
-auto SoundManager::ConvertData(Sound* sound) -> bool
+auto SoundManager::ConvertData(ptr<Sound> sound) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -79,21 +79,21 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        auto* ptr = ::operator new(sizeof(T) * count, std::nothrow);
+        nptr<void> ptr = ::operator new(sizeof(T) * count, std::nothrow);
 
-        if (ptr == nullptr) {
+        if (!ptr) {
             ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, count * sizeof(T));
 
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+            while (!ptr && FreeBackupMemoryChunk()) {
                 ptr = ::operator new(sizeof(T) * count, std::nothrow);
             }
 
-            if (ptr == nullptr) {
+            if (!ptr) {
                 ReportAndExit("Failed to allocate from backup pool");
             }
         }
 
-        return static_cast<T*>(ptr);
+        return cast_from_void<T*>(ptr.get());
     }
 
     // ReSharper disable once CppInconsistentNaming
@@ -113,21 +113,21 @@ public:
         requires(!refcountable<T>)
     static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
     {
-        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+        nptr<T> ptr = new (std::nothrow) T(std::forward<Args>(args)...);
 
-        if (ptr == nullptr) {
+        if (!ptr) {
             ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
 
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+            while (!ptr && FreeBackupMemoryChunk()) {
                 ptr = new (std::nothrow) T(std::forward<Args>(args)...);
             }
 
-            if (ptr == nullptr) {
+            if (!ptr) {
                 ReportAndExit("Failed to allocate raw from backup pool");
             }
         }
 
-        return ptr;
+        return ptr.get_no_const();
     }
 
     template<typename T, typename... Args>
@@ -141,21 +141,21 @@ public:
         requires(refcountable<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        auto* ptr = new (std::nothrow) T(std::forward<Args>(args)...);
+        nptr<T> ptr = new (std::nothrow) T(std::forward<Args>(args)...);
 
-        if (ptr == nullptr) {
+        if (!ptr) {
             ReportBadAlloc("Make ref counted failed", typeid(T).name(), 1, sizeof(T));
 
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+            while (!ptr && FreeBackupMemoryChunk()) {
                 ptr = new (std::nothrow) T(std::forward<Args>(args)...);
             }
 
-            if (ptr == nullptr) {
+            if (!ptr) {
                 ReportAndExit("Failed to allocate ref counted from backup pool");
             }
         }
 
-        return refcount_ptr<T>(refcount_ptr<T>::adopt, ptr);
+        return refcount_ptr<T>::from_adopted_ref(ptr.get());
     }
 
     template<typename T, typename... Args>
@@ -192,21 +192,21 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        auto* ptr = new (std::nothrow) T[count]();
+        nptr<T> ptr = new (std::nothrow) T[count]();
 
-        if (ptr == nullptr) {
+        if (!ptr) {
             ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));
 
-            while (ptr == nullptr && FreeBackupMemoryChunk()) {
+            while (!ptr && FreeBackupMemoryChunk()) {
                 ptr = new (std::nothrow) T[count]();
             }
 
-            if (ptr == nullptr) {
+            if (!ptr) {
                 ReportAndExit("Failed to allocate from backup pool");
             }
         }
 
-        return ptr;
+        return ptr.get_no_const();
     }
 
     template<typename T>

@@ -24,23 +24,25 @@ TEST_CASE("MemorySystem")
 
     SECTION("MemCallocAndReallocPreservePrefix")
     {
-        auto* ptr = static_cast<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
-        REQUIRE(ptr != nullptr);
-        CHECK(ptr[0] == 0);
-        CHECK(ptr[1] == 0);
-        CHECK(ptr[2] == 0);
+        nptr<uint32_t> nullable_allocated = cast_from_void<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
+        REQUIRE(nullable_allocated);
+        auto allocated = nullable_allocated.as_ptr();
+        CHECK(allocated[0] == 0);
+        CHECK(allocated[1] == 0);
+        CHECK(allocated[2] == 0);
 
-        ptr[0] = 11;
-        ptr[1] = 22;
-        ptr[2] = 33;
+        allocated[0] = 11;
+        allocated[1] = 22;
+        allocated[2] = 33;
 
-        auto* grown = static_cast<uint32_t*>(MemRealloc(ptr, sizeof(uint32_t) * 5));
-        REQUIRE(grown != nullptr);
+        nptr<uint32_t> nullable_grown = cast_from_void<uint32_t*>(MemRealloc(allocated.get(), sizeof(uint32_t) * 5));
+        REQUIRE(nullable_grown);
+        auto grown = nullable_grown.as_ptr();
         CHECK(grown[0] == 11);
         CHECK(grown[1] == 22);
         CHECK(grown[2] == 33);
 
-        MemFree(grown);
+        MemFree(grown.get());
     }
 
     SECTION("SafeAllocConstructsObjectsAndZeroInitializedArrays")
@@ -55,15 +57,14 @@ TEST_CASE("MemorySystem")
             int32_t Value {};
         };
 
-        const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
-        REQUIRE(unique_value);
+        const unique_ptr<TestValue> unique_value = SafeAlloc::MakeUnique<TestValue>(123);
         CHECK(unique_value->Value == 123);
 
-        const auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
+        const shared_ptr<TestValue> shared_value = SafeAlloc::MakeShared<TestValue>(321);
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
+        const unique_arr_ptr<uint32_t> zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);
@@ -75,28 +76,27 @@ TEST_CASE("MemorySystem")
     {
         struct TestRefCounted final : RefCounted<TestRefCounted>
         {
-            TestRefCounted(int32_t value_, int32_t* destroyed_) noexcept :
+            TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
                 Value {value_},
-                Destroyed {destroyed_}
+                Destroyed {destroyed}
             {
             }
 
             ~TestRefCounted() { ++*Destroyed; }
 
             int32_t Value {};
-            int32_t* Destroyed {};
+            ptr<int32_t> Destroyed;
         };
 
         int32_t destroyed = 0;
+        ptr<int32_t> destroyed_ptr = &destroyed;
 
         {
-            auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);
-            REQUIRE(ptr);
+            refcount_ptr<TestRefCounted> ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, destroyed_ptr);
             CHECK(ptr->Value == 42);
 
             {
                 auto copy = ptr;
-                REQUIRE(copy);
                 CHECK(copy->Value == 42);
             }
 

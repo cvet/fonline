@@ -48,7 +48,7 @@ class EditorView
     friend class FOEditor;
 
 public:
-    EditorView(string_view view_name, FOEditor& editor);
+    EditorView(string_view view_name, ptr<FOEditor> editor);
     EditorView(const EditorView&) = delete;
     EditorView(EditorView&&) noexcept = default;
     auto operator=(const EditorView&) = delete;
@@ -67,7 +67,7 @@ protected:
     virtual void OnDraw() { }
 
     string _viewName;
-    raw_ptr<FOEditor> _editor;
+    ptr<FOEditor> _editor;
 
 private:
     bool _bringToFront {};
@@ -77,7 +77,7 @@ private:
 class EditorAssetView : public EditorView
 {
 public:
-    EditorAssetView(string_view view_name, FOEditor& data, string_view asset_path);
+    EditorAssetView(string_view view_name, ptr<FOEditor> editor, string_view asset_path);
     EditorAssetView(const EditorAssetView&) = delete;
     EditorAssetView(EditorAssetView&&) noexcept = default;
     auto operator=(const EditorAssetView&) = delete;
@@ -97,19 +97,19 @@ protected:
 class FOEditor final
 {
 public:
-    explicit FOEditor(GlobalSettings& settings);
+    explicit FOEditor(ptr<GlobalSettings> settings);
 
     FOEditor(const FOEditor&) = delete;
     FOEditor(FOEditor&&) noexcept = delete;
     auto operator=(const FOEditor&) = delete;
     auto operator=(FOEditor&&) noexcept = delete;
 
-    [[nodiscard]] auto GetAssetViews() -> vector<EditorAssetView*>;
+    [[nodiscard]] auto GetAssetViews() -> vector<ptr<EditorAssetView>>;
 
     void OpenAsset(string_view path);
     void MainLoop();
 
-    GlobalSettings& Settings;
+    ptr<GlobalSettings> Settings;
     FileSystem RawResources {};
     FileSystem BakedResources {};
 

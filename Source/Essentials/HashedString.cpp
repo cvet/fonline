@@ -41,6 +41,22 @@ HashStorage::HashStorage(HashFunc hash_func) :
     _hashFunc {hash_func}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_hashFunc, "Hash function is null");
+}
+
+auto HashStorage::DefaultHash(nptr<const void> nullable_data, size_t len) noexcept -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (len == 0) {
+        return hashing_ex::hash(nullptr, 0);
+    }
+
+    FO_STRONG_ASSERT(nullable_data, "Data pointer is null for non-zero length");
+
+    auto bytes = nullable_data.as_ptr();
+    return hashing_ex::hash(bytes.get(), len);
 }
 
 auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
@@ -91,7 +107,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     {
         // Add new entry
-        auto entry = SafeAlloc::MakeUnique<hstring::entry>();
+        unique_ptr<hstring::entry> entry = SafeAlloc::MakeUnique<hstring::entry>();
         entry->Hash = hash_value;
         entry->Str = string(s);
 
@@ -127,7 +143,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
+auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -147,7 +163,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
 
     BreakIntoDebugger();
 
-    if (failed != nullptr) {
+    if (failed) {
         *failed = true;
     }
 

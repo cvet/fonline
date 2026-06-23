@@ -39,13 +39,26 @@ FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
 
-FontManager::FontManager(SpriteManager& spr_mngr) :
-    _sprMngr {&spr_mngr}
+static auto FontManagerCStringAt(const string& str, size_t offset) noexcept -> ptr<const char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(offset <= str.size(), "String offset is past the end of the string");
+
+    nptr<const char> nullable_cstr = str.c_str();
+    FO_STRONG_ASSERT(nullable_cstr, "String buffer pointer is null");
+
+    auto cstr = nullable_cstr.as_ptr();
+    return cstr.get() + offset;
+}
+
+FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
+    _sprMngr {spr_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto FontManager::GetFont(FontType font) -> FontData*
+auto FontManager::GetFont(FontType font) -> ptr<FontData>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -59,10 +72,10 @@ auto FontManager::GetFont(FontType font) -> FontData*
         throw FontManagerException("Font not loaded", static_cast<int32_t>(font));
     }
 
-    return _allFonts[static_cast<size_t>(font)].get();
+    return &*_allFonts[static_cast<size_t>(font)];
 }
 
-auto FontManager::GetFont(FontType font) const -> const FontData*
+auto FontManager::GetFont(FontType font) const -> ptr<const FontData>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -76,7 +89,7 @@ auto FontManager::GetFont(FontType font) const -> const FontData*
         throw FontManagerException("Font not loaded", static_cast<int32_t>(font));
     }
 
-    return _allFonts[static_cast<size_t>(font)].get();
+    return &*_allFonts[static_cast<size_t>(font)];
 }
 
 void FontManager::ClearFonts()
@@ -87,11 +100,26 @@ void FontManager::ClearFonts()
     _formatCache.clear();
 }
 
-void FontManager::SetFontEffect(FontType font, RenderEffect* effect)
+void FontManager::SetFontEffect(FontType font, nptr<RenderEffect> effect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    GetFont(font)->DrawEffect = effect != nullptr ? effect : _sprMngr->_effectMngr->Effects.Font;
+    GetFont(font)->DrawEffect = effect ? effect : _sprMngr->_effectMngr->Effects.Font;
+}
+
+void FontManager::StoreFont(int32_t index, FontData&& font_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _formatCache.clear();
+
+    if (index >= numeric_cast<int32_t>(_allFonts.size())) {
+        _allFonts.resize(index + 1);
+    }
+
+    _allFonts[index].emplace(std::move(font_data));
+    BuildFont(index);
+    _formatCache.clear();
 }
 
 void FontManager::FrameUpdate()
@@ -114,17 +142,17 @@ void FontManager::BuildFont(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& font = *_allFonts[index];
+    ptr<FontData> font = &*_allFonts[index];
 
     // Fix texture coordinates
-    auto* atlas_spr = font.ImageNormal.get();
+    auto atlas_spr = font->ImageNormal.as_ptr();
     auto tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
     auto tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
     auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
     auto image_y = tex_h * atlas_spr->GetAtlasRect().y;
     auto max_h = 0;
 
-    for (auto& letter : font.Letters | std::views::values) {
+    for (auto& letter : font->Letters | std::views::values) {
         const auto x = numeric_cast<float32_t>(letter.Pos.x);
         const auto y = numeric_cast<float32_t>(letter.Pos.y);
         const auto w = numeric_cast<float32_t>(letter.Size.width);
@@ -139,70 +167,74 @@ void FontManager::BuildFont(int32_t index)
     }
 
     // Fill data
-    font.FontTex = atlas_spr->GetAtlas()->GetTexture();
+    font->FontTex = atlas_spr->GetAtlas()->GetTexture();
 
-    if (font.LineHeight == 0) {
-        font.LineHeight = max_h;
+    if (font->LineHeight == 0) {
+        font->LineHeight = max_h;
     }
-    if (font.Letters.count(numeric_cast<uint32_t>(' ')) != 0) {
-        font.SpaceWidth = font.Letters[numeric_cast<uint32_t>(' ')].XAdvance;
+    if (font->Letters.count(numeric_cast<uint32_t>(' ')) != 0) {
+        font->SpaceWidth = font->Letters[numeric_cast<uint32_t>(' ')].XAdvance;
     }
 
-    auto* si_bordered = dynamic_cast<AtlasSprite*>(font.ImageBordered ? font.ImageBordered.get() : nullptr);
-    font.FontTexBordered = si_bordered != nullptr ? si_bordered->GetAtlas()->GetTexture() : nullptr;
+    auto si_bordered = font->ImageBordered.as_nptr();
+    font->FontTexBordered = nullptr;
+
+    if (si_bordered) {
+        font->FontTexBordered = si_bordered->GetAtlas()->GetTexture();
+    }
 
     const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
     const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
-    const auto bordered_ox = si_bordered != nullptr ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
-    const auto bordered_oy = si_bordered != nullptr ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
+    const auto bordered_ox = si_bordered ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
+    const auto bordered_oy = si_bordered ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ucolor& { return tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return &tex_data[y * width + x]; };
     vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
     vector<ucolor> data_bordered;
 
-    if (si_bordered != nullptr) {
+    if (si_bordered) {
         data_bordered = si_bordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize());
     }
 
     // Normalize color to gray
-    if (font.MakeGray) {
+    if (font->MakeGray) {
         for (auto y = 0; y < atlas_spr->GetSize().height; y++) {
             for (auto x = 0; x < atlas_spr->GetSize().width; x++) {
-                const auto a = pixel_at(data_normal, atlas_spr->GetSize().width, x, y).comp.a;
+                const auto a = pixel_at(data_normal, atlas_spr->GetSize().width, x, y)->comp.a;
 
                 if (a != 0) {
-                    pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {128, 128, 128, a};
+                    *pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {128, 128, 128, a};
 
-                    if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {128, 128, 128, a};
+                    if (si_bordered) {
+                        *pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
-                    pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
+                    *pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
 
-                    if (si_bordered != nullptr) {
-                        pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
+                    if (si_bordered) {
+                        *pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
         }
 
-        atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize(), data_normal.data());
+        atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize(), data_normal);
     }
 
     // Fill border
-    if (si_bordered != nullptr) {
+    if (si_bordered) {
         for (auto y = 1; y < si_bordered->GetSize().height - 2; y++) {
             for (auto x = 1; x < si_bordered->GetSize().width - 2; x++) {
-                if (pixel_at(data_normal, atlas_spr->GetSize().width, x, y) != ucolor::clear) {
+                if (*pixel_at(data_normal, atlas_spr->GetSize().width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
 
-                            if (pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) == ucolor::clear) {
-                                pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
+                            if (*pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) == ucolor::clear) {
+                                *pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -210,7 +242,7 @@ void FontManager::BuildFont(int32_t index)
             }
         }
 
-        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize(), data_bordered.data());
+        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize(), data_bordered);
 
         // Fix texture coordinates on bordered texture
         tex_w = numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width);
@@ -218,7 +250,7 @@ void FontManager::BuildFont(int32_t index)
         image_x = tex_w * si_bordered->GetAtlasRect().x;
         image_y = tex_h * si_bordered->GetAtlasRect().y;
 
-        for (auto& letter : font.Letters | std::views::values) {
+        for (auto& letter : font->Letters | std::views::values) {
             const auto x = numeric_cast<float32_t>(letter.Pos.x);
             const auto y = numeric_cast<float32_t>(letter.Pos.y);
             const auto w = numeric_cast<float32_t>(letter.Size.width);
@@ -236,7 +268,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     FO_STACK_TRACE_ENTRY();
 
     const auto index = static_cast<int32_t>(font);
-    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
 
     // Skip if loaded
     if (skip_if_loaded && index < numeric_cast<int32_t>(_allFonts.size()) && _allFonts[index]) {
@@ -250,8 +282,8 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
         throw FontManagerException("Font file not found", font_path);
     }
 
-    auto font_data = SafeAlloc::MakeUnique<FontData>();
-    font_data->DrawEffect = _sprMngr->_effectMngr->Effects.Font;
+    FontData font_data;
+    font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
 
     string image_name;
 
@@ -259,7 +291,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     istringstream str(file.GetStr());
     string key;
     string letter_buf;
-    FontData::Letter* cur_letter = nullptr;
+    nptr<FontData::Letter> cur_letter;
     auto version = -1;
 
     while (!str.eof() && !str.fail()) {
@@ -299,10 +331,10 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             str >> image_name;
         }
         else if (key == "LineHeight") {
-            str >> font_data->LineHeight;
+            str >> font_data.LineHeight;
         }
         else if (key == "YAdvance") {
-            str >> font_data->YAdvance;
+            str >> font_data.YAdvance;
         }
         else if (key == "End") {
             break;
@@ -318,16 +350,17 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             utf8_letter_begin++;
 
             size_t letter_len = letter_buf.length() - utf8_letter_begin;
-            auto letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, letter_len);
+            auto letter_pos = FontManagerCStringAt(letter_buf, utf8_letter_begin);
+            auto letter = utf8::Decode(letter_pos, letter_len);
 
             if (!utf8::IsValid(letter)) {
                 throw FontManagerException("Invalid UTF-8 letter", font_path, letter_buf);
             }
 
-            cur_letter = &font_data->Letters[letter];
+            cur_letter = &font_data.Letters[letter];
         }
 
-        if (cur_letter == nullptr) {
+        if (!cur_letter) {
             continue;
         }
 
@@ -361,15 +394,15 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
         image_name = image_name.substr(0, image_name.size() - 1);
     }
 
-    font_data->MakeGray = make_gray;
+    font_data.MakeGray = make_gray;
 
     // Load image
     {
         image_name = strex(font_path).extract_dir().combine_path(image_name);
 
-        font_data->ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
 
-        if (!font_data->ImageNormal) {
+        if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
         }
 
@@ -378,23 +411,16 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     // Create bordered instance
     if (!not_bordered) {
-        font_data->ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
 
-        if (!font_data->ImageBordered) {
+        if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
         }
 
         _sprMngr->_copyableSpriteCache.erase({_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
-    // Register
-    if (index >= numeric_cast<int32_t>(_allFonts.size())) {
-        _allFonts.resize(index + 1);
-    }
-
-    _allFonts[index] = std::move(font_data);
-    BuildFont(index);
-    _formatCache.clear();
+    StoreFont(index, std::move(font_data));
 }
 
 void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type)
@@ -402,10 +428,10 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
     FO_STACK_TRACE_ENTRY();
 
     const auto index = static_cast<int32_t>(font);
-    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
 
-    auto font_data = SafeAlloc::MakeUnique<FontData>();
-    font_data->DrawEffect = _sprMngr->_effectMngr->Effects.Font;
+    FontData font_data;
+    font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
 
     const auto file = _sprMngr->_resources->ReadFile(font_path);
 
@@ -472,7 +498,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
         reader.GoForward(2);
 
         // Fill data
-        auto& let = font_data->Letters[id];
+        auto& let = font_data.Letters[id];
         let.Pos.x = x + 1;
         let.Pos.y = y + 1;
         let.Size.width = w - 2;
@@ -482,15 +508,15 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
         let.XAdvance = xa + 1;
     }
 
-    font_data->LineHeight = font_data->Letters.count(numeric_cast<uint32_t>('W')) != 0 ? font_data->Letters[numeric_cast<uint32_t>('W')].Size.height : base_height;
-    font_data->YAdvance = font_data->LineHeight / 2;
-    font_data->MakeGray = true;
+    font_data.LineHeight = font_data.Letters.count(numeric_cast<uint32_t>('W')) != 0 ? font_data.Letters[numeric_cast<uint32_t>('W')].Size.height : base_height;
+    font_data.YAdvance = font_data.LineHeight / 2;
+    font_data.MakeGray = true;
 
     // Load image
     {
-        font_data->ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
 
-        if (!font_data->ImageNormal) {
+        if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
         }
 
@@ -499,23 +525,16 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Create bordered instance
     {
-        font_data->ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
 
-        if (!font_data->ImageBordered) {
+        if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
         }
 
         _sprMngr->_copyableSpriteCache.erase({_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type});
     }
 
-    // Register
-    if (index >= numeric_cast<int32_t>(_allFonts.size())) {
-        _allFonts.resize(index + 1);
-    }
-
-    _allFonts[index] = std::move(font_data);
-    BuildFont(index);
-    _formatCache.clear();
+    StoreFont(index, std::move(font_data));
 }
 
 void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
@@ -524,7 +543,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 
     auto& str = fi.Text;
     const auto flags = fi.Format.Flags;
-    const auto* font = fi.CurFont.get();
+    auto font = fi.CurFont.as_ptr();
     const auto r = fi.Rect;
     const auto infinity_w = r.width == 0;
     const auto infinity_h = r.height == 0;
@@ -533,12 +552,13 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     auto& color_offset = fi.ColorOffset;
 
     // Colorize: strip `@color:...@` markers and write parsed colors into TextColor.
-    ucolor* dots = nullptr;
+    nptr<ucolor> dots;
     string buf;
     buf.reserve(str.size());
 
     if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize)) {
-        dots = fi.TextColor.data();
+        nptr<ucolor> text_color_data = fi.TextColor.data();
+        dots = text_color_data;
     }
 
     constexpr int32_t dots_history_len = 10;
@@ -567,7 +587,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             continue;
         }
 
-        if (dots != nullptr) {
+        if (dots) {
             if (reset) {
                 d = (dots_history_cur > 0) ? dots_history[--dots_history_cur] : fi.Color;
             }
@@ -595,8 +615,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     cury = r.y;
 
     for (int32_t i = 0, i_advance = 1; i < numeric_cast<int32_t>(str.size()); i += i_advance) {
-        size_t letter_len = utf8::DecodeStrNtLen(&str[i]);
-        uint32_t letter = utf8::Decode(&str[i], letter_len);
+        ptr<const char> letter_text = &str[numeric_cast<size_t>(i)];
+        size_t letter_len = utf8::DecodeStrNtLen(letter_text.get());
+        uint32_t letter = utf8::Decode(letter_text.get(), letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -847,8 +868,9 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         }
 
-        auto letter_len = utf8::DecodeStrNtLen(&str[i]);
-        auto letter = utf8::Decode(&str[i], letter_len);
+        ptr<const char> letter_text = &str[numeric_cast<size_t>(i)];
+        auto letter_len = utf8::DecodeStrNtLen(letter_text.get());
+        auto letter = utf8::Decode(letter_text.get(), letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -980,17 +1002,19 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
     return true;
 }
 
-auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> const FontFormatInfo*
+auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(static_cast<size_t>(font) < _allFonts.size(), "Text formatting requested a font index outside the loaded font table", font, _allFonts.size(), str.size(), rect);
-    FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Format skip lines is negative");
-    FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
-    FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
+    FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Text format skip-line count must not be negative");
+    FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
+    FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
+
+    nptr<const char> text_data = str.data();
 
     const std::array<uint64_t, 8> key_parts {
-        hashing_ex::hash(str.data(), str.size()),
+        HashStorage::DefaultHash(text_data, str.size()),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),
@@ -1000,19 +1024,21 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    const uint64_t key = hashing_ex::hash(key_parts.data(), key_parts.size() * sizeof(uint64_t));
+    ptr<const uint64_t> key_parts_data = key_parts.data();
+    const uint64_t key = HashStorage::DefaultHash(key_parts_data, key_parts.size() * sizeof(uint64_t));
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;
-        return it->second.get();
+        return it->second.as_ptr();
     }
 
     const auto str_len = str.length();
     const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
     const auto max_lines = std::max<size_t>(str_len + 1, 1);
 
-    auto fi = SafeAlloc::MakeUnique<FontFormatInfo>();
-    fi->CurFont = _allFonts[static_cast<size_t>(font)].get();
+    unique_ptr<FontFormatInfo> fi = SafeAlloc::MakeUnique<FontFormatInfo>();
+    FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
+    fi->CurFont = &*_allFonts[static_cast<size_t>(font)];
     fi->Format = format;
     fi->Rect = irect32 {0, 0, rect.width, rect.height};
     fi->Color = color;
@@ -1024,7 +1050,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
 
     FormatText(*fi, mode);
 
-    auto* fi_ptr = fi.get();
+    auto fi_ptr = fi.as_ptr();
     _formatCache.emplace(key, std::move(fi));
     return fi_ptr;
 }
@@ -1037,9 +1063,9 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
         return;
     }
 
-    const auto* font = GetFont(format.Font);
+    auto font = GetFont(format.Font);
     color = _sprMngr->ApplyColorBrightness(color);
-    const auto* fi = GetOrFormat(format, format.Font, rect, color, FormatMode::Draw, str);
+    auto fi = GetOrFormat(format, format.Font, rect, color, FormatMode::Draw, str);
 
     const auto flags = format.Flags;
     const string& format_str = fi->Text;
@@ -1094,8 +1120,9 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             }
         }
 
-        size_t letter_len = utf8::DecodeStrNtLen(&format_str[i]);
-        uint32_t letter = utf8::Decode(&format_str[i], letter_len);
+        ptr<const char> letter_text = &format_str[numeric_cast<size_t>(i)];
+        size_t letter_len = utf8::DecodeStrNtLen(letter_text.get());
+        uint32_t letter = utf8::Decode(letter_text.get(), letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -1217,13 +1244,13 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
         return 0;
     }
 
-    const auto* font = GetFont(num_font);
+    auto font = GetFont(num_font);
 
     if (str.empty()) {
         return size.height / (font->LineHeight + font->YAdvance);
     }
 
-    const auto* fi = GetOrFormat(TextFormat {}, num_font, irect32 {0, 0, size.width, size.height}, ucolor {}, FormatMode::LineCount, str);
+    auto fi = GetOrFormat(TextFormat {}, num_font, irect32 {0, 0, size.width, size.height}, ucolor {}, FormatMode::LineCount, str);
     return fi->LinesInRect;
 }
 
@@ -1235,7 +1262,7 @@ auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_fon
         return 0;
     }
 
-    const auto* font = GetFont(num_font);
+    auto font = GetFont(num_font);
     const auto lines_count = GetLinesCount(size, str, num_font);
 
     if (lines_count <= 0) {
@@ -1259,14 +1286,14 @@ auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, 
     result_size = {};
     lines = {};
 
-    const auto* font = GetFont(format.Font);
+    auto font = GetFont(format.Font);
 
     if (str.empty()) {
         return true;
     }
 
     const auto rect = irect32 {0, 0, size};
-    const auto* fi = GetOrFormat(format, format.Font, rect, ucolor {}, FormatMode::LineCount, str);
+    auto fi = GetOrFormat(format, format.Font, rect, ucolor {}, FormatMode::LineCount, str);
 
     result_size = {fi->MaxCurX, fi->LinesInRect * font->LineHeight + (fi->LinesInRect - 1) * font->YAdvance};
     lines = fi->LinesInRect;
@@ -1281,7 +1308,7 @@ auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) 
         return {};
     }
 
-    const auto* fi = GetOrFormat(TextFormat {}, num_font, rect, ucolor {}, FormatMode::Split, cstr);
+    auto fi = GetOrFormat(TextFormat {}, num_font, rect, ucolor {}, FormatMode::Split, cstr);
     return fi->Lines;
 }
 

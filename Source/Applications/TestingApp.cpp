@@ -53,7 +53,7 @@ int32_t main(int32_t argc, char** argv)
 
     try {
         IsTestingInProgress = true;
-        InitApp(-1, nullptr);
+        InitAppForTesting();
         const auto result = Catch::Session().run(argc, argv);
         IsTestingInProgress = false;
         return result;

@@ -3869,7 +3869,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		// The `?` is then redundant - the local is widened to nullable for no
 		// reason and any subsequent `if (x == null)` check is dead code.
 		// Catches stale `T?` declarations left behind after an API tightened
-		// its return type from `FO_NULLABLE T*` to `T*`, or after a refactor
+		// its return type from `nptr<T>` to `ptr<T>`, or after a refactor
 		// extracted a previously-nullable expression into a non-nullable one.
 		// This trusts the static nullability of the source much like the deref
 		// (ttDot) and redundant-null-comparison checks do: reading a non-const
@@ -3884,7 +3884,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		//     lookup substitutes its (possibly null) default and yields null on a
 		//     missing key, so its non-null element type does not make the read
 		//     non-null. A genuinely-non-null source must instead spell itself so
-		//     (`cast<T?>`, the `Nullable` property flag, `FO_NULLABLE`, ...).
+		//     (`cast<T?>`, the `Nullable` property flag, `nptr<T>`, ...).
 		const bool rhsIsConstHandleRef = expr->type.dataType.IsObjectHandle() &&
 			expr->type.dataType.IsReference() &&
 			expr->type.dataType.IsReadOnly() &&

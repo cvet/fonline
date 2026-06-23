@@ -66,7 +66,7 @@ TEST_CASE("TextPack")
 
     SECTION("LoadFromStringParsesKeysAndMultilineValues")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
 
         const string input = "{100}{}{Hello}\n{200}{3}{World}\n{300}{}{Line1\nLine2}";
 
@@ -81,7 +81,7 @@ TEST_CASE("TextPack")
 
     SECTION("LoadFromStringSupportsNamedKeysAndOffsets")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
 
         const string input = "{QuestEntry}{}{Base}\n{QuestEntry}{Suffix}{Combined}";
 
@@ -92,7 +92,7 @@ TEST_CASE("TextPack")
 
     SECTION("LoadFromStringParsesStructuredTupleKeys")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
 
         const auto key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
         const string input = "{LaserRifle}{Name}{Scoped energy rifle}";
@@ -104,7 +104,7 @@ TEST_CASE("TextPack")
 
     SECTION("BinaryRoundtripPreservesEntries")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
         const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name");
         const auto dialogs_ten = MakeKey("Dialogs", "10");
         const auto dialogs_twenty = MakeKey("Dialogs", "20");
@@ -116,7 +116,7 @@ TEST_CASE("TextPack")
 
         const auto data = pack.GetBinaryData();
 
-        TextPack restored(TestHashes);
+        TextPack restored(&TestHashes);
         REQUIRE(restored.LoadFromBinaryData(data));
         CHECK(restored.GetSize() == 4);
         CHECK(restored.GetStr(structured_key, 0) == "Laser Rifle");
@@ -130,11 +130,11 @@ TEST_CASE("TextPack")
 
     SECTION("FixStrAddsMissingAndRemovesUnknownKeys")
     {
-        TextPack base_pack(TestHashes);
+        TextPack base_pack(&TestHashes);
         base_pack.AddStr(MakeKey("Dialogs", "1"), string_view {"BaseOne"});
         base_pack.AddStr(MakeKey("Dialogs", "2"), string_view {"BaseTwo"});
 
-        TextPack localized_pack(TestHashes);
+        TextPack localized_pack(&TestHashes);
         localized_pack.AddStr(MakeKey("Dialogs", "2"), string_view {"LocalizedTwo"});
         localized_pack.AddStr(MakeKey("Dialogs", "3"), string_view {"Unexpected"});
 
@@ -148,11 +148,11 @@ TEST_CASE("TextPack")
 
     SECTION("FixStrMatchesStructuredKeysDirectly")
     {
-        TextPack base_pack(TestHashes);
+        TextPack base_pack(&TestHashes);
         base_pack.AddStr(TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name"), string_view {"Laser Rifle"});
         base_pack.AddStr(TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc"), string_view {"Base description"});
 
-        TextPack localized_pack(TestHashes);
+        TextPack localized_pack(&TestHashes);
         localized_pack.AddStr(TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Name"), string_view {"Лазерная винтовка"});
         localized_pack.AddStr(TextPackKey::FromParts(TestHashes, "Items", "Unused", "Desc"), string_view {"Лишнее"});
 
@@ -165,7 +165,7 @@ TEST_CASE("TextPack")
 
     SECTION("LoadFromMapAndClearWorkTogether")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
         const auto structured_key = TextPackKey::FromParts(TestHashes, "Items", "LaserRifle", "Desc");
         const map<string, string> entries {{"7", "Seven"}, {"11", "Eleven"}, {FormatKey(structured_key), "Description"}};
 
@@ -185,11 +185,11 @@ TEST_CASE("TextPack")
 
     SECTION("MergeEraseAndIntersectionTrackSharedKeys")
     {
-        TextPack base_pack(TestHashes);
+        TextPack base_pack(&TestHashes);
         base_pack.AddStr(MakeKey("Dialogs", "1"), string_view {"BaseOne"});
         base_pack.AddStr(MakeKey("Dialogs", "2"), string_view {"BaseTwo"});
 
-        TextPack incoming_pack(TestHashes);
+        TextPack incoming_pack(&TestHashes);
         incoming_pack.AddStr(MakeKey("Dialogs", "2"), string_view {"IncomingTwo"});
         incoming_pack.AddStr(MakeKey("Dialogs", "3"), string_view {"IncomingThree"});
 
@@ -209,14 +209,14 @@ TEST_CASE("TextPack")
         CHECK(base_pack.GetStr(MakeKey("Dialogs", "2")).empty());
         CHECK(base_pack.GetSize() == 2);
 
-        TextPack disjoint_pack(TestHashes);
+        TextPack disjoint_pack(&TestHashes);
         disjoint_pack.AddStr(MakeKey("Dialogs", "99"), string_view {"OnlyHere"});
         CHECK_FALSE(base_pack.CheckIntersections(disjoint_pack));
     }
 
     SECTION("GetStrSkipOutOfRangeReturnsEmptyString")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
         const auto key = MakeKey("Dialogs", "5");
         pack.AddStr(key, string_view {"Alpha"});
         pack.AddStr(key, string_view {"Beta"});
@@ -229,7 +229,7 @@ TEST_CASE("TextPack")
 
     SECTION("MalformedLoadFromStringReportsFailureAfterKeepingValidEntries")
     {
-        TextPack pack(TestHashes);
+        TextPack pack(&TestHashes);
 
         const string input = "{10}{}{Valid}\n{20}{Broken\n{30}{}{StillValid}";
 
@@ -245,18 +245,18 @@ TEST_CASE("TextPack")
         vector<string> bake_languages {"engl", "russ", "germ"};
         vector<pair<string, map<string, TextPack>>> lang_packs;
 
-        TextPack engl_dialogs(TestHashes);
+        TextPack engl_dialogs(&TestHashes);
         engl_dialogs.AddStr(MakeKey("Dialogs", "1"), string_view {"Hello"});
         engl_dialogs.AddStr(MakeKey("Dialogs", "2"), string_view {"World"});
 
-        TextPack engl_items(TestHashes);
+        TextPack engl_items(&TestHashes);
         engl_items.AddStr(MakeKey("Items", "10"), string_view {"Item"});
 
-        TextPack russ_dialogs(TestHashes);
+        TextPack russ_dialogs(&TestHashes);
         russ_dialogs.AddStr(MakeKey("Dialogs", "2"), string_view {"Mir"});
         russ_dialogs.AddStr(MakeKey("Dialogs", "3"), string_view {"Extra"});
 
-        TextPack unsupported_dialogs(TestHashes);
+        TextPack unsupported_dialogs(&TestHashes);
         unsupported_dialogs.AddStr(MakeKey("Dialogs", "1"), string_view {"Hola"});
 
         lang_packs.emplace_back("engl", map<string, TextPack> {});

@@ -35,6 +35,17 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto AnyDataStringViewAt(string_view str, size_t pos) noexcept -> ptr<const char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(pos < str.length(), "String offset is past the end of the string");
+
+    ptr<const char> str_data = str.data();
+    ptr<const char> str_pos = str_data.get() + pos;
+    return str_pos;
+}
+
 static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType value_type) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
@@ -114,7 +125,7 @@ auto AnyData::Value::Copy() const -> Value
     case ValueType::Bool:
         return AsBool();
     case ValueType::String:
-        return AsString();
+        return string(AsString());
     case ValueType::Array:
         return AsArray().Copy();
     case ValueType::Dict:
@@ -247,14 +258,14 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     if (as_dict) {
         Dict dict;
 
-        const char* s = str.c_str();
+        nptr<const char> s = str.c_str();
         string dict_key_entry;
         string dict_value_entry;
 
-        while ((s = ReadToken(s, dict_key_entry)) != nullptr) {
+        while ((s = ReadToken(s, dict_key_entry))) {
             s = ReadToken(s, dict_value_entry);
 
-            if (s == nullptr) {
+            if (!s) {
                 throw AnyDataException("Invalid dict value, missing entry for key", dict_key_entry);
             }
 
@@ -264,10 +275,10 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 Array dict_arr;
 
                 const auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
-                const char* s2 = decoded_dict_value_entry.c_str();
+                nptr<const char> s2 = decoded_dict_value_entry.c_str();
                 string arr_entry;
 
-                while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
+                while ((s2 = ReadToken(s2, arr_entry))) {
                     dict_arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
                 }
 
@@ -293,10 +304,10 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     else if (as_array) {
         Array arr;
 
-        const char* s = str.c_str();
+        nptr<const char> s = str.c_str();
         string arr_entry;
 
-        while ((s = ReadToken(s, arr_entry)) != nullptr) {
+        while ((s = ReadToken(s, arr_entry))) {
             arr.EmplaceBack(ParseValidatedScalarValue(arr_entry, value_type));
         }
 
@@ -307,7 +318,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     }
 }
 
-auto AnyData::ReadToken(const char* str, string& result) -> const char*
+auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -315,15 +326,20 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
         return nullptr;
     }
 
+    const auto decode_char = [str](size_t char_pos, size_t& char_len) {
+        ptr<const char> chars = &str[char_pos];
+        char_len = utf8::DecodeStrNtLen(chars.get());
+        utf8::Decode(chars.get(), char_len);
+    };
+
     size_t pos = 0;
-    size_t length = utf8::DecodeStrNtLen(&str[pos]);
-    utf8::Decode(&str[pos], length);
+    size_t length = 0;
+    decode_char(pos, length);
 
     while (length == 1 && (str[pos] == ' ' || str[pos] == '\t')) {
         pos++;
 
-        length = utf8::DecodeStrNtLen(&str[pos]);
-        utf8::Decode(&str[pos], length);
+        decode_char(pos, length);
     }
 
     if (str[pos] == 0) {
@@ -342,11 +358,10 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos++;
 
                 if (str[pos] == 0) {
-                    throw AnyDataException("Invalid escape sequence in quoted token", string(str));
+                    throw AnyDataException("Invalid escape sequence in quoted token", string(str.get()));
                 }
 
-                length = utf8::DecodeStrNtLen(&str[pos]);
-                utf8::Decode(&str[pos], length);
+                decode_char(pos, length);
 
                 pos += length;
             }
@@ -358,16 +373,15 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos += length;
             }
 
-            length = utf8::DecodeStrNtLen(&str[pos]);
-            utf8::Decode(&str[pos], length);
+            decode_char(pos, length);
         }
 
         if (!quote_closed) {
-            throw AnyDataException("Unterminated quoted token", string(str));
+            throw AnyDataException("Unterminated quoted token", string(str.get()));
         }
 
         if (str[pos + 1] != 0 && str[pos + 1] != ' ' && str[pos + 1] != '\t') {
-            throw AnyDataException("Invalid quoted token delimiter", string(str));
+            throw AnyDataException("Invalid quoted token delimiter", string(str.get()));
         }
     }
     else {
@@ -378,11 +392,10 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos++;
 
                 if (str[pos] == 0) {
-                    throw AnyDataException("Invalid escape sequence in token", string(str));
+                    throw AnyDataException("Invalid escape sequence in token", string(str.get()));
                 }
 
-                length = utf8::DecodeStrNtLen(&str[pos]);
-                utf8::Decode(&str[pos], length);
+                decode_char(pos, length);
 
                 pos += length;
             }
@@ -393,17 +406,20 @@ auto AnyData::ReadToken(const char* str, string& result) -> const char*
                 pos += length;
             }
 
-            length = utf8::DecodeStrNtLen(&str[pos]);
-            utf8::Decode(&str[pos], length);
+            decode_char(pos, length);
         }
     }
 
-    result.assign(&str[begin], pos - begin);
-    return str[pos] != 0 ? &str[pos + 1] : &str[pos];
+    ptr<const char> token_begin = &str[begin];
+    ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
+    result.assign(token_begin.get(), pos - begin);
+    return next_token;
 }
 
 void StringEscaping::AppendCodeString(string& result, string_view str)
 {
+    FO_STACK_TRACE_ENTRY();
+
     const bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
 
     if (protect) {
@@ -411,7 +427,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
     }
 
     for (size_t i = 0; i < str.length();) {
-        const auto* s = str.data() + i;
+        auto s = AnyDataStringViewAt(str, i);
         size_t length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -429,12 +445,12 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
                 result.append("\\\\");
                 break;
             default:
-                result.append(s, 1);
+                result.append(s.get(), 1);
                 break;
             }
         }
         else {
-            result.append(s, length);
+            result.append(s.get(), length);
         }
 
         i += length;
@@ -467,7 +483,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     string result;
     result.reserve(str.length());
 
-    const auto* s = str.data();
+    auto s = AnyDataStringViewAt(str, 0);
     size_t length = str.length();
     utf8::Decode(s, length);
 
@@ -475,7 +491,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = str.data() + i;
+        s = AnyDataStringViewAt(str, i);
         length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -495,7 +511,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 throw AnyDataException("Invalid escape sequence in string", string(str));
             }
 
-            s = str.data() + i;
+            s = AnyDataStringViewAt(str, i);
             length = str.length() - i;
             utf8::Decode(s, length);
 
@@ -513,12 +529,12 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 break;
             default:
                 result.append(1, '\\');
-                result.append(s, length);
+                result.append(s.get(), length);
                 break;
             }
         }
         else {
-            result.append(s, length);
+            result.append(s.get(), length);
         }
 
         i += length;

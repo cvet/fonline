@@ -14,9 +14,9 @@ namespace
     constexpr mpos TEST_UNKNOWN_HEX {0, 0};
     constexpr mpos TEST_FALLBACK_HEX {1, 1};
 
-    static auto MakeMovingContext() -> std::unique_ptr<MovingContext>
+    static auto MakeMovingContext() -> refcount_ptr<MovingContext>
     {
-        return std::make_unique<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
+        return SafeAlloc::MakeRefCounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, TEST_STEPS, TEST_CONTROL_STEPS, nanotime {}, timespan {}, TEST_START_HEX, ipos16 {}, ipos16 {});
     }
 
     static auto MakeTimePoint(int32_t milliseconds) -> nanotime

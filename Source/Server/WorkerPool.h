@@ -79,7 +79,7 @@ public:
 
     static constexpr JobKey ANONYMOUS_JOB {};
 
-    explicit WorkerPool(string_view name, int32_t thread_count, const std::atomic<bool>& shutdown_flag, bool start_paused = false);
+    explicit WorkerPool(string_view name, int32_t thread_count, ptr<const std::atomic<bool>> shutdown_flag, bool start_paused = false);
     WorkerPool(const WorkerPool&) = delete;
     WorkerPool(WorkerPool&&) noexcept = delete;
     auto operator=(const WorkerPool&) = delete;
@@ -117,7 +117,7 @@ private:
     void WorkerEntry(int32_t worker_index) noexcept;
 
     string _name;
-    raw_ptr<const std::atomic<bool>> _shutdownFlag;
+    ptr<const std::atomic<bool>> _shutdownFlag;
     vector<thread> _workers {};
     mutable mutex _mutex {};
     vector<ScheduledJob> _jobs FO_TSA_GUARDED_BY(_mutex) {}; // Sorted ascending by FireTime

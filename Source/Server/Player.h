@@ -60,7 +60,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(ServerEngine* engine, ident_t id, unique_ptr<ServerConnection> connection, const Properties* props = nullptr) noexcept;
+    Player(ptr<ServerEngine> engine, ident_t id, unique_ptr<ServerConnection> connection, nptr<const Properties> props = nullptr) noexcept;
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -68,46 +68,57 @@ public:
     ~Player() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetControlledCritter() noexcept -> Critter* { return _controlledCr.get(); }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> const Critter* { return _controlledCr.get(); }
-    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> ServerEntity* override;
-    [[nodiscard]] auto GetConnection() noexcept -> ServerConnection* { return _connection.get(); }
-    [[nodiscard]] auto GetConnection() const noexcept -> const ServerConnection* { return _connection.get(); }
-    [[nodiscard]] auto GetViewMap() const noexcept -> const ViewMapContext* { return _viewMap.get(); }
-    [[nodiscard]] auto GetViewMapTarget() const noexcept -> const Map* { return _viewMapTarget.get(); }
-    [[nodiscard]] auto GetViewMapTarget() noexcept -> Map* { return _viewMapTarget.get(); }
+    [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter> { return _controlledCr; }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter> { return _controlledCr; }
+    [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
+    [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
+    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _connection.as_ptr();
+    }
+    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _connection.as_ptr();
+    }
+    [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext> { return _viewMap ? nptr<const ViewMapContext> {&*_viewMap} : nullptr; }
+    [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map> { return _viewMapTarget; }
+    [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map> { return _viewMapTarget; }
 
     void SetName(string_view name);
-    void SetControlledCritter(Critter* cr);
+    void SetControlledCritter(nptr<Critter> cr);
     void DetachCritter();
-    void SwapConnection(Player* other) noexcept;
-    void SetIgnoreSendEntityProperty(const Entity* entity, const Property* prop) noexcept;
-    void SetViewMap(Map* map, mpos hex);
+    void SwapConnection(ptr<Player> other) noexcept;
+    void SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept;
+    void SetViewMap(ptr<Map> map, mpos hex);
     void ResetViewMap() noexcept;
 
     void Send_LoginSuccess();
-    void Send_Moving(const Critter* from_cr);
-    void Send_MovingSpeed(const Critter* from_cr);
-    void Send_Dir(const Critter* from_cr);
-    void Send_AddCritter(const Critter* cr);
-    void Send_RemoveCritter(const Critter* cr);
-    void Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMode mode);
-    void Send_LoadMap(const Map* map);
-    void Send_Property(NetProperty type, const Property* prop, const Entity* entity);
-    void Send_AddItemOnMap(const Item* item);
-    void Send_RemoveItemFromMap(const Item* item);
-    void Send_ChosenAddItem(const Item* item);
-    void Send_ChosenRemoveItem(const Item* item);
-    void Send_Teleport(const Critter* cr, mpos to_hex);
+    void Send_Moving(ptr<const Critter> from_cr);
+    void Send_MovingSpeed(ptr<const Critter> from_cr);
+    void Send_Dir(ptr<const Critter> from_cr);
+    void Send_AddCritter(ptr<const Critter> cr);
+    void Send_RemoveCritter(ptr<const Critter> cr);
+    void Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibilityMode mode);
+    void Send_LoadMap(nptr<const Map> map);
+    void Send_Property(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
+    void Send_AddItemOnMap(ptr<const Item> item);
+    void Send_RemoveItemFromMap(ptr<const Item> item);
+    void Send_ChosenAddItem(ptr<const Item> item);
+    void Send_ChosenRemoveItem(ptr<const Item> item);
+    void Send_Teleport(ptr<const Critter> cr, mpos to_hex);
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
-    void Send_Action(const Critter* from_cr, CritterAction action, int32_t action_data, const Item* context_item);
-    void Send_MoveItem(const Critter* from_cr, const Item* moved_item, CritterAction action, CritterItemSlot prev_slot);
+    void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item);
+    void Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
-    void Send_SomeItems(const_span<Item*> items, bool owned, bool with_inner_entities, const any_t& context_param);
-    void Send_Attachments(const Critter* from_cr);
-    void Send_AddCustomEntity(CustomEntity* entity, bool owned);
+    void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);
+    void Send_Attachments(ptr<const Critter> from_cr);
+    void Send_AddCustomEntity(ptr<CustomEntity> entity, bool owned);
     void Send_RemoveCustomEntity(ident_t id);
 
     ///@ ExportEvent
@@ -118,17 +129,17 @@ public:
     FO_ENTITY_EVENT(OnLogout);
 
 private:
-    void SendItem(NetOutBuffer& out_buf, const Item* item, bool owned, bool with_slot, bool with_inner_entities);
-    void SendInnerEntities(NetOutBuffer& out_buf, const Entity* holder, bool owned);
-    void SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr);
+    void SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, bool with_slot, bool with_inner_entities);
+    void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
+    void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
     unique_ptr<ServerConnection> _connection;
     string _name {"(Unlogined)"};
-    raw_ptr<Critter> _controlledCr {};
-    raw_ptr<const Entity> _sendIgnoreEntity {};
-    raw_ptr<const Property> _sendIgnoreProperty {};
-    unique_ptr<ViewMapContext> _viewMap {};
-    raw_ptr<Map> _viewMapTarget {};
+    nptr<Critter> _controlledCr {};
+    nptr<const Entity> _sendIgnoreEntity {};
+    nptr<const Property> _sendIgnoreProperty {};
+    optional<ViewMapContext> _viewMap {};
+    nptr<Map> _viewMapTarget {};
     EntityLock _ownedLock {};
 };
 

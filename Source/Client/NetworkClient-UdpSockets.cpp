@@ -38,10 +38,29 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto PacketBufferBytes(vector<uint8_t>& packet_buf) noexcept -> ptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(!packet_buf.empty(), "Packet buffer is empty");
+
+    return packet_buf.data();
+}
+
+static auto ReceivedPacketSpan(vector<uint8_t>& packet_buf, size_t received) noexcept -> const_span<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(received <= packet_buf.size(), "Received byte count exceeds the packet buffer size");
+
+    auto packet_buf_data = PacketBufferBytes(packet_buf);
+    return {packet_buf_data.get(), received};
+}
+
 class NetworkClientConnection_UdpSockets final : public NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection_UdpSockets(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection_UdpSockets(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection_UdpSockets(const NetworkClientConnection_UdpSockets&) = delete;
     NetworkClientConnection_UdpSockets(NetworkClientConnection_UdpSockets&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_UdpSockets&) = delete;
@@ -72,14 +91,14 @@ private:
     vector<uint8_t> _readyBuf {};
 };
 
-auto NetworkClientConnection::CreateUdpSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_UdpSockets>(settings);
 }
 
-NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ClientNetworkSettings& settings) :
+NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings),
     _channel(MakeOptions())
 {
@@ -229,15 +248,17 @@ void NetworkClientConnection_UdpSockets::PumpInput()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        const auto received = _socket.receive_from({_packetBuf.data(), _packetBuf.size()}, host, port);
+        span<uint8_t> packet_buf {_packetBuf};
+        const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
         }
 
         UdpPacketInfo packet;
+        const_span<uint8_t> received_packet = ReceivedPacketSpan(_packetBuf, numeric_cast<size_t>(received));
 
-        if (!TryParseUdpPacket({_packetBuf.data(), numeric_cast<size_t>(received)}, packet)) {
+        if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
         }
 

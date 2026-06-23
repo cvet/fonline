@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SmartPointers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -257,7 +258,7 @@ public:
     auto normalize_line_endings() -> strex&;
 
 #if FO_WINDOWS
-    auto parse_wide_char(const wchar_t* str) noexcept -> strex&;
+    auto parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&;
     [[nodiscard]] auto to_wide_char() const noexcept -> wstring;
 #endif
 
@@ -273,8 +274,8 @@ static_assert(!std::is_polymorphic_v<strex>);
 namespace utf8
 {
     auto IsValid(uint32_t ucs) noexcept -> bool;
-    auto DecodeStrNtLen(const char* str) noexcept -> size_t;
-    auto Decode(const char* str, size_t& length) noexcept -> uint32_t;
+    auto DecodeStrNtLen(ptr<const char> str) noexcept -> size_t;
+    auto Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
     auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
     auto Lower(uint32_t ucs) noexcept -> uint32_t;
     auto Upper(uint32_t ucs) noexcept -> uint32_t;

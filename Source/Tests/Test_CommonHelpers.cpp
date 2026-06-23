@@ -81,9 +81,17 @@ TEST_CASE("CommonHelpers")
     SECTION("DynamicPtrCastUnique")
     {
         unique_ptr<TestBase> base = SafeAlloc::MakeUnique<TestDerived>(42);
-        auto derived = dynamic_ptr_cast<TestDerived>(std::move(base));
+        ptr<unique_ptr<TestBase>> base_ptr = &base;
+        unique_nptr<TestDerived> derived = dynamic_ptr_cast<TestDerived>(base_ptr);
         REQUIRE(derived);
         CHECK(derived->Value == 42);
+        CHECK_FALSE(base.as_nptr());
+
+        unique_ptr<TestBase> other_base = SafeAlloc::MakeUnique<TestBase>();
+        ptr<unique_ptr<TestBase>> other_base_ptr = &other_base;
+        unique_nptr<TestDerived> missing = dynamic_ptr_cast<TestDerived>(other_base_ptr);
+        CHECK_FALSE(missing);
+        CHECK(other_base.as_nptr());
     }
 
     SECTION("DynamicPtrCastShared")
@@ -91,24 +99,45 @@ TEST_CASE("CommonHelpers")
         shared_ptr<TestDerived> derived = SafeAlloc::MakeShared<TestDerived>(77);
         shared_ptr<TestBase> base = derived;
 
-        auto casted = dynamic_ptr_cast<TestDerived>(base);
+        shared_ptr<TestDerived> casted = dynamic_ptr_cast<TestDerived>(base);
         REQUIRE(casted);
         CHECK(casted->Value == 77);
     }
 
+    SECTION("RequireRefcountPtr")
+    {
+        TestRefCounter value;
+
+        refcount_nptr<TestRefCounter> missing;
+        CHECK_THROWS_AS(require_refcount_ptr(std::move(missing)), VerificationException);
+        CHECK(value.RefCount == 0);
+
+        refcount_nptr<TestRefCounter> nullable = refcount_nptr<TestRefCounter>::from_add_ref(&value);
+        CHECK(value.RefCount == 1);
+
+        {
+            auto present = require_refcount_ptr(std::move(nullable));
+            CHECK_FALSE(nullable);
+            CHECK(value.RefCount == 1);
+        }
+
+        CHECK(value.RefCount == 0);
+    }
+
     SECTION("MakeIfNotExistsDestroyIfEmpty")
     {
-        unique_ptr<vector<int32_t>> values;
-        make_if_not_exists(values);
+        unique_nptr<vector<int32_t>> values;
+        ptr<unique_nptr<vector<int32_t>>> values_ptr = &values;
+        make_if_not_exists(values_ptr);
         REQUIRE(values);
         CHECK(values->empty());
 
-        destroy_if_empty(values);
+        destroy_if_empty(values_ptr);
         CHECK_FALSE(values);
 
-        make_if_not_exists(values);
+        make_if_not_exists(values_ptr);
         values->emplace_back(1);
-        destroy_if_empty(values);
+        destroy_if_empty(values_ptr);
         CHECK(values);
     }
 
@@ -161,7 +190,7 @@ TEST_CASE("CommonHelpers")
     {
         TestRefCounter first;
         TestRefCounter second;
-        vector<TestRefCounter*> refs = {&first, &second};
+        vector<ptr<TestRefCounter>> refs = {&first, &second};
 
         {
             auto held = copy_hold_ref(refs);

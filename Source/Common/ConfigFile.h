@@ -54,7 +54,7 @@ public:
     auto operator=(ConfigFile&&) noexcept -> ConfigFile&;
     ~ConfigFile();
 
-    [[nodiscard]] auto GetNameHint() const -> const string& { return _fileNameHint; }
+    [[nodiscard]] auto GetNameHint() const noexcept -> string_view { return _fileNameHint; }
     [[nodiscard]] auto HasSection(string_view section_name) const noexcept -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const noexcept -> bool;
     [[nodiscard]] auto GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view;
@@ -62,9 +62,9 @@ public:
     [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t;
     [[nodiscard]] auto GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string_view, string_view>&;
-    [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string_view, string_view>*>;
-    [[nodiscard]] auto GetSections() noexcept -> multimap<string_view, map<string_view, string_view>>&;
-    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> const map<string_view, string_view>*;
+    [[nodiscard]] auto GetSections(string_view section_name) -> vector<ptr<map<string_view, string_view>>>;
+    [[nodiscard]] auto GetSections() noexcept -> ptr<multimap<string_view, map<string_view, string_view>>>;
+    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) noexcept -> nptr<const map<string_view, string_view>>;
     [[nodiscard]] auto GetSectionContent(string_view section_name) const -> string_view;
 
 private:
@@ -73,7 +73,7 @@ private:
     auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
     void TrimConfigRange(string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char ch) -> bool;
-    auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*;
+    auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>;
     auto StoreOwnedString(string_view value) -> string_view;
     auto StoreOwnedString(string&& value) -> string_view;
 

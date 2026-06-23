@@ -38,6 +38,18 @@ FO_BEGIN_NAMESPACE
 extern auto GetServerSettings() -> unordered_set<string>;
 extern auto GetClientSettings() -> unordered_set<string>;
 
+static auto ConfigBytesAsSpan(string_view content) noexcept -> const_span<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (content.empty()) {
+        return {};
+    }
+
+    ptr<const char> chars = content.data();
+    return {chars.reinterpret_as<const uint8_t>().get(), content.size()};
+}
+
 ConfigBaker::ConfigBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
@@ -151,7 +163,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             if (settings_errors == 0) {
                 const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-                    _context->WriteData(cfg_name, {reinterpret_cast<const uint8_t*>(cfg_content.data()), cfg_content.size()});
+                    _context->WriteData(cfg_name, ConfigBytesAsSpan(cfg_content));
                 };
 
                 write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content);

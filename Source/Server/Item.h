@@ -53,30 +53,30 @@ class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 
 public:
     Item() = delete;
-    Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props = nullptr) noexcept;
+    Item(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props = nullptr) noexcept;
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
     auto operator=(Item&&) noexcept = delete;
     ~Item() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto.get()); }
-    [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*;
-    [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<Item*>;
+    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _protoItem->GetName(); }
+    [[nodiscard]] auto GetProtoItem() const noexcept -> ptr<const ProtoItem> { return _protoItem; }
+    [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> nptr<Item>;
+    [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>;
+    [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>;
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
-    [[nodiscard]] auto GetAllInnerItems() -> vector<Item*>;
-    [[nodiscard]] auto GetAllInnerItems() const -> vector<const Item*>;
-    [[nodiscard]] auto GetRawInnerItems() -> vector<refcount_ptr<Item>>&;
+    [[nodiscard]] auto GetAllInnerItems() -> vector<ptr<Item>>;
+    [[nodiscard]] auto GetAllInnerItems() const -> vector<ptr<const Item>>;
+    [[nodiscard]] auto TakeAllInnerItems() -> vector<refcount_ptr<Item>>;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
-    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>& { return *_multihexEntries; }
-    [[nodiscard]] auto GetOwnedLock() noexcept -> EntityLock& { return _ownedLock; }
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>> { return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr; }
+    [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock> { return &_ownedLock; }
 
-    auto AddItemToContainer(Item* item, const any_t& stack_id) -> Item*;
-    void RemoveItemFromContainer(Item* item);
-    void SetItemToContainer(Item* item);
+    auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
+    void RemoveItemFromContainer(ptr<Item> item);
+    void SetItemToContainer(ptr<Item> item);
     void SetMultihexEntries(vector<mpos> entries);
 
     ///@ ExportEvent
@@ -88,8 +88,9 @@ public:
     ScriptFunc<void, Critter*, StaticItem*, bool, mdir> TriggerScriptFunc {};
 
 private:
-    unique_ptr<vector<refcount_ptr<Item>>> _innerItems {};
-    unique_ptr<vector<mpos>> _multihexEntries {};
+    ptr<const ProtoItem> _protoItem;
+    optional<vector<refcount_ptr<Item>>> _innerItems {};
+    optional<vector<mpos>> _multihexEntries {};
     EntityLock _ownedLock {};
 };
 

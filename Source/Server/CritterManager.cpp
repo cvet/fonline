@@ -41,33 +41,31 @@
 
 FO_BEGIN_NAMESPACE
 
-CritterManager::CritterManager(ServerEngine* engine) :
+CritterManager::CritterManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*
+auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send) -> ptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot add an item to an already destroyed critter", cr->GetId());
     FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot add an item to a critter that is being destroyed", cr->GetId());
-    refcount_ptr cr_holder = cr;
-    refcount_ptr item_holder = item;
+    auto cr_holder = cr.hold_ref();
+    auto item_holder = item.hold_ref();
     ignore_unused(cr_holder);
     ignore_unused(item_holder);
 
     if (item->GetStackable()) {
-        auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
+        auto nullable_item_already = cr->GetInvItemByPid(item->GetProtoId());
 
-        if (item_already != nullptr) {
+        if (nullable_item_already) {
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
+            nullable_item_already->SetCount(nullable_item_already->GetCount() + count);
+            return nullable_item_already.as_ptr();
         }
     }
 
@@ -78,7 +76,10 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(cr->GetId());
 
-    PropagateEntityLock(item, cr->GetEntityLock());
+    auto nullable_entity_lock = cr->GetEntityLock();
+    FO_VERIFY_AND_THROW(nullable_entity_lock, "Critter has no entity lock");
+    auto entity_lock = nullable_entity_lock.as_ptr();
+    PropagateEntityLock(item, entity_lock);
 
     cr->SetItem(item);
 
@@ -100,7 +101,7 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(item);
-    _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
+    _engine->OnCritterItemMoved.Fire(cr.get(), item.get(), CritterItemSlot::Outside);
 
     if (cr->IsDestroyed() || item->IsDestroyed()) {
         throw CritterManagerException("Critter item add event destroyed the committed entity", cr->GetId(), item->GetId());
@@ -112,18 +113,14 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     return item;
 }
 
-void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
+void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool send)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     cr->RemoveItem(item);
 
     RevertEntityLock(item);
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto ctx = _engine->RequireCurrentSyncContext();
     ctx->EnsureEntitySynced(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -152,20 +149,18 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
     ValidateEntityAccess(item);
 
     if (!cr->IsDestroying()) {
-        _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
+        _engine->OnCritterItemMoved.Fire(cr.get(), item.get(), prev_slot);
     }
 }
 
-auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> Critter*
+auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties> props, ptr<Map> map, mpos hex, mdir dir) -> ptr<Critter>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(map, "Missing map instance");
-    refcount_ptr map_holder = map;
+    auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
 
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto ctx = _engine->RequireCurrentSyncContext();
 
     bool release_empty_sync_context = false;
 
@@ -174,7 +169,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
         release_empty_sync_context = true;
     }
 
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
+    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() mutable noexcept {
         if (release_empty_sync_context) {
             ctx->Release();
         }
@@ -183,15 +178,15 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter creation hex is outside target map bounds", proto_id, map->GetId(), hex, map->GetSize());
 
-    const auto* proto = _engine->GetProtoCritter(proto_id);
+    auto proto = _engine->GetProtoCritter(proto_id);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw CritterManagerException("Critter proto not found", proto_id);
     }
 
     int32_t multihex;
 
-    if (props != nullptr) {
+    if (props) {
         auto props_copy = props->Copy();
         const auto cr_props = CritterProperties(props_copy);
         multihex = cr_props.GetMultihex();
@@ -223,32 +218,26 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     }
 
     // Create critter
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, proto, props);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto.as_ptr(), props);
 
-    _engine->EntityMngr.RegisterCritter(cr.get());
+    _engine->EntityMngr.RegisterCritter(cr.as_ptr());
 
-    const auto* loc = map->GetLocation();
+    auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
     const ident_t target_map_id = map->GetId();
 
-    _engine->MapMngr.AddCritterToMap(cr.get(), map, final_hex, dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr.as_ptr(), map, final_hex, dir, ident_t {});
 
     if (!cr->IsDestroyed()) {
-        if (map != nullptr) {
-            ValidateEntityAccess(map);
-            ValidateEntityAccess(cr.get());
-            _engine->OnMapCritterIn.Fire(map, cr.get());
-        }
-        else {
-            ValidateEntityAccess(cr.get());
-            _engine->OnGlobalMapCritterIn.Fire(cr.get());
-        }
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(cr.as_nptr());
+        _engine->OnMapCritterIn.Fire(map.get(), cr.get());
 
         if (!cr->IsDestroyed()) {
-            _engine->EntityMngr.CallInit(cr.get(), true);
-            _engine->MapMngr.ProcessVisibleCritters(cr.get());
-            _engine->MapMngr.ProcessVisibleItems(cr.get());
+            _engine->EntityMngr.CallInit(cr.as_ptr(), true);
+            _engine->MapMngr.ProcessVisibleCritters(cr.as_ptr());
+            _engine->MapMngr.ProcessVisibleItems(cr.as_ptr());
         }
     }
 
@@ -258,18 +247,23 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     if (map->IsDestroyed()) {
         throw CritterManagerException("Critter map add event destroyed the target map", proto_id);
     }
-    if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || map->GetCritter(cr->GetId()) != cr.get()) {
+    auto committed_cr = cr.as_nptr();
+    auto map_cr = map->GetCritter(cr->GetId());
+
+    if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || !(map_cr == committed_cr)) {
         throw CritterManagerException("Critter map add event moved the committed critter", proto_id);
     }
 
-    return cr.get();
+    return cr.as_ptr();
 }
 
-void CritterManager::DestroyCritter(Critter* cr)
+void CritterManager::DestroyCritter(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!cr->GetControlledByPlayer(), "Critter is controlled by a player in an NPC-only operation");
+    auto cr_holder = cr.hold_ref();
+    ignore_unused(cr_holder);
 
     // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
@@ -280,15 +274,15 @@ void CritterManager::DestroyCritter(Critter* cr)
 
     // Finish event
     ValidateEntityAccess(cr);
-    _engine->OnCritterFinish.Fire(cr);
+    _engine->OnCritterFinish.Fire(cr.get());
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     // Tear off from environment
     {
         cr->LockMapTransfers();
-        auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
+        auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
-        for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
+        for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->HasGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
             try {
                 DestroyInventory(cr);
 
@@ -301,20 +295,19 @@ void CritterManager::DestroyCritter(Critter* cr)
                 }
 
                 if (cr->HasAttachedCritters()) {
-                    for (auto* attached_cr : copy_hold_ref(cr->GetAttachedCritters())) {
+                    for (ptr<Critter> attached_cr : copy_hold_ref(cr->GetAttachedCritters())) {
                         attached_cr->DetachFromCritter();
                     }
                 }
 
                 if (cr->GetMapId()) {
-                    auto map = cr->GetParent<Map>();
-                    FO_VERIFY_AND_THROW(map, "Missing map instance");
-                    auto* ctx = _engine->GetCurrentSyncContext();
-                    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-                    ctx->EnsureEntitySynced(map.get());
-                    _engine->MapMngr.RemoveCritterFromMap(cr, map.get());
+                    auto map_holder = require_refcount_ptr(cr->GetParent<Map>());
+                    auto map = map_holder.as_ptr();
+                    auto ctx = _engine->RequireCurrentSyncContext();
+                    ctx->EnsureEntitySynced(map);
+                    _engine->MapMngr.RemoveCritterFromMap(cr, map);
                 }
-                else if (cr->GetRawGlobalMapGroup()) {
+                else if (cr->HasGlobalMapGroup()) {
                     _engine->MapMngr.RemoveCritterFromMap(cr, nullptr);
                 }
             }
@@ -325,7 +318,7 @@ void CritterManager::DestroyCritter(Critter* cr)
             // Each teardown pass must strictly reduce the critter's remaining dependencies; a stalled
             // (or growing) count means the destruction can never converge, so terminate deterministically
             // rather than leave a half-destroyed "undead" critter in the registry until restart.
-            const size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
+            const size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->HasGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
             FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
             prev_deps = remaining_deps;
         }
@@ -337,15 +330,14 @@ void CritterManager::DestroyCritter(Critter* cr)
     _engine->EntityMngr.UnregisterCritter(cr);
 }
 
-void CritterManager::DestroyInventory(Critter* cr)
+void CritterManager::DestroyInventory(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto ctx = _engine->RequireCurrentSyncContext();
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems();) {
-        auto* item = cr->GetInvItems().front().get();
+        ptr<Item> item = cr->GetInvItems().front();
         ctx->EnsureEntitySynced(item);
         _engine->ItemMngr.DestroyItem(item);
 
@@ -359,7 +351,7 @@ auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
     vector<refcount_ptr<Critter>> result;
     result.reserve(all_critters.size());
 
@@ -376,7 +368,7 @@ auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
 
     vector<refcount_ptr<Critter>> result;
     result.reserve(all_critters.size());
@@ -390,35 +382,35 @@ auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
     return result;
 }
 
-auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
+auto CritterManager::GetItemByPidInvPriority(ptr<Critter> cr, hstring item_pid) -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     ValidateEntityAccess(cr);
 
-    const auto* proto = _engine->GetProtoItem(item_pid);
+    auto proto = _engine->GetProtoItem(item_pid);
 
-    if (proto == nullptr) {
+    if (!proto) {
         throw CritterManagerException("Item proto not found", item_pid);
     }
 
     if (proto->GetStackable()) {
-        for (auto& item : cr->GetInvItems()) {
+        for (ptr<Item> item : cr->GetInvItems()) {
             if (item->GetProtoId() == item_pid) {
-                return item.get();
+                return item.as_nptr();
             }
         }
     }
     else {
-        Item* another_slot = nullptr;
+        nptr<Item> another_slot;
 
-        for (auto& item : cr->GetInvItems()) {
+        for (ptr<Item> item : cr->GetInvItems()) {
             if (item->GetProtoId() == item_pid) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
+                    return item.as_nptr();
                 }
 
-                another_slot = item.get();
+                another_slot = item.as_nptr();
             }
         }
 

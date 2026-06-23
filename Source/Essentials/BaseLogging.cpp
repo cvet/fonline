@@ -42,6 +42,7 @@ constexpr size_t AsyncQueueDropLimit = 100000;
 static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
+static void WriteBaseLogImpl(string_view message, optional<std::reference_wrapper<const CatchedStackTraceData>> st) noexcept;
 static void WriteSync(string_view message) noexcept;
 [[maybe_unused]] static void FlushLogAtExit();
 
@@ -128,14 +129,24 @@ extern void SuspendAsyncLogWriting() noexcept
     }
 }
 
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
+extern void WriteBaseLog(string_view message) noexcept
+{
+    WriteBaseLogImpl(message, std::nullopt);
+}
+
+extern void WriteBaseLog(string_view message, const CatchedStackTraceData& st) noexcept
+{
+    WriteBaseLogImpl(message, std::cref(st));
+}
+
+static void WriteBaseLogImpl(string_view message, optional<std::reference_wrapper<const CatchedStackTraceData>> st) noexcept
 {
     try {
         if (BaseLogging == nullptr) {
             std::cout << message;
 
-            if (st != nullptr) {
-                std::cout << FormatStackTrace(*st) << "\n";
+            if (st.has_value()) {
+                std::cout << FormatStackTrace(st->get()) << "\n";
             }
 
             std::cout.flush();
@@ -158,8 +169,8 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
                         BaseLoggingData::AsyncEntry entry;
                         entry.Message.assign(message);
 
-                        if (st != nullptr) {
-                            entry.StackTrace = *st;
+                        if (st.has_value()) {
+                            entry.StackTrace = st->get();
                         }
 
                         BaseLogging->AsyncQueue.emplace_back(std::move(entry));
@@ -177,11 +188,11 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
             }
         }
 
-        if (st != nullptr) {
+        if (st.has_value()) {
             std::string combined;
             combined.reserve(message.size() + 256);
             combined.append(message);
-            combined.append(FormatStackTrace(*st));
+            combined.append(FormatStackTrace(st->get()));
             combined.append("\n");
             WriteSync(combined);
         }
@@ -391,7 +402,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
         for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
             WriteBaseLog("- [Native] 0x");
-            const auto addr = std::bit_cast<uintptr_t>(st.NativeFrames[i]);
+            const NativeStackFrameAddress addr = st.NativeFrames[i];
             WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
             WriteBaseLog("\n");
         }

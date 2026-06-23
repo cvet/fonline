@@ -36,10 +36,10 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemView::ItemView(ClientEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
+ItemView::ItemView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
     EntityWithProto(proto),
-    ItemProperties(GetInitRef())
+    ItemProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -61,7 +61,8 @@ void ItemView::OnDestroySelf()
     SetCritterId(ident_t {});
     SetCritterSlot(CritterItemSlot::Inventory);
 
-    for (auto& item : _innerItems) {
+    for (auto& inner_item : _innerItems) {
+        auto item = inner_item.as_ptr();
         safe_call([&] { item->DestroySelf(); });
     }
 
@@ -72,40 +73,45 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), ident_t {}, dynamic_cast<const ProtoItem*>(_proto.get()), &GetProperties());
+    auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
+    auto proto_ptr = proto.as_ptr();
+
+    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto_ptr, &GetProperties());
 
     ref_item->SetId(GetId(), false);
 
     return ref_item;
 }
 
-auto ItemView::AddMapperInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const Properties* props) -> ItemView*
+auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, nptr<const Properties> props) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, props);
+    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    return AddRawInnerItem(item.get());
+    auto added_item = item.as_ptr();
+    return AddRawInnerItem(added_item);
 }
 
-auto ItemView::AddReceivedInnerItem(ident_t id, const ProtoItem* proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ItemView*
+auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine.get(), id, proto, nullptr);
+    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);
 
-    return AddRawInnerItem(item.get());
+    auto added_item = item.as_ptr();
+    return AddRawInnerItem(added_item);
 }
 
-auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
+auto ItemView::AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -113,17 +119,17 @@ auto ItemView::AddRawInnerItem(ItemView* item) -> ItemView*
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::ItemContainer, "Item is not owned by this container");
     FO_VERIFY_AND_THROW(item->GetContainerId() == GetId(), "Item belongs to a different container");
 
-    vec_add_unique_value(_innerItems, item);
+    vec_add_unique_value(_innerItems, item.hold_ref());
 
     return item;
 }
 
-void ItemView::DestroyInnerItem(ItemView* item)
+void ItemView::DestroyInnerItem(ptr<ItemView> item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr item_ref_holder = item;
-    vec_remove_unique_value(_innerItems, item);
+    auto item_ref_holder = item.hold_ref();
+    vec_remove_unique_value(_innerItems, item_ref_holder);
 
     item->DestroySelf();
 }

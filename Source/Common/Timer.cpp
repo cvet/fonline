@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-GameTimer::GameTimer(TimerSettings& settings) :
-    _settings {&settings}
+GameTimer::GameTimer(ptr<TimerSettings> settings) :
+    _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 

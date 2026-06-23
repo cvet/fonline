@@ -608,7 +608,7 @@ namespace ScriptBuiltins
 
         const string_view section_name = "Enum";
         writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-        writer.WritePtr(section_name.data(), section_name.size());
+        writer.WriteStringBytes(section_name);
         writer.Write<uint32_t>(uint32_t {1}); // 1 entry
 
         // GenderType int Male 0 Female 1
@@ -616,7 +616,7 @@ namespace ScriptBuiltins
 
         auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-            writer.WritePtr(token.data(), token.size());
+            writer.WriteStringBytes(token);
         };
 
         write_token("GenderType");
@@ -633,7 +633,7 @@ namespace ScriptBuiltins
     {
         const auto metadata_blob = MakeMetadataWithGenderEnum();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -644,7 +644,7 @@ namespace ScriptBuiltins
         const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptBuiltins.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptBuiltins.fos-bin-server", script_blob);
@@ -655,10 +655,8 @@ namespace ScriptBuiltins
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -672,12 +670,18 @@ namespace ScriptBuiltins
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 TEST_CASE("ScriptBuiltinsStringOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -687,7 +691,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -905,7 +909,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         CHECK_FALSE(fatal);
     }
 
-    // Empty any → int must return 0
+    // Empty any в†’ int must return 0
     {
         auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::EmptyAnyToInt"));
         REQUIRE(func);
@@ -917,7 +921,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 TEST_CASE("ScriptBuiltinsArrayOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -927,7 +931,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -997,7 +1001,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 TEST_CASE("ScriptBuiltinsDictOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1007,7 +1011,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1077,7 +1081,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1087,7 +1091,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

@@ -39,31 +39,74 @@
 
 #include "ufbx.h"
 
+FO_BEGIN_NAMESPACE
+
+static auto GetSafeAllocatorBytePtr(nptr<void> address) noexcept -> nptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!address) {
+        return nullptr;
+    }
+
+    return cast_from_void<uint8_t*>(address.get());
+}
+
+static auto ReturnUfbxMemory(ptr<uint8_t> bytes) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return bytes.get_no_const();
+}
+
+FO_END_NAMESPACE
+
 extern "C" void* ufbx_malloc(size_t size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
-    return allocator.allocate(size);
+    ptr<uint8_t> bytes = allocator.allocate(size);
+    return ReturnUfbxMemory(bytes);
 }
 
-extern "C" void* ufbx_realloc(void* ptr, size_t old_size, size_t new_size)
+extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
-    auto* new_ptr = allocator.allocate(new_size);
-    MemCopy(new_ptr, ptr, std::min(old_size, new_size));
-    allocator.deallocate(static_cast<uint8_t*>(ptr), old_size);
-    return new_ptr;
+    ptr<uint8_t> new_ptr = allocator.allocate(new_size);
+    auto nullable_old_data = GetSafeAllocatorBytePtr(memory);
+
+    if (const size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
+        FO_STRONG_ASSERT(nullable_old_data, "Reallocation requested a copy but the previous block pointer is null");
+        auto old_data = nullable_old_data.as_ptr();
+        MemCopy(new_ptr.get_no_const(), old_data.get(), copy_size);
+    }
+
+    allocator.deallocate(nullable_old_data.get(), old_size);
+    return ReturnUfbxMemory(new_ptr);
 }
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(static_cast<uint8_t*>(ptr), old_size);
+    allocator.deallocate(GetSafeAllocatorBytePtr(ptr).get(), old_size);
 }
 
 FO_BEGIN_NAMESPACE
+
+template<typename T>
+static void WriteObjectVector(DataWriter& writer, const vector<T>& values)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (values.empty()) {
+        return;
+    }
+
+    ptr<const T> values_data = values.data();
+    writer.WriteObjectArray(const_span<T> {values_data.get(), values.size()});
+}
 
 struct BakerMeshData
 {
@@ -74,24 +117,24 @@ struct BakerMeshData
         FO_VERIFY_AND_THROW(SkinBones.size() == SkinBoneOffsets.size(), "Skin bone list and inverse-bind offset list have different sizes", SkinBones.size(), SkinBoneOffsets.size());
 
         auto len = numeric_cast<uint32_t>(Vertices.size());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(Vertices.data(), len * sizeof(Vertex3D));
+        writer.Write<uint32_t>(len);
+        WriteObjectVector(writer, Vertices);
         len = numeric_cast<uint32_t>(Indices.size());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(Indices.data(), len * sizeof(vindex_t));
+        writer.Write<uint32_t>(len);
+        WriteObjectVector(writer, Indices);
         len = numeric_cast<uint32_t>(DiffuseTexture.length());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(DiffuseTexture.data(), len);
+        writer.Write<uint32_t>(len);
+        writer.WriteStringBytes(DiffuseTexture);
         len = numeric_cast<uint32_t>(SkinBones.size());
-        writer.WritePtr(&len, sizeof(len));
+        writer.Write<uint32_t>(len);
         for (const auto& bone_name : SkinBones) {
             len = numeric_cast<uint32_t>(bone_name.length());
-            writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(bone_name.data(), len);
+            writer.Write<uint32_t>(len);
+            writer.WriteStringBytes(bone_name);
         }
         len = numeric_cast<uint32_t>(SkinBoneOffsets.size());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(mat44));
+        writer.Write<uint32_t>(len);
+        WriteObjectVector(writer, SkinBoneOffsets);
     }
 
     vector<Vertex3D> Vertices {};
@@ -103,7 +146,7 @@ struct BakerMeshData
 
 struct BakerBone
 {
-    auto Find(const string& name) -> BakerBone*
+    auto Find(const string& name) -> nptr<BakerBone>
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -111,8 +154,10 @@ struct BakerBone
             return this;
         }
 
-        for (auto& child : Children) {
-            if (BakerBone* bone = child->Find(name); bone != nullptr) {
+        for (size_t i = 0; i != Children.size(); ++i) {
+            auto child = Children[i].as_ptr();
+
+            if (nptr<BakerBone> bone = child->Find(name); bone) {
                 return bone;
             }
         }
@@ -125,9 +170,9 @@ struct BakerBone
         FO_STACK_TRACE_ENTRY();
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(Name.length()));
-        writer.WritePtr(Name.data(), Name.length());
-        writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
-        writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+        writer.WriteStringBytes(Name);
+        writer.Write<mat44>(TransformationMatrix);
+        writer.Write<mat44>(GlobalTransformationMatrix);
 
         if (AttachedMesh) {
             writer.Write<uint8_t>(const_numeric_cast<uint8_t>(1));
@@ -147,7 +192,7 @@ struct BakerBone
     string Name {};
     mat44 TransformationMatrix {};
     mat44 GlobalTransformationMatrix {};
-    unique_ptr<BakerMeshData> AttachedMesh {};
+    optional<BakerMeshData> AttachedMesh {};
     vector<unique_ptr<BakerBone>> Children {};
     mat44 CombinedTransformationMatrix {};
 };
@@ -170,44 +215,44 @@ struct BakerAnimSet
         FO_STACK_TRACE_ENTRY();
 
         auto len = numeric_cast<uint32_t>(AnimFileName.length());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(AnimFileName.data(), len);
+        writer.Write<uint32_t>(len);
+        writer.WriteStringBytes(AnimFileName);
         len = numeric_cast<uint32_t>(AnimName.length());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(AnimName.data(), len);
-        writer.WritePtr(&Duration, sizeof(Duration));
+        writer.Write<uint32_t>(len);
+        writer.WriteStringBytes(AnimName);
+        writer.Write<float32_t>(Duration);
         len = numeric_cast<uint32_t>(BonesHierarchy.size());
-        writer.WritePtr(&len, sizeof(len));
+        writer.Write<uint32_t>(len);
         for (const auto& i : BonesHierarchy) {
             len = numeric_cast<uint32_t>(i.size());
-            writer.WritePtr(&len, sizeof(len));
+            writer.Write<uint32_t>(len);
             for (const auto& bone_name : i) {
                 len = numeric_cast<uint32_t>(bone_name.length());
-                writer.WritePtr(&len, sizeof(len));
-                writer.WritePtr(bone_name.data(), len);
+                writer.Write<uint32_t>(len);
+                writer.WriteStringBytes(bone_name);
             }
         }
         len = numeric_cast<uint32_t>(BoneOutputs.size());
-        writer.WritePtr(&len, sizeof(len));
+        writer.Write<uint32_t>(len);
         for (const auto& o : BoneOutputs) {
             len = numeric_cast<uint32_t>(o.Name.length());
-            writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(o.Name.data(), len);
+            writer.Write<uint32_t>(len);
+            writer.WriteStringBytes(o.Name);
             FO_VERIFY_AND_THROW(o.ScaleTime.size() == o.ScaleValue.size(), "Model bone scale keyframe times and values have different sizes", o.Name, o.ScaleTime.size(), o.ScaleValue.size());
             FO_VERIFY_AND_THROW(o.RotationTime.size() == o.RotationValue.size(), "Model bone rotation keyframe times and values have different sizes", o.Name, o.RotationTime.size(), o.RotationValue.size());
             FO_VERIFY_AND_THROW(o.TranslationTime.size() == o.TranslationValue.size(), "Model bone translation keyframe times and values have different sizes", o.Name, o.TranslationTime.size(), o.TranslationValue.size());
             len = numeric_cast<uint32_t>(o.ScaleTime.size());
-            writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
-            writer.WritePtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
+            writer.Write<uint32_t>(len);
+            WriteObjectVector(writer, o.ScaleTime);
+            WriteObjectVector(writer, o.ScaleValue);
             len = numeric_cast<uint32_t>(o.RotationTime.size());
-            writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
-            writer.WritePtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
+            writer.Write<uint32_t>(len);
+            WriteObjectVector(writer, o.RotationTime);
+            WriteObjectVector(writer, o.RotationValue);
             len = numeric_cast<uint32_t>(o.TranslationTime.size());
-            writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
-            writer.WritePtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
+            writer.Write<uint32_t>(len);
+            WriteObjectVector(writer, o.TranslationTime);
+            WriteObjectVector(writer, o.TranslationValue);
         }
     }
 
@@ -301,9 +346,13 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 }
 
-static auto ConvertFbxHierarchy(const ufbx_node* fbx_node) -> unique_ptr<BakerBone>;
-static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_node* fbx_node);
-static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>;
+static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>;
+static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node);
+static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>;
+static void CleanupUfbxScene(ufbx_scene* raw_scene) noexcept;
+static auto MakeUfbxSceneHolder(ptr<ufbx_scene> scene) -> unique_del_ptr<ufbx_scene>;
+static void CleanupUfbxBakedAnim(ufbx_baked_anim* raw_anim) noexcept;
+static auto MakeUfbxBakedAnimHolder(ptr<ufbx_baked_anim> anim) -> unique_del_ptr<ufbx_baked_anim>;
 static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3;
 static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion;
 static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor;
@@ -323,17 +372,22 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     opts.normalize_tangents = true;
 
     ufbx_error fbx_error;
-    ufbx_scene* fbx_scene = ufbx_load_memory(file.GetBuf(), file.GetSize(), &opts, &fbx_error);
+    const_span<uint8_t> file_data = file.GetDataSpan();
+    nptr<const uint8_t> nullable_file_data = file_data.data();
+    FO_VERIFY_AND_THROW(file_data.empty() || nullable_file_data, "Non-empty FBX file data has a null buffer pointer");
+    nptr<const uint8_t> file_data_bytes = nullable_file_data;
+    nptr<ufbx_scene> nullable_fbx_scene = ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error);
 
-    if (fbx_scene == nullptr) {
+    if (!nullable_fbx_scene) {
         throw ModelMeshBakerException("Unable to load FBX", fname, fbx_error.description.data);
     }
 
-    auto fbx_scene_cleanup = scope_exit([fbx_scene]() noexcept { safe_call([&] { ufbx_free_scene(fbx_scene); }); });
+    auto fbx_scene = nullable_fbx_scene.as_ptr();
+    auto fbx_scene_holder = MakeUfbxSceneHolder(fbx_scene);
 
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
-    ConvertFbxMeshes(root_bone.get(), root_bone.get(), fbx_scene->root_node);
+    ConvertFbxMeshes(root_bone.as_ptr(), root_bone.as_ptr(), fbx_scene->root_node);
     const auto animations = ConvertFbxAnimations(fbx_scene, fname);
 
     // Write data
@@ -351,35 +405,71 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     return data;
 }
 
-static auto ConvertFbxHierarchy(const ufbx_node* fbx_node) -> unique_ptr<BakerBone>
+static void CleanupUfbxScene(ufbx_scene* raw_scene) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (raw_scene != nullptr) {
+        ptr<ufbx_scene> scene = raw_scene;
+        ufbx_free_scene(scene.get());
+    }
+}
+
+static auto MakeUfbxSceneHolder(ptr<ufbx_scene> scene) -> unique_del_ptr<ufbx_scene>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto bone = SafeAlloc::MakeUnique<BakerBone>();
+    return unique_del_ptr<ufbx_scene> {scene.get_no_const(), CleanupUfbxScene};
+}
+
+static void CleanupUfbxBakedAnim(ufbx_baked_anim* raw_anim) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (raw_anim != nullptr) {
+        ptr<ufbx_baked_anim> anim = raw_anim;
+        ufbx_free_baked_anim(anim.get());
+    }
+}
+
+static auto MakeUfbxBakedAnimHolder(ptr<ufbx_baked_anim> anim) -> unique_del_ptr<ufbx_baked_anim>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return unique_del_ptr<ufbx_baked_anim> {anim.get_no_const(), CleanupUfbxBakedAnim};
+}
+
+static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_ptr<BakerBone> bone = SafeAlloc::MakeUnique<BakerBone>();
 
     bone->Name = fbx_node->name.data;
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent);
     bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_world);
     bone->CombinedTransformationMatrix = mat44();
-    bone->Children.resize(fbx_node->children.count);
+    bone->Children.reserve(fbx_node->children.count);
 
     for (size_t i = 0; i < fbx_node->children.count; i++) {
-        bone->Children[i] = ConvertFbxHierarchy(fbx_node->children[i]);
+        bone->Children.emplace_back(ConvertFbxHierarchy(fbx_node->children[i]));
     }
 
     return bone;
 }
 
-static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_node* fbx_node)
+static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (fbx_node->mesh != nullptr && fbx_node->mesh->num_faces != 0) {
-        bone->AttachedMesh = SafeAlloc::MakeUnique<BakerMeshData>();
-        BakerMeshData* mesh = bone->AttachedMesh.get();
-        const auto* fbx_mesh = fbx_node->mesh;
+    nptr<const ufbx_mesh> nullable_fbx_mesh = fbx_node->mesh;
+
+    if (nullable_fbx_mesh && nullable_fbx_mesh->num_faces != 0) {
+        bone->AttachedMesh.emplace();
+        ptr<BakerMeshData> mesh = &*bone->AttachedMesh;
+        auto fbx_mesh = nullable_fbx_mesh.as_ptr();
         FO_VERIFY_AND_THROW(fbx_mesh->num_faces == fbx_mesh->num_triangles, "FBX mesh contains non-triangle faces", fbx_mesh->num_faces, fbx_mesh->num_triangles);
-        const auto* fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
+        nptr<const ufbx_skin_deformer> nullable_fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
 
@@ -390,7 +480,9 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
 
             for (const uint32_t& face_index : fbx_mesh_part.face_indices) {
                 const ufbx_face fbx_face = fbx_mesh->faces[face_index];
-                const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices.data(), triangle_indices.size(), fbx_mesh, fbx_face);
+                FO_VERIFY_AND_THROW(!triangle_indices.empty(), "Triangulation buffer is empty");
+                ptr<uint32_t> triangle_indices_data = triangle_indices.data();
+                const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices_data.get_no_const(), triangle_indices.size(), fbx_mesh.get(), fbx_face);
 
                 mesh_triangles_count += triangles_count;
 
@@ -423,7 +515,8 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                         v.TexCoordBase[1] = v.TexCoord[1];
                     }
 
-                    if (fbx_skin != nullptr) {
+                    if (nullable_fbx_skin) {
+                        auto fbx_skin = nullable_fbx_skin.as_ptr();
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
                         const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), MODEL_BONES_PER_VERTEX);
@@ -464,8 +557,13 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         indices.resize(mesh->Vertices.size());
 
         ufbx_error fbx_generate_indices_error;
-        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh->Vertices.data(), mesh->Vertices.size(), sizeof(Vertex3D)}};
-        const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
+        FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Baked mesh has no vertices");
+        FO_VERIFY_AND_THROW(!indices.empty(), "Baked mesh has no indices");
+        ptr<const Vertex3D> mesh_vertices_data = mesh->Vertices.data();
+        ptr<uint32_t> indices_data = indices.data();
+        ptr<void> mesh_vertices_raw_data = cast_to_void(mesh_vertices_data.get());
+        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_raw_data.get(), mesh->Vertices.size(), sizeof(Vertex3D)}};
+        const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices_data.get(), indices.size(), nullptr, &fbx_generate_indices_error);
 
         if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
             throw ModelMeshBakerException(strex("FBX index generation failed for mesh '{}': {}", fbx_node->name.data, fbx_generate_indices_error.description.data));
@@ -478,7 +576,9 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         mesh->Indices.resize(indices.size());
         std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 
-        if (fbx_skin != nullptr) {
+        if (nullable_fbx_skin) {
+            auto fbx_skin = nullable_fbx_skin.as_ptr();
+
             if (fbx_skin->clusters.count > MODEL_MAX_BONES) {
                 throw ModelMeshBakerException(strex("Mesh '{}' has {} skin clusters, exceeds MODEL_MAX_BONES limit {}", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES));
             }
@@ -486,15 +586,15 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
             mesh->SkinBones.reserve(fbx_skin->clusters.count);
             mesh->SkinBoneOffsets.reserve(fbx_skin->clusters.count);
 
-            for (const ufbx_skin_cluster* fbx_skin_cluster : fbx_skin->clusters) {
-                const BakerBone* skin_bone = nullptr;
-                const ufbx_node* fbx_skin_node = fbx_skin_cluster->bone_node;
+            for (ptr<const ufbx_skin_cluster> fbx_skin_cluster : fbx_skin->clusters) {
+                nptr<const BakerBone> skin_bone;
+                nptr<const ufbx_node> fbx_skin_node = fbx_skin_cluster->bone_node;
 
-                if (fbx_skin_node != nullptr) {
+                if (fbx_skin_node) {
                     const string skin_bone_name = fbx_skin_node->name.data;
                     skin_bone = root_bone->Find(skin_bone_name);
 
-                    if (skin_bone == nullptr) {
+                    if (!skin_bone) {
                         WriteLog("Skin bone '{}' for mesh '{}' not found", skin_bone_name, fbx_node->name.data);
                     }
                 }
@@ -502,7 +602,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
                     WriteLog("Empty skin bone in fbx cluster for mesh '{}' not found", fbx_node->name.data);
                 }
 
-                if (skin_bone == nullptr) {
+                if (!skin_bone) {
                     skin_bone = bone;
                 }
 
@@ -521,7 +621,7 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
         }
 
         if (fbx_node->materials.count != 0) {
-            const ufbx_material* fbx_material = fbx_node->materials[0];
+            ptr<const ufbx_material> fbx_material = fbx_node->materials[0];
 
             for (const ufbx_material_texture& fbx_material_texture : fbx_material->textures) {
                 if (string_view(fbx_material_texture.material_prop.data) == "DiffuseColor" && fbx_material_texture.texture != nullptr && fbx_material_texture.texture->type == UFBX_TEXTURE_FILE) {
@@ -532,28 +632,28 @@ static void ConvertFbxMeshes(BakerBone* root_bone, BakerBone* bone, const ufbx_n
     }
 
     for (size_t i = 0; i < fbx_node->children.count; i++) {
-        ConvertFbxMeshes(root_bone, bone->Children[i].get(), fbx_node->children[i]);
+        ConvertFbxMeshes(root_bone, bone->Children[i].as_ptr(), fbx_node->children[i]);
     }
 }
 
-static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>
+static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<unique_ptr<BakerAnimSet>> result;
 
-    for (const ufbx_anim_stack* fbx_anim_stack : fbx_scene->anim_stacks) {
-        const ufbx_anim* fbx_anim = fbx_anim_stack->anim;
+    for (ptr<const ufbx_anim_stack> fbx_anim_stack : fbx_scene->anim_stacks) {
+        ptr<const ufbx_anim> fbx_anim = fbx_anim_stack->anim;
 
         ufbx_bake_opts fbx_bake_opts = {};
         fbx_bake_opts.trim_start_time = true;
         ufbx_error fbx_error;
-        ufbx_baked_anim* fbx_baked_anim = ufbx_bake_anim(fbx_scene, fbx_anim, &fbx_bake_opts, &fbx_error);
-        FO_VERIFY_AND_THROW(fbx_baked_anim, "Missing required fbx baked animation");
+        nptr<ufbx_baked_anim> nullable_fbx_baked_anim = ufbx_bake_anim(fbx_scene.get(), fbx_anim.get(), &fbx_bake_opts, &fbx_error);
+        FO_VERIFY_AND_THROW(nullable_fbx_baked_anim, "Missing required fbx baked animation");
+        auto fbx_baked_anim = nullable_fbx_baked_anim.as_ptr();
+        auto fbx_baked_anim_holder = MakeUfbxBakedAnimHolder(fbx_baked_anim);
 
-        auto fbx_baked_anim_cleanup = scope_exit([fbx_baked_anim]() noexcept { safe_call([&] { ufbx_free_baked_anim(fbx_baked_anim); }); });
-
-        auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
+        unique_ptr<BakerAnimSet> anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;
         anim_set->AnimName = fbx_anim_stack->name.data;
         anim_set->Duration = numeric_cast<float32_t>(fbx_baked_anim->playback_duration);
@@ -581,9 +681,10 @@ static auto ConvertFbxAnimations(const ufbx_scene* fbx_scene, string_view fname)
 
             vector<string> hierarchy;
 
-            for (ufbx_node* fbx_node = fbx_scene->nodes[fbx_baked_anim_node.typed_id]; fbx_node != nullptr;) {
+            for (nptr<const ufbx_node> nullable_fbx_node = fbx_scene->nodes[fbx_baked_anim_node.typed_id]; nullable_fbx_node;) {
+                auto fbx_node = nullable_fbx_node.as_ptr();
                 hierarchy.insert(hierarchy.begin(), fbx_node->name.data);
-                fbx_node = fbx_node->parent;
+                nullable_fbx_node = fbx_node->parent;
             }
 
             BakerAnimSet::BoneOutput& bone_output = anim_set->BoneOutputs.emplace_back();

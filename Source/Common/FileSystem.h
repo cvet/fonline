@@ -45,7 +45,7 @@ class FileHeader
 {
 public:
     FileHeader() noexcept = default;
-    explicit FileHeader(string_view path, size_t size, uint64_t write_time, const DataSource* ds);
+    explicit FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds);
     FileHeader(const FileHeader&) = delete;
     FileHeader(FileHeader&&) noexcept = default;
     auto operator=(const FileHeader&) = delete;
@@ -54,11 +54,11 @@ public:
     ~FileHeader() = default;
 
     [[nodiscard]] auto GetNameNoExt() const -> string_view;
-    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetDiskPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64_t;
-    [[nodiscard]] auto GetDataSource() const -> const DataSource*;
+    [[nodiscard]] auto GetDataSource() const -> ptr<const DataSource>;
     [[nodiscard]] auto Copy() const -> FileHeader;
 
 protected:
@@ -66,7 +66,7 @@ protected:
     string _filePath {};
     size_t _fileSize {};
     uint64_t _writeTime {};
-    raw_ptr<const DataSource> _dataSource {};
+    nptr<const DataSource> _dataSource {};
 };
 
 class FileReader final
@@ -81,9 +81,11 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetBuf() const -> nptr<const uint8_t>;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetCurBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetCurBuf() const -> nptr<const uint8_t>;
+    [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
@@ -100,7 +102,30 @@ public:
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
-    void CopyData(void* ptr, size_t size);
+    void CopyData(nptr<void> nullable_buf, size_t size);
+    void ReadBytes(span<uint8_t> out);
+    template<typename T>
+    void ReadObject(T& out)
+    {
+        static_assert(std::is_standard_layout_v<T>);
+        static_assert(std::is_trivially_copyable_v<T>);
+
+        ptr<T> out_ptr = &out;
+        ptr<void> out_data = cast_to_void(out_ptr.get());
+        CopyData(out_data, sizeof(T));
+    }
+    template<typename T>
+    void ReadObjectArray(span<T> out)
+    {
+        static_assert(std::is_standard_layout_v<T>);
+        static_assert(std::is_trivially_copyable_v<T>);
+
+        if (!out.empty()) {
+            ptr<T> out_ptr = out.data();
+            ptr<void> out_data = cast_to_void(out_ptr.get());
+            CopyData(out_data, out.size() * sizeof(T));
+        }
+    }
     void SetCurPos(size_t pos);
     void GoForward(size_t offs);
     void GoBack(size_t offs);
@@ -114,7 +139,7 @@ class File final : public FileHeader
 {
 public:
     File() noexcept = default;
-    explicit File(string_view path, size_t size, uint64_t write_time, const DataSource* ds, unique_del_ptr<const uint8_t>&& buf);
+    explicit File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -123,13 +148,20 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> const uint8_t*;
+    [[nodiscard]] auto GetBuf() const -> ptr<const uint8_t>;
+    [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetReader() const -> FileReader;
 
     static auto Load(const FileHeader& fh) -> File;
 
+private:
+    struct LoadedBuffer
+    {
+        unique_del_ptr<const uint8_t> Data;
+    };
+
 protected:
-    unique_del_ptr<const uint8_t> _fileBuf {};
+    optional<LoadedBuffer> _fileBuf {};
 };
 
 class FileCollection final

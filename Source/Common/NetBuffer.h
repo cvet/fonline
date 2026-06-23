@@ -53,7 +53,7 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     void SetEncryptKey(uint32_t seed);
@@ -62,7 +62,7 @@ public:
 
 protected:
     auto EncryptKey(int32_t move) noexcept -> uint8_t;
-    void CopyBuf(const void* from, void* to, uint8_t crypt_key, size_t len) const noexcept;
+    void CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, size_t len) const noexcept;
 
     vector<uint8_t> _bufData {};
     size_t _defaultBufLen {};
@@ -89,14 +89,15 @@ public:
     [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
     void Push(const_span<uint8_t> buf);
-    void Push(const void* buf, size_t len);
+    void Push(nptr<const void> buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
     template<typename T>
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     void Write(T value)
     {
-        Push(&value, sizeof(T));
+        ptr<const T> value_ptr = &value;
+        Push(value_ptr, sizeof(T));
     }
 
     template<typename T>
@@ -104,8 +105,11 @@ public:
     void Write(const T& value)
     {
         const auto len = numeric_cast<uint32_t>(value.length());
-        Push(&len, sizeof(len));
-        Push(value.data(), len);
+        ptr<const uint32_t> len_ptr = &len;
+        nptr<const typename T::value_type> value_data = value.data();
+
+        Push(len_ptr, sizeof(len));
+        Push(value_data, len);
     }
 
     template<typename T>
@@ -115,7 +119,7 @@ public:
         WriteHashedString(value);
     }
 
-    void WritePropsData(vector<const uint8_t*>* props_data, const vector<uint32_t>* props_data_sizes);
+    void WritePropsData(const vector<nptr<const uint8_t>>& props_data, const vector<uint32_t>& props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -148,7 +152,7 @@ public:
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
-    void Pop(void* buf, size_t len);
+    void Pop(nptr<void> buf, size_t len);
     void ResetBuf() noexcept override;
 
     template<typename T>
@@ -156,7 +160,8 @@ public:
     [[nodiscard]] auto Read() -> T
     {
         T result = {};
-        Pop(&result, sizeof(T));
+        ptr<T> result_ptr = &result;
+        Pop(result_ptr, sizeof(T));
         return result;
     }
 
@@ -166,7 +171,8 @@ public:
     {
         string result;
         uint32_t len = 0;
-        Pop(&len, sizeof(len));
+        ptr<uint32_t> len_ptr = &len;
+        Pop(len_ptr, sizeof(len));
 
         // A declared string can never be longer than the bytes still buffered; reject before allocating
         const auto unread = GetUnreadSize();
@@ -177,7 +183,8 @@ public:
         }
 
         result.resize(len);
-        Pop(result.data(), len);
+        nptr<char> result_data = result.data();
+        Pop(result_data, len);
         return result;
     }
 

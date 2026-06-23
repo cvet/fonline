@@ -73,19 +73,19 @@ struct ParsedFunctionAttributeRecord
     uint32_t SourceLine {};
 };
 
-void CleanupScriptFunctionAttributes(AngelScript::asIScriptFunction* func);
-auto GetFunctionAttributesUserData(const AngelScript::asIScriptFunction* func) noexcept -> const ScriptFunctionAttributeUserData*;
-auto FindFunctionAttribute(const AngelScript::asIScriptFunction* func, string_view attribute) noexcept -> string_view;
-auto HasFunctionAttribute(const AngelScript::asIScriptFunction* func, string_view attribute) noexcept -> bool;
-void SetFunctionAttributes(AngelScript::asIScriptFunction* func, const vector<string>& attributes);
-auto ParseFunctionAttributeRecords(Preprocessor::Context* pp_ctx, Preprocessor::LexemList& lexems, string& errors) -> vector<ParsedFunctionAttributeRecord>;
+void CleanupScriptFunctionAttributes(AngelScript::asIScriptFunction* raw_func);
+auto GetFunctionAttributesUserData(ptr<const AngelScript::asIScriptFunction> func) noexcept -> nptr<const ScriptFunctionAttributeUserData>;
+auto FindFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, string_view attribute) noexcept -> string_view;
+auto HasFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, string_view attribute) noexcept -> bool;
+void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vector<string>& attributes);
+auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocessor::LexemList& lexems, string& errors) -> vector<ParsedFunctionAttributeRecord>;
 void SerializeFunctionAttributeRecords(DataWriter& writer, const vector<ParsedFunctionAttributeRecord>& records);
 auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFunctionAttributeRecord>;
-auto BindFunctionAttributeRecords(AngelScript::asIScriptModule* mod, const vector<ParsedFunctionAttributeRecord>& records, const vector<string>* project_blocking_extras = nullptr) -> string;
-auto ValidateAttributedFunctionUsage(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt = nullptr, const vector<string>* allowed_namespaces = nullptr, const vector<string>* project_blocking_extras = nullptr) -> string;
-auto ValidateSpecialFunctionAttributes(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt = nullptr) -> string;
-auto ValidateAdminRemoteCallAttributes(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt = nullptr) -> string;
-auto ValidateEventSubscriptions(AngelScript::asIScriptModule* mod, const Preprocessor::LineNumberTranslator* lnt = nullptr) -> string;
+auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const vector<ParsedFunctionAttributeRecord>& records, nptr<const vector<string>> project_blocking_extras = nullptr) -> string;
+auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr, nptr<const vector<string>> allowed_namespaces = nullptr, nptr<const vector<string>> project_blocking_extras = nullptr) -> string;
+auto ValidateSpecialFunctionAttributes(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr) -> string;
+auto ValidateAdminRemoteCallAttributes(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr) -> string;
+auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<const Preprocessor::LineNumberTranslator> lnt = nullptr) -> string;
 
 FO_END_NAMESPACE
 
