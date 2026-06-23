@@ -120,12 +120,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
             // Wrap each callback in its own nested SyncContext on top of the dispatcher's primary
             // cover. Inner `Sync::Lock(...)` only mutates the nested layer; the primary's locks
             // (the event's entity args) survive across the chain.
-            SyncContext nested;
-            nested.Activate();
-            auto cleanup = scope_exit([&]() noexcept {
-                nested.Release();
-                nested.Deactivate();
-            });
+            ScopedSyncContext nested;
 
             result = cb.Callback(call);
         }
@@ -153,12 +148,7 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
     FO_NON_CONST_METHOD_HINT();
 
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
-        SyncContext sync_ctx;
-        sync_ctx.Activate();
-        auto cleanup = scope_exit([&]() noexcept {
-            sync_ctx.Release();
-            sync_ctx.Deactivate();
-        });
+        ScopedSyncContext sync_ctx;
 
         return body_();
     };
@@ -748,16 +738,9 @@ void ServerEngine::OnPlayerConnected(Player* unlogined_player)
     const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(reinterpret_cast<uintptr_t>(unlogined_player))};
 
     {
-        SyncContext ctx;
-        ctx.Activate();
-        auto release = scope_exit([&ctx]() noexcept {
-            safe_call([&ctx] {
-                ctx.Release();
-                ctx.Deactivate();
-            });
-        });
+        ScopedSyncContext ctx;
 
-        ctx.SyncEntity(unlogined_player);
+        ctx.Sync(unlogined_player);
         unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
     }
 
@@ -988,12 +971,7 @@ void ServerEngine::Shutdown()
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
     // primary SyncContext.
-    SyncContext shutdown_ctx;
-    shutdown_ctx.Activate();
-    auto shutdown_cleanup = scope_exit([&]() noexcept {
-        safe_call([&] { shutdown_ctx.Release(); });
-        shutdown_ctx.Deactivate();
-    });
+    ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
     _willFinishDispatcher();

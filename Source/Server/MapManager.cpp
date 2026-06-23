@@ -67,12 +67,7 @@ void MapManager::LoadFromResources()
         }
 
         static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, &map_file_header]() FO_DEFERRED {
-            SyncContext sync_ctx;
-            sync_ctx.Activate();
-            auto sync_cleanup = scope_exit([&]() noexcept {
-                sync_ctx.Release();
-                sync_ctx.Deactivate();
-            });
+            ScopedSyncContext sync_ctx;
 
             auto map_file = File::Load(map_file_header);
             auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});

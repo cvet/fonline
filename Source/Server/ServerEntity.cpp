@@ -174,12 +174,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
             // primary cover. Inner `Sync::Lock(...)` calls only mutate the nested layer, so
             // the primary's locks (the event's entity args) are preserved across the chain
             // and the next sibling sees them locked again.
-            SyncContext nested;
-            nested.Activate();
-            auto cleanup = scope_exit([&]() noexcept {
-                nested.Release();
-                nested.Deactivate();
-            });
+            ScopedSyncContext nested;
 
             result = cb.Callback(call);
         }
