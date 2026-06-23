@@ -112,17 +112,26 @@ TEST_CASE("WorkThread")
         WorkThread worker {"ExceptionWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool second_job_called = false;
+        std::atomic_bool jobs_enqueued = false;
 
         worker.SetExceptionHandler([&](const std::exception&) {
             handler_called = true;
             return true;
         });
 
-        worker.AddJob([&]() -> optional<timespan> { throw std::runtime_error("boom"); });
+        // The throwing job must not run until the second job is queued. Otherwise the worker can pick
+        // up the first job, throw, and let the handler clear an empty queue before the second job is
+        // even added - the second job is then enqueued after the clear and runs normally (flaky).
+        worker.AddJob([&]() -> optional<timespan> {
+            jobs_enqueued.wait(false);
+            throw std::runtime_error("boom");
+        });
         worker.AddJob([&]() -> optional<timespan> {
             second_job_called = true;
             return std::nullopt;
         });
+        jobs_enqueued = true;
+        jobs_enqueued.notify_one();
 
         worker.Wait();
 
