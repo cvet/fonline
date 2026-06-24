@@ -64,19 +64,23 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto HasPlayer() const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
-        return !!_player;
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _player.load(std::memory_order_acquire) != nullptr;
     }
     [[nodiscard]] auto GetPlayer() const noexcept -> const Player*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
-        return _player.get();
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _player.load(std::memory_order_acquire);
     }
     [[nodiscard]] auto GetPlayer() noexcept -> Player*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
-        return _player.get();
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _player.load(std::memory_order_acquire);
     }
+    // Lock-free, refcount-pinned resolution of the controlling player for sync-free broadcast fan-out.
+    // Mirrors ServerEntity::GetParentRaw: no entity-access validation, and the returned handle keeps the
+    // player alive for the whole send. Use only on the snapshot/dispatch path, never as a script accessor.
+    [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_ptr<Player>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> ServerEntity* override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
     [[nodiscard]] auto IsAlive() const noexcept -> bool;
@@ -92,12 +96,12 @@ public:
     [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>&
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _visibleItems;
     }
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _visibleItems.contains(item_id);
     }
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
@@ -111,57 +115,57 @@ public:
     }
     [[nodiscard]] auto IsMoving() const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _moving != nullptr;
     }
     [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _movingUid;
     }
     [[nodiscard]] auto GetMoving() const noexcept -> MovingContext*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return const_cast<MovingContext*>(_moving.get());
     }
     [[nodiscard]] auto GetMoving() noexcept -> MovingContext*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _moving.get();
     }
     [[nodiscard]] auto GetMovingContext() const noexcept -> const MovingContext*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _moving ? _moving.get() : _lastMoving.get();
     }
     [[nodiscard]] auto GetMovingContext() noexcept -> MovingContext*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _moving ? _moving.get() : _lastMoving.get();
     }
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _moving ? MovingState::InProgress : (_lastMoving ? _lastMoving->GetCompleteReason() : MovingState::Success);
     }
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _lockMapTransfers != 0;
     }
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return !_attachedCritters.empty();
     }
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<raw_ptr<Critter>>
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _attachedCritters;
     }
     [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<raw_ptr<Critter>>
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _attachedCritters;
     }
 
@@ -197,12 +201,12 @@ public:
     void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         _lockMapTransfers++;
     }
     void UnlockMapTransfers() noexcept
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         _lockMapTransfers--;
     }
 
@@ -211,7 +215,7 @@ public:
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
-    void SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& cr_callback, const function<void(Player*)>& spectator_callback = {});
+    void SendAndBroadcast(const Player* ignore_player, const function<void(Player*)>& player_callback);
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int32_t action_data, const Item* context_item);
     void SendAndBroadcast_MoveItem(const Item* item, CritterAction action, CritterItemSlot prev_slot);
@@ -271,11 +275,18 @@ public:
 
 private:
     auto GetMapSpectators() -> ref_hold_vector<Player*>;
+    // Refcount-pinned recipient set for a property/state broadcast: every observer's controlling player
+    // (resolved lock-free via GetPlayerForSend) plus the map spectators, minus ignore_player. Built under this
+    // critter's lock so the membership is stable; the returned handles stay valid through the lock-free dispatch.
+    auto GetBroadcastRecipients(const Player* ignore_player = nullptr) -> ref_hold_vector<Player*>;
 
     uint32_t _movingUid {};
     refcount_ptr<MovingContext> _moving {};
     refcount_ptr<MovingContext> _lastMoving {};
-    refcount_ptr<Player> _player {};
+    // Atomic raw pointer (owning: AddRef on attach, Release on detach) so the broadcast fan-out can pin an
+    // observer's player lock-free via GetPlayerForSend without holding that observer's entity lock. Mirrors
+    // ServerEntity::_parent. Mutated only under this critter's lock (AttachPlayer/DetachPlayer).
+    std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<raw_ptr<Critter>> _attachedCritters {};
     vector<raw_ptr<Item>> _invItems {};

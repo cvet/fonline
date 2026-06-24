@@ -72,7 +72,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS();
     _isPersistent = persistent;
 }
 
@@ -80,7 +80,7 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     auto& props = const_cast<Properties&>(GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
 }
@@ -108,7 +108,7 @@ auto ServerEntity::GetParent() -> refcount_ptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
@@ -116,7 +116,7 @@ auto ServerEntity::GetParent() const -> refcount_ptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<const ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
@@ -155,7 +155,8 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
+
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
     }

@@ -1147,6 +1147,7 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
 
         auto global_cr_ref = global_cr_id && global_cr_id != cr->GetId() ? _engine->EntityMngr.GetCritter(global_cr_id) : refcount_ptr<Critter> {};
         Critter* global_cr = global_cr_ref.get();
+        ValidateEntityAccess(global_cr);
 
         cr->SetMapId({});
         cr->SetParent(nullptr);

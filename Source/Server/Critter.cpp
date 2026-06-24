@@ -62,9 +62,7 @@ Critter::~Critter()
     FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (!_engine->IsShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_player, "Server critter still has player during destruction", GetId(), _player ? _player->GetId() : ident_t {});
-        FO_VERIFY_AND_CONTINUE(!GetMapId(), "Server critter still has map during destruction", GetId(), GetMapId());
-        FO_VERIFY_AND_CONTINUE(!GetIsAttached(), "Server critter is still attached during destruction", GetId(), GetAttachMaster());
+        FO_VERIFY_AND_CONTINUE(!_player.load(std::memory_order_relaxed), "Server critter still has player during destruction", GetId());
         FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Server critter has inventory items during destruction", GetId(), _invItems.size());
         FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Server critter has attached critters during destruction", GetId(), _attachedCritters.size());
         FO_VERIFY_AND_CONTINUE(!_globalMapGroup, "Server critter still has global map group during destruction", GetId());
@@ -86,7 +84,8 @@ auto Critter::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_NO_VALIDATE_ENTITY_ACCESS();
-    return _player ? _player->GetName() : _proto->GetName();
+    const Player* player = _player.load(std::memory_order_acquire);
+    return player ? player->GetName() : _proto->GetName();
 }
 
 auto Critter::GetSyncWidenEntity() noexcept -> ServerEntity*
@@ -94,7 +93,21 @@ auto Critter::GetSyncWidenEntity() noexcept -> ServerEntity*
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_NO_VALIDATE_ENTITY_ACCESS();
-    return _player.get();
+    return _player.load(std::memory_order_acquire);
+}
+
+auto Critter::GetPlayerForSend() const noexcept -> refcount_ptr<Player>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    Player* player = _player.load(std::memory_order_acquire);
+
+    if (player == nullptr || !player->TryAddRef()) {
+        return {};
+    }
+
+    return refcount_ptr<Player>(refcount_ptr<Player>::adopt, player);
 }
 
 auto Critter::GetOfflineTime() const -> timespan
@@ -102,14 +115,14 @@ auto Critter::GetOfflineTime() const -> timespan
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    return GetControlledByPlayer() && _player == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
+    return GetControlledByPlayer() && _player.load(std::memory_order_acquire) == nullptr ? _engine->GameTime.GetFrameTime() - _playerDetachTime : timespan::zero;
 }
 
 auto Critter::IsAlive() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return GetCondition() == CritterCondition::Alive;
 }
 
@@ -117,7 +130,7 @@ auto Critter::IsDead() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return GetCondition() == CritterCondition::Dead;
 }
 
@@ -125,7 +138,7 @@ auto Critter::IsKnockout() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return GetCondition() == CritterCondition::Knockout;
 }
 
@@ -133,7 +146,7 @@ auto Critter::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (find_type == CritterFindType::Any) {
         return true;
@@ -183,7 +196,7 @@ void Critter::UnmarkIsForPlayer()
 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
-    FO_VERIFY_AND_THROW(!_player, "Player is already set");
+    FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
 
     refcount_ptr<Map> map;
 
@@ -208,14 +221,17 @@ void Critter::AttachPlayer(Player* player)
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     FO_VERIFY_AND_THROW(player, "Missing player instance");
     FO_VERIFY_AND_THROW(!player->GetControlledCritterId(), "Player already controls a critter");
-    FO_VERIFY_AND_THROW(!_player, "Player is already set");
+    FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
 
-    _player = player;
+    // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish atomically so a
+    // concurrent lock-free GetPlayerForSend reader sees either the old or the new pointer, never a torn value.
+    player->AddRef();
+    _player.store(player, std::memory_order_release);
 
-    _player->SetControlledCritterId(GetId());
-    _player->SetLastControlledCritterId(GetId());
-    _player->SetControlledCritter(this);
+    player->SetControlledCritterId(GetId());
+    player->SetLastControlledCritterId(GetId());
+    player->SetControlledCritter(this);
 }
 
 void Critter::DetachPlayer()
@@ -224,13 +240,15 @@ void Critter::DetachPlayer()
 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
-    FO_VERIFY_AND_THROW(_player, "Missing required player");
-    FO_VERIFY_AND_THROW(_player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
+    Player* player = _player.load(std::memory_order_acquire);
+    FO_VERIFY_AND_THROW(player, "Missing required player");
+    FO_VERIFY_AND_THROW(player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
 
-    _player->SetControlledCritterId({});
-    _player->SetControlledCritter(nullptr);
+    player->SetControlledCritterId({});
+    player->SetControlledCritter(nullptr);
 
-    _player = nullptr;
+    _player.store(nullptr, std::memory_order_release);
+    player->Release();
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 }
 
@@ -565,7 +583,7 @@ auto Critter::GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisi
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto it = _visibleCrModes.find(cr_id);
     return it != _visibleCrModes.end() ? it->second : CritterVisibilityMode::None;
 }
@@ -574,7 +592,7 @@ void Critter::SetVisibleCritterMode(ident_t cr_id, CritterVisibilityMode mode) n
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (mode == CritterVisibilityMode::None) {
         _visibleCrModes.erase(cr_id);
@@ -656,7 +674,7 @@ auto Critter::AddCrIntoVisGroup1(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup1.emplace(cr_id).second;
 }
 
@@ -664,7 +682,7 @@ auto Critter::AddCrIntoVisGroup2(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup2.emplace(cr_id).second;
 }
 
@@ -672,7 +690,7 @@ auto Critter::AddCrIntoVisGroup3(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup3.emplace(cr_id).second;
 }
 
@@ -680,7 +698,7 @@ auto Critter::RemoveCrFromVisGroup1(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup1.erase(cr_id) != 0;
 }
 
@@ -688,7 +706,7 @@ auto Critter::RemoveCrFromVisGroup2(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup2.erase(cr_id) != 0;
 }
 
@@ -696,7 +714,7 @@ auto Critter::RemoveCrFromVisGroup3(ident_t cr_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleCrGroup3.erase(cr_id) != 0;
 }
 
@@ -704,7 +722,7 @@ auto Critter::AddVisibleItem(ident_t item_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleItems.emplace(item_id).second;
 }
 
@@ -712,7 +730,7 @@ auto Critter::RemoveVisibleItem(ident_t item_id) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleItems.erase(item_id) != 0;
 }
 
@@ -720,7 +738,7 @@ auto Critter::CheckVisibleItem(ident_t item_id) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _visibleItems.count(item_id) != 0;
 }
 
@@ -781,7 +799,7 @@ auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
@@ -797,7 +815,7 @@ auto Critter::GetInvItems() noexcept -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     return _invItems;
@@ -807,7 +825,7 @@ auto Critter::GetInvItems() const noexcept -> vector<raw_ptr<const Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<raw_ptr<const Item>> result;
     result.reserve(_invItems.size());
 
@@ -822,7 +840,7 @@ auto Critter::HasItems() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return !_invItems.empty();
 }
 
@@ -830,7 +848,7 @@ auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
@@ -846,7 +864,7 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     const auto it = std::ranges::find_if(_invItems, [&](auto&& item) noexcept -> bool { return item->GetCritterSlot() == slot; });
@@ -862,7 +880,7 @@ auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     int32_t count = 0;
 
     for (const auto& item : _invItems) {
@@ -879,13 +897,40 @@ auto Critter::GetMapSpectators() -> ref_hold_vector<Player*>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
+    // GetParent<Map> validates this critter (the broadcast subject, which is covered) and pins the map; the
+    // spectator snapshot then resolves lock-free, so a property broadcast no longer needs the map's own cover.
     auto map = GetParent<Map>();
 
-    if (map && map->HasSpectatorPlayers()) {
-        return copy_hold_ref(map->GetSpectatorPlayers());
+    if (map) {
+        return map->GetSpectatorPlayersForSend();
     }
 
     return ref_hold_vector<Player*>(0);
+}
+
+auto Critter::GetBroadcastRecipients(const Player* ignore_player) -> ref_hold_vector<Player*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS();
+
+    auto spectators = GetMapSpectators();
+
+    ref_hold_vector<Player*> recipients(_visibleCrWhoSeeMe.size() + spectators.size());
+
+    for (auto& cr : _visibleCrWhoSeeMe) {
+        if (refcount_ptr<Player> player = cr->GetPlayerForSend(); player && player.get() != ignore_player) {
+            recipients.add(player.get());
+        }
+    }
+
+    for (auto* player : spectators) {
+        if (player != ignore_player) {
+            recipients.add(player);
+        }
+    }
+
+    return recipients;
 }
 
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, const ServerEntity* entity)
@@ -895,11 +940,9 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Property(type, prop, entity);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    // Fan out to each pinned recipient. Send_Property validates the subject (entity) and reads its data live;
+    // the subject is held in sync by this broadcaster, so the lock-free recipient loop is safe.
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Property(type, prop, entity);
     }
 }
@@ -911,11 +954,7 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Action(this, action, action_data, item);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Action(this, action, action_data, item);
     }
 }
@@ -927,11 +966,7 @@ void Critter::Broadcast_Dir()
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Dir(this);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Dir(this);
     }
 }
@@ -943,37 +978,25 @@ void Critter::Broadcast_Teleport(mpos to_hex)
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Teleport(this, to_hex);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Teleport(this, to_hex);
     }
 }
 
-void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(Critter*)>& cr_callback, const function<void(Player*)>& spectator_callback)
+void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(Player*)>& player_callback)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
 
-    if (ignore_player == nullptr || ignore_player != GetPlayer()) {
-        cr_callback(this);
+    // The subject's own player plus every refcount-pinned recipient, minus ignore_player. The callback runs a
+    // lock-free Send_* that reads only the locked subject and the recipient's own connection.
+    if (Player* self_player = _player.load(std::memory_order_acquire); self_player != nullptr && self_player != ignore_player) {
+        player_callback(self_player);
     }
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        if (ignore_player == nullptr || ignore_player != cr->GetPlayer()) {
-            cr_callback(cr.get());
-        }
-    }
-
-    if (spectator_callback) {
-        for (auto* player : GetMapSpectators()) {
-            if (player != ignore_player) {
-                spectator_callback(player);
-            }
-        }
+    for (auto* player : GetBroadcastRecipients(ignore_player)) {
+        player_callback(player);
     }
 }
 
@@ -984,11 +1007,7 @@ void Critter::SendAndBroadcast_Moving()
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Moving(this);
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Moving(this);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Moving(this);
     }
 }
@@ -1000,11 +1019,7 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data,
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Action(this, action, action_data, context_item);
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Action(this, action, action_data, context_item);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Action(this, action, action_data, context_item);
     }
 }
@@ -1016,11 +1031,7 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, 
     FO_VALIDATE_ENTITY_ACCESS();
     Send_MoveItem(this, item, action, prev_slot);
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_MoveItem(this, item, action, prev_slot);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_MoveItem(this, item, action, prev_slot);
     }
 }
@@ -1032,11 +1043,7 @@ void Critter::SendAndBroadcast_Attachments()
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Attachments(this);
 
-    for (auto& cr : _visibleCrWhoSeeMe) {
-        cr->Send_Attachments(this);
-    }
-
-    for (auto* player : GetMapSpectators()) {
+    for (auto* player : GetBroadcastRecipients()) {
         player->Send_Attachments(this);
     }
 }
@@ -1045,10 +1052,11 @@ void Critter::Send_Property(NetProperty type, const Property* prop, const Server
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(entity);
 
-    if (_player) {
-        _player->Send_Property(type, prop, entity);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Property(type, prop, entity);
     }
 }
 
@@ -1056,10 +1064,11 @@ void Critter::Send_Moving(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_Moving(from_cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Moving(from_cr);
     }
 }
 
@@ -1067,10 +1076,11 @@ void Critter::Send_MovingSpeed(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_MovingSpeed(from_cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_MovingSpeed(from_cr);
     }
 }
 
@@ -1078,10 +1088,11 @@ void Critter::Send_Dir(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_Dir(from_cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Dir(from_cr);
     }
 }
 
@@ -1089,10 +1100,11 @@ void Critter::Send_AddCritter(const Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (_player) {
-        _player->Send_AddCritter(cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_AddCritter(cr);
     }
 }
 
@@ -1100,10 +1112,11 @@ void Critter::Send_RemoveCritter(const Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (_player) {
-        _player->Send_RemoveCritter(cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_RemoveCritter(cr);
     }
 }
 
@@ -1111,10 +1124,11 @@ void Critter::Send_CritterVisibilityMode(const Critter* cr, CritterVisibilityMod
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (_player) {
-        _player->Send_CritterVisibilityMode(cr, mode);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_CritterVisibilityMode(cr, mode);
     }
 }
 
@@ -1122,9 +1136,11 @@ void Critter::Send_LoadMap(const Map* map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
-    if (_player) {
-        _player->Send_LoadMap(map);
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(map);
+
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_LoadMap(map);
     }
 }
 
@@ -1132,10 +1148,11 @@ void Critter::Send_AddItemOnMap(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (_player) {
-        _player->Send_AddItemOnMap(item);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_AddItemOnMap(item);
     }
 }
 
@@ -1143,10 +1160,11 @@ void Critter::Send_RemoveItemFromMap(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (_player) {
-        _player->Send_RemoveItemFromMap(item);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_RemoveItemFromMap(item);
     }
 }
 
@@ -1154,10 +1172,11 @@ void Critter::Send_ChosenAddItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (_player) {
-        _player->Send_ChosenAddItem(item);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_ChosenAddItem(item);
     }
 }
 
@@ -1165,10 +1184,11 @@ void Critter::Send_ChosenRemoveItem(const Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(item);
 
-    if (_player) {
-        _player->Send_ChosenRemoveItem(item);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_ChosenRemoveItem(item);
     }
 }
 
@@ -1176,10 +1196,11 @@ void Critter::Send_Teleport(const Critter* cr, mpos to_hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
 
-    if (_player) {
-        _player->Send_Teleport(cr, to_hex);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Teleport(cr, to_hex);
     }
 }
 
@@ -1187,10 +1208,10 @@ void Critter::Send_TimeSync()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
-    if (_player) {
-        _player->Send_TimeSync();
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_TimeSync();
     }
 }
 
@@ -1198,10 +1219,10 @@ void Critter::Send_InfoMessage(EngineInfoMessage info_message, string_view extra
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
-    if (_player) {
-        _player->Send_InfoMessage(info_message, extra_text);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_InfoMessage(info_message, extra_text);
     }
 }
 
@@ -1209,10 +1230,11 @@ void Critter::Send_Action(const Critter* from_cr, CritterAction action, int32_t 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_Action(from_cr, action, action_data, context_item);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Action(from_cr, action, action_data, context_item);
     }
 }
 
@@ -1220,10 +1242,11 @@ void Critter::Send_MoveItem(const Critter* from_cr, const Item* item, CritterAct
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_MoveItem(from_cr, item, action, prev_slot);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_MoveItem(from_cr, item, action, prev_slot);
     }
 }
 
@@ -1231,10 +1254,10 @@ void Critter::Send_PlaceToGameComplete()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
-    if (_player) {
-        _player->Send_PlaceToGameComplete();
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_PlaceToGameComplete();
     }
 }
 
@@ -1242,10 +1265,10 @@ void Critter::Send_SomeItems(const_span<Item*> items, bool owned, bool with_inne
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
-    if (_player) {
-        _player->Send_SomeItems(items, owned, with_inner_entities, context_param);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_SomeItems(items, owned, with_inner_entities, context_param);
     }
 }
 
@@ -1253,10 +1276,11 @@ void Critter::Send_Attachments(const Critter* from_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
-    if (_player) {
-        _player->Send_Attachments(from_cr);
+    if (Player* player = _player.load(std::memory_order_acquire); player != nullptr) {
+        player->Send_Attachments(from_cr);
     }
 }
 

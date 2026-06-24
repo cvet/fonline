@@ -69,7 +69,7 @@ public:
     }
     [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_NO_VALIDATE_ENTITY_ACCESS();
         return static_cast<const ProtoItem*>(_proto.get());
     }
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
@@ -82,12 +82,12 @@ public:
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return !!_multihexEntries;
     }
     [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>&
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return *_multihexEntries;
     }
     [[nodiscard]] auto GetOwnedLock() noexcept -> EntityLock&

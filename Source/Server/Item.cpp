@@ -64,7 +64,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (!_innerItems) {
         return nullptr;
@@ -83,7 +83,7 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Ite
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (!_innerItems) {
         return nullptr;
@@ -124,7 +124,7 @@ auto Item::HasInnerItems() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     return _innerItems && !_innerItems->empty();
 }
 
@@ -259,7 +259,7 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     switch (GetOwnership()) {
     case ItemOwnership::CritterInventory: {

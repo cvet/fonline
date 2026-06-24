@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 20
+///@ MigrationRule Version 0 0 21
 
 #include "Version-Include.h"
 
@@ -58,12 +58,12 @@ extern bool IsTestingInProgress;
 // Entity access validation.
 // Todo: remove entire system after multitheaded logic stabilization.
 // These checks are expensive diagnostics; fix trips at the top-level sync/job boundary.
+// The macros use the noexcept "strong" form (reports the violation and exits, instead of throwing) so a single
+// macro is safe in both noexcept and throwing methods. The throwing ValidateEntityAccess(entity) free function
+// remains for the explicit-entity call sites that want the exception to propagate.
 class Entity;
-inline void ValidateEntityAccess(const Entity* entity);
 inline void ValidateEntityAccessStrong(const Entity* entity) noexcept;
-#define FO_VALIDATE_ENTITY_ACCESS() ValidateEntityAccess(this)
-#define FO_VALIDATE_ENTITY_ACCESS_STRONG() ValidateEntityAccessStrong(this)
-// Generated value accessors include noexcept getters, so value validation must be strong.
+#define FO_VALIDATE_ENTITY_ACCESS() ValidateEntityAccessStrong(this)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccessStrong(entity)
 #define FO_NO_VALIDATE_ENTITY_ACCESS()
 

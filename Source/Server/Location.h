@@ -63,7 +63,7 @@ public:
     }
     [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_NO_VALIDATE_ENTITY_ACCESS();
         return static_cast<const ProtoLocation*>(_proto.get());
     }
     [[nodiscard]] auto HasMaps() const -> bool;
@@ -71,7 +71,7 @@ public:
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
     [[nodiscard]] auto GetRawMaps() noexcept -> auto&
     {
-        FO_VALIDATE_ENTITY_ACCESS_STRONG();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _locMaps;
     }
     [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> Map*;
