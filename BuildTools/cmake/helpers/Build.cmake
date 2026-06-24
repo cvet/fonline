@@ -48,7 +48,14 @@ function(DisableLibWarnings)
 			# and friends; mongo-c/zlib-style C callbacks do the same), so it is a third-party idiom, not a bug in
 			# our code. Exclude vendored libs from this one check on the San_Undefined configs; every other UBSan
 			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
-			$<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function>
+			#
+			# -fsanitize=alignment is excluded for the same reason: AngelScript builds its bytecode in an asDWORD[]
+			# (4-byte) buffer and packs pointer-sized asPWORD operands at 4-byte-aligned slots by design
+			# (e.g. `*(asPWORD*)(bc+1) = ...` in GenerateFactoryStubForTemplateObjectInstance), which UBSan reports as
+			# a misaligned store even though it is correct on every architecture the engine targets. This is upstream
+			# third-party packing, not a bug in our code, so vendored libs are excused from the alignment check; our
+			# own code keeps it fully active.
+			$<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
 			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
 	endforeach()
 endfunction()

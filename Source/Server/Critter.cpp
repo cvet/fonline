@@ -892,23 +892,21 @@ auto Critter::CountInvItemByPid(hstring pid) const noexcept -> int32_t
     return count;
 }
 
-auto Critter::GetMapSpectators() -> ref_hold_vector<Player*>
+auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    // GetParent<Map> validates this critter (the broadcast subject, which is covered) and pins the map; the
-    // spectator snapshot then resolves lock-free, so a property broadcast no longer needs the map's own cover.
     auto map = GetParent<Map>();
 
     if (map) {
         return map->GetSpectatorPlayersForSend();
     }
 
-    return ref_hold_vector<Player*>(0);
+    return {};
 }
 
-auto Critter::GetBroadcastRecipients(const Player* ignore_player) -> ref_hold_vector<Player*>
+auto Critter::GetBroadcastRecipients(const Player* ignore_player) -> vector<refcount_ptr<Player>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -916,17 +914,18 @@ auto Critter::GetBroadcastRecipients(const Player* ignore_player) -> ref_hold_ve
 
     auto spectators = GetMapSpectators();
 
-    ref_hold_vector<Player*> recipients(_visibleCrWhoSeeMe.size() + spectators.size());
+    vector<refcount_ptr<Player>> recipients;
+    recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (auto& cr : _visibleCrWhoSeeMe) {
         if (refcount_ptr<Player> player = cr->GetPlayerForSend(); player && player.get() != ignore_player) {
-            recipients.add(player.get());
+            recipients.emplace_back(std::move(player));
         }
     }
 
-    for (auto* player : spectators) {
-        if (player != ignore_player) {
-            recipients.add(player);
+    for (auto& player : spectators) {
+        if (player.get() != ignore_player) {
+            recipients.emplace_back(std::move(player));
         }
     }
 
@@ -940,9 +939,7 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    // Fan out to each pinned recipient. Send_Property validates the subject (entity) and reads its data live;
-    // the subject is held in sync by this broadcaster, so the lock-free recipient loop is safe.
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Property(type, prop, entity);
     }
 }
@@ -954,7 +951,7 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Action(this, action, action_data, item);
     }
 }
@@ -966,7 +963,7 @@ void Critter::Broadcast_Dir()
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Dir(this);
     }
 }
@@ -978,7 +975,7 @@ void Critter::Broadcast_Teleport(mpos to_hex)
     FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Teleport(this, to_hex);
     }
 }
@@ -989,14 +986,12 @@ void Critter::SendAndBroadcast(const Player* ignore_player, const function<void(
 
     FO_VALIDATE_ENTITY_ACCESS();
 
-    // The subject's own player plus every refcount-pinned recipient, minus ignore_player. The callback runs a
-    // lock-free Send_* that reads only the locked subject and the recipient's own connection.
-    if (Player* self_player = _player.load(std::memory_order_acquire); self_player != nullptr && self_player != ignore_player) {
+    if (auto* self_player = _player.load(std::memory_order_acquire); self_player != nullptr && self_player != ignore_player) {
         player_callback(self_player);
     }
 
-    for (auto* player : GetBroadcastRecipients(ignore_player)) {
-        player_callback(player);
+    for (auto& player : GetBroadcastRecipients(ignore_player)) {
+        player_callback(player.get());
     }
 }
 
@@ -1007,7 +1002,7 @@ void Critter::SendAndBroadcast_Moving()
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Moving(this);
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Moving(this);
     }
 }
@@ -1019,7 +1014,7 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data,
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Action(this, action, action_data, context_item);
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Action(this, action, action_data, context_item);
     }
 }
@@ -1031,7 +1026,7 @@ void Critter::SendAndBroadcast_MoveItem(const Item* item, CritterAction action, 
     FO_VALIDATE_ENTITY_ACCESS();
     Send_MoveItem(this, item, action, prev_slot);
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_MoveItem(this, item, action, prev_slot);
     }
 }
@@ -1043,7 +1038,7 @@ void Critter::SendAndBroadcast_Attachments()
     FO_VALIDATE_ENTITY_ACCESS();
     Send_Attachments(this);
 
-    for (auto* player : GetBroadcastRecipients()) {
+    for (auto& player : GetBroadcastRecipients()) {
         player->Send_Attachments(this);
     }
 }

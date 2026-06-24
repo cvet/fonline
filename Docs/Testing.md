@@ -74,14 +74,23 @@ needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
 defect detector.
 
-Vendored third-party libraries are excluded from UBSan's `-fsanitize=function`
-check (the rest of `-fsanitize=undefined` still applies to them). `DisableLibWarnings`
-adds `-fno-sanitize=function` on the `San_Undefined`/`San_Address_Undefined` configs
-because several vendored libraries call through generic/mismatched function-pointer
-types by design — AngelScript's script-call dispatch invokes registered C functions
-through `bool(*)(void*,void*)` and similar signatures, and C callback APIs do the same.
-That is a third-party idiom, not undefined behaviour in engine code, so it must not
-fail the UBSan leg (which CI runs with `halt_on_error=1`).
+Vendored third-party libraries are excluded from UBSan's `-fsanitize=function` and
+`-fsanitize=alignment` checks (the rest of `-fsanitize=undefined` still applies to them).
+`DisableLibWarnings` adds `-fno-sanitize=function,alignment` on the
+`San_Undefined`/`San_Address_Undefined` configs because several vendored libraries trip
+those two checks by design:
+
+- `function`: AngelScript's script-call dispatch invokes registered C functions through
+  `bool(*)(void*,void*)` and similar signatures, and C callback APIs do the same.
+- `alignment`: AngelScript builds its bytecode in an `asDWORD[]` (4-byte) buffer and packs
+  pointer-sized `asPWORD` operands at 4-byte-aligned slots
+  (`*(asPWORD*)(bc+1) = ...` in `GenerateFactoryStubForTemplateObjectInstance`), which UBSan
+  reports as a misaligned store even though it is correct on every architecture the engine
+  targets.
+
+Both are third-party idioms, not undefined behaviour in engine code, so they must not fail
+the UBSan leg (which CI runs with `halt_on_error=1`). First-party engine code keeps both
+checks fully active.
 
 ## Code coverage
 

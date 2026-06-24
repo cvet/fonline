@@ -107,7 +107,7 @@ void Map::RemoveSpectatorPlayer(Player* player)
     vec_remove_unique_value(_spectatorPlayers, player);
 }
 
-auto Map::GetSpectatorPlayersForSend() -> ref_hold_vector<Player*>
+auto Map::GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -115,10 +115,11 @@ auto Map::GetSpectatorPlayersForSend() -> ref_hold_vector<Player*>
 
     shared_lock lock {_spectatorLock};
 
-    ref_hold_vector<Player*> recipients(_spectatorPlayers.size());
+    vector<refcount_ptr<Player>> recipients;
+    recipients.reserve(_spectatorPlayers.size());
 
     for (auto& player : _spectatorPlayers) {
-        recipients.add(player.get());
+        recipients.emplace_back(player.get());
     }
 
     return recipients;
@@ -373,7 +374,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     }
 
     // Notify spectators
-    for (auto* player : GetSpectatorPlayersForSend()) {
+    for (auto& player : GetSpectatorPlayersForSend()) {
         player->Send_AddItemOnMap(item);
     }
 }
@@ -501,7 +502,7 @@ void Map::RemoveItem(ident_t item_id)
     }
 
     // Notify spectators
-    for (auto* player : GetSpectatorPlayersForSend()) {
+    for (auto& player : GetSpectatorPlayersForSend()) {
         player->Send_RemoveItemFromMap(item);
     }
 }
@@ -578,7 +579,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
             }
         }
 
-        for (auto* player : GetSpectatorPlayersForSend()) {
+        for (auto& player : GetSpectatorPlayersForSend()) {
             player->Send_Property(type, prop, entity);
         }
     }
@@ -609,7 +610,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
             }
         }
 
-        for (auto* player : GetSpectatorPlayersForSend()) {
+        for (auto& player : GetSpectatorPlayersForSend()) {
             player->Send_Property(type, prop, entity);
         }
     }
