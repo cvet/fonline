@@ -89,6 +89,9 @@ void Map::AddSpectatorPlayer(Player* player)
 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(player, "Missing player instance");
+
+    scoped_lock lock {_spectatorLock};
+
     vec_add_unique_value(_spectatorPlayers, player);
 }
 
@@ -98,14 +101,34 @@ void Map::RemoveSpectatorPlayer(Player* player)
 
     FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(player, "Missing player instance");
+
+    scoped_lock lock {_spectatorLock};
+
     vec_remove_unique_value(_spectatorPlayers, player);
+}
+
+auto Map::GetSpectatorPlayersForSend() -> ref_hold_vector<Player*>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
+
+    shared_lock lock {_spectatorLock};
+
+    ref_hold_vector<Player*> recipients(_spectatorPlayers.size());
+
+    for (auto& player : _spectatorPlayers) {
+        recipients.add(player.get());
+    }
+
+    return recipients;
 }
 
 void Map::SetLocation(Location* loc) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     _mapLocation = loc;
     SetParent(loc);
 }
@@ -350,7 +373,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     }
 
     // Notify spectators
-    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+    for (auto* player : GetSpectatorPlayersForSend()) {
         player->Send_AddItemOnMap(item);
     }
 }
@@ -478,7 +501,7 @@ void Map::RemoveItem(ident_t item_id)
     }
 
     // Notify spectators
-    for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+    for (auto* player : GetSpectatorPlayersForSend()) {
         player->Send_RemoveItemFromMap(item);
     }
 }
@@ -547,11 +570,15 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         const auto* map = dynamic_cast<Map*>(entity);
         FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
 
+        // Pure fan-out to every map critter's player plus the spectators (both resolved lock-free, pinned).
+        // Send_Property validates the subject (this map) and reads its data live; the map is in sync here.
         for (auto& cr : _critters) {
-            cr->Send_Property(type, prop, entity);
+            if (refcount_ptr<Player> player = cr->GetPlayerForSend()) {
+                player->Send_Property(type, prop, entity);
+            }
         }
 
-        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        for (auto* player : GetSpectatorPlayersForSend()) {
             player->Send_Property(type, prop, entity);
         }
     }
@@ -582,7 +609,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
             }
         }
 
-        for (auto* player : copy_hold_ref(_spectatorPlayers)) {
+        for (auto* player : GetSpectatorPlayersForSend()) {
             player->Send_Property(type, prop, entity);
         }
     }
@@ -595,7 +622,7 @@ auto Map::IsHexMovable(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
@@ -606,7 +633,7 @@ auto Map::IsHexShootable(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
@@ -635,7 +662,7 @@ auto Map::HasLivingCritter(mpos hex, const Critter* ignore_cr) const noexcept ->
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     for (const auto& cr : field.Critters) {
@@ -723,7 +750,7 @@ auto Map::IsBlockItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     return field.HasNoMoveItem;
@@ -733,7 +760,7 @@ auto Map::IsTriggerItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     return field.HasTriggerItem;
@@ -743,7 +770,7 @@ auto Map::GetItem(ident_t item_id) noexcept -> Item*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto it = _itemsMap.find(item_id);
 
     return it != _itemsMap.end() ? it->second.get() : nullptr;
@@ -775,7 +802,7 @@ auto Map::GetItemsOnHex(mpos hex) noexcept -> vector<raw_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.Items.empty()) {
@@ -821,7 +848,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) noexcept -> vector<Item*>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.Items.empty()) {
@@ -957,7 +984,7 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> Critter*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (const auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
         return it->second.get();
@@ -970,7 +997,7 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> Critt
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
@@ -1062,7 +1089,7 @@ auto Map::IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     return !static_field.TriggerItems.empty();
@@ -1072,7 +1099,7 @@ auto Map::GetStaticItem(ident_t id) noexcept -> StaticItem*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (const auto it = _staticMap->StaticItemsById.find(id); it != _staticMap->StaticItemsById.end()) {
         return it->second.get();
@@ -1085,7 +1112,7 @@ auto Map::GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> StaticItem*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     if (static_field.StaticItems.empty()) {
@@ -1121,7 +1148,7 @@ auto Map::GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     if (static_field.StaticItems.empty()) {
@@ -1167,7 +1194,7 @@ auto Map::GetTriggerStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticIt
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const auto& static_field = _staticMap->HexField->GetCellForReading(hex);
 
     if (static_field.TriggerItems.empty()) {
@@ -1181,7 +1208,7 @@ auto Map::IsOutsideArea(mpos hex) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS_STRONG();
+    FO_VALIDATE_ENTITY_ACCESS();
     const irect32 scroll_area = GetScrollAxialArea();
 
     if (!scroll_area.is_zero()) {

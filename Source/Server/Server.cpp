@@ -3294,7 +3294,7 @@ void ServerEngine::Process_StopMove(Player* player)
         return;
     }
 
-    StopCritterMoving(cr, MovingState::Stopped, [&] { cr->SendAndBroadcast(player, [&](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); }); });
+    StopCritterMoving(cr, MovingState::Stopped, [&] { cr->SendAndBroadcast(player, [cr](Player* p) { p->Send_Moving(cr); }); });
 }
 
 void ServerEngine::Process_Dir(Player* player)
@@ -3358,7 +3358,7 @@ void ServerEngine::Process_Dir(Player* player)
     }
 
     cr->ChangeDir(checked_dir);
-    cr->SendAndBroadcast(player, [cr](Critter* cr2) { cr2->Send_Dir(cr); }, [cr](Player* p) { p->Send_Dir(cr); });
+    cr->SendAndBroadcast(player, [cr](Player* p) { p->Send_Dir(cr); });
 }
 
 void ServerEngine::Process_Property(Player* player)
@@ -3650,7 +3650,7 @@ void ServerEngine::OnSendGlobalValue(Entity* entity, const Property* prop)
     ignore_unused(entity);
 
     if (prop->IsPublicSync()) {
-        for (auto& player : EntityMngr.GetPlayers()) {
+        for (auto* player : copy_hold_ref(EntityMngr.GetPlayers())) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }
@@ -4299,7 +4299,7 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
 
     _workerPool->Submit(movement_key, [this, cr_ = refcount_ptr<Critter>(cr)]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_.get()); });
 
-    cr->SendAndBroadcast(initiator, [cr](Critter* cr2) { cr2->Send_Moving(cr); }, [cr](Player* p) { p->Send_Moving(cr); });
+    cr->SendAndBroadcast(initiator, [cr](Player* p) { p->Send_Moving(cr); });
 
     ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr, was_moving);
@@ -4405,7 +4405,7 @@ void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
     cr->GetMoving()->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
 
-    cr->SendAndBroadcast(nullptr, [cr](Critter* cr2) { cr2->Send_MovingSpeed(cr); }, [cr](Player* p) { p->Send_MovingSpeed(cr); });
+    cr->SendAndBroadcast(nullptr, [cr](Player* p) { p->Send_MovingSpeed(cr); });
 
     ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr, true);

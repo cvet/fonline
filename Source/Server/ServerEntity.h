@@ -72,7 +72,7 @@ public:
     }
     [[nodiscard]] auto IsInitCalled() const noexcept -> bool
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY_ACCESS();
         return _initCalled;
     }
     [[nodiscard]] auto IsPersistent() const noexcept -> bool
@@ -118,7 +118,7 @@ public:
 
     void SetInitCalled() noexcept
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY_ACCESS();
         _initCalled = true;
     }
     void SetEntityLock(EntityLock* lock) noexcept
