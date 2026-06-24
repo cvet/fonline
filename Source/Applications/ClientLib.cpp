@@ -73,30 +73,30 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
     RunClientRuntime(args, runtime_result);
 }
 
-FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, ClientRuntimeExports* exports) noexcept -> bool
+FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, ClientRuntimeExports* raw_exports) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
+    WriteLog("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
-    if (!IsSupportedClientRuntimeAbi(host_abi_version) || !exports) {
-        WriteLog("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, exports ? "set" : "null");
+    if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
+        WriteLog("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
         return false;
     }
 
-    auto exports_ptr = exports.as_ptr();
+    ptr<ClientRuntimeExports> exports = raw_exports;
 
     // Pin the runtime name string for the lifetime of this DLL — host reads it as
     // const char* through the ABI, and it must outlive every consumer call.
     static const string runtime_name = GetCurrentClientRuntimeLibraryName();
 
-    exports_ptr->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
-    exports_ptr->Metadata.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeMetadata));
-    exports_ptr->Metadata.HostAbiVersion = FO_CLIENT_RUNTIME_HOST_ABI_VERSION;
-    exports_ptr->Metadata.RuntimeName = runtime_name.c_str();
-    exports_ptr->Metadata.BuildHash = FO_BUILD_HASH.c_str();
-    exports_ptr->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION.c_str();
-    exports_ptr->Run = &RunClientRuntimeAbi;
+    exports->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
+    exports->Metadata.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeMetadata));
+    exports->Metadata.HostAbiVersion = FO_CLIENT_RUNTIME_HOST_ABI_VERSION;
+    exports->Metadata.RuntimeName = runtime_name.c_str();
+    exports->Metadata.BuildHash = FO_BUILD_HASH.c_str();
+    exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION.c_str();
+    exports->Run = &RunClientRuntimeAbi;
 
     WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
     return true;

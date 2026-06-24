@@ -146,11 +146,6 @@ private:
 
 struct Direct3D_Renderer::Context
 {
-    struct DummyTextureState
-    {
-        unique_ptr<RenderTexture> Texture;
-    };
-
     nptr<GlobalSettings> Settings {};
     bool RenderDebug {};
     bool VSync {};
@@ -166,7 +161,7 @@ struct Direct3D_Renderer::Context
     nptr<ID3D11SamplerState> PointSampler {};
     nptr<ID3D11SamplerState> LinearSampler {};
     nptr<ID3D11Texture2D> OnePixStagingTex {};
-    optional<DummyTextureState> DummyTexture {};
+    unique_nptr<RenderTexture> DummyTexture {};
     mat44 ProjMatrix {};
     float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
     float32_t OrthoFar {ORTHO_DEPTH_DEFAULT_FAR};
@@ -179,43 +174,8 @@ struct Direct3D_Renderer::Context
     isize32 TargetSize {};
 };
 
-Direct3D_Renderer::ContextState::ContextState(unique_ptr<Context> instance) noexcept :
-    Instance {std::move(instance)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-}
-
-Direct3D_Renderer::ContextState::ContextState(ContextState&&) noexcept = default;
-
-auto Direct3D_Renderer::ContextState::operator=(ContextState&&) noexcept -> ContextState& = default;
-
-Direct3D_Renderer::ContextState::~ContextState() = default;
-
-auto Direct3D_Renderer::MakeContext() -> unique_ptr<Context>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Context>();
-}
-
-auto Direct3D_Renderer::GetContext() noexcept -> ptr<Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_ctx, "Direct3D renderer context is not initialized");
-    return _ctx->Instance.as_ptr();
-}
-
-auto Direct3D_Renderer::GetContext() const noexcept -> ptr<const Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_ctx, "Direct3D renderer context is not initialized");
-    return _ctx->Instance.as_ptr();
-}
-
 template<typename T, typename U>
-static auto RenderBackendCast(ptr<U> value) noexcept -> ptr<T>
+static auto RenderBackendCast(ptr<U> value) -> ptr<T>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -224,7 +184,7 @@ static auto RenderBackendCast(ptr<U> value) noexcept -> ptr<T>
     return nullable_casted.as_ptr();
 }
 
-static auto GetSdlWindow(nptr<WindowInternalHandle> window) noexcept -> ptr<SDL_Window>
+static auto GetSdlWindow(nptr<WindowInternalHandle> window) -> ptr<SDL_Window>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -232,7 +192,7 @@ static auto GetSdlWindow(nptr<WindowInternalHandle> window) noexcept -> ptr<SDL_
     return cast_from_void<SDL_Window*>(window.get());
 }
 
-static auto GetMappedTexturePixels(nptr<void> mapped_data) noexcept -> ptr<ucolor>
+static auto GetMappedTexturePixels(nptr<void> mapped_data) -> ptr<ucolor>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -242,15 +202,16 @@ static auto GetMappedTexturePixels(nptr<void> mapped_data) noexcept -> ptr<ucolo
     return nullable_pixels.as_ptr();
 }
 
-static auto GetDummyTexture(ptr<Direct3D_Renderer::Context> ctx) noexcept -> ptr<RenderTexture>
+static auto GetDummyTexture(ptr<Direct3D_Renderer::Context> ctx) -> ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx->DummyTexture, "Direct3D dummy texture is not created");
-    return ctx->DummyTexture->Texture.as_ptr();
+    auto dummy_texture = ctx->DummyTexture.as_ptr();
+    return dummy_texture;
 }
 
-static auto GetMappedTextureBytes(nptr<const void> mapped_data) noexcept -> ptr<const uint8_t>
+static auto GetMappedTextureBytes(nptr<const void> mapped_data) -> ptr<const uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -267,7 +228,7 @@ static auto OffsetMappedBytes(ptr<const uint8_t> bytes, size_t offset) noexcept 
     return ptr<const uint8_t> {bytes.get_no_const() + offset};
 }
 
-static auto GetMappedResourceData(nptr<void> nullable_mapped_data) noexcept -> ptr<void>
+static auto GetMappedResourceData(nptr<void> nullable_mapped_data) -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -415,8 +376,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
 
     FO_VERIFY_AND_THROW(!!window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx.emplace(ContextState {MakeContext()});
-    auto ctx = GetContext();
+    _ctx = SafeAlloc::MakeUnique<Context>();
+    auto ctx = _ctx.as_ptr();
 
     WriteLog("Used DirectX rendering");
 
@@ -663,7 +624,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    ctx->DummyTexture.emplace(Context::DummyTextureState {CreateTexture({1, 1}, false, false)});
+    ctx->DummyTexture = CreateTexture({1, 1}, false, false);
     auto dummy_texture = GetDummyTexture(ctx);
     dummy_texture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
@@ -680,7 +641,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
         return;
     }
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     ctx->DummyTexture.reset();
     ctx->CurDepthStencil = nullptr;
@@ -724,7 +685,7 @@ void Direct3D_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     const auto d3d_swap_chain = ctx->SwapChain->Present(ctx->VSync ? 1 : 0, 0);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_swap_chain), "Direct3D Present failed", d3d_swap_chain, ctx->VSync, ctx->BackBufSize);
 
@@ -739,7 +700,7 @@ auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool w
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<Direct3D_Texture> d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth, ctx);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
@@ -802,7 +763,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<Direct3D_DrawBuffer> d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static, ctx);
 
     return std::move(d3d_dbuf);
@@ -812,7 +773,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<Direct3D_Effect> d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader, ctx);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
@@ -1042,7 +1003,7 @@ auto Direct3D_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     return ctx->ViewPortRect;
 }
 
@@ -1050,7 +1011,7 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     int32_t vp_ox;
     int32_t vp_oy;
@@ -1115,7 +1076,7 @@ void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noex
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     ctx->OrthoNear = nearp;
     ctx->OrthoFar = farp;
     ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, nearp, farp);
@@ -1125,7 +1086,7 @@ auto Direct3D_Renderer::GetProjMatrix() const -> mat44
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     return ctx->ProjMatrix;
 }
 
@@ -1133,7 +1094,7 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     if (color.has_value()) {
         const auto r = numeric_cast<float32_t>(color.value().comp.r) / 255.0f;
@@ -1163,7 +1124,7 @@ void Direct3D_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     if (ctx->ViewPortRect.width != ctx->TargetSize.width || ctx->ViewPortRect.height != ctx->TargetSize.height) {
         const float32_t x_ratio = numeric_cast<float32_t>(ctx->ViewPortRect.width) / numeric_cast<float32_t>(ctx->TargetSize.width);
@@ -1188,7 +1149,7 @@ void Direct3D_Renderer::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     ctx->ScissorEnabled = false;
 }
 
@@ -1196,7 +1157,7 @@ void Direct3D_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     const auto is_cur_rt = ctx->CurRenderTarget == ctx->MainRenderTarget;
 
     if (is_cur_rt) {
@@ -1684,10 +1645,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         }
 
         if (_posIndoorMaskTex[pass] != -1) {
-            auto indoor_tex_source = GetDummyTexture(_ctx);
-            if (IndoorMaskTex) {
-                indoor_tex_source = IndoorMaskTex.as_ptr();
-            }
+            auto indoor_tex_source = IndoorMaskTex ? IndoorMaskTex.as_ptr() : GetDummyTexture(_ctx);
             auto indoor_tex = RenderBackendCast<const Direct3D_Texture>(indoor_tex_source);
             _ctx->D3DDeviceContext->PSSetShaderResources(_posIndoorMaskTex[pass], 1, indoor_tex->ShaderTexView.get_pp());
             _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, find_tex_sampler(indoor_tex));

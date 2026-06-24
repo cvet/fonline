@@ -81,7 +81,7 @@ void ClientConnection::CreateNetworkConnection(bool use_udp)
     unique_ptr<NetworkClientConnection> connection = use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings);
 
     _connectingOverUdp = use_udp;
-    _netConnection.emplace(NetworkConnectionState {std::move(connection)});
+    _netConnection = std::move(connection);
 }
 
 void ClientConnection::Connect()
@@ -103,7 +103,7 @@ void ClientConnection::Connect()
         }
 
         if (has_interthread_listener) {
-            _netConnection.emplace(NetworkConnectionState {NetworkClientConnection::CreateInterthreadConnection(_settings)});
+            _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
@@ -177,7 +177,7 @@ void ClientConnection::ProcessConnection()
         return;
     }
 
-    auto net_connection = _netConnection->Connection.as_ptr();
+    auto net_connection = _netConnection.as_ptr();
 
     // Wait for connecting result
     if (net_connection->IsConnecting()) {
@@ -278,7 +278,7 @@ void ClientConnection::Disconnect()
         return;
     }
 
-    auto net_connection = _netConnection->Connection.as_ptr();
+    auto net_connection = _netConnection.as_ptr();
     net_connection->Disconnect();
     _netConnection.reset();
 
@@ -334,7 +334,7 @@ void ClientConnection::SendData()
         }
 
         FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
-        auto net_connection = _netConnection->Connection.as_ptr();
+        auto net_connection = _netConnection.as_ptr();
 
         if (!net_connection->CheckStatus(true)) {
             break;
@@ -353,7 +353,7 @@ auto ClientConnection::ReceiveData() -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
-    auto net_connection = _netConnection->Connection.as_ptr();
+    auto net_connection = _netConnection.as_ptr();
 
     if (net_connection->CheckStatus(false)) {
         const auto recv_buf = net_connection->ReceiveData();

@@ -50,26 +50,16 @@ static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
 static void CleanupSdlAudioStream(SDL_AudioStream* raw_audio_stream) noexcept;
 
-struct ApplicationAudioStreamState
-{
-    unique_del_ptr<SDL_AudioStream> Stream;
-};
-
-struct ApplicationActiveRendererState
-{
-    unique_ptr<Renderer> Renderer;
-};
-
 struct Application::Context
 {
-    optional<ApplicationActiveRendererState> ActiveRenderer {};
+    unique_nptr<Renderer> ActiveRenderer {};
     RenderType ActiveRendererType {};
     nptr<RenderTexture> RenderTargetTex {};
     ucolor ClearColor {150, 150, 150, 255};
     vector<unique_ptr<HeadlessWindowStub>> NullWindowStubs {};
     vector<InputEvent> EventsQueue {};
     vector<InputEvent> NextFrameEventsQueue {};
-    optional<ApplicationAudioStreamState> AudioStream {};
+    unique_del_nptr<SDL_AudioStream> AudioStream {};
     SDL_AudioSpec AudioSpec {};
     AppAudio::AudioStreamCallback AudioStreamWriter {};
     vector<uint8_t> AudioStreamBuf {};
@@ -95,12 +85,13 @@ Application::Context::Context() :
     FO_STACK_TRACE_ENTRY();
 }
 
-static auto GetActiveRenderer(auto ctx) noexcept
+static auto GetActiveRenderer(auto ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx->ActiveRenderer, "No active renderer is selected");
-    return ctx->ActiveRenderer->Renderer.as_ptr();
+    auto active_renderer = ctx->ActiveRenderer.as_ptr();
+    return active_renderer;
 }
 
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>
@@ -261,7 +252,7 @@ static auto TryGetSdlWindow(nptr<WindowInternalHandle> handle) noexcept -> nptr<
     return handle ? cast_from_void<SDL_Window*>(handle.get()) : nullptr;
 }
 
-static auto GetSdlWindow(nptr<WindowInternalHandle> handle) noexcept -> ptr<SDL_Window>
+static auto GetSdlWindow(nptr<WindowInternalHandle> handle) -> ptr<SDL_Window>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -365,7 +356,7 @@ static auto TryGetSdlDisplayMode(SDL_DisplayID display_id) noexcept -> nptr<cons
     return display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
 }
 
-static auto GetSdlDisplayMode(SDL_DisplayID display_id) noexcept -> ptr<const SDL_DisplayMode>
+static auto GetSdlDisplayMode(SDL_DisplayID display_id) -> ptr<const SDL_DisplayMode>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -420,7 +411,7 @@ static auto ReturnImGuiClipboardText(ptr<const char> clipboard_text) noexcept ->
     return clipboard_text.get_no_const();
 }
 
-static auto GetImGuiRenderTexture(ImTextureID texture_id) noexcept -> ptr<RenderTexture>
+static auto GetImGuiRenderTexture(ImTextureID texture_id) -> ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -429,7 +420,7 @@ static auto GetImGuiRenderTexture(ImTextureID texture_id) noexcept -> ptr<Render
     return nullable_texture.as_ptr();
 }
 
-static auto GetImGuiTexturePixels(nptr<void> pixels) noexcept -> ptr<const ucolor>
+static auto GetImGuiTexturePixels(nptr<void> pixels) -> ptr<const ucolor>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -512,14 +503,14 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     const auto silence = numeric_cast<uint8_t>(SDL_GetSilenceValueForFormat(GetApp()->_ctx->AudioSpec.format));
                     auto audio_stream_data = GetApp()->_ctx->AudioStreamBuf.data();
 
-                    MemFill(audio_stream_data.get(), silence, numeric_cast<size_t>(additional_amount));
+                    MemFill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
 
                     if (GetApp()->_ctx->AudioStreamWriter) {
-                        span<uint8_t> audio_stream_span = {audio_stream_data.get(), numeric_cast<size_t>(additional_amount)};
+                        span<uint8_t> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
                         GetApp()->_ctx->AudioStreamWriter(silence, audio_stream_span);
                     }
 
-                    SDL_PutAudioStreamData(audio_stream.get(), audio_stream_data.get(), additional_amount);
+                    SDL_PutAudioStreamData(audio_stream.get(), audio_stream_data, additional_amount);
                 }
             };
 
@@ -532,7 +523,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
                 if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream.get()), &_ctx->AudioSpec, nullptr)) {
                     if (SDL_ResumeAudioStreamDevice(audio_stream.get())) {
-                        _ctx->AudioStream.emplace(ApplicationAudioStreamState {std::move(audio_stream)});
+                        _ctx->AudioStream = std::move(audio_stream);
                     }
                     else {
                         WriteLog("SDL resume audio device failed, error {}", SDL_GetError());
@@ -554,18 +545,18 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     // First choose render type by user preference
     if (Settings.NullRenderer) {
         _ctx->ActiveRendererType = RenderType::Null;
-        _ctx->ActiveRenderer.emplace(ApplicationActiveRendererState {SafeAlloc::MakeUnique<Null_Renderer>()});
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
     }
 #if FO_HAVE_OPENGL
     else if (Settings.ForceOpenGL) {
         _ctx->ActiveRendererType = RenderType::OpenGL;
-        _ctx->ActiveRenderer.emplace(ApplicationActiveRendererState {SafeAlloc::MakeUnique<OpenGL_Renderer>()});
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 #if FO_HAVE_DIRECT_3D
     else if (Settings.ForceDirect3D) {
         _ctx->ActiveRendererType = RenderType::Direct3D;
-        _ctx->ActiveRenderer.emplace(ApplicationActiveRendererState {SafeAlloc::MakeUnique<Direct3D_Renderer>()});
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
@@ -585,7 +576,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_DIRECT_3D
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Direct3D;
-        _ctx->ActiveRenderer.emplace(ApplicationActiveRendererState {SafeAlloc::MakeUnique<Direct3D_Renderer>()});
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Direct3D_Renderer>();
     }
 #endif
 #if FO_HAVE_METAL
@@ -601,7 +592,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_OPENGL
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::OpenGL;
-        _ctx->ActiveRenderer.emplace(ApplicationActiveRendererState {SafeAlloc::MakeUnique<OpenGL_Renderer>()});
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<OpenGL_Renderer>();
     }
 #endif
 
@@ -731,7 +722,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         auto clipboard_text = GetApp()->Input.GetClipboardText().data();
         return ReturnImGuiClipboardText(clipboard_text);
     };
-    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text.get()} : string_view {}); };
+    platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
     platform_io.Platform_ClipboardUserData = nullptr;
 
 #if FO_WINDOWS
@@ -756,7 +747,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     base_fs.AddPackSource(IsPackaged() ? Settings.ClientResources : Settings.BakeOutput, "Core", true);
     LoadImGuiEffect(base_fs);
 
-    _imguiDrawBuf.emplace(ImGuiDrawBufferState {active_renderer->CreateDrawBuffer(false)});
+    _imguiDrawBuf = active_renderer->CreateDrawBuffer(false);
 
     // Start timings
     _timeFrequency = SDL_GetPerformanceFrequency();
@@ -829,11 +820,11 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
         ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
-        _imguiEffect.emplace(ImGuiEffectState {active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
+        _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
             const auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
             return file.GetStr();
-        })});
+        });
     }
 }
 
@@ -950,8 +941,8 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
 
     if (recreate_texture) {
         ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
-        window->_virtualRenderTex.emplace(AppWindow::VirtualRenderTextureState {active_renderer->CreateTexture(desired, true, true)});
-        auto virtual_render_tex = window->_virtualRenderTex->Texture.as_ptr();
+        window->_virtualRenderTex = active_renderer->CreateTexture(desired, true, true);
+        auto virtual_render_tex = window->_virtualRenderTex.as_ptr();
         virtual_render_tex->FlippedHeight = active_renderer->IsRenderTargetFlipped();
     }
 }
@@ -1291,13 +1282,13 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
     SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
 
-    nptr<SDL_Window> sdl_window = SDL_CreateWindowWithProperties(props);
+    nptr<SDL_Window> nullable_sdl_window = SDL_CreateWindowWithProperties(props);
 
-    if (!sdl_window) {
+    if (!nullable_sdl_window) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
 
-    auto sdl_window = sdl_window.as_ptr();
+    auto sdl_window = nullable_sdl_window.as_ptr();
 
     if (!_isTablet) {
         SDL_SetWindowFullscreenMode(sdl_window.get(), nullptr);
@@ -2421,8 +2412,8 @@ void Application::EndFrame()
     const auto fb_height = iround<int32_t>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
-        auto imgui_effect = _imguiEffect->Effect.as_ptr();
-        auto imgui_draw_buf = _imguiDrawBuf->DrawBuf.as_ptr();
+        auto imgui_effect = _imguiEffect.as_ptr();
+        auto imgui_draw_buf = _imguiDrawBuf.as_ptr();
 
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
@@ -2947,7 +2938,7 @@ auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bot
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
@@ -2955,7 +2946,7 @@ auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->IsRenderTargetFlipped();
 }
 
@@ -2963,7 +2954,7 @@ auto AppRender::GetProjMatrix() const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->GetProjMatrix();
 }
 
@@ -3231,7 +3222,7 @@ void AppAudio::LockDevice()
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
-    auto audio_stream = _app->_ctx->AudioStream->Stream.as_ptr();
+    auto audio_stream = _app->_ctx->AudioStream.as_ptr();
     SDL_LockAudioStream(audio_stream.get());
 }
 
@@ -3243,7 +3234,7 @@ void AppAudio::UnlockDevice()
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
-    auto audio_stream = _app->_ctx->AudioStream->Stream.as_ptr();
+    auto audio_stream = _app->_ctx->AudioStream.as_ptr();
     SDL_UnlockAudioStream(audio_stream.get());
 }
 
@@ -3336,8 +3327,8 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
             break;
         }
         else if (buttonid == 3) {
-            if (App) {
-                App->RequestQuit(false);
+            if (IsAppInitialized()) {
+                GetApp()->RequestQuit(false);
             }
             break;
         }

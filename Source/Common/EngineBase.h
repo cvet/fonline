@@ -48,11 +48,6 @@ FO_BEGIN_NAMESPACE
 
 class ScriptImGui;
 
-struct EngineUserData
-{
-    unique_del_ptr<uint8_t> Storage;
-};
-
 class EngineMetadata : public NameResolver
 {
 public:
@@ -191,7 +186,7 @@ public:
     FileSystem Resources;
     GameTimer GameTime;
     TimeEventManager TimeEventMngr;
-    optional<EngineUserData> UserData {};
+    unique_del_nptr<uint8_t> UserData {};
 
 protected:
     explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator);

@@ -94,13 +94,8 @@ private:
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 
-    struct NetworkConnectionState
-    {
-        unique_ptr<NetworkClientConnection> Connection;
-    };
-
     ptr<ClientNetworkSettings> _settings;
-    optional<NetworkConnectionState> _netConnection {};
+    unique_nptr<NetworkClientConnection> _netConnection {};
     bool _connectingOverUdp {};
     bool _connectingHandled {};
     bool _udpFallbackTried {};

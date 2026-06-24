@@ -545,18 +545,6 @@ class OpenGL_Renderer final : public Renderer
 public:
     struct Context;
 
-    struct ContextState
-    {
-        explicit ContextState(unique_ptr<Context> instance) noexcept;
-        ContextState(const ContextState&) = delete;
-        ContextState(ContextState&&) noexcept;
-        auto operator=(const ContextState&) = delete;
-        auto operator=(ContextState&&) noexcept -> ContextState&;
-        ~ContextState();
-
-        unique_ptr<Context> Instance;
-    };
-
     static constexpr auto RING_BUFFER_LENGTH = 300;
     OpenGL_Renderer();
     ~OpenGL_Renderer() override;
@@ -579,11 +567,7 @@ public:
     void OnResizeWindow(isize32 size) override;
 
 private:
-    [[nodiscard]] static auto MakeContext() -> unique_ptr<Context>;
-    [[nodiscard]] auto GetContext() noexcept -> ptr<Context>;
-    [[nodiscard]] auto GetContext() const noexcept -> ptr<const Context>;
-
-    optional<ContextState> _ctx {};
+    unique_nptr<Context> _ctx {};
 };
 
 #endif
@@ -594,18 +578,6 @@ class Direct3D_Renderer final : public Renderer
 {
 public:
     struct Context;
-
-    struct ContextState
-    {
-        explicit ContextState(unique_ptr<Context> instance) noexcept;
-        ContextState(const ContextState&) = delete;
-        ContextState(ContextState&&) noexcept;
-        auto operator=(const ContextState&) = delete;
-        auto operator=(ContextState&&) noexcept -> ContextState&;
-        ~ContextState();
-
-        unique_ptr<Context> Instance;
-    };
 
     Direct3D_Renderer();
     ~Direct3D_Renderer() override;
@@ -628,11 +600,7 @@ public:
     void OnResizeWindow(isize32 size) override;
 
 private:
-    [[nodiscard]] static auto MakeContext() -> unique_ptr<Context>;
-    [[nodiscard]] auto GetContext() noexcept -> ptr<Context>;
-    [[nodiscard]] auto GetContext() const noexcept -> ptr<const Context>;
-
-    optional<ContextState> _ctx {};
+    unique_nptr<Context> _ctx {};
 };
 
 #endif

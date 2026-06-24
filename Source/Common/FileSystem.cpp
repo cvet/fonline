@@ -145,7 +145,7 @@ static auto TakeFileBuffer(auto&& buf) -> unique_del_ptr<const uint8_t>
 
 File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
     FileHeader(path, size, write_time, ds),
-    _fileBuf {LoadedBuffer {std::move(buf)}}
+    _fileBuf {std::move(buf)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -176,7 +176,7 @@ auto File::GetStr() const -> string
 
     if (!result.empty()) {
         ptr<char> target = result.data();
-        auto source = _fileBuf->Data.as_ptr();
+        auto source = _fileBuf.as_ptr();
         MemCopy(target.get(), source.get(), result.size());
     }
 
@@ -195,7 +195,7 @@ auto File::GetData() const -> vector<uint8_t>
 
     if (!result.empty()) {
         ptr<uint8_t> target = result.data();
-        auto source = _fileBuf->Data.as_ptr();
+        auto source = _fileBuf.as_ptr();
         MemCopy(target.get(), source.get(), result.size());
     }
 
@@ -209,7 +209,8 @@ auto File::GetBuf() const -> ptr<const uint8_t>
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    return _fileBuf->Data.as_ptr();
+    auto file_data = _fileBuf.as_ptr();
+    return file_data;
 }
 
 auto File::GetDataSpan() const -> const_span<uint8_t>
@@ -219,7 +220,7 @@ auto File::GetDataSpan() const -> const_span<uint8_t>
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf->Data.as_ptr();
+    auto file_data = _fileBuf.as_ptr();
     return const_span<uint8_t> {file_data.get(), _fileSize};
 }
 
@@ -230,7 +231,7 @@ auto File::GetReader() const -> FileReader
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf->Data.as_ptr();
+    auto file_data = _fileBuf.as_ptr();
     const_span<uint8_t> file_span = {file_data.get(), _fileSize};
     return FileReader(file_span);
 }

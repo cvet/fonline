@@ -65,25 +65,9 @@ public:
 
 private:
     struct Impl;
-    struct State
-    {
-        State() = delete;
-        explicit State(unique_ptr<Impl>&& instance) noexcept;
-        State(const State&) = delete;
-        State(State&&) noexcept;
-        auto operator=(const State&) = delete;
-        auto operator=(State&&) noexcept -> State&;
-        ~State();
-
-        unique_ptr<Impl> Instance;
-    };
-
-    [[nodiscard]] static auto MakeImpl() -> unique_ptr<Impl>;
-    [[nodiscard]] auto GetImpl() noexcept -> ptr<Impl>;
-    [[nodiscard]] auto GetImpl() const noexcept -> ptr<const Impl>;
     auto DecodePacket() -> int32_t;
 
-    optional<State> _impl {};
+    unique_nptr<Impl> _impl {};
 };
 
 FO_END_NAMESPACE

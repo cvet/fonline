@@ -107,9 +107,8 @@ auto Compressor::Compress(const_span<uint8_t> data) -> vector<uint8_t>
     auto output_data = GetZlibOutputBuffer(buf);
     FO_VERIFY_AND_THROW(output_data, "Output buffer is null");
     auto input_data = GetZlibInputBuffer(data);
-    ptr<uLongf> output_size = &buf_len;
 
-    const auto result = compress2(output_data.get(), output_size.get(), input_data.get(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
+    const auto result = compress2(output_data.get(), &buf_len, input_data.get(), numeric_cast<uLong>(data.size()), Z_BEST_SPEED);
 
     if (result != Z_OK) {
         throw CompressionException("Compression failed", result);
@@ -129,9 +128,8 @@ auto Compressor::Decompress(const_span<uint8_t> data, size_t mul_approx) -> vect
 
     while (true) {
         auto output_data = GetZlibOutputBuffer(buf);
-        ptr<uLongf> output_size = &buf_len;
 
-        const auto result = uncompress(output_data.get(), output_size.get(), input_data.get(), numeric_cast<uLong>(data.size()));
+        const auto result = uncompress(output_data.get(), &buf_len, input_data.get(), numeric_cast<uLong>(data.size()));
 
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
@@ -154,34 +152,9 @@ struct StreamCompressor::Impl
     z_stream ZStream {};
 };
 
-StreamCompressor::State::State(unique_ptr<Impl>&& instance) noexcept :
-    Instance {std::move(instance)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-}
-
-StreamCompressor::State::State(State&&) noexcept = default;
-
-auto StreamCompressor::State::operator=(State&&) noexcept -> State& = default;
-
-StreamCompressor::State::~State() = default;
-
-auto StreamCompressor::MakeImpl() -> unique_ptr<Impl>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Impl>();
-}
-
 StreamCompressor::StreamCompressor() noexcept = default;
 
-StreamCompressor::StreamCompressor(StreamCompressor&& other) noexcept :
-    _impl {std::move(other._impl)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    other._impl.reset();
-}
+StreamCompressor::StreamCompressor(StreamCompressor&&) noexcept = default;
 
 auto StreamCompressor::operator=(StreamCompressor&& other) noexcept -> StreamCompressor&
 {
@@ -190,7 +163,6 @@ auto StreamCompressor::operator=(StreamCompressor&& other) noexcept -> StreamCom
     if (this != &other) {
         Reset();
         _impl = std::move(other._impl);
-        other._impl.reset();
     }
 
     return *this;
@@ -203,29 +175,13 @@ StreamCompressor::~StreamCompressor()
     Reset();
 }
 
-auto StreamCompressor::GetImpl() noexcept -> ptr<Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Stream implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
-
-auto StreamCompressor::GetImpl() const noexcept -> ptr<const Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Stream implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
-
 void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!_impl) {
-        _impl.emplace(MakeImpl());
-        auto impl = GetImpl();
+        _impl = SafeAlloc::MakeUnique<Impl>();
+        auto impl = _impl.as_ptr();
         MemFill(&impl->ZStream, 0, sizeof(z_stream));
 
         impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
@@ -241,7 +197,7 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
         FO_VERIFY_AND_THROW(deflate_init == Z_OK, "Failed to initialize zlib deflate stream", deflate_init);
     }
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     result.resize(std::max(result.capacity(), Compressor::CalculateMaxCompressedBufSize(buf.size())));
 
     impl->ZStream.next_in = GetZlibInputBuffer(buf).get();
@@ -265,7 +221,7 @@ void StreamCompressor::Reset() noexcept
     FO_STACK_TRACE_ENTRY();
 
     if (_impl) {
-        auto impl = GetImpl();
+        auto impl = _impl.as_ptr();
         deflateEnd(&impl->ZStream);
         _impl.reset();
     }
@@ -276,34 +232,9 @@ struct StreamDecompressor::Impl
     z_stream ZStream {};
 };
 
-StreamDecompressor::State::State(unique_ptr<Impl>&& instance) noexcept :
-    Instance {std::move(instance)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-}
-
-StreamDecompressor::State::State(State&&) noexcept = default;
-
-auto StreamDecompressor::State::operator=(State&&) noexcept -> State& = default;
-
-StreamDecompressor::State::~State() = default;
-
-auto StreamDecompressor::MakeImpl() -> unique_ptr<Impl>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Impl>();
-}
-
 StreamDecompressor::StreamDecompressor() noexcept = default;
 
-StreamDecompressor::StreamDecompressor(StreamDecompressor&& other) noexcept :
-    _impl {std::move(other._impl)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    other._impl.reset();
-}
+StreamDecompressor::StreamDecompressor(StreamDecompressor&&) noexcept = default;
 
 auto StreamDecompressor::operator=(StreamDecompressor&& other) noexcept -> StreamDecompressor&
 {
@@ -312,7 +243,6 @@ auto StreamDecompressor::operator=(StreamDecompressor&& other) noexcept -> Strea
     if (this != &other) {
         Reset();
         _impl = std::move(other._impl);
-        other._impl.reset();
     }
 
     return *this;
@@ -325,29 +255,13 @@ StreamDecompressor::~StreamDecompressor()
     Reset();
 }
 
-auto StreamDecompressor::GetImpl() noexcept -> ptr<Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Stream implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
-
-auto StreamDecompressor::GetImpl() const noexcept -> ptr<const Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Stream implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
-
 void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!_impl) {
-        _impl.emplace(MakeImpl());
-        auto impl = GetImpl();
+        _impl = SafeAlloc::MakeUnique<Impl>();
+        auto impl = _impl.as_ptr();
         MemFill(&impl->ZStream, 0, sizeof(z_stream));
 
         impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) -> void* {
@@ -363,7 +277,7 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
         FO_VERIFY_AND_THROW(inflate_init == Z_OK, "Failed to initialize zlib inflate stream", inflate_init);
     }
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     result.resize(std::max(result.capacity(), buf.size() * 2));
 
     impl->ZStream.next_in = GetZlibInputBuffer(buf).get();
@@ -398,7 +312,7 @@ void StreamDecompressor::Reset() noexcept
     FO_STACK_TRACE_ENTRY();
 
     if (_impl) {
-        auto impl = GetImpl();
+        auto impl = _impl.as_ptr();
         inflateEnd(&impl->ZStream);
         _impl.reset();
     }

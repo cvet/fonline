@@ -139,55 +139,14 @@ struct VideoClip::Impl
     nanotime PauseTime {};
 };
 
-VideoClip::State::State(unique_ptr<Impl>&& instance) noexcept :
-    Instance {std::move(instance)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-}
-
-VideoClip::State::State(State&&) noexcept = default;
-
-auto VideoClip::State::operator=(State&&) noexcept -> State& = default;
-
-VideoClip::State::~State() = default;
-
-auto VideoClip::MakeImpl() -> unique_ptr<Impl>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Impl>();
-}
-
-VideoClip::VideoClip(VideoClip&& other) noexcept :
-    _impl {std::move(other._impl)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    other._impl.reset();
-}
-
-auto VideoClip::GetImpl() noexcept -> ptr<Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Video clip implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
-
-auto VideoClip::GetImpl() const noexcept -> ptr<const Impl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Video clip implementation is not initialized");
-    return _impl->Instance.as_ptr();
-}
+VideoClip::VideoClip(VideoClip&&) noexcept = default;
 
 VideoClip::VideoClip(vector<uint8_t> video_data) :
-    _impl {State {MakeImpl()}}
+    _impl {SafeAlloc::MakeUnique<Impl>()}
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->RawVideoData = std::move(video_data);
 
     impl->Streams.Streams.resize(Impl::StreamStates::COUNT);
@@ -238,7 +197,7 @@ auto VideoClip::IsPlaying() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return !impl->Stopped && !impl->Paused;
 }
 
@@ -246,28 +205,28 @@ auto VideoClip::IsStopped() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetImpl()->Stopped;
+    return _impl.as_ptr()->Stopped;
 }
 
 auto VideoClip::IsPaused() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetImpl()->Paused;
+    return _impl.as_ptr()->Paused;
 }
 
 auto VideoClip::IsLooped() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return GetImpl()->Looped;
+    return _impl.as_ptr()->Looped;
 }
 
 auto VideoClip::GetTime() const -> timespan
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
 
     if (impl->Stopped) {
         return std::chrono::milliseconds {0};
@@ -284,7 +243,7 @@ auto VideoClip::GetSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return {numeric_cast<int32_t>(impl->VideoInfo.pic_width), numeric_cast<int32_t>(impl->VideoInfo.pic_height)};
 }
 
@@ -292,14 +251,14 @@ void VideoClip::Stop()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GetImpl()->Stopped = true;
+    _impl.as_ptr()->Stopped = true;
 }
 
 void VideoClip::Pause()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->Paused = true;
     impl->PauseTime = nanotime::now();
 }
@@ -308,7 +267,7 @@ void VideoClip::Resume()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
 
     if (impl->Stopped) {
         impl->StartTime = nanotime::now();
@@ -325,21 +284,21 @@ void VideoClip::SetLooped(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();
 
-    GetImpl()->Looped = enabled;
+    _impl.as_ptr()->Looped = enabled;
 }
 
 void VideoClip::SetTime(timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    GetImpl()->StartTime = nanotime::now() - time;
+    _impl.as_ptr()->StartTime = nanotime::now() - time;
 }
 
 auto VideoClip::RenderFrame() -> const vector<ucolor>&
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
 
     if (impl->Stopped) {
         return impl->RenderedTextureData;
@@ -477,7 +436,7 @@ int32_t VideoClip::DecodePacket()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     int32_t b = 0;
     int32_t rv = 0;
 

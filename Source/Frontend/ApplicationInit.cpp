@@ -44,12 +44,7 @@ FO_BEGIN_NAMESPACE
 // zip has no marker and keeps writing next to the exe.
 static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
-struct ApplicationHolder
-{
-    unique_ptr<Application> Instance;
-};
-
-static optional<ApplicationHolder> App {};
+static unique_nptr<Application> App {};
 
 extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
@@ -71,7 +66,8 @@ auto GetApp() noexcept -> ptr<Application>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(IsAppInitialized(), "Application accessed before initialization");
-    return App->Instance.as_ptr();
+    auto app = App.as_ptr();
+    return app;
 }
 
 void ResetApp() noexcept
@@ -165,7 +161,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     }
 
     // Application frontend initialization
-    App.emplace(ApplicationHolder {SafeAlloc::MakeUnique<Application>(std::move(settings), flags)});
+    App = SafeAlloc::MakeUnique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
     SetBadAllocCallback([]() FO_DEFERRED { GetApp()->RequestQuit(); });

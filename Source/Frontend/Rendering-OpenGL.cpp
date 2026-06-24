@@ -214,11 +214,6 @@ static auto ErrCodeToString(GLenum err_code) -> string
 
 struct OpenGL_Renderer::Context
 {
-    struct DummyTextureState
-    {
-        unique_ptr<RenderTexture> Texture;
-    };
-
     nptr<GlobalSettings> Settings {};
     bool RenderDebug {};
     bool ForceGlslEsProfile {};
@@ -231,7 +226,7 @@ struct OpenGL_Renderer::Context
     mat44 ProjMatrix {};
     float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
     float32_t OrthoFar {ORTHO_DEPTH_DEFAULT_FAR};
-    optional<DummyTextureState> DummyTexture {};
+    unique_nptr<RenderTexture> DummyTexture {};
     irect32 ViewPortRect {};
 
     // ReSharper disable CppInconsistentNaming
@@ -244,41 +239,6 @@ struct OpenGL_Renderer::Context
     // ReSharper restore CppInconsistentNaming
 };
 
-OpenGL_Renderer::ContextState::ContextState(unique_ptr<Context> instance) noexcept :
-    Instance {std::move(instance)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-}
-
-OpenGL_Renderer::ContextState::ContextState(ContextState&&) noexcept = default;
-
-auto OpenGL_Renderer::ContextState::operator=(ContextState&&) noexcept -> ContextState& = default;
-
-OpenGL_Renderer::ContextState::~ContextState() = default;
-
-auto OpenGL_Renderer::MakeContext() -> unique_ptr<Context>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeUnique<Context>();
-}
-
-auto OpenGL_Renderer::GetContext() noexcept -> ptr<Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_ctx, "OpenGL renderer context is not initialized");
-    return _ctx->Instance.as_ptr();
-}
-
-auto OpenGL_Renderer::GetContext() const noexcept -> ptr<const Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_ctx, "OpenGL renderer context is not initialized");
-    return _ctx->Instance.as_ptr();
-}
-
 static auto GetOpenGlContext(ptr<OpenGL_Renderer::Context> ctx) noexcept -> ptr<OpenGL_Renderer::Context>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -286,12 +246,12 @@ static auto GetOpenGlContext(ptr<OpenGL_Renderer::Context> ctx) noexcept -> ptr<
     return ctx;
 }
 
-static auto GetOpenGlContext(const optional<OpenGL_Renderer::ContextState>& ctx) noexcept -> ptr<const OpenGL_Renderer::Context>
+static auto GetOpenGlContext(const unique_nptr<OpenGL_Renderer::Context>& ctx) -> ptr<const OpenGL_Renderer::Context>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx, "OpenGL renderer context is not initialized");
-    return ctx->Instance.as_ptr();
+    return ctx.as_ptr();
 }
 
 class OpenGL_Texture final : public RenderTexture
@@ -316,12 +276,13 @@ private:
     ptr<OpenGL_Renderer::Context> _ctx;
 };
 
-static auto GetDummyTexture(ptr<OpenGL_Renderer::Context> ctx) noexcept -> ptr<RenderTexture>
+static auto GetDummyTexture(ptr<OpenGL_Renderer::Context> ctx) -> ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ctx->DummyTexture, "OpenGL dummy texture is not created");
-    return ctx->DummyTexture->Texture.as_ptr();
+    auto dummy_texture = ctx->DummyTexture.as_ptr();
+    return dummy_texture;
 }
 
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
@@ -375,7 +336,7 @@ private:
 };
 
 template<typename T, typename U>
-static auto RenderBackendCast(ptr<U> value) noexcept -> ptr<T>
+static auto RenderBackendCast(ptr<U> value) -> ptr<T>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -384,7 +345,7 @@ static auto RenderBackendCast(ptr<U> value) noexcept -> ptr<T>
     return nullable_casted.as_ptr();
 }
 
-static auto GetSdlWindow(nptr<WindowInternalHandle> window) noexcept -> ptr<SDL_Window>
+static auto GetSdlWindow(nptr<WindowInternalHandle> window) -> ptr<SDL_Window>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -429,8 +390,8 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     FO_VERIFY_AND_THROW(!!window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx.emplace(ContextState {MakeContext()});
-    auto ctx = GetContext();
+    _ctx = SafeAlloc::MakeUnique<Context>();
+    auto ctx = _ctx.as_ptr();
 
     WriteLog("Used OpenGL rendering");
 
@@ -637,7 +598,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
-    ctx->DummyTexture.emplace(Context::DummyTextureState {CreateTexture({1, 1}, false, false)});
+    ctx->DummyTexture = CreateTexture({1, 1}, false, false);
     auto dummy_texture = GetDummyTexture(ctx);
     dummy_texture->UpdateTextureRegion({}, {1, 1}, dummy_pixel);
 
@@ -653,7 +614,7 @@ OpenGL_Renderer::~OpenGL_Renderer()
         return;
     }
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     ctx->DummyTexture.reset();
 
@@ -692,7 +653,7 @@ void OpenGL_Renderer::Present()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
 #if !FO_WEB
     SDL_GL_SwapWindow(ctx->SdlWindow.get());
@@ -707,7 +668,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<OpenGL_Texture> opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, ctx);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
@@ -750,7 +711,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<OpenGL_DrawBuffer> opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, ctx);
 
     return std::move(opengl_dbuf);
@@ -760,7 +721,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     unique_ptr<OpenGL_Effect> opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, ctx);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
@@ -940,7 +901,7 @@ auto OpenGL_Renderer::GetViewPort() const -> irect32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     return ctx->ViewPortRect;
 }
 
@@ -948,7 +909,7 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     int32_t vp_ox;
     int32_t vp_oy;
@@ -998,7 +959,7 @@ void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexce
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     ctx->OrthoNear = nearp;
     ctx->OrthoFar = farp;
@@ -1009,7 +970,7 @@ auto OpenGL_Renderer::GetProjMatrix() const -> mat44
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
     return ctx->ProjMatrix;
 }
 
@@ -1047,7 +1008,7 @@ void OpenGL_Renderer::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     int32_t l;
     int32_t t;
@@ -1085,7 +1046,7 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto ctx = GetContext();
+    auto ctx = _ctx.as_ptr();
 
     ctx->BaseFrameBufSize = size;
 
@@ -1603,10 +1564,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         if (_posIndoorMaskTex[pass] != -1) {
-            auto indoor_tex_source = GetDummyTexture(_ctx);
-            if (IndoorMaskTex) {
-                indoor_tex_source = IndoorMaskTex.as_ptr();
-            }
+            auto indoor_tex_source = IndoorMaskTex ? IndoorMaskTex.as_ptr() : GetDummyTexture(_ctx);
             auto indoor_tex = RenderBackendCast<const OpenGL_Texture>(indoor_tex_source);
             GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));

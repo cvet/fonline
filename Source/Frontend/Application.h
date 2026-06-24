@@ -447,20 +447,8 @@ public:
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override;
     [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return _isVirtual; }
     [[nodiscard]] auto GetTitle() const noexcept -> string_view { return _title; }
-    [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture>
-    {
-        if (!_virtualRenderTex) {
-            return nullptr;
-        }
-
-        return _virtualRenderTex->Texture.as_nptr();
-    }
-    // The screen rect (in host ImGui display coords) where this window's render texture is drawn by
-    // the application. The engine uses it for mouse coordinate translation and hover-based active
-    // window switching, but never sets it on its own — the layout owner (e.g. ServerApp) calls
-    // SetDisplayRect each frame.
+    [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture> { return _virtualRenderTex.as_nptr(); }
     [[nodiscard]] auto GetDisplayRect() const noexcept -> irect32 { return _displayRect; }
-    void SetDisplayRect(irect32 rect) noexcept { _displayRect = rect; }
 
     void GrabInput(bool enable) override;
     void SetSize(isize32 size) override;
@@ -472,16 +460,12 @@ public:
     void AlwaysOnTop(bool enable) override;
     void Destroy() override;
     void SetTitle(string_view title);
+    void SetDisplayRect(irect32 rect) noexcept { _displayRect = rect; }
 
     EventObserver<> OnWindowSizeChanged {};
     EventObserver<> OnScreenSizeChanged {};
 
 private:
-    struct VirtualRenderTextureState
-    {
-        unique_ptr<RenderTexture> Texture;
-    };
-
     explicit AppWindow(ptr<Application> app) :
         _app {app}
     {
@@ -500,7 +484,7 @@ private:
     ipos32 _virtualPosition {};
     isize32 _virtualLayoutSize {};
     irect32 _displayRect {};
-    optional<VirtualRenderTextureState> _virtualRenderTex {};
+    unique_nptr<RenderTexture> _virtualRenderTex {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};
     int32_t _nonConstHelper {};
@@ -738,15 +722,6 @@ private:
     void UpdateGamepadAxis(int32_t axis, int32_t value);
     void UpdateGamepadButton(int32_t button, bool pressed);
 
-    struct ImGuiDrawBufferState
-    {
-        unique_ptr<RenderDrawBuffer> DrawBuf;
-    };
-    struct ImGuiEffectState
-    {
-        unique_ptr<RenderEffect> Effect;
-    };
-
     unique_ptr<Context> _ctx;
     uint64_t _time {};
     uint64_t _timeFrequency {};
@@ -767,8 +742,8 @@ private:
     nptr<void> _gamepadHandle {};
     int32_t _gamepadInstanceId {-1};
     GamepadState _gamepadState {};
-    optional<ImGuiDrawBufferState> _imguiDrawBuf {};
-    optional<ImGuiEffectState> _imguiEffect {};
+    unique_nptr<RenderDrawBuffer> _imguiDrawBuf {};
+    unique_nptr<RenderEffect> _imguiEffect {};
     vector<unique_ptr<RenderTexture>> _imguiTextures {};
     vector<ptr<AppWindow>> _allWindows {};
     vector<unique_ptr<AppWindow>> _childWindows {};

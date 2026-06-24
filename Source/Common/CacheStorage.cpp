@@ -84,11 +84,6 @@ private:
 };
 
 #if FO_HAVE_UNQLITE
-struct UnqliteDbState
-{
-    mutable unique_del_ptr<unqlite> Db;
-};
-
 class UnqliteCacheStorage final : public CacheStorageImpl
 {
 public:
@@ -109,9 +104,7 @@ public:
     void RemoveEntry(string_view entry_name) override;
 
 private:
-    [[nodiscard]] auto GetDb() const -> ptr<unqlite>;
-
-    optional<UnqliteDbState> _db {};
+    mutable unique_del_nptr<unqlite> _db {};
     string _workPath {};
 };
 
@@ -311,14 +304,6 @@ UnqliteCacheStorage::UnqliteCacheStorage(string_view real_path)
     }
 }
 
-auto UnqliteCacheStorage::GetDb() const -> ptr<unqlite>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_db, "Cache storage database is not initialized");
-    return _db->Db.as_ptr();
-}
-
 auto UnqliteCacheStorage::InitCacheStorage() -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -334,7 +319,7 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
             return false;
         }
 
-        _db.emplace(UnqliteDbState {MakeUnqliteHolder(db.as_ptr())});
+        _db = MakeUnqliteHolder(db.as_ptr());
     }
 
     return true;
@@ -348,7 +333,7 @@ auto UnqliteCacheStorage::HasEntry(string_view entry_name) const -> bool
         return false;
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
@@ -370,7 +355,7 @@ void UnqliteCacheStorage::RemoveEntry(string_view entry_name)
         return;
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
@@ -398,7 +383,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
         return {};
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
@@ -436,7 +421,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8_
         return {};
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
@@ -474,7 +459,7 @@ void UnqliteCacheStorage::SetString(string_view entry_name, string_view str)
         return;
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
@@ -502,7 +487,7 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8_t> da
         return;
     }
 
-    auto db = GetDb();
+    auto db = _db.as_ptr();
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());

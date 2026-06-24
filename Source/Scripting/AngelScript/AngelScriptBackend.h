@@ -83,11 +83,6 @@ private:
 
     void ReleaseScriptGlobalsAndReportGC();
 
-    struct DebuggerEndpointState
-    {
-        unique_ptr<DebuggerEndpointServer> Server;
-    };
-
     ptr<const ScriptSettings> _settings;
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {}; // Maybe null
@@ -98,7 +93,7 @@ private:
     function<void(string_view)> _messageCallback {};
     vector<function<void()>> _cleanupCallbacks {};
     vector<function<void()>> _postCleanupCallbacks {};
-    optional<DebuggerEndpointState> _debuggerEndpointServer {};
+    unique_nptr<DebuggerEndpointServer> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
 };
 

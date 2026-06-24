@@ -89,22 +89,6 @@ template<typename T>
     return std::move(value).take_not_null();
 }
 
-template<typename TPtr>
-inline void make_if_not_exists(ptr<TPtr> object)
-{
-    if (!*object) {
-        *object = SafeAlloc::MakeUnique<typename TPtr::element_type>();
-    }
-}
-
-template<typename TPtr>
-inline void destroy_if_empty(ptr<TPtr> object) noexcept
-{
-    if (*object && (*object)->empty()) {
-        object->reset();
-    }
-}
-
 // Ref holders
 template<typename T>
 struct ref_hold_ptr_type
@@ -415,28 +399,16 @@ template<std::ranges::range T>
 
 [[nodiscard]] inline auto string_to_span(string_view str) noexcept -> const_span<uint8_t>
 {
-    if (str.empty()) {
-        return {};
-    }
-
     return {cast_from_void<const uint8_t*>(cast_to_void(str.data())), str.size()};
 }
 
 [[nodiscard]] inline auto string_to_span(string& str) noexcept -> span<uint8_t>
 {
-    if (str.empty()) {
-        return {};
-    }
-
     return {cast_from_void<uint8_t*>(cast_to_void(str.data())), str.size()};
 }
 
 [[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view
 {
-    if (bytes.empty()) {
-        return {};
-    }
-
     return {cast_from_void<const char*>(cast_to_void(bytes.data())), bytes.size()};
 }
 

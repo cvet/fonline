@@ -182,7 +182,7 @@ AngelScriptBackend::~AngelScriptBackend()
     FO_STACK_TRACE_ENTRY();
 
     if (_debuggerEndpointServer) {
-        auto endpoint_server = _debuggerEndpointServer->Server.as_ptr();
+        auto endpoint_server = _debuggerEndpointServer.as_ptr();
         endpoint_server->Stop();
         _debuggerEndpointServer.reset();
     }
@@ -291,7 +291,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
         if (!_debuggerEndpointServer) {
             try {
                 ptr<const AngelScriptBackend> backend_ptr = this;
-                _debuggerEndpointServer.emplace(DebuggerEndpointState {SafeAlloc::MakeUnique<DebuggerEndpointServer>(backend_ptr)});
+                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(backend_ptr);
             }
             catch (...) {
                 WriteLog("Can't start AngelScript debugger endpoint server");
@@ -819,7 +819,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
         _contextMngr.emplace(_asEngine.as_ptr(), overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer) {
-                auto endpoint_server = _debuggerEndpointServer->Server.as_ptr();
+                auto endpoint_server = _debuggerEndpointServer.as_ptr();
                 nlohmann::json body;
                 body["reason"] = reason;
 
@@ -842,7 +842,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
         _contextMngr->SetContextSetupCallback([this](ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason) {
             if (_debuggerEndpointServer) {
-                auto endpoint_server = _debuggerEndpointServer->Server.as_ptr();
+                auto endpoint_server = _debuggerEndpointServer.as_ptr();
                 endpoint_server->SetupContext(ctx, reason);
             }
         });

@@ -294,29 +294,17 @@ inline auto MakeBorrowedScriptFuncDesc(ptr<ScriptFuncDesc> func) -> unique_del_p
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {
-    struct FunctionState
-    {
-        explicit FunctionState(unique_del_ptr<ScriptFuncDesc> func) noexcept :
-            Func {std::move(func)}
-        {
-        }
-
-        unique_del_ptr<ScriptFuncDesc> Func;
-    };
-
 public:
     ScriptFunc() noexcept = default;
 
     explicit ScriptFunc(ptr<ScriptFuncDesc> func) noexcept :
-        _func {FunctionState {MakeBorrowedScriptFuncDesc(func)}}
+        _func {MakeBorrowedScriptFuncDesc(func)}
     {
     }
 
-    explicit ScriptFunc(unique_del_nptr<ScriptFuncDesc> func) noexcept
+    explicit ScriptFunc(unique_del_nptr<ScriptFuncDesc> func) noexcept :
+        _func {std::move(func)}
     {
-        if (func) {
-            _func.emplace(FunctionState {take_not_null(func)});
-        }
     }
 
     ScriptFunc(const ScriptFunc&) = delete;
@@ -324,20 +312,20 @@ public:
     auto operator=(const ScriptFunc&) = delete;
     auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc& = default;
 
-    [[nodiscard]] explicit operator bool() const noexcept { return _func.has_value(); }
+    [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
     [[nodiscard]] auto IsDelegate() const noexcept -> bool
     {
         if (!_func) {
             return false;
         }
 
-        auto func = _func->Func.as_ptr();
+        auto func = _func.as_ptr();
         return func->DelegateObj != 0;
     }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName
     {
         if (_func) {
-            auto func = _func->Func.as_ptr();
+            auto func = _func.as_ptr();
             return ScriptFuncName(func->Name, func->DelegateObj);
         }
 
@@ -349,7 +337,7 @@ public:
             return false;
         }
 
-        auto func = _func->Func.as_ptr();
+        auto func = _func.as_ptr();
         return func->AttributeChecker(attribute);
     }
 
@@ -365,7 +353,7 @@ public:
             return false;
         }
 
-        auto func = _func->Func.as_ptr();
+        auto func = _func.as_ptr();
 
         if constexpr (std::is_same_v<TRet, void>) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
@@ -405,7 +393,7 @@ public:
     }
 
 private:
-    optional<FunctionState> _func {};
+    unique_del_nptr<ScriptFuncDesc> _func {};
     std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
 };
 

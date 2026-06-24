@@ -41,11 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-struct SoundOggStreamState
-{
-    unique_del_ptr<OggVorbis_File> Stream;
-};
-
 struct SoundManager::Sound
 {
     vector<uint8_t> BaseBuf {};
@@ -58,7 +53,7 @@ struct SoundManager::Sound
     bool IsMusic {};
     nanotime NextPlayTime {};
     timespan RepeatTime {};
-    optional<SoundOggStreamState> OggStream {};
+    unique_del_nptr<OggVorbis_File> OggStream {};
 };
 
 struct OggFileContext
@@ -303,7 +298,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             sound->ConvertedBufCur = 0;
 
             if (sound->OggStream) {
-                auto ogg_stream = sound->OggStream->Stream.as_ptr();
+                auto ogg_stream = sound->OggStream.as_ptr();
                 ov_raw_seek(ogg_stream.get(), 0);
             }
 
@@ -585,8 +580,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     unique_ptr<OggVorbis_File> ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
     ptr<OggVorbis_File> released_ogg_stream = std::move(ogg_stream_owner).release();
-    sound->OggStream.emplace(SoundOggStreamState {MakeOggVorbisFileHolder(released_ogg_stream)});
-    auto ogg_stream = sound->OggStream->Stream.as_ptr();
+    sound->OggStream = MakeOggVorbisFileHolder(released_ogg_stream);
+    auto ogg_stream = sound->OggStream.as_ptr();
 
     unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
     auto file_context_ptr = file_context.as_ptr();
@@ -669,7 +664,7 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(sound->OggStream, "Sound has no Ogg stream to read");
-    auto ogg_stream = sound->OggStream->Stream.as_ptr();
+    auto ogg_stream = sound->OggStream.as_ptr();
     long result;
     int32_t decoded = 0;
     span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());

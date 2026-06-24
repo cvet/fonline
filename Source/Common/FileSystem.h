@@ -154,14 +154,8 @@ public:
 
     static auto Load(const FileHeader& fh) -> File;
 
-private:
-    struct LoadedBuffer
-    {
-        unique_del_ptr<const uint8_t> Data;
-    };
-
 protected:
-    optional<LoadedBuffer> _fileBuf {};
+    unique_del_nptr<const uint8_t> _fileBuf {};
 };
 
 class FileCollection final

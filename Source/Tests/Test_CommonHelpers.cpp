@@ -124,23 +124,6 @@ TEST_CASE("CommonHelpers")
         CHECK(value.RefCount == 0);
     }
 
-    SECTION("MakeIfNotExistsDestroyIfEmpty")
-    {
-        unique_nptr<vector<int32_t>> values;
-        ptr<unique_nptr<vector<int32_t>>> values_ptr = &values;
-        make_if_not_exists(values_ptr);
-        REQUIRE(values);
-        CHECK(values->empty());
-
-        destroy_if_empty(values_ptr);
-        CHECK_FALSE(values);
-
-        make_if_not_exists(values_ptr);
-        values->emplace_back(1);
-        destroy_if_empty(values_ptr);
-        CHECK(values);
-    }
-
     SECTION("VectorSafeHelpers")
     {
         vector<int32_t> values = {1, 2};

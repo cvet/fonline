@@ -115,17 +115,9 @@ public:
     void DrawGui();
 
 private:
-    struct BackendState
-    {
-        unique_ptr<DataBaseImpl> Impl;
-    };
-
     explicit DataBase(unique_ptr<DataBaseImpl> impl);
 
-    [[nodiscard]] auto GetImpl() noexcept -> ptr<DataBaseImpl>;
-    [[nodiscard]] auto GetImpl() const noexcept -> ptr<const DataBaseImpl>;
-
-    optional<BackendState> _impl {};
+    unique_nptr<DataBaseImpl> _impl {};
 };
 
 extern auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;

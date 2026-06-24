@@ -229,7 +229,7 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
     }
 
     if (recreate_texture) {
-        window->_virtualRenderTex.emplace(AppWindow::VirtualRenderTextureState {_ctx->HeadlessRenderer.CreateTexture(size, true, true)});
+        window->_virtualRenderTex = _ctx->HeadlessRenderer.CreateTexture(size, true, true);
     }
 }
 

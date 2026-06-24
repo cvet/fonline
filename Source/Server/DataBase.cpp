@@ -104,13 +104,7 @@ static void DataBaseImGuiTextUnformatted(string_view text)
 
 DataBase::DataBase() = default;
 
-DataBase::DataBase(DataBase&& other) noexcept :
-    _impl {std::move(other._impl)}
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    other._impl.reset();
-}
+DataBase::DataBase(DataBase&&) noexcept = default;
 
 auto DataBase::operator=(DataBase&& other) noexcept -> DataBase&
 {
@@ -118,7 +112,6 @@ auto DataBase::operator=(DataBase&& other) noexcept -> DataBase&
 
     if (this != &other) {
         _impl = std::move(other._impl);
-        other._impl.reset();
     }
 
     return *this;
@@ -127,35 +120,19 @@ auto DataBase::operator=(DataBase&& other) noexcept -> DataBase&
 DataBase::~DataBase() = default;
 
 DataBase::DataBase(unique_ptr<DataBaseImpl> impl) :
-    _impl {BackendState {std::move(impl)}}
+    _impl {std::move(impl)}
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Missing database backend state");
-    (void)_impl->Impl.as_ptr();
-}
-
-auto DataBase::GetImpl() noexcept -> ptr<DataBaseImpl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Missing database backend state");
-    return _impl->Impl.as_ptr();
-}
-
-auto DataBase::GetImpl() const noexcept -> ptr<const DataBaseImpl>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(_impl, "Missing database backend state");
-    return _impl->Impl.as_ptr();
+    (void)_impl.as_ptr();
 }
 
 auto DataBase::InValidState() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return impl->InValidState();
 }
 
@@ -163,7 +140,7 @@ auto DataBase::GetDbRequestsPerMinute() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return impl->GetDbRequestsPerMinute();
 }
 
@@ -171,7 +148,7 @@ auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     const auto key_type = impl->GetCollectionKeyType(collection_name);
     auto ids = impl->GetAllRecordIds(collection_name);
 
@@ -190,7 +167,7 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     const auto key_type = impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::IntId) {
@@ -210,7 +187,7 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     const auto key_type = impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::String) {
@@ -230,7 +207,7 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return impl->GetDocument(collection_name, id);
 }
 
@@ -238,7 +215,7 @@ auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     return !impl->GetDocument(collection_name, id).Empty();
 }
 
@@ -246,7 +223,7 @@ void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyD
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->Insert(collection_name, id, doc);
 }
 
@@ -254,7 +231,7 @@ void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_vie
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->Update(collection_name, id, key, value);
 }
 
@@ -262,7 +239,7 @@ void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->Delete(collection_name, id);
 }
 
@@ -270,7 +247,7 @@ void DataBase::StartCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->StartCommitChanges();
 }
 
@@ -278,7 +255,7 @@ void DataBase::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->WaitCommitChanges();
 }
 
@@ -286,7 +263,7 @@ void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->ClearChanges();
 }
 
@@ -299,7 +276,7 @@ void DataBase::DrawGui()
         return;
     }
 
-    auto impl = GetImpl();
+    auto impl = _impl.as_ptr();
     impl->DrawGui();
 }
 
