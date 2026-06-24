@@ -2557,14 +2557,17 @@ void ServerEngine::Process_Handshake(ServerConnection* connection)
         return;
     }
 
-    vector<const uint8_t*>* global_vars_data = nullptr;
-    vector<uint32_t>* global_vars_data_sizes = nullptr;
-    StoreData(false, &global_vars_data, &global_vars_data_sizes);
-
-    static const vector<uint8_t> empty_update_desc;
-    const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
-
     {
+        LockForPropertyAccess();
+        auto unlock_global_vars = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+
+        vector<const uint8_t*>* global_vars_data = nullptr;
+        vector<uint32_t>* global_vars_data_sizes = nullptr;
+        StoreData(false, &global_vars_data, &global_vars_data_sizes);
+
+        static const vector<uint8_t> empty_update_desc;
+        const auto& update_desc = _updaterBackend != nullptr ? _updaterBackend->GetUpdateDescriptor(requested_binary_target) : empty_update_desc;
+
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
         out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));

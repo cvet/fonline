@@ -172,9 +172,6 @@ void Player::Send_LoginSuccess()
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    vector<const uint8_t*>* global_vars_data = nullptr;
-    vector<uint32_t>* global_vars_data_sizes = nullptr;
-    _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
 
     vector<const uint8_t*>* player_data = nullptr;
     vector<uint32_t>* player_data_sizes = nullptr;
@@ -185,7 +182,17 @@ void Player::Send_LoginSuccess()
     auto out_buf = _connection->WriteMsg(NetMessage::LoginSuccess);
 
     out_buf->Write(GetId());
-    out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+
+    {
+        _engine->LockForPropertyAccess();
+        auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
+
+        vector<const uint8_t*>* global_vars_data = nullptr;
+        vector<uint32_t>* global_vars_data_sizes = nullptr;
+        _engine->StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        out_buf->WritePropsData(global_vars_data, global_vars_data_sizes);
+    }
+
     out_buf->WritePropsData(player_data, player_data_sizes);
     SendInnerEntities(*out_buf, _engine.get(), false);
 }

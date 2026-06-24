@@ -1145,6 +1145,9 @@ void BaseEngine::FrameAdvance()
 
     GameTime.FrameAdvance(IsRunInDebugger() || Settings.DisableNetworking);
 
+    LockForPropertyAccess();
+    auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+
     SetFrameTime(GameTime.GetFrameTime());
     SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
     SetFramesPerSecond(GameTime.GetFramesPerSecond());
