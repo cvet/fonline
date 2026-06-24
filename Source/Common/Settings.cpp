@@ -248,7 +248,17 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
+// Settings whose value is a credential (web-login verify secret, API tokens, passwords) must not be
+// printed verbatim — the server log can be exposed (e.g. a shared log link), so mask the value.
+static bool IsSecretSettingName(string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string lower = strex(name).lower().str();
+    return lower.find("secret") != string::npos || lower.find("password") != string::npos || lower.find("token") != string::npos || lower.find("apikey") != string::npos;
+}
+
+void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv, bool log_changes)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -262,7 +272,11 @@ void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
             const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? strex("{}", argv[i + 1]).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
-                WriteLog(LogType::Info, "Set {} to {}", key, value);
+                // log_changes is false on the early pre-cache pass so each override is logged once, not twice.
+                if (log_changes) {
+                    const string shown = IsSecretSettingName(key) ? string("***") : value;
+                    WriteLog(LogType::Info, "Set {} to {}", key, shown);
+                }
                 SetValue(key, value);
             }
         }
