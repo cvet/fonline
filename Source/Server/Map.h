@@ -198,7 +198,7 @@ public:
         FO_VALIDATE_ENTITY_ACCESS();
         return _spectatorPlayers;
     }
-    [[nodiscard]] auto GetSpectatorPlayersForSend() -> ref_hold_vector<Player*>;
+    [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>>

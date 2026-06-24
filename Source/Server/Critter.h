@@ -274,18 +274,12 @@ public:
     FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
-    auto GetMapSpectators() -> ref_hold_vector<Player*>;
-    // Refcount-pinned recipient set for a property/state broadcast: every observer's controlling player
-    // (resolved lock-free via GetPlayerForSend) plus the map spectators, minus ignore_player. Built under this
-    // critter's lock so the membership is stable; the returned handles stay valid through the lock-free dispatch.
-    auto GetBroadcastRecipients(const Player* ignore_player = nullptr) -> ref_hold_vector<Player*>;
+    auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
+    auto GetBroadcastRecipients(const Player* ignore_player = nullptr) -> vector<refcount_ptr<Player>>;
 
     uint32_t _movingUid {};
     refcount_ptr<MovingContext> _moving {};
     refcount_ptr<MovingContext> _lastMoving {};
-    // Atomic raw pointer (owning: AddRef on attach, Release on detach) so the broadcast fan-out can pin an
-    // observer's player lock-free via GetPlayerForSend without holding that observer's entity lock. Mirrors
-    // ServerEntity::_parent. Mutated only under this critter's lock (AttachPlayer/DetachPlayer).
     std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<raw_ptr<Critter>> _attachedCritters {};
