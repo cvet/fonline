@@ -1644,11 +1644,13 @@ auto GetScriptFuncName(const AngelScript::asIScriptFunction* func, HashResolver&
 
     string func_name;
 
-    if (func->GetNamespace() == nullptr) {
+    const char* func_namespace = func->GetNamespace();
+
+    if (func_namespace == nullptr || string_view(func_namespace).empty()) {
         func_name = strex("{}", func->GetName()).str();
     }
     else {
-        func_name = strex("{}::{}", func->GetNamespace(), func->GetName()).str();
+        func_name = strex("{}::{}", func_namespace, func->GetName()).str();
     }
 
     return hash_resolver.ToHashedString(func_name);

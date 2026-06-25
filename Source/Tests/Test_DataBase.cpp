@@ -35,6 +35,12 @@
 #include "DataBase.h"
 #include "DiskFileSystem.h"
 
+#if FO_HAVE_UNQLITE
+FO_DISABLE_WARNINGS_PUSH()
+#include <unqlite.h>
+FO_DISABLE_WARNINGS_POP()
+#endif
+
 #include <filesystem>
 
 FO_BEGIN_NAMESPACE
@@ -425,6 +431,23 @@ namespace
         CHECK(pending_content->empty());
         CHECK(committed_content->empty());
     }
+
+#if FO_HAVE_UNQLITE
+    void StoreRawUnQLiteRecord(const std::filesystem::path& db_path, const vector<uint8_t>& key_data, string_view value)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        REQUIRE(fs_create_directories(fs_path_to_string(db_path.parent_path())));
+
+        unqlite* db = nullptr;
+        REQUIRE(unqlite_open(&db, fs_path_to_string(db_path).c_str(), UNQLITE_OPEN_CREATE) == UNQLITE_OK);
+
+        auto close_db = scope_exit([&]() noexcept { unqlite_close(db); });
+
+        REQUIRE(unqlite_kv_store(db, key_data.data(), numeric_cast<int>(key_data.size()), value.data(), numeric_cast<unqlite_int64>(value.size())) == UNQLITE_OK);
+        REQUIRE(unqlite_commit(db) == UNQLITE_OK);
+    }
+#endif
 } // namespace
 
 TEST_CASE("DataBaseCommitOperationsPreserveOrder")
@@ -1553,6 +1576,113 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
     CHECK(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
+}
+
+TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"unqlite-reconnect"};
+    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto int_collection = hashes.ToHashedString("test_collection");
+    const auto string_collection = hashes.ToHashedString("test_string_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {
+        {int_collection, DataBaseKeyType::IntId},
+        {string_collection, DataBaseKeyType::String},
+    };
+    const auto int_id = ident_t {1001};
+    const DataBaseKey string_id {string("steam:user/Привет")};
+    const auto connection_info = strex("DbUnQLite {}", storage_dir).str();
+
+    {
+        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+
+        db.StartCommitChanges();
+        db.Insert(int_collection, int_id, MakeDoc({{"value", 1}}));
+        db.Insert(string_collection, string_id, MakeDoc({{"value", 2}}));
+        db.WaitCommitChanges();
+
+        db.Update(int_collection, int_id, "patched", numeric_cast<int64_t>(7));
+        db.WaitCommitChanges();
+    }
+
+    {
+        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+
+        auto int_ids = db.GetAllIntIds(int_collection);
+        REQUIRE(int_ids.size() == 1);
+        CHECK(int_ids.front() == int_id);
+
+        auto string_ids = db.GetAllStringIds(string_collection);
+        REQUIRE(string_ids.size() == 1);
+        CHECK(string_ids.front() == std::get<string>(string_id));
+
+        auto doc = db.Get(int_collection, int_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 1);
+        CHECK(doc["patched"].AsInt64() == 7);
+
+        doc = db.Get(string_collection, string_id);
+        REQUIRE(!doc.Empty());
+        CHECK(doc["value"].AsInt64() == 2);
+
+        db.StartCommitChanges();
+        db.Delete(int_collection, int_id);
+        db.WaitCommitChanges();
+    }
+
+    {
+        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+
+        CHECK_FALSE(db.Valid(int_collection, int_id));
+        CHECK(db.GetAllIntIds(int_collection).empty());
+
+        const auto string_ids = db.GetAllStringIds(string_collection);
+        REQUIRE(string_ids.size() == 1);
+        CHECK(string_ids.front() == std::get<string>(string_id));
+    }
+}
+
+TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs storage_dir_scope {"unqlite-corrupted-keys"};
+    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto int_collection = hashes.ToHashedString("test_collection");
+    const auto string_collection = hashes.ToHashedString("test_string_collection");
+    const auto collection_schemas = DataBaseCollectionSchemas {
+        {int_collection, DataBaseKeyType::IntId},
+        {string_collection, DataBaseKeyType::String},
+    };
+
+    SECTION("Invalid numeric key size")
+    {
+        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<uint8_t> {1, 2, 3}, "payload");
+
+        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+
+        REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
+    }
+
+    SECTION("Invalid numeric key value")
+    {
+        vector<uint8_t> zero_key(sizeof(int64_t));
+        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
+
+        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+
+        REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
+    }
+
+    SECTION("Invalid encoded string key")
+    {
+        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<uint8_t> {'b', 'a', 'd'}, "payload");
+
+        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+
+        REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
+    }
 }
 #endif
 

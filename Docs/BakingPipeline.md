@@ -123,6 +123,17 @@ The abstract base for individual baker implementations. Each baker provides:
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+`ImageBaker` imports PNG/TGA plus classic frame/image formats such as FRM,
+FRx, FOFRM, ART, SPR, ZAR, MOS, BAM, and TIL. FOFRM nested frame references
+forward `$` options to the referenced image loader. ART options accept palette
+selection (`0`..`3`), transparent-alpha derivation (`t`/`T`), horizontal and
+vertical mirroring (`h`/`H`, `v`/`V`), and frame selection/ranges (`f`/`F`,
+for example `f5` or `f7-5`). SPR options accept zero or more `[part,r,g,b]`
+color-offset entries, using either commas or whitespace as separators, followed
+by the sequence name. BAM options accept a cycle index and optional cycle-frame
+selector separated by `-` (for example `$1` or `$1-3`); out-of-range cycle and
+frame selectors fall back to the first available cycle/frame.
+
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
 ## Script compilation relationship
