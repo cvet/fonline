@@ -101,6 +101,15 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* func)
     delete func_desc;
 }
 
+static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    Preprocessor::DeleteLineNumberTranslator(lnt);
+    engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
+}
+
 AngelScriptBackend::AngelScriptBackend(const ScriptSettings& settings) :
     _settings {&settings}
 {
@@ -205,6 +214,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
+    as_engine->SetEngineUserDataCleanupCallback(CleanupLineNumberTranslator, AS_PREPROCESSOR_LNT_USER_DATA);
 
     RegisterAngelScriptArray(as_engine);
     RegisterAngelScriptString(as_engine);
@@ -359,6 +369,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     }
 
     auto* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+    CleanupLineNumberTranslator(_asEngine.get());
     _asEngine->SetUserData(cast_to_void(lnt), AS_PREPROCESSOR_LNT_USER_DATA);
 
     BinaryStream binary {buf};
@@ -592,6 +603,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     Preprocessor::PrintLexemList(preprocessor_context, lexems, result);
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context);
+    CleanupLineNumberTranslator(_asEngine.get());
     _asEngine->SetUserData(cast_to_void(lnt), AS_PREPROCESSOR_LNT_USER_DATA);
 
     auto* mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);

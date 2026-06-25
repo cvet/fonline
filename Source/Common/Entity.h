@@ -122,7 +122,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    raw_ptr<PropertyRegistrator> PropRegistrator {};
+    unique_ptr<PropertyRegistrator> PropRegistrator {};
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};

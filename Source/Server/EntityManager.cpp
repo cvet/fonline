@@ -1772,7 +1772,7 @@ void EntityManager::ForEachCustomEntityView(CustomEntity* entity, const function
                 FO_VERIFY_AND_THROW(custom_entity_holder->GetId() == custom_entity->GetCustomHolderId(), "Custom entity holder id does not match custom entity owner");
                 ValidateEntityAccess(custom_entity_holder.get());
 
-                const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
+                const auto& custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
                 const auto entry = custom_entity->GetCustomHolderEntry();
                 const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 

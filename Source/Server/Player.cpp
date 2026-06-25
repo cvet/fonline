@@ -308,6 +308,7 @@ void Player::Send_LoadMap(const Map* map)
 
     if (map != nullptr) {
         loc = map->GetLocation();
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(loc);
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
         map_index_in_loc = numeric_cast<int32_t>(loc->GetMapIndex(pid_map));

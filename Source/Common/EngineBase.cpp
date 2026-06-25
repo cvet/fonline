@@ -177,7 +177,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
 
-    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, Hashes, *this);
+    auto registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, Hashes, *this);
+    auto* registrator = registrator_holder.get();
 
     EntityTypeDesc desc;
     desc.Exported = exported;
@@ -185,7 +186,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     desc.HasProtos = has_protos;
     desc.HasStatics = has_statics;
     desc.HasAbstract = has_abstract;
-    desc.PropRegistrator = registrator;
+    desc.PropRegistrator = std::move(registrator_holder);
 
     const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -231,12 +232,13 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> Prope
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
 
-    auto* registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, Hashes, *this);
+    auto registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, Hashes, *this);
+    auto* registrator = registrator_holder.get();
 
     EntityTypeDesc desc;
     desc.Exported = exported;
     desc.HasProtos = true;
-    desc.PropRegistrator = registrator;
+    desc.PropRegistrator = std::move(registrator_holder);
 
     const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -699,12 +701,12 @@ auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> Pro
     const auto it = _entityTypesByStr.find(type_name);
 
     if (it != _entityTypesByStr.end()) {
-        return it->second->PropRegistrator.get_no_const();
+        return it->second->PropRegistrator.get();
     }
 
     const auto it2 = _fixedTypesByStr.find(type_name);
     FO_VERIFY_AND_THROW(it2 != _fixedTypesByStr.end(), "Lookup failed in fixed types by str");
-    return it2->second->PropRegistrator.get_no_const();
+    return it2->second->PropRegistrator.get();
 }
 
 auto EngineMetadata::IsValidBaseType(string_view type_str) const noexcept -> bool

@@ -1195,6 +1195,33 @@ void Application::ResetTouchGestures()
     _touchLastPinchDistance = 0.0f;
 }
 
+void Application::QueueTouchDown(int64_t finger_id, ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchDownEvent {finger_id, pos.x, pos.y});
+}
+
+void Application::QueueTouchMove(int64_t finger_id, ipos32 pos, ipos32 delta)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchMoveEvent {finger_id, pos.x, pos.y, delta.x, delta.y});
+}
+
+void Application::QueueTouchUp(int64_t finger_id, ipos32 pos)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    _ctx->EventsQueue->emplace_back(InputEvent::TouchUpEvent {finger_id, pos.x, pos.y});
+}
+
 void Application::QueueTouchTap(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1631,6 +1658,10 @@ void Application::BeginFrame()
                 touch->Active = true;
                 touch->ScrollActive = false;
 
+                if (!imgui_capture_mouse) {
+                    QueueTouchDown(finger_id, touch_pos);
+                }
+
                 if (const auto* other_touch = FindOtherTouchPoint(finger_id); other_touch != nullptr) {
                     _touchPinchActive = true;
                     _touchTapSuppressed = true;
@@ -1647,6 +1678,10 @@ void Application::BeginFrame()
 
                 const auto delta = ipos32 {touch_pos.x - touch->LastPos.x, touch_pos.y - touch->LastPos.y};
                 touch->LastPos = touch_pos;
+
+                if (!imgui_capture_mouse && (delta.x != 0 || delta.y != 0)) {
+                    QueueTouchMove(finger_id, touch->LastPos, delta);
+                }
 
                 if (_touchPinchActive) {
                     const auto* other_touch = FindOtherTouchPoint(finger_id);
@@ -1692,6 +1727,10 @@ void Application::BeginFrame()
                 }
 
                 touch->LastPos = touch_pos;
+
+                if (!imgui_capture_mouse) {
+                    QueueTouchUp(finger_id, touch->LastPos);
+                }
 
                 if (_touchPinchActive) {
                     ReleaseTouchPoint(finger_id);
