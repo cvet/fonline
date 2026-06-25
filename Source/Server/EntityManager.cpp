@@ -951,6 +951,7 @@ void EntityManager::CallInit(ptr<Location> loc, bool first_time)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
+    ValidateEntityAccess(loc);
 
     if (loc->IsInitCalled()) {
         return;
@@ -960,7 +961,6 @@ void EntityManager::CallInit(ptr<Location> loc, bool first_time)
 
     loc->SetInitCalled();
 
-    ValidateEntityAccess(loc);
     _engine->OnLocationInit.Fire(loc.get(), first_time);
 
     if (!loc->IsDestroyed()) {
@@ -981,6 +981,7 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
+    ValidateEntityAccess(map);
 
     if (map->IsInitCalled()) {
         return;
@@ -990,7 +991,6 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
 
     map->SetInitCalled();
 
-    ValidateEntityAccess(map);
     _engine->OnMapInit.Fire(map.get(), first_time);
 
     if (!map->IsDestroyed()) {
@@ -1019,6 +1019,7 @@ void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+    ValidateEntityAccess(cr);
 
     if (cr->IsInitCalled()) {
         return;
@@ -1028,7 +1029,6 @@ void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
 
     cr->SetInitCalled();
 
-    ValidateEntityAccess(cr);
     _engine->OnCritterInit.Fire(cr.get(), first_time);
 
     if (!cr->IsDestroyed()) {
@@ -1049,6 +1049,7 @@ void EntityManager::CallInit(ptr<Item> item, bool first_time)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
+    ValidateEntityAccess(item);
 
     if (item->IsInitCalled()) {
         return;
@@ -1058,7 +1059,6 @@ void EntityManager::CallInit(ptr<Item> item, bool first_time)
 
     item->SetInitCalled();
 
-    ValidateEntityAccess(item);
     _engine->OnItemInit.Fire(item.get(), first_time);
 
     if (!item->IsDestroyed()) {
@@ -1826,7 +1826,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
                 FO_VERIFY_AND_THROW(custom_entity_holder->GetId() == custom_entity->GetCustomHolderId(), "Custom entity holder id does not match custom entity owner");
                 ValidateEntityAccess(custom_entity_holder);
 
-                const auto custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
+                const auto& custom_entity_holder_type = _engine->GetEntityType(custom_entity_holder->GetTypeName());
                 const auto entry = custom_entity->GetCustomHolderEntry();
                 const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 

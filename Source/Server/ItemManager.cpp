@@ -34,6 +34,7 @@
 #include "ItemManager.h"
 #include "CritterManager.h"
 #include "EntityManager.h"
+#include "EntitySync.h"
 #include "MapManager.h"
 #include "ProtoManager.h"
 #include "Server.h"
@@ -118,6 +119,10 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto.as_ptr(), props);
+
+    auto ctx = _engine->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    ctx->EnsureEntitySynced(item.get());
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -320,7 +325,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
 
-        if (item->IsDestroyed() || to_cr->IsDestroyed()) {
+        if (item->IsDestroyed() || to_cr->IsDestroyed() || to_cr->IsDestroying()) {
             return nullptr;
         }
 
@@ -337,7 +342,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
-        if (to_cr->IsDestroyed()) {
+        if (to_cr->IsDestroyed() || to_cr->IsDestroying()) {
             RestoreSplitItem(item, splitted_item);
             return nullptr;
         }
@@ -439,7 +444,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, con
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
 
-        if (item->IsDestroyed() || to_cont->IsDestroyed()) {
+        if (item->IsDestroyed() || to_cont->IsDestroyed() || to_cont->IsDestroying()) {
             return nullptr;
         }
 
@@ -456,7 +461,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, con
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
-        if (to_cont->IsDestroyed()) {
+        if (to_cont->IsDestroyed() || to_cont->IsDestroying()) {
             RestoreSplitItem(item, splitted_item);
             return nullptr;
         }

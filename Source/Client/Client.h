@@ -229,6 +229,12 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseMove, ipos32 /*offsetPos*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchDown, int64_t /*fingerId*/, ipos32 /*screenPos*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchMove, int64_t /*fingerId*/, ipos32 /*screenPos*/, ipos32 /*offsetPos*/);
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnTouchUp, int64_t /*fingerId*/, ipos32 /*screenPos*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchTap, ipos32 /*screenPos*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnTouchDoubleTap, ipos32 /*screenPos*/);

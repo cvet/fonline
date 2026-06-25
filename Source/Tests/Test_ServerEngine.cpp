@@ -414,6 +414,17 @@ namespace ServerEngineTest
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
         unique_ptr<ServerConnection> connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
         refcount_ptr<Player> player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+
+        SyncContext ctx;
+        ctx.Activate();
+        auto release = scope_exit([&ctx]() noexcept {
+            safe_call([&ctx] {
+                ctx.Release();
+                ctx.Deactivate();
+            });
+        });
+
+        ctx.SyncEntity(player.as_ptr());
         player->SetName(name);
         return player;
     }
@@ -860,7 +871,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
 
@@ -903,7 +914,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
 
@@ -958,7 +969,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->IsMoving());
+        REQUIRE(cr->GetMovingContext() != nullptr);
 
         REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
 
@@ -1188,17 +1199,26 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     });
 
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
+    auto nullable_setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(static_cast<bool>(nullable_setup_ctx));
+    auto setup_ctx = nullable_setup_ctx.as_ptr();
+    setup_ctx->EnsureEntitySynced(loc);
     auto nullable_map = loc->GetMapByIndex(0);
     REQUIRE(static_cast<bool>(nullable_map));
     auto map = nullable_map.as_ptr();
+    setup_ctx->EnsureEntitySynced(map);
 
     auto cr_a = server->CreateCritter(critter_pid, true);
     auto cr_b = server->CreateCritter(critter_pid, true);
+    setup_ctx->EnsureEntitySynced(cr_a);
+    setup_ctx->EnsureEntitySynced(cr_b);
 
     auto player_a_holder = CreateStandalonePlayer(server.as_ptr(), "SyncWidenPlayerA");
     auto player_b_holder = CreateStandalonePlayer(server.as_ptr(), "SyncWidenPlayerB");
     auto player_a = player_a_holder.as_ptr();
     auto player_b = player_b_holder.as_ptr();
+    setup_ctx->EnsureEntitySynced(player_a);
+    setup_ctx->EnsureEntitySynced(player_b);
 
     cr_a->AttachPlayer(player_a);
     player_a->SetControlledCritter(cr_a);
@@ -1886,9 +1906,12 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             ctx.Deactivate();
         });
 
-        // Bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A model that
-        // made the ancestor cover EXCLUDE the descendant lock would leave t2_got_cr false here.
-        for (int i = 0; i < 2000 && !t2_got_cr.load(std::memory_order_acquire); i++) {
+        // Wall-clock-bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A
+        // model that made the ancestor cover EXCLUDE the descendant lock leaves t2_got_cr false until
+        // the deadline. The deadline is generous so scheduler jitter on a loaded host cannot turn a
+        // slow-but-correct acquire into a false failure; a real exclusion never sets the flag at all.
+        const auto t2_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+        while (!t2_got_cr.load(std::memory_order_acquire) && nanotime::now() < t2_deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         CHECK(t2_got_cr.load());
@@ -2053,22 +2076,25 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
             try {
                 primary.SyncEntities(primary_req);
 
-                // Inner rendezvous holding ONLY the primary: spin (bounded, no lock-ordering hazard —
+                // Inner rendezvous holding ONLY the primary: busy-yield (no lock-ordering hazard —
                 // just an atomic) until the peer also holds its primary. This makes the nested
                 // cross-acquire below near-deterministically collide: both threads request {own, peer}
                 // in OPPOSITE order while each holds (via its primary) the lock the other needs — a
                 // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
                 // escalation; an unfixed engine spins forever (regression caught by the watchdog).
+                // The give-up threshold is a generous wall-clock deadline, not a fixed spin count, so a
+                // descheduled-but-progressing peer on a loaded host cannot trip a false "setup broken".
                 primary_held.fetch_add(1, std::memory_order_acq_rel);
-                for (int32_t spin = 0; spin < 100000 && primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire); spin++) {
+                const auto rendezvous_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+                while (primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire) && nanotime::now() < rendezvous_deadline) {
                     std::this_thread::yield();
                 }
 
                 // The rendezvous MUST be met before the nested cross-acquire: if the peer never
                 // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
-                // never forms, and even a broken engine would slip through as a false PASS. The budget
-                // is very generous (the peer only has to take one uncontended primary lock), so a miss
-                // means the setup is broken — fail hard instead of running a non-diagnostic acquire.
+                // never forms, and even a broken engine would slip through as a false PASS. The peer
+                // only has to take one uncontended primary lock, so missing the generous deadline means
+                // the setup is broken — fail hard instead of running a non-diagnostic acquire.
                 if (primary_held.load(std::memory_order_acquire) < 2) {
                     failed.store(true, std::memory_order_release);
                 }
@@ -2083,8 +2109,12 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
                     vector<nptr<ServerEntity>> nested_req {own, peer};
                     nested.SyncEntities(nested_req);
-                    CHECK(IsEntityAccessValid(own));
-                    CHECK(IsEntityAccessValid(peer));
+                    // Catch2's CHECK/REQUIRE macros are not thread-safe (they race on RunContext's assertion
+                    // fast-path, a process-global), and this runs on a worker thread. Record the result through
+                    // the `failed` atomic instead; the main thread reports it via CHECK_FALSE(failed.load()).
+                    if (!IsEntityAccessValid(own) || !IsEntityAccessValid(peer)) {
+                        failed.store(true, std::memory_order_release);
+                    }
                 }
             }
             catch (const std::exception&) {

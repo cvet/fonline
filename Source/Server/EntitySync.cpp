@@ -84,6 +84,7 @@ void EntityLock::Acquire(uint64_t ticket)
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && _sharedHolders.empty()) {
         _ownerThread.store(this_thread, std::memory_order_release);
         _recursionCount = 1;
+        TSanAcquire(this);
         return;
     }
 
@@ -119,6 +120,7 @@ void EntityLock::Acquire(uint64_t ticket)
     FO_STRONG_ASSERT(state == WaitEntry::STATE_GRANTED, "Exclusive entity lock waiter woke up in a non-granted state", ticket, state);
     const auto owner_thread = _ownerThread.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(owner_thread == this_thread, "Exclusive entity lock was granted but the current thread was not recorded as owner", ticket, std::hash<std::thread::id> {}(owner_thread), std::hash<std::thread::id> {}(this_thread));
+    TSanAcquire(this);
 }
 
 void EntityLock::AcquireShared(uint64_t ticket)
@@ -153,6 +155,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     if (_ownerThread.load(std::memory_order_relaxed) == std::thread::id {} && !exclusive_waiter_ahead) {
         _sharedHolders.emplace(this_thread, 1);
+        TSanAcquire(this);
         return;
     }
 
@@ -181,6 +184,7 @@ void EntityLock::AcquireShared(uint64_t ticket)
 
     FO_VERIFY_AND_THROW(state == WaitEntry::STATE_GRANTED, "Shared entity lock waiter woke up in a non-granted state", ticket, state);
     // GrantWaiters recorded this thread in `_sharedHolders` before waking it.
+    TSanAcquire(this);
 }
 
 void EntityLock::AbortPendingWaiters() noexcept
@@ -217,6 +221,7 @@ void EntityLock::Release() noexcept
         return;
     }
 
+    TSanRelease(this);
     _ownerThread.store(std::thread::id {}, std::memory_order_release);
     GrantWaiters();
 }
@@ -240,6 +245,7 @@ void EntityLock::ReleaseShared() noexcept
     FO_STRONG_ASSERT(it != _sharedHolders.end(), "Shared entity lock release without holder entry", _sharedHolders.size());
 
     if (--it->second == 0) {
+        TSanRelease(this);
         _sharedHolders.erase(it);
 
         // A queued exclusive waiter can only proceed once the last reader has left.
@@ -325,6 +331,7 @@ auto EntityLock::TryAcquire() -> bool
 
     _ownerThread.store(this_thread, std::memory_order_release);
     _recursionCount = 1;
+    TSanAcquire(this);
     return true;
 }
 
@@ -377,24 +384,59 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity) noexcept -> bool
     // Try to find a covering lock, verify it still covers after acquire, retry if it doesn't.
     const auto try_hold_entity = [](nptr<const ServerEntity> maybe_entity) noexcept -> refcount_nptr<const ServerEntity> { return maybe_entity.try_hold_ref(); };
 
-    const auto dump_uncovered = [&try_hold_entity](const ServerEntity* e, string_view where) {
-        WriteLog("SyncDiag access-without-sync [{}]: entity '{}' id={} destroyed={}", where, e != nullptr ? e->GetName() : string_view {}, e != nullptr ? e->GetId() : ident_t {}, e != nullptr && e->IsDestroyed());
+    const auto dump_uncovered = [&try_hold_entity](const ServerEntity* e, string_view where) -> bool {
+        struct DiagEntry
+        {
+            string_view Kind {};
+            string Name {};
+            ident_t Id {};
+            string_view Lock {};
+        };
+
+        vector<DiagEntry> entries;
+        bool covered = false;
+
+        const auto lock_state = [&covered](nptr<EntityLock> lock) -> string_view {
+            if (!lock) {
+                covered = true;
+                return "none";
+            }
+
+            if (lock->IsLockedByCurrentThread()) {
+                covered = true;
+                return "HELD-by-this-thread";
+            }
+
+            return "not-held";
+        };
 
         for (auto walk = try_hold_entity(e); walk; walk = walk->GetParentRaw()) {
             const auto walk_lock = walk->GetEntityLock();
-            WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), !walk_lock ? string_view {"none"} : (walk_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
+            entries.emplace_back(DiagEntry {string_view {"chain"}, string {walk->GetName()}, walk->GetId(), lock_state(walk_lock)});
         }
 
-        nptr<ServerEntity> widen;
+        nptr<const ServerEntity> widen;
 
         if (e != nullptr) {
-            widen = const_cast<ServerEntity*>(e)->GetSyncWidenEntity();
+            widen = e->GetSyncWidenEntity();
         }
 
-        if (widen) {
-            const auto widen_lock = widen->GetEntityLock();
-            WriteLog("SyncDiag   widen: '{}' id={} lock={}", widen->GetName(), widen->GetId(), !widen_lock ? string_view {"none"} : (widen_lock->IsLockedByCurrentThread() ? string_view {"HELD-by-this-thread"} : string_view {"not-held"}));
+        for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
+            const auto walk_lock = walk->GetEntityLock();
+            entries.emplace_back(DiagEntry {string_view {"widen"}, string {walk->GetName()}, walk->GetId(), lock_state(walk_lock)});
         }
+
+        if (covered) {
+            return true;
+        }
+
+        WriteLog("SyncDiag access-without-sync [{}]: entity '{}' id={} destroyed={}", where, e != nullptr ? e->GetName() : string_view {}, e != nullptr ? e->GetId() : ident_t {}, e != nullptr && e->IsDestroyed());
+
+        for (const auto& entry : entries) {
+            WriteLog("SyncDiag   {}: '{}' id={} lock={}", entry.Kind, entry.Name, entry.Id, entry.Lock);
+        }
+
+        return false;
     };
 
     for (int32_t attempt = 0; attempt < MAX_VALIDATE_ATTEMPTS; attempt++) {
@@ -417,7 +459,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity) noexcept -> bool
         if (!found_lock) {
             // A player-controlled critter and its Player are coupled through GetSyncWidenEntity (not
             // parent containment), and SyncEntities co-locks them (symmetric auto-widen). Accessing
-            // one is therefore valid whenever the other is covered — mirror the widen-aware cover
+            // one is therefore valid whenever the other is covered; mirror the widen-aware cover
             // check SyncEntities performs at verify time (search the widen-linked entity's own +
             // ancestor locks). This only relaxes access; the entity's own chain failed above.
             const auto widen = entity->GetSyncWidenEntity();
@@ -437,11 +479,21 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity) noexcept -> bool
                 }
             }
 
-            dump_uncovered(entity.get(), "no-lock-found");
+            // The lock-free parent walk can observe a transient no-parent/no-held-ancestor snapshot
+            // while another thread is exchanging containment. Retry before declaring that a held map
+            // or location ancestor does not cover the descendant.
+            if (attempt + 1 < MAX_VALIDATE_ATTEMPTS) {
+                continue;
+            }
+
+            if (dump_uncovered(entity.get(), "no-lock-found")) {
+                return true;
+            }
+
             return false;
         }
 
-        // Verify: re-walk and confirm the chain still leads through found_lock.
+        // Verify: re-walk and confirm the chain still leads through the recorded lock.
         bool still_covers = false;
 
         for (refcount_nptr<const ServerEntity> nullable_verify = try_hold_entity(entity); nullable_verify; nullable_verify = nullable_verify.as_ptr()->GetParentRaw()) {
@@ -457,12 +509,15 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity) noexcept -> bool
             return true;
         }
 
-        // Chain shifted between walk and verify — concurrent reparenting moved the entity out
+        // Chain shifted between walk and verify: concurrent reparenting moved the entity out
         // of the held lock's cover. Loop and re-walk in case the entity is now covered by a
         // different held lock (e.g. caller holds multiple ancestors and the new chain hits one).
     }
 
-    dump_uncovered(entity.get(), "retry-exhausted");
+    if (dump_uncovered(entity.get(), "retry-exhausted")) {
+        return true;
+    }
+
     FO_VERIFY_AND_CONTINUE(false, "Unable to prove entity is covered by a held sync lock", entity ? entity->GetId() : ident_t {}, MAX_VALIDATE_ATTEMPTS);
 
     return false;
@@ -1262,8 +1317,8 @@ void PropagateEntityLock(ptr<Item> item, ptr<EntityLock> parent_lock)
 
     item->SetEntityLock(parent_lock);
 
-    if (item->HasInnerItems()) {
-        for (auto& inner : item->GetAllInnerItems()) {
+    if (item->_innerItems) {
+        for (auto& inner : *item->_innerItems) {
             PropagateEntityLock(inner.as_ptr(), parent_lock);
         }
     }
@@ -1277,8 +1332,8 @@ void RevertEntityLock(ptr<Item> item)
 
     item->SetEntityLock(owned_lock);
 
-    if (item->HasInnerItems()) {
-        for (auto& inner : item->GetAllInnerItems()) {
+    if (item->_innerItems) {
+        for (auto& inner : *item->_innerItems) {
             PropagateEntityLock(inner.as_ptr(), owned_lock);
         }
     }

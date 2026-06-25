@@ -92,6 +92,7 @@ public:
     }
 
     template<typename T>
+        requires(std::same_as<T, uint8_t> || std::same_as<T, char> || std::is_void_v<T>)
     auto ReadPtr(size_t size) -> nptr<const T>
     {
         const_span<uint8_t> bytes = TakeBytes(size);

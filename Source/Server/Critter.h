@@ -62,9 +62,25 @@ public:
     ~Critter() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
-    [[nodiscard]] auto HasPlayer() const noexcept -> bool { return !!_player; }
-    [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player> { return _player.as_nptr(); }
-    [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player> { return _player.as_nptr(); }
+    [[nodiscard]] auto HasPlayer() const noexcept -> bool
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _player.load(std::memory_order_acquire) != nullptr;
+    }
+    [[nodiscard]] auto GetPlayer() const noexcept -> nptr<const Player>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return nptr<const Player>(_player.load(std::memory_order_acquire));
+    }
+    [[nodiscard]] auto GetPlayer() noexcept -> nptr<Player>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return nptr<Player>(_player.load(std::memory_order_acquire));
+    }
+    // Lock-free, refcount-pinned resolution of the controlling player for sync-free broadcast fan-out.
+    // Mirrors ServerEntity::GetParentRaw: no entity-access validation, and the returned handle keeps the
+    // player alive for the whole send. Use only on the snapshot/dispatch path, never as a script accessor.
+    [[nodiscard]] auto GetPlayerForSend() const noexcept -> refcount_nptr<Player>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
     [[nodiscard]] auto GetOfflineTime() const -> timespan;
@@ -79,8 +95,16 @@ public:
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>;
     [[nodiscard]] auto CountInvItemByPid(hstring pid) const noexcept -> int32_t;
-    [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>& { return _visibleItems; }
-    [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool { return _visibleItems.contains(item_id); }
+    [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>&
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _visibleItems;
+    }
+    [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _visibleItems.contains(item_id);
+    }
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
@@ -92,12 +116,29 @@ public:
     void AddToGlobalMapGroup(ptr<Critter> cr);
     void RemoveFromGlobalMapGroup(ptr<Critter> cr);
     void ResetGlobalMapGroup() noexcept;
-    [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
-    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t { return _movingUid; }
-    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving.as_nptr(); }
-    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving.as_nptr(); }
+    [[nodiscard]] auto IsMoving() const noexcept -> bool
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return !!_moving;
+    }
+    [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _movingUid;
+    }
+    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _moving.as_nptr();
+    }
+    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _moving.as_nptr();
+    }
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>
     {
+        FO_VALIDATE_ENTITY_ACCESS();
         if (_moving) {
             return _moving.as_nptr();
         }
@@ -105,6 +146,7 @@ public:
     }
     [[nodiscard]] auto GetMovingContext() noexcept -> nptr<MovingContext>
     {
+        FO_VALIDATE_ENTITY_ACCESS();
         if (_moving) {
             return _moving.as_nptr();
         }
@@ -112,6 +154,7 @@ public:
     }
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState
     {
+        FO_VALIDATE_ENTITY_ACCESS();
         if (_moving) {
             return MovingState::InProgress;
         }
@@ -122,10 +165,26 @@ public:
         auto last_moving = _lastMoving.as_ptr();
         return last_moving->GetCompleteReason();
     }
-    [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool { return _lockMapTransfers != 0; }
-    [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool { return !_attachedCritters.empty(); }
-    [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>> { return _attachedCritters; }
-    [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<ptr<Critter>> { return _attachedCritters; }
+    [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _lockMapTransfers != 0;
+    }
+    [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return !_attachedCritters.empty();
+    }
+    [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _attachedCritters;
+    }
+    [[nodiscard]] auto GetAttachedCritters() const noexcept -> const_span<ptr<Critter>>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _attachedCritters;
+    }
 
     auto AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> bool;
     auto GetVisibleCritterMode(ident_t cr_id) const noexcept -> CritterVisibilityMode;
@@ -157,15 +216,23 @@ public:
     void SetItem(ptr<Item> item);
     void RemoveItem(ptr<Item> item);
     void ChangeDir(mdir dir);
-    void LockMapTransfers() noexcept { _lockMapTransfers++; }
-    void UnlockMapTransfers() noexcept { _lockMapTransfers--; }
+    void LockMapTransfers() noexcept
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        _lockMapTransfers++;
+    }
+    void UnlockMapTransfers() noexcept
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        _lockMapTransfers--;
+    }
 
     void Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr<const ServerEntity> entity);
     void Broadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> item);
     void Broadcast_Dir();
     void Broadcast_Teleport(mpos to_hex);
 
-    void SendAndBroadcast(nptr<const Player> ignore_player, const function<void(ptr<Critter>)>& cr_callback, const function<void(ptr<Player>)>& spectator_callback = {});
+    void SendAndBroadcast(nptr<const Player> ignore_player, const function<void(ptr<Player>)>& player_callback);
     void SendAndBroadcast_Moving();
     void SendAndBroadcast_Action(CritterAction action, int32_t action_data, nptr<const Item> context_item);
     void SendAndBroadcast_MoveItem(nptr<const Item> item, CritterAction action, CritterItemSlot prev_slot);
@@ -224,12 +291,13 @@ public:
     FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
-    auto GetMapSpectators() -> ref_hold_vector<ptr<Player>>;
+    auto GetMapSpectators() -> vector<refcount_ptr<Player>>;
+    auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> vector<refcount_ptr<Player>>;
 
     uint32_t _movingUid {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
-    refcount_nptr<Player> _player {};
+    std::atomic<Player*> _player {};
     nanotime _playerDetachTime {};
     vector<ptr<Critter>> _attachedCritters {};
     vector<ptr<Item>> _invItems {};

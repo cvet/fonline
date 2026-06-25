@@ -42,11 +42,15 @@ ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const Prope
     _id {id}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 }
 
 ServerEntity::~ServerEntity()
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
@@ -61,6 +65,7 @@ void ServerEntity::SetId(ident_t id) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     _id = id;
 }
 
@@ -68,6 +73,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     _isPersistent = persistent;
 }
 
@@ -75,6 +81,7 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     auto& props = const_cast<Properties&>(GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
 }
@@ -83,12 +90,15 @@ void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     EntityProperties(*GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
 }
 
 void ServerEntity::ValidateAccess() const
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     ptr<const ServerEntity> entity = this;
 
@@ -101,8 +111,7 @@ auto ServerEntity::GetParent() -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<const ServerEntity> entity = this;
-    ValidateEntityAccess(entity);
+    FO_VALIDATE_ENTITY_ACCESS();
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -110,8 +119,7 @@ auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<const ServerEntity> entity = this;
-    ValidateEntityAccess(entity);
+    FO_VALIDATE_ENTITY_ACCESS();
     return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -119,12 +127,15 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
 void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (parent) {
         parent->AddRef();
@@ -140,6 +151,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY_ACCESS();
 
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
@@ -159,12 +172,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
             // primary cover. Inner `Sync::Lock(...)` calls only mutate the nested layer, so
             // the primary's locks (the event's entity args) are preserved across the chain
             // and the next sibling sees them locked again.
-            SyncContext nested;
-            nested.Activate();
-            auto cleanup = scope_exit([&]() noexcept {
-                nested.Release();
-                nested.Deactivate();
-            });
+            ScopedSyncContext nested;
 
             result = cb.Callback(call);
         }

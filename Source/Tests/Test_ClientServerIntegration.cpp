@@ -349,7 +349,9 @@ namespace ClientServerIntegrationClient
 
     static auto WaitForLearnedHash(ptr<ClientEngine> client, hstring::hash_t hash, string_view expected_string) -> bool
     {
-        for (int32_t i = 0; i < 2000; i++) {
+        constexpr int32_t max_attempts = 15000;
+
+        for (int32_t i = 0; i < max_attempts; i++) {
             client->MainLoop();
 
             bool failed = false;

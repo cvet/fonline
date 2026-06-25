@@ -131,12 +131,12 @@ private:
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
-    ProtoManager _protoMngr;
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};
     unordered_map<string, ptr<EntityTypeDesc>> _entityRelatives {};
     unordered_map<string_view, ptr<EntityTypeDesc>> _entityTypesByStr {};
     unordered_map<string_view, ptr<EntityTypeDesc>> _fixedTypesByStr {};
+    ProtoManager _protoMngr;
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, unordered_map<string, int32_t>> _enums {};
     unordered_map<string, unordered_map<int32_t, string>> _enumsRev {};

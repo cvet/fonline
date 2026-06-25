@@ -183,6 +183,27 @@ private:
     nptr<SyncContext> _previousContext {};
 };
 
+class ScopedSyncContext final
+{
+public:
+    ScopedSyncContext() noexcept { _ctx.Activate(); }
+    ~ScopedSyncContext() noexcept
+    {
+        _ctx.Release();
+        _ctx.Deactivate();
+    }
+
+    ScopedSyncContext(const ScopedSyncContext&) = delete;
+    ScopedSyncContext(ScopedSyncContext&&) = delete;
+    auto operator=(const ScopedSyncContext&) -> ScopedSyncContext& = delete;
+    auto operator=(ScopedSyncContext&&) -> ScopedSyncContext& = delete;
+
+    void Sync(nptr<ServerEntity> entity) { _ctx.SyncEntity(entity); }
+
+private:
+    SyncContext _ctx {};
+};
+
 void PropagateEntityLock(ptr<class Item> item, ptr<EntityLock> parent_lock);
 void RevertEntityLock(ptr<class Item> item);
 

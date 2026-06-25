@@ -181,7 +181,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     ptr<HashResolver> hash_resolver = &Hashes;
     ptr<NameResolver> name_resolver = this;
-    ptr<PropertyRegistrator> registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
+    unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
+    ptr<PropertyRegistrator> registrator = registrator_holder.as_ptr();
 
     EntityTypeDesc desc;
     desc.Exported = exported;
@@ -189,7 +190,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     desc.HasProtos = has_protos;
     desc.HasStatics = has_statics;
     desc.HasAbstract = has_abstract;
-    desc.PropRegistrator = registrator;
+    desc.PropRegistrator = std::move(registrator_holder);
 
     const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -237,12 +238,13 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     ptr<HashResolver> hash_resolver = &Hashes;
     ptr<NameResolver> name_resolver = this;
-    ptr<PropertyRegistrator> registrator = SafeAlloc::MakeRaw<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
+    unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
+    ptr<PropertyRegistrator> registrator = registrator_holder.as_ptr();
 
     EntityTypeDesc desc;
     desc.Exported = exported;
     desc.HasProtos = true;
-    desc.PropRegistrator = registrator;
+    desc.PropRegistrator = std::move(registrator_holder);
 
     const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -682,11 +684,11 @@ auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept ->
     const auto it = _entityTypes.find(type_name);
 
     if (it != _entityTypes.end()) {
-        return it->second.PropRegistrator;
+        return it->second.PropRegistrator.as_nptr();
     }
 
     const auto it2 = _fixedTypes.find(type_name);
-    return it2 != _fixedTypes.end() ? it2->second.PropRegistrator : nullptr;
+    return it2 != _fixedTypes.end() ? it2->second.PropRegistrator.as_nptr() : nullptr;
 }
 
 auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>
@@ -1159,6 +1161,9 @@ void BaseEngine::FrameAdvance()
     FO_STACK_TRACE_ENTRY();
 
     GameTime.FrameAdvance(IsRunInDebugger() || Settings->DisableNetworking);
+
+    LockForPropertyAccess();
+    auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
 
     SetFrameTime(GameTime.GetFrameTime());
     SetFrameDeltaTime(GameTime.GetFrameDeltaTime());

@@ -55,14 +55,17 @@ FO_BEGIN_NAMESPACE
     } \
     inline auto Get##prop() const noexcept \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetValueFast<prop_type>(GetProperty##prop()); \
     } \
     inline void Set##prop(const prop_type& value) \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         _propsRef->SetValue(GetProperty##prop(), value); \
     } \
     inline bool IsNonEmpty##prop() const noexcept \
     { \
+        FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
     static uint16_t prop##_RegIndex
@@ -119,7 +122,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    nptr<PropertyRegistrator> PropRegistrator {};
+    unique_nptr<PropertyRegistrator> PropRegistrator {};
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
@@ -357,6 +360,24 @@ inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
     if (entity) {
         entity->ValidateAccess();
+    }
+}
+
+// Null-tolerant strong validation for noexcept entity methods.
+inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept
+{
+    if (!entity) {
+        return;
+    }
+
+    try {
+        entity->ValidateAccess();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndExit(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
     }
 }
 

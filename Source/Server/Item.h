@@ -50,6 +50,8 @@ class StaticItem;
 class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
+    friend void PropagateEntityLock(ptr<Item> item, ptr<EntityLock> parent_lock);
+    friend void RevertEntityLock(ptr<Item> item);
 
 public:
     Item() = delete;
@@ -60,8 +62,16 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _protoItem->GetName(); }
-    [[nodiscard]] auto GetProtoItem() const noexcept -> ptr<const ProtoItem> { return _protoItem; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _protoItem->GetName();
+    }
+    [[nodiscard]] auto GetProtoItem() const noexcept -> ptr<const ProtoItem>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _protoItem;
+    }
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>;
@@ -70,9 +80,21 @@ public:
     [[nodiscard]] auto GetAllInnerItems() const -> vector<ptr<const Item>>;
     [[nodiscard]] auto TakeAllInnerItems() -> vector<refcount_ptr<Item>>;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
-    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
-    [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>> { return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr; }
-    [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock> { return &_ownedLock; }
+    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return !!_multihexEntries;
+    }
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr;
+    }
+    [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return &_ownedLock;
+    }
 
     auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
     void RemoveItemFromContainer(ptr<Item> item);

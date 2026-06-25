@@ -45,12 +45,15 @@ Location::Location(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoLocation
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_NO_VALIDATE_ENTITY_ACCESS();
     SetEntityLock(&_ownedLock);
 }
 
 Location::~Location()
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_NO_VALIDATE_ENTITY_ACCESS();
 
     if (!_engine->IsShutdownInProgress()) {
         FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
@@ -61,6 +64,7 @@ auto Location::GetMaps() const -> vector<ptr<const Map>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<ptr<const Map>> result;
     result.reserve(_locMaps.size());
 
@@ -75,6 +79,7 @@ auto Location::GetMaps() -> vector<ptr<Map>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vector<ptr<Map>> result;
     result.reserve(_locMaps.size());
 
@@ -89,6 +94,7 @@ auto Location::GetMapsCount() const -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     return _locMaps.size();
 }
 
@@ -96,6 +102,7 @@ auto Location::HasMaps() const -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     return !_locMaps.empty();
 }
 
@@ -103,6 +110,7 @@ auto Location::GetMapByIndex(int32_t index) noexcept -> nptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     if (index < 0 || index >= numeric_cast<int32_t>(_locMaps.size())) {
@@ -116,6 +124,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_NON_CONST_METHOD_HINT();
 
     for (auto& map : _locMaps) {
@@ -131,6 +140,7 @@ auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     size_t index = 0;
 
     for (const auto& map : _locMaps) {
@@ -148,6 +158,7 @@ void Location::RestoreMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add a map to an already destroyed location", GetId());
     FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add a map to a location that is being destroyed", GetId());
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add an already destroyed map to a location", map->GetId());
@@ -184,6 +195,7 @@ void Location::RemoveMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VALIDATE_ENTITY_ACCESS();
     vec_remove_unique_value(_locMaps, map.hold_ref());
 
     auto map_ids = GetMapIds();

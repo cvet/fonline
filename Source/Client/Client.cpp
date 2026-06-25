@@ -533,7 +533,7 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
     FO_STACK_TRACE_ENTRY();
 
     if (_video && !_video->Clip.IsStopped() && _videoCanInterrupt) {
-        if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent || ev.Type == InputEvent::EventType::TouchTapEvent || ev.Type == InputEvent::EventType::TouchDoubleTapEvent || ev.Type == InputEvent::EventType::TouchScrollEvent || ev.Type == InputEvent::EventType::TouchZoomEvent) {
+        if (ev.Type == InputEvent::EventType::KeyDownEvent || ev.Type == InputEvent::EventType::MouseDownEvent || ev.Type == InputEvent::EventType::TouchDownEvent || ev.Type == InputEvent::EventType::TouchMoveEvent || ev.Type == InputEvent::EventType::TouchUpEvent || ev.Type == InputEvent::EventType::TouchTapEvent || ev.Type == InputEvent::EventType::TouchDoubleTapEvent || ev.Type == InputEvent::EventType::TouchScrollEvent || ev.Type == InputEvent::EventType::TouchZoomEvent) {
             _video->Clip.Stop();
         }
     }
@@ -569,6 +569,21 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
             OnMouseDown.Fire(MouseButton::WheelDown);
             OnMouseUp.Fire(MouseButton::WheelDown);
         }
+    }
+    else if (ev.Type == InputEvent::EventType::TouchDownEvent) {
+        MousePos = {ev.TouchDown.TouchX, ev.TouchDown.TouchY};
+
+        OnTouchDown.Fire(ev.TouchDown.FingerId, MousePos);
+    }
+    else if (ev.Type == InputEvent::EventType::TouchMoveEvent) {
+        MousePos = {ev.TouchMove.TouchX, ev.TouchMove.TouchY};
+
+        OnTouchMove.Fire(ev.TouchMove.FingerId, MousePos, {ev.TouchMove.DeltaX, ev.TouchMove.DeltaY});
+    }
+    else if (ev.Type == InputEvent::EventType::TouchUpEvent) {
+        MousePos = {ev.TouchUp.TouchX, ev.TouchUp.TouchY};
+
+        OnTouchUp.Fire(ev.TouchUp.FingerId, MousePos);
     }
     else if (ev.Type == InputEvent::EventType::TouchTapEvent) {
         MousePos = {ev.TouchTap.TouchX, ev.TouchTap.TouchY};

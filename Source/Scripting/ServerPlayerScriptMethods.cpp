@@ -134,6 +134,11 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
     }
 
     self->SetViewMap(map, hex);
+    auto ctx = self->GetEngine()->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto loc = map->GetLocation();
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
+    ctx->EnsureEntitySynced(loc);
     self->Send_LoadMap(map);
     self->GetEngine()->MapMngr.ViewMap(self, map);
     self->Send_ViewMap();

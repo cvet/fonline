@@ -910,6 +910,24 @@ FO_SCRIPT_API void Client_Game_SimulateMouseClick(ptr<ClientEngine> client, ipos
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateTouchDown(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
+{
+    client->ProcessInputEvent(InputEvent {InputEvent::TouchDownEvent {fingerId, pos.x, pos.y}});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateTouchMove(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos, ipos32 offsetPos)
+{
+    client->ProcessInputEvent(InputEvent {InputEvent::TouchMoveEvent {fingerId, pos.x, pos.y, offsetPos.x, offsetPos.y}});
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SimulateTouchUp(ptr<ClientEngine> client, int64_t fingerId, ipos32 pos)
+{
+    client->ProcessInputEvent(InputEvent {InputEvent::TouchUpEvent {fingerId, pos.x, pos.y}});
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SimulateKeyPress(ptr<ClientEngine> client, KeyCode key, string_view text = "")
 {
     if (key == KeyCode::None) {

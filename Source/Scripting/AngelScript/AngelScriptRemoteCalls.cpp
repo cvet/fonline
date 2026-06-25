@@ -341,31 +341,30 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
     MutableDataReader reader(data);
 
-    using possible_types = variant<int32_t, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
+    struct RemoteCallPlainArgData
+    {
+        alignas(uint64_t) uint8_t Bytes[sizeof(uint64_t)] {};
+    };
+
+    using possible_types = variant<RemoteCallPlainArgData, string, hstring, vector<uint8_t>, refcount_ptr<DynamicRefTypeInstance>, refcount_ptr<ScriptArray>, refcount_ptr<ScriptDict>>;
     list<possible_types> temp_data;
+
+    const auto read_plain_data = [&](size_t size) -> nptr<void> {
+        FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
+        RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
+        ptr<uint8_t> storage_bytes = storage.Bytes;
+        reader.ReadPtr(cast_to_void(storage_bytes.get()), size);
+        return cast_to_void(storage_bytes.get());
+    };
 
     const function<nptr<void>(const BaseTypeDesc&)> read_simple = [&](const BaseTypeDesc& type) -> nptr<void> {
         if (type.IsPrimitive) {
-            span<uint8_t> data = reader.ReadBytes(type.Size);
-            if (data.empty()) {
-                return nullptr;
-            }
-
-            ptr<uint8_t> value_data = data.data();
-            ptr<void> value = cast_to_void(value_data.get());
-            return value;
+            return read_plain_data(type.Size);
         }
         else if (type.IsEnum) {
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum underlying type is null");
             FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
-            span<uint8_t> data = reader.ReadBytes(type.Size);
-            if (data.empty()) {
-                return nullptr;
-            }
-
-            ptr<uint8_t> value_data = data.data();
-            ptr<void> value = cast_to_void(value_data.get());
-            return value;
+            return read_plain_data(type.Size);
         }
         else if (type.IsString) {
             const auto str_len = reader.Read<int32_t>();

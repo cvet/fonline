@@ -171,6 +171,15 @@ static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const str
     MemCopy(data_ptr.get(), text_ptr.get(), text.size());
 }
 
+static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    Preprocessor::DeleteLineNumberTranslator(lnt);
+    engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
+}
+
 AngelScriptBackend::AngelScriptBackend(ptr<const ScriptSettings> settings) :
     _settings {settings}
 {
@@ -275,6 +284,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunction);
     as_engine->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
+    as_engine->SetEngineUserDataCleanupCallback(CleanupLineNumberTranslator, AS_PREPROCESSOR_LNT_USER_DATA);
 
     RegisterAngelScriptArray(as_engine);
     RegisterAngelScriptString(as_engine);
@@ -435,6 +445,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     nptr<Preprocessor::LineNumberTranslator> nullable_lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
     FO_VERIFY_AND_THROW(!!nullable_lnt, "Failed to restore line-number translator");
     auto lnt = nullable_lnt.as_ptr();
+    CleanupLineNumberTranslator(_asEngine.get());
     ptr<void> lnt_user_data = cast_to_void(lnt.get());
     _asEngine->SetUserData(lnt_user_data.get(), AS_PREPROCESSOR_LNT_USER_DATA);
 
@@ -663,6 +674,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     nptr<Preprocessor::LineNumberTranslator> nullable_lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context.get());
     FO_VERIFY_AND_THROW(!!nullable_lnt, "Missing line-number translator");
     auto lnt = nullable_lnt.as_ptr();
+    CleanupLineNumberTranslator(_asEngine.get());
     ptr<void> lnt_user_data = cast_to_void(lnt.get());
     _asEngine->SetUserData(lnt_user_data.get(), AS_PREPROCESSOR_LNT_USER_DATA);
 

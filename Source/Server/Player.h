@@ -67,26 +67,48 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _name; }
-    [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter> { return _controlledCr; }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter> { return _controlledCr; }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _name;
+    }
+    [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _controlledCr.load(std::memory_order_acquire);
+    }
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _controlledCr.load(std::memory_order_acquire);
+    }
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
-    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection>
+    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSIS
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
+        FO_VALIDATE_ENTITY_ACCESS();
         return _connection.as_ptr();
     }
-    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection>
+    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
+        FO_VALIDATE_ENTITY_ACCESS();
         return _connection.as_ptr();
     }
-    [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext> { return _viewMap ? nptr<const ViewMapContext> {&*_viewMap} : nullptr; }
-    [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map> { return _viewMapTarget; }
-    [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map> { return _viewMapTarget; }
+    [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _viewMap ? nptr<const ViewMapContext> {&*_viewMap} : nullptr;
+    }
+    [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _viewMapTarget;
+    }
+    [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>
+    {
+        FO_VALIDATE_ENTITY_ACCESS();
+        return _viewMapTarget;
+    }
 
     void SetName(string_view name);
     void SetControlledCritter(nptr<Critter> cr);
@@ -133,11 +155,29 @@ private:
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
 
-    unique_ptr<ServerConnection> _connection;
+    // Guards the _connection pointer against a concurrent reconnect SwapConnection while a lock-free send is
+    // writing through it. A plain mutex (not shared): same-player sends serialize on the connection's own
+    // _outBufLocker anyway, so shared readers would gain nothing; cross-player concurrency comes from each
+    // player owning its own lock. Sends and SwapConnection both take it exclusively. Declared before _connection
+    // so it outlives the data it guards.
+    mutex _connectionLock {};
+    // FO_TSA_GUARDED_BY(_connectionLock): the lock-free broadcast/recipient sends reach _connection without the
+    // recipient's entity cover, so TSA enforces the lock on those paths. The entity-cover accessors that cannot
+    // hold it (the GetConnection getters, the cross-object SwapConnection swap of other->_connection) reach it
+    // under the cooperative entity cover — which also excludes SwapConnection — and are FO_TSA_NO_ANALYSIS.
+    unique_ptr<ServerConnection> _connection FO_TSA_GUARDED_BY(_connectionLock);
     string _name {"(Unlogined)"};
-    nptr<Critter> _controlledCr {};
-    nptr<const Entity> _sendIgnoreEntity {};
-    nptr<const Property> _sendIgnoreProperty {};
+    // Non-owning back-pointer to the controlled critter, atomic so the lock-free broadcast fan-out can read it
+    // for the is_chosen identity compare (subject == controlled critter) without the recipient's entity lock.
+    // Published under the player's cover (SetControlledCritter); also the Player->Critter sync-widen anchor.
+    std::atomic<Critter*> _controlledCr {};
+    // Anti-loopback filter for client-originated property changes: set on the originating player around the
+    // apply, read per-recipient in the send path to skip echoing the change back to its source. Atomic so the
+    // sync-free fan-out can read it without the recipient's entity lock; the two fields are read independently
+    // (a false match is impossible — the broadcast subject is locked, so only the originator can carry a pair
+    // matching this (entity, prop)).
+    std::atomic<const Entity*> _sendIgnoreEntity {};
+    std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};
     nptr<Map> _viewMapTarget {};
     EntityLock _ownedLock {};

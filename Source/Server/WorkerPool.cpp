@@ -413,12 +413,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
         bool job_executed = false;
 
         {
-            SyncContext sync_ctx;
-            sync_ctx.Activate();
-            auto cleanup = scope_exit([&]() noexcept {
-                sync_ctx.Release();
-                sync_ctx.Deactivate();
-            });
+            ScopedSyncContext sync_ctx;
 
             const bool shutdown = _shutdownFlag->load(std::memory_order_acquire);
 
@@ -440,6 +435,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
         }
 
         bool need_wake = false;
+        bool body_rescheduled = false;
 
         {
             scoped_lock locker {_mutex};
@@ -465,12 +461,14 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 else if (next_delay.has_value() && !cancelled) {
                     const auto reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
                     EnqueueJob(nanotime::now() + reschedule_delay, job.Key, std::move(job.Body));
+                    body_rescheduled = true;
                     _queuedKeys.insert(job.Key);
                     need_wake = true;
                 }
             }
             else if (next_delay.has_value()) {
                 EnqueueJob(nanotime::now() + next_delay.value(), ANONYMOUS_JOB, std::move(job.Body));
+                body_rescheduled = true;
                 need_wake = true;
             }
 
@@ -479,6 +477,19 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             }
 
             _activeWorkers--;
+        }
+
+        // If the job did not reschedule (its entity was destroyed/cancelled, the pending-rerun branch
+        // replaced it, or shutdown skipped execution), `job.Body` still owns its captured state — possibly
+        // the last refcount_ptr to an entity (e.g. a TimeEvent closure holding a critter that has since
+        // died). Destroying that closure releases the ref, and ~Entity -> ValidateAccess strong-asserts
+        // unless a sync context is active on this thread; the body ran under one above, but it was
+        // deactivated at the end of that scope. Drop the closure under a fresh, empty context so the entity
+        // release is valid — an empty context locks nothing, it only satisfies the access check.
+        if (!body_rescheduled) {
+            ScopedSyncContext sync_ctx;
+
+            job.Body = {};
         }
 
         if (need_wake) {

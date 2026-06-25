@@ -214,6 +214,9 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map,
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
+
+    ValidateEntityAccess(map);
+
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
@@ -227,6 +230,9 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(ptr<Critter> self, ptr<Map> map,
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
+
+    ValidateEntityAccess(map);
+
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
@@ -769,8 +775,6 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(ptr<Critter> self, bool contr
         if (self->GetControlledByPlayer()) {
             return;
         }
-
-        self->MarkIsForPlayer();
     }
     else {
         if (!self->GetControlledByPlayer()) {
@@ -780,7 +784,21 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(ptr<Critter> self, bool contr
         if (self->GetPlayer()) {
             self->DetachPlayer();
         }
+    }
 
+    if (self->GetMapId()) {
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+
+        auto sync_ctx = self->GetEngine()->GetCurrentSyncContext();
+        FO_VERIFY_AND_THROW(sync_ctx, "Missing script execution context");
+        sync_ctx->EnsureEntitySynced(map.get());
+    }
+
+    if (controllable) {
+        self->MarkIsForPlayer();
+    }
+    else {
         self->UnmarkIsForPlayer();
     }
 }

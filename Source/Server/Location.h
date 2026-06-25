@@ -56,8 +56,16 @@ public:
     auto operator=(Location&&) noexcept = delete;
     ~Location() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
-    [[nodiscard]] auto GetProtoLoc() const noexcept -> ptr<const ProtoLocation> { return _proto.dyn_cast<ProtoLocation>().as_ptr(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _proto->GetName();
+    }
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
+    {
+        FO_NO_VALIDATE_ENTITY_ACCESS();
+        return _proto.dyn_cast<ProtoLocation>().as_ptr();
+    }
     [[nodiscard]] auto HasMaps() const -> bool;
     [[nodiscard]] auto GetMaps() const -> vector<ptr<const Map>>;
     [[nodiscard]] auto GetMaps() -> vector<ptr<Map>>;

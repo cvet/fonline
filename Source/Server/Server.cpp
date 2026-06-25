@@ -157,12 +157,7 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
             // Wrap each callback in its own nested SyncContext on top of the dispatcher's primary
             // cover. Inner `Sync::Lock(...)` only mutates the nested layer; the primary's locks
             // (the event's entity args) survive across the chain.
-            SyncContext nested;
-            nested.Activate();
-            auto cleanup = scope_exit([&]() noexcept {
-                nested.Release();
-                nested.Deactivate();
-            });
+            ScopedSyncContext nested;
 
             result = cb.Callback(call);
         }
@@ -189,13 +184,8 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 
     FO_NON_CONST_METHOD_HINT();
 
-    return [this, body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
-        SyncContext sync_ctx;
-        sync_ctx.Activate();
-        auto cleanup = scope_exit([&]() noexcept {
-            sync_ctx.Release();
-            sync_ctx.Deactivate();
-        });
+    return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
+        ScopedSyncContext sync_ctx;
 
         return body_();
     };
@@ -525,7 +515,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
                 continue;
             }
 
-            set_send_callbacks(type_desc.PropRegistrator, wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
+            set_send_callbacks(type_desc.PropRegistrator.as_nptr(), wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
         }
     }
 
@@ -815,7 +805,12 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
 
     const auto key = MakeUnloginedPlayerWorkerJobKey(unlogined_player);
 
-    unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    {
+        ScopedSyncContext ctx;
+
+        ctx.Sync(unlogined_player);
+        unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
+    }
 
     _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_.as_ptr()); });
 }
@@ -1042,12 +1037,7 @@ void ServerEngine::Shutdown()
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
     // primary SyncContext.
-    SyncContext shutdown_ctx;
-    shutdown_ctx.Activate();
-    auto shutdown_cleanup = scope_exit([&]() noexcept {
-        safe_call([&] { shutdown_ctx.Release(); });
-        shutdown_ctx.Deactivate();
-    });
+    ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
     _willFinishDispatcher();
@@ -1403,6 +1393,8 @@ void ServerEngine::DrawGui()
             info_row("Jobs per second", strex("{}", _stats.JobsPerSecond).str());
             info_row("Jobs per minute", strex("{}", _stats.JobsPerMinute).str());
             info_row("Total jobs", strex("{}", _stats.JobsTotal).str());
+            info_row("Rejected connections", strex("{}", _stats.RejectedConnections).str());
+            info_row("Rejected by rate", strex("{}", _stats.RejectedByRate).str());
             info_row("CPU load", _stats.CpuUsageAvailable ? strex("{:.1f}% / {:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad), numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
             info_row("DB requests per minute", strex("{}", DbStorage.GetDbRequestsPerMinute()).str());
 
@@ -1786,6 +1778,8 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Jobs per second: {}\n", _stats.JobsPerSecond);
     buf += strex("Jobs per minute: {}\n", _stats.JobsPerMinute);
     buf += strex("Total jobs: {}\n", _stats.JobsTotal);
+    buf += strex("Rejected connections: {}\n", _stats.RejectedConnections);
+    buf += strex("Rejected by rate: {}\n", _stats.RejectedByRate);
     buf += strex("CPU load: {}\n", _stats.CpuUsageAvailable ? strex("system {:.1f}%, process {:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad), numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
     buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
@@ -2599,6 +2593,13 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
         }
     }
     else {
+        if (nullable_map) {
+            auto map = nullable_map.as_ptr();
+            auto nullable_loc = map->GetLocation();
+            FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
+            ctx->EnsureEntitySynced(nullable_loc);
+        }
+
         cr->Send_LoadMap(nullable_map);
     }
 
@@ -2734,8 +2735,6 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
         return;
     }
 
-    const auto global_vars_data = StoreData(false);
-
     const_span<uint8_t> update_desc {};
 
     if (_updaterBackend) {
@@ -2744,6 +2743,11 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
     }
 
     {
+        LockForPropertyAccess();
+        auto unlock_global_vars = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+
+        const auto global_vars_data = StoreData(false);
+
         auto out_buf = connection->WriteMsg(NetMessage::InitData);
 
         out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
@@ -3487,7 +3491,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     }
 
     nptr<const Player> ignore_player = player;
-    StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Critter> cr2) { cr2->Send_Moving(cr); }, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
+    StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
 }
 
 void ServerEngine::Process_Dir(ptr<Player> player)
@@ -3559,7 +3563,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     }
 
     cr->ChangeDir(checked_dir);
-    cr->SendAndBroadcast(player, [cr](ptr<Critter> cr2) { cr2->Send_Dir(cr); }, [cr](ptr<Player> p) { p->Send_Dir(cr); });
+    cr->SendAndBroadcast(player, [cr](ptr<Player> p) { p->Send_Dir(cr); });
 }
 
 void ServerEngine::Process_Property(ptr<Player> player)
@@ -3906,10 +3910,7 @@ void ServerEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> pro
     ptr<const Entity> game_entity = self;
 
     if (prop->IsPublicSync()) {
-        vector<refcount_ptr<Player>> players = EntityMngr.GetPlayers();
-
-        for (size_t i = 0; i < players.size(); i++) {
-            auto player = players[i].as_ptr();
+        for (ptr<Player> player : copy_hold_ref(EntityMngr.GetPlayers())) {
             player->Send_Property(NetProperty::Game, prop, game_entity);
         }
     }
@@ -4574,7 +4575,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_.as_ptr()); });
 
-    cr->SendAndBroadcast(initiator, [cr](ptr<Critter> cr2) { cr2->Send_Moving(cr); }, [cr](ptr<Player> p) { p->Send_Moving(cr); });
+    cr->SendAndBroadcast(initiator, [cr](ptr<Player> p) { p->Send_Moving(cr); });
 
     ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr.get(), was_moving);
@@ -4693,7 +4694,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     moving_context->ChangeSpeed(speed, cur_time);
     cr->SetMovingSpeed(speed);
 
-    cr->SendAndBroadcast(nullptr, [cr](ptr<Critter> cr2) { cr2->Send_MovingSpeed(cr); }, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });
+    cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });
 
     ValidateEntityAccess(cr);
     OnCritterStartMoving.Fire(cr.get(), true);
