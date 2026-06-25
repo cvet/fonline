@@ -65,19 +65,6 @@ class ModelHierarchy;
 
 struct MeshTexture
 {
-    MeshTexture() = delete;
-    MeshTexture(hstring name, ptr<RenderTexture> main_tex, frect32 atlas_offset_data) :
-        Name {name},
-        MainTex {main_tex},
-        AtlasOffsetData {atlas_offset_data}
-    {
-    }
-    MeshTexture(const MeshTexture&) = delete;
-    MeshTexture(MeshTexture&&) noexcept = default;
-    auto operator=(const MeshTexture&) = delete;
-    auto operator=(MeshTexture&&) noexcept -> MeshTexture& = default;
-    ~MeshTexture() = default;
-
     hstring Name {};
     ptr<RenderTexture> MainTex;
     frect32 AtlasOffsetData {};
@@ -85,17 +72,6 @@ struct MeshTexture
 
 struct MeshData
 {
-    MeshData() = delete;
-    explicit MeshData(ptr<ModelBone> owner) noexcept :
-        Owner {owner}
-    {
-    }
-    MeshData(const MeshData&) = delete;
-    MeshData(MeshData&&) noexcept = default;
-    auto operator=(const MeshData&) = delete;
-    auto operator=(MeshData&&) noexcept -> MeshData& = default;
-    ~MeshData() = default;
-
     void Load(DataReader& reader, HashResolver& hash_resolver);
 
     ptr<ModelBone> Owner;
@@ -110,17 +86,6 @@ struct MeshData
 
 struct MeshInstance
 {
-    MeshInstance() = delete;
-    explicit MeshInstance(ptr<MeshData> mesh) noexcept :
-        Mesh {mesh}
-    {
-    }
-    MeshInstance(const MeshInstance&) = delete;
-    MeshInstance(MeshInstance&&) noexcept = default;
-    auto operator=(const MeshInstance&) = delete;
-    auto operator=(MeshInstance&&) noexcept -> MeshInstance& = default;
-    ~MeshInstance() = default;
-
     ptr<MeshData> Mesh;
     bool Disabled {};
     nptr<MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};

@@ -313,8 +313,6 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(ptr<MapperEn
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> mapper, ident_t id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     return mapper->FindEntityById(map, id);
@@ -323,8 +321,6 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> ma
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, string_view propName, string_view valueText)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const Property> prop = entity->GetProperties().GetRegistrator()->FindProperty(propName);
 
     if (prop == nullptr) {
@@ -355,8 +351,6 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstrin
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_view name, int32_t width, int32_t height)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (name.empty()) {
         throw ScriptException("Map name is empty");
     }
@@ -374,8 +368,6 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper, string_view name, string_view text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (name.empty()) {
         throw ScriptException("Map name is empty");
     }
@@ -408,8 +400,6 @@ FO_SCRIPT_API void Mapper_Game_SaveMap(ptr<MapperEngine> mapper, ptr<MapView> ma
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapToPath(ptr<MapperEngine> mapper, ptr<MapView> map, string_view subDir, string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Sandbox-disciplined save into <MapsRoot>/<subDir>/<name>.fomap (subDir defaults to the
     // AI authoring area "Generated" at the caller). Refuse path separators in the name and any
     // ".." traversal so an authoring agent cannot escape the Maps tree.
@@ -691,8 +681,6 @@ FO_SCRIPT_API void Mapper_Game_AddMessage(ptr<MapperEngine> mapper, string_view 
 ///@ ExportMethod
 FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     return map->GetSize();
@@ -701,8 +689,6 @@ FO_SCRIPT_API msize Mapper_Game_GetCurMapHexSize(ptr<MapperEngine> mapper)
 ///@ ExportMethod
 FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     const auto hex_size = map->GetSize();
@@ -714,8 +700,6 @@ FO_SCRIPT_API isize32 Mapper_Game_GetCurMapPixelSize(ptr<MapperEngine> mapper)
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size.width <= 0 || size.height <= 0) {
         throw ScriptException("View size must be positive", size.width, size.height);
     }
@@ -728,8 +712,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperViewSize(ptr<MapperEngine> mapper, isize
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     if (const irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
@@ -752,8 +734,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapp
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     if (!map->GetSize().is_valid_pos(hex)) {
@@ -766,8 +746,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnHex(ptr<MapperEngine> mapper, mpos 
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ipos32 rawHex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     CenterMapperViewOnRawHex(map, rawHex);
@@ -776,8 +754,6 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnRawHex(ptr<MapperEngine> mapper, ip
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper, bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     map->SetShowMapperOverlay(visible);
@@ -786,8 +762,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper,
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto nullable_map = mapper->GetCurMap();
 
     if (!nullable_map) {
@@ -801,40 +775,30 @@ FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHexOverlayVisible(ptr<MapperEngine> mapper, bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     mapper->SetMapperHexOverlayVisible(visible);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperHexOverlayVisible(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     return mapper->IsMapperHexOverlayVisible();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperTrackOverlayHexes(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     return mapper->GetMapperTrackOverlayHexes();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     return mapper->GetMapperTrackOverlayKinds();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto nullable_map = mapper->GetCurMap();
 
     if (!nullable_map) {
@@ -873,8 +837,6 @@ FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngi
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> mapper, bool visible)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     map->SetShowMapperHiddenSprites(visible);
@@ -883,8 +845,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperHiddenSpritesVisible(ptr<MapperEngine> m
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper, readonly_vector<hstring> itemPids)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     for (const hstring item_pid : itemPids) {
@@ -897,8 +857,6 @@ FO_SCRIPT_API void Mapper_Game_AddMapperIgnoredItemPids(ptr<MapperEngine> mapper
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(ptr<MapperEngine> mapper, bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = RequireCurMapperMap(mapper);
 
     map->SetScrollCheck(enabled);
@@ -908,8 +866,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperScrollCheckEnabled(ptr<MapperEngine> map
 ///@ ExportMethod
 FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, isize32 viewportSize)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (viewportSize.width <= 0 || viewportSize.height <= 0) {
         throw ScriptException("Viewport size must be positive", viewportSize.width, viewportSize.height);
     }
@@ -941,8 +897,6 @@ FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, 
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t zoom)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!(zoom > 0.0f)) {
         throw ScriptException("Zoom must be positive", zoom);
     }
@@ -956,8 +910,6 @@ FO_SCRIPT_API void Mapper_Game_SetMapperZoom(ptr<MapperEngine> mapper, float32_t
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, string_view filePath)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");
     }

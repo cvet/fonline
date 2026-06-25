@@ -215,8 +215,6 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEntity> entity, int32_t effectSubtype, ucolor color, int32_t padding)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto engine_ptr = self->GetEngine();
 
     if (!engine_ptr->CanDrawInScripts) {

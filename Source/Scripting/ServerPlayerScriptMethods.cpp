@@ -101,8 +101,6 @@ FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (cr->GetMapId() == ident_t {}) {
         throw ScriptException("Critter is not on map");
     }

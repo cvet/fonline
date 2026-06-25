@@ -68,12 +68,6 @@ FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
 struct VideoPlaybackResources
 {
-    VideoPlaybackResources(VideoClip&& clip, unique_ptr<RenderTexture> tex) noexcept :
-        Clip {std::move(clip)},
-        Tex {std::move(tex)}
-    {
-    }
-
     VideoClip Clip;
     unique_ptr<RenderTexture> Tex;
 };
@@ -438,12 +432,6 @@ protected:
 
     struct ActiveVideoPlayback
     {
-        ActiveVideoPlayback(VideoClip&& clip, unique_ptr<RenderTexture> tex) noexcept :
-            Clip {std::move(clip)},
-            Tex {std::move(tex)}
-        {
-        }
-
         VideoClip Clip;
         unique_ptr<RenderTexture> Tex;
     };

@@ -165,8 +165,6 @@ static void StoreColor4(ucolor& color, const float32_t (&values)[4])
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const nptr<ImGuiContext> nullable_imgui_context = ImGui::GetCurrentContext();
 
     if (!nullable_imgui_context) {
