@@ -92,6 +92,22 @@ Both are third-party idioms, not undefined behaviour in engine code, so they mus
 the UBSan leg (which CI runs with `halt_on_error=1`). First-party engine code keeps both
 checks fully active.
 
+LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=detect_leaks=1`).
+It runs with **no suppression list** — every leak it can report is fixed at the source rather than
+masked. Notable cases:
+
+- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
+  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
+  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
+  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
+  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
+  and those libbfd caches remain reachable — LSan does not report them.
+- The AngelScript backend deletes the preprocessor line-number translator during engine userdata
+  cleanup, and SPARK's `IOManager` frees its registered converters at shutdown.
+- Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrator` is a
+  `unique_ptr` so every `PropertyRegistrator` (and the `Property` objects it holds) is freed when
+  `EngineMetadata`'s type maps are destroyed.
+
 ## Code coverage
 
 When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects the backend from the compiler:
