@@ -1335,6 +1335,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
     scoped_lock locker {*_dataLocker};
 
     FO_STRONG_ASSERT(prop != nullptr && _registrator == prop->_registrator, "Invalid property for raw data write", _registrator->GetTypeName(), prop != nullptr ? string_view {prop->GetName()} : string_view {"<null>"}, prop != nullptr && prop->_registrator ? prop->_registrator->GetTypeName() : hstring {});
+    FO_STRONG_ASSERT(!prop->IsPlainData() || prop->GetBaseSize() == raw_data.size(), "Plain property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
     if (_baseProps) {
         PropertyRawData base_prop_data;
@@ -1405,7 +1406,6 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
     else {
         if (prop->IsPlainData()) {
             FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while writing raw data", prop->GetName(), _registrator->GetTypeName());
-            FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size(), "Property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
             MemCopy(_podData.get() + *prop->_podDataOffset, raw_data.data(), raw_data.size());
         }
