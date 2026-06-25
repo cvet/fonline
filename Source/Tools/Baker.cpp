@@ -92,8 +92,8 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    nptr<const BakingSettings> nullable_settings = &settings;
-    shared_ptr<BakingContext> ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = nullable_settings, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
+    ptr<const BakingSettings> settings_ptr = &settings;
+    shared_ptr<BakingContext> ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));

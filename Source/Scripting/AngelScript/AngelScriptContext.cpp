@@ -66,8 +66,8 @@ struct AngelScriptStackTraceInstaller
 };
 FO_GLOBAL_DATA(AngelScriptStackTraceInstaller, AngelScriptStackTraceInstall);
 
-static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* ctx, void* param);
-static void AngelScriptException(AngelScript::asIScriptContext* ctx, void* param);
+static void AngelScriptTranslateAppException(AngelScript::asIScriptContext* raw_ctx, void* param);
+static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* param);
 
 #if FO_TRACY
 struct AngelScriptTracyCallEntry
@@ -89,8 +89,8 @@ struct AngelScriptTracyData
 };
 FO_GLOBAL_DATA(AngelScriptTracyData, AngelScriptTracy);
 
-static void AngelScriptBeginCall(AngelScript::asIScriptContext* ctx, AngelScript::asIScriptFunction* func);
-static void AngelScriptEndCall(AngelScript::asIScriptContext* ctx) noexcept;
+static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelScript::asIScriptFunction* raw_func);
+static void AngelScriptEndCall(AngelScript::asIScriptContext* raw_ctx) noexcept;
 #endif
 
 static void CleanupScriptContextExtendedData(ptr<AngelScriptContextExtendedData> ctx_ext) noexcept
@@ -740,9 +740,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
         const auto safe_copy = [](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
             if (len != 0) {
-                nptr<char> nullable_target = to.data();
-                FO_VERIFY_AND_THROW(!!nullable_target, "Missing Tracy entry buffer storage");
-                auto target = nullable_target.as_ptr();
+                ptr<char> target = to.data();
 
                 ptr<const char> source = from.data();
 

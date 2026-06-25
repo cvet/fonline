@@ -35,17 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto AnyDataStringViewAt(string_view str, size_t pos) noexcept -> ptr<const char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < str.length(), "String offset is past the end of the string");
-
-    ptr<const char> str_data = str.data();
-    ptr<const char> str_pos = str_data.get() + pos;
-    return str_pos;
-}
-
 static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType value_type) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
@@ -427,7 +416,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
     }
 
     for (size_t i = 0; i < str.length();) {
-        auto s = AnyDataStringViewAt(str, i);
+        auto s = ptr<const char> {str.data()}.offset(i);
         size_t length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -483,7 +472,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     string result;
     result.reserve(str.length());
 
-    auto s = AnyDataStringViewAt(str, 0);
+    auto s = ptr<const char> {str.data()};
     size_t length = str.length();
     utf8::Decode(s, length);
 
@@ -491,7 +480,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = AnyDataStringViewAt(str, i);
+        s = ptr<const char> {str.data()}.offset(i);
         length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -511,7 +500,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 throw AnyDataException("Invalid escape sequence in string", string(str));
             }
 
-            s = AnyDataStringViewAt(str, i);
+            s = ptr<const char> {str.data()}.offset(i);
             length = str.length() - i;
             utf8::Decode(s, length);
 

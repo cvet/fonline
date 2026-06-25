@@ -125,10 +125,10 @@ public:
 class HashStorage : public HashResolver
 {
 public:
-    using HashFunc = uint64_t (*)(nptr<const void> data, size_t len);
+    using HashFunc = uint64_t (*)(const_span<uint8_t> data);
     using ResolveHashFailureHandler = function<void(hstring::hash_t hash)>;
 
-    [[nodiscard]] static auto DefaultHash(nptr<const void> data, size_t len) noexcept -> uint64_t;
+    [[nodiscard]] static auto DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t;
 
     explicit HashStorage(HashFunc hash_func = DefaultHash);
     auto CheckHashedString(string_view s) const noexcept -> bool;

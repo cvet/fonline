@@ -43,17 +43,6 @@ constexpr auto PROXY_SOCKS4 = 1;
 constexpr auto PROXY_SOCKS5 = 2;
 constexpr auto PROXY_HTTP = 3;
 
-static auto SocketBufferTail(vector<uint8_t>& buf, size_t offset) noexcept -> span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < buf.size(), "Socket buffer tail offset is past the end of the buffer");
-
-    ptr<uint8_t> buf_begin = buf.data();
-    ptr<uint8_t> tail_begin = buf_begin.get() + offset;
-    return {tail_begin.get(), buf.size() - offset};
-}
-
 class NetworkClientConnection_Sockets final : public NetworkClientConnection
 {
 public:
@@ -379,7 +368,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
 
-        span<uint8_t> tail = SocketBufferTail(buf, whole_len);
+        span<uint8_t> tail {buf.data() + whole_len, buf.size() - whole_len};
         len = _sock.receive(tail);
 
         if (len < 0) {

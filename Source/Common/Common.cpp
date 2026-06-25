@@ -45,14 +45,6 @@ static auto ReadPackagedBuildName() -> string;
 static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
 
-template<typename T>
-static auto ObjectBytesAsFileChars(ptr<const T> object) noexcept -> ptr<const char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return object.reinterpret_as<const char>();
-}
-
 auto IsPackaged() -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -168,11 +160,11 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
         numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
         numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
     ptr<const uint8_t> header_bytes = header;
-    file.write(ObjectBytesAsFileChars(header_bytes).get(), static_cast<std::streamsize>(sizeof(header)));
+    file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
 
     if (!data.empty()) {
         ptr<const ucolor> pixels = data.data();
-        file.write(ObjectBytesAsFileChars(pixels).get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
+        file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
     }
 
     FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());

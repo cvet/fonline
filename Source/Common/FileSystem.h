@@ -102,7 +102,7 @@ public:
     // ReSharper restore CppInconsistentNaming
 
     auto SeekFragment(string_view fragment) -> bool;
-    void CopyData(nptr<void> nullable_buf, size_t size);
+    void CopyData(span<uint8_t> buf);
     void ReadBytes(span<uint8_t> out);
     template<typename T>
     void ReadObject(T& out)
@@ -111,8 +111,7 @@ public:
         static_assert(std::is_trivially_copyable_v<T>);
 
         ptr<T> out_ptr = &out;
-        ptr<void> out_data = cast_to_void(out_ptr.get());
-        CopyData(out_data, sizeof(T));
+        CopyData(make_span(out_ptr, sizeof(T)));
     }
     template<typename T>
     void ReadObjectArray(span<T> out)
@@ -122,8 +121,7 @@ public:
 
         if (!out.empty()) {
             ptr<T> out_ptr = out.data();
-            ptr<void> out_data = cast_to_void(out_ptr.get());
-            CopyData(out_data, out.size() * sizeof(T));
+            CopyData(make_span(out_ptr, out.size() * sizeof(T)));
         }
     }
     void SetCurPos(size_t pos);

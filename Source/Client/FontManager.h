@@ -99,17 +99,17 @@ public:
     auto operator=(FontManager&&) noexcept = delete;
     ~FontManager() = default;
 
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType font) const -> int32_t;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType font) const -> int32_t;
-    [[nodiscard]] auto GetLineHeight(FontType font) const -> int32_t;
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetLineHeight(FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
-    [[nodiscard]] auto HaveLetter(FontType font, uint32_t letter) const -> bool;
+    [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
     void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded);
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type);
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
-    auto SplitLines(irect32 rect, string_view cstr, FontType font) -> vector<string>;
+    auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
     void ClearFonts();
     void FrameUpdate();
 

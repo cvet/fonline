@@ -682,8 +682,8 @@ static auto GetEnumsModule(string module_name) -> ScriptArray*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const nptr<const char> nullable_module_name = module_name.c_str();
-    auto enums = CreateEnumsInternal(false, nullable_module_name);
+    const ptr<const char> module_name_cstr = module_name.c_str();
+    auto enums = CreateEnumsInternal(false, module_name_cstr);
     return ReleaseScriptOwnership(std::move(enums));
 }
 

@@ -108,67 +108,6 @@ static auto SoundBytesAsSamples16(span<uint8_t> data) noexcept -> ptr<uint16_t>
     return bytes.reinterpret_as<uint16_t>();
 }
 
-static auto SoundSpanBytes(span<uint8_t> data) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Sound data is empty");
-
-    return data.data();
-}
-
-static auto SoundSpanBytesAt(span<uint8_t> data, size_t pos) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Sound data position out of range");
-
-    auto data_begin = SoundSpanBytes(data);
-    return data_begin.get() + pos;
-}
-
-static auto SoundBytesAsCharsAt(span<uint8_t> data, size_t pos) noexcept -> ptr<char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto bytes = SoundSpanBytesAt(data, pos);
-    return bytes.reinterpret_as<char>();
-}
-
-static auto SoundVectorBytesAt(const vector<uint8_t>& data, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Sound data position out of range");
-
-    ptr<const uint8_t> data_begin = data.data();
-    return data_begin.get() + pos;
-}
-
-static auto SoundVectorSpan(vector<uint8_t>& data, size_t size) noexcept -> span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (size == 0) {
-        return {};
-    }
-
-    FO_STRONG_ASSERT(size <= data.size(), "Requested span exceeds sound data size");
-
-    ptr<uint8_t> data_ptr = data.data();
-    return {data_ptr.get(), size};
-}
-
-template<typename T>
-static auto SoundObjectBytes(T& object) noexcept -> span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<T> object_ptr = &object;
-    ptr<uint8_t> bytes = object_ptr.reinterpret_as<uint8_t>();
-    return {bytes.get(), sizeof(T)};
-}
-
 SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
     _settings {settings},
     _resources {resources},
@@ -221,7 +160,7 @@ void SoundManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 
     for (auto it = _playingSounds.begin(); it != _playingSounds.end();) {
         auto sound = it->as_ptr();
-        span<uint8_t> mix_buffer = SoundVectorSpan(_outputBuf, output.size());
+        span<uint8_t> mix_buffer = span<uint8_t> {_outputBuf.data(), output.size()};
 
         if (ProcessSound(sound, silence, mix_buffer)) {
             const auto volume = sound->IsMusic ? _settings->MusicVolume : _settings->SoundVolume;
@@ -243,8 +182,8 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            auto target = SoundSpanBytesAt(output, 0);
-            auto source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+            auto target = ptr<uint8_t> {output.data()};
+            auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
             MemCopy(target.get(), source.get(), offset);
             sound->ConvertedBufCur += offset;
 
@@ -256,8 +195,8 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
                     write = output.size() - offset;
                 }
 
-                auto stream_target = SoundSpanBytesAt(output, offset);
-                auto stream_source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+                auto stream_target = ptr<uint8_t> {output.data()}.offset(offset);
+                auto stream_source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
                 MemCopy(stream_target.get(), stream_source.get(), write);
                 sound->ConvertedBufCur += write;
                 offset += write;
@@ -265,15 +204,15 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
             // Cut off end
             if (offset < output.size()) {
-                auto silence_target = SoundSpanBytesAt(output, offset);
+                auto silence_target = ptr<uint8_t> {output.data()}.offset(offset);
                 MemFill(silence_target.get(), silence, output.size() - offset);
             }
         }
         else {
             // Copy
             if (!output.empty()) {
-                auto target = SoundSpanBytesAt(output, 0);
-                auto source = SoundVectorBytesAt(sound->ConvertedBuf, sound->ConvertedBufCur);
+                auto target = ptr<uint8_t> {output.data()};
+                auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
                 MemCopy(target.get(), source.get(), output.size());
             }
             sound->ConvertedBufCur += output.size();
@@ -311,7 +250,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
         // Give silent
         if (!output.empty()) {
-            auto silence_target = SoundSpanBytesAt(output, 0);
+            auto silence_target = ptr<uint8_t> {output.data()};
             MemFill(silence_target.get(), silence, output.size());
         }
         return true;
@@ -319,7 +258,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
     // Give silent
     if (!output.empty()) {
-        auto silence_target = SoundSpanBytesAt(output, 0);
+        auto silence_target = ptr<uint8_t> {output.data()};
         MemFill(silence_target.get(), silence, output.size());
     }
 
@@ -421,7 +360,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
         return false;
     }
 
-    span<uint8_t> wave_format_bytes = SoundObjectBytes(waveformatex).first(wave_format_base_size);
+    span<uint8_t> wave_format_bytes = span<uint8_t> {ptr<WaveFormatEx> {&waveformatex}.reinterpret_as<uint8_t>().get(), sizeof(WaveFormatEx)}.first(wave_format_base_size);
     reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
@@ -465,7 +404,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
     }
 
     // Convert
-    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBufLen);
+    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBufLen};
     reader.ReadBytes(base_buf);
 
     return ConvertData(sound);
@@ -497,7 +436,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
+    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
     auto buf = SoundBytesAsSamples16(base_buf);
     const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
@@ -528,9 +467,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         const size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
-            nptr<void> output = output_buf;
-            FO_VERIFY_AND_THROW(output, "Ogg read output buffer is null");
-            file_context->Reader.CopyData(output, bytes_read);
+            FO_VERIFY_AND_THROW(output_buf != nullptr, "Ogg read output buffer is null");
+            file_context->Reader.CopyData(make_span(output_buf, bytes_read));
         }
 
         return bytes_read;
@@ -627,10 +565,10 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     int32_t result;
     int32_t decoded = 0;
-    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
+    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
-        auto output = SoundBytesAsCharsAt(base_buf, numeric_cast<size_t>(decoded));
+        auto output = (ptr<uint8_t> {base_buf.data()}.offset(numeric_cast<size_t>(decoded))).reinterpret_as<char>();
         const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = numeric_cast<int32_t>(ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr));
 
@@ -667,10 +605,10 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     auto ogg_stream = sound->OggStream.as_ptr();
     long result;
     int32_t decoded = 0;
-    span<uint8_t> base_buf = SoundVectorSpan(sound->BaseBuf, sound->BaseBuf.size());
+    span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
-        auto output = SoundBytesAsCharsAt(base_buf, numeric_cast<size_t>(decoded));
+        auto output = (ptr<uint8_t> {base_buf.data()}.offset(numeric_cast<size_t>(decoded))).reinterpret_as<char>();
         const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr);
 

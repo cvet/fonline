@@ -89,7 +89,7 @@ public:
     void Clear();
 
 private:
-    void BuildPoints(const Input& input, vector<PrimitivePoint>& points) const;
+    void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
     void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
     void UpdateTransition(nanotime frame_time);
     void FinishTransition();

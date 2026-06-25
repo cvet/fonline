@@ -293,6 +293,21 @@ TEST_CASE("SmartPointers")
         CHECK_FALSE(nullable_ptr);
     }
 
+    SECTION("BorrowedPointersSupportBufferOffsetArithmetic")
+    {
+        int32_t buffer[4] = {10, 20, 30, 40};
+
+        ptr<int32_t> base {&buffer[0]};
+        auto third = base.offset(2);
+        CHECK(third.get() == &buffer[2]);
+        CHECK(*third == 30);
+
+        nptr<int32_t> nullable_base {&buffer[0]};
+        auto nullable_second = nullable_base.offset(1);
+        CHECK(nullable_second.get() == &buffer[1]);
+        CHECK(*nullable_second == 20);
+    }
+
     SECTION("UniquePtrReleaseTransfersOwnership")
     {
         unique_ptr<PtrDerived> unique_value = SafeAlloc::MakeUnique<PtrDerived>(77);

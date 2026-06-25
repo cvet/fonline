@@ -38,16 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto FileDataAsText(const_span<uint8_t> data) noexcept -> ptr<const char>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Particle file data is empty");
-
-    ptr<const uint8_t> data_ptr = data.data();
-    return data_ptr.reinterpret_as<char>();
-}
-
 static auto GetSparkSystemPtr(SPK::Ref<SPK::System>& system) noexcept -> nptr<SPK::System>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -110,7 +100,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources->ReadFile(name)) {
             const_span<uint8_t> file_data = file.GetDataSpan();
-            base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", FileDataAsText(file_data).get(), numeric_cast<unsigned>(file_data.size()));
+            base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
         }
 
         if (base_system) {

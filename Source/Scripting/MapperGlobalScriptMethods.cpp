@@ -96,8 +96,7 @@ static auto MapperColorDataAt(vector<ucolor>& data, size_t offset) noexcept -> p
 
     FO_STRONG_ASSERT(offset < data.size(), "Color offset out of bounds");
 
-    nptr<ucolor> data_lookup = data.data();
-    FO_STRONG_ASSERT(data_lookup, "Color data buffer must not be null");
+    ptr<ucolor> data_lookup = data.data();
 
     auto data_begin = data_lookup.as_ptr();
     return data_begin.get() + offset;

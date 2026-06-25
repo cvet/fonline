@@ -47,46 +47,6 @@ static constexpr string_view StrUpdaterOutdated = "Client updater outdated, plea
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 
-static auto BytesAsFileChars(const_span<uint8_t> bytes) -> ptr<const char>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(!bytes.empty(), "Update file data is empty");
-
-    ptr<const uint8_t> data = bytes.data();
-    return data.reinterpret_as<char>();
-}
-
-template<typename T>
-static auto ObjectAsBytes(const T& object) noexcept -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const T> object_ptr = &object;
-    ptr<const uint8_t> bytes = object_ptr.reinterpret_as<uint8_t>();
-    return {bytes.get(), sizeof(T)};
-}
-
-template<typename T>
-static auto MutableObjectBytes(T& object) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<T> object_ptr = &object;
-    return object_ptr.reinterpret_as<uint8_t>();
-}
-
-static auto DataBytes(const_span<uint8_t> data) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Data buffer is empty");
-
-    return data.data();
-}
-
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
@@ -687,9 +647,7 @@ void Updater::Net_OnUpdateFileData()
     const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        ptr<const uint8_t> update_file_data_write = _updateFileBuf.data();
-        const_span<uint8_t> update_file_data_write_span = {update_file_data_write.get(), write_size};
-        _tempFile.write(BytesAsFileChars(update_file_data_write_span).get(), numeric_cast<std::streamsize>(write_size));
+        _tempFile.write(ptr<const uint8_t> {_updateFileBuf.data()}.reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -739,9 +697,8 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
-            const_span<uint8_t> cached_data = data;
-            auto target = MutableObjectBytes(cached);
-            auto source = DataBytes(cached_data);
+            ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
+            ptr<const uint8_t> source = data.data();
             MemCopy(target.get(), source.get(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
@@ -757,7 +714,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(cache_key, ObjectAsBytes(entry));
+    _cache.SetData(cache_key, const_span<uint8_t> {ptr<const CachedHash> {&entry}.reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
 }
@@ -766,11 +723,7 @@ auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<const uint8_t> data_bytes = nullptr;
-    if (!data.empty()) {
-        data_bytes = data.data();
-    }
-    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data_bytes, data.size()) == expected_hash;
+    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data) == expected_hash;
 }
 
 auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>

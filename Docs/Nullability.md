@@ -70,6 +70,8 @@ Native methods declared with `///@ ExportMethod` in [../Source/Scripting/](../So
 
 For native C++ code outside exported script signatures, use the pointer vocabulary in [SmartPointers.md](SmartPointers.md): `ptr<T>` for borrowed non-null values, `nptr<T>` for borrowed nullable values, and the matching `unique_*` / `refcount_*` owning forms. `nptr<T>`, `unique_nptr<T>`, and `refcount_nptr<T>` are separate nullable wrapper types; the remaining migration work is tightening nullable operations on the non-null spellings.
 
+**Prefer the non-null spelling; reach for `nptr<T>` only when absence is a real, handled state.** A nullable wrapper is dead weight when every caller already passes non-null, a function never returns null, or a member is always set before use — convert those to `ptr<T>` / `unique_ptr<T>` / `refcount_ptr<T>`. In particular, do **not** make a raw `pointer + size` buffer parameter nullable just so the degenerate empty case may pass `nullptr` — take a non-null `const_span<uint8_t>` / `span<uint8_t>` (the engine's standard byte-buffer vocabulary) and let `.empty()` handle the zero-length case. This both removes the spurious nullability and deletes the `nptr<T> x = nullptr; if (!c.empty()) x = c.data(); f(x, c.size())` boilerplate at every call site (`f(c)`). Conversely, leave `nptr<T>` in place where the `nptr`→`verify`→`.as_ptr()` narrow is the legitimate result of a fallible cast/lookup, where a data member has a real transient-null window between construction and assignment, or where a defensive boundary helper deliberately accepts a nullable and asserts.
+
 ```cpp
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)

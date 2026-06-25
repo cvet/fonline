@@ -242,16 +242,6 @@ FileReader::FileReader(const_span<uint8_t> buf) :
     FO_STACK_TRACE_ENTRY();
 }
 
-static auto FileReaderDataAt(const_span<uint8_t> buf, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < buf.size(), "File reader offset is past the end of the buffer");
-
-    ptr<const uint8_t> data = buf.data();
-    return data.get() + pos;
-}
-
 auto FileReader::GetStr() const -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -261,7 +251,7 @@ auto FileReader::GetStr() const -> string
 
     if (!result.empty()) {
         ptr<char> target = result.data();
-        auto source = FileReaderDataAt(_buf, 0);
+        auto source = ptr<const uint8_t> {_buf.data()};
         MemCopy(target.get(), source.get(), result.size());
     }
 
@@ -277,7 +267,7 @@ auto FileReader::GetData() const -> vector<uint8_t>
 
     if (!result.empty()) {
         ptr<uint8_t> target = result.data();
-        auto source = FileReaderDataAt(_buf, 0);
+        auto source = ptr<const uint8_t> {_buf.data()};
         MemCopy(target.get(), source.get(), result.size());
     }
 
@@ -292,7 +282,7 @@ auto FileReader::GetBuf() const -> nptr<const uint8_t>
         return nullptr;
     }
 
-    return FileReaderDataAt(_buf, 0);
+    return ptr<const uint8_t> {_buf.data()};
 }
 
 auto FileReader::GetDataSpan() const -> const_span<uint8_t>
@@ -317,7 +307,7 @@ auto FileReader::GetCurBuf() const -> nptr<const uint8_t>
         return nullptr;
     }
 
-    return FileReaderDataAt(_buf, _curPos);
+    return ptr<const uint8_t> {_buf.data()}.offset(_curPos);
 }
 
 auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
@@ -332,7 +322,7 @@ auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
         throw FileSystemExeption("Invalid read size");
     }
 
-    auto data = FileReaderDataAt(_buf, _curPos);
+    auto data = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
     return const_span<uint8_t> {data.get(), size};
 }
 
@@ -401,23 +391,21 @@ auto FileReader::SeekFragment(string_view fragment) -> bool
     return false;
 }
 
-void FileReader::CopyData(nptr<void> nullable_buf, size_t size)
+void FileReader::CopyData(span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (size == 0) {
+    if (buf.empty()) {
         return;
     }
-    if (_curPos + size > _buf.size()) {
+    if (_curPos + buf.size() > _buf.size()) {
         throw FileSystemExeption("Invalid read size");
     }
 
-    FO_VERIFY_AND_THROW(nullable_buf, "File reader copy received a null destination for a non-empty read");
-
-    auto target = nullable_buf.as_ptr();
-    auto source = FileReaderDataAt(_buf, _curPos);
-    MemCopy(target.get(), source.get(), size);
-    _curPos += size;
+    ptr<uint8_t> target = buf.data();
+    auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+    MemCopy(target.get(), source.get(), buf.size());
+    _curPos += buf.size();
 }
 
 void FileReader::ReadBytes(span<uint8_t> out)
@@ -428,9 +416,7 @@ void FileReader::ReadBytes(span<uint8_t> out)
         return;
     }
 
-    ptr<uint8_t> output = out.data();
-    ptr<void> output_data = cast_to_void(output.get());
-    CopyData(output_data, out.size());
+    CopyData(out);
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -449,7 +435,7 @@ auto FileReader::GetStrNT() -> string
             throw FileSystemExeption("Invalid null terminated string length");
         }
 
-        auto cur_byte = FileReaderDataAt(_buf, _curPos + len);
+        auto cur_byte = ptr<const uint8_t> {_buf.data()}.offset(_curPos + len);
 
         if (*cur_byte == 0) {
             break;
@@ -463,7 +449,7 @@ auto FileReader::GetStrNT() -> string
 
     if (!str.empty()) {
         ptr<char> target = str.data();
-        auto source = FileReaderDataAt(_buf, _curPos);
+        auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
         MemCopy(target.get(), source.get(), str.size());
     }
 

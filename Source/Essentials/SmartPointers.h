@@ -253,6 +253,12 @@ public:
     {
         return _ptr[index];
     }
+    template<typename U = T>
+        requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto offset(size_t count) const noexcept -> ptr<T>
+    {
+        return ptr<T> {_ptr + count};
+    }
 #if !FO_STRICT_PTR_NONNULL
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
 #else
@@ -490,6 +496,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const U&
     {
         return _ptr[index];
+    }
+    template<typename U = T>
+        requires(!std::is_void_v<U>)
+    [[nodiscard]] FO_FORCE_INLINE auto offset(size_t count) const noexcept -> nptr<T>
+    {
+        return nptr<T> {_ptr + count};
     }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
 

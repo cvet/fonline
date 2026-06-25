@@ -61,57 +61,6 @@ static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, strin
     }
 }
 
-template<typename T>
-static auto ScriptObjectBytes(const T& value) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<const T> value_ptr = &value;
-    return value_ptr.reinterpret_as<const uint8_t>();
-}
-
-template<typename T>
-    requires(!std::is_const_v<T>)
-static auto ScriptMutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<T> value_ptr = &value;
-    return value_ptr.reinterpret_as<uint8_t>();
-}
-
-static auto ScriptRawDataAt(const_span<uint8_t> data, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Script raw data offset is past the end of the buffer");
-
-    ptr<const uint8_t> data_ptr = data.data();
-    return data_ptr.get() + pos;
-}
-
-static auto ScriptRawDataPtr(const_span<uint8_t> data) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Script raw data buffer is empty");
-    return ScriptRawDataAt(data, 0);
-}
-
-static auto ScriptMutableDataAt(vector<uint8_t>& data, size_t pos) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Script raw data offset is past the end of the buffer");
-
-    ptr<uint8_t> data_ptr = data.data();
-    return data_ptr.get() + pos;
-}
-
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
     _registrator {registrator},
     _props {std::in_place, _registrator}
@@ -161,8 +110,8 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
             }
 
             uint32_t field_size = 0;
-            auto field_size_target = ScriptMutableObjectBytes(field_size);
-            auto field_size_source = ScriptRawDataAt(raw_data, data_pos);
+            auto field_size_target = ptr<uint32_t> {&field_size}.reinterpret_as<uint8_t>();
+            auto field_size_source = ptr<const uint8_t> {raw_data.data()}.offset(data_pos);
             MemCopy(field_size_target.get(), field_size_source.get(), sizeof(field_size));
             data_pos += sizeof(field_size);
 
@@ -275,14 +224,14 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
                 const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
-                auto field_size_target = ScriptMutableDataAt(_cachedRawData, data_pos);
-                auto field_size_source = ScriptObjectBytes(field_size);
+                auto field_size_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
+                auto field_size_source = ptr<const uint32_t> {&field_size}.reinterpret_as<uint8_t>();
                 MemCopy(field_size_target.get(), field_size_source.get(), sizeof(field_size));
                 data_pos += sizeof(field_size);
 
                 if (field_size != 0) {
-                    auto field_data_target = ScriptMutableDataAt(_cachedRawData, data_pos);
-                    auto field_data_source = ScriptRawDataPtr(field_raw_entries[i]);
+                    auto field_data_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
+                    auto field_data_source = ptr<const uint8_t> {field_raw_entries[i].data()};
                     MemCopy(field_data_target.get(), field_data_source.get(), field_size);
                     data_pos += field_size;
                 }

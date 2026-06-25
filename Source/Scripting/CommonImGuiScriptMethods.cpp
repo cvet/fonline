@@ -54,8 +54,7 @@ static void ImGuiTextUnformatted(string_view text)
         return;
     }
 
-    nptr<const char> text_lookup = text.data();
-    FO_VERIFY_AND_THROW(text_lookup, "Non-empty text must have a backing buffer");
+    ptr<const char> text_lookup = text.data();
 
     auto text_begin = text_lookup.as_ptr();
     ptr<const char> text_end = text_begin.get() + text.size();

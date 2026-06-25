@@ -183,7 +183,7 @@ public:
         }
 
         result.resize(len);
-        nptr<char> result_data = result.data();
+        ptr<char> result_data = result.data();
         Pop(result_data, len);
         return result;
     }

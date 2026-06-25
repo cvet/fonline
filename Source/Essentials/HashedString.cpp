@@ -45,18 +45,15 @@ HashStorage::HashStorage(HashFunc hash_func) :
     FO_VERIFY_AND_THROW(_hashFunc, "Hash function is null");
 }
 
-auto HashStorage::DefaultHash(nptr<const void> nullable_data, size_t len) noexcept -> uint64_t
+auto HashStorage::DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (len == 0) {
+    if (data.empty()) {
         return hashing_ex::hash(nullptr, 0);
     }
 
-    FO_STRONG_ASSERT(nullable_data, "Data pointer is null for non-zero length");
-
-    auto bytes = nullable_data.as_ptr();
-    return hashing_ex::hash(bytes.get(), len);
+    return hashing_ex::hash(data.data(), data.size());
 }
 
 auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
@@ -67,7 +64,7 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto hash_value = _hashFunc(s.data(), s.length());
+    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
 
     shared_lock locker {_hashStorageLocker};
 
@@ -78,13 +75,13 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}, {}))>);
+    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}))>);
 
     if (s.empty()) {
         return {};
     }
 
-    const auto hash_value = _hashFunc(s.data(), s.length());
+    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {

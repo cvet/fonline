@@ -37,16 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto VideoDataAt(const vector<uint8_t>& data, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Video data offset is past the end of the buffer");
-
-    ptr<const uint8_t> data_begin = data.data();
-    return data_begin.get() + pos;
-}
-
 static void CleanupTheoraSetupInfo(th_setup_info* raw_setup_info) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -471,7 +461,7 @@ int32_t VideoClip::DecodePacket()
             }
 
             ptr<char> dest_buf = ogg_sync_buffer(&impl->SyncState, read_bytes);
-            auto source = VideoDataAt(impl->RawVideoData, impl->ReadPos);
+            ptr<const uint8_t> source = ptr<const uint8_t> {impl->RawVideoData.data()}.offset(impl->ReadPos);
             MemCopy(dest_buf.get(), source.get(), read_bytes);
             impl->ReadPos += read_bytes;
             ogg_sync_wrote(&impl->SyncState, read_bytes);

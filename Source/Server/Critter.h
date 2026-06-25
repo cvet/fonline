@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetInvItems() const noexcept -> vector<ptr<const Item>>;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> nptr<Item>;
-    [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
+    [[nodiscard]] auto CountInvItemByPid(hstring pid) const noexcept -> int32_t;
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>& { return _visibleItems; }
     [[nodiscard]] auto IsSeeItem(ident_t item_id) const noexcept -> bool { return _visibleItems.contains(item_id); }
     [[nodiscard]] auto IsSeeCritter(ident_t cr_id) const -> bool;

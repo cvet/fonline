@@ -84,73 +84,6 @@ static auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_pt
     return make_unique_del_ptr(released_buf, CleanupFileBuffer);
 }
 
-static auto GetSafeAllocatorBytePtr(nptr<void> address) noexcept -> nptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!address) {
-        return nullptr;
-    }
-
-    return cast_from_void<uint8_t*>(address.get());
-}
-
-template<typename T>
-static auto ObjectReadBuffer(T& value) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<T> value_ptr = &value;
-    return cast_to_void(value_ptr.get());
-}
-
-template<typename T>
-    requires(!std::is_const_v<T>)
-static auto ObjectMutableBytes(T& value) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<T> value_ptr = &value;
-    return value_ptr.reinterpret_as<uint8_t>();
-}
-
-static auto DataSourceDataAt(ptr<uint8_t> data, size_t offset) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<uint8_t> data_pos = data.get() + offset;
-    return data_pos;
-}
-
-static auto DataSourceDataAt(span<uint8_t> data, size_t offset) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < data.size(), "Data source offset is past the end of the buffer");
-
-    return &data[offset];
-}
-
-static auto DataSourceDataAt(ptr<const uint8_t> data, size_t offset) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const uint8_t> data_pos = data.get() + offset;
-    return data_pos;
-}
-
-static auto StringMutableBytes(string& data) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "String has no mutable bytes to expose");
-
-    ptr<char> chars = data.data();
-    return chars.reinterpret_as<uint8_t>();
-}
-
 class DummySpace final : public DataSource
 {
 public:
@@ -496,9 +429,9 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
 
     size = stream_get_size(file);
     unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
-    nptr<uint8_t> buf_data = buf.get();
+    ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, buf_data, size)) {
+    if (!stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read file from non cached dir", _baseDir, path);
     }
 
@@ -591,9 +524,9 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
 
     size = fe.FileSize;
     unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
-    nptr<uint8_t> buf_data = buf.get();
+    ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, buf_data, size)) {
+    if (!stream_read_exact(file, make_span(buf_data, size))) {
         return nullptr;
     }
 
@@ -639,8 +572,8 @@ bool FalloutDat::ReadTree()
     if (!stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
         return false;
     }
-    auto version_buf = ObjectReadBuffer(version);
-    if (!stream_read_exact(_datFile, version_buf, sizeof(version))) {
+    auto version_buf = make_span(ptr<uint32_t> {&version}, sizeof(version));
+    if (!stream_read_exact(_datFile, version_buf)) {
         return false;
     }
 
@@ -652,8 +585,8 @@ bool FalloutDat::ReadTree()
 
         uint32_t tree_size = 0;
 
-        auto tree_size_buf = ObjectReadBuffer(tree_size);
-        if (!stream_read_exact(_datFile, tree_size_buf, sizeof(tree_size))) {
+        auto tree_size_buf = make_span(ptr<uint32_t> {&tree_size}, sizeof(tree_size));
+        if (!stream_read_exact(_datFile, tree_size_buf)) {
             return false;
         }
 
@@ -664,51 +597,50 @@ bool FalloutDat::ReadTree()
 
         uint32_t files_total = 0;
 
-        auto files_total_buf = ObjectReadBuffer(files_total);
-        if (!stream_read_exact(_datFile, files_total_buf, sizeof(files_total))) {
+        auto files_total_buf = make_span(ptr<uint32_t> {&files_total}, sizeof(files_total));
+        if (!stream_read_exact(_datFile, files_total_buf)) {
             return false;
         }
 
         tree_size -= 28 + 4; // Subtract information block and files total
         _memTree = SafeAlloc::MakeUniqueArr<uint8_t>(tree_size);
         MemFill(_memTree.get(), 0, tree_size);
-        nptr<uint8_t> nullable_tree_data = _memTree.get();
+        ptr<uint8_t> tree_data = _memTree.get();
 
-        if (!stream_read_exact(_datFile, nullable_tree_data, tree_size)) {
+        if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
             return false;
         }
 
         // Indexing tree
         size_t tree_pos = 0;
-        auto tree_data = nullable_tree_data.as_ptr();
-        span<uint8_t> tree_span {tree_data.get(), tree_size};
+        auto tree_span = make_span(tree_data, tree_size);
 
         while (tree_pos < tree_size) {
-            auto tree_entry = DataSourceDataAt(tree_span, tree_pos);
+            auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
             uint32_t fnsz = 0;
-            auto fnsz_target = ObjectMutableBytes(fnsz);
+            auto fnsz_target = ptr<uint32_t> {&fnsz}.reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
             MemCopy(fnsz_target.get(), fnsz_source.get(), sizeof(fnsz));
 
             uint32_t type = 0;
-            auto type_target = ObjectMutableBytes(type);
-            auto type_source = DataSourceDataAt(tree_entry, 4 + fnsz + 4);
+            auto type_target = ptr<uint32_t> {&type}.reinterpret_as<uint8_t>();
+            auto type_source = tree_entry.offset(4 + fnsz + 4);
             MemCopy(type_target.get(), type_source.get(), sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
-                auto raw_name_target = StringMutableBytes(raw_name);
-                auto raw_name_source = DataSourceDataAt(tree_entry, 4);
+                auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+                auto raw_name_source = tree_entry.offset(4);
                 MemCopy(raw_name_target.get(), raw_name_source.get(), raw_name.size());
                 string name = strex(raw_name).normalize_path_slashes();
 
                 if (type == 2) {
-                    auto compressed_flag = DataSourceDataAt(tree_entry, 4 + fnsz + 7);
+                    auto compressed_flag = tree_entry.offset(4 + fnsz + 7);
                     *compressed_flag = 1; // Compressed
                 }
 
-                auto file_info = DataSourceDataAt(tree_entry, 4 + fnsz + 7);
+                auto file_info = tree_entry.offset(4 + fnsz + 7);
                 _filesTree.emplace(name, file_info);
                 _filesTreeNames.emplace_back(std::move(name));
             }
@@ -725,14 +657,14 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t tree_size = 0;
-    auto tree_size_buf = ObjectReadBuffer(tree_size);
-    if (!stream_read_exact(_datFile, tree_size_buf, sizeof(tree_size))) {
+    auto tree_size_buf = make_span(ptr<uint32_t> {&tree_size}, sizeof(tree_size));
+    if (!stream_read_exact(_datFile, tree_size_buf)) {
         return false;
     }
 
     uint32_t dat_size = 0;
-    auto dat_size_buf = ObjectReadBuffer(dat_size);
-    if (!stream_read_exact(_datFile, dat_size_buf, sizeof(dat_size))) {
+    auto dat_size_buf = make_span(ptr<uint32_t> {&dat_size}, sizeof(dat_size));
+    if (!stream_read_exact(_datFile, dat_size_buf)) {
         return false;
     }
 
@@ -742,8 +674,8 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t dir_count = 0;
-    auto dir_count_buf = ObjectReadBuffer(dir_count);
-    if (!stream_read_exact(_datFile, dir_count_buf, sizeof(dir_count))) {
+    auto dir_count_buf = make_span(ptr<uint32_t> {&dir_count}, sizeof(dir_count));
+    if (!stream_read_exact(_datFile, dir_count_buf)) {
         return false;
     }
 
@@ -763,28 +695,27 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t files_total = 0;
-    auto files_total_buf = ObjectReadBuffer(files_total);
-    if (!stream_read_exact(_datFile, files_total_buf, sizeof(files_total))) {
+    auto files_total_buf = make_span(ptr<uint32_t> {&files_total}, sizeof(files_total));
+    if (!stream_read_exact(_datFile, files_total_buf)) {
         return false;
     }
 
     tree_size -= 4;
     _memTree = SafeAlloc::MakeUniqueArr<uint8_t>(tree_size);
-    nptr<uint8_t> nullable_tree_data = _memTree.get();
+    ptr<uint8_t> tree_data = _memTree.get();
 
-    if (!stream_read_exact(_datFile, nullable_tree_data, tree_size)) {
+    if (!stream_read_exact(_datFile, make_span(tree_data, tree_size))) {
         return false;
     }
 
     // Indexing tree
     size_t tree_pos = 0;
-    auto tree_data = nullable_tree_data.as_ptr();
-    span<uint8_t> tree_span {tree_data.get(), tree_size};
+    auto tree_span = make_span(tree_data, tree_size);
 
     while (tree_pos < tree_size) {
-        auto tree_entry = DataSourceDataAt(tree_span, tree_pos);
+        auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
         uint32_t name_len = 0;
-        auto name_len_target = ObjectMutableBytes(name_len);
+        auto name_len_target = ptr<uint32_t> {&name_len}.reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
         MemCopy(name_len_target.get(), name_len_source.get(), sizeof(name_len));
 
@@ -795,12 +726,12 @@ bool FalloutDat::ReadTree()
         if (name_len != 0) {
             string raw_name;
             raw_name.resize(numeric_cast<size_t>(name_len));
-            auto raw_name_target = StringMutableBytes(raw_name);
-            auto raw_name_source = DataSourceDataAt(tree_entry, 4);
+            auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+            auto raw_name_source = tree_entry.offset(4);
             MemCopy(raw_name_target.get(), raw_name_source.get(), raw_name.size());
             string name = strex(raw_name).normalize_path_slashes();
 
-            auto file_info = DataSourceDataAt(tree_entry, 4 + name_len);
+            auto file_info = tree_entry.offset(4 + name_len);
             _filesTree.emplace(name, file_info);
             _filesTreeNames.emplace_back(std::move(name));
         }
@@ -836,8 +767,8 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
 
     ptr<const uint8_t> file_info = it->second;
     uint32_t real_size = 0;
-    auto real_size_target = ObjectMutableBytes(real_size);
-    auto real_size_source = DataSourceDataAt(file_info, 1);
+    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target.get(), real_size_source.get(), sizeof(real_size));
 
     size = real_size;
@@ -859,23 +790,23 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 
     ptr<const uint8_t> file_info = it->second;
     uint8_t type = 0;
-    auto type_target = ObjectMutableBytes(type);
+    auto type_target = ptr<uint8_t> {&type}.reinterpret_as<uint8_t>();
     ptr<const uint8_t> type_source = file_info;
     MemCopy(type_target.get(), type_source.get(), sizeof(type));
 
     uint32_t real_size = 0;
-    auto real_size_target = ObjectMutableBytes(real_size);
-    auto real_size_source = DataSourceDataAt(file_info, 1);
+    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target.get(), real_size_source.get(), sizeof(real_size));
 
     uint32_t packed_size = 0;
-    auto packed_size_target = ObjectMutableBytes(packed_size);
-    auto packed_size_source = DataSourceDataAt(file_info, 5);
+    auto packed_size_target = ptr<uint32_t> {&packed_size}.reinterpret_as<uint8_t>();
+    auto packed_size_source = file_info.offset(5);
     MemCopy(packed_size_target.get(), packed_size_source.get(), sizeof(packed_size));
 
     int32_t offset = 0;
-    auto offset_target = ObjectMutableBytes(offset);
-    auto offset_source = DataSourceDataAt(file_info, 9);
+    auto offset_target = ptr<int32_t> {&offset}.reinterpret_as<uint8_t>();
+    auto offset_source = file_info.offset(9);
     MemCopy(offset_target.get(), offset_source.get(), sizeof(offset));
 
     if (!stream_set_read_pos(_datFile, offset, std::ios_base::beg)) {
@@ -884,11 +815,11 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 
     size = real_size;
     unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
-    nptr<uint8_t> buf_data = buf.get();
+    ptr<uint8_t> buf_data = buf.get();
 
     if (type == 0) {
         // Plane data
-        if (!stream_read_exact(_datFile, buf_data, size)) {
+        if (!stream_read_exact(_datFile, make_span(buf_data, size))) {
             throw DataSourceException("Can't read file from fallout dat (2)", path);
         }
     }
@@ -901,7 +832,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         };
         stream.zfree = [](voidpf, voidpf address) {
             constexpr SafeAllocator<uint8_t> allocator;
-            allocator.deallocate(GetSafeAllocatorBytePtr(address).get(), 0);
+            allocator.deallocate(cast_from_void<uint8_t*>(address), 0);
         };
 
         if (inflateInit(&stream) != Z_OK) {
@@ -918,10 +849,10 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 const auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
-                nptr<uint8_t> read_buf = _readBuf.data();
+                ptr<uint8_t> read_buf = _readBuf.data();
                 stream.next_in = read_buf.get();
 
-                if (!stream_read_exact(_datFile, read_buf, len)) {
+                if (!stream_read_exact(_datFile, make_span(read_buf, len))) {
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }
 
@@ -1002,14 +933,12 @@ ZipFile::ZipFile(string_view fname)
         nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
         FO_VERIFY_AND_THROW(!!nullable_file, "Zip read callback received a null file stream");
         auto file = nullable_file.as_ptr();
-        nptr<void> output = buf;
-
         if (size == 0) {
             return 0;
         }
 
-        FO_VERIFY_AND_THROW(!!output, "Zip read callback received a null output buffer");
-        return stream_read_exact(*file, output, size) ? size : 0;
+        FO_VERIFY_AND_THROW(buf != nullptr, "Zip read callback received a null output buffer");
+        return stream_read_exact(*file, make_span(buf, size)) ? size : 0;
     };
     ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
     ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
@@ -1200,7 +1129,7 @@ EmbeddedFile::EmbeddedFile()
         uint32_t embedded_size = 0;
         ptr<const uint8_t> embedded_size_source = embedded_size_bytes.data();
 
-        auto embedded_size_target = ObjectMutableBytes(embedded_size);
+        auto embedded_size_target = ptr<uint32_t> {&embedded_size}.reinterpret_as<uint8_t>();
         MemCopy(embedded_size_target.get(), embedded_size_source.get(), embedded_size_bytes.size());
 
         ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
@@ -1483,9 +1412,9 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
 
     size = fe.FileSize;
     unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
-    nptr<uint8_t> buf_data = buf.get();
+    ptr<uint8_t> buf_data = buf.get();
 
-    if (!stream_read_exact(file, buf_data, size)) {
+    if (!stream_read_exact(file, make_span(buf_data, size))) {
         throw DataSourceException("Can't read file in file list assets", path);
     }
 

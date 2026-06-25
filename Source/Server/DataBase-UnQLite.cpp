@@ -164,7 +164,7 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        nptr<const uint8_t> key_data = key.data();
+        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
@@ -204,7 +204,7 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        nptr<const uint8_t> key_data = key.data();
+        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         auto actual_doc = GetRecordUnlocked(collection_name, id);
 
@@ -246,7 +246,7 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        nptr<const uint8_t> key_data = key.data();
+        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         const auto kv_delete = unqlite_kv_delete(db.get(), key_data.get(), key_size);
 
@@ -395,7 +395,7 @@ private:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        nptr<const uint8_t> key_data = key.data();
+        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
         ptr<AnyData::Document> document_result = &doc;

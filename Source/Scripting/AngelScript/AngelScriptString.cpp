@@ -115,10 +115,7 @@ static auto ScriptStringCStrAt(const string& str, size_t offset) noexcept -> ptr
 
     FO_STRONG_ASSERT(offset <= str.size(), "String offset is out of bounds");
 
-    nptr<const char> nullable_str = str.c_str();
-    FO_STRONG_ASSERT(nullable_str, "Missing string character data");
-
-    auto str_begin = nullable_str.as_ptr();
+    ptr<const char> str_begin = str.c_str();
     return str_begin.get() + offset;
 }
 

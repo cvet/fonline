@@ -38,25 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto PacketBufferBytes(vector<uint8_t>& packet_buf) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!packet_buf.empty(), "Packet buffer is empty");
-
-    return packet_buf.data();
-}
-
-static auto ReceivedPacketSpan(vector<uint8_t>& packet_buf, size_t received) noexcept -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(received <= packet_buf.size(), "Received byte count exceeds the packet buffer size");
-
-    auto packet_buf_data = PacketBufferBytes(packet_buf);
-    return {packet_buf_data.get(), received};
-}
-
 class NetworkClientConnection_UdpSockets final : public NetworkClientConnection
 {
 public:
@@ -256,7 +237,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
         }
 
         UdpPacketInfo packet;
-        const_span<uint8_t> received_packet = ReceivedPacketSpan(_packetBuf, numeric_cast<size_t>(received));
+        const_span<uint8_t> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;

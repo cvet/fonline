@@ -829,13 +829,13 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
     return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_NON_CONST_METHOD_HINT();
 
-    return _app->_ctx->HeadlessRenderer.CreateEffect(usage, name, file_loader);
+    return _app->_ctx->HeadlessRenderer.CreateEffect(usage, name, loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44

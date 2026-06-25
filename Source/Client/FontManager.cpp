@@ -45,10 +45,7 @@ static auto FontManagerCStringAt(const string& str, size_t offset) noexcept -> p
 
     FO_STRONG_ASSERT(offset <= str.size(), "String offset is past the end of the string");
 
-    nptr<const char> nullable_cstr = str.c_str();
-    FO_STRONG_ASSERT(nullable_cstr, "String buffer pointer is null");
-
-    auto cstr = nullable_cstr.as_ptr();
+    ptr<const char> cstr = str.c_str();
     return cstr.get() + offset;
 }
 
@@ -1011,10 +1008,8 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
-    nptr<const char> text_data = str.data();
-
     const std::array<uint64_t, 8> key_parts {
-        HashStorage::DefaultHash(text_data, str.size()),
+        HashStorage::DefaultHash(string_to_span(str)),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),
@@ -1024,8 +1019,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
         static_cast<uint32_t>(mode),
     };
 
-    ptr<const uint64_t> key_parts_data = key_parts.data();
-    const uint64_t key = HashStorage::DefaultHash(key_parts_data, key_parts.size() * sizeof(uint64_t));
+    const uint64_t key = HashStorage::DefaultHash(make_span(key_parts));
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;

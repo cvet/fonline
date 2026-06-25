@@ -146,7 +146,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
     ptr<const hstring::hash_t> parts_data = parts;
-    return HashStorage::DefaultHash(parts_data, sizeof(parts));
+    return HashStorage::DefaultHash(make_span(parts_data, sizeof(parts)));
 }
 
 static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> hstring::hash_t
@@ -155,7 +155,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t a
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
     ptr<const hstring::hash_t> parts_data = parts;
-    return HashStorage::DefaultHash(parts_data, sizeof(parts));
+    return HashStorage::DefaultHash(make_span(parts_data, sizeof(parts)));
 }
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>

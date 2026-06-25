@@ -139,7 +139,7 @@ public:
     void Deactivate() noexcept;
     void SyncEntities(const_span<nptr<ServerEntity>> entities);
     void SyncEntity(nptr<ServerEntity> entity);
-    void EnsureEntitySynced(nptr<ServerEntity> entity);
+    void EnsureEntitySynced(nptr<ServerEntity> nullable_entity);
     void Release() noexcept;
 
     // Singleton-lock acquisition (e.g. `Game.Lock()`). Acquires the supplied EntityLock and

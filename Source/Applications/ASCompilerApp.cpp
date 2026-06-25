@@ -89,8 +89,7 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    nptr<const char> data_chars = cast_from_void<const char*>(cast_to_void(data.data()));
-                    FO_VERIFY_AND_THROW(data_chars, "Metadata output data pointer is null", output_path, res_pack.Name, path, data.size());
+                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
@@ -151,8 +150,7 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    nptr<const char> data_chars = cast_from_void<const char*>(cast_to_void(data.data()));
-                    FO_VERIFY_AND_THROW(data_chars, "AngelScript output data pointer is null", output_path, res_pack.Name, path, data.size());
+                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 

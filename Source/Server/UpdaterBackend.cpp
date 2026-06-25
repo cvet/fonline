@@ -67,11 +67,7 @@ static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, 
         return false;
     }
 
-    nptr<uint8_t> data_bytes = nullptr;
-    if (!data.empty()) {
-        data_bytes = data.data();
-    }
-    return data.empty() || stream_read_exact(file, data_bytes, data.size());
+    return stream_read_exact(file, data);
 }
 
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
@@ -101,17 +97,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
-            nptr<uint8_t> memory_bytes = nullptr;
-            if (!data.MemoryData.empty()) {
-                memory_bytes = data.MemoryData.data();
-            }
-
-            if (file_size != 0 && !stream_read_exact(file, memory_bytes, file_size)) {
+            if (!stream_read_exact(file, data.MemoryData)) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(memory_bytes, data.MemoryData.size());
+            data.Hash = fs_hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);

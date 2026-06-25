@@ -35,24 +35,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto InterthreadBufferBytes(vector<uint8_t>& data) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Interthread buffer is empty");
-
-    return data.data();
-}
-
-[[maybe_unused]] static auto InterthreadBufferBytes(const vector<uint8_t>& data) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Interthread buffer is empty");
-
-    return data.data();
-}
-
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
@@ -156,9 +138,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
         buf.resize(buf.size() * 2);
     }
 
-    auto target = InterthreadBufferBytes(buf);
-    auto source = InterthreadBufferBytes(_interthreadReceived);
-    MemCopy(target.get(), source.get(), recv_size);
+    MemCopy(buf.data(), _interthreadReceived.data(), recv_size);
     _interthreadReceived.clear();
 
     return recv_size;

@@ -141,8 +141,7 @@ static auto BytesAsMutableSpan(span<uint8_t> data, size_t value_count) noexcept 
 
     FO_STRONG_ASSERT(data.size() >= value_count * sizeof(T), "Byte span is too small to reinterpret as the requested value count");
     ptr<uint8_t> bytes = data.data();
-    nptr<T> values = cast_from_void<T*>(cast_to_void(bytes.get_no_const()));
-    FO_STRONG_ASSERT(values, "Reinterpreted byte span pointer is null");
+    ptr<T> values = reinterpret_cast<T*>(bytes.get_no_const());
     return {values.get(), value_count};
 }
 
