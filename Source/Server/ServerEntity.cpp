@@ -108,7 +108,7 @@ auto ServerEntity::GetParent() -> refcount_ptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
@@ -116,7 +116,7 @@ auto ServerEntity::GetParent() const -> refcount_ptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY_ACCESS();
     return refcount_ptr<const ServerEntity>(_parent.load(std::memory_order_acquire));
 }
 
