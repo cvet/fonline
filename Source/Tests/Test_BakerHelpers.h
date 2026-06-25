@@ -181,6 +181,80 @@ namespace BakerTests
         return protos_data;
     }
 
+    // Same single-type proto resource blob as MakeSingleProtoResourceBlob, but packs several protos of
+    // the same entity type into one pack and lets the caller mutate each proto's default properties via
+    // a configure callback (invoked before properties are serialized). Matches the proto pack format read
+    // by ProtoManager::LoadFromResources: u32 hashes_count, u32 types_count, then per type
+    // { u32 protos_count, u16+type_name, per proto { u16+proto_name, u32+props_data } }.
+    template<typename ProtoType>
+    inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
+    {
+        vector<uint8_t> protos_data;
+        auto writer = DataWriter(protos_data);
+
+        writer.Write<uint32_t>(uint32_t {0});
+        writer.Write<uint32_t>(uint32_t {1});
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+
+        for (const auto& [proto_name, configure] : protos) {
+            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name).as_ptr()};
+
+            if (configure) {
+                configure(proto);
+            }
+
+            vector<uint8_t> props_data;
+            set<hstring> str_hashes;
+            proto.GetProperties().StoreAllData(props_data, str_hashes);
+            ignore_unused(str_hashes);
+
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+            writer.WritePtr(proto_name.data(), proto_name.length());
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+            writer.WritePtr(props_data.data(), props_data.size());
+        }
+
+        return protos_data;
+    }
+
+    // Minimal valid baked sprite blob (the magic-42 single-frame format read by
+    // DefaultSpriteFactory::LoadSprite). Produces a width x height fully-opaque white image so that
+    // headless font/sprite binding succeeds under NullRenderer without shipping real baked art.
+    inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1) -> vector<uint8_t>
+    {
+        vector<uint8_t> sprite_data;
+        auto writer = DataWriter(sprite_data);
+
+        writer.Write<uint8_t>(uint8_t {42}); // Header magic
+        writer.Write<uint16_t>(uint16_t {1}); // Frames count
+        writer.Write<uint16_t>(uint16_t {0}); // Ticks
+        writer.Write<uint8_t>(uint8_t {1}); // Directions
+
+        writer.Write<int16_t>(int16_t {0}); // Offset x
+        writer.Write<int16_t>(int16_t {0}); // Offset y
+
+        writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
+        writer.Write<uint16_t>(width);
+        writer.Write<uint16_t>(height);
+        writer.Write<int16_t>(int16_t {0}); // Frame x
+        writer.Write<int16_t>(int16_t {0}); // Frame y
+
+        const auto pixel_count = numeric_cast<size_t>(width) * height;
+
+        for (size_t i = 0; i < pixel_count; i++) {
+            writer.Write<uint8_t>(uint8_t {255}); // R
+            writer.Write<uint8_t>(uint8_t {255}); // G
+            writer.Write<uint8_t>(uint8_t {255}); // B
+            writer.Write<uint8_t>(uint8_t {255}); // A
+        }
+
+        writer.Write<uint8_t>(uint8_t {42}); // Frame magic
+
+        return sprite_data;
+    }
+
     class MemoryDataSource final : public DataSource
     {
     public:

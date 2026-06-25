@@ -261,6 +261,8 @@ public:
     void CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item);
 
     auto MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t;
+    auto CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) -> size_t;
+    auto CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> size_t;
     auto TryMergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> nptr<ItemHexView>;
     void MergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> source_item, ptr<ItemHexView> target_item);
     void FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHexView> item, mpos hex, bool merge_to_it, unordered_set<ptr<ItemHexView>>& result) const;

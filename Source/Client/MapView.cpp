@@ -880,6 +880,52 @@ void MapView::DestroyItem(ptr<ItemHexView> item)
     item->DestroySelf();
 }
 
+void MapView::DestroyItems(const_span<ptr<ItemHexView>> items)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (items.empty()) {
+        return;
+    }
+
+    unordered_set<ptr<const ItemHexView>> to_destroy;
+    vector<ptr<ItemHexView>> unique_items;
+    to_destroy.reserve(items.size());
+    unique_items.reserve(items.size());
+
+    for (ptr<ItemHexView> item : items) {
+        FO_VERIFY_AND_THROW(item->GetMap() == this, "Item destroy requested for an item attached to a different client map", item->GetId(), item->GetMap()->GetId(), GetId());
+
+        if (to_destroy.emplace(item).second) {
+            unique_items.emplace_back(item);
+        }
+    }
+
+    vector<refcount_ptr<ItemHexView>> ref_holders;
+    ref_holders.reserve(unique_items.size());
+
+    for (ptr<ItemHexView> item : unique_items) {
+        ref_holders.emplace_back(item.hold_ref());
+    }
+
+    std::erase_if(_items, [&](const refcount_ptr<ItemHexView>& i) { return to_destroy.contains(i.get()); });
+    std::erase_if(_staticItems, [&](const ptr<ItemHexView>& i) { return to_destroy.contains(i.get()); });
+    std::erase_if(_dynamicItems, [&](const ptr<ItemHexView>& i) { return to_destroy.contains(i.get()); });
+    std::erase_if(_processingItems, [&](const ptr<ItemHexView>& i) { return to_destroy.contains(i.get()); });
+
+    for (ptr<ItemHexView> item : unique_items) {
+        if (item->GetId()) {
+            const auto it = _itemsMap.find(item->GetId());
+            FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Client map item lookup is missing during item destruction", GetId(), item->GetId(), _itemsMap.size());
+            _itemsMap.erase(it);
+        }
+
+        RemoveItemFromField(item);
+        CleanLightSourceOffsets(item->GetId());
+        item->DestroySelf();
+    }
+}
+
 auto MapView::GetItem(ident_t id) -> nptr<ItemHexView>
 {
     FO_STACK_TRACE_ENTRY();
