@@ -622,34 +622,34 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
     FO_STACK_TRACE_ENTRY();
 
     if (primitive_type.IsInt8) {
-        result += strex("{}", *reinterpret_cast<const int8_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<int8_t>(pdata));
     }
     else if (primitive_type.IsInt16) {
-        result += strex("{}", *reinterpret_cast<const int16_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<int16_t>(pdata));
     }
     else if (primitive_type.IsInt32) {
-        result += strex("{}", *reinterpret_cast<const int32_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<int32_t>(pdata));
     }
     else if (primitive_type.IsInt64) {
-        result += strex("{}", *reinterpret_cast<const int64_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<int64_t>(pdata));
     }
     else if (primitive_type.IsUInt8) {
-        result += strex("{}", *reinterpret_cast<const uint8_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<uint8_t>(pdata));
     }
     else if (primitive_type.IsUInt16) {
-        result += strex("{}", *reinterpret_cast<const uint16_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<uint16_t>(pdata));
     }
     else if (primitive_type.IsUInt32) {
-        result += strex("{}", *reinterpret_cast<const uint32_t*>(pdata));
+        result += strex("{}", MemReadUnaligned<uint32_t>(pdata));
     }
     else if (primitive_type.IsSingleFloat) {
-        result += strex("{:f}", *reinterpret_cast<const float32_t*>(pdata)).rtrim("0").rtrim(".");
+        result += strex("{:f}", MemReadUnaligned<float32_t>(pdata)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsDoubleFloat) {
-        result += strex("{:f}", *reinterpret_cast<const float64_t*>(pdata)).rtrim("0").rtrim(".");
+        result += strex("{:f}", MemReadUnaligned<float64_t>(pdata)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsBool) {
-        result += *reinterpret_cast<const bool*>(pdata) ? "True" : "False";
+        result += MemReadUnaligned<bool>(pdata) ? "True" : "False";
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -663,18 +663,18 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.IsString) {
-        const uint32_t str_len = *reinterpret_cast<const uint32_t*>(pdata);
+        const uint32_t str_len = MemReadUnaligned<uint32_t>(pdata);
         pdata += sizeof(str_len);
         StringEscaping::AppendCodeString(result, {reinterpret_cast<const char*>(pdata), str_len});
         pdata += str_len;
     }
     else if (base_type.IsHashedString) {
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        const auto hash = MemReadUnaligned<hstring::hash_t>(pdata);
         pdata += sizeof(hstring::hash_t);
         StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        const auto hash = MemReadUnaligned<hstring::hash_t>(pdata);
         pdata += sizeof(hstring::hash_t);
         StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
     }
@@ -716,14 +716,14 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.IsString) {
-        const uint32_t str_len = *reinterpret_cast<const uint32_t*>(pdata);
+        const uint32_t str_len = MemReadUnaligned<uint32_t>(pdata);
         pdata += sizeof(str_len);
         const auto* pstr = reinterpret_cast<const char*>(pdata);
         pdata += str_len;
         return string(pstr, str_len);
     }
     else if (base_type.IsHashedString || base_type.IsFixedType || base_type.IsEntityProto) {
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(pdata);
+        const auto hash = MemReadUnaligned<hstring::hash_t>(pdata);
         pdata += sizeof(hstring::hash_t);
         return hash_resolver.ResolveHash(hash).as_str();
     }
@@ -738,34 +738,34 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         pdata += primitive_type.Size;
 
         if (primitive_type.IsInt8) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const int8_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<int8_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt16) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const int16_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<int16_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt32) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const int32_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<int32_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsInt64) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const int64_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<int64_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt8) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const uint8_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<uint8_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt16) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const uint16_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<uint16_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsUInt32) {
-            return numeric_cast<int64_t>(*reinterpret_cast<const uint32_t*>(pdata - primitive_type.Size));
+            return numeric_cast<int64_t>(MemReadUnaligned<uint32_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsFloat) {
-            return numeric_cast<float64_t>(*reinterpret_cast<const float32_t*>(pdata - primitive_type.Size));
+            return numeric_cast<float64_t>(MemReadUnaligned<float32_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsDoubleFloat) {
-            return numeric_cast<float64_t>(*reinterpret_cast<const float64_t*>(pdata - primitive_type.Size));
+            return numeric_cast<float64_t>(MemReadUnaligned<float64_t>(pdata - primitive_type.Size));
         }
         else if (primitive_type.IsBool) {
-            return *reinterpret_cast<const bool*>(pdata - primitive_type.Size);
+            return MemReadUnaligned<bool>(pdata - primitive_type.Size);
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -1106,11 +1106,11 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
 
             const auto get_key_string = [&dict_key_type, &hash_resolver, &name_resolver](const uint8_t* p) -> string {
                 if (dict_key_type.IsString) {
-                    const uint32_t str_len = *reinterpret_cast<const uint32_t*>(p);
+                    const uint32_t str_len = MemReadUnaligned<uint32_t>(p);
                     return string {reinterpret_cast<const char*>(p + sizeof(uint32_t)), str_len};
                 }
                 else if (dict_key_type.IsHashedString) {
-                    const auto hash = *reinterpret_cast<const hstring::hash_t*>(p);
+                    const auto hash = MemReadUnaligned<hstring::hash_t>(p);
                     return hash_resolver.ResolveHash(hash).as_str();
                 }
                 else if (dict_key_type.IsEnum) {
@@ -1119,34 +1119,34 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
                     return name_resolver.ResolveEnumValueName(dict_key_type.Name, enum_value);
                 }
                 else if (dict_key_type.IsInt8) {
-                    return strex("{}", *reinterpret_cast<const int8_t*>(p));
+                    return strex("{}", MemReadUnaligned<int8_t>(p));
                 }
                 else if (dict_key_type.IsInt16) {
-                    return strex("{}", *reinterpret_cast<const int16_t*>(p));
+                    return strex("{}", MemReadUnaligned<int16_t>(p));
                 }
                 else if (dict_key_type.IsInt32) {
-                    return strex("{}", *reinterpret_cast<const int32_t*>(p));
+                    return strex("{}", MemReadUnaligned<int32_t>(p));
                 }
                 else if (dict_key_type.IsInt64) {
-                    return strex("{}", *reinterpret_cast<const int64_t*>(p));
+                    return strex("{}", MemReadUnaligned<int64_t>(p));
                 }
                 else if (dict_key_type.IsUInt8) {
-                    return strex("{}", *reinterpret_cast<const uint8_t*>(p));
+                    return strex("{}", MemReadUnaligned<uint8_t>(p));
                 }
                 else if (dict_key_type.IsUInt16) {
-                    return strex("{}", *reinterpret_cast<const uint16_t*>(p));
+                    return strex("{}", MemReadUnaligned<uint16_t>(p));
                 }
                 else if (dict_key_type.IsUInt32) {
-                    return strex("{}", *reinterpret_cast<const uint32_t*>(p));
+                    return strex("{}", MemReadUnaligned<uint32_t>(p));
                 }
                 else if (dict_key_type.IsSingleFloat) {
-                    return strex("{}", *reinterpret_cast<const float32_t*>(p));
+                    return strex("{}", MemReadUnaligned<float32_t>(p));
                 }
                 else if (dict_key_type.IsDoubleFloat) {
-                    return strex("{}", *reinterpret_cast<const float64_t*>(p));
+                    return strex("{}", MemReadUnaligned<float64_t>(p));
                 }
                 else if (dict_key_type.IsBool) {
-                    return *reinterpret_cast<const bool*>(p) ? "True" : "False";
+                    return MemReadUnaligned<bool>(p) ? "True" : "False";
                 }
                 else {
                     FO_UNREACHABLE_PLACE();
@@ -1155,7 +1155,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Property* prop, span<cons
 
             const auto get_key_len = [&dict_key_type](const uint8_t* p) -> size_t {
                 if (dict_key_type.IsString) {
-                    const uint32_t str_len = *reinterpret_cast<const uint32_t*>(p);
+                    const uint32_t str_len = MemReadUnaligned<uint32_t>(p);
                     return sizeof(uint32_t) + str_len;
                 }
                 else {
@@ -1372,6 +1372,17 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     }
 }
 
+// Parses value into a number of type T and stores it at the packed (possibly misaligned) destination
+template<typename T>
+static void ConvertToNumberUnaligned(const AnyData::Value& value, void* dest)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    T result_value {};
+    ConvertToNumber(value, result_value);
+    MemWriteUnaligned<T>(dest, result_value);
+}
+
 auto PropertiesSerializator::SavePropertyToText(const Properties* props, const Property* prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -1469,13 +1480,13 @@ auto PropertiesSerializator::SavePropertyToText(const Property* prop, span<const
 
         const auto append_key_to_dict = [&](string& str, const uint8_t*& key_pdata) {
             if (dict_key_type.IsString) {
-                const uint32_t str_len = *reinterpret_cast<const uint32_t*>(key_pdata);
+                const uint32_t str_len = MemReadUnaligned<uint32_t>(key_pdata);
                 key_pdata += sizeof(str_len);
                 StringEscaping::AppendCodeString(str, {reinterpret_cast<const char*>(key_pdata), str_len});
                 key_pdata += str_len;
             }
             else if (dict_key_type.IsHashedString) {
-                const auto hash = *reinterpret_cast<const hstring::hash_t*>(key_pdata);
+                const auto hash = MemReadUnaligned<hstring::hash_t>(key_pdata);
                 key_pdata += sizeof(hstring::hash_t);
                 StringEscaping::AppendCodeString(str, hash_resolver.ResolveHash(hash).as_str());
             }
@@ -1650,34 +1661,34 @@ static void ConvertFixedValue(const Property* prop, const BaseTypeDesc& base_typ
         const auto& primitive_type = base_type.IsSimpleStruct ? base_type.StructLayout->Fields.front().Type : base_type;
 
         if (primitive_type.IsInt8) {
-            ConvertToNumber(value, *reinterpret_cast<int8_t*>(pdata));
+            ConvertToNumberUnaligned<int8_t>(value, pdata);
         }
         else if (primitive_type.IsInt16) {
-            ConvertToNumber(value, *reinterpret_cast<int16_t*>(pdata));
+            ConvertToNumberUnaligned<int16_t>(value, pdata);
         }
         else if (primitive_type.IsInt32) {
-            ConvertToNumber(value, *reinterpret_cast<int32_t*>(pdata));
+            ConvertToNumberUnaligned<int32_t>(value, pdata);
         }
         else if (primitive_type.IsInt64) {
-            ConvertToNumber(value, *reinterpret_cast<int64_t*>(pdata));
+            ConvertToNumberUnaligned<int64_t>(value, pdata);
         }
         else if (primitive_type.IsUInt8) {
-            ConvertToNumber(value, *reinterpret_cast<uint8_t*>(pdata));
+            ConvertToNumberUnaligned<uint8_t>(value, pdata);
         }
         else if (primitive_type.IsUInt16) {
-            ConvertToNumber(value, *reinterpret_cast<uint16_t*>(pdata));
+            ConvertToNumberUnaligned<uint16_t>(value, pdata);
         }
         else if (primitive_type.IsUInt32) {
-            ConvertToNumber(value, *reinterpret_cast<uint32_t*>(pdata));
+            ConvertToNumberUnaligned<uint32_t>(value, pdata);
         }
         else if (primitive_type.IsSingleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<float32_t*>(pdata));
+            ConvertToNumberUnaligned<float32_t>(value, pdata);
         }
         else if (primitive_type.IsDoubleFloat) {
-            ConvertToNumber(value, *reinterpret_cast<float64_t*>(pdata));
+            ConvertToNumberUnaligned<float64_t>(value, pdata);
         }
         else if (primitive_type.IsBool) {
-            ConvertToNumber(value, *reinterpret_cast<bool*>(pdata));
+            ConvertToNumberUnaligned<bool>(value, pdata);
         }
         else {
             FO_UNREACHABLE_PLACE();

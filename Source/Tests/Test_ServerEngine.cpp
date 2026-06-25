@@ -385,6 +385,26 @@ namespace ServerEngineTest
         return "ServerEngine startup timed out";
     }
 
+    static void CheckServerStartupFailsSafely(GlobalSettings& settings)
+    {
+        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+        const auto startup_error = WaitForServerStart(server.get());
+        INFO(startup_error);
+        CHECK_FALSE(startup_error.empty());
+        CHECK(server->IsStartingError());
+        CHECK_FALSE(server->IsStarted());
+
+        REQUIRE_NOTHROW(server->Shutdown());
+    }
+
+    static auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
+    {
+        AnyData::Document doc;
+        doc.Assign(string {"value"}, value);
+        return doc;
+    }
+
     static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
     {
         FO_VERIFY_AND_THROW(server, "Missing server instance");
@@ -569,16 +589,83 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+    CheckServerStartupFailsSafely(settings);
+}
 
-    const auto startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    CHECK_FALSE(startup_error.empty()); // startup must fail, not complete or time out
-    CHECK(server->IsStartingError());
-    CHECK_FALSE(server->IsStarted());
+TEST_CASE("ServerEngineCustomCollectionStartupValidation")
+{
+    auto settings = MakeServerTestSettings();
 
-    // The fix under test: tearing down the half-initialized engine must not crash or throw.
-    REQUIRE_NOTHROW(server->Shutdown());
+    SECTION("RejectsMissingSeparator")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BrokenCollection"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsEmptyTrimmedCollectionName")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"   : Int"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsUnknownKeyType")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BadType:Uuid"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsDuplicateCollectionName")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("AcceptsTrimmedCaseInsensitiveKeyTypes")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
+
+        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeServerTestResources());
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        const auto startup_error = WaitForServerStart(server.get());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        const auto int_collection = server->Hashes.ToHashedString("TrimmedInt");
+        const auto string_collection = server->Hashes.ToHashedString("TrimmedStr");
+        const auto int_id = ident_t {1001};
+        const auto string_id = string {"custom:key"};
+
+        CHECK(server->DbStorage.GetAllIntIds(int_collection).empty());
+        CHECK(server->DbStorage.GetAllStringIds(string_collection).empty());
+
+        server->DbStorage.Insert(int_collection, DataBaseKey {int_id}, MakeServerStorageDoc(10));
+        server->DbStorage.Insert(string_collection, DataBaseKey {string_id}, MakeServerStorageDoc(20));
+        server->DbStorage.WaitCommitChanges();
+
+        const auto int_ids = server->DbStorage.GetAllIntIds(int_collection);
+        const auto string_ids = server->DbStorage.GetAllStringIds(string_collection);
+
+        REQUIRE(int_ids.size() == 1);
+        CHECK(int_ids.front() == int_id);
+        REQUIRE(string_ids.size() == 1);
+        CHECK(string_ids.front() == string_id);
+
+        const auto int_doc = server->DbStorage.Get(int_collection, DataBaseKey {int_id});
+        const auto string_doc = server->DbStorage.Get(string_collection, DataBaseKey {string_id});
+
+        REQUIRE(!int_doc.Empty());
+        CHECK(int_doc["value"].AsInt64() == 10);
+        REQUIRE(!string_doc.Empty());
+        CHECK(string_doc["value"].AsInt64() == 20);
+    }
 }
 
 TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")

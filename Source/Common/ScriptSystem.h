@@ -336,7 +336,7 @@ namespace NativeDataProvider
 {
     inline void CheckArgNotNull(const FuncCallData& call, size_t arg_index, string_view method_name, string_view arg_name, string_view type_name)
     {
-        if (*static_cast<void**>(call.ArgsData[arg_index]) == nullptr) {
+        if (MemReadUnaligned<void*>(call.ArgsData[arg_index]) == nullptr) {
             throw ScriptException("Null passed to non-nullable parameter", method_name, arg_name, type_name);
         }
     }
@@ -397,7 +397,7 @@ namespace NativeDataCaller
             return temp.emplace(*cast_from_void<string*>(data));
         }
         else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
-            auto* base_entity = *cast_from_void<Entity**>(data);
+            auto* base_entity = MemReadUnaligned<Entity*>(data);
             auto* target_entity = dynamic_cast<std::remove_pointer_t<raw_t>*>(base_entity);
             FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
             FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
@@ -407,7 +407,7 @@ namespace NativeDataCaller
             return temp.emplace(*cast_from_void<raw_t*>(data));
         }
         else if constexpr (std::is_reference_v<T>) {
-            return *cast_from_void<raw_t*>(data);
+            return *MemReadUnaligned<raw_t*>(data);
         }
         else {
             return *cast_from_void<raw_t*>(data);

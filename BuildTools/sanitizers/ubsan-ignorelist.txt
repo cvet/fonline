@@ -1,0 +1,25 @@
+# UBSanitizer ignorelist (Clang sanitizer special-case list).
+#
+# Scope: ONLY the `alignment` check, ONLY in the engine-side AngelScript value-marshalling bridge.
+#
+# AngelScript's VM stores value-type arguments, returns, and locals on an asDWORD (4-byte) stack, so the engine
+# code that constructs/assigns 8-byte-aligned value types (hstring, string, timespan, any_t, strong_type, ...)
+# directly into those VM slots performs accesses UBSan reports as misaligned. The object must live where the VM
+# placed it, so there is no call-site fix, and the access is benign on every architecture the engine targets
+# (x86_64 / ARM64). Vendored AngelScript itself is already excused from the alignment check in
+# BuildTools/cmake/helpers/Build.cmake; these entries extend that same documented exclusion to the thin
+# engine-side bridge that marshals values across the same VM boundary.
+#
+# The [alignment] section scopes these suppressions to the alignment check alone: every other UBSan check stays
+# fully active in these files (verified: signed-overflow etc. still fire here).
+#
+# TEMPORARY COMPROMISE. The intended end state is full UBSan passing with NO ignorelist, by giving AngelScript
+# real 8-byte value-type alignment (complete/enable WIP_16BYTE_ALIGN: compiler variable allocator, native
+# calling conventions, bytecode serializer). Tracked in:
+#   Docs/Plans/2026-06-25-sanitizer-ignorelist-elimination.md
+
+[alignment]
+src:*Engine/Source/Scripting/AngelScript/AngelScriptTypes.cpp
+src:*Engine/Source/Scripting/AngelScript/AngelScriptString.cpp
+src:*Engine/Source/Scripting/AngelScript/AngelScriptGlobals.cpp
+src:*Engine/Source/Common/ScriptSystem.h

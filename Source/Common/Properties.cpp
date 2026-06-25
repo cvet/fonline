@@ -55,13 +55,13 @@ static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) no
     case 1:
         return left[0] == right[0];
     case 2: {
-        return *reinterpret_cast<const uint16_t*>(left.data()) == *reinterpret_cast<const uint16_t*>(right.data());
+        return MemReadUnaligned<uint16_t>(left.data()) == MemReadUnaligned<uint16_t>(right.data());
     }
     case 4: {
-        return *reinterpret_cast<const uint32_t*>(left.data()) == *reinterpret_cast<const uint32_t*>(right.data());
+        return MemReadUnaligned<uint32_t>(left.data()) == MemReadUnaligned<uint32_t>(right.data());
     }
     case 8: {
-        return *reinterpret_cast<const uint64_t*>(left.data()) == *reinterpret_cast<const uint64_t*>(right.data());
+        return MemReadUnaligned<uint64_t>(left.data()) == MemReadUnaligned<uint64_t>(right.data());
     }
     default:
         return MemCompare(left.data(), right.data(), left.size());

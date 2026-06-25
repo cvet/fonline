@@ -15,7 +15,7 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **79** `Test_*.cpp` suites.
+Current count: **81** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -42,6 +42,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
+- `Source/Tests/Test_WorkerPool.cpp`
 
 ### Configuration, data sources, files, and caches
 
@@ -76,6 +77,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
 - `Source/Tests/Test_DataBase.cpp`
+- `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
@@ -84,6 +86,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
 
@@ -138,7 +141,8 @@ Coverage builds use the `FO_CODE_COVERAGE` path documented in [../../Docs/Testin
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
-Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+Coverage reports are emitted under `CodeCoverage/<Toolchain>/<Platform-Config>/`
+and exclude `Source/Tests/` from the reported source denominator.
 
 ## Notes
 

@@ -180,7 +180,7 @@ static auto InvokeResolvedFunction(ScriptFuncDesc* func_desc, AngelScript::asISc
                 indirect_args[index] = arg_data;
             }
             else {
-                indirect_args[index] = *static_cast<void**>(arg_data);
+                indirect_args[index] = MemReadUnaligned<void*>(arg_data);
             }
 
             args_data[index] = &indirect_args[index];

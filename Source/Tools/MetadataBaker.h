@@ -91,6 +91,7 @@ private:
         unordered_map<string, unordered_map<string, string>> ComponentScopes {};
         unordered_map<string, RefTypeState> RefTypes {};
         vector<string> RefTypeRegistrationOrder {};
+        vector<unique_ptr<string>> NormalizedLines {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};

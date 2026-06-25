@@ -3805,7 +3805,7 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *cast_from_void<const uint32_t*>(new_value);
+    const auto new_count = MemReadUnaligned<uint32_t>(new_value);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStackable() && new_count != 1) {

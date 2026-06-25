@@ -251,6 +251,22 @@ inline auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept
     return size == 0 || std::memcmp(ptr1, ptr2, size) == 0;
 }
 
+template<typename T>
+inline auto MemReadUnaligned(const void* src) noexcept -> T
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    T value;
+    std::memcpy(&value, src, sizeof(T));
+    return value;
+}
+
+template<typename T>
+inline void MemWriteUnaligned(void* dest, const T& value) noexcept
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    std::memcpy(dest, &value, sizeof(T));
+}
+
 extern auto AllocatorGetInUseBytes() noexcept -> size_t;
 
 FO_END_NAMESPACE

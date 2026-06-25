@@ -123,11 +123,16 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - `GenerateCodeCoverageReport`
 - `AnalyzeCodeCoverage`
 
-Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`; see [../Source/Tests/README.md](../Source/Tests/README.md) for current local task notes.
+Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+`BuildTools/codecoverage.py` reports first-party production engine sources under
+`Engine/Source/`; it excludes `Source/Tests/`, `ThirdParty/`,
+`GeneratedSource/`, and `Applications/` from the denominator. See
+[../Source/Tests/README.md](../Source/Tests/README.md) for current local task
+notes.
 
 ## Current test inventory
 
-Current count: **79** `Test_*.cpp` suites.
+Current count: **81** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -154,6 +159,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_StrongType.cpp`
 - `Source/Tests/Test_TimeRelated.cpp`
 - `Source/Tests/Test_WorkThread.cpp`
+- `Source/Tests/Test_WorkerPool.cpp`
 
 ### Configuration, data sources, files, and caches
 
@@ -188,6 +194,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
 - `Source/Tests/Test_DataBase.cpp`
+- `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
@@ -196,6 +203,7 @@ Current count: **79** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
+- `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
 

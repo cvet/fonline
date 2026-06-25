@@ -32,6 +32,7 @@ DeclareValueOptions(
 	FO_MANAGED_TARGET_FRAMEWORK "Target framework for Managed script assemblies" "net10.0"
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
+	FO_UBSAN_IGNORELIST "Path to UndefinedBehaviorSanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/ubsan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -277,6 +278,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC AND CMAKE_SYSTEM_NAME MATC
 	if(EXISTS "${FO_MSAN_IGNORELIST}")
 		AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fsanitize-ignorelist=${FO_MSAN_IGNORELIST}>)
 	endif()
+endif()
+
+# UBSan: scoped ignorelist for the inherent AngelScript value-type alignment sites (the [alignment] section keeps
+# every other UBSan check active). See BuildTools/sanitizers/ubsan-ignorelist.txt for the rationale and the
+# tracked plan to remove it. Applied on Clang for the Undefined-sanitizer configs only.
+SetValue(expr_UndefinedSanitizerConfigs $<CONFIG:San_Undefined,San_Address_Undefined>)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND EXISTS "${FO_UBSAN_IGNORELIST}")
+	AddCompileOptionsList($<${expr_UndefinedSanitizerConfigs}:-fsanitize-ignorelist=${FO_UBSAN_IGNORELIST}>)
 endif()
 
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).

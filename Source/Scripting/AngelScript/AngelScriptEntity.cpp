@@ -903,7 +903,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
     CheckScriptEntityAccessAndNonDestroyed(entity);
-    auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
+    auto* func = MemReadUnaligned<AngelScript::asIScriptFunction*>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
     const auto return_type_id = func->GetReturnTypeId();
@@ -937,7 +937,7 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
 
     const auto& event = *cast_from_void<const EntityEventDesc*>(gen->GetAuxiliary());
     auto* entity = cast_from_void<Entity*>(gen->GetObject());
-    auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(gen->GetAddressOfArg(0));
+    auto* func = MemReadUnaligned<AngelScript::asIScriptFunction*>(gen->GetAddressOfArg(0));
     ValidateCallbackFunc(func);
 
     // May call on unsynced entity

@@ -117,6 +117,317 @@ namespace MapOpsTest
         return 0;
     }
 
+    int TestGameDistanceOverloads()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr1 = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter cr2 = map.AddCritter("TestCritter".hstr(), mpos(13, 10), mdir(0));
+        if (cr1 is null || cr2 is null) return -3;
+
+        Item item1 = map.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
+        Item item2 = map.AddItem(mpos(15, 10), "TestItem2".hstr(), 1);
+        if (item1 is null || item2 is null) return -4;
+
+        int itemDistance = Game.GetDistance(item1, item2);
+        if (itemDistance != Game.GetDistance(mpos(11, 10), mpos(15, 10))) return -5;
+
+        int critterDistance = Game.GetDistance(cr1, cr2);
+        if (critterDistance <= 0) return -6;
+
+        if (Game.GetDistance(cr1, item1) != Game.GetDistance(item1, cr1)) return -7;
+        if (Game.GetDistance(cr2, item2) != Game.GetDistance(item2, cr2)) return -8;
+        if (Game.GetDistance(cr1, mpos(14, 10)) != Game.GetDistance(mpos(14, 10), cr1)) return -9;
+        if (Game.GetDistance(item2, mpos(10, 10)) != Game.GetDistance(mpos(10, 10), item2)) return -10;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGameDistanceExceptionBranches()
+    {
+        Critter looseCr1 = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter looseCr2 = Game.CreateCritter("TestCritter".hstr(), false);
+        if (looseCr1 is null || looseCr2 is null) return -1;
+
+        Item looseItem1 = looseCr1.AddItem("TestItem".hstr(), 1);
+        Item looseItem2 = looseCr2.AddItem("TestItem".hstr(), 1);
+        if (looseItem1 is null || looseItem2 is null) return -2;
+
+        Location loc1 = CreateTestLocation();
+        Location loc2 = CreateTestLocation();
+        if (loc1 is null || loc2 is null) return -3;
+
+        Map map1 = loc1.GetMapByIndex(0);
+        Map map2 = loc2.GetMapByIndex(0);
+        if (map1 is null || map2 is null) return -4;
+
+        Critter mapCr1 = map1.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter mapCr2 = map2.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (mapCr1 is null || mapCr2 is null) return -5;
+
+        Item mapItem1 = map1.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
+        Item mapItem2 = map2.AddItem(mpos(11, 10), "TestItem".hstr(), 1);
+        if (mapItem1 is null || mapItem2 is null) return -6;
+
+        try {
+            int distance = Game.GetDistance(looseCr1, looseCr2);
+            if (distance >= 0) return -7;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(looseItem1, looseItem2);
+            if (distance >= 0) return -8;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(looseCr1, looseItem1);
+            if (distance >= 0) return -9;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(looseItem1, looseCr1);
+            if (distance >= 0) return -10;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(looseCr1, mpos(1, 1));
+            if (distance >= 0) return -11;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mpos(1, 1), looseCr1);
+            if (distance >= 0) return -12;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(looseItem1, mpos(1, 1));
+            if (distance >= 0) return -13;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mpos(1, 1), looseItem1);
+            if (distance >= 0) return -14;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mapCr1, mapCr2);
+            if (distance >= 0) return -15;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mapItem1, mapItem2);
+            if (distance >= 0) return -16;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mapCr1, mapItem2);
+            if (distance >= 0) return -17;
+        }
+        catch {
+        }
+
+        try {
+            int distance = Game.GetDistance(mapItem1, mapCr2);
+            if (distance >= 0) return -18;
+        }
+        catch {
+        }
+
+        Game.DestroyLocation(loc1);
+        Game.DestroyLocation(loc2);
+        Game.DestroyCritter(looseCr1);
+        Game.DestroyCritter(looseCr2);
+
+        return 0;
+    }
+
+    int TestGameMoveItemMapAndContainerOverloads()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (cr is null) return -3;
+
+        Item item = cr.AddItem("TestItem".hstr(), 4);
+        Item container = cr.AddItem("TestItem2".hstr(), 1);
+        if (item is null || container is null) return -4;
+
+        if (Game.MoveItem(item, 0, cr) !is null) return -5;
+        if (Game.MoveItem(item, 0, map, mpos(20, 20)) !is null) return -6;
+        if (Game.MoveItem(item, 0, container) !is null) return -7;
+
+        Item? movedPartialToMap = Game.MoveItem(item, 1, map, mpos(20, 20));
+        if (movedPartialToMap is null) return -8;
+
+        Item item2 = cr.AddItem("TestItem".hstr(), 1);
+        if (item2 is null) return -9;
+
+        Item? movedAllToMap = Game.MoveItem(item2, map, mpos(21, 20));
+        if (movedAllToMap is null) return -10;
+
+        Item item3 = cr.AddItem("TestItem".hstr(), 1);
+        if (item3 is null) return -11;
+
+        Item? movedPartialToContainer = Game.MoveItem(item3, 1, container);
+        if (movedPartialToContainer is null) return -12;
+
+        Item item4 = cr.AddItem("TestItem".hstr(), 1);
+        if (item4 is null) return -13;
+
+        Item? movedAllToContainer = Game.MoveItem(item4, container);
+        if (movedAllToContainer is null) return -14;
+
+        bool caught = false;
+
+        try {
+            Game.MoveItem(item, map, mpos(-1, -1));
+        }
+        catch {
+            caught = true;
+        }
+        if (!caught) return -15;
+
+        caught = false;
+        try {
+            Game.MoveItem(item, 1, map, mpos(-1, -1));
+        }
+        catch {
+            caught = true;
+        }
+        if (!caught) return -16;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGameMoveItemsOverloads()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter source = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter receiver = map.AddCritter("TestCritter".hstr(), mpos(11, 10), mdir(0));
+        if (source is null || receiver is null) return -3;
+
+        Item crItem1 = source.AddItem("TestItem".hstr(), 1);
+        Item crItem2 = source.AddItem("TestItem2".hstr(), 1);
+        if (crItem1 is null || crItem2 is null) return -4;
+
+        array<Item> toCritter = {crItem1, crItem2};
+        Game.MoveItems(toCritter, receiver);
+
+        if (receiver.CountItem("TestItem".hstr()) != 1) return -5;
+        if (receiver.CountItem("TestItem2".hstr()) != 1) return -6;
+
+        Item mapItem1 = source.AddItem("TestItem".hstr(), 1);
+        Item mapItem2 = source.AddItem("TestItem2".hstr(), 1);
+        if (mapItem1 is null || mapItem2 is null) return -7;
+
+        ident mapItem1Id = mapItem1.Id;
+        ident mapItem2Id = mapItem2.Id;
+
+        array<Item> toMap = {mapItem1, mapItem2};
+        Game.MoveItems(toMap, map, mpos(25, 25));
+
+        if (map.GetItem(mapItem1Id) is null) return -8;
+        if (map.GetItem(mapItem2Id) is null) return -9;
+
+        Item container = source.AddItem("TestItem2".hstr(), 1);
+        Item contItem1 = source.AddItem("TestItem".hstr(), 1);
+        Item contItem2 = source.AddItem("TestItem2".hstr(), 1);
+        if (container is null || contItem1 is null || contItem2 is null) return -10;
+
+        array<Item> toContainer = {contItem1, contItem2};
+        Game.MoveItems(toContainer, container);
+
+        array<Item> containerItems = container.GetItems();
+        if (containerItems.length() != 2) return -11;
+
+        Item badItem = source.AddItem("TestItem".hstr(), 1);
+        if (badItem is null) return -12;
+
+        array<Item> badItems = {badItem};
+        bool caught = false;
+
+        try {
+            Game.MoveItems(badItems, map, mpos(-1, -1));
+        }
+        catch {
+            caught = true;
+        }
+        if (!caught) return -13;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGameDestroyItemByIdCountOverload()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        if (cr is null) return -3;
+
+        Item item = cr.AddItem("TestItem".hstr(), 4);
+        if (item is null) return -4;
+
+        ident itemId = item.Id;
+
+        Game.DestroyItem(itemId, 0);
+
+        Item? unchanged = Game.GetItem(itemId);
+        if (unchanged is null) return -5;
+        if (unchanged.Count != 4) return -6;
+
+        Game.DestroyItem(itemId, 1);
+
+        Item? reduced = Game.GetItem(itemId);
+        if (reduced is null) return -7;
+        if (reduced.Count != 3) return -8;
+
+        Game.DestroyItem(itemId, 3);
+        if (Game.GetItem(itemId) !is null) return -9;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
     int TestMapGetItemOnHex()
     {
         Location loc = CreateTestLocation();
@@ -603,6 +914,20 @@ namespace MapOpsTest
         return 0;
     }
 
+    int TestGameStaticMapQueries()
+    {
+        ProtoMap? mapProto = Game.GetProtoMap("TestMap".hstr());
+        if (mapProto is null) return -1;
+
+        array<StaticItem> staticItems = Game.GetStaticItemsForProtoMap(mapProto);
+        if (!staticItems.isEmpty()) return -2;
+
+        array<ProtoCritter> protoCritters = Game.GetProtoCrittersForProtoMap(mapProto);
+        if (!protoCritters.isEmpty()) return -3;
+
+        return 0;
+    }
+
     void TestMapGetStaticItemsOnHexInvalidHexThrows()
     {
         Location loc = CreateTestLocation();
@@ -692,6 +1017,17 @@ namespace MapOpsTest
 
     // ========== Location Creation with Maps ==========
 
+    int LocationInitCalls = 0;
+    ident LastLocationInitId = ZERO_IDENT;
+    bool LastLocationInitFirstTime = false;
+
+    void OnLocationInit(Location loc, bool firstTime)
+    {
+        LocationInitCalls++;
+        LastLocationInitId = loc.Id;
+        LastLocationInitFirstTime = firstTime;
+    }
+
     int TestLocationCreateWithMaps()
     {
         // Create location with map list
@@ -709,6 +1045,129 @@ namespace MapOpsTest
         if (sz.width == 0 || sz.height == 0) return -4;
 
         Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestGameLocationAndMapOverloads()
+    {
+        ProtoLocation? locProto = Game.GetProtoLocation("TestLocation".hstr());
+        if (locProto is null) return -1;
+
+        ProtoMap? mapProto = Game.GetProtoMap("TestMap".hstr());
+        if (mapProto is null) return -2;
+
+        array<hstring> mapPids = {"TestMap".hstr()};
+        dict<LocationProperty, any> initProps = {{LocationProperty::InitScript, "MapOpsTest::OnLocationInit".hstr()}};
+
+        int initBefore = LocationInitCalls;
+        Location byPidProps = Game.CreateLocation("TestLocation".hstr(), initProps);
+        if (byPidProps is null) return -3;
+        if (LocationInitCalls != initBefore + 1) return -4;
+        if (LastLocationInitId != byPidProps.Id) return -5;
+        if (!LastLocationInitFirstTime) return -6;
+        if (byPidProps.InitScript != "MapOpsTest::OnLocationInit".hstr()) return -7;
+
+        Location byProto = Game.CreateLocation(locProto);
+        if (byProto is null) return -8;
+
+        initBefore = LocationInitCalls;
+        Location byProtoProps = Game.CreateLocation(locProto, initProps);
+        if (byProtoProps is null) return -9;
+        if (LocationInitCalls != initBefore + 1) return -10;
+        if (LastLocationInitId != byProtoProps.Id) return -11;
+
+        initBefore = LocationInitCalls;
+        Location withMapProps1 = Game.CreateLocation("TestLocation".hstr(), mapPids, initProps);
+        if (withMapProps1 is null) return -12;
+        if (LocationInitCalls != initBefore + 1) return -13;
+        if (withMapProps1.GetMapCount() != 1) return -14;
+
+        Location withMapProps2 = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (withMapProps2 is null) return -15;
+        if (withMapProps2.GetMapCount() != 1) return -16;
+
+        Location? firstByPid = Game.GetLocation("TestLocation".hstr());
+        if (firstByPid is null) return -17;
+
+        Location? secondByPid = Game.GetLocation("TestLocation".hstr(), 1);
+        if (secondByPid is null) return -18;
+        if (secondByPid.Id == firstByPid.Id) return -19;
+
+        Location? firstByProto = Game.GetLocation(locProto);
+        if (firstByProto is null) return -20;
+
+        Location? secondByProto = Game.GetLocation(locProto, 1);
+        if (secondByProto is null) return -21;
+        if (secondByProto.Id == firstByProto.Id) return -22;
+
+        array<Location> byProtoList = Game.GetLocations(locProto);
+        if (byProtoList.length() < 4) return -23;
+
+        array<Location> byEmptyPid = Game.GetLocations("".hstr());
+        if (byEmptyPid.length() < byProtoList.length()) return -24;
+
+        Map? firstMapByPid = Game.GetMap("TestMap".hstr());
+        if (firstMapByPid is null) return -25;
+
+        Map? secondMapByPid = Game.GetMap("TestMap".hstr(), 1);
+        if (secondMapByPid is null) return -26;
+        if (secondMapByPid.Id == firstMapByPid.Id) return -27;
+
+        Map? firstMapByProto = Game.GetMap(mapProto);
+        if (firstMapByProto is null) return -28;
+
+        Map? secondMapByProto = Game.GetMap(mapProto, 1);
+        if (secondMapByProto is null) return -29;
+        if (secondMapByProto.Id == firstMapByProto.Id) return -30;
+
+        array<Map> allMaps = Game.GetMaps();
+        if (allMaps.length() < 2) return -31;
+
+        array<Map> mapsByPid = Game.GetMaps("TestMap".hstr());
+        if (mapsByPid.length() < 2) return -32;
+
+        array<Map> mapsByEmptyPid = Game.GetMaps("".hstr());
+        if (mapsByEmptyPid.length() < mapsByPid.length()) return -33;
+
+        array<Map> mapsByProto = Game.GetMaps(mapProto);
+        if (mapsByProto.length() < 2) return -34;
+
+        Location destroyByHandleLoc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (destroyByHandleLoc is null) return -35;
+
+        Map destroyByHandleMap = destroyByHandleLoc.GetMapByIndex(0);
+        if (destroyByHandleMap is null) return -36;
+
+        ident destroyByHandleMapId = destroyByHandleMap.Id;
+        Game.DestroyMap(destroyByHandleMap);
+        if (Game.GetMap(destroyByHandleMapId) !is null) return -37;
+        Game.DestroyLocation(destroyByHandleLoc);
+
+        Location destroyByIdLoc = Game.CreateLocation("TestLocation".hstr(), mapPids);
+        if (destroyByIdLoc is null) return -38;
+
+        Map destroyByIdMap = destroyByIdLoc.GetMapByIndex(0);
+        if (destroyByIdMap is null) return -39;
+
+        ident destroyByIdMapId = destroyByIdMap.Id;
+        Game.DestroyMap(destroyByIdMapId);
+        if (Game.GetMap(destroyByIdMapId) !is null) return -40;
+        Game.DestroyLocation(destroyByIdLoc);
+
+        ident byProtoId = byProto.Id;
+        Game.DestroyLocation(byProtoId);
+        if (Game.GetLocation(byProtoId) !is null) return -41;
+
+        Game.DestroyMap(ZERO_IDENT);
+        Game.DestroyLocation(ZERO_IDENT);
+        if (Game.GetMap(ZERO_IDENT) !is null) return -42;
+        if (Game.GetLocation(ZERO_IDENT) !is null) return -43;
+
+        Game.DestroyLocation(withMapProps2);
+        Game.DestroyLocation(withMapProps1);
+        Game.DestroyLocation(byProtoProps);
+        Game.DestroyLocation(byPidProps);
+
         return 0;
     }
 
@@ -3487,6 +3946,31 @@ TEST_CASE("MapItemOperations")
         RUN_FUNC("MapOpsTest::TestMapAddItemMultiple");
     }
 
+    SECTION("GameDistanceOverloads")
+    {
+        RUN_FUNC("MapOpsTest::TestGameDistanceOverloads");
+    }
+
+    SECTION("GameDistanceExceptionBranches")
+    {
+        RUN_FUNC("MapOpsTest::TestGameDistanceExceptionBranches");
+    }
+
+    SECTION("GameMoveItemMapAndContainerOverloads")
+    {
+        RUN_FUNC("MapOpsTest::TestGameMoveItemMapAndContainerOverloads");
+    }
+
+    SECTION("GameMoveItemsOverloads")
+    {
+        RUN_FUNC("MapOpsTest::TestGameMoveItemsOverloads");
+    }
+
+    SECTION("GameDestroyItemByIdCountOverload")
+    {
+        RUN_FUNC("MapOpsTest::TestGameDestroyItemByIdCountOverload");
+    }
+
     SECTION("GetItemOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetItemOnHex");
@@ -3607,6 +4091,11 @@ TEST_CASE("MapStaticItems")
         RUN_FUNC("MapOpsTest::TestMapGetStaticItems");
     }
 
+    SECTION("GameStaticMapQueries")
+    {
+        RUN_FUNC("MapOpsTest::TestGameStaticMapQueries");
+    }
+
     SECTION("GetStaticItemsOnHexInvalidHexThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapGetStaticItemsOnHexInvalidHexThrows", "Invalid hex arg");
@@ -3635,6 +4124,11 @@ TEST_CASE("MapLocationRelationship")
     SECTION("LocationCreateWithMaps")
     {
         RUN_FUNC("MapOpsTest::TestLocationCreateWithMaps");
+    }
+
+    SECTION("GameLocationAndMapOverloads")
+    {
+        RUN_FUNC("MapOpsTest::TestGameLocationAndMapOverloads");
     }
 
     SECTION("GameGetLocations")

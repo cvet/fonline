@@ -51,7 +51,8 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    InterthreadDataCallback _send;
+    mutex _sendLocker {};
+    InterthreadDataCallback _send FO_TSA_GUARDED_BY(_sendLocker);
 };
 
 class InterthreadServer : public NetworkServer
@@ -93,7 +94,12 @@ void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
         ReceiveCallback(buf);
     }
     else {
-        _send = nullptr;
+        {
+            scoped_lock locker {_sendLocker};
+
+            _send = nullptr;
+        }
+
         Disconnect();
     }
 }
@@ -104,14 +110,20 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
     const auto buf = SendCallback();
 
-    if (_send && !buf.empty()) {
-        _send(buf);
+    if (!buf.empty()) {
+        scoped_lock locker {_sendLocker};
+
+        if (_send) {
+            _send(buf);
+        }
     }
 }
 
 void NetworkServerConnection_Interthread::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_sendLocker};
 
     if (_send) {
         _send({});

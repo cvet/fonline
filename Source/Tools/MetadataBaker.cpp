@@ -181,6 +181,31 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
                 pos = file_str.size();
             }
 
+            string normalized_line;
+
+            if (line.find('\\') != string_view::npos) {
+                normalized_line.reserve(line.size());
+
+                for (size_t line_pos = 0; line_pos < line.size(); line_pos++) {
+                    const char ch = line[line_pos];
+
+                    if (ch == '\\' && line_pos + 1 < line.size() && (line[line_pos + 1] == '\n' || line[line_pos + 1] == '\r')) {
+                        normalized_line += ' ';
+
+                        while (line_pos + 1 < line.size() && (line[line_pos + 1] == '\n' || line[line_pos + 1] == '\r')) {
+                            line_pos++;
+                        }
+
+                        continue;
+                    }
+
+                    normalized_line += ch;
+                }
+
+                ctx.NormalizedLines.emplace_back(SafeAlloc::MakeUnique<string>(std::move(normalized_line)));
+                line = *ctx.NormalizedLines.back();
+            }
+
             const size_t comment_pos = line.find("//");
 
             if (comment_pos != string::npos) {

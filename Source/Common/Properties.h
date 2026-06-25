@@ -71,7 +71,7 @@ public:
     [[nodiscard]] auto GetAs() noexcept -> T
     {
         FO_STRONG_ASSERT(sizeof(T) == _dataSize, "Property raw data size mismatch", sizeof(T), _dataSize);
-        return *static_cast<T*>(GetPtr());
+        return MemReadUnaligned<T>(GetPtr());
     }
 
     auto Alloc(size_t size) noexcept -> uint8_t*;
@@ -90,7 +90,9 @@ public:
 private:
     size_t _dataSize {};
     bool _useDynamic {};
-    uint8_t _localBuf[LOCAL_BUF_SIZE] {};
+    // Holds arbitrary property values read back through GetPtrAs<T>()/GetAs<T>(), so it must satisfy the
+    // alignment of the largest value type it can store (otherwise those typed accesses are misaligned)
+    alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     unique_arr_ptr<uint8_t> _dynamicBuf {};
     raw_ptr<void> _passedPtr {};
 };
@@ -500,7 +502,7 @@ auto Properties::GetValue(const Property* prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match requested value type", prop->GetName(), raw_data.size(), sizeof(T));
-    auto result = *reinterpret_cast<const T*>(raw_data.data());
+    auto result = MemReadUnaligned<T>(raw_data.data());
     return result;
 }
 
@@ -650,7 +652,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(T), "Property raw data size mismatch in fast value getter", prop->GetName(), sizeof(T), raw_data.size());
-    auto result = *reinterpret_cast<const T*>(raw_data.data());
+    auto result = MemReadUnaligned<T>(raw_data.data());
     return result;
 }
 
@@ -779,7 +781,7 @@ void Properties::SetValue(const Property* prop, T new_value)
     else {
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match assigned value type", prop->GetName(), raw_data.size(), sizeof(T));
-        const auto cur_value = *reinterpret_cast<const T*>(raw_data.data());
+        const auto cur_value = MemReadUnaligned<T>(raw_data.data());
         bool equal;
 
         if constexpr (std::floating_point<T>) {
