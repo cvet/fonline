@@ -778,8 +778,13 @@ static auto ResolveInstructionFunction(const AngelScript::asDWORD* instruction, 
         return engine->GetFunctionById(*reinterpret_cast<const int*>(instruction + 1));
     case AngelScript::asBC_ALLOC:
         return engine->GetFunctionById(*reinterpret_cast<const int*>(instruction + AS_PTR_SIZE + 1));
-    case AngelScript::asBC_FuncPtr:
-        return reinterpret_cast<AngelScript::asIScriptFunction*>(*reinterpret_cast<const AngelScript::asPWORD*>(instruction + 1));
+    case AngelScript::asBC_FuncPtr: {
+        // The pointer argument trails the opcode at a 4-byte boundary, so an 8-byte asPWORD load straight from
+        // it is misaligned (flagged by UBSan); assemble it through a byte copy into an aligned local instead
+        AngelScript::asPWORD func_ptr;
+        MemCopy(&func_ptr, instruction + 1, sizeof(func_ptr));
+        return reinterpret_cast<AngelScript::asIScriptFunction*>(func_ptr);
+    }
     default:
         return nullptr;
     }

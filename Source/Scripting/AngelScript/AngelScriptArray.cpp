@@ -315,14 +315,17 @@ void ScriptArray::SetValue(int32_t index, void* value)
     }
     else if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         const auto* sub_type = _typeInfo->GetSubType();
-        void* tmp = *static_cast<void**>(ptr);
-        *static_cast<void**>(ptr) = *static_cast<void**>(value);
+        // ptr (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
+        // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
+        void* old_handle = MemReadUnaligned<void*>(ptr);
+        void* new_handle = MemReadUnaligned<void*>(value);
+        MemWriteUnaligned<void*>(ptr, new_handle);
 
-        if (*static_cast<void**>(value) != nullptr) {
-            _typeInfo->GetEngine()->AddRefScriptObject(*static_cast<void**>(value), sub_type);
+        if (new_handle != nullptr) {
+            _typeInfo->GetEngine()->AddRefScriptObject(new_handle, sub_type);
         }
-        if (tmp != nullptr) {
-            _typeInfo->GetEngine()->ReleaseScriptObject(tmp, sub_type);
+        if (old_handle != nullptr) {
+            _typeInfo->GetEngine()->ReleaseScriptObject(old_handle, sub_type);
         }
     }
     else if (_subTypeId == AngelScript::asTYPEID_BOOL || _subTypeId == AngelScript::asTYPEID_INT8 || _subTypeId == AngelScript::asTYPEID_UINT8) {

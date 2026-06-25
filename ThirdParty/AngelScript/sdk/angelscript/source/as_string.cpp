@@ -184,7 +184,9 @@ void asCString::Assign(const char *str, size_t len)
 	Allocate(len, false);
 
 	// Copy the string
-	memcpy(AddressOf(), str, length);
+	// (FOnline Patch) skip memcpy when empty: str may be null with length 0 (UBSan nonnull-arg)
+	if( length > 0 )
+		memcpy(AddressOf(), str, length);
 	AddressOf()[length] = 0;
 }
 
