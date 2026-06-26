@@ -364,7 +364,8 @@ namespace MapOpsTest
 
         if (map.GetItem(mapItem1Id) is null) return -8;
         if (map.GetItem(mapItem2Id) is null) return -9;
-
+)"
+                                          R"(
         Item container = source.AddItem("TestItem2".hstr(), 1);
         Item contItem1 = source.AddItem("TestItem".hstr(), 1);
         Item contItem2 = source.AddItem("TestItem2".hstr(), 1);

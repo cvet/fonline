@@ -480,7 +480,8 @@ namespace CommonMethods
         angle.angle = 60;
         if (angle.angle != 60) return -38;
         if (!(angle == mdir(60))) return -39;
-
+)"
+                                          R"(
         TextPackName pack = TextPackName("Dialogs".hstr());
         TextPackName packCopy(pack);
         if (!(packCopy == pack)) return -40;

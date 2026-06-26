@@ -654,7 +654,8 @@ namespace ScriptBuiltins
         if (uint64_values[0] != uint64_low || uint64_values[1] != uint64_high) return -10;
         uint64[] uint64_clone = uint64_values.clone();
         if (!(uint64_values == uint64_clone)) return -20;
-
+)"
+                    R"(
         float float_low = -1.5f;
         float float_high = 2.25f;
         float[] float_values = {};
