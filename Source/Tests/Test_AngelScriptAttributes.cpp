@@ -504,6 +504,11 @@ namespace
         return ArgDesc {.Name = string(name), .Type = ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type}};
     }
 
+    static auto MakeComplexType(const BaseTypeDesc& type) -> ComplexTypeDesc
+    {
+        return {.Kind = ComplexTypeKind::Simple, .BaseType = type};
+    }
+
     static auto MakeInboundRemoteCall(EngineMetadata& meta, string_view name, string_view subsystem_hint, std::initializer_list<ArgDesc> args) -> RemoteCallDesc
     {
         RemoteCallDesc call {};
@@ -1350,6 +1355,260 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         };
 
         CHECK(MakeScriptArgsName(args) == "int value = 42, string label = \"fresh\"");
+    }
+
+    SECTION("RendersComplexScriptTypeDeclarations")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterEntityType("Player", true, true, false, false, false);
+        meta.RegisterRefType("RouteSnapshot");
+
+        const auto& int_type = meta.GetBaseType("int32");
+        const auto& uint_type = meta.GetBaseType("uint32");
+        const auto& float_type = meta.GetBaseType("float32");
+        const auto& string_type = meta.GetBaseType("string");
+        const auto& critter_type = meta.GetBaseType("Critter");
+        const auto& player_type = meta.GetBaseType("Player");
+        const auto& route_snapshot_type = meta.GetBaseType("RouteSnapshot");
+
+        const ComplexTypeDesc simple_int = MakeComplexType(int_type);
+        const ComplexTypeDesc mutable_int {.Kind = ComplexTypeKind::Simple, .BaseType = int_type, .IsMutable = true};
+        const ComplexTypeDesc critter_arg = MakeComplexType(critter_type);
+        const ComplexTypeDesc player_arg = MakeComplexType(player_type);
+        const ComplexTypeDesc ref_arg = MakeComplexType(route_snapshot_type);
+        const ComplexTypeDesc mutable_ref_arg {.Kind = ComplexTypeKind::Simple, .BaseType = route_snapshot_type, .IsMutable = true};
+        const ComplexTypeDesc string_array {.Kind = ComplexTypeKind::Array, .BaseType = string_type};
+        const ComplexTypeDesc int_dict {.Kind = ComplexTypeKind::Dict, .BaseType = int_type, .KeyType = string_type};
+        const ComplexTypeDesc int_array_dict {.Kind = ComplexTypeKind::DictOfArray, .BaseType = int_type, .KeyType = string_type};
+
+        auto callback_args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        callback_args->emplace_back();
+        callback_args->emplace_back(int_array_dict);
+        callback_args->emplace_back(int_dict);
+        callback_args->emplace_back(string_array);
+        callback_args->emplace_back(MakeComplexType(float_type));
+        ComplexTypeDesc callback_type;
+        callback_type.Kind = ComplexTypeKind::Callback;
+        callback_type.CallbackArgs = callback_args;
+
+        CHECK(MakeScriptTypeName(int_type) == "int");
+        CHECK(MakeScriptTypeName(uint_type) == "uint");
+        CHECK(MakeScriptTypeName(float_type) == "float");
+        CHECK(MakeScriptTypeName(player_type) == "PlayerSingleton");
+        CHECK(MakeScriptTypeName(string_array) == "array<string>");
+        CHECK(MakeScriptTypeName(int_dict) == "dict<string,int>");
+        CHECK(MakeScriptTypeName(int_array_dict) == "dict<string,array<int>>");
+        CHECK(MakeScriptTypeName(callback_type) == "callback_void_string_to_int32_arr_string_to_int32_string_arr_float32");
+
+        CHECK(MakeScriptArgName(simple_int) == "int");
+        CHECK(MakeScriptArgName(mutable_int) == "int&");
+        CHECK(MakeScriptArgName(critter_arg) == "Critter@+");
+        CHECK(MakeScriptArgName(critter_arg, true) == "Critter@?+");
+        CHECK(MakeScriptArgName(player_arg) == "PlayerSingleton@");
+        CHECK(MakeScriptArgName(player_arg, true) == "PlayerSingleton@?");
+        CHECK(MakeScriptArgName(ref_arg) == "RouteSnapshot@+");
+        CHECK(MakeScriptArgName(mutable_ref_arg, true) == "RouteSnapshot@?&");
+        CHECK(MakeScriptArgName(string_array, true) == "array<string>@?+");
+        CHECK(MakeScriptArgName(int_array_dict) == "dict<string,array<int>>@+");
+
+        CHECK(MakeScriptReturnName({}) == "void");
+        CHECK(MakeScriptReturnName(simple_int) == "int");
+        CHECK(MakeScriptReturnName(critter_arg) == "Critter@+");
+        CHECK(MakeScriptReturnName(critter_arg, true) == "Critter@");
+        CHECK(MakeScriptReturnName(player_arg, false, true) == "PlayerSingleton@?");
+        CHECK(MakeScriptReturnName(ref_arg, true) == "RouteSnapshot@");
+        CHECK(MakeScriptReturnName(string_array) == "array<string>@");
+
+        const vector<ArgDesc> args = {
+            {.Name = "targets", .Type = string_array, .Nullable = true},
+            {.Name = "lookup", .Type = int_array_dict},
+            {.Name = "snapshot", .Type = ref_arg, .DefaultValue = "null"},
+        };
+
+        CHECK(MakeScriptArgsName(args) == "array<string>@?+ targets, dict<string,array<int>>@+ lookup, RouteSnapshot@+ snapshot = null");
+    }
+
+    SECTION("NormalizesScriptPropertyDeclarations")
+    {
+        CHECK(NormalizeScriptPropertyDecl("int") == "int");
+        CHECK(NormalizeScriptPropertyDecl("Critter@[]@") == "array<Critter@>");
+        CHECK(NormalizeScriptPropertyDecl("array<string>@") == "array<string>");
+        CHECK(NormalizeScriptPropertyDecl("dict<string,Critter@[]@>@") == "dict<string,array<Critter@>>");
+        CHECK(NormalizeScriptPropertyDecl("dict<string,array<int>[]@>@") == "dict<string,array<array<int>>>");
+        CHECK(NormalizeScriptPropertyDecl("Game::Thing@[]@") == "array<Game::Thing@>");
+    }
+
+    SECTION("RendersScriptPropertyNames")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterRefType("RouteSnapshot");
+
+        PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+        const auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        const auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        const auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        const auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+
+        CHECK(MakeScriptPropertyName(int_prop) == "int");
+        CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");
+        CHECK(MakeScriptPropertyName(counter_dict_prop) == "dict<string,int>");
+        CHECK(MakeScriptPropertyName(proto_array_dict_prop) == "dict<int,array<ProtoCritter>>");
+        CHECK(MakeScriptPropertyName(ref_prop) == "RouteSnapshot");
+        CHECK(MakeScriptPropertyName(ref_array_prop) == "array<RouteSnapshot>");
+        CHECK(MakeScriptPropertyName(ref_dict_prop) == "dict<string,RouteSnapshot>");
+    }
+
+    SECTION("ChecksAllowedScriptNamespaces")
+    {
+        const vector<string> allowed_namespaces = {"Server", "", "Quest::"};
+
+        CHECK(IsScriptNamespaceAllowed("Server", allowed_namespaces));
+        CHECK(IsScriptNamespaceAllowed("ServerTools", allowed_namespaces));
+        CHECK(IsScriptNamespaceAllowed("Quest::Intro", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Client", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("", allowed_namespaces));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Server", {}));
+        CHECK_FALSE(IsScriptNamespaceAllowed("Any", {""}));
+    }
+
+    SECTION("ReadsAndWritesEnumValuesAcrossBackingSizes")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterEnumGroup("EnumI8", "int8", {{"None", 0}, {"Negative", -7}});
+        meta.RegisterEnumGroup("EnumI16", "int16", {{"None", 0}, {"Negative", -1234}});
+        meta.RegisterEnumGroup("EnumI32", "int32", {{"None", 0}, {"Negative", -123456}});
+        meta.RegisterEnumGroup("EnumU8", "uint8", {{"None", 0}, {"High", 250}});
+        meta.RegisterEnumGroup("EnumU16", "uint16", {{"None", 0}, {"High", 65000}});
+        meta.RegisterEnumGroup("EnumU32", "uint32", {{"None", 0}, {"High", 2000000000}});
+        meta.RegisterEnumGroup("EnumU64", "uint64", {{"None", 0}});
+
+        int8_t signed_byte = -7;
+        int16_t signed_short = -1234;
+        int32_t signed_int = -123456;
+        uint8_t unsigned_byte = 250;
+        uint16_t unsigned_short = 65000;
+        uint32_t unsigned_int = 2000000000;
+        uint64_t unsupported_unsigned_long = 7;
+
+        CHECK(ReadEnumValueAsInt32(&signed_byte, meta.GetBaseType("EnumI8")) == -7);
+        CHECK(ReadEnumValueAsInt32(&signed_short, meta.GetBaseType("EnumI16")) == -1234);
+        CHECK(ReadEnumValueAsInt32(&signed_int, meta.GetBaseType("EnumI32")) == -123456);
+        CHECK(ReadEnumValueAsInt32(&unsigned_byte, meta.GetBaseType("EnumU8")) == 250);
+        CHECK(ReadEnumValueAsInt32(&unsigned_short, meta.GetBaseType("EnumU16")) == 65000);
+        CHECK(ReadEnumValueAsInt32(&unsigned_int, meta.GetBaseType("EnumU32")) == 2000000000);
+
+        WriteEnumValueFromInt32(&signed_byte, meta.GetBaseType("EnumI8"), -3);
+        WriteEnumValueFromInt32(&signed_short, meta.GetBaseType("EnumI16"), -4567);
+        WriteEnumValueFromInt32(&signed_int, meta.GetBaseType("EnumI32"), -765432);
+        WriteEnumValueFromInt32(&unsigned_byte, meta.GetBaseType("EnumU8"), 240);
+        WriteEnumValueFromInt32(&unsigned_short, meta.GetBaseType("EnumU16"), 64000);
+        WriteEnumValueFromInt32(&unsigned_int, meta.GetBaseType("EnumU32"), 1900000000);
+
+        CHECK(signed_byte == -3);
+        CHECK(signed_short == -4567);
+        CHECK(signed_int == -765432);
+        CHECK(unsigned_byte == 240);
+        CHECK(unsigned_short == 64000);
+        CHECK(unsigned_int == 1900000000);
+
+        CHECK_THROWS(ReadEnumValueAsInt32(&signed_int, meta.GetBaseType("int32")));
+        CHECK_THROWS(ReadEnumValueAsInt32(&unsupported_unsigned_long, meta.GetBaseType("EnumU64")));
+        CHECK_THROWS(WriteEnumValueFromInt32(&unsupported_unsigned_long, meta.GetBaseType("EnumU64"), 7));
+    }
+
+    SECTION("DescribesPrimitiveScriptObjects")
+    {
+        const bool bool_value = true;
+        const int8_t int8_value = -8;
+        const int16_t int16_value = -1600;
+        const int32_t int32_value = -320000;
+        const int64_t int64_value = -64000000;
+        const uint8_t uint8_value = 8;
+        const uint16_t uint16_value = 1600;
+        const uint32_t uint32_value = 320000;
+        const uint64_t uint64_value = 64000000;
+        const float32_t float_value = 1.5f;
+        const float64_t double_value = 2.25;
+
+        CHECK(GetScriptObjectInfo(nptr<const void>(nullptr).as_ptr(), asTYPEID_VOID) == "void");
+        CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_BOOL) == "bool: true");
+        CHECK(GetScriptObjectInfo(&int8_value, asTYPEID_INT8) == "int8: -8");
+        CHECK(GetScriptObjectInfo(&int16_value, asTYPEID_INT16) == "int16: -1600");
+        CHECK(GetScriptObjectInfo(&int32_value, asTYPEID_INT32) == "int32: -320000");
+        CHECK(GetScriptObjectInfo(&int64_value, asTYPEID_INT64) == "int64: -64000000");
+        CHECK(GetScriptObjectInfo(&uint8_value, asTYPEID_UINT8) == "uint8: 8");
+        CHECK(GetScriptObjectInfo(&uint16_value, asTYPEID_UINT16) == "uint16: 1600");
+        CHECK(GetScriptObjectInfo(&uint32_value, asTYPEID_UINT32) == "uint32: 320000");
+        CHECK(GetScriptObjectInfo(&uint64_value, asTYPEID_UINT64) == "uint64: 64000000");
+        CHECK(GetScriptObjectInfo(&float_value, asTYPEID_FLOAT) == "float32: 1.5");
+        CHECK(GetScriptObjectInfo(&double_value, asTYPEID_DOUBLE) == "float64: 2.25");
+    }
+
+    SECTION("CreatesScriptArrayAndDictByDeclaration")
+    {
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+
+        RegisterAngelScriptArray(engine);
+        RegisterAngelScriptDict(engine);
+
+        auto arr = CreateScriptArray(engine, "array<int>");
+        CHECK(arr->IsEmpty());
+        CHECK(arr->GetSize() == 0);
+
+        arr->Resize(2);
+        int32_t arr_value = 42;
+        arr->SetValue(1, &arr_value);
+        CHECK(arr->GetSize() == 2);
+        CHECK(*cast_from_void<int32_t*>(arr->At(1).get()) == 42);
+
+        auto cached_arr = CreateScriptArray(engine, "array<int>");
+        CHECK(cached_arr->IsEmpty());
+
+        auto dict = CreateScriptDict(engine, "dict<int,int>");
+        CHECK(dict->IsEmpty());
+        CHECK(dict->GetSize() == 0);
+
+        int32_t dict_key = 7;
+        int32_t dict_value = 9;
+        dict->Set(&dict_key, &dict_value);
+
+        CHECK(dict->GetSize() == 1);
+        CHECK(dict->Exists(&dict_key));
+        CHECK(*cast_from_void<int32_t*>(dict->Get(&dict_key).get()) == 9);
+    }
+
+    SECTION("RendersScriptFunctionNames")
+    {
+        static constexpr string_view Script = R"(
+void FreeCall()
+{
+}
+
+namespace HelperNs
+{
+void NamespacedCall()
+{
+}
+}
+)";
+
+        ScriptMessages messages;
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+        auto mod = BuildModule(engine, "HelperFuncNames", Script, messages);
+
+        EngineMetadata meta {[] { }};
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
     }
 
     SECTION("BindsAndStripsAttributes")

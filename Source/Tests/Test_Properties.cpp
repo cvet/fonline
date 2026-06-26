@@ -171,6 +171,16 @@ namespace
                 return type;
             };
 
+            auto make_fixed_hash = []() {
+                BaseTypeDesc type;
+                type.Name = "FixedHash";
+                type.IsObject = true;
+                type.IsFixedType = true;
+                type.IsHashedString = true;
+                type.Size = sizeof(hstring::hash_t);
+                return type;
+            };
+
             auto make_proto = [](string_view name) {
                 BaseTypeDesc type;
                 type.Name = string(name);
@@ -284,6 +294,7 @@ namespace
             _types.emplace("float64", make_float64());
             _types.emplace("string", make_string());
             _types.emplace("hstring", make_hstring());
+            _types.emplace("FixedHash", make_fixed_hash());
             _types.emplace("ProtoItem", make_proto("ProtoItem"));
             _types.emplace("ProtoCritter", make_proto("ProtoCritter"));
             _types.emplace("ProtoMap", make_proto("ProtoMap"));
@@ -465,6 +476,20 @@ namespace
             }
         }
 
+        return result;
+    }
+
+    [[nodiscard]] auto MakeRawUInt16(uint16_t value) -> vector<uint8_t>
+    {
+        vector<uint8_t> result(sizeof(value));
+        MemCopy(result.data(), &value, sizeof(value));
+        return result;
+    }
+
+    [[nodiscard]] auto MakeRawInt32(int32_t value) -> vector<uint8_t>
+    {
+        vector<uint8_t> result(sizeof(value));
+        MemCopy(result.data(), &value, sizeof(value));
         return result;
     }
 
@@ -1803,6 +1828,123 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
     }
 }
 
+TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("MalformedRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+    props.SetValue<int32_t>(value_prop, 10);
+    props.SetValue<string>(name_prop, "valid");
+
+    const uint8_t full_store_type = 0;
+    const uint8_t separate_store_type = 1;
+    const uint8_t invalid_store_type = 0xFE;
+    const int32_t payload_value = 42;
+
+    SECTION("PointerAndSizeListsMustMatch")
+    {
+        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<uint32_t> sizes;
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("StoreTypeMarkerMustBeOneByte")
+    {
+        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(uint16_t))};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("StoreTypeMustBeKnown")
+    {
+        vector<nptr<const uint8_t>> payload {&invalid_store_type};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(invalid_store_type))};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("SeparateIndexTableMustBeAligned")
+    {
+        const array<uint8_t, 1> misaligned_index_table {0};
+        vector<nptr<const uint8_t>> payload {&separate_store_type, misaligned_index_table.data()};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(misaligned_index_table.size())};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("SeparatePayloadCountMustMatchIndexTable")
+    {
+        const auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
+        vector<nptr<const uint8_t>> payload {&separate_store_type, index_table.data()};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(index_table.size())};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("SeparateIndexMustPointAtARealProperty")
+    {
+        const auto payload_value_data = MakeRawInt32(payload_value);
+        const auto zero_index_table = MakeRawUInt16(0);
+        vector<nptr<const uint8_t>> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
+        vector<uint32_t> zero_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(zero_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
+
+        CHECK_THROWS(props.RestoreData(zero_payload, zero_sizes));
+
+        const auto out_of_bounds_index_table = MakeRawUInt16(999);
+        vector<nptr<const uint8_t>> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
+        vector<uint32_t> out_of_bounds_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(out_of_bounds_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
+
+        CHECK_THROWS(props.RestoreData(out_of_bounds_payload, out_of_bounds_sizes));
+    }
+
+    SECTION("FullPayloadMustContainPodData")
+    {
+        vector<nptr<const uint8_t>> payload {&full_store_type};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type))};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("FullPodDataSizeMustMatchASectionBoundary")
+    {
+        const array<uint8_t, 1> pod_data {0};
+        vector<nptr<const uint8_t>> payload {&full_store_type, pod_data.data()};
+        vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type)), numeric_cast<uint32_t>(pod_data.size())};
+
+        CHECK_THROWS(props.RestoreData(payload, sizes));
+    }
+
+    SECTION("FullComplexIndexTableMustContainValidComplexProperties")
+    {
+        const auto stored_data = props.StoreData(false);
+        auto chunks = MakeOwnedStoreData(stored_data);
+        REQUIRE(chunks.size() == 4);
+
+        auto zero_entry_chunks = chunks;
+        zero_entry_chunks[2].clear();
+        CHECK_THROWS(props.RestoreData(zero_entry_chunks));
+
+        auto zero_index_chunks = chunks;
+        zero_index_chunks[2] = MakeRawUInt16(0);
+        CHECK_THROWS(props.RestoreData(zero_index_chunks));
+
+        auto plain_index_chunks = chunks;
+        plain_index_chunks[2] = MakeRawUInt16(value_prop->GetRegIndex());
+        CHECK_THROWS(props.RestoreData(plain_index_chunks));
+
+        auto out_of_bounds_chunks = chunks;
+        out_of_bounds_chunks[2] = MakeRawUInt16(999);
+        CHECK_THROWS(props.RestoreData(out_of_bounds_chunks));
+    }
+}
+
 TEST_CASE("PropertiesCompareData")
 {
     HashStorage hashes {};
@@ -2141,6 +2283,112 @@ TEST_CASE("PropertiesNumericWidthConversions")
     CHECK(props.GetValue<string>(string_prop) == "true");
     CHECK(PropertiesSerializator::SavePropertyToText(&props, string_prop, hashes, resolver) == "true");
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, string_prop, hashes, resolver) == AnyData::Value {string {"true"}});
+}
+
+TEST_CASE("PropertiesPlainDataValueAccessors")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("PlainAccessorsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    auto int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    auto int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
+    auto int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    auto enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    auto bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    auto fixed_hash_prop = registrator.RegisterProperty({"Common", "FixedHash", "FixedHashValue", "Mutable", "Persistent", "PublicSync"});
+    auto string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+    auto disabled_prop = registrator.RegisterProperty({"Client", "int32", "ClientOnlyValue", "Mutable"});
+
+    Properties props(&registrator);
+
+    props.SetValueAsInt(int8_prop->GetRegIndex(), 12);
+    props.SetValueAsInt(int16_prop->GetRegIndex(), -32000);
+    props.SetValueAsInt(int32_prop->GetRegIndex(), -123456);
+    props.SetValueAsInt(int64_prop->GetRegIndex(), -77);
+    props.SetValueAsInt(uint8_prop->GetRegIndex(), 201);
+    props.SetValueAsInt(uint16_prop->GetRegIndex(), 65000);
+    props.SetValueAsInt(uint32_prop->GetRegIndex(), 123456);
+    props.SetValueAsInt(enum_prop->GetRegIndex(), 2);
+    props.SetValueAsInt(bool_prop->GetRegIndex(), 1);
+    props.SetValueAsInt(float32_prop->GetRegIndex(), 13);
+    props.SetValueAsInt(float64_prop->GetRegIndex(), -42);
+
+    CHECK(props.GetValueAsInt(int8_prop->GetRegIndex()) == 12);
+    CHECK(props.GetValueAsInt(int16_prop->GetRegIndex()) == -32000);
+    CHECK(props.GetValueAsInt(int32_prop->GetRegIndex()) == -123456);
+    CHECK(props.GetValueAsInt(int64_prop->GetRegIndex()) == -77);
+    CHECK(props.GetValueAsInt(uint8_prop->GetRegIndex()) == 201);
+    CHECK(props.GetValueAsInt(uint16_prop->GetRegIndex()) == 65000);
+    CHECK(props.GetValueAsInt(uint32_prop->GetRegIndex()) == 123456);
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 2);
+    CHECK(props.GetValueAsInt(bool_prop->GetRegIndex()) == 1);
+    CHECK(props.GetValueAsInt(float32_prop->GetRegIndex()) == 13);
+    CHECK(props.GetValueAsInt(float64_prop->GetRegIndex()) == -42);
+
+    props.SetValueAsAny(int8_prop->GetRegIndex(), any_t {string {"11"}});
+    props.SetValueAsAny(int16_prop->GetRegIndex(), any_t {string {"-1234"}});
+    props.SetValueAsAny(int32_prop->GetRegIndex(), any_t {string {"56789"}});
+    props.SetValueAsAny(int64_prop->GetRegIndex(), any_t {string {"-88"}});
+    props.SetValueAsAny(uint8_prop->GetRegIndex(), any_t {string {"200"}});
+    props.SetValueAsAny(uint16_prop->GetRegIndex(), any_t {string {"64000"}});
+    props.SetValueAsAny(uint32_prop->GetRegIndex(), any_t {string {"12345"}});
+    props.SetValueAsAny(enum_prop->GetRegIndex(), any_t {string {"1"}});
+    props.SetValueAsAny(bool_prop->GetRegIndex(), any_t {string {"true"}});
+    props.SetValueAsAny(float32_prop->GetRegIndex(), any_t {string {"13.5"}});
+    props.SetValueAsAny(float64_prop->GetRegIndex(), any_t {string {"-42.25"}});
+    props.SetValueAsAny(fixed_hash_prop->GetRegIndex(), any_t {string {"knife"}});
+
+    CHECK(props.GetValueAsInt(int8_prop->GetRegIndex()) == 11);
+    CHECK(props.GetValueAsInt(int16_prop->GetRegIndex()) == -1234);
+    CHECK(props.GetValueAsInt(int32_prop->GetRegIndex()) == 56789);
+    CHECK(props.GetValueAsInt(int64_prop->GetRegIndex()) == -88);
+    CHECK(props.GetValueAsInt(uint8_prop->GetRegIndex()) == 200);
+    CHECK(props.GetValueAsInt(uint16_prop->GetRegIndex()) == 64000);
+    CHECK(props.GetValueAsInt(uint32_prop->GetRegIndex()) == 12345);
+    CHECK(props.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
+    CHECK(props.GetValueAsInt(bool_prop->GetRegIndex()) == 1);
+    CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(13.5f));
+    CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-42.25));
+    CHECK(props.GetValue<hstring>(fixed_hash_prop) == hashes.ToHashedString("knife"));
+
+    CHECK(!props.GetValueAsAny(int8_prop->GetRegIndex()).empty());
+    CHECK(props.GetValueAsAny(int16_prop->GetRegIndex()) == any_t {string {"-1234"}});
+    CHECK(props.GetValueAsAny(int32_prop->GetRegIndex()) == any_t {string {"56789"}});
+    CHECK(props.GetValueAsAny(int64_prop->GetRegIndex()) == any_t {string {"-88"}});
+    CHECK(!props.GetValueAsAny(uint8_prop->GetRegIndex()).empty());
+    CHECK(props.GetValueAsAny(uint16_prop->GetRegIndex()) == any_t {string {"64000"}});
+    CHECK(props.GetValueAsAny(uint32_prop->GetRegIndex()) == any_t {string {"12345"}});
+    CHECK(props.GetValueAsAny(enum_prop->GetRegIndex()) == any_t {string {"1"}});
+    CHECK(props.GetValueAsAny(bool_prop->GetRegIndex()) == any_t {string {"true"}});
+    CHECK(strvex(props.GetValueAsAny(float32_prop->GetRegIndex())).to_float32() == Catch::Approx(13.5f));
+    CHECK(strvex(props.GetValueAsAny(float64_prop->GetRegIndex())).to_float64() == Catch::Approx(-42.25));
+    CHECK(props.GetValueAsAny(fixed_hash_prop->GetRegIndex()) == any_t {string {"knife"}});
+
+    const int32_t missing_property_index = std::numeric_limits<int32_t>::max();
+
+    CHECK_THROWS(props.GetValueAsInt(missing_property_index));
+    CHECK_THROWS(props.GetValueAsAny(missing_property_index));
+    CHECK_THROWS(props.SetValueAsInt(missing_property_index, 1));
+    CHECK_THROWS(props.SetValueAsAny(missing_property_index, any_t {string {"1"}}));
+
+    CHECK_THROWS(props.GetValueAsInt(string_prop->GetRegIndex()));
+    CHECK_THROWS(props.GetValueAsAny(string_prop->GetRegIndex()));
+    CHECK_THROWS(props.SetValueAsInt(string_prop->GetRegIndex(), 1));
+    CHECK_THROWS(props.SetValueAsAny(string_prop->GetRegIndex(), any_t {string {"text"}}));
+
+    CHECK_THROWS(props.GetValueAsInt(disabled_prop->GetRegIndex()));
+    CHECK_THROWS(props.GetValueAsAny(disabled_prop->GetRegIndex()));
+    CHECK_THROWS(props.SetValueAsInt(disabled_prop->GetRegIndex(), 1));
+    CHECK_THROWS(props.SetValueAsAny(disabled_prop->GetRegIndex(), any_t {string {"1"}}));
+
+    CHECK_THROWS(props.GetValueAsInt(fixed_hash_prop->GetRegIndex()));
 }
 
 TEST_CASE("PropertiesNumericRangeValidation")

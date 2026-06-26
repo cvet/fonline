@@ -259,7 +259,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
                 indirect_args[index] = arg_data;
             }
             else {
-                indirect_args[index] = NativeDataProvider::ReadHandleSlot(arg_data);
+                indirect_args[index] = MemReadUnaligned<void*>(arg_data.get());
             }
 
             args_data.emplace_back(static_cast<void*>(indirect_args[index].get_pp()));

@@ -829,7 +829,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
 
         if (success) {
             if (negative) {
-                if (uvalue > static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min())) {
+                if (uvalue >= static_cast<std::make_unsigned_t<T>>(std::numeric_limits<T>::min())) {
                     value = std::numeric_limits<T>::min();
                 }
                 else {

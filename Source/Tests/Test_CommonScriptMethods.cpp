@@ -251,6 +251,545 @@ namespace CommonMethods
         return 0;
     }
 
+    // ========== Script type conversions ==========
+
+    int TestScriptTypeConversions()
+    {
+        hstring key = "AlphaKey".hstr();
+        if (key == EMPTY_HSTRING) return -1;
+        if (key.str != "AlphaKey") return -2;
+        if (string(key) != "AlphaKey") return -3;
+        string implicitKey = key;
+        if (implicitKey != "AlphaKey") return -70;
+        if (!(key == "AlphaKey")) return -4;
+        if (key.hash == 0) return -5;
+        if (key.uhash == 0) return -6;
+
+        hstring assigned;
+        assigned = key;
+        if (assigned != key) return -7;
+        if (assigned < key || key < assigned) return -8;
+
+        any keyAny = key;
+        hstring keyFromAny = keyAny;
+        if (keyFromAny != key) return -9;
+
+        any textAny = "BetaKey";
+        hstring textHash = textAny;
+        if (textHash.str != "BetaKey") return -10;
+        string text = textAny;
+        if (text != "BetaKey") return -11;
+
+        any copiedAny = keyAny;
+        if (!(copiedAny == keyAny)) return -12;
+        any assignedAny;
+        assignedAny = textAny;
+        if (!(assignedAny == textAny)) return -13;
+
+        any boolAny = true;
+        bool boolValue = boolAny;
+        if (!boolValue) return -14;
+
+        any boolText = "true";
+        int boolAsInt = boolText;
+        if (boolAsInt != 1) return -15;
+
+        any numericText = "-42";
+        int intValue = numericText;
+        if (intValue != -42) return -16;
+
+        any emptyAny;
+        int emptyInt = emptyAny;
+        if (emptyInt != 0) return -17;
+
+        any uintAny = uint(123);
+        uint uintValue = uintAny;
+        if (uintValue != 123) return -18;
+
+        ident id;
+        id.value = 12345;
+        any idAny = id;
+        ident idFromAny = idAny;
+        if (idFromAny.value != id.value) return -19;
+        if (ZERO_IDENT.value != 0) return -20;
+
+        hdir dir = hdir(2);
+        if (dir.value != 2) return -21;
+        dir.value = 3;
+        if (dir.value != 3) return -22;
+        any dirAny = dir;
+        hdir dirFromAny = dirAny;
+        if (dirFromAny.value != dir.value) return -23;
+
+        mdir angle = mdir(dir);
+        hdir angleHex = angle.hex;
+        if (angleHex.value != dir.value) return -24;
+        if (angle.incHex().hex.value == angle.hex.value) return -25;
+        if (angle.decHex().hex.value == angle.hex.value) return -26;
+        if (angle.rotateHex(2).hex.value == angle.hex.value) return -27;
+        if (angle.reverse().hex.value == angle.hex.value) return -28;
+        any angleAny = angle;
+        mdir angleFromAny = angleAny;
+        if (angleFromAny.angle != angle.angle) return -29;
+
+        ucolor clamped = ucolor(-1, 260, 17, 511);
+        if (clamped.red != 0) return -30;
+        if (clamped.green != 255) return -31;
+        if (clamped.blue != 17) return -32;
+        if (clamped.alpha != 255) return -33;
+        ucolor raw = ucolor(clamped.value);
+        if (raw.value != clamped.value) return -34;
+
+        timespan seconds = timespan(2, 3);
+        if (seconds.seconds != 2) return -35;
+        if (seconds.milliseconds != 2000) return -36;
+        timespan millis = timespan(500, 2);
+        if ((seconds + millis).milliseconds != 2500) return -37;
+        if ((seconds - millis).milliseconds != 1500) return -38;
+        seconds += millis;
+        if (seconds.milliseconds != 2500) return -39;
+        seconds -= millis;
+        if (seconds.milliseconds != 2000) return -40;
+
+        nanotime nt = nanotime(10, 3);
+        nanotime ntLater = nt + millis;
+        if ((ntLater - nt).milliseconds != 500) return -41;
+        ntLater -= millis;
+        if (ntLater.seconds != nt.seconds) return -42;
+        if (nt.timeSinceEpoch.seconds != 10) return -43;
+
+        synctime st = synctime(20, 3);
+        synctime stLater = st + millis;
+        if ((stLater - st).milliseconds != 500) return -44;
+        stLater -= millis;
+        if (stLater.seconds != st.seconds) return -45;
+        if (st.timeSinceEpoch.seconds != 20) return -46;
+
+        ipos pos = ipos(2, 3);
+        ipos moved = pos + ipos(1, 2);
+        if (moved.x != 3 || moved.y != 5) return -47;
+        moved -= isize(1, 1);
+        if (moved.x != 2 || moved.y != 4) return -48;
+        if (!moved.fitTo(isize(10, 10))) return -49;
+        if (!moved.fitTo(irect(0, 0, 10, 10))) return -50;
+        if ((-moved).x != -2 || (-moved).y != -4) return -51;
+
+        fpos fposValue = fpos(1.5f, 2.5f);
+        fposValue += fpos(0.5f, 1.5f);
+        if (fposValue.x < 1.99f || fposValue.x > 2.01f) return -52;
+        if (fposValue.y < 3.99f || fposValue.y > 4.01f) return -53;
+        fposValue -= fpos(1.0f, 1.0f);
+        fpos negativeFpos = -fposValue;
+        if (negativeFpos.x > -0.99f) return -54;
+        if (negativeFpos.x < -1.01f) return -55;
+
+        fsize floatSize = fsize(5.5f, 6.5f);
+        if (floatSize.width < 5.49f || floatSize.width > 5.51f) return -56;
+        if (floatSize.height < 6.49f || floatSize.height > 6.51f) return -57;
+        any floatSizeAny = floatSize;
+        fsize floatSizeFromAny = floatSizeAny;
+        if (floatSizeFromAny.width < 5.49f || floatSizeFromAny.width > 5.51f) return -58;
+        if (floatSizeFromAny.height < 6.49f || floatSizeFromAny.height > 6.51f) return -59;
+
+        mpos mapPos = mpos(3, 4);
+        msize mapSize;
+        mapSize.width = 10;
+        mapSize.height = 10;
+        if (!mapPos.fitTo(mapSize)) return -60;
+
+        return 0;
+    }
+
+    int TestScriptValueTypeMetadataConversions()
+    {
+        if (ZERO_UCOLOR.value != 0) return -1;
+        if (ZERO_TIMESPAN.nanoseconds != 0) return -2;
+        if (ZERO_NANOTIME.nanoseconds != 0) return -3;
+        if (ZERO_SYNCTIME.milliseconds != 0) return -4;
+        if (ZERO_IPOS.x != 0 || ZERO_IPOS.y != 0) return -5;
+        if (ZERO_ISIZE.width != 0 || ZERO_ISIZE.height != 0) return -6;
+        if (ZERO_IRECT.width != 0 || ZERO_IRECT.height != 0) return -7;
+        if (ZERO_FPOS.x != 0.0f || ZERO_FPOS.y != 0.0f) return -8;
+        if (ZERO_FSIZE.width != 0.0f || ZERO_FSIZE.height != 0.0f) return -9;
+        if (ZERO_MPOS.x != 0 || ZERO_MPOS.y != 0) return -10;
+        if (ZERO_MSIZE.width != 0 || ZERO_MSIZE.height != 0) return -11;
+        if (ZERO_HDIR.value != 0) return -12;
+        if (ZERO_MDIR.angle != 0) return -13;
+
+        ucolor color = ucolor(1, 2, 3, 4);
+        if (color.str.length() == 0) return -14;
+        any colorAny = color;
+        ucolor colorFromAny = colorAny;
+        if (colorFromAny.value != color.value) return -15;
+
+        timespan span = timespan(3, 3);
+        if (span.str.length() == 0) return -16;
+        any spanAny = span;
+        if (string(spanAny).length() == 0) return -17;
+
+        nanotime nano = nanotime(4, 3);
+        if (nano.str.length() == 0) return -18;
+        any nanoAny = nano;
+        if (string(nanoAny).length() == 0) return -19;
+
+        synctime sync = synctime(5, 3);
+        if (sync.str.length() == 0) return -20;
+        any syncAny = sync;
+        if (string(syncAny).length() == 0) return -21;
+
+        ipos pos = ipos(6, 7);
+        if (pos.str.length() == 0) return -22;
+        any posAny = pos;
+        if (string(posAny).length() == 0) return -23;
+
+        isize size = isize(8, 9);
+        if (size.str.length() == 0) return -24;
+        any sizeAny = size;
+        if (string(sizeAny).length() == 0) return -25;
+
+        irect rect = irect(1, 2, 3, 4);
+        if (rect.str.length() == 0) return -26;
+        any rectAny = rect;
+        if (string(rectAny).length() == 0) return -27;
+
+        fpos floatPos = fpos(1.25f, 2.5f);
+        if (floatPos.str.length() == 0) return -28;
+        any floatPosAny = floatPos;
+        if (string(floatPosAny).length() == 0) return -29;
+
+        mpos mapPos = mpos(10, 11);
+        if (mapPos.str.length() == 0) return -30;
+        any mapPosAny = mapPos;
+        if (string(mapPosAny).length() == 0) return -31;
+
+        msize mapSize;
+        mapSize.width = 12;
+        mapSize.height = 13;
+        if (mapSize.str.length() == 0) return -32;
+        any mapSizeAny = mapSize;
+        if (string(mapSizeAny).length() == 0) return -33;
+)"
+                                          R"(
+        hdir dir = HDIR_SouthEast;
+        if (dir.str.length() == 0) return -34;
+        if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
+        if (!(dir == hdir(2))) return -36;
+
+        mdir angle = mdir(120);
+        if (angle.str.length() == 0) return -37;
+        angle.angle = 60;
+        if (angle.angle != 60) return -38;
+        if (!(angle == mdir(60))) return -39;
+
+        TextPackName pack = TextPackName("Dialogs".hstr());
+        TextPackName packCopy(pack);
+        if (!(packCopy == pack)) return -40;
+        if (pack.str != "Dialogs") return -41;
+        if (string(pack) != "Dialogs") return -42;
+        hstring packHash = pack;
+        if (packHash.str != "Dialogs") return -43;
+        any packAny = pack;
+        TextPackName packFromAny = packAny;
+        if (!(packFromAny == pack)) return -44;
+        TextPackName alphaPack = TextPackName("Alpha".hstr());
+        TextPackName betaPack = TextPackName("Beta".hstr());
+        if (!(alphaPack < betaPack || betaPack < alphaPack)) return -45;
+
+        LanguageName lang = LanguageName("russ".hstr());
+        if (lang.str != "russ") return -46;
+        if (string(lang) != "russ") return -47;
+        hstring langHash = lang;
+        if (langHash.str != "russ") return -48;
+        any langAny = lang;
+        LanguageName langFromAny = langAny;
+        if (!(langFromAny == lang)) return -49;
+        LanguageName englLang = LanguageName("engl".hstr());
+        LanguageName russLang = LanguageName("russ".hstr());
+        if (!(englLang < russLang || russLang < englLang)) return -50;
+
+        TextPackKey defaultKey;
+        if (defaultKey.Collection.Name != EMPTY_HSTRING) return -51;
+        TextPackKey genericKey(pack, "Root".hstr(), "Name".hstr(), "Short".hstr());
+        TextPackKey genericCopy(genericKey);
+        if (!(genericCopy == genericKey)) return -52;
+        if (genericKey.str.length() == 0) return -53;
+        any genericAny = genericKey;
+        TextPackKey genericFromAny = genericAny;
+        if (!(genericFromAny == genericKey)) return -54;
+
+        TextPackKey stringKey1(pack, "Root");
+        TextPackKey hashKey1(pack, "Root".hstr());
+        TextPackKey stringKey2(pack, "Root", "Name");
+        TextPackKey hashKey2(pack, "Root".hstr(), "Name");
+        TextPackKey stringKey3(pack, "Root", "Name", "Short");
+        TextPackKey hashKey3(pack, "Root".hstr(), "Name", "Short");
+        if (!(stringKey1 == hashKey1)) return -55;
+        if (!(stringKey2 == hashKey2)) return -56;
+        if (!(stringKey3 == hashKey3)) return -57;
+        if (!(stringKey1 < stringKey2 || stringKey2 < stringKey1)) return -58;
+        if (!(stringKey2 < stringKey3 || stringKey3 < stringKey2)) return -59;
+
+        return 0;
+    }
+
+    int TestScriptValueTypeOperatorEdges()
+    {
+        timespan nanos = timespan(42, 0);
+        if (nanos.nanoseconds != 42) return -1;
+        timespan micros = timespan(7, 1);
+        if (micros.microseconds != 7) return -2;
+
+        nanotime nanoMicros = nanotime(8, 1);
+        if (nanoMicros.microseconds != 8) return -3;
+        synctime syncMillis = synctime(9, 2);
+        if (syncMillis.milliseconds != 9) return -4;
+
+        any floatText = "1.25";
+        float floatValue = floatText;
+        if (floatValue < 1.24f || floatValue > 1.26f) return -5;
+        any doubleText = "2.5";
+        double doubleValue = doubleText;
+        if (doubleValue < 2.49 || doubleValue > 2.51) return -6;
+
+        any falseText = "false";
+        int falseAsInt = falseText;
+        if (falseAsInt != 0) return -7;
+
+        ipos pos = ipos(5, 7);
+        pos += ipos(2, 3);
+        if (pos.x != 7 || pos.y != 10) return -8;
+        pos -= ipos(4, 5);
+        if (pos.x != 3 || pos.y != 5) return -9;
+
+        ipos posMinus = pos - ipos(1, 2);
+        if (posMinus.x != 2 || posMinus.y != 3) return -10;
+        ipos posPlusSize = pos + isize(6, 7);
+        if (posPlusSize.x != 9 || posPlusSize.y != 12) return -11;
+        ipos posMinusSize = pos - isize(1, 2);
+        if (posMinusSize.x != 2 || posMinusSize.y != 3) return -12;
+        pos += isize(1, 1);
+        if (pos.x != 4 || pos.y != 6) return -13;
+
+        if (ipos(-1, 0).fitTo(isize(10, 10))) return -14;
+        if (ipos(0, -1).fitTo(irect(0, 0, 10, 10))) return -15;
+        if (ipos(10, 0).fitTo(irect(0, 0, 10, 10))) return -16;
+
+        fpos floatPos = fpos(3.5f, 4.5f);
+        fpos floatSum = floatPos + fpos(1.0f, 2.0f);
+        if (floatSum.x < 4.49f || floatSum.x > 4.51f) return -17;
+        if (floatSum.y < 6.49f || floatSum.y > 6.51f) return -18;
+        fpos floatDiff = floatSum - fpos(0.5f, 1.5f);
+        if (floatDiff.x < 3.99f || floatDiff.x > 4.01f) return -19;
+        if (floatDiff.y < 4.99f || floatDiff.y > 5.01f) return -20;
+
+        fsize defaultFloatSize;
+        if (defaultFloatSize.width != 0.0f || defaultFloatSize.height != 0.0f) return -21;
+        if (defaultFloatSize.str.length() == 0) return -22;
+
+        hdir dir = hdir(4);
+        mdir dirAngle = dir;
+        if (dirAngle.hex.value != 4) return -23;
+
+        TextPackName alphaPack = TextPackName("Alpha".hstr());
+        TextPackName betaPack = TextPackName("Beta".hstr());
+        bool packForward = alphaPack < betaPack;
+        bool packReverse = betaPack < alphaPack;
+        if (packForward == packReverse) return -24;
+        if (!(alphaPack == TextPackName("Alpha".hstr()))) return -25;
+
+        LanguageName englLang = LanguageName("engl".hstr());
+        LanguageName russLang = LanguageName("russ".hstr());
+        bool langForward = englLang < russLang;
+        bool langReverse = russLang < englLang;
+        if (langForward == langReverse) return -26;
+        if (!(englLang == LanguageName("engl".hstr()))) return -27;
+
+        TextPackName pack = TextPackName("Dialogs".hstr());
+        TextPackKey keyA(pack, "Root", "A");
+        TextPackKey keyB(pack, "Root", "B");
+        bool keyForward = keyA < keyB;
+        bool keyReverse = keyB < keyA;
+        if (keyForward == keyReverse) return -28;
+        if (!(keyA == TextPackKey(pack, "Root", "A"))) return -29;
+
+        return 0;
+    }
+
+    int TestScriptEnumAnyConversions()
+    {
+        any deadAny = CritterCondition::Dead;
+        string deadText = deadAny;
+        if (deadText != "CritterCondition::Dead") return -1;
+        CritterCondition dead = deadAny;
+        if (dead != CritterCondition::Dead) return -2;
+
+        any assigned;
+        assigned = CritterCondition::Knockout;
+        string assignedText = assigned;
+        if (assignedText != "CritterCondition::Knockout") return -3;
+        CritterCondition knockout = assigned;
+        if (knockout != CritterCondition::Knockout) return -4;
+
+        any fullAlive = "CritterCondition::Alive";
+        CritterCondition alive = fullAlive;
+        if (alive != CritterCondition::Alive) return -5;
+
+        any shortAlive = "Alive";
+        CritterCondition shortParsed = shortAlive;
+        if (shortParsed != CritterCondition::Alive) return -6;
+
+        any fullDead = "CritterCondition::Dead";
+        int deadValue = fullDead;
+        if (deadValue != 2) return -7;
+
+        return 0;
+    }
+
+    void TestScriptEnumAnyWrongTypeThrows()
+    {
+        any invalid = CritterActionAnim::None;
+        CritterCondition parsed = invalid;
+    }
+
+    void TestScriptEnumAnyWrongValueThrows()
+    {
+        any invalid = "CritterCondition::Missing";
+        CritterCondition parsed = invalid;
+    }
+
+    void TestScriptEnumAnyInvalidConstructThrows()
+    {
+        CritterCondition invalid = CritterCondition(99);
+        any value = invalid;
+    }
+
+    int TestScriptDynamicValueTypeConversions()
+    {
+        BoolSnapshot boolZero = ZERO_BOOLSNAPSHOT;
+        if (boolZero.Value) return -1;
+        BoolSnapshot boolValue = BoolSnapshot(true);
+        if (!boolValue.Value) return -2;
+        if (boolValue.str.length() == 0) return -3;
+        any boolAny = "true";
+        BoolSnapshot boolParsed = boolAny;
+        if (!boolParsed.Value) return -4;
+        any boolRoundtrip = boolValue;
+        BoolSnapshot boolRoundParsed = boolRoundtrip;
+        if (!boolRoundParsed.Value) return -5;
+
+        IntSnapshot intZero = ZERO_INTSNAPSHOT;
+        if (intZero.Value != 0) return -6;
+        IntSnapshot intValue = IntSnapshot(7);
+        if (intValue.Value != 7) return -7;
+        if (intValue.str != "7") return -8;
+        any intAny = "7";
+        IntSnapshot intParsed = intAny;
+        if (intParsed.Value != 7) return -9;
+        any intRoundtrip = intValue;
+        IntSnapshot intRoundParsed = intRoundtrip;
+        if (intRoundParsed.Value != 7) return -10;
+
+        IntSnapshot low = IntSnapshot(1);
+        IntSnapshot high = IntSnapshot(2);
+        if (!(low < high)) return -11;
+        if (high < low) return -12;
+        if (low < IntSnapshot(1)) return -13;
+        if (!(low == IntSnapshot(1))) return -14;
+        if (low == high) return -15;
+
+        FloatSnapshot floatZero = ZERO_FLOATSNAPSHOT;
+        if (floatZero.Value != 0.0f) return -16;
+        FloatSnapshot floatValue = FloatSnapshot(1.5f);
+        if (floatValue.Value < 1.49f || floatValue.Value > 1.51f) return -17;
+        if (floatValue.str.length() == 0) return -18;
+        any floatAny = "2.25";
+        FloatSnapshot floatParsed = floatAny;
+        if (floatParsed.Value < 2.24f || floatParsed.Value > 2.26f) return -19;
+        any floatRoundtrip = floatValue;
+        FloatSnapshot floatRoundParsed = floatRoundtrip;
+        if (floatRoundParsed.Value < 1.49f || floatRoundParsed.Value > 1.51f) return -20;
+
+        dict<ipos, int> posDict = {};
+        posDict.set(ipos(2, 0), 20);
+        posDict.set(ipos(1, 0), 10);
+        if (posDict.length() != 2) return -21;
+        if (posDict.get(ipos(2, 0)) != 20) return -22;
+        if (!posDict.exists(ipos(1, 0))) return -23;
+
+        return 0;
+    }
+)"
+                                          R"(
+    int TestScriptDynamicRefTypeAccessors()
+    {
+        RouteSnapshot snapshot = RouteSnapshot();
+        if (snapshot is null) return -1;
+
+        snapshot.Value = 42;
+        if (snapshot.Value != 42) return -2;
+
+        array<int32> steps = snapshot.Steps;
+        if (steps is null) return -10;
+        if (steps.length() != 0) return -11;
+        steps.insertLast(5);
+        snapshot.Steps = steps;
+        if (snapshot.Steps.length() != 1) return -12;
+        if (snapshot.Steps[0] != 5) return -13;
+
+        dict<string,int32> counters = snapshot.Counters;
+        if (counters.length() != 0) return -17;
+        counters.set("seen", 3);
+        snapshot.Counters = counters;
+        if (snapshot.Counters.get("seen") != 3) return -18;
+
+        RouteNote child = RouteNote();
+        if (child is null) return -14;
+        child.Text = "child-note";
+        snapshot.Child = child;
+        if (snapshot.Child is null) return -15;
+        if (snapshot.Child.Text != "child-note") return -16;
+
+        RouteSnapshotMarkerComponent marker = snapshot.Marker;
+        if (marker is null) return -3;
+
+        marker.Steps = 7;
+        marker.Note = "marker-note";
+        if (marker.Steps != 7) return -4;
+        if (marker.Note != "marker-note") return -5;
+        if (snapshot.Marker.Steps != 7) return -6;
+        if (snapshot.Marker.Note != "marker-note") return -7;
+
+        RouteSnapshot same = snapshot;
+        RouteSnapshot other = RouteSnapshot();
+        if (!(snapshot == same)) return -8;
+        if (snapshot == other) return -9;
+
+        return 0;
+    }
+
+    void TestTextPackKeyAnyLessThrows()
+    {
+        any invalid = "Dialogs Root Name";
+        TextPackKey key = invalid;
+    }
+
+    void TestTextPackKeyAnyMoreThrows()
+    {
+        any invalid = "Dialogs Root Name Short Extra";
+        TextPackKey key = invalid;
+    }
+
+    void TestInvalidTimePlaceThrows()
+    {
+        timespan invalid = timespan(1, 99);
+    }
+
+    void TestInvalidAnyToIntThrows()
+    {
+        any invalid = "DefinitelyNotAnInt";
+        int parsed = invalid;
+    }
+
     // ========== Game-level Time Events ==========
 
     bool globalTimerFired = false;
@@ -917,9 +1456,60 @@ namespace CommonMethods
         });
     }
 
+    static void WriteMetadataToken(DataWriter& writer, string_view token)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
+        writer.WritePtr(token.data(), token.size());
+    }
+
+    static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const vector<vector<string_view>> value_types = {
+            {"BoolSnapshot", "Value", "bool"},
+            {"IntSnapshot", "Value", "int32"},
+            {"FloatSnapshot", "Value", "float32"},
+        };
+        const vector<vector<string_view>> ref_types = {
+            {"RouteSnapshot", "Value", "int32", "0", "Steps", "int32[]", "0", "Counters", "string=>int32", "0", "Child", "RouteNote", "0", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"},
+            {"RouteNote", "Text", "string", "0"},
+        };
+
+        vector<uint8_t> metadata;
+        auto writer = DataWriter(metadata);
+
+        writer.Write<uint16_t>(uint16_t {2});
+        WriteMetadataToken(writer, "ValueType");
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(value_types.size()));
+
+        for (const auto& value_type : value_types) {
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(value_type.size()));
+
+            for (const auto token : value_type) {
+                WriteMetadataToken(writer, token);
+            }
+        }
+
+        WriteMetadataToken(writer, "RefType");
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(ref_types.size()));
+
+        for (const auto& ref_type : ref_types) {
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(ref_type.size()));
+
+            for (const auto token : ref_type) {
+                WriteMetadataToken(writer, token);
+            }
+        }
+
+        return metadata;
+    }
+
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        const auto metadata_blob = MakeCommonMethodsMetadataBlob();
 
         unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CommonMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -997,6 +1587,17 @@ namespace CommonMethods
     REQUIRE(func); \
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)
+
+#define RUN_CM_FUNC_THROWS(func_name, expected_message) \
+    auto func = server->FindFunc<void>(get_func("CommonMethods::" func_name)); \
+    REQUIRE(func); \
+    const auto prev_callback = GetExceptionCallback(); \
+    string message; \
+    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+    CHECK_FALSE(func.Call()); \
+    INFO(message); \
+    CHECK(message.find(expected_message) != string::npos)
 
 // ========== Geometry Tests ==========
 
@@ -1088,6 +1689,78 @@ TEST_CASE("TimePackingOperations")
     SECTION("PackUnpackSynchronizedTime")
     {
         RUN_CM_FUNC("TestPackUnpackSynchronizedTime");
+    }
+}
+
+// ========== Script Type Conversion Tests ==========
+
+TEST_CASE("ScriptTypeConversionOps")
+{
+    MAKE_CM_SERVER();
+
+    SECTION("ValueTypeAndAnyConversions")
+    {
+        RUN_CM_FUNC("TestScriptTypeConversions");
+    }
+
+    SECTION("MetadataValueTypeConversions")
+    {
+        RUN_CM_FUNC("TestScriptValueTypeMetadataConversions");
+    }
+
+    SECTION("ValueTypeOperatorEdges")
+    {
+        RUN_CM_FUNC("TestScriptValueTypeOperatorEdges");
+    }
+
+    SECTION("EnumAnyConversions")
+    {
+        RUN_CM_FUNC("TestScriptEnumAnyConversions");
+    }
+
+    SECTION("EnumAnyWrongTypeThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestScriptEnumAnyWrongTypeThrows", "Invalid enum type for any conversion");
+    }
+
+    SECTION("EnumAnyWrongValueThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestScriptEnumAnyWrongValueThrows", "Invalid enum value for any conversion");
+    }
+
+    SECTION("EnumAnyInvalidConstructThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestScriptEnumAnyInvalidConstructThrows", "Invalid enum value for any conversion");
+    }
+
+    SECTION("DynamicValueTypeConversions")
+    {
+        RUN_CM_FUNC("TestScriptDynamicValueTypeConversions");
+    }
+
+    SECTION("DynamicRefTypeAccessors")
+    {
+        RUN_CM_FUNC("TestScriptDynamicRefTypeAccessors");
+    }
+
+    SECTION("InvalidTimePlaceThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestInvalidTimePlaceThrows", "Invalid time place");
+    }
+
+    SECTION("InvalidAnyToIntThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestInvalidAnyToIntThrows", "Invalid int value for any conversion");
+    }
+
+    SECTION("TextPackKeyAnyLessThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestTextPackKeyAnyLessThrows", "Invalid cast to any (values less then needed)");
+    }
+
+    SECTION("TextPackKeyAnyMoreThrows")
+    {
+        RUN_CM_FUNC_THROWS("TestTextPackKeyAnyMoreThrows", "Invalid cast to any (values more then needed)");
     }
 }
 

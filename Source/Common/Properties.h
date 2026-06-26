@@ -71,7 +71,7 @@ public:
     [[nodiscard]] auto GetAs() noexcept -> T
     {
         FO_STRONG_ASSERT(sizeof(T) == _dataSize, "Property raw data size mismatch", sizeof(T), _dataSize);
-        return *GetPtrAs<T>();
+        return MemReadUnaligned<T>(GetPtr().get());
     }
 
     auto Alloc(size_t size) -> ptr<uint8_t>;
@@ -100,6 +100,8 @@ public:
 private:
     size_t _dataSize {};
     bool _useDynamic {};
+    // Holds arbitrary property values; typed reads go through GetAs<T>() (unaligned MemReadUnaligned) and
+    // byte-wise GetPtrAs<uint8_t>()/GetPtrAs<char>(), so the buffer needs no special over-alignment.
     uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     unique_arr_ptr<uint8_t> _dynamicBuf {};
     nptr<void> _passedPtr {};

@@ -396,6 +396,26 @@ namespace ServerEngineTest
         return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeServerTestResources());
     }
 
+    static void CheckServerStartupFailsSafely(GlobalSettings& settings)
+    {
+        auto server = MakeServerEngine(settings);
+
+        const auto startup_error = WaitForServerStart(server.as_ptr());
+        INFO(startup_error);
+        CHECK_FALSE(startup_error.empty());
+        CHECK(server->IsStartingError());
+        CHECK_FALSE(server->IsStarted());
+
+        REQUIRE_NOTHROW(server->Shutdown());
+    }
+
+    static auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
+    {
+        AnyData::Document doc;
+        doc.Assign(string {"value"}, value);
+        return doc;
+    }
+
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
@@ -578,16 +598,83 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    CheckServerStartupFailsSafely(settings);
+}
 
-    const auto startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    CHECK_FALSE(startup_error.empty()); // startup must fail, not complete or time out
-    CHECK(server->IsStartingError());
-    CHECK_FALSE(server->IsStarted());
+TEST_CASE("ServerEngineCustomCollectionStartupValidation")
+{
+    auto settings = MakeServerTestSettings();
 
-    // The fix under test: tearing down the half-initialized engine must not crash or throw.
-    REQUIRE_NOTHROW(server->Shutdown());
+    SECTION("RejectsMissingSeparator")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BrokenCollection"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsEmptyTrimmedCollectionName")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"   : Int"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsUnknownKeyType")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BadType:Uuid"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("RejectsDuplicateCollectionName")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
+        CheckServerStartupFailsSafely(settings);
+    }
+
+    SECTION("AcceptsTrimmedCaseInsensitiveKeyTypes")
+    {
+        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
+
+        auto server = MakeServerEngine(settings);
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        const auto startup_error = WaitForServerStart(server.as_ptr());
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        const auto int_collection = server->Hashes.ToHashedString("TrimmedInt");
+        const auto string_collection = server->Hashes.ToHashedString("TrimmedStr");
+        const auto int_id = ident_t {1001};
+        const auto string_id = string {"custom:key"};
+
+        CHECK(server->DbStorage.GetAllIntIds(int_collection).empty());
+        CHECK(server->DbStorage.GetAllStringIds(string_collection).empty());
+
+        server->DbStorage.Insert(int_collection, DataBaseKey {int_id}, MakeServerStorageDoc(10));
+        server->DbStorage.Insert(string_collection, DataBaseKey {string_id}, MakeServerStorageDoc(20));
+        server->DbStorage.WaitCommitChanges();
+
+        const auto int_ids = server->DbStorage.GetAllIntIds(int_collection);
+        const auto string_ids = server->DbStorage.GetAllStringIds(string_collection);
+
+        REQUIRE(int_ids.size() == 1);
+        CHECK(int_ids.front() == int_id);
+        REQUIRE(string_ids.size() == 1);
+        CHECK(string_ids.front() == string_id);
+
+        const auto int_doc = server->DbStorage.Get(int_collection, DataBaseKey {int_id});
+        const auto string_doc = server->DbStorage.Get(string_collection, DataBaseKey {string_id});
+
+        REQUIRE(!int_doc.Empty());
+        CHECK(int_doc["value"].AsInt64() == 10);
+        REQUIRE(!string_doc.Empty());
+        CHECK(string_doc["value"].AsInt64() == 20);
+    }
 }
 
 TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
@@ -1067,7 +1154,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
     // plus the null/empty short-circuits.
 
-    // Empty context: no held locks в†’ the access gate grants everything, including a null entity.
+    // Empty context: no held locks → the access gate grants everything, including a null entity.
     CHECK(ctx.IsEmpty());
     CHECK(IsEntityAccessValid(cr_a.get()));
     CHECK(IsEntityAccessValid(nullptr));
@@ -1099,7 +1186,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     {
         vector<nptr<ServerEntity>> both {cr_a, cr_b};
         ctx.SyncEntities(both);
-        CHECK(ctx.ValidateAccess(map.get())); // escalated в†’ the map's own lock is held
+        CHECK(ctx.ValidateAccess(map.get())); // escalated → the map's own lock is held
         CHECK_FALSE(ctx.ValidateAccess(cr_a.get())); // the siblings' own locks were dropped
         CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
         CHECK(IsEntityAccessValid(cr_a.get())); // accessible via the map ancestor lock
@@ -1157,7 +1244,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(IsEntityAccessValid(cr_b.get()));
     ctx.Release();
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a.get())); // empty again в†’ unrestricted
+    CHECK(IsEntityAccessValid(cr_a.get())); // empty again → unrestricted
 }
 
 // ============================================================================
@@ -1339,7 +1426,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
         CHECK(ctx.ValidateAccess(player_a)); // players' own locks held
         CHECK(ctx.ValidateAccess(player_b));
-        CHECK(ctx.ValidateAccess(map.get())); // critters escalated в†’ the map's own lock is held
+        CHECK(ctx.ValidateAccess(map.get())); // critters escalated → the map's own lock is held
         CHECK_FALSE(ctx.ValidateAccess(cr_a.get())); // the critters' own locks were dropped by escalation
         CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
         CHECK(IsEntityAccessValid(player_a));
@@ -1500,7 +1587,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     locked = false;
 
     // Reparent targets include nullptr so the detach / no-parent / cover-recompute paths are churned
-    // alongside same-map (escalation) and cross-map (escape в†’ retry) transitions.
+    // alongside same-map (escalation) and cross-map (escape → retry) transitions.
     const nptr<ServerEntity> targets[] = {map_a, map_b, map_c, nullptr};
 
     std::atomic_bool stop {false};

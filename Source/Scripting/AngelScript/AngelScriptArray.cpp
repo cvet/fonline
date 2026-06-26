@@ -482,10 +482,11 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
         nptr<AngelScript::asITypeInfo> sub_type = _typeInfo->GetSubType();
         FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
-        auto dst_handle = GetHandleSlot(dst);
-        const nptr<void> old_obj = *dst_handle;
-        const auto new_obj = ReadHandleSlot(value);
-        *dst_handle = new_obj.get_no_const();
+        // dst (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
+        // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
+        const nptr<void> old_obj = MemReadUnaligned<void*>(dst.get());
+        const nptr<void> new_obj = MemReadUnaligned<void*>(value.get());
+        MemWriteUnaligned<void*>(dst.get(), new_obj.get_no_const());
 
         if (new_obj) {
             engine->AddRefScriptObject(new_obj.get_no_const(), sub_type.get());

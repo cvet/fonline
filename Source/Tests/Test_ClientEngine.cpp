@@ -110,6 +110,34 @@ namespace ClientEngineTest
     {
         return ManualCalls;
     }
+
+    int UnitTestMapSpriteHolderRefType()
+    {
+        MapSpriteHolder holder = MapSpriteHolder();
+        if (holder is null) return -1;
+        if (holder.Valid) return -2;
+
+        holder.SprId = 42;
+        if (holder.SprId != 42) return -3;
+
+        holder.NoLight = true;
+        if (!holder.NoLight) return -4;
+
+        holder.Angle = 90;
+        if (holder.Angle != 90) return -5;
+
+        holder.TweakAlpha = 123;
+        if (holder.TweakAlpha != 123) return -6;
+
+        holder.MapProjected = true;
+        if (!holder.MapProjected) return -7;
+
+        MapSpriteHolder same = holder;
+        if (!(holder == same)) return -8;
+
+        holder.StopDraw();
+        return 0;
+    }
 }
 )"},
             },
@@ -240,6 +268,20 @@ TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
 
     client->ProcessScheduledCallbacks();
     CHECK(callback_count == 2);
+}
+
+TEST_CASE("ClientEngineMethodRefTypeOps")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+
+    int32_t result = 0;
+    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
+    CHECK(result == 0);
 }
 
 FO_END_NAMESPACE

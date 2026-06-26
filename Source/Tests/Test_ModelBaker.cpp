@@ -163,6 +163,144 @@ TEST_CASE("ModelBakers")
 #endif
 }
 
+TEST_CASE("ModelMeshBakerOrchestration")
+{
+#if FO_ENABLE_3D
+    using namespace BakerTests;
+
+    SECTION("Uses bake checker for source and target model files")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Models/Ignored.txt", "not a model", 3);
+        rig.AddSourceFile("Models/Broken.fbx", "not fbx data", 9);
+
+        vector<pair<string, uint64_t>> checks;
+        ModelMeshBaker baker(rig.MakeContext("TestPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return false;
+        }));
+
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(rig.Outputs.empty());
+
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front() == pair<string, uint64_t> {"Models/Broken.fbx", 9});
+
+        checks.clear();
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/Broken.fbx"));
+        CHECK(rig.Outputs.empty());
+
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front() == pair<string, uint64_t> {"Models/Broken.fbx", 9});
+    }
+
+    SECTION("Skips non model targets and missing target files")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Models/Broken.fbx", "not fbx data", 9);
+
+        ModelMeshBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/Broken.txt"));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/Missing.fbx"));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("Aggregates invalid model mesh input errors")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Models/Broken.fbx", "not fbx data", 9);
+
+        ModelMeshBaker baker(rig.MakeContext());
+        CHECK_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during model mesh baking"));
+        CHECK(rig.Outputs.empty());
+    }
+#endif
+}
+
+TEST_CASE("ModelInfoBakerOrchestration")
+{
+#if FO_ENABLE_3D
+    using namespace BakerTests;
+
+    SECTION("Uses include-aware max write time in bake checker")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile Idle\n", 50);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nInclude TEMPLATE_Anim.fo3d\n", 7);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
+
+        vector<pair<string, uint64_t>> checks;
+        ModelInfoBaker baker(rig.MakeContext("TestPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return true;
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        REQUIRE(checks.size() == 2);
+        CHECK(checks[0] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        CHECK(checks[1] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
+        CHECK(rig.Outputs.count("Critters/TEMPLATE_Anim.fo3d") == 0);
+    }
+
+    SECTION("Skips non fo3d, template and missing target files")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/TEMPLATE_Test.fo3d", "Model Body.fbx\n", 1);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Missing.fbx\n", 2);
+
+        ModelInfoBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/Test.txt"));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/TEMPLATE_Test.fo3d"));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/Missing.fo3d"));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("Writes ModelAnimInfo config with speed-adjusted durations")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile Idle\n", 50);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nInclude TEMPLATE_Anim.fo3d\nAnimSpeed 0 1 2\n", 7);
+        rig.AddSourceFile("Critters/NoAnim.fo3d", "Model Body.fbx\n", 8);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
+
+        vector<pair<string, uint64_t>> checks;
+        ModelInfoBaker baker(rig.MakeContext("ModelAnimInfo", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return true;
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front() == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50});
+        REQUIRE(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
+
+        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
+        CHECK(config.find("StateAnims = 0\n") != string::npos);
+        CHECK(config.find("ActionAnims = 1\n") != string::npos);
+        CHECK(config.find("DurationsMs = 500\n") != string::npos);
+        CHECK(config.find("Critters/NoAnim.fo3d") == string::npos);
+    }
+
+    SECTION("Honors ModelAnimInfo target filtering")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Missing.fbx\nAnim 0 1 ModelFile Idle\n", 7);
+
+        ModelInfoBaker baker(rig.MakeContext("ModelAnimInfo"));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Other.foinfo"));
+        CHECK(rig.Outputs.empty());
+    }
+#endif
+}
+
 TEST_CASE("ModelInfoBakerValidations")
 {
 #if FO_ENABLE_3D

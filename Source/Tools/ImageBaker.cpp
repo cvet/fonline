@@ -837,7 +837,8 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         }
 
         if (dir_frm != 0) {
-            string next_fname = strex("{}{}", fname.substr(0, fname.size() - 1), '0' + dir_frm);
+            string next_fname {fname.substr(0, fname.size() - 1)};
+            next_fname += numeric_cast<char>('0' + dir_frm);
 
             dir_file = files.FindFileByPath(next_fname);
 
@@ -1141,18 +1142,32 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
         case 'F':
         case 'f': {
             // name$1vf5-7.art
-            auto f = string(opt.substr(i));
-            istringstream idelim(f);
-            char ch = 0;
+            size_t frame_spec_len = 0;
 
-            if (f.find('-') != string::npos) {
-                idelim >> frm_from >> ch >> frm_to;
-                i += 3;
+            while (i + 1 + frame_spec_len < opt.length()) {
+                const char ch = opt[i + 1 + frame_spec_len];
+
+                if (!((ch >= '0' && ch <= '9') || ch == '-')) {
+                    break;
+                }
+
+                frame_spec_len++;
             }
-            else {
-                idelim >> frm_from;
-                frm_to = frm_from;
-                i += 1;
+
+            if (frame_spec_len != 0) {
+                const string frame_spec {opt.substr(i + 1, frame_spec_len)};
+                istringstream idelim(frame_spec);
+                char ch = 0;
+
+                if (frame_spec.find('-') != string::npos) {
+                    idelim >> frm_from >> ch >> frm_to;
+                }
+                else {
+                    idelim >> frm_from;
+                    frm_to = frm_from;
+                }
+
+                i += frame_spec_len;
             }
         } break;
         default:
@@ -1298,7 +1313,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
                     color |= std::max((color >> 16) & 0xFF, std::max((color >> 8) & 0xFF, color & 0xFF)) << 24;
                 }
                 else {
-                    color |= 0xFF00000;
+                    color |= 0xFF000000;
                 }
             };
 
@@ -1423,12 +1438,24 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
         auto first = opt.find_first_of('[');
-        auto last = opt.find_last_of(']', first);
+        auto last = opt.find_last_of(']');
         auto seq_name = last != string::npos ? opt.substr(last + 1) : opt;
 
-        while (first != string::npos && last != string::npos) {
+        while (first != string::npos) {
             last = opt.find_first_of(']', first);
-            auto entry = string(opt.substr(first, last - first - 1));
+
+            if (last == string::npos) {
+                break;
+            }
+
+            auto entry = string(opt.substr(first + 1, last - first - 1));
+
+            for (char& ch : entry) {
+                if (ch == ',') {
+                    ch = ' ';
+                }
+            }
+
             istringstream ientry(entry);
 
             // Parse numbers
@@ -1451,7 +1478,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 }
             }
 
-            first = opt.find_first_of('[', last);
+            first = opt.find_first_of('[', last + 1);
         }
 
         // Read header
@@ -2184,7 +2211,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     ignore_unused(files);
 
-    // Format: fileName$5-6.spr
+    // Format: fileName$5-6.bam
     auto opt_str = string(opt);
     istringstream idelim(opt_str);
     int32_t need_cycle = 0;
@@ -2269,14 +2296,13 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     // Find in lookup table
     for (int32_t i = 0; i < cycle_frames; i++) {
-        if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
-            continue;
-        }
-
-        // Get need index
         reader.SetCurPos(lookup_table_offset + table_index * 2);
         table_index++;
         int32_t frame_index = reader.GetLEUInt16();
+
+        if (specific_frame != -1 && specific_frame != numeric_cast<int32_t>(i)) {
+            continue;
+        }
 
         // Get frame data
         reader.SetCurPos(frames_offset + frame_index * 12);

@@ -1247,11 +1247,11 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     // Built-in value types
     unordered_set<string> registered_types;
 
-    const auto register_engine_type = [&]<typename T>(string_view name) {
+    const auto register_engine_type = [&]<typename T>(string_view name, AngelScript::asDWORD class_flags = AngelScript::asOBJ_APP_CLASS_ALLINTS) {
         const string name_str {name};
 
         registered_types.emplace(name_str);
-        FO_AS_VERIFY(as_engine->RegisterObjectType(name_str.c_str(), sizeof(T), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<T>()));
+        FO_AS_VERIFY(as_engine->RegisterObjectType(name_str.c_str(), sizeof(T), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | class_flags | AngelScript::asGetTypeTraits<T>()));
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name_str.c_str(), AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(Type_Construct<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name_str.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f(const {}&in other)", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name_str.c_str(), strex("int opCmp(const {}&in other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_Cmp<T>), FO_SCRIPT_FUNC_THIS_CONV));
@@ -1341,7 +1341,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("irect", "int height", offsetof(irect32, height)));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("ipos", "bool fitTo(irect rect) const", FO_SCRIPT_FUNC_THIS(Ipos_FitToRect), FO_SCRIPT_FUNC_THIS_CONV));
 
-    register_engine_type.operator()<fpos32>("fpos");
+    register_engine_type.operator()<fpos32>("fpos", AngelScript::asOBJ_APP_CLASS_ALLFLOATS);
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("fpos", AngelScript::asBEHAVE_CONSTRUCT, "void f(float x, float y)", FO_SCRIPT_FUNC_THIS(Fpos_ConstructXandY), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float x", offsetof(fpos32, x)));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fpos", "float y", offsetof(fpos32, y)));
@@ -1351,7 +1351,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opSub(const fpos &in) const", FO_SCRIPT_FUNC_THIS(Fpos_SubFpos), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("fpos", "fpos opNeg() const", FO_SCRIPT_FUNC_THIS(Fpos_NegFpos), FO_SCRIPT_FUNC_THIS_CONV));
 
-    register_engine_type.operator()<fsize32>("fsize");
+    register_engine_type.operator()<fsize32>("fsize", AngelScript::asOBJ_APP_CLASS_ALLFLOATS);
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("fsize", AngelScript::asBEHAVE_CONSTRUCT, "void f(float width, float height)", FO_SCRIPT_FUNC_THIS(Fsize_ConstructWandH), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float width", offsetof(fsize32, width)));
     FO_AS_VERIFY(as_engine->RegisterObjectProperty("fsize", "float height", offsetof(fsize32, height)));

@@ -1120,6 +1120,42 @@ TEST_CASE("LoadUnloadCritter")
     {
         RUN_LEM_FUNC("TestUnloadCritter");
     }
+
+    SECTION("DirectLoadReportsAndPrunesMissingInventoryItem")
+    {
+        auto cr = server->CreateCritter(get_func("TestCritter"), true);
+
+        auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
+        REQUIRE(static_cast<bool>(item));
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+
+        const ident_t cr_id = cr->GetId();
+        const ident_t item_id = item->GetId();
+
+        server->DbStorage.Delete(get_func("Items"), item_id);
+        server->UnloadCritter(cr);
+
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+
+        bool is_error = false;
+        optional<refcount_ptr<Critter>> loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
+        REQUIRE(loaded_holder.has_value());
+        auto loaded = loaded_holder->as_ptr();
+
+        CHECK(is_error);
+        CHECK(loaded->GetItemIds().empty());
+        CHECK_FALSE(loaded->HasItems());
+        CHECK(server->EntityMngr.GetCritter(cr_id).as_ptr() == loaded);
+
+        loaded->MarkAsDestroying();
+        server->UnloadCritterInnerEntities(loaded);
+        loaded->MarkAsDestroyed();
+        server->EntityMngr.UnregisterCritter(loaded);
+
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+    }
 }
 
 TEST_CASE("BulkMoveOperations")

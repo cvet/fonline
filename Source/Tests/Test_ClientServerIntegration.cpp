@@ -657,14 +657,17 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto critter = SafeAlloc::MakeRefCounted<CritterView>(client.as_ptr(), ident_t {}, proto, critter_props_ptr);
     const auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
-    string model_name;
-    CHECK_FALSE(client->CallFunc<string, CritterView*>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter.get(), model_name));
+    // Trigger the same client unresolved-hash reporter without forcing a slow script exception.
+    bool failed = false;
+    const hstring unresolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
+    CHECK(failed);
+    CHECK_FALSE(static_cast<bool>(unresolved));
 
     REQUIRE(WaitForLearnedHash(client.as_ptr(), reported.as_hash(), "integration_test_lazy_hash"));
     CHECK(client->IsConnected());
     CHECK(GetServerConnectionCount(server.as_ptr()) == 1);
 
-    model_name.clear();
+    string model_name;
     REQUIRE(client->CallFunc<string, CritterView*>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter.get(), model_name));
     CHECK(model_name == "integration_test_lazy_hash");
 }

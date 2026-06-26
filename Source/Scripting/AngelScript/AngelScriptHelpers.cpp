@@ -820,7 +820,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     FO_STACK_TRACE_ENTRY();
 
     const auto resolve_hash = [prop](ptr<const uint8_t> hptr) -> hstring {
-        const auto hash = *hptr.reinterpret_as<const hstring::hash_t>().get();
+        const auto hash = MemReadUnaligned<hstring::hash_t>(hptr.get());
         return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
 

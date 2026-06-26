@@ -288,7 +288,7 @@ static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const ve
         const auto prop_tokens = span(tokens).subspan(1);
 
         auto prop = prop_registrator->RegisterProperty(prop_tokens);
-        const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
+        const string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }
 }
