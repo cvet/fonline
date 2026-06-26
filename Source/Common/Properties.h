@@ -88,11 +88,12 @@ public:
     void StoreIfPassed() noexcept;
 
 private:
+    // Keep the over-aligned local buffer as the first member: placed at offset 0 the alignas is
+    // satisfied without inserting any padding, so the struct's alignment matches its natural pointer
+    // alignment and MSVC's C4324 (padding added due to alignment specifier) does not fire.
+    alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     size_t _dataSize {};
     bool _useDynamic {};
-    // Holds arbitrary property values read back through GetPtrAs<T>()/GetAs<T>(), so it must satisfy the
-    // alignment of the largest value type it can store (otherwise those typed accesses are misaligned)
-    alignas(std::max_align_t) uint8_t _localBuf[LOCAL_BUF_SIZE] {};
     unique_arr_ptr<uint8_t> _dynamicBuf {};
     raw_ptr<void> _passedPtr {};
 };

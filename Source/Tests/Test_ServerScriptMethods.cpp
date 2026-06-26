@@ -62,7 +62,8 @@ namespace
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ServerScriptMethodsScripts",
             {
-                {"Scripts/ScriptMethodsTest.fos", R"(
+                {"Scripts/ScriptMethodsTest.fos",
+                    R"(
 namespace ScriptMethodsTest
 {
     // ========== Critter Inventory Operations ==========
@@ -568,7 +569,8 @@ namespace ScriptMethodsTest
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
         if (cr is null) return -1;
-
+)"
+                    R"(
         // Set direction
         cr.SetDir(HDIR_SouthWest);
 
@@ -1069,7 +1071,8 @@ namespace ScriptMethodsTest
             Game.DestroyLocation(loc);
             return -8;
         }
-
+)"
+                    R"(
         try {
             unlogined.ViewMap(map, mpos(9999, 9999));
             Game.UnloadCritter(cr);
