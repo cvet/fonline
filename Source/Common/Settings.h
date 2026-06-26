@@ -137,6 +137,7 @@ public:
     void Draw(bool editable);
 
 private:
+    bool IsSecretSettingName(string_view name) const;
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir);

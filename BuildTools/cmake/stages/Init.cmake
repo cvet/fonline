@@ -22,7 +22,6 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
-	FO_SECRET_SETTING_TOKENS "Space-separated case-insensitive substrings that mark a setting name as a credential to mask in logs" "secret token password apikey"
 	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
 	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
 	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30

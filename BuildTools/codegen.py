@@ -260,7 +260,6 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument('-nicename', dest='nicename', required=True, help='nice game name')
     parser.add_argument('-embedded', dest='embedded', required=True, help='embedded buffer capacity')
     parser.add_argument('-internalcfg', dest='internalcfg', required=True, help='internal config buffer capacity')
-    parser.add_argument('-secretsettingtokens', dest='secretsettingtokens', required=True, help='space-separated substrings that mark a setting name as a credential to mask in logs')
     parser.add_argument('-enginedefine', dest='enginedefine', action='append', default=[], help='engine configuration define NAME=VALUE emitted as a macro into EngineConfig.gen.h')
     parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
     parser.add_argument('-commonheader', dest='commonheader', action='append', default=[], help='path to common header file')
@@ -2333,7 +2332,6 @@ def write_engine_config() -> None:
         generated_output.write_line('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
         generated_output.write_line('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
         generated_output.write_line('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_SECRET_SETTING_TOKENS = "' + args.secretsettingtokens + '";')
 
         compatibility_version = compatibility_hasher.hexdigest()[:16]
         generated_output.write_line('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatibility_version + '";')

@@ -44,7 +44,6 @@ Important command arguments include:
 - `-internalcfg` — internal config capacity (`FO_INTERNAL_CONFIG_CAPACITY`).
 - `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and `FO_MONO_SOURCE`.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
-- `-secretsettingtokens` — substrings that mark a setting name as a credential to mask in logs (`FO_SECRET_SETTING_TOKENS`).
 - `-enginedefine` — repeatable `NAME=VALUE` engine value/shape configuration macro (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...), resolved to a literal at configure time and emitted into `EngineConfig.gen.h` instead of being passed as a `-D` compiler define. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`) and per-config `FO_DEBUG` stay compiler-side — they gate whole files/headers before any engine header is included.
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
@@ -54,7 +53,7 @@ The stage creates normal and forced code-generation command targets and appends 
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — two-section header: the engine configuration macros (consumed at the top of `Source/Essentials/BasicCore.h`) and the typed build/version constants `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_SECRET_SETTING_TOKENS` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH` (re-included by `Source/Common/Common.h` with `FO_ENGINE_CONFIG_CONSTANTS` defined, after `fo::string_view_nt` exists). Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — two-section header: the engine configuration macros (consumed at the top of `Source/Essentials/BasicCore.h`) and the typed build/version constants `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH` (re-included by `Source/Common/Common.h` with `FO_ENGINE_CONFIG_CONSTANTS` defined, after `fo::string_view_nt` exists). Replaces the former `Version-Include.h`.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`

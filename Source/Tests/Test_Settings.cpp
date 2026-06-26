@@ -100,6 +100,10 @@ TEST_CASE("Settings")
         const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
+        // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
+        // Common.SecretSettingTokens list (default includes "token") is populated by then.
+        settings.ApplyDefaultSettings();
+
         char arg0[] = "lf_tests";
         char arg1[] = "--Probe.AccessToken";
         char arg2[] = "super-secret-value";
@@ -109,7 +113,7 @@ TEST_CASE("Settings")
 
         settings.ApplyCommandLine(5, argv, true);
 
-        // A name matching a secret token (FO_SECRET_SETTING_TOKENS, default includes "token") is masked;
+        // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
         // the credential value itself must never reach the log.
         CHECK(captured.find("Set Probe.AccessToken to ***") != string::npos);
         CHECK(captured.find("super-secret-value") == string::npos);

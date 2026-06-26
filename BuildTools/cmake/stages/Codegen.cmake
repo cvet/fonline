@@ -15,7 +15,6 @@ AppendList(FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -internalcfg "${FO_INTERNAL_CONFIG_CAPACITY}")
-AppendList(FO_CODEGEN_COMMAND_ARGS -secretsettingtokens "${FO_SECRET_SETTING_TOKENS}")
 
 # Engine configuration macros, emitted into EngineConfig.gen.h instead of cluttering the compiler command
 # line. The codegen args file is written with file(WRITE), which does not evaluate generator expressions, so
