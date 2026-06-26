@@ -100,7 +100,15 @@ public:
     void deallocate(T* ptr, size_t count) const noexcept
     {
         (void)count;
+        // GCC's -Wfree-nonheap-object (on by default, fires only with optimization) raises a false positive here when it
+        // fully inlines std::vector::_M_realloc_insert through this allocator: it loses provenance of the old-buffer
+        // pointer and reports "operator delete called on pointer with nonzero offset". A real non-heap free is impossible
+        // by construction — this allocator only ever frees pointers produced by its own allocate() (::operator new). The
+        // check stays active everywhere else; suppress it only on this one GCC-specific false-positive site (the helper
+        // is a no-op on Clang/MSVC, which are unaffected).
+        FO_GCC_IGNORE_WARNINGS_PUSH("-Wfree-nonheap-object")
         ::operator delete(ptr);
+        FO_GCC_IGNORE_WARNINGS_POP()
     }
 };
 

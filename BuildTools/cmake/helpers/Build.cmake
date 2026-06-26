@@ -35,9 +35,14 @@ function(DisableLibWarnings)
 		# (the C23 transition); -w does not downgrade those, so vendored C code (LibreSSL, mongo-c, ...) would fail to
 		# build under clang/clang-cl. Demote that family back to warnings (then -w hides them) so third-party stays
 		# silent on every toolchain.
+		# Every flag below is a C/CXX compiler flag, so it is gated on $<COMPILE_LANGUAGE:C,CXX>. Without that gate the
+		# flags also reach ASM_MASM sources (e.g. AngelScript's as_callfunc_x64_msvc_asm.asm under clang-cl), and the
+		# MASM assembler (llvm-ml) rejects the warning flags with "ignoring unsupported 'w'/'W' option" — a warning that
+		# our own warning-silencing was the sole cause of. Keeping the gate makes vendored ASM assemble cleanly while the
+		# C/CXX warning suppression is unchanged.
 		target_compile_options(${lib} PRIVATE
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>:-Wno-error=incompatible-pointer-types
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>>:-w>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Wno-error=incompatible-pointer-types
 				-Wno-error=incompatible-function-pointer-types
 				-Wno-error=int-conversion
 				-Wno-error=implicit-function-declaration
@@ -55,8 +60,8 @@ function(DisableLibWarnings)
 			# a misaligned store even though it is correct on every architecture the engine targets. This is upstream
 			# third-party packing, not a bug in our code, so vendored libs are excused from the alignment check; our
 			# own code keeps it fully active.
-			$<$<AND:$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
-			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
 
