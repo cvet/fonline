@@ -41,7 +41,7 @@
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 
 FO_BEGIN_NAMESPACE
 

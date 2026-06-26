@@ -45,7 +45,11 @@ FO_BEGIN_NAMESPACE
 // Force change of compatability version
 ///@ MigrationRule Version 0 0 21
 
-#include "Version-Include.h"
+// Emit the typed build/version constants from EngineConfig.gen.h here, where fo::string_view_nt exists.
+// The configuration macros from the same file were already pulled in at the top of BasicCore.h.
+#define FO_ENGINE_CONFIG_CONSTANTS
+#include "EngineConfig.gen.h"
+#undef FO_ENGINE_CONFIG_CONSTANTS
 
 extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;

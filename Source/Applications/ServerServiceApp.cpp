@@ -36,7 +36,7 @@
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 
 FO_USING_NAMESPACE();
 

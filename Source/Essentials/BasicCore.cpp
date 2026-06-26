@@ -32,7 +32,7 @@
 //
 
 #include "BasicCore.h"
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 
 #if FO_MAC
 #include <sys/sysctl.h>

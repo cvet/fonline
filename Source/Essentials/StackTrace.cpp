@@ -49,7 +49,7 @@ FO_DISABLE_WARNINGS_POP()
 #define HAS_NATIVE_TRACE 0
 #endif
 
-#include "WinApiUndef-Include.h"
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 

@@ -22,6 +22,7 @@ DeclareValueOptions(
 	FO_BINARY_OUTPUT_POSTFIX "Postfix appended to binary output directory names" ""
 	FO_EMBEDDED_DATA_CAPACITY "Capacity for embedded data in binaries" 200000
 	FO_INTERNAL_CONFIG_CAPACITY "Capacity for embedded internal config in binaries" 10000
+	FO_SECRET_SETTING_TOKENS "Space-separated case-insensitive substrings that mark a setting name as a credential to mask in logs" "secret token password apikey"
 	FO_EFFECT_SCRIPT_VALUES "Number of float slots in ScriptValueBuf (must be multiple of 4)" 16
 	FO_EFFECT_MAX_PASSES "Maximum number of passes per effect" 6
 	FO_MODEL_LAYERS_COUNT "Number of model rendering layers" 30
@@ -290,29 +291,22 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	endif()
 endif()
 
-# Engine settings
+# Engine feature/backend toggles. These stay -D compiler defines because they gate whole files and headers
+# and are evaluated as the first preprocessor decision — often before any engine header is included (e.g.
+# test harnesses that lead with catch_amalgamated.hpp, or headers self-guarded with #if FO_ANGELSCRIPT_SCRIPTING
+# before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
 AddCompileDefinitionsList(
-	"FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>
-	FO_GEOMETRY=$<IF:$<STREQUAL:${FO_GEOMETRY},HEXAGONAL>,1,$<IF:$<STREQUAL:${FO_GEOMETRY},SQUARE>,2,0>>
-	FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}
-	FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}
-	FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}
-	FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}
-	FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}
-	FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}
-	FO_MODEL_MAX_TEXTURES=${FO_MODEL_MAX_TEXTURES}
-	FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}
-	FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}
-	FO_NO_EXTRA_ASSERTS=0
-	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
-# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.
-AddCompileDefinitionsList(FO_NO_TEXTURE_LOOKUP=0) # Todo: FO_NO_TEXTURE_LOOKUP need option for enable
-AddCompileDefinitionsList(FO_DIRECT_SPRITES_DRAW=0) # Todo: FO_DIRECT_SPRITES_DRAW need option for enable
-AddCompileDefinitionsList(FO_RENDER_32BIT_INDEX=0) # Todo: FO_RENDER_32BIT_INDEX need option for enable
+	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
+
+# The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
+# FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits
+# them into EngineConfig.gen.h (pulled in at the top of BasicCore.h) to keep the compile command clean.
+# Per-config defines (FO_DEBUG above) also stay compiler-side.
+# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors, which would
+# make it per-config and keep it a compiler define.
 
 # Basic includes
 AddIncludeDirectories(

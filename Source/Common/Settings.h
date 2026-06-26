@@ -91,7 +91,7 @@ protected:
 #define SETTING_GROUP_END() }
 #define FIXED_SETTING(type, group, name, ...) const type name = {}
 #define VARIABLE_SETTING(type, group, name, ...) type name = {}
-#include "Settings-Include.h"
+#include "Settings.inc"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {

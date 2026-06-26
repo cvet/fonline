@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "EngineConfig.gen.h"
+
 // Operating system (passed outside)
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
 #error "Operating system not specified"

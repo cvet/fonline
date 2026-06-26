@@ -36,7 +36,7 @@
 #include "StringUtils.h"
 
 #if FO_WINDOWS
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 #include <psapi.h>
 #endif
 

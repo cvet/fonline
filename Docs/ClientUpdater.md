@@ -38,7 +38,7 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Server/UpdaterBackend.cpp`
 - `Source/Server/Server.cpp`
 - `Source/Common/Common.h`
-- `Source/Common/Settings-Include.h`
+- `Source/Common/Settings.inc`
 - `Source/Essentials/DiskFileSystem.h`
 - `Source/Essentials/DiskFileSystem.cpp`
 - `Source/Essentials/Platform.h`

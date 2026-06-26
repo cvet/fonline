@@ -40,5 +40,5 @@
 #include <WinSock2.h>
 #include <shellapi.h>
 
-#include "WinApiUndef-Include.h"
+#include "WinApiUndef.inc"
 #endif

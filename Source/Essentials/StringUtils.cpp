@@ -34,8 +34,8 @@
 #include "StringUtils.h"
 #include "GlobalData.h"
 #include "StackTrace.h"
-#include "UcsTables-Include.h"
-#include "WinApi-Include.h"
+#include "UcsTables.inc"
+#include "WinApi.inc"
 
 FO_BEGIN_NAMESPACE
 

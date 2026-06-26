@@ -41,7 +41,7 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 
 FO_BEGIN_NAMESPACE
 

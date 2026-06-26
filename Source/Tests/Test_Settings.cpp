@@ -92,6 +92,53 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
     }
 
+    SECTION("ApplyCommandLineMasksSecretValuesInLog")
+    {
+        // Capture the "Set <name> to <value>" lines emitted by the logging pass.
+        string captured;
+        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, const CatchedStackTraceData*) { captured += message; });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+
+        GlobalSettings settings {false};
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Probe.AccessToken";
+        char arg2[] = "super-secret-value";
+        char arg3[] = "--Common.GameName";
+        char arg4[] = "RedactionProbe";
+        char* argv[] = {arg0, arg1, arg2, arg3, arg4};
+
+        settings.ApplyCommandLine(5, argv, true);
+
+        // A name matching a secret token (FO_SECRET_SETTING_TOKENS, default includes "token") is masked;
+        // the credential value itself must never reach the log.
+        CHECK(captured.find("Set Probe.AccessToken to ***") != string::npos);
+        CHECK(captured.find("super-secret-value") == string::npos);
+
+        // A non-secret name is logged verbatim, and both values are still applied.
+        CHECK(captured.find("Set Common.GameName to RedactionProbe") != string::npos);
+        CHECK(settings.GetCustomSetting("Probe.AccessToken") == "super-secret-value");
+        CHECK(settings.GameName == "RedactionProbe");
+    }
+
+    SECTION("ApplyCommandLineEarlyPassDoesNotLog")
+    {
+        string captured;
+        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, const CatchedStackTraceData*) { captured += message; });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+
+        GlobalSettings settings {false};
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Common.GameName";
+        char arg2[] = "QuietProbe";
+        char* argv[] = {arg0, arg1, arg2};
+
+        // The early pre-cache pass (log_changes = false) applies values but logs nothing.
+        settings.ApplyCommandLine(3, argv, false);
+
+        CHECK(captured.find("Set Common.GameName") == string::npos);
+        CHECK(settings.GameName == "QuietProbe");
+    }
+
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         const string temp_dir = MakeTempSettingsDir("settings_config");

@@ -33,7 +33,7 @@
 
 #include "BaseLogging.h"
 #include "GlobalData.h"
-#include "WinApi-Include.h"
+#include "WinApi.inc"
 
 FO_BEGIN_NAMESPACE
 
