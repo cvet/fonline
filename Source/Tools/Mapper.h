@@ -69,8 +69,8 @@ class MapperEngine final : public ClientEngine
 public:
     struct SubTab
     {
-        vector<raw_ptr<const ProtoItem>> ItemProtos {};
-        vector<raw_ptr<const ProtoCritter>> CritterProtos {};
+        vector<ptr<const ProtoItem>> ItemProtos {};
+        vector<ptr<const ProtoCritter>> CritterProtos {};
         int32_t Index {};
         int32_t Scroll {};
     };
@@ -84,25 +84,26 @@ public:
         bool IsItem {};
         CritterItemSlot Slot {CritterItemSlot::Inventory};
         any_t StackId {};
-        raw_ptr<const ProtoEntity> Proto {};
-        unique_ptr<Properties> Props {};
+        nptr<const ProtoEntity> Proto {};
+        optional<Properties> Props {};
         vector<unique_ptr<EntityBuf>> Children {};
         EntityBuf() = default;
         EntityBuf(const EntityBuf& other);
         auto operator=(const EntityBuf& other) -> EntityBuf&;
         EntityBuf(EntityBuf&&) noexcept = default;
         auto operator=(EntityBuf&&) noexcept -> EntityBuf& = default;
+        [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? nptr<const Properties> {&*Props} : nullptr; }
     };
 
     struct UndoOp
     {
         string Label {};
         bool IsSnapshot {};
-        std::function<bool(MapperEngine&, raw_ptr<MapView>&)> Undo {};
-        std::function<bool(MapperEngine&, raw_ptr<MapView>&)> Redo {};
+        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
+        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
 
         UndoOp() = default;
-        UndoOp(string label, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> undo, std::function<bool(MapperEngine&, raw_ptr<MapView>&)> redo, bool is_snapshot = false);
+        UndoOp(string label, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
     };
 
     struct UndoContext
@@ -174,7 +175,7 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    explicit MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window);
+    explicit MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window);
 
     MapperEngine(const MapperEngine&) = delete;
     MapperEngine(MapperEngine&&) noexcept = delete;
@@ -185,7 +186,7 @@ public:
     void Shutdown() override;
 
     void InitIface();
-    auto GetPreviewSprite(hstring fname) -> Sprite*;
+    auto GetPreviewSprite(hstring fname) -> nptr<Sprite>;
     void SetInputLocked(bool locked) noexcept;
     void MapperMainLoop();
     auto BeginMapperFrameInput() -> bool;
@@ -237,49 +238,49 @@ public:
     auto GetMapperTrackOverlayKinds() const noexcept -> const vector<int32_t>& { return MapperTrackOverlayKinds; }
     void MarkBlockedHexes();
 
-    auto GetActiveSubTab() -> SubTab*;
-    auto GetActiveSubTab() const -> const SubTab*;
+    auto GetActiveSubTab() -> nptr<SubTab>;
+    auto GetActiveSubTab() const -> nptr<const SubTab>;
     auto GetActiveProtoIndex() const -> int32_t;
     void SetActiveProtoIndex(int32_t index);
     void RefreshActiveProtoLists();
-    auto IsItemMode() const -> bool { return ActiveItemProtos != nullptr && ActiveProtoScroll != nullptr; }
-    auto IsCritMode() const -> bool { return ActiveCritterProtos != nullptr && ActiveProtoScroll != nullptr; }
+    auto IsItemMode() const -> bool { return ActiveItemProtos && ActiveProtoScroll; }
+    auto IsCritMode() const -> bool { return ActiveCritterProtos && ActiveProtoScroll; }
 
-    void MoveEntity(ClientEntity* entity, mpos hex);
-    void DeleteEntity(ClientEntity* entity);
-    void SelectAdd(ClientEntity* entity, optional<mpos> hex = std::nullopt, bool skip_refresh = false);
+    void MoveEntity(ptr<ClientEntity> entity, mpos hex);
+    void DeleteEntity(ptr<ClientEntity> entity);
+    void SelectAdd(ptr<ClientEntity> entity, optional<mpos> hex = std::nullopt, bool skip_refresh = false);
     void SelectAll();
-    void SelectRemove(ClientEntity* entity, bool skip_refresh = false);
+    void SelectRemove(ptr<ClientEntity> entity, bool skip_refresh = false);
     void SelectClear();
     auto SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy, int32_t& offs_x, int32_t& offs_y) -> bool;
     void SelectDelete();
 
-    auto CreateCritter(hstring pid, mpos hex) -> CritterView*;
-    auto CreateItem(hstring pid, mpos hex, Entity* owner) -> ItemView*;
-    auto CloneEntity(Entity* entity) -> Entity*;
-    void CloneInnerItems(ItemView* to_item, const ItemView* from_item);
+    auto CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>;
+    auto CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<ItemView>;
+    auto CloneEntity(ptr<Entity> entity) -> nptr<Entity>;
+    void CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item);
 
-    auto MergeItemsToMultihexMeshes(MapView* map) -> size_t;
-    auto CoalesceAnyUniqueItems(MapView* map, bool skip_selected) -> size_t;
-    auto CoalesceItemMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> size_t;
-    auto TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> ItemHexView*;
-    void MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item);
-    void FindMultihexMeshForItemAroundHex(MapView* map, ItemHexView* item, mpos hex, bool merge_to_it, unordered_set<ItemHexView*>& result) const;
-    auto CompareMultihexItemForMerge(const ItemHexView* source_item, const ItemHexView* target_item, bool allow_clean_merge) const -> bool;
-    auto BreakItemsMultihexMeshes(MapView* map) -> size_t;
-    auto TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*;
+    auto MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t;
+    auto CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) -> size_t;
+    auto CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> size_t;
+    auto TryMergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, bool skip_selected) -> nptr<ItemHexView>;
+    void MergeItemToMultihexMesh(ptr<MapView> map, ptr<ItemHexView> source_item, ptr<ItemHexView> target_item);
+    void FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHexView> item, mpos hex, bool merge_to_it, unordered_set<ptr<ItemHexView>>& result) const;
+    auto CompareMultihexItemForMerge(ptr<const ItemHexView> source_item, ptr<const ItemHexView> target_item, bool allow_clean_merge) const -> bool;
+    auto BreakItemsMultihexMeshes(ptr<MapView> map) -> size_t;
+    auto TryBreakItemFromMultihexMesh(ptr<MapView> map, ptr<ItemHexView> item, mpos hex) -> nptr<ItemHexView>;
 
     void BufferCopy();
     void BufferCut();
     void BufferPaste();
 
     void DrawInspectorImGui();
-    auto ApplyEntityPropertyText(Entity* entity, const Property* prop, string_view value_text) -> bool;
-    void ApplyInspectorPropertyEdit(Entity* entity);
+    auto ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Property> prop, string_view value_text) -> bool;
+    void ApplyInspectorPropertyEdit(ptr<Entity> entity);
     void ResetInspectorPropertyEditState();
     auto CancelInspectorPropertyEdit() -> bool;
     void SelectInspectorPropertyLine(int32_t line);
-    auto GetInspectorEntity() -> ClientEntity*;
+    auto GetInspectorEntity() -> nptr<ClientEntity>;
 
     void DrawConsoleImGui();
     void ConsoleSubmitCommand();
@@ -294,33 +295,33 @@ public:
     auto ExecuteRedo() -> bool;
     auto JumpHistoryToIndex(int32_t target_index) -> bool;
     void ParseCommand(string_view command);
-    auto LoadMap(string_view map_name) -> MapView*;
-    auto LoadMapFromText(string_view map_name, const string& map_text) -> MapView*;
-    void ShowMap(MapView* map);
-    auto IsMapDirty(const MapView* map) const -> bool;
-    void SetMapDirty(MapView* map, bool dirty = true);
+    auto LoadMap(string_view map_name) -> nptr<MapView>;
+    auto LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>;
+    void ShowMap(ptr<MapView> map);
+    auto IsMapDirty(nptr<MapView> nullable_map) const -> bool;
+    void SetMapDirty(nptr<MapView> nullable_map, bool dirty = true);
     void SaveCurrentMap();
     void ResetCurrentMapChanges();
-    void SaveMap(MapView* map, string_view custom_name);
-    void SaveMapToDir(MapView* map, string_view sub_dir, string_view name);
-    void UnloadMap(MapView* map, bool clear_undo = true);
-    void ResizeMap(MapView* map, int32_t width, int32_t height);
+    void SaveMap(ptr<MapView> map, string_view custom_name);
+    void SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_view name);
+    void UnloadMap(ptr<MapView> map, bool clear_undo = true);
+    void ResizeMap(ptr<MapView> map, int32_t width, int32_t height);
 
     void AddMess(string_view message_text);
     void MessBoxDraw();
 
-    auto GetEntityInnerItems(ClientEntity* entity) const -> vector<refcount_ptr<ItemView>>;
-    void CaptureEntityBuf(EntityBuf& entity_buf, ClientEntity* entity) const;
-    auto RestoreEntityBuf(const EntityBuf& entity_buf, Entity* owner = nullptr) -> ClientEntity*;
-    void RestoreEntityBufChildren(const EntityBuf& entity_buf, ItemView* item);
-    auto FindEntityById(raw_ptr<MapView> map, ident_t id) -> ClientEntity*;
-    auto GetUndoContext(MapView* map, bool create) -> UndoContext*;
-    auto GetUndoContext(const MapView* map, bool create) const -> const UndoContext*;
-    void ClearUndoContext(MapView* map);
-    void RemapUndoContext(MapView* old_map, MapView* new_map);
-    void PushUndoOp(MapView* map, UndoOp op);
-    auto CaptureMapSnapshot(MapView* map) const -> string;
-    auto RestoreMapSnapshot(raw_ptr<MapView>& map, string_view map_name, const string& map_text) -> bool;
+    auto GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector<refcount_ptr<ItemView>>;
+    void CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> entity) const;
+    auto RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> owner = nullptr) -> nptr<ClientEntity>;
+    void RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<ItemView> item);
+    auto FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEntity>;
+    auto GetUndoContext(nptr<MapView> nullable_map, bool create) -> nptr<UndoContext>;
+    auto GetUndoContext(nptr<const MapView> nullable_map, bool create) const -> nptr<const UndoContext>;
+    void ClearUndoContext(nptr<MapView> nullable_map);
+    void RemapUndoContext(nptr<MapView> nullable_old_map, nptr<MapView> nullable_new_map);
+    void PushUndoOp(nptr<MapView> map, UndoOp op);
+    auto CaptureMapSnapshot(nptr<const MapView> nullable_map) const -> string;
+    auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
@@ -333,9 +334,9 @@ public:
 
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};
-    unordered_set<raw_ptr<MapView>> DirtyMaps {};
-    unordered_map<raw_ptr<MapView>, UndoContext> UndoContexts {};
-    vector<raw_ptr<const Property>> ShowProps {};
+    unordered_set<ptr<MapView>> DirtyMaps {};
+    unordered_map<ptr<MapView>, UndoContext> UndoContexts {};
+    vector<nptr<const Property>> ShowProps {};
     bool PressedKeys[0x100] {};
     unordered_map<hstring, shared_ptr<Sprite>> PreviewSprites {};
     int32_t CurMode {};
@@ -370,12 +371,12 @@ public:
     irect32 MainPanelWindowRect {};
     irect32 MainPanelContentRect {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
-    raw_ptr<SubTab> ActiveSubTabs[TAB_COUNT] {};
+    nptr<SubTab> ActiveSubTabs[TAB_COUNT] {};
     string PanelModeNames[INT_MODE_COUNT] {};
-    raw_ptr<vector<raw_ptr<const ProtoItem>>> ActiveItemProtos {};
-    raw_ptr<vector<raw_ptr<const ProtoCritter>>> ActiveCritterProtos {};
+    nptr<vector<ptr<const ProtoItem>>> ActiveItemProtos {};
+    nptr<vector<ptr<const ProtoCritter>>> ActiveCritterProtos {};
     mdir CritterDir {};
-    raw_ptr<int32_t> ActiveProtoScroll {};
+    nptr<int32_t> ActiveProtoScroll {};
     int32_t ProtoWidth {};
     int32_t ProtosOnScreen {};
     array<char, 128> WorkspaceFilterBuf {};
@@ -390,7 +391,7 @@ public:
     array<char, 256> ScriptCallArgsBuf {};
     array<char, 128> MapBrowserFilterBuf {};
     int32_t TabIndex[INT_MODE_COUNT] {};
-    refcount_ptr<ItemView> InContItem {};
+    refcount_nptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};
     int32_t TileLayer {};
     bool SelectItemsEnabled {};
@@ -401,7 +402,7 @@ public:
     bool SelectRoofTilesEnabled {};
     ipos32 BufferRawHex {};
     vector<refcount_ptr<ClientEntity>> SelectedEntities {};
-    unordered_set<raw_ptr<ClientEntity>> SelectedEntitiesSet {};
+    unordered_set<ptr<ClientEntity>> SelectedEntitiesSet {};
     vector<EntityBuf> EntitiesBuffer {};
     ipos32 InspectorPos {24, 24};
     int32_t InspectorSelectedLine {};
@@ -421,7 +422,7 @@ public:
     float InspectorLastEditCellMaxY {};
     bool InspectorVisible {};
     bool InspectorApplyToAll {};
-    raw_ptr<ClientEntity> InspectorEntity {};
+    nptr<ClientEntity> InspectorEntity {};
     float SelectionSmallOffsetX {};
     float SelectionSmallOffsetY {};
     bool ConsoleEdit {};
@@ -433,7 +434,7 @@ public:
     vector<MessBoxMessage> MessBox {};
     string MessBoxCurText {};
     int32_t MessBoxScroll {};
-    raw_ptr<MapView> LastHistoryMap {};
+    nptr<MapView> LastHistoryMap {};
     int32_t LastHistoryUndoCount {-1};
     bool UndoRedoInProgress {};
     size_t MaxUndoDepth {100};

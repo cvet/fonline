@@ -40,12 +40,46 @@ constexpr uint16_t UDP_PACKET_VERSION = 1;
 constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
 
 template<typename T>
+static auto ScalarBytes(const T& value) noexcept -> ptr<const uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<const T> value_ptr = &value;
+    return value_ptr.reinterpret_as<const uint8_t>();
+}
+
+template<typename T>
+static auto MutableScalarBytes(T& value) noexcept -> ptr<uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<T> value_ptr = &value;
+    return value_ptr.reinterpret_as<uint8_t>();
+}
+
+static auto UdpDataAt(const_span<uint8_t> data, size_t pos) noexcept -> ptr<const uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
+
+    ptr<const uint8_t> data_ptr = data.data();
+    ptr<const uint8_t> data_pos = data_ptr.get() + pos;
+    return data_pos;
+}
+
+template<typename T>
 static void AppendScalar(vector<uint8_t>& data, T value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* value_ptr = reinterpret_cast<const uint8_t*>(&value);
-    data.insert(data.end(), value_ptr, value_ptr + sizeof(T));
+    static_assert(std::is_trivially_copyable_v<T>);
+
+    array<uint8_t, sizeof(T)> value_bytes {};
+    ptr<uint8_t> target = value_bytes.data();
+    auto source = ScalarBytes(value);
+    MemCopy(target.get(), source.get(), sizeof(T));
+    data.insert(data.end(), value_bytes.begin(), value_bytes.end());
 }
 
 template<typename T>
@@ -53,11 +87,15 @@ static auto ReadScalar(const_span<uint8_t> data, size_t& pos, T& value) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    static_assert(std::is_trivially_copyable_v<T>);
+
     if (pos + sizeof(T) > data.size()) {
         return false;
     }
 
-    std::memcpy(&value, data.data() + pos, sizeof(T));
+    auto target = MutableScalarBytes(value);
+    auto source = UdpDataAt(data, pos);
+    MemCopy(target.get(), source.get(), sizeof(T));
     pos += sizeof(T);
     return true;
 }
@@ -430,7 +468,15 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     }
 
     packet.Type = static_cast<UdpPacketType>(type);
-    packet.Payload = {data.data() + pos, payload_size};
+
+    if (payload_size == 0) {
+        packet.Payload = {};
+    }
+    else {
+        auto payload_begin = UdpDataAt(data, pos);
+        packet.Payload = {payload_begin.get(), payload_size};
+    }
+
     return true;
 }
 

@@ -67,7 +67,7 @@ This backlog tracks the planned engine documentation set. It exists so documenta
 - `verified` — [ScriptMethodsMap.md](ScriptMethodsMap.md)
   - Verified against all 18 current `Source/Scripting/*ScriptMethods.cpp` files and 874 current `///@ ExportMethod` declarations; count refreshed on 2026-05-21 after default-argument overload collapse.
 - `verified` — [Nullability.md](Nullability.md)
-  - Verified against AngelScript nullable suffix parsing, `FO_NULLABLE`, codegen runtime checks, nullable analyzer tools, parent VS Code/CI task wiring, and nullable/script tests on 2026-05-18.
+  - Verified against AngelScript nullable suffix parsing, the `ptr<T>`·`nptr<T>` native pointer vocabulary, codegen runtime checks, nullable analyzer tools, parent VS Code/CI task wiring, and nullable/script tests on 2026-05-18.
 - `verified` — [Tools.md](Tools.md)
   - Verified against current `Source/Tools/*.h`, `Source/Tools/*.cpp`, tool application entry points, baker tests, mapper/editor/asset/particle owners, and tool/build routing docs on 2026-05-18.
 - `verified` — [MapperTools.md](MapperTools.md)

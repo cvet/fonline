@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, istringstream* sstr) -> bool
+static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, nptr<istringstream> sstr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -48,7 +48,7 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
 
     auto last = line.find('}', first);
 
-    if (last == string::npos && allow_multiline && sstr != nullptr) {
+    if (last == string::npos && allow_multiline && sstr) {
         string additional_line;
 
         while (last == string::npos && std::getline(*sstr, additional_line, '\n')) {
@@ -102,20 +102,20 @@ auto TextPackKey::Parse(HashResolver& hash_resolver, string_view str, TextPackKe
     return true;
 }
 
-TextPack::TextPack(HashResolver& hash_resolver) :
-    _hashResolver {&hash_resolver}
+TextPack::TextPack(ptr<HashResolver> hash_resolver) :
+    _hashResolver {hash_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TextPack::GetText(TextPackKey key) const -> const string&
+auto TextPack::GetText(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
     return GetText(key, 0);
 }
 
-auto TextPack::GetText(TextPackKey key, size_t skip) const -> const string&
+auto TextPack::GetText(TextPackKey key, size_t skip) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -136,7 +136,7 @@ auto TextPack::IsTextPresent(TextPackKey key) const -> bool
     return GetTextCount(key) != 0;
 }
 
-auto TextPack::GetStr(TextPackKey key) const -> const string&
+auto TextPack::GetStr(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -163,7 +163,7 @@ auto TextPack::GetStr(TextPackKey key) const -> const string&
     return it->second;
 }
 
-auto TextPack::GetStr(TextPackKey key, size_t skip) const -> const string&
+auto TextPack::GetStr(TextPackKey key, size_t skip) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -226,7 +226,7 @@ auto TextPack::GetBinaryData() const -> vector<uint8_t>
         WriteKeyPart(writer, key.Key2);
         WriteKeyPart(writer, key.Key3);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-        writer.WritePtr(str.data(), str.length());
+        writer.WriteStringBytes(str);
     }
 
     return data;
@@ -259,7 +259,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
         if (str_len != 0) {
             str.resize(str_len);
-            reader.ReadPtr(str.data(), str_len);
+            reader.ReadStringBytes(str);
         }
         else {
             str.resize(0);
@@ -491,11 +491,11 @@ void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& str = part.as_str();
+    const string_view str = part.as_str();
     writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
-        writer.WritePtr(str.data(), str.length());
+        writer.WriteStringBytes(str);
     }
 }
 
@@ -511,7 +511,7 @@ auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 
     string str;
     str.resize(str_len);
-    reader.ReadPtr(str.data(), str_len);
+    reader.ReadStringBytes(str);
     return MakeKeyPart(str);
 }
 

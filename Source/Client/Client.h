@@ -66,12 +66,17 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 
+struct VideoPlaybackResources
+{
+    VideoClip Clip;
+    unique_ptr<RenderTexture> Tex;
+};
+
 ///@ ExportRefType Client RefCounted Export = Stopped
 class VideoPlayback : public RefCounted<VideoPlayback>
 {
 public:
-    unique_ptr<VideoClip> Clip {};
-    unique_ptr<RenderTexture> Tex {};
+    optional<VideoPlaybackResources> PlaybackResources {};
     bool Stopped {};
 };
 
@@ -82,15 +87,15 @@ class ClientEngine : public BaseEngine, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window); // For client
-    explicit ClientEngine(GlobalSettings& settings, FileSystem&& resources, IAppWindow& window, const MeatdataRegistrator& mapper_registrator); // For mapper
+    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
+    explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator); // For mapper
     ClientEngine(const ClientEngine&) = delete;
     ClientEngine(ClientEngine&&) noexcept = delete;
     auto operator=(const ClientEngine&) = delete;
     auto operator=(ClientEngine&&) noexcept = delete;
     ~ClientEngine() override;
 
-    [[nodiscard]] auto GetEngine() -> ClientEngine* { return this; }
+    [[nodiscard]] auto GetEngine() -> ptr<ClientEngine> { return this; }
 
     [[nodiscard]] auto ResolveCritterAnimationFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, int32_t& pass, uint32_t& flags, int32_t& ox, int32_t& oy, string& anim_name) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring base_model_name, CritterStateAnim base_state_anim, CritterActionAnim base_action_anim, hstring& model_name, CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool override;
@@ -98,19 +103,44 @@ public:
 
     [[nodiscard]] auto IsConnecting() const noexcept -> bool;
     [[nodiscard]] auto IsConnected() const noexcept -> bool;
-    [[nodiscard]] auto GetConnection() noexcept -> ClientConnection& { return _conn; }
-    [[nodiscard]] auto GetChosen() noexcept -> CritterView*;
-    [[nodiscard]] auto GetMapChosen() noexcept -> CritterHexView*;
-    [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> CritterView*;
-    [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
-    [[nodiscard]] auto GetGlobalMapCritters() noexcept -> vector<refcount_ptr<CritterView>>& { return _globalMapCritters; }
+    [[nodiscard]] auto GetConnection() noexcept -> ptr<ClientConnection> { return &_conn; }
+    [[nodiscard]] auto GetChosen() noexcept -> nptr<CritterView>;
+    [[nodiscard]] auto GetMapChosen() noexcept -> nptr<CritterHexView>;
+    [[nodiscard]] auto GetGlobalMapCritter(ident_t cr_id) -> nptr<CritterView>;
+    [[nodiscard]] auto GetGlobalMapCritters() const noexcept -> const_span<refcount_ptr<CritterView>> { return _globalMapCritters; }
+    [[nodiscard]] auto GetGlobalMapCritters() noexcept -> span<refcount_ptr<CritterView>> { return _globalMapCritters; }
     [[nodiscard]] auto GetCurLang() const noexcept -> const TextPack& { return _curLang; }
     [[nodiscard]] auto GetLangPack(string_view lang_name) -> const TextPack&;
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
-    [[nodiscard]] auto GetCurPlayer() noexcept -> PlayerView* { return _curPlayer.get(); }
-    [[nodiscard]] auto GetCurLocation() noexcept -> LocationView* { return _curLocation.get(); }
-    [[nodiscard]] auto GetCurMap() noexcept -> MapView* { return _curMap.get(); }
+    [[nodiscard]] auto GetCurPlayer() noexcept -> nptr<PlayerView> { return _curPlayer.as_nptr(); }
+    [[nodiscard]] auto GetCurPlayerPtr() noexcept -> ptr<PlayerView>
+    {
+        FO_STRONG_ASSERT(_curPlayer, "No current player");
 
+        return _curPlayer.as_ptr();
+    }
+    [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation.as_nptr(); }
+    [[nodiscard]] auto GetCurLocationPtr() noexcept -> ptr<LocationView>
+    {
+        FO_STRONG_ASSERT(_curLocation, "No current location");
+
+        return _curLocation.as_ptr();
+    }
+    [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap.as_nptr(); }
+    [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap.as_nptr(); }
+
+    [[nodiscard]] auto GetCurMapPtr() noexcept -> ptr<MapView>
+    {
+        FO_STRONG_ASSERT(_curMap, "No current map");
+
+        return _curMap.as_ptr();
+    }
+    [[nodiscard]] auto GetCurMapPtr() const noexcept -> ptr<const MapView>
+    {
+        FO_STRONG_ASSERT(_curMap, "No current map");
+
+        return _curMap.as_ptr();
+    }
     void Shutdown() override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
@@ -123,22 +153,22 @@ public:
     void SetEffectScriptValue(EffectType effectType, int64_t effectSubtype, int32_t valueIndex, float32_t value);
     void SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset = 0, int32_t valuesCount = -1);
     void ClearEffectScriptValues(EffectType effectType, int64_t effectSubtype);
-    auto GetOffscreenEffect(int32_t effectSubtype) -> RenderEffect*;
+    auto GetOffscreenEffect(int32_t effectSubtype) -> ptr<RenderEffect>;
 
     auto AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t;
     void AnimFree(uint32_t anim_id);
-    auto AnimGetSpr(uint32_t anim_id) -> Sprite*;
+    auto AnimGetSpr(uint32_t anim_id) -> nptr<Sprite>;
 
     void Connect();
     void Disconnect();
 
-    void CritterMoveTo(CritterHexView* cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
-    void CritterLookTo(CritterHexView* cr, mdir dir);
+    void CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
+    void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
-    auto GetEntity(ident_t id) -> ClientEntity*;
-    void RegisterEntity(ClientEntity* entity);
-    void UnregisterEntity(ClientEntity* entity);
+    auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    void RegisterEntity(ptr<ClientEntity> entity);
+    void UnregisterEntity(ptr<ClientEntity> entity);
 
     void DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h);
 
@@ -276,11 +306,11 @@ public:
 
     bool CanDrawInScripts {};
 
-    vector<raw_ptr<RenderEffect>> OffscreenEffects {};
-    vector<raw_ptr<RenderTarget>> OffscreenSurfaces {};
-    vector<raw_ptr<RenderTarget>> ActiveOffscreenSurfaces {};
-    vector<raw_ptr<RenderTarget>> PreDirtyOffscreenSurfaces {};
-    vector<raw_ptr<RenderTarget>> DirtyOffscreenSurfaces {};
+    vector<nptr<RenderEffect>> OffscreenEffects {};
+    vector<ptr<RenderTarget>> OffscreenSurfaces {};
+    vector<ptr<RenderTarget>> ActiveOffscreenSurfaces {};
+    vector<ptr<RenderTarget>> PreDirtyOffscreenSurfaces {};
+    vector<ptr<RenderTarget>> DirtyOffscreenSurfaces {};
 
 #if FO_ENABLE_3D
     vector<shared_ptr<ModelSprite>> DrawCritterModel {};
@@ -304,16 +334,16 @@ protected:
 
     void UnloadMap();
     void LmapPrepareMap();
-    auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
-    auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> RenderEffect*;
+    auto ResolveEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> nptr<RenderEffect>;
+    auto ResolveRequiredEffectScriptValueTarget(EffectType effectType, int64_t effectSubtype) -> ptr<RenderEffect>;
 
-    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
+    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
     void HandleUnresolvedHash(hstring::hash_t hash);
 
-    void Net_SendProperty(NetProperty type, const Property* prop, const Entity* entity);
-    void Net_SendDir(CritterHexView* cr);
-    void Net_SendMove(CritterHexView* cr);
-    void Net_SendStopMove(CritterHexView* cr);
+    void Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
+    void Net_SendDir(ptr<CritterHexView> cr);
+    void Net_SendMove(ptr<CritterHexView> cr);
+    void Net_SendStopMove(ptr<CritterHexView> cr);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();
@@ -346,48 +376,48 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void ReceiveCustomEntities(Entity* holder);
-    auto CreateCustomEntityView(Entity* holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> CustomEntityView*;
-    void ReceiveCritterMoving(CritterHexView* cr);
+    void ReceiveCustomEntities(nptr<Entity> nullable_holder);
+    auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
+    void ReceiveCritterMoving(nptr<CritterHexView> nullable_cr);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
 
-    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
-    void OnSetCritterModelName(Entity* entity, const Property* prop);
-    void OnSetCritterHideSprite(Entity* entity, const Property* prop);
-    void OnSetCritterElevation(Entity* entity, const Property* prop);
-    void OnSetCritterLight(Entity* entity, const Property* prop);
-    void OnSetItemFlags(Entity* entity, const Property* prop);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop);
-    void OnSetItemPicMap(Entity* entity, const Property* prop);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop);
-    void OnSetItemHideSprite(Entity* entity, const Property* prop);
-    void OnSetItemElevation(Entity* entity, const Property* prop);
+    void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterElevation(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemPicMap(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop);
 
     ClientConnection _conn;
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
-    TextPack _curLang {Hashes};
+    TextPack _curLang {ptr<HashResolver> {&Hashes}};
     vector<pair<string, TextPack>> _langPackCache {};
 
-    unordered_map<ident_t, raw_ptr<ClientEntity>> _allEntities {};
+    unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
-    refcount_ptr<PlayerView> _curPlayer {};
-    refcount_ptr<LocationView> _curLocation {};
-    refcount_ptr<MapView> _curMap {};
-    refcount_ptr<CritterView> _chosen {};
+    refcount_nptr<PlayerView> _curPlayer {};
+    refcount_nptr<LocationView> _curLocation {};
+    refcount_nptr<MapView> _curMap {};
+    refcount_nptr<CritterView> _chosen {};
 
     hstring _curMapLocPid {};
     int32_t _curMapIndexInLoc {};
     bool _mapLoaded {};
 
-    nullable_raw_ptr<const Entity> _sendIgnoreEntity {};
-    nullable_raw_ptr<const Property> _sendIgnoreProperty {};
+    nptr<const Entity> _sendIgnoreEntity {};
+    nptr<const Property> _sendIgnoreProperty {};
 
     vector<vector<uint8_t>> _globalsPropertiesData {};
     vector<vector<uint8_t>> _playerPropertiesData {};
@@ -406,8 +436,13 @@ protected:
     bool _lmapSwitchHi {};
     nanotime _lmapPrepareNextTime {};
 
-    unique_ptr<VideoClip> _video {};
-    unique_ptr<RenderTexture> _videoTex {};
+    struct ActiveVideoPlayback
+    {
+        VideoClip Clip;
+        unique_ptr<RenderTexture> Tex;
+    };
+
+    optional<ActiveVideoPlayback> _video {};
     bool _videoCanInterrupt {};
     vector<tuple<string, bool>> _videoQueue {};
 

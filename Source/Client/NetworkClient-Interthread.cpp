@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection_Interthread(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection_Interthread(const NetworkClientConnection_Interthread&) = delete;
     NetworkClientConnection_Interthread(NetworkClientConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_Interthread&) = delete;
@@ -57,14 +57,14 @@ private:
     std::atomic_bool _interthreadRequestDisconnect {};
 };
 
-auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
 }
 
-NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientNetworkSettings& settings) :
+NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
     FO_STACK_TRACE_ENTRY();

@@ -49,7 +49,7 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEntity Item Item ItemView HasProtos HasStatics HasAbstract HasTimeEvents
 
 #define FO_ENTITY_PROPERTY(prop_type, prop) \
-    inline auto GetProperty##prop() const noexcept -> const Property* \
+    inline auto GetProperty##prop() const noexcept -> ptr<const Property> \
     { \
         return _propsRef->GetRegistrator()->GetPropertyByIndexUnsafe(prop##_RegIndex); \
     } \
@@ -89,7 +89,7 @@ public:
     explicit EntityProperties(Properties& props) noexcept;
 
 protected:
-    raw_ptr<Properties> _propsRef;
+    ptr<Properties> _propsRef;
 };
 
 class TimeEventContext;
@@ -122,7 +122,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    unique_ptr<PropertyRegistrator> PropRegistrator {};
+    unique_nptr<PropertyRegistrator> PropRegistrator {};
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
@@ -133,6 +133,8 @@ class Entity
     friend class EntityEvent;
 
 public:
+    using InnerEntityMap = map<hstring, vector<refcount_ptr<Entity>>>;
+
     ///@ ExportEnum
     enum class EventResult : int32_t
     {
@@ -173,6 +175,8 @@ public:
         vector<any_t> Data {};
     };
 
+    using TimeEventList = vector<shared_ptr<TimeEventData>>;
+
     Entity() = delete;
     Entity(const Entity&) = delete;
     Entity(Entity&&) noexcept = delete;
@@ -185,29 +189,38 @@ public:
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
     [[nodiscard]] auto GetProperties() const noexcept -> const Properties& { return _props; }
-    [[nodiscard]] auto GetPropertiesForEdit() noexcept -> Properties& { return _props; }
+    [[nodiscard]] auto GetPropertiesForEdit() noexcept -> ptr<Properties> { return &_props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
     [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
-    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int32_t;
+    [[nodiscard]] auto GetValueAsInt(ptr<const Property> prop) const -> int32_t;
     [[nodiscard]] auto GetValueAsInt(int32_t prop_index) const -> int32_t;
-    [[nodiscard]] auto GetValueAsAny(const Property* prop) const -> any_t;
+    [[nodiscard]] auto GetValueAsAny(ptr<const Property> prop) const -> any_t;
     [[nodiscard]] auto GetValueAsAny(int32_t prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
     [[nodiscard]] auto GetInnerEntitiesCount() const noexcept -> size_t;
-    [[nodiscard]] auto GetInnerEntities() const noexcept -> const auto& { return *_innerEntities; }
-    [[nodiscard]] auto GetInnerEntities() noexcept -> auto& { return *_innerEntities; }
-    [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*;
-    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*;
+    [[nodiscard]] auto GetInnerEntities() const noexcept -> nptr<const InnerEntityMap> { return _innerEntities ? nptr<const InnerEntityMap> {&*_innerEntities} : nullptr; }
+    [[nodiscard]] auto GetInnerEntities() noexcept -> nptr<InnerEntityMap> { return _innerEntities ? nptr<InnerEntityMap> {&*_innerEntities} : nullptr; }
+    [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>;
+    [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
-    [[nodiscard]] auto GetRawTimeEvents() noexcept -> auto& { return _timeEvents; }
+    [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? nptr<const TimeEventList> {&*_timeEvents} : nullptr; }
+    [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? nptr<TimeEventList> {&*_timeEvents} : nullptr; }
+    [[nodiscard]] auto EnsureTimeEvents() -> ptr<TimeEventList>
+    {
+        if (!_timeEvents) {
+            _timeEvents.emplace();
+        }
+
+        return ptr<TimeEventList> {&*_timeEvents};
+    }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
-    void StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const;
+    [[nodiscard]] auto StoreData(bool with_protected) const -> Properties::StoredData;
     void RestoreData(const vector<vector<uint8_t>>& props_data);
-    void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
-    void SetValueAsInt(const Property* prop, int32_t value);
+    void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
+    void SetValueAsInt(ptr<const Property> prop, int32_t value);
     void SetValueAsInt(int32_t prop_index, int32_t value);
-    void SetValueAsAny(const Property* prop, const any_t& value);
+    void SetValueAsAny(ptr<const Property> prop, const any_t& value);
     void SetValueAsAny(int32_t prop_index, const any_t& value);
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept;
@@ -215,8 +228,8 @@ public:
     void UnsubscribeAllEvents() noexcept;
     void ClearAllTimeEvents() noexcept;
     auto FireEvent(string_view event_name, FuncCallData& call) noexcept -> EventResult;
-    void AddInnerEntity(hstring entry, Entity* entity);
-    void RemoveInnerEntity(hstring entry, Entity* entity);
+    void AddInnerEntity(hstring entry, ptr<Entity> entity);
+    void RemoveInnerEntity(hstring entry, ptr<Entity> entity);
     void ClearInnerEntities();
 
     void AddRef() const noexcept;
@@ -238,10 +251,10 @@ public:
     void MarkAsDestroyed() noexcept;
 
 protected:
-    Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept;
+    Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept;
     virtual ~Entity();
 
-    auto GetInitRef() noexcept -> Properties& { return _props; }
+    auto GetInitRef() noexcept -> ptr<Properties> { return &_props; }
     auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     bool _nonConstHelper {};
@@ -250,14 +263,15 @@ protected:
     virtual auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 
 private:
-    auto GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&;
-    void SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback);
-    void UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept;
+    auto FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>;
+    auto EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>;
+    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback);
+    void UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept;
 
     Properties _props;
-    unique_ptr<map<string, vector<EventCallbackData>>> _events {};
-    unique_ptr<vector<shared_ptr<TimeEventData>>> _timeEvents {};
-    unique_ptr<map<hstring, vector<refcount_ptr<Entity>>>> _innerEntities {};
+    optional<map<string, vector<EventCallbackData>>> _events {};
+    optional<TimeEventList> _timeEvents {};
+    optional<InnerEntityMap> _innerEntities {};
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable std::atomic_int _refCounter {1};
@@ -277,20 +291,20 @@ public:
     void UnsubscribeAll() noexcept;
 
 protected:
-    EntityEvent(Entity* entity, const char* callback_name) noexcept;
+    EntityEvent(ptr<Entity> entity, string_view callback_name) noexcept;
     auto FireEvent(FuncCallData& call) noexcept -> Entity::EventResult;
     auto CheckCallbacks() -> bool;
 
-    raw_ptr<Entity> _entity;
+    ptr<Entity> _entity;
     string_view _callbackName;
-    raw_ptr<vector<Entity::EventCallbackData>> _callbacks {};
+    nptr<vector<Entity::EventCallbackData>> _callbacks {};
 };
 
 template<fixed_string Name, typename... Args>
 class EntityEventWrapper final : public EntityEvent
 {
 public:
-    explicit EntityEventWrapper(Entity* entity) noexcept :
+    explicit EntityEventWrapper(ptr<Entity> entity) noexcept :
         EntityEvent(entity, Name.c_str())
     {
     }
@@ -310,19 +324,21 @@ public:
         if (_entity->IsGlobal()) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
             size_t storage_index = 0;
-            array<void*, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+            array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
         }
         else {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
             size_t storage_index = 0;
-            void* first_arg = cast_to_void(_entity.get());
-            array<void*, sizeof...(Args) + 1> args_data {&first_arg, ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+            nptr<Entity> first_arg = _entity;
+            array<ptr<void>, sizeof...(Args) + 1> args_data {static_cast<void*>(first_arg.get_pp()), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
         }
@@ -332,25 +348,25 @@ public:
 class EntityManagerApi
 {
 public:
-    virtual auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* = 0;
-    virtual auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* = 0;
-    virtual auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<Entity> = 0;
-    virtual void DestroyEntity(Entity* entity) = 0;
+    virtual auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> = 0;
+    virtual auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> = 0;
+    virtual auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> = 0;
+    virtual void DestroyEntity(ptr<Entity> entity) = 0;
     virtual ~EntityManagerApi() = default;
 };
 
 // Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
-inline void ValidateEntityAccess(const Entity* entity)
+inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
-    if (entity != nullptr) {
+    if (entity) {
         entity->ValidateAccess();
     }
 }
 
 // Null-tolerant strong validation for noexcept entity methods.
-inline void ValidateEntityAccessStrong(const Entity* entity) noexcept
+inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept
 {
-    if (entity == nullptr) {
+    if (!entity) {
         return;
     }
 

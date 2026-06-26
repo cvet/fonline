@@ -46,7 +46,7 @@ class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(RenderSettings& settings, FileSystem& resources, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
+    ResourceManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr, ptr<AnimationResolver> anim_name_resolver);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
@@ -54,9 +54,9 @@ public:
     ~ResourceManager() = default;
 
     [[nodiscard]] auto GetItemDefaultSpr() -> shared_ptr<Sprite>;
-    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> const SpriteSheet*;
-    [[nodiscard]] auto GetCritterDummyFrames() -> const SpriteSheet*;
-    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32_t* layers3d) -> const Sprite*;
+    [[nodiscard]] auto GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>;
+    [[nodiscard]] auto GetCritterDummyFrames() -> ptr<const SpriteSheet>;
+    [[nodiscard]] auto GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>;
     [[nodiscard]] auto GetSoundNames() const -> const map<string, string>&;
 
     void IndexFiles();
@@ -64,18 +64,18 @@ public:
 
 private:
     [[nodiscard]] auto LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>;
-    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> const SpriteSheet*;
+    [[nodiscard]] auto LoadFalloutAnimSubFrames(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> nptr<const SpriteSheet>;
 #if FO_ENABLE_3D
-    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, const int32_t* layers3d) -> const ModelSprite*;
+    [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>;
 #endif
 
-    void FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
-    void FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base);
+    void FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base);
+    void FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base);
 
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<SpriteManager> _sprMngr;
-    raw_ptr<AnimationResolver> _animNameResolver;
+    ptr<RenderSettings> _settings;
+    ptr<FileSystem> _resources;
+    ptr<SpriteManager> _sprMngr;
+    ptr<AnimationResolver> _animNameResolver;
     unordered_map<hstring::hash_t, shared_ptr<SpriteSheet>> _critterFrames {};
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};

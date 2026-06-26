@@ -62,13 +62,18 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 
 // Smart pointer helpers
 template<typename T, typename U>
-inline auto dynamic_ptr_cast(unique_ptr<U>&& p) noexcept -> unique_ptr<T> // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
+inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
 {
-    if (T* casted = dynamic_cast<T*>(p.get())) {
-        (void)p.release();
-        return unique_ptr<T> {casted};
+    auto casted = p->as_nptr().template dyn_cast<T>();
+
+    if (casted) {
+        auto casted_owner = casted.as_ptr();
+        ptr<U> released_owner = std::move(*p).release();
+        ignore_unused(released_owner);
+        return adopt_unique_ptr(casted_owner);
     }
-    return {};
+
+    return nullptr;
 }
 
 template<typename T, typename U>
@@ -78,35 +83,40 @@ inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
 }
 
 template<typename T>
-inline void make_if_not_exists(unique_ptr<T>& ptr)
+[[nodiscard]] inline auto require_refcount_ptr(refcount_nptr<T> value) -> refcount_ptr<T>
 {
-    if (!ptr) {
-        ptr = SafeAlloc::MakeUnique<T>();
-    }
-}
-
-template<typename T>
-inline void destroy_if_empty(unique_ptr<T>& ptr) noexcept
-{
-    if (ptr && ptr->empty()) {
-        ptr.reset();
-    }
+    FO_VERIFY_AND_THROW(value, "Refcounted pointer is null");
+    return std::move(value).take_not_null();
 }
 
 // Ref holders
 template<typename T>
+struct ref_hold_ptr_type
+{
+    using type = ptr<typename T::element_type>;
+};
+
+template<typename T>
+struct ref_hold_ptr_type<T*>
+{
+    using type = ptr<T>;
+};
+
+template<typename T>
+using ref_hold_ptr_t = typename ref_hold_ptr_type<std::remove_cvref_t<T>>::type;
+
+template<typename T>
 class ref_hold_vector
 {
 public:
-    static_assert(std::is_pointer_v<T>);
-    static_assert(!std::is_const_v<T>);
+    static_assert(std::is_pointer_v<T> || requires { typename T::element_type; });
 
     explicit ref_hold_vector(size_t capacity) { _vec.reserve(capacity); }
     explicit ref_hold_vector(vector<T>&& vec) noexcept :
         _vec {std::move(vec)}
     {
-        for (T ref : _vec) {
-            ref->AddRef();
+        for (T& ref : _vec) {
+            add_ref(ref);
         }
     }
 
@@ -123,114 +133,147 @@ public:
 
     ~ref_hold_vector()
     {
-        for (T ref : _vec) {
-            ref->Release();
+        for (T& ref : _vec) {
+            release_ref(ref);
         }
     }
 
     void add(T ref)
     {
-        FO_VERIFY_AND_THROW(ref, "Missing required reference");
-        ref->AddRef();
-        _vec.emplace_back(ref);
+        add_ref(ref);
+        _vec.emplace_back(std::move(ref));
     }
 
 private:
+    [[nodiscard]] static auto get_ref(T& ref) noexcept -> nptr<typename ref_hold_ptr_t<T>::element_type>
+    {
+        using element_type = typename ref_hold_ptr_t<T>::element_type;
+
+        if constexpr (std::is_pointer_v<T>) {
+            return nptr<element_type> {ref};
+        }
+        else if constexpr (requires { ref.get_no_const(); }) {
+            return nptr<element_type> {ref.get_no_const()};
+        }
+        else {
+            return ref.as_nptr();
+        }
+    }
+
+    static void add_ref(T& ref)
+    {
+        auto nullable_ref = get_ref(ref);
+        FO_VERIFY_AND_THROW(nullable_ref, "Missing required reference");
+        auto ref_ptr = nullable_ref.as_ptr();
+        ref_ptr->AddRef();
+    }
+
+    static void release_ref(T& ref)
+    {
+        auto nullable_ref = get_ref(ref);
+        FO_VERIFY_AND_THROW(nullable_ref, "Missing required reference");
+        auto ref_ptr = nullable_ref.as_ptr();
+        ref_ptr->Release();
+    }
+
     vector<T> _vec {};
 };
 
 template<typename T>
     requires(std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<T>(std::move(value));
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    for (T ref : value) {
+        ref_vec.add(ref_hold_ptr_t<T>(ref));
+    }
     return ref_vec;
 }
 
 template<typename T>
     requires(!std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<typename T::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>&& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
     return ref_vec;
 }
 
 template<typename T>
     requires(std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<T>(value.size());
-    for (auto&& ref : value) {
-        ref_vec.add(ref);
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    for (T ref : value) {
+        ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
     return ref_vec;
 }
 
 template<typename T>
     requires(!std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<typename T::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(vector<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
     return ref_vec;
 }
 
 template<typename T>
     requires(std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<T>
+[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<T>(value.size());
-    for (auto&& ref : value) {
-        ref_vec.add(ref);
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
+    for (T ref : value) {
+        ref_vec.add(ref_hold_ptr_t<T>(ref));
     }
     return ref_vec;
 }
 
 template<typename T>
     requires(!std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<typename T::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(span<T> value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref_hold_ptr_t<T>(ref.get()));
     }
     return ref_vec;
 }
 
 template<typename T, typename U>
     requires(!std::is_pointer_v<U>)
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<typename U::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
-    auto ref_vec = ref_hold_vector<typename U::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
     for (auto&& ref : value | std::views::values) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
     return ref_vec;
 }
 
 template<typename T, typename U>
     requires(!std::is_pointer_v<U>)
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>&& value) -> ref_hold_vector<typename U::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_map<T, U>&& value) -> ref_hold_vector<ref_hold_ptr_t<U>>
 {
-    auto ref_vec = ref_hold_vector<typename U::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<U>>(value.size());
     for (auto&& ref : value | std::views::values) {
-        ref_vec.add(ref.get());
+        ref_vec.add(ref_hold_ptr_t<U>(ref.get()));
     }
     return ref_vec;
 }
 
 template<typename T>
     requires(!std::is_pointer_v<T>)
-[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<typename T::element_type*>
+[[nodiscard]] constexpr auto copy_hold_ref(unordered_set<T>& value) -> ref_hold_vector<ref_hold_ptr_t<T>>
 {
-    auto ref_vec = ref_hold_vector<typename T::element_type*>(value.size());
+    auto ref_vec = ref_hold_vector<ref_hold_ptr_t<T>>(value.size());
     for (auto&& ref : value) {
-        ref_vec.add(ref.get_no_const());
+        ref_vec.add(ref_hold_ptr_t<T>(ref.get_no_const()));
     }
     return ref_vec;
 }
@@ -353,6 +396,60 @@ template<std::ranges::range T>
         vec.assign(cont.begin(), cont.end());
         return vec;
     }
+}
+
+[[nodiscard]] inline auto string_to_span(string_view str) noexcept -> const_span<uint8_t>
+{
+    return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
+}
+
+[[nodiscard]] inline auto string_to_span(string& str) noexcept -> span<uint8_t>
+{
+    return {reinterpret_cast<uint8_t*>(str.data()), str.size()};
+}
+
+[[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view
+{
+    return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+}
+
+// Make a byte span over `byte_size` bytes starting at a pointer, replacing the verbose
+// `span<uint8_t> {p.reinterpret_as<uint8_t>().get(), size}` spelling at pointer+size buffer
+// boundaries (hashing, stream IO, serialization). Const-correct: a pointer to const data yields
+// `const_span<uint8_t>`, a mutable one yields `span<uint8_t>`. Overloaded for raw pointers (typed
+// and `void`) and, via a forwarding-reference template, for every project smart-pointer wrapper
+// (`ptr` / `nptr` / `unique_ptr` / `unique_nptr` / `unique_del_*` / `refcount_*` — all expose
+// `get()`); the wrapper preserves the underlying const-ness through the wrapper's `get()`.
+template<typename T>
+    requires(!std::is_void_v<T>)
+[[nodiscard]] FO_FORCE_INLINE auto make_span(T* data, size_t byte_size) noexcept -> span<std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>>
+{
+    using byte_type = std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>;
+    return span<byte_type> {reinterpret_cast<byte_type*>(data), byte_size};
+}
+
+[[nodiscard]] FO_FORCE_INLINE auto make_span(void* data, size_t byte_size) noexcept -> span<uint8_t>
+{
+    return span<uint8_t> {cast_from_void<uint8_t*>(data), byte_size};
+}
+
+[[nodiscard]] FO_FORCE_INLINE auto make_span(const void* data, size_t byte_size) noexcept -> const_span<uint8_t>
+{
+    return const_span<uint8_t> {cast_from_void<const uint8_t*>(data), byte_size};
+}
+
+template<typename P>
+    requires(!std::is_pointer_v<std::remove_reference_t<P>> && requires(P&& p) { p.get(); })
+[[nodiscard]] FO_FORCE_INLINE auto make_span(P&& data, size_t byte_size) noexcept
+{
+    return make_span(data.get(), byte_size);
+}
+
+template<typename R>
+    requires(std::ranges::contiguous_range<R> && std::is_trivially_copyable_v<std::ranges::range_value_t<R>>)
+[[nodiscard]] FO_FORCE_INLINE auto make_span(R&& range) noexcept
+{
+    return make_span(std::ranges::data(range), std::ranges::size(range) * sizeof(std::ranges::range_value_t<R>));
 }
 
 FO_END_NAMESPACE

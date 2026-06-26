@@ -47,11 +47,19 @@ FO_USING_NAMESPACE();
 
 struct MapperAppData
 {
-    refcount_ptr<MapperEngine> Mapper {};
+    refcount_nptr<MapperEngine> Mapper {};
 };
 FO_GLOBAL_DATA(MapperAppData, Data);
 
 static auto GetMapperResources(GlobalSettings& settings) -> FileSystem;
+
+static auto GetMapper() -> ptr<MapperEngine>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(Data->Mapper, "Mapper engine is not created");
+    return Data->Mapper.as_ptr();
+}
 
 static void MapperEntry([[maybe_unused]] void* data)
 {
@@ -62,12 +70,15 @@ static void MapperEntry([[maybe_unused]] void* data)
     }
 
     try {
-        App->BeginFrame();
+        GetApp()->BeginFrame();
 
         if (!Data->Mapper) {
             try {
-                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(App->Settings, GetMapperResources(App->Settings), App->MainWindow);
-                Data->Mapper->SetInputLocked(App->Settings.HeadlessWindow);
+                ptr<GlobalSettings> settings = &GetApp()->Settings;
+                ptr<IAppWindow> main_window = &GetApp()->MainWindow;
+                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), main_window);
+                auto mapper = GetMapper();
+                mapper->SetInputLocked(GetApp()->Settings.HeadlessWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -75,13 +86,14 @@ static void MapperEntry([[maybe_unused]] void* data)
         }
 
         try {
-            Data->Mapper->MapperMainLoop();
+            auto mapper = GetMapper();
+            mapper->MapperMainLoop();
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
         }
 
-        App->EndFrame();
+        GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -94,31 +106,36 @@ static void MapperEntry([[maybe_unused]] void* data)
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
 #else
-[[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto MapperApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_TESTING_APP
+    const vector<CommandLineArg> args_holder = MakeCommandLineArgs(numeric_cast<int32_t>(argc), argv);
+    const CommandLineArgs args {args_holder};
+#endif
+
     try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::ShowMessageOnException);
+        InitApp(args, AppInitFlags::ShowMessageOnException);
 
 #if FO_IOS
         MapperEntry(nullptr);
-        App->SetMainLoopCallback(MapperEntry);
+        GetApp()->SetMainLoopCallback(MapperEntry);
 
 #elif FO_WEB
         WebRelated::InitializePersistentData();
         WebRelated::StartMainLoop(MapperEntry, nullptr);
 
 #elif FO_ANDROID
-        while (!App->IsQuitRequested()) {
+        while (!GetApp()->IsQuitRequested()) {
             MapperEntry(nullptr);
         }
 
 #else
-        auto balancer = FrameBalancer(!App->Settings.VSync, App->Settings.Sleep, App->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
 
-        while (!App->IsQuitRequested()) {
+        while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
             MapperEntry(nullptr);
             balancer.EndLoop();
@@ -126,7 +143,8 @@ int main(int argc, char** argv) // Handled by SDL
 #endif
 
         if (Data->Mapper) {
-            Data->Mapper->Shutdown();
+            auto mapper = GetMapper();
+            mapper->Shutdown();
             Data->Mapper.reset();
         }
 
@@ -152,7 +170,8 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
     }
     else {
         FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings));
+        ptr<BakingSettings> settings_ptr = &settings;
+        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings_ptr));
         return resources;
     }
 }

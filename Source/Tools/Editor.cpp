@@ -39,9 +39,9 @@
 
 FO_BEGIN_NAMESPACE
 
-EditorView::EditorView(string_view view_name, FOEditor& editor) :
+EditorView::EditorView(string_view view_name, ptr<FOEditor> editor) :
     _viewName {view_name},
-    _editor {&editor}
+    _editor {editor}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -91,8 +91,8 @@ void EditorView::Close()
     _requestClose = true;
 }
 
-EditorAssetView::EditorAssetView(string_view view_name, FOEditor& data, string_view asset_path) :
-    EditorView(asset_path, data),
+EditorAssetView::EditorAssetView(string_view view_name, ptr<FOEditor> editor, string_view asset_path) :
+    EditorView(asset_path, editor),
     _assetPath {asset_path}
 {
     FO_STACK_TRACE_ENTRY();
@@ -119,7 +119,7 @@ void EditorAssetView::OnPreDraw()
     FO_STACK_TRACE_ENTRY();
 
     ImGui::SetNextWindowPos({300.0f, 0.0f}, ImGuiCond_Once);
-    ImGui::SetNextWindowSize({500.0f, numeric_cast<float32_t>(App->MainWindow.GetSize().height)}, ImGuiCond_Once);
+    ImGui::SetNextWindowSize({500.0f, numeric_cast<float32_t>(GetApp()->MainWindow.GetSize().height)}, ImGuiCond_Once);
 }
 
 void EditorAssetView::OnDraw()
@@ -134,12 +134,12 @@ void EditorAssetView::OnDraw()
     }*/
 }
 
-FOEditor::FOEditor(GlobalSettings& settings) :
+FOEditor::FOEditor(ptr<GlobalSettings> settings) :
     Settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& res_pack : Settings.GetResourcePacks()) {
+    for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
             RawResources.AddDirSource(dir, res_pack.RecursiveInput, true);
         }
@@ -147,19 +147,23 @@ FOEditor::FOEditor(GlobalSettings& settings) :
 
     BakedResources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(Settings));
 
-    App->LoadImGuiEffect(BakedResources);
+    GetApp()->LoadImGuiEffect(BakedResources);
 
-    _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(*this));
+    ptr<FOEditor> editor = this;
+    _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(editor));
 }
 
-auto FOEditor::GetAssetViews() -> vector<EditorAssetView*>
+auto FOEditor::GetAssetViews() -> vector<ptr<EditorAssetView>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<EditorAssetView*> result;
+    vector<ptr<EditorAssetView>> result;
 
-    for (auto& view : _views) {
-        if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr) {
+    for (size_t i = 0; i != _views.size(); ++i) {
+        auto view = _views[i].as_ptr();
+
+        if (nptr<EditorAssetView> nullable_asset_view = view.dyn_cast<EditorAssetView>()) {
+            auto asset_view = nullable_asset_view.as_ptr();
             result.emplace_back(asset_view);
         }
     }
@@ -171,8 +175,16 @@ void FOEditor::OpenAsset(string_view path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& view : _views) {
-        if (auto* asset_view = dynamic_cast<EditorAssetView*>(view.get()); asset_view != nullptr && asset_view->GetAssetPath() == path) {
+    for (size_t i = 0; i != _views.size(); ++i) {
+        auto view = _views[i].as_ptr();
+
+        if (nptr<EditorAssetView> nullable_asset_view = view.dyn_cast<EditorAssetView>()) {
+            auto asset_view = nullable_asset_view.as_ptr();
+
+            if (asset_view->GetAssetPath() != path) {
+                continue;
+            }
+
             asset_view->BringToFront();
             return;
         }
@@ -181,7 +193,8 @@ void FOEditor::OpenAsset(string_view path)
     const string ext = strex(path).get_file_extension();
 
     if (ext == "fopts") {
-        _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, *this));
+        ptr<FOEditor> editor = this;
+        _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, editor));
     }
 }
 
@@ -195,8 +208,12 @@ void FOEditor::MainLoop()
     _newViews.clear();
 
     for (auto it = _views.begin(); it != _views.end();) {
-        if (const auto* asset_view = dynamic_cast<EditorAssetView*>(it->get()); asset_view != nullptr && asset_view->IsChanged()) {
-            (*it)->_requestClose = false;
+        if (nptr<EditorAssetView> nullable_asset_view = (*it).as_ptr().dyn_cast<EditorAssetView>()) {
+            auto asset_view = nullable_asset_view.as_ptr();
+
+            if (asset_view->IsChanged()) {
+                (*it)->_requestClose = false;
+            }
         }
 
         if ((*it)->_requestClose) {
@@ -207,7 +224,9 @@ void FOEditor::MainLoop()
         }
     }
 
-    for (auto& view : _views) {
+    for (size_t i = 0; i != _views.size(); ++i) {
+        auto view = _views[i].as_ptr();
+
         try {
             view->Draw();
         }

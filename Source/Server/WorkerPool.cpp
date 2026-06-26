@@ -37,9 +37,9 @@
 
 FO_BEGIN_NAMESPACE
 
-WorkerPool::WorkerPool(string_view name, int32_t thread_count, const std::atomic<bool>& shutdown_flag, bool start_paused) :
+WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::atomic<bool>> shutdown_flag, bool start_paused) :
     _name {name},
-    _shutdownFlag {&shutdown_flag},
+    _shutdownFlag {shutdown_flag},
     _paused {start_paused}
 {
     FO_STACK_TRACE_ENTRY();

@@ -33,12 +33,27 @@
 
 #include "Common.h"
 
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
+static auto ReturnScriptMap(ptr<Map> map) noexcept -> Map*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return map.get_no_const();
+}
+
+static auto ReturnNullableScriptMap(nptr<Map> map) noexcept -> Map*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return map.get_no_const();
+}
+
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Map*, bool> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, Map*, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -52,7 +67,7 @@ FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
+FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -62,73 +77,85 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
+FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, hstring mapPid)
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    Map* map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
-    return map;
+    auto map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
+    return ReturnScriptMap(map);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, ProtoMap* mapProto)
+FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
+    ptr<const ProtoMap> map_proto_ptr = mapProto;
+
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
     }
 
-    Map* map = self->GetEngine()->MapMngr.CreateMap(mapProto->GetProtoId(), self);
-    return map;
+    auto map = self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self);
+    return ReturnScriptMap(map);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Location_GetMapCount(Location* self)
+FO_SCRIPT_API int32_t Server_Location_GetMapCount(ptr<Location> self)
 {
     return numeric_cast<int32_t>(self->GetMapsCount());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, hstring mapPid)
+FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPid)
 {
-    for (auto* map : self->GetMaps()) {
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    for (ptr<Map> map : maps) {
         if (map->GetProtoId() == mapPid) {
-            return map;
+            return ReturnScriptMap(map);
         }
     }
 
-    return nullptr;
+    return ReturnNullableScriptMap(nullptr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, ProtoMap* mapProto)
+FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    for (auto* map : self->GetMaps()) {
-        if (map->GetProtoId() == mapProto->GetProtoId()) {
-            return map;
+    ptr<const ProtoMap> map_proto_ptr = mapProto;
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    for (ptr<Map> map : maps) {
+        if (map->GetProtoId() == map_proto_ptr->GetProtoId()) {
+            return ReturnScriptMap(map);
         }
     }
 
-    return nullptr;
+    return ReturnNullableScriptMap(nullptr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32_t index)
+FO_SCRIPT_API ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
-    return self->GetMapByIndex(index);
+    auto map = self->GetMapByIndex(index).as_ptr();
+    return ReturnScriptMap(map);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
+FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(ptr<Location> self)
 {
-    return self->GetMaps();
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    return MakeScriptHandleVector<Map>(maps);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
+FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
 {
-    for (auto* map : self->GetMaps()) {
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    for (ptr<Map> map : maps) {
         self->GetEngine()->MapMngr.RegenerateMap(map);
     }
 }

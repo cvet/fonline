@@ -67,7 +67,7 @@ class ServerEngine final : public BaseEngine, public EntityManagerApi
     friend class ServerScriptSystem;
 
 public:
-    explicit ServerEngine(GlobalSettings& settings, FileSystem&& resources);
+    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources);
 
     ServerEngine(const ServerEngine&) = delete;
     ServerEngine(ServerEngine&&) noexcept = delete;
@@ -75,14 +75,15 @@ public:
     auto operator=(ServerEngine&&) noexcept = delete;
     ~ServerEngine() override;
 
-    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return this; }
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
-    [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> SyncContext* { return SyncContext::GetCurrentOnThisThread(); }
-    [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock* { return _entityLock.get(); }
+    [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
+    [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
+    [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
 
     void Shutdown() override;
@@ -95,31 +96,42 @@ public:
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
 
-    auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
-    auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* override { return EntityMngr.CreateCustomEntity(type_name, pid); }
-    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_ptr<Entity> override { return EntityMngr.GetCustomEntity(type_name, id); }
-    void DestroyEntity(Entity* entity) override { EntityMngr.DestroyEntity(entity); }
+    auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
+    auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override
+    {
+        auto custom_entity = EntityMngr.GetCustomEntity(type_name, id);
+
+        if (!custom_entity) {
+            return nullptr;
+        }
+
+        auto custom_entity_holder = std::move(custom_entity).take_not_null();
+        refcount_ptr<Entity> entity = std::move(custom_entity_holder);
+        return std::move(entity);
+    }
+    void DestroyEntity(ptr<Entity> entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
     void DrawGui();
 
-    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
-    auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
-    auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
-    auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
+    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>;
 
-    auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
-    auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
-    void UnloadCritter(Critter* cr);
-    void UnloadCritterInnerEntities(Critter* cr);
-    void SwitchPlayerCritter(Player* player, Critter* cr);
+    auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
+    void UnloadCritter(ptr<Critter> cr);
+    void UnloadCritterInnerEntities(ptr<Critter> cr);
+    void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullable_cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
-    void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
-    void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
-    void StopCritterMoving(Critter* cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
-    void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
+    void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator);
+    void StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator);
+    void StopCritterMoving(ptr<Critter> cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
+    void ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -130,7 +142,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, FO_NULLABLE Player* /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*unloginedPlayer*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
@@ -146,7 +158,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterStopMoving, Critter* /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, FO_NULLABLE Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnCritterTransfer, ptr<Critter> /*cr*/, nptr<Map> /*prevMap*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
@@ -235,50 +247,50 @@ private:
     void SyncPoint();
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessUnloginedPlayer(Player* unlogined_player);
-    void ProcessPlayer(Player* player);
-    void ProcessConnection(ServerConnection* connection);
-    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
+    void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
+    void ProcessPlayer(ptr<Player> player);
+    void ProcessConnection(ptr<ServerConnection> connection);
+    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
 
     void LoadReportedHashes();
-    void RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash);
-    void ProcessPendingUnresolvedHash(ServerConnection* connection);
-    void SendAllReportedHashes(ServerConnection* connection);
+    void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);
+    void ProcessPendingUnresolvedHash(ptr<ServerConnection> connection);
+    void SendAllReportedHashes(ptr<ServerConnection> connection);
     void BroadcastReportedString(string_view reported_string);
 
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
-    void Process_Handshake(ServerConnection* connection);
-    void Process_Ping(ServerConnection* connection);
-    void Process_UnresolvedHash(ServerConnection* connection);
-    void Process_Move(Player* player);
-    void Process_StopMove(Player* player);
-    void Process_Dir(Player* player);
-    void Process_Property(Player* player);
-    void Process_RemoteCall(Player* player);
+    void Process_Handshake(ptr<ServerConnection> connection);
+    void Process_Ping(ptr<ServerConnection> connection);
+    void Process_UnresolvedHash(ptr<ServerConnection> connection);
+    void Process_Move(ptr<Player> player);
+    void Process_StopMove(ptr<Player> player);
+    void Process_Dir(ptr<Player> player);
+    void Process_Property(ptr<Player> player);
+    void Process_RemoteCall(ptr<Player> player);
 
-    void OnSaveEntityValue(Entity* entity, const Property* prop);
-    void OnSaveSynchronizedTime(Entity* entity, const Property* prop);
+    void OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property> prop);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
-    void OnSendCustomEntityValue(Entity* entity, const Property* prop);
+    void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
-    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
-    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemHidden(Entity* entity, const Property* prop);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop);
-    void OnSetItemMultihexLines(Entity* entity, const Property* prop);
+    void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value);
+    void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
-    void ProcessCritterMovingBySteps(Critter* cr, Map* map);
-    auto ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool;
-    auto MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool;
-    void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
+    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
+    auto ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
+    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
+    void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullable_prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
@@ -300,13 +312,13 @@ private:
     auto CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t;
 
     void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
-    auto TimeEventJob(Entity* entity, uint32_t event_id) -> std::optional<timespan>;
+    auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
     void OnTimeEventCancel(uint32_t event_id);
-    void OnPlayerConnected(Player* unlogined_player);
-    auto UnloginedPlayerJob(Player* unlogined_player) -> std::optional<timespan>;
-    void OnPlayerLogined(Player* player, Player* unlogined_player);
-    auto PlayerJob(Player* player) -> std::optional<timespan>;
-    auto CritterMovingJob(Critter* cr) -> std::optional<timespan>;
+    void OnPlayerConnected(ptr<Player> unlogined_player);
+    auto UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>;
+    void OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_player);
+    auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
+    auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
     auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
     void CountServerStatsJob() noexcept;
 
@@ -314,14 +326,14 @@ private:
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
-    unique_ptr<WorkerPool> _workerPool {};
+    optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
 
     synctime _persistedSyncTimeMark {};
     static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
 
     EntityLock _ownedLock {};
-    mutable raw_ptr<EntityLock> _entityLock {&_ownedLock};
+    mutable ptr<EntityLock> _entityLock {&_ownedLock};
 
     mutex _syncLocker {};
     std::condition_variable_any _syncWaitSignal {};
@@ -335,8 +347,8 @@ private:
     std::atomic<size_t> _rejectedConnections {};
     std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
-    unique_ptr<UpdaterBackend> _updaterBackend {};
-    TextPack _defaultLang {Hashes};
+    optional<UpdaterBackend> _updaterBackend {};
+    TextPack _defaultLang {ptr<HashResolver> {&Hashes}};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _unloginedPlayersLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
@@ -347,8 +359,8 @@ private:
     unordered_set<string> _reportedStrings FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
     unordered_set<hstring::hash_t> _unresolvableReportedHashes FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
 
-    EventDispatcher<> _willFinishDispatcher {OnWillFinish};
-    EventDispatcher<> _didFinishDispatcher {OnDidFinish};
+    EventDispatcher<> _willFinishDispatcher {&OnWillFinish};
+    EventDispatcher<> _didFinishDispatcher {&OnDidFinish};
 };
 
 FO_END_NAMESPACE

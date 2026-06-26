@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 class NetworkServerConnection_Interthread : public NetworkServerConnection
 {
 public:
-    explicit NetworkServerConnection_Interthread(ServerNetworkSettings& settings, InterthreadDataCallback send);
+    explicit NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send);
     NetworkServerConnection_Interthread(const NetworkServerConnection_Interthread&) = delete;
     NetworkServerConnection_Interthread(NetworkServerConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_Interthread&) = delete;
@@ -58,7 +58,7 @@ private:
 class InterthreadServer : public NetworkServer
 {
 public:
-    explicit InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback);
+    explicit InterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback);
     InterthreadServer() = delete;
     InterthreadServer(const InterthreadServer&) = delete;
     InterthreadServer(InterthreadServer&&) noexcept = delete;
@@ -72,14 +72,14 @@ private:
     uint16_t _virtualPort;
 };
 
-auto NetworkServer::StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
 }
 
-NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ServerNetworkSettings& settings, InterthreadDataCallback send) :
+NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) :
     NetworkServerConnection(settings),
     _send {std::move(send)}
 {
@@ -131,8 +131,8 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
     }
 }
 
-InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _virtualPort {numeric_cast<uint16_t>(settings.ServerPort)}
+InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
+    _virtualPort {numeric_cast<uint16_t>(settings->ServerPort)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -142,8 +142,8 @@ InterthreadServer::InterthreadServer(ServerNetworkSettings& settings, NewConnect
         throw NetworkServerException("Port is busy", _virtualPort);
     }
 
-    InterthreadListeners.emplace(_virtualPort, [&settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
-        auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
+    InterthreadListeners.emplace(_virtualPort, [settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
+        shared_ptr<NetworkServerConnection_Interthread> conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
         callback_(conn);
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });

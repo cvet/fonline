@@ -36,24 +36,32 @@
 
 FO_BEGIN_NAMESPACE
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render) :
-    _settings {&settings},
-    _resources {&resources},
-    _render {&render}
+static auto EffectManagerValueSpan(const float32_t& value) noexcept -> const_span<float32_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<const float32_t> value_ptr = &value;
+    return {value_ptr.get(), 1};
+}
+
+EffectManager::EffectManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<IAppRender> render) :
+    _settings {settings},
+    _resources {resources},
+    _render {render}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*
+auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
-        return it->second.get();
+        return it->second.as_nptr();
     }
 
     // Load new
-    auto effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
+    unique_ptr<RenderEffect> effect = _render->CreateEffect(usage, path, [this](string_view path2) -> string {
         if (const auto file = _resources->ReadFile(path2)) {
             return file.GetStr();
         }
@@ -67,51 +75,39 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> RenderEff
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
     }
 
-    auto* effect_raw_ptr = effect.get();
+    auto effect_ptr = effect.as_nptr();
     _loadedEffects.emplace(path, std::move(effect));
-    return effect_raw_ptr;
+    return effect_ptr;
 }
 
-auto EffectManager::ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_view effectPath) -> RenderEffect*
+auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(defaultEffect != nullptr, "Missing required default effect");
-
     if (!effectPath.empty()) {
-        RenderEffect* effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
+        auto nullable_resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
 
-        if (effect == nullptr) {
+        if (!nullable_resolved_effect) {
             throw EffectManagerException("Effect not found or have some errors, see log file");
         }
 
-        return effect;
+        return nullable_resolved_effect.as_ptr();
     }
 
-    return defaultEffect.get();
+    return defaultEffect;
 }
 
-void EffectManager::SetEffect(raw_ptr<RenderEffect>& effect, raw_ptr<RenderEffect> defaultEffect, string_view effectPath)
+void EffectManager::SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    effect = ResolveEffect(defaultEffect, effectPath);
+    SetEffectScriptValues(effect, valueIndex, EffectManagerValueSpan(value));
 }
 
-void EffectManager::SetEffectScriptValue(RenderEffect* effect, int32_t valueIndex, float32_t value)
+void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
-}
-
-void EffectManager::SetEffectScriptValues(RenderEffect* effect, int32_t valueStartIndex, const_span<float32_t> values)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (effect == nullptr) {
-        throw EffectManagerException("Effect script value target is not loaded");
-    }
     if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
         throw EffectManagerException("Effect script value index is out of range", valueStartIndex);
     }
@@ -122,41 +118,36 @@ void EffectManager::SetEffectScriptValues(RenderEffect* effect, int32_t valueSta
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
-    RenderEffect::ScriptValueBuffer& script_value_buf = GetOrCreateScriptValueBuf(effect);
+    auto script_value_buf = GetOrCreateScriptValueBuf(effect);
     const size_t value_start_index = numeric_cast<size_t>(valueStartIndex);
 
     for (size_t i = 0; i < values.size(); i++) {
-        script_value_buf.ScriptValue[value_start_index + i] = values[i];
+        script_value_buf->ScriptValue[value_start_index + i] = values[i];
     }
 }
 
-void EffectManager::ClearEffectScriptValues(RenderEffect* effect)
+void EffectManager::ClearEffectScriptValues(ptr<RenderEffect> effect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (effect == nullptr) {
-        throw EffectManagerException("Effect script value target is not loaded");
-    }
     if (!effect->IsNeedScriptValueBuf()) {
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
 
-    RenderEffect::ScriptValueBuffer& script_value_buf = GetOrCreateScriptValueBuf(effect);
+    auto script_value_buf = GetOrCreateScriptValueBuf(effect);
 
-    script_value_buf = RenderEffect::ScriptValueBuffer();
+    *script_value_buf = RenderEffect::ScriptValueBuffer();
 }
 
-auto EffectManager::GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEffect::ScriptValueBuffer&
+auto EffectManager::GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(effect != nullptr, "Missing required effect");
 
     if (!effect->ScriptValueBuf.has_value()) {
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
     }
 
-    return effect->ScriptValueBuf.value();
+    return &effect->ScriptValueBuf.value();
 }
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
@@ -164,11 +155,11 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
     FO_STACK_TRACE_ENTRY();
 
     for (auto& effect : _loadedEffects | std::views::values) {
-        PerFrameEffectUpdate(effect.get(), game_time);
+        PerFrameEffectUpdate(effect.as_ptr(), game_time);
     }
 }
 
-void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
+void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTimer& game_time)
 {
     FO_STACK_TRACE_ENTRY();
 

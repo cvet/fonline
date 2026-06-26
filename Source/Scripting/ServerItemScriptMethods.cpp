@@ -34,16 +34,44 @@
 #include "Common.h"
 
 #include "Geometry.h"
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
+static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
+static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
+static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
+
+static auto ReturnScriptItem(nptr<Item> item) noexcept -> Item*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(item, "Item must not be null");
+    return item.get_no_const();
+}
+
+template<typename TParent, typename TEntity>
+static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto parent = entity->template GetParent<TParent>();
+
+    if (!parent) {
+        throw ScriptException(error_message);
+    }
+
+    return std::move(parent).take_not_null();
+}
+
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
+FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, Item*, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
     }
+
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc.GetName().first, true)) {
         throw ScriptException("Call init failed", initFunc.GetName().first);
     }
@@ -52,7 +80,7 @@ FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, b
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
+FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -62,7 +90,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
@@ -71,11 +99,12 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, hstring pid, int32_t count, 
         throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
+    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
+    return ReturnScriptItem(item);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t count, any_t stackId = any_t {})
+FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
 {
     if (self->IsDestroying()) {
         throw ScriptException("Cannot add an item to a container that is being destroyed", self->GetId());
@@ -84,165 +113,158 @@ FO_SCRIPT_API Item* Server_Item_AddItem(Item* self, ProtoItem* proto, int32_t co
         throw ScriptException("Count arg must be positive", count);
     }
 
-    return self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
+    auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
+    return ReturnScriptItem(item);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId = any_t {})
+FO_SCRIPT_API vector<Item*> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
-    return self->GetInnerItems(stackId);
+    vector<ptr<Item>> items = self->GetInnerItems(stackId);
+
+    return MakeScriptHandleVector<Item>(items);
 }
 
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
+FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
-    refcount_ptr<Map> map;
+    auto map = ResolveItemMap(self);
 
-    switch (self->GetOwnership()) {
+    return ReleaseNullableScriptOwnership(std::move(map));
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
+{
+    auto map = ResolveItemMapPosition(self, hex);
+
+    return ReleaseNullableScriptOwnership(std::move(map));
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
+{
+    auto cr = ResolveItemCritter(self);
+
+    return ReleaseNullableScriptOwnership(std::move(cr));
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
+{
+    if (self->GetOwnership() == ItemOwnership::MapHex) {
+        auto map_holder = RequireParent<Map>(self, "Missing map instance");
+        auto map = map_holder.as_ptr();
+        map->ChangeViewItem(self);
+        map->RecacheHexFlags(self->GetHex());
+    }
+}
+
+static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = self->GetParent<Critter>();
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        auto cr_ptr = cr.as_ptr();
 
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
-
-        if (!cr->GetMapId()) {
+        if (!cr_ptr->GetMapId()) {
             return nullptr;
         }
 
-        map = cr->GetParent<Map>();
+        auto map = RequireParent<Map>(cr_ptr, "Critter ownership, map not found");
 
-        if (!map) {
-            throw ScriptException("Critter ownership, map not found");
-        }
+        return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetParent<Map>();
+        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
 
-        if (!map) {
-            throw ScriptException("Hex ownership, map not found");
-        }
+        return std::move(map);
     } break;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = self->GetParent<Item>();
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        if (!cont) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        map = Server_Item_GetMap(cont.get());
+        return ResolveItemMap(cont.as_ptr());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map.release_ownership();
+    FO_UNREACHABLE_PLACE();
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>
 {
-    refcount_ptr<Map> map;
+    FO_STACK_TRACE_ENTRY();
 
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto cr = self->GetParent<Critter>();
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
+        auto cr_ptr = cr.as_ptr();
 
-        if (cr == nullptr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
-
-        if (!cr->GetMapId()) {
+        if (!cr_ptr->GetMapId()) {
             hex = {};
             return nullptr;
         }
 
-        map = cr->GetParent<Map>();
+        auto map = RequireParent<Map>(cr_ptr, "Critter ownership, map not found");
 
-        if (map == nullptr) {
-            throw ScriptException("Critter ownership, map not found");
-        }
-
-        hex = cr->GetHex();
+        hex = cr_ptr->GetHex();
+        return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-        map = self->GetParent<Map>();
+        auto map = RequireParent<Map>(item, "Hex ownership, map not found");
 
-        if (!map) {
-            throw ScriptException("Hex ownership, map not found");
-        }
-
-        hex = self->GetHex();
+        hex = item->GetHex();
+        return std::move(map);
     } break;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = self->GetParent<Item>();
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        if (!cont) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        map = Server_Item_GetMapPosition(cont.get(), hex);
+        return ResolveItemMapPosition(cont.as_ptr(), hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map.release_ownership();
+    FO_UNREACHABLE_PLACE();
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
+static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 {
-    refcount_ptr<Critter> cr;
+    FO_STACK_TRACE_ENTRY();
 
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        cr = self->GetParent<Critter>();
+        auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
 
-        if (!cr) {
-            throw ScriptException("Critter ownership, critter not found");
-        }
+        return std::move(cr);
     } break;
-    case ItemOwnership::MapHex: {
-        cr = nullptr;
-    } break;
+    case ItemOwnership::MapHex:
+        return nullptr;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
 
-        auto cont = self->GetParent<Item>();
+        auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        if (!cont) {
-            throw ScriptException("Container ownership, container not found");
-        }
-
-        cr = Server_Item_GetCritter(cont.get());
+        return ResolveItemCritter(cont.as_ptr());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return cr.release_ownership();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
-{
-    if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = self->GetParent<Map>();
-        FO_VERIFY_AND_THROW(map, "Missing map instance");
-        map->ChangeViewItem(self);
-        map->RecacheHexFlags(self->GetHex());
-    }
+    FO_UNREACHABLE_PLACE();
 }
 
 FO_END_NAMESPACE

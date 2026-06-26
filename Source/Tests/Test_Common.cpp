@@ -42,7 +42,7 @@ TEST_CASE("CommonEvents")
     SECTION("DispatchAndManualUnsubscribe")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         EventUnsubscriber unsubscriber;
         int32_t sum = 0;
 
@@ -64,7 +64,7 @@ TEST_CASE("CommonEvents")
     SECTION("DestructorUnsubscribes")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         int32_t calls = 0;
 
         {
@@ -82,7 +82,7 @@ TEST_CASE("CommonEvents")
     SECTION("MoveKeepsSubscriptionOwnership")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         int32_t calls = 0;
 
         EventUnsubscriber original;

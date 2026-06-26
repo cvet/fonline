@@ -61,53 +61,53 @@ struct TraceResult
     mpos PreBlock {};
     mpos Block {};
     mpos LastMovable {};
-    vector<raw_ptr<const Critter>> Critters {};
+    vector<ptr<const Critter>> Critters {};
 };
 
 class MapManager final
 {
 public:
     MapManager() = delete;
-    explicit MapManager(ServerEngine* engine);
+    explicit MapManager(ptr<ServerEngine> engine);
     MapManager(const MapManager&) = delete;
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager() = default;
 
-    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto) -> StaticMap*;
-    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_ptr<Location>;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_ptr<Map>;
-    [[nodiscard]] auto FindPath(const Map* map, const Critter* from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset = {}, function<bool(const Item*)> gag_callback = {}) const -> FindPathOutput;
-    [[nodiscard]] auto TracePath(const Map* map, mpos start_hex, mpos target_hex, int32_t max_dist = 0, float32_t angle = 0.0f, const Critter* find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
+    [[nodiscard]] auto GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_nptr<Map>;
+    [[nodiscard]] auto FindPath(ptr<const Map> map, nptr<const Critter> nullable_from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset = {}, function<bool(ptr<const Item>)> gag_callback = {}) const -> FindPathOutput;
+    [[nodiscard]] auto TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, int32_t max_dist = 0, float32_t angle = 0.0f, nptr<const Critter> nullable_find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
 
     void LoadFromResources();
-    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, const Properties* props = {}) -> Location*;
-    void DestroyLocation(Location* loc);
-    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-    void DestroyMap(Map* map);
-    void RegenerateMap(Map* map);
-    void AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, ident_t global_cr_id);
-    void AddCritterToMap(Critter* cr, Map* map, mpos hex, hdir dir, ident_t global_cr_id) { AddCritterToMap(cr, map, hex, mdir(dir), global_cr_id); }
-    void RemoveCritterFromMap(Critter* cr, Map* map);
-    void TransferToMap(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32_t> safe_radius);
-    void TransferToMap(Critter* cr, Map* map, mpos hex, hdir dir, optional<int32_t> safe_radius) { TransferToMap(cr, map, hex, mdir(dir), safe_radius); }
-    void TransferToGlobal(Critter* cr, ident_t global_cr_id);
-    void ProcessVisibleCritters(Critter* cr);
-    void ProcessVisibleItems(Critter* cr);
-    void ViewMap(Player* view_player, Map* map);
+    auto CreateLocation(hstring proto_id, const_span<hstring> map_pids = {}, nptr<const Properties> props = {}) -> ptr<Location>;
+    void DestroyLocation(ptr<Location> loc);
+    auto CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>;
+    void DestroyMap(ptr<Map> map);
+    void RegenerateMap(ptr<Map> map);
+    void AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, ident_t global_cr_id);
+    void AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, hdir dir, ident_t global_cr_id) { AddCritterToMap(cr, map, hex, mdir(dir), global_cr_id); }
+    void RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map);
+    void TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius);
+    void TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, hdir dir, optional<int32_t> safe_radius) { TransferToMap(cr, map, hex, mdir(dir), safe_radius); }
+    void TransferToGlobal(ptr<Critter> cr, ident_t global_cr_id);
+    void ProcessVisibleCritters(ptr<Critter> cr);
+    void ProcessVisibleItems(ptr<Critter> cr);
+    void ViewMap(ptr<Player> view_player, ptr<Map> map);
 
 private:
-    auto IsCritterSeeCritter(const Map* map, const Critter* cr, const Critter* target) const -> CritterVisibilityMode;
+    auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;
 
-    void ProcessCritterLook(Map* map, Critter* cr, Critter* target);
-    void Transfer(Critter* cr, Map* map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
-    void GenerateMapContent(Map* map);
-    void DestroyMapContent(Map* map);
-    void DestroyMapInternal(Map* map);
+    void ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> target);
+    void Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius, ident_t global_cr_id);
+    void GenerateMapContent(ptr<Map> map);
+    void DestroyMapContent(ptr<Map> map);
+    void DestroyMapInternal(ptr<Map> map);
 
-    raw_ptr<ServerEngine> _engine;
-    unordered_map<const ProtoMap*, unique_ptr<StaticMap>> _staticMaps {};
+    ptr<ServerEngine> _engine;
+    unordered_map<ptr<const ProtoMap>, unique_ptr<StaticMap>> _staticMaps {};
     bool _nonConstHelper {};
 };
 

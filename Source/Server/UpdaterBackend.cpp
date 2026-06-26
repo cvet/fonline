@@ -41,6 +41,16 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto UpdateVectorBytesAt(const vector<uint8_t>& data, size_t offset) noexcept -> ptr<const uint8_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(offset < data.size(), "Byte offset is past the end of the update data buffer");
+
+    ptr<const uint8_t> data_begin = data.data();
+    return data_begin.get() + offset;
+}
+
 static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -57,7 +67,7 @@ static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, 
         return false;
     }
 
-    return data.empty() || stream_read_exact(file, data.data(), data.size());
+    return stream_read_exact(file, data);
 }
 
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
@@ -87,12 +97,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
-            if (file_size != 0 && !stream_read_exact(file, data.MemoryData.data(), file_size)) {
+            if (!stream_read_exact(file, data.MemoryData)) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData.data(), data.MemoryData.size());
+            data.Hash = fs_hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);
@@ -150,13 +160,13 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         }
     }
 
-    const auto build_update_desc = [this](vector<uint8_t>& desc, const vector<UpdateFileInfo>* platform_files) {
+    const auto build_update_desc = [this](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
         const auto write_file_info = [this, &writer](const UpdateFileInfo& info) {
             const auto& data = _updateFiles[info.FileIndex];
             writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
-            writer.WritePtr(info.ClientPath.data(), info.ClientPath.length());
+            writer.WriteStringBytes(info.ClientPath);
             writer.Write<uint64_t>(data.Size);
             writer.Write<uint64_t>(data.Hash);
             writer.Write<UpdateFileTarget>(info.Target);
@@ -167,7 +177,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             write_file_info(info);
         }
 
-        if (platform_files != nullptr) {
+        if (platform_files) {
             for (const auto& info : *platform_files) {
                 write_file_info(info);
             }
@@ -184,7 +194,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     }
 }
 
-auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&
+auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -192,7 +202,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
     return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
-void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_portion_size)
+void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -248,10 +258,12 @@ void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t upd
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
             const size_t offset = numeric_cast<size_t>(start_offset);
-            out_buf->Push(update_file.MemoryData.data() + offset, update_portion_size);
+            auto update_data = UpdateVectorBytesAt(update_file.MemoryData, offset);
+            out_buf->Push(update_data, update_portion_size);
         }
         else {
-            out_buf->Push(disk_update_data.data(), update_portion_size);
+            ptr<const uint8_t> disk_data = disk_update_data.data();
+            out_buf->Push(disk_data, update_portion_size);
         }
     }
 }

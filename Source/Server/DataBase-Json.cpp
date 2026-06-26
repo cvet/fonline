@@ -9,6 +9,29 @@ FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 
+static void FreeBsonJsonString(nptr<char> text) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (text) {
+        bson_free(text.get());
+    }
+}
+
+static void CleanupBsonJsonString(ptr<char> text) FO_DEFERRED
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FreeBsonJsonString(text);
+}
+
+static auto MakeOwnedBsonJsonString(ptr<char> text) -> unique_del_ptr<char>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return make_unique_del_ptr(text, CleanupBsonJsonString);
+}
+
 class DbJson final : public DataBaseImpl
 {
 public:
@@ -17,10 +40,10 @@ public:
     auto operator=(const DbJson&) = delete;
     auto operator=(DbJson&&) noexcept = delete;
 
-    explicit DbJson(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
+    explicit DbJson(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
-        _jsonIndent {db_settings.JsonIndent}
+        _jsonIndent {db_settings->JsonIndent}
     {
         fs_create_directories(storage_dir);
         StartCommitThread();
@@ -142,17 +165,17 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t length = 0;
-        auto* json = bson_as_canonical_extended_json(&bson, &length);
+        nptr<char> json_lookup = bson_as_canonical_extended_json(&bson, &length);
 
-        if (json == nullptr) {
+        if (!json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
+        auto json = MakeOwnedBsonJsonString(json_lookup.as_ptr());
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(json);
+        const auto pretty_json = nlohmann::json::parse(json.get());
         const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        bson_free(json);
 
         const auto dir = strex(path).extract_dir().str();
 
@@ -191,17 +214,17 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t new_length = 0;
-        auto* new_json = bson_as_canonical_extended_json(&bson, &new_length);
+        nptr<char> new_json_lookup = bson_as_canonical_extended_json(&bson, &new_length);
 
-        if (new_json == nullptr) {
+        if (!new_json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
+        auto new_json = MakeOwnedBsonJsonString(new_json_lookup.as_ptr());
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(new_json);
+        const auto pretty_json = nlohmann::json::parse(new_json.get());
         const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        bson_free(new_json);
 
         const auto dir = strex(path).extract_dir().str();
 
@@ -257,9 +280,9 @@ private:
     int32_t _jsonIndent {};
 };
 
-auto CreateJsonDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*
+auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeRaw<DbJson>(db_settings, storage_dir, std::move(panic_callback));
+    return SafeAlloc::MakeUnique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
+ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, optional<NetMessage> msg) :
     _owner {owner},
     _outBuf {&_owner->_outBuf},
     _msg {msg}
@@ -54,7 +54,7 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_outBuf != nullptr) {
+    if (_outBuf) {
         if (!_isStackUnwinding) {
             if (_msg) {
                 try {
@@ -77,7 +77,7 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
     }
 }
 
-ServerConnection::InBufAccessor::InBufAccessor(ServerConnection* owner) :
+ServerConnection::InBufAccessor::InBufAccessor(ptr<ServerConnection> owner) :
     _owner {owner}
 {
     FO_STACK_TRACE_ENTRY();
@@ -105,14 +105,14 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_inBuf != nullptr) {
+    if (_inBuf) {
         _owner->_inBufLocker.unlock();
         _inBuf = nullptr;
     }
 }
 
-ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection) :
-    _settings {&settings},
+ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection) :
+    _settings {settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings->NetBufferSize),
     _outBuf(_settings->NetBufferSize)

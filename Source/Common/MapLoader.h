@@ -47,8 +47,8 @@ class EngineMetadata;
 class MapLoader final
 {
 public:
-    using CrLoadFunc = function<void(ident_t id, const ProtoCritter* proto, const map<string_view, string_view>& kv)>;
-    using ItemLoadFunc = function<void(ident_t id, const ProtoItem* proto, const map<string_view, string_view>& kv)>;
+    using CrLoadFunc = function<void(ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv)>;
+    using ItemLoadFunc = function<void(ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv)>;
 
     MapLoader() = delete;
 

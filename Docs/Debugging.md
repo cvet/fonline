@@ -117,7 +117,7 @@ For the MSVC CMake generators, solution-folder grouping is only reliable when a 
 ## Quick Validation
 
 1. Regenerate or open the MSVC solution.
-2. Start a debugger session and inspect `fo::raw_ptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
+2. Start a debugger session and inspect `fo::ptr`, `fo::nptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
 3. Confirm that expanding the smart pointer opens the pointed object directly.
 4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
 5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.

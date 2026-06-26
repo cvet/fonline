@@ -82,7 +82,7 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         }
 
         filtered_files.emplace_back(File::Load(file_header));
-        filtered_paths.emplace(file_header.GetPath());
+        filtered_paths.emplace(string(file_header.GetPath()));
         packs_to_complete.emplace(text_pack_name);
     }
 
@@ -105,12 +105,12 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
         if (std::ranges::find(_context->Settings->BakeLanguages, lang_name) == _context->Settings->BakeLanguages.end()) {
             continue;
         }
-        if (filtered_paths.contains(file_header.GetPath())) {
+        if (filtered_paths.contains(string(file_header.GetPath()))) {
             continue;
         }
 
         filtered_files.emplace_back(File::Load(file_header));
-        filtered_paths.emplace(file_header.GetPath());
+        filtered_paths.emplace(string(file_header.GetPath()));
     }
 
     if (filtered_files.empty()) {
@@ -155,7 +155,8 @@ void TextBaker::BakeFiles(const FileCollection& files, string_view target_path) 
             const auto& lang_name = name_pair[1];
 
             if (lang_name == target_lang) {
-                TextPack text_pack {hashes};
+                ptr<HashResolver> hash_resolver = &hashes;
+                TextPack text_pack {hash_resolver};
 
                 if (!text_pack.LoadFromString(file.GetStr(), text_pack_name)) {
                     throw TextPackException("Invalid text file", file.GetPath());

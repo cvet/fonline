@@ -360,7 +360,6 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
-#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)
@@ -571,8 +570,7 @@ public:
     {
         if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
-            const auto* ptr = static_cast<const T*>(this);
-            delete ptr;
+            delete static_cast<const T*>(this);
         }
     }
 

@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemHexView::ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props) :
+ItemHexView::ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) :
     ItemView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
@@ -51,23 +51,23 @@ void ItemHexView::Init()
     FO_STACK_TRACE_ENTRY();
 
     if (GetIsTile()) {
-        SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof.get() : _engine->EffectMngr.Effects.Tile.get());
+        SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile);
     }
     else {
-        SetDrawEffect(_engine->EffectMngr.Effects.Generic.get());
+        SetDrawEffect(_engine->EffectMngr.Effects.Generic);
     }
 
     RefreshAnim();
     RefreshAlpha();
 }
 
-void ItemHexView::SetupSprite(MapSprite* mspr)
+void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 {
     FO_STACK_TRACE_ENTRY();
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings.MapRoofElevation) : GetElevation());
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 
@@ -115,7 +115,8 @@ void ItemHexView::Process()
             _moveCurOffset.y -= numeric_cast<float32_t>(y);
             RefreshOffs();
 
-            _map->MoveItem(this, step_hex);
+            ptr<ItemHexView> self = this;
+            _map->MoveItem(self, step_hex);
         }
     }
 }
@@ -136,7 +137,8 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 
     _moveSteps.clear();
     _moveSteps.emplace_back(cur_hex);
-    _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
+    ptr<vector<mpos>> move_steps = &_moveSteps;
+    _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, move_steps, false);
 
     auto pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
     pos_offset.y += _engine->Random(5, 25); // Center of body
@@ -240,7 +242,7 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    _spr = _anim.get();
+    _spr = _anim.as_nptr();
     RefreshOffs();
 }
 
@@ -286,7 +288,10 @@ void ItemHexView::SetMultihexEntries(vector<mpos> entries)
     FO_STACK_TRACE_ENTRY();
 
     if (!entries.empty()) {
-        make_if_not_exists(_multihexEntries);
+        if (!_multihexEntries) {
+            _multihexEntries.emplace();
+        }
+
         *_multihexEntries = std::move(entries);
     }
     else {

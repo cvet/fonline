@@ -200,7 +200,8 @@ namespace
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
                 type.Size = sizeof(int32_t);
-                type.EnumUnderlyingType = &_types.at("int32");
+                nptr<const BaseTypeDesc> int32_type = &_types.at("int32");
+                type.EnumUnderlyingType = int32_type;
                 return type;
             };
 
@@ -229,48 +230,55 @@ namespace
 
                 BaseTypeDesc type;
                 type.Name = "Waypoint";
-                type.StructLayout = &_layouts.at("Waypoint");
+                nptr<const StructLayoutDesc> waypoint_layout = &_layouts.at("Waypoint");
+                type.StructLayout = waypoint_layout;
                 type.Size = type.StructLayout->Size;
                 type.IsComplexStruct = true;
                 return type;
             };
 
             auto make_route_snapshot = [this]() {
-                auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteSnapshotRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                (void)fields_registrator->RegisterProperty({"Common", "int32[]", "Values"});
-                (void)fields_registrator->RegisterProperty({"Common", "hstring[]", "Tags"});
-                (void)fields_registrator->RegisterProperty({"Common", "Waypoint", "Anchor"});
-                (void)fields_registrator->RegisterProperty({"Common", "string", "Note"});
+                auto [registrator_it, inserted] = _ref_type_registrators.try_emplace("RouteSnapshot", "RouteSnapshotRefType", EngineSideKind::ServerSide, &_proto_hashes, this);
+                FO_VERIFY_AND_THROW(inserted, "RouteSnapshot registrator already registered");
+
+                PropertyRegistrator& fields_registrator = registrator_it->second;
+                (void)fields_registrator.RegisterProperty({"Common", "int32[]", "Values"});
+                (void)fields_registrator.RegisterProperty({"Common", "hstring[]", "Tags"});
+                (void)fields_registrator.RegisterProperty({"Common", "Waypoint", "Anchor"});
+                (void)fields_registrator.RegisterProperty({"Common", "string", "Note"});
 
                 auto& ref_type = _ref_types["RouteSnapshot"];
-                ref_type.FieldsRegistrator = fields_registrator.get();
+                ref_type.FieldsRegistrator = &fields_registrator;
                 ref_type.IsDynamicLayout = true;
-                _ref_type_registrators.emplace("RouteSnapshot", std::move(fields_registrator));
 
                 BaseTypeDesc type;
                 type.Name = "RouteSnapshot";
                 type.IsRefType = true;
                 type.IsObject = true;
-                type.RefType = &_ref_types.at("RouteSnapshot");
+                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteSnapshot");
+                type.RefType = nullable_ref_type;
                 return type;
             };
 
             auto make_route_envelope = [this]() {
-                auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("RouteEnvelopeRefType", EngineSideKind::ServerSide, _proto_hashes, *this);
-                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Primary"});
-                (void)fields_registrator->RegisterProperty({"Common", "RouteSnapshot", "Backup"});
-                (void)fields_registrator->RegisterProperty({"Common", "string", "Title"});
+                auto [registrator_it, inserted] = _ref_type_registrators.try_emplace("RouteEnvelope", "RouteEnvelopeRefType", EngineSideKind::ServerSide, &_proto_hashes, this);
+                FO_VERIFY_AND_THROW(inserted, "RouteEnvelope registrator already registered");
+
+                PropertyRegistrator& fields_registrator = registrator_it->second;
+                (void)fields_registrator.RegisterProperty({"Common", "RouteSnapshot", "Primary"});
+                (void)fields_registrator.RegisterProperty({"Common", "RouteSnapshot", "Backup"});
+                (void)fields_registrator.RegisterProperty({"Common", "string", "Title"});
 
                 auto& ref_type = _ref_types["RouteEnvelope"];
-                ref_type.FieldsRegistrator = fields_registrator.get();
+                ref_type.FieldsRegistrator = &fields_registrator;
                 ref_type.IsDynamicLayout = true;
-                _ref_type_registrators.emplace("RouteEnvelope", std::move(fields_registrator));
 
                 BaseTypeDesc type;
                 type.Name = "RouteEnvelope";
                 type.IsRefType = true;
                 type.IsObject = true;
-                type.RefType = &_ref_types.at("RouteEnvelope");
+                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteEnvelope");
+                type.RefType = nullable_ref_type;
                 return type;
             };
 
@@ -306,7 +314,7 @@ namespace
             _enum_names.emplace(1, "ModeA");
             _enum_names.emplace(2, "ModeB");
 
-            _proto_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>("ProtoResolverEntity", EngineSideKind::ServerSide, _proto_hashes, *this);
+            _proto_registrator.emplace("ProtoResolverEntity", EngineSideKind::ServerSide, &_proto_hashes, this);
 
             AddProto("ProtoItem", "knife");
             AddProto("ProtoItem", "pistol");
@@ -353,17 +361,17 @@ namespace
             return type;
         }
 
-        [[nodiscard]] auto ResolveEnumValue(string_view value_name, bool* failed = nullptr) const -> int32_t override
+        [[nodiscard]] auto ResolveEnumValue(string_view value_name, nptr<bool> failed = nullptr) const -> int32_t override
         {
             if (const auto it = _enum_values.find(string(value_name)); it != _enum_values.end()) {
-                if (failed != nullptr) {
+                if (failed) {
                     *failed = false;
                 }
 
                 return it->second;
             }
 
-            if (failed != nullptr) {
+            if (failed) {
                 *failed = true;
                 return 0;
             }
@@ -371,19 +379,19 @@ namespace
             throw EnumResolveException("Enum value is not supported in test resolver");
         }
 
-        [[nodiscard]] auto ResolveEnumValue(string_view, string_view value_name, bool* failed = nullptr) const -> int32_t override { return ResolveEnumValue(value_name, failed); }
+        [[nodiscard]] auto ResolveEnumValue(string_view, string_view value_name, nptr<bool> failed = nullptr) const -> int32_t override { return ResolveEnumValue(value_name, failed); }
 
-        [[nodiscard]] auto ResolveEnumValueName(string_view, int32_t enum_value, bool* failed = nullptr) const -> const string& override
+        [[nodiscard]] auto ResolveEnumValueName(string_view, int32_t enum_value, nptr<bool> failed = nullptr) const -> string_view override
         {
             if (const auto it = _enum_names.find(enum_value); it != _enum_names.end()) {
-                if (failed != nullptr) {
+                if (failed) {
                     *failed = false;
                 }
 
                 return it->second;
             }
 
-            if (failed != nullptr) {
+            if (failed) {
                 *failed = true;
                 return _empty;
             }
@@ -405,7 +413,7 @@ namespace
 
             return std::nullopt;
         }
-        [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override
+        [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> override
         {
             const auto type_it = _protos.find(type_name.as_hash());
 
@@ -414,15 +422,21 @@ namespace
             }
 
             const auto proto_it = type_it->second.find(proto_id.as_hash());
-            return proto_it != type_it->second.end() ? proto_it->second.get() : nullptr;
+            if (proto_it != type_it->second.end()) {
+                return proto_it->second.as_nptr();
+            }
+
+            return nullptr;
         }
 
         void AddProto(string_view type_name, string_view proto_id)
         {
             const auto type_hname = _proto_hashes.ToHashedString(type_name);
             const auto proto_hname = _proto_hashes.ToHashedString(proto_id);
+            FO_VERIFY_AND_THROW(_proto_registrator.has_value(), "Proto registrator not initialized");
+            ptr<const PropertyRegistrator> proto_registrator = &*_proto_registrator;
 
-            _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, _proto_registrator.get(), nullptr));
+            _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, proto_registrator, nullptr));
         }
 
     private:
@@ -433,26 +447,32 @@ namespace
         unordered_map<int32_t, string> _enum_names {};
         unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migration_rules {};
         HashStorage _proto_hashes {};
-        unique_ptr<PropertyRegistrator> _proto_registrator {};
-        unordered_map<string, unique_ptr<PropertyRegistrator>> _ref_type_registrators {};
+        optional<PropertyRegistrator> _proto_registrator {};
+        unordered_map<string, PropertyRegistrator> _ref_type_registrators {};
         unordered_map<hstring::hash_t, unordered_map<hstring::hash_t, refcount_ptr<ProtoCustomEntity>>> _protos {};
         string _empty {};
     };
 
-    auto MakeOwnedStoreData(vector<const uint8_t*>* raw_data, vector<uint32_t>* raw_sizes) -> vector<vector<uint8_t>>
+    auto MakeOwnedStoreData(const Properties::StoredData& stored_data) -> vector<vector<uint8_t>>
     {
-        vector<vector<uint8_t>> result;
-        result.reserve(raw_data->size());
+        const auto& raw_data = *stored_data.Data;
+        const auto& raw_sizes = *stored_data.Sizes;
 
-        for (size_t i = 0; i < raw_data->size(); i++) {
-            const auto* data = (*raw_data)[i];
-            const auto size = (*raw_sizes)[i];
+        vector<vector<uint8_t>> result;
+        result.reserve(raw_data.size());
+
+        for (size_t i = 0; i < raw_data.size(); i++) {
+            const auto nullable_data = raw_data[i];
+            const auto size = raw_sizes[i];
 
             if (size == 0) {
                 result.emplace_back();
             }
             else {
-                result.emplace_back(data, data + size);
+                REQUIRE(nullable_data);
+                auto data = nullable_data.as_ptr();
+                const_span<uint8_t> data_span {data.get(), size};
+                result.emplace_back(data_span.begin(), data_span.end());
             }
         }
 
@@ -484,7 +504,7 @@ namespace
 
     struct PerfPropertySpec
     {
-        const Property* Prop {};
+        nptr<const Property> Prop {};
         PerfPropertyKind Kind {};
         int Index {};
     };
@@ -496,11 +516,11 @@ namespace
         PropertyRegistrator Registrator;
         vector<PerfPropertySpec> Props {};
         vector<PerfPropertySpec> OverrideProps {};
-        const Property* ProbeIntProp {};
-        const Property* ProbeStringProp {};
-        unique_ptr<Properties> Proto {};
-        unique_ptr<Properties> PackedSource {};
-        unique_ptr<Properties> FullSource {};
+        nptr<const Property> ProbeIntProp {};
+        nptr<const Property> ProbeStringProp {};
+        Properties Proto;
+        Properties PackedSource;
+        Properties FullSource;
         vector<vector<uint8_t>> PackedPublicChunks {};
         vector<vector<uint8_t>> FullPublicChunks {};
         vector<uint8_t> PackedAllData {};
@@ -511,7 +531,10 @@ namespace
         int FillPercent {};
 
         PropertiesStorageStrategyPerfFixture(int total_props, int fill_percent) :
-            Registrator("PerfStorageEntity", EngineSideKind::ServerSide, Hashes, Resolver),
+            Registrator("PerfStorageEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            Proto(&Registrator),
+            PackedSource(&Registrator, &Proto),
+            FullSource(&Registrator),
             TotalProps(total_props),
             FillPercent(fill_percent)
         {
@@ -522,30 +545,29 @@ namespace
 
             for (int i = 0; i < total_props; i++) {
                 const auto kind = static_cast<PerfPropertyKind>(i % 5);
-                auto* prop = RegisterProperty(kind, i);
+                auto prop = RegisterProperty(kind, i);
 
                 Props.emplace_back(PerfPropertySpec {prop, kind, i});
 
-                if (ProbeIntProp == nullptr && kind == PerfPropertyKind::PublicInt) {
+                if (!ProbeIntProp && kind == PerfPropertyKind::PublicInt) {
                     ProbeIntProp = prop;
                 }
-                if (ProbeStringProp == nullptr && kind == PerfPropertyKind::PublicString) {
+                if (!ProbeStringProp && kind == PerfPropertyKind::PublicString) {
                     ProbeStringProp = prop;
                 }
             }
 
-            FO_VERIFY_AND_THROW(ProbeIntProp != nullptr, "Missing required probe int prop");
-            FO_VERIFY_AND_THROW(ProbeStringProp != nullptr, "Missing required probe string prop");
+            FO_VERIFY_AND_THROW(ProbeIntProp != nullptr, "No public int property was registered for probing");
+            FO_VERIFY_AND_THROW(ProbeStringProp != nullptr, "No public string property was registered for probing");
 
-            Proto = unique_ptr<Properties>(new Properties(&Registrator));
+            Proto.AllocData();
+            FullSource.AllocData();
 
             for (const auto& spec : Props) {
-                SetProtoValue(*Proto, spec);
+                SetProtoValue(Proto, spec);
             }
 
-            PackedSource = unique_ptr<Properties>(new Properties(&Registrator, Proto.get()));
-            FullSource = unique_ptr<Properties>(new Properties(&Registrator));
-            FullSource->CopyFrom(*Proto);
+            FullSource.CopyFrom(Proto);
 
             const auto override_count = std::max(1, total_props * fill_percent / 100);
             OverrideProps.reserve(numeric_cast<size_t>(override_count));
@@ -553,24 +575,21 @@ namespace
             for (int i = 0; i < override_count; i++) {
                 const auto& spec = Props[numeric_cast<size_t>(i)];
                 OverrideProps.emplace_back(spec);
-                SetOverrideValue(*PackedSource, spec);
-                SetOverrideValue(*FullSource, spec);
+                SetOverrideValue(PackedSource, spec);
+                SetOverrideValue(FullSource, spec);
             }
 
-            vector<const uint8_t*>* raw_data = nullptr;
-            vector<uint32_t>* raw_sizes = nullptr;
-
-            PackedSource->StoreData(false, &raw_data, &raw_sizes);
-            PackedPublicChunks = MakeOwnedStoreData(raw_data, raw_sizes);
+            const auto packed_public_data = PackedSource.StoreData(false);
+            PackedPublicChunks = MakeOwnedStoreData(packed_public_data);
             PackedPublicBytes = CalcTotalBytes(PackedPublicChunks);
 
-            FullSource->StoreData(false, &raw_data, &raw_sizes);
-            FullPublicChunks = MakeOwnedStoreData(raw_data, raw_sizes);
+            const auto full_public_data = FullSource.StoreData(false);
+            FullPublicChunks = MakeOwnedStoreData(full_public_data);
             FullPublicBytes = CalcTotalBytes(FullPublicChunks);
 
             set<hstring> str_hashes;
-            PackedSource->StoreAllData(PackedAllData, str_hashes);
-            FullSource->StoreAllData(FullAllData, str_hashes);
+            PackedSource.StoreAllData(PackedAllData, str_hashes);
+            FullSource.StoreAllData(FullAllData, str_hashes);
         }
 
         void ApplyOverrides(Properties& props) const
@@ -578,6 +597,18 @@ namespace
             for (const auto& spec : OverrideProps) {
                 SetOverrideValue(props, spec);
             }
+        }
+
+        [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
+            return ProbeIntProp.as_ptr();
+        }
+
+        [[nodiscard]] auto GetProbeStringProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
+            return ProbeStringProp.as_ptr();
         }
 
         [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
@@ -614,14 +645,14 @@ namespace
         [[nodiscard]] auto DiagnoseTextSerializationFailure(const Properties& props) -> string
         {
             for (size_t i = 1; i < Registrator.GetPropertiesCount(); i++) {
-                const auto* prop = Registrator.GetPropertyByIndex(numeric_cast<int32_t>(i));
+                auto prop = Registrator.GetPropertyByIndex(numeric_cast<int32_t>(i));
 
                 if (prop->IsDisabled() || !prop->IsPersistent()) {
                     continue;
                 }
 
                 try {
-                    const auto text = PropertiesSerializator::SavePropertyToText(&props, prop, Hashes, Resolver);
+                    const auto text = PropertiesSerializator::SavePropertyToText(&props, prop.get(), Hashes, Resolver);
                     static_cast<void>(text);
                 }
                 catch (const std::exception& ex) {
@@ -633,7 +664,7 @@ namespace
         }
 
     private:
-        auto RegisterProperty(PerfPropertyKind kind, int index) -> const Property*
+        auto RegisterProperty(PerfPropertyKind kind, int index) -> ptr<const Property>
         {
             string prop_name;
 
@@ -660,44 +691,54 @@ namespace
 
         static void SetProtoValue(Properties& props, const PerfPropertySpec& spec)
         {
+            auto prop = GetSpecProp(spec);
+
             switch (spec.Kind) {
             case PerfPropertyKind::PublicInt:
-                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(spec.Index * 2));
+                props.SetValue<int32_t>(prop, numeric_cast<int32_t>(spec.Index * 2));
                 break;
             case PerfPropertyKind::PublicString:
-                props.SetValue<string>(spec.Prop, strex("proto-{}-squad", spec.Index));
+                props.SetValue<string>(prop, strex("proto-{}-squad", spec.Index));
                 break;
             case PerfPropertyKind::OwnerBool:
-                props.SetValue<bool>(spec.Prop, spec.Index % 2 == 0);
+                props.SetValue<bool>(prop, spec.Index % 2 == 0);
                 break;
             case PerfPropertyKind::PublicFloat:
-                props.SetValue<float32_t>(spec.Prop, static_cast<float32_t>(spec.Index) * 0.25f);
+                props.SetValue<float32_t>(prop, static_cast<float32_t>(spec.Index) * 0.25f);
                 break;
             case PerfPropertyKind::LocalInt:
-                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(spec.Index % 100));
+                props.SetValue<int32_t>(prop, numeric_cast<int32_t>(spec.Index % 100));
                 break;
             }
         }
 
         static void SetOverrideValue(Properties& props, const PerfPropertySpec& spec)
         {
+            auto prop = GetSpecProp(spec);
+
             switch (spec.Kind) {
             case PerfPropertyKind::PublicInt:
-                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>(1000 + spec.Index * 3));
+                props.SetValue<int32_t>(prop, numeric_cast<int32_t>(1000 + spec.Index * 3));
                 break;
             case PerfPropertyKind::PublicString:
-                props.SetValue<string>(spec.Prop, strex("override-{}-payload", spec.Index));
+                props.SetValue<string>(prop, strex("override-{}-payload", spec.Index));
                 break;
             case PerfPropertyKind::OwnerBool:
-                props.SetValue<bool>(spec.Prop, spec.Index % 3 == 0);
+                props.SetValue<bool>(prop, spec.Index % 3 == 0);
                 break;
             case PerfPropertyKind::PublicFloat:
-                props.SetValue<float32_t>(spec.Prop, 10.0f + static_cast<float32_t>(spec.Index) * 0.5f);
+                props.SetValue<float32_t>(prop, 10.0f + static_cast<float32_t>(spec.Index) * 0.5f);
                 break;
             case PerfPropertyKind::LocalInt:
-                props.SetValue<int32_t>(spec.Prop, numeric_cast<int32_t>((spec.Index * 7) % 300));
+                props.SetValue<int32_t>(prop, numeric_cast<int32_t>((spec.Index * 7) % 300));
                 break;
             }
+        }
+
+        static auto GetSpecProp(const PerfPropertySpec& spec) -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(spec.Prop, "Perf property spec has no property");
+            return spec.Prop.as_ptr();
         }
     };
 
@@ -706,24 +747,26 @@ namespace
         HashStorage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrator Registrator;
-        const Property* PatrolWaypointsProp {};
-        const Property* ModeSetsProp {};
+        nptr<const Property> PatrolWaypointsProp {};
+        nptr<const Property> ModeSetsProp {};
         string PatrolProtoText {};
         string PatrolOverrideTextA {};
         string PatrolOverrideTextB {};
         string ModeProtoText {};
         string ModeOverrideTextA {};
         string ModeOverrideTextB {};
-        unique_ptr<Properties> Proto {};
-        unique_ptr<Properties> PackedSource {};
-        unique_ptr<Properties> FullSource {};
+        Properties Proto;
+        Properties PackedSource;
+        Properties FullSource;
 
         PropertiesComplexStrategyPerfFixture() :
-            Registrator("PerfComplexStorageEntity", EngineSideKind::ServerSide, Hashes, Resolver)
+            Registrator("PerfComplexStorageEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            PatrolWaypointsProp(Registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
+            ModeSetsProp(Registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
+            Proto(&Registrator),
+            PackedSource(&Registrator, &Proto),
+            FullSource(&Registrator)
         {
-            PatrolWaypointsProp = Registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
-            ModeSetsProp = Registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"});
-
             PatrolProtoText = MakePatrolValue(1, 2);
             PatrolOverrideTextA = MakePatrolValue(10, 20);
             PatrolOverrideTextB = MakePatrolValue(30, 40);
@@ -731,18 +774,27 @@ namespace
             ModeOverrideTextA = MakeModeSetsValue("alpha", "beta");
             ModeOverrideTextB = MakeModeSetsValue("gamma", "delta");
 
-            Proto = unique_ptr<Properties>(new Properties(&Registrator));
-            Proto->SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolProtoText});
-            Proto->SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeProtoText});
+            Proto.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolProtoText});
+            Proto.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeProtoText});
 
-            PackedSource = unique_ptr<Properties>(new Properties(&Registrator, Proto.get()));
-            FullSource = unique_ptr<Properties>(new Properties(&Registrator));
-            FullSource->CopyFrom(*Proto);
+            FullSource.CopyFrom(Proto);
 
-            PackedSource->SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
-            PackedSource->SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
-            FullSource->SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
-            FullSource->SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
+            PackedSource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
+            PackedSource.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
+            FullSource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {PatrolOverrideTextA});
+            FullSource.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {ModeOverrideTextA});
+        }
+
+        [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
+            return PatrolWaypointsProp.as_ptr();
+        }
+
+        [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
+            return ModeSetsProp.as_ptr();
         }
 
     private:
@@ -800,18 +852,21 @@ namespace
         HashStorage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrator Registrator;
-        vector<const Property*> PublicIntProps {};
-        vector<const Property*> PublicStringProps {};
-        vector<const Property*> OwnerBoolProps {};
-        unique_ptr<Properties> Proto {};
-        unique_ptr<Properties> Full {};
-        unique_ptr<Properties> DerivedSource {};
+        vector<ptr<const Property>> PublicIntProps {};
+        vector<ptr<const Property>> PublicStringProps {};
+        vector<ptr<const Property>> OwnerBoolProps {};
+        Properties Proto;
+        Properties Full;
+        Properties DerivedSource;
         vector<vector<uint8_t>> DerivedPublicChunks {};
         vector<uint8_t> FullAllData {};
         vector<uint8_t> DerivedAllData {};
 
         PropertiesPerfFixture() :
-            Registrator("PerfEntity", EngineSideKind::ServerSide, Hashes, Resolver)
+            Registrator("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            Proto(&Registrator),
+            Full(&Registrator),
+            DerivedSource(&Registrator, &Proto)
         {
             PublicIntProps.reserve(48);
             PublicStringProps.reserve(12);
@@ -838,12 +893,9 @@ namespace
                 OwnerBoolProps.emplace_back(Registrator.RegisterProperty(tokens));
             }
 
-            Proto = unique_ptr<Properties>(new Properties(&Registrator));
-            Full = unique_ptr<Properties>(new Properties(&Registrator));
-
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                Proto->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
-                Full->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
+                Proto.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
+                Full.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
             }
 
             for (size_t i = 0; i < PublicStringProps.size(); i++) {
@@ -851,41 +903,37 @@ namespace
                 proto_value += std::to_string(i).c_str();
                 string full_value {"full-"};
                 full_value += std::to_string(i).c_str();
-                Proto->SetValue<string>(PublicStringProps[i], proto_value);
-                Full->SetValue<string>(PublicStringProps[i], full_value);
+                Proto.SetValue<string>(PublicStringProps[i], proto_value);
+                Full.SetValue<string>(PublicStringProps[i], full_value);
             }
 
             for (size_t i = 0; i < OwnerBoolProps.size(); i++) {
-                Proto->SetValue<bool>(OwnerBoolProps[i], false);
-                Full->SetValue<bool>(OwnerBoolProps[i], i % 2 == 0);
+                Proto.SetValue<bool>(OwnerBoolProps[i], false);
+                Full.SetValue<bool>(OwnerBoolProps[i], i % 2 == 0);
             }
 
-            DerivedSource = unique_ptr<Properties>(new Properties(&Registrator, Proto.get()));
-
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
-                DerivedSource->SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(100 + i));
+                DerivedSource.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(100 + i));
             }
 
             for (size_t i = 0; i < PublicStringProps.size(); i++) {
                 string override_value {"derived-"};
                 override_value += std::to_string(i).c_str();
-                DerivedSource->SetValue<string>(PublicStringProps[i], override_value);
+                DerivedSource.SetValue<string>(PublicStringProps[i], override_value);
             }
 
             for (size_t i = 0; i < OwnerBoolProps.size(); i++) {
-                DerivedSource->SetValue<bool>(OwnerBoolProps[i], i % 3 == 0);
+                DerivedSource.SetValue<bool>(OwnerBoolProps[i], i % 3 == 0);
             }
 
-            vector<const uint8_t*>* raw_data = nullptr;
-            vector<uint32_t>* raw_sizes = nullptr;
-            DerivedSource->StoreData(false, &raw_data, &raw_sizes);
-            DerivedPublicChunks = MakeOwnedStoreData(raw_data, raw_sizes);
+            const auto derived_public_data = DerivedSource.StoreData(false);
+            DerivedPublicChunks = MakeOwnedStoreData(derived_public_data);
 
-            Full->StoreData(false, &raw_data, &raw_sizes);
+            (void)Full.StoreData(false);
 
             set<hstring> str_hashes;
-            Full->StoreAllData(FullAllData, str_hashes);
-            DerivedSource->StoreAllData(DerivedAllData, str_hashes);
+            Full.StoreAllData(FullAllData, str_hashes);
+            DerivedSource.StoreAllData(DerivedAllData, str_hashes);
         }
     };
 
@@ -894,21 +942,22 @@ namespace
         HashStorage Hashes {};
         TestNameResolver Resolver {};
         PropertyRegistrator Registrator;
-        const Property* FloatLabelsProp {};
-        const Property* PatrolWaypointsProp {};
-        const Property* ModeSetsProp {};
-        unique_ptr<Properties> Source {};
-        unique_ptr<Properties> PatrolOnlySource {};
+        nptr<const Property> FloatLabelsProp {};
+        nptr<const Property> PatrolWaypointsProp {};
+        nptr<const Property> ModeSetsProp {};
+        Properties Source;
+        Properties PatrolOnlySource;
         map<string, string> TextData {};
-        unique_ptr<AnyData::Value> PatrolWaypointsValue {};
+        optional<AnyData::Value> PatrolWaypointsValue {};
 
         PropertiesDictPerfFixture() :
-            Registrator("PerfDictEntity", EngineSideKind::ServerSide, Hashes, Resolver)
+            Registrator("PerfDictEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            FloatLabelsProp(Registrator.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"})),
+            PatrolWaypointsProp(Registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"})),
+            ModeSetsProp(Registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"})),
+            Source(&Registrator),
+            PatrolOnlySource(&Registrator)
         {
-            FloatLabelsProp = Registrator.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-            PatrolWaypointsProp = Registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
-            ModeSetsProp = Registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"});
-
             const auto labels_value = []() {
                 AnyData::Dict labels;
                 labels.Emplace("-0.5", string {"low"});
@@ -967,16 +1016,38 @@ namespace
                 return AnyData::Value {std::move(mode_sets)};
             }();
 
-            Source = unique_ptr<Properties>(new Properties(&Registrator));
-            Source->SetValueAsAnyProps(FloatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
-            Source->SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
-            Source->SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
+            Source.SetValueAsAnyProps(FloatLabelsProp->GetRegIndex(), any_t {AnyData::ValueToString(labels_value)});
+            Source.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            Source.SetValueAsAnyProps(ModeSetsProp->GetRegIndex(), any_t {AnyData::ValueToString(mode_sets_value)});
 
-            PatrolOnlySource = unique_ptr<Properties>(new Properties(&Registrator));
-            PatrolOnlySource->SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
+            PatrolOnlySource.SetValueAsAnyProps(PatrolWaypointsProp->GetRegIndex(), any_t {AnyData::ValueToString(patrol_value)});
 
-            TextData = Source->SaveToText(nullptr);
-            PatrolWaypointsValue = unique_ptr<AnyData::Value>(new AnyData::Value(PropertiesSerializator::SavePropertyToValue(Source.get(), PatrolWaypointsProp, Hashes, Resolver)));
+            TextData = Source.SaveToText(nullptr);
+            PatrolWaypointsValue.emplace(PropertiesSerializator::SavePropertyToValue(&Source, GetPatrolWaypointsProp(), Hashes, Resolver));
+        }
+
+        [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(FloatLabelsProp, "Float labels property not registered");
+            return FloatLabelsProp.as_ptr();
+        }
+
+        [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
+            return PatrolWaypointsProp.as_ptr();
+        }
+
+        [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
+        {
+            FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
+            return ModeSetsProp.as_ptr();
+        }
+
+        [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
+        {
+            FO_VERIFY_AND_THROW(PatrolWaypointsValue.has_value(), "Patrol waypoints value not computed");
+            return &*PatrolWaypointsValue;
         }
     };
 }
@@ -985,11 +1056,11 @@ TEST_CASE("PropertiesOverlay")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("TestEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("TestEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties proto(&registrator);
     proto.SetValue<int32_t>(value_prop, 10);
@@ -1014,7 +1085,7 @@ TEST_CASE("PropertiesOverlay")
 
         props.SetValue<string>(name_prop, "proto-name");
         CHECK(props.GetValue<string>(name_prop) == "proto-name");
-        CHECK(props.SaveToText(&proto).empty());
+        CHECK(props.SaveToText(nptr<const Properties>(&proto)).empty());
     }
 
     SECTION("StoresAndRestoresSparseOverrides")
@@ -1024,16 +1095,13 @@ TEST_CASE("PropertiesOverlay")
         props.SetValue<bool>(flag_prop, false);
         props.SetValue<string>(name_prop, "");
 
-        auto diff = props.SaveToText(&proto);
+        auto diff = props.SaveToText(nptr<const Properties>(&proto));
         CHECK(diff.contains("Value"));
         CHECK(diff.contains("Flag"));
         CHECK(diff.contains("Name"));
 
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        props.StoreData(false, &raw_data, &raw_sizes);
-
-        auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        const auto stored_data = props.StoreData(false);
+        auto owned_chunks = MakeOwnedStoreData(stored_data);
 
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
@@ -1167,9 +1235,9 @@ TEST_CASE("PropertiesRawDataCopy")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("RawCopyEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("RawCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
     const string first_value(4096, 'A');
@@ -1180,12 +1248,12 @@ TEST_CASE("PropertiesRawDataCopy")
         props.SetValue<string>(name_prop, first_value);
 
         PropertyRawData copied_data;
-        props.CopyRawData(name_prop, copied_data);
+        props.CopyRawData(name_prop.get(), copied_data);
 
         props.SetValue<string>(name_prop, second_value);
 
         REQUIRE(copied_data.GetSize() == first_value.size());
-        const auto* copied_chars = copied_data.GetPtrAs<char>();
+        auto copied_chars = copied_data.GetPtrAs<char>();
 
         for (size_t i = 0; i < copied_data.GetSize(); i++) {
             CHECK(copied_chars[i] == 'A');
@@ -1209,7 +1277,7 @@ TEST_CASE("PropertiesRawDataCopy")
 
         while (!writer_done.load(std::memory_order_acquire)) {
             PropertyRawData copied_data;
-            props.CopyRawData(name_prop, copied_data);
+            props.CopyRawData(name_prop.get(), copied_data);
 
             const size_t size = copied_data.GetSize();
             const bool first_size = size == first_value.size();
@@ -1221,7 +1289,7 @@ TEST_CASE("PropertiesRawDataCopy")
             }
 
             const char expected = first_size ? 'A' : 'B';
-            const auto* copied_chars = copied_data.GetPtrAs<char>();
+            auto copied_chars = copied_data.GetPtrAs<char>();
 
             for (size_t i = 0; i < size; i++) {
                 if (copied_chars[i] != expected) {
@@ -1244,11 +1312,11 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("SyncEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("SyncEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* public_value_prop = registrator.RegisterProperty({"Common", "int32", "PublicValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* owner_flag_prop = registrator.RegisterProperty({"Common", "bool", "OwnerFlag", "Mutable", "Persistent", "OwnerSync"});
-    const auto* public_name_prop = registrator.RegisterProperty({"Common", "string", "PublicName", "Mutable", "Persistent", "PublicSync"});
+    auto public_value_prop = registrator.RegisterProperty({"Common", "int32", "PublicValue", "Mutable", "Persistent", "PublicSync"});
+    auto owner_flag_prop = registrator.RegisterProperty({"Common", "bool", "OwnerFlag", "Mutable", "Persistent", "OwnerSync"});
+    auto public_name_prop = registrator.RegisterProperty({"Common", "string", "PublicName", "Mutable", "Persistent", "PublicSync"});
 
     Properties proto(&registrator);
     proto.SetValue<int32_t>(public_value_prop, 10);
@@ -1262,22 +1330,23 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        props.StoreData(false, &raw_data, &raw_sizes);
+        const auto stored_data = props.StoreData(false);
+        const auto& raw_data = *stored_data.Data;
+        const auto& raw_sizes = *stored_data.Sizes;
 
-        REQUIRE(raw_data != nullptr);
-        REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 4);
-        REQUIRE(raw_sizes->size() == 4);
-        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
-        CHECK((*raw_sizes)[1] == sizeof(uint16_t) * 2);
+        REQUIRE(raw_data.size() == 4);
+        REQUIRE(raw_sizes.size() == 4);
+        CHECK(raw_sizes[0] == sizeof(uint8_t));
+        CHECK(raw_sizes[1] == sizeof(uint16_t) * 2);
 
         uint8_t store_type = 0xFF;
-        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        REQUIRE(raw_data.at(0));
+        auto store_type_data = raw_data.at(0).as_ptr();
+        ptr<uint8_t> store_type_ptr = &store_type;
+        MemCopy(store_type_ptr.get(), store_type_data.get(), sizeof(store_type));
         CHECK(store_type == 1);
 
-        auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        auto owned_chunks = MakeOwnedStoreData(stored_data);
 
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
@@ -1302,22 +1371,23 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        props.StoreData(true, &raw_data, &raw_sizes);
+        const auto stored_data = props.StoreData(true);
+        const auto& raw_data = *stored_data.Data;
+        const auto& raw_sizes = *stored_data.Sizes;
 
-        REQUIRE(raw_data != nullptr);
-        REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 5);
-        REQUIRE(raw_sizes->size() == 5);
-        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
-        CHECK((*raw_sizes)[1] == sizeof(uint16_t) * 3);
+        REQUIRE(raw_data.size() == 5);
+        REQUIRE(raw_sizes.size() == 5);
+        CHECK(raw_sizes[0] == sizeof(uint8_t));
+        CHECK(raw_sizes[1] == sizeof(uint16_t) * 3);
 
         uint8_t store_type = 0xFF;
-        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        REQUIRE(raw_data.at(0));
+        auto store_type_data = raw_data.at(0).as_ptr();
+        ptr<uint8_t> store_type_ptr = &store_type;
+        MemCopy(store_type_ptr.get(), store_type_data.get(), sizeof(store_type));
         CHECK(store_type == 1);
 
-        auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        auto owned_chunks = MakeOwnedStoreData(stored_data);
 
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
@@ -1340,23 +1410,24 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         Properties props(&registrator, &proto);
         props.SetValue<string>(public_name_prop, "");
 
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        props.StoreData(false, &raw_data, &raw_sizes);
+        const auto stored_data = props.StoreData(false);
+        const auto& raw_data = *stored_data.Data;
+        const auto& raw_sizes = *stored_data.Sizes;
 
-        REQUIRE(raw_data != nullptr);
-        REQUIRE(raw_sizes != nullptr);
-        REQUIRE(raw_data->size() == 3);
-        REQUIRE(raw_sizes->size() == 3);
-        CHECK((*raw_sizes)[0] == sizeof(uint8_t));
-        CHECK((*raw_sizes)[1] == sizeof(uint16_t));
-        CHECK((*raw_sizes)[2] == 0);
+        REQUIRE(raw_data.size() == 3);
+        REQUIRE(raw_sizes.size() == 3);
+        CHECK(raw_sizes[0] == sizeof(uint8_t));
+        CHECK(raw_sizes[1] == sizeof(uint16_t));
+        CHECK(raw_sizes[2] == 0);
 
         uint8_t store_type = 0xFF;
-        MemCopy(&store_type, raw_data->at(0), sizeof(store_type));
+        REQUIRE(raw_data.at(0));
+        auto store_type_data = raw_data.at(0).as_ptr();
+        ptr<uint8_t> store_type_ptr = &store_type;
+        MemCopy(store_type_ptr.get(), store_type_data.get(), sizeof(store_type));
         CHECK(store_type == 1);
 
-        auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        auto owned_chunks = MakeOwnedStoreData(stored_data);
 
         Properties restored(&registrator, &proto);
         restored.RestoreData(owned_chunks);
@@ -1371,29 +1442,17 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8_t*>* public_data = nullptr;
-        vector<uint32_t>* public_sizes = nullptr;
-        props.StoreData(false, &public_data, &public_sizes);
+        const auto public_data = props.StoreData(false);
+        const auto protected_data = props.StoreData(true);
+        const auto public_data_again = props.StoreData(false);
 
-        vector<const uint8_t*>* protected_data = nullptr;
-        vector<uint32_t>* protected_sizes = nullptr;
-        props.StoreData(true, &protected_data, &protected_sizes);
+        CHECK(public_data.Data != protected_data.Data);
+        CHECK(public_data.Sizes != protected_data.Sizes);
+        CHECK(public_data.Data == public_data_again.Data);
+        CHECK(public_data.Sizes == public_data_again.Sizes);
 
-        vector<const uint8_t*>* public_data_again = nullptr;
-        vector<uint32_t>* public_sizes_again = nullptr;
-        props.StoreData(false, &public_data_again, &public_sizes_again);
-
-        REQUIRE(public_data != nullptr);
-        REQUIRE(public_sizes != nullptr);
-        REQUIRE(protected_data != nullptr);
-        REQUIRE(protected_sizes != nullptr);
-        CHECK(public_data != protected_data);
-        CHECK(public_sizes != protected_sizes);
-        CHECK(public_data == public_data_again);
-        CHECK(public_sizes == public_sizes_again);
-
-        auto public_chunks = MakeOwnedStoreData(public_data, public_sizes);
-        auto protected_chunks = MakeOwnedStoreData(protected_data, protected_sizes);
+        auto public_chunks = MakeOwnedStoreData(public_data);
+        auto protected_chunks = MakeOwnedStoreData(protected_data);
 
         Properties restored_public(&registrator, &proto);
         restored_public.RestoreData(public_chunks);
@@ -1413,17 +1472,13 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         Properties derived(&registrator, &proto);
         derived.SetValue<int32_t>(public_value_prop, 42);
 
-        vector<const uint8_t*>* derived_before_data = nullptr;
-        vector<uint32_t>* derived_before_sizes = nullptr;
-        derived.StoreData(false, &derived_before_data, &derived_before_sizes);
-        auto derived_before_chunks = MakeOwnedStoreData(derived_before_data, derived_before_sizes);
+        const auto derived_before_data = derived.StoreData(false);
+        auto derived_before_chunks = MakeOwnedStoreData(derived_before_data);
 
         derived.SetValue<string>(public_name_prop, "changed");
 
-        vector<const uint8_t*>* derived_after_data = nullptr;
-        vector<uint32_t>* derived_after_sizes = nullptr;
-        derived.StoreData(false, &derived_after_data, &derived_after_sizes);
-        auto derived_after_chunks = MakeOwnedStoreData(derived_after_data, derived_after_sizes);
+        const auto derived_after_data = derived.StoreData(false);
+        auto derived_after_chunks = MakeOwnedStoreData(derived_after_data);
 
         Properties restored_before(&registrator, &proto);
         restored_before.RestoreData(derived_before_chunks);
@@ -1440,26 +1495,20 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         full_target.SetValue<bool>(owner_flag_prop, true);
         full_target.SetValue<string>(public_name_prop, "base");
 
-        vector<const uint8_t*>* full_before_data = nullptr;
-        vector<uint32_t>* full_before_sizes = nullptr;
-        full_target.StoreData(false, &full_before_data, &full_before_sizes);
+        (void)full_target.StoreData(false);
 
         Properties full_source(&registrator);
         full_source.SetValue<int32_t>(public_value_prop, 77);
         full_source.SetValue<bool>(owner_flag_prop, false);
         full_source.SetValue<string>(public_name_prop, "restored");
 
-        vector<const uint8_t*>* full_source_data = nullptr;
-        vector<uint32_t>* full_source_sizes = nullptr;
-        full_source.StoreData(false, &full_source_data, &full_source_sizes);
-        auto full_source_chunks = MakeOwnedStoreData(full_source_data, full_source_sizes);
+        const auto full_source_data = full_source.StoreData(false);
+        auto full_source_chunks = MakeOwnedStoreData(full_source_data);
 
         full_target.RestoreData(full_source_chunks);
 
-        vector<const uint8_t*>* full_after_data = nullptr;
-        vector<uint32_t>* full_after_sizes = nullptr;
-        full_target.StoreData(false, &full_after_data, &full_after_sizes);
-        auto full_after_chunks = MakeOwnedStoreData(full_after_data, full_after_sizes);
+        const auto full_after_data = full_target.StoreData(false);
+        auto full_after_chunks = MakeOwnedStoreData(full_after_data);
 
         Properties full_restored(&registrator);
         full_restored.RestoreData(full_after_chunks);
@@ -1475,27 +1524,19 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         props.SetValue<bool>(owner_flag_prop, false);
         props.SetValue<string>(public_name_prop, "public-override");
 
-        vector<const uint8_t*>* public_before_data = nullptr;
-        vector<uint32_t>* public_before_sizes = nullptr;
-        props.StoreData(false, &public_before_data, &public_before_sizes);
-        const auto public_before_chunks = MakeOwnedStoreData(public_before_data, public_before_sizes);
+        const auto public_before_data = props.StoreData(false);
+        const auto public_before_chunks = MakeOwnedStoreData(public_before_data);
 
-        vector<const uint8_t*>* protected_before_data = nullptr;
-        vector<uint32_t>* protected_before_sizes = nullptr;
-        props.StoreData(true, &protected_before_data, &protected_before_sizes);
-        const auto protected_before_chunks = MakeOwnedStoreData(protected_before_data, protected_before_sizes);
+        const auto protected_before_data = props.StoreData(true);
+        const auto protected_before_chunks = MakeOwnedStoreData(protected_before_data);
 
         props.SetValue<bool>(owner_flag_prop, true);
 
-        vector<const uint8_t*>* public_after_data = nullptr;
-        vector<uint32_t>* public_after_sizes = nullptr;
-        props.StoreData(false, &public_after_data, &public_after_sizes);
-        const auto public_after_chunks = MakeOwnedStoreData(public_after_data, public_after_sizes);
+        const auto public_after_data = props.StoreData(false);
+        const auto public_after_chunks = MakeOwnedStoreData(public_after_data);
 
-        vector<const uint8_t*>* protected_after_data = nullptr;
-        vector<uint32_t>* protected_after_sizes = nullptr;
-        props.StoreData(true, &protected_after_data, &protected_after_sizes);
-        const auto protected_after_chunks = MakeOwnedStoreData(protected_after_data, protected_after_sizes);
+        const auto protected_after_data = props.StoreData(true);
+        const auto protected_after_chunks = MakeOwnedStoreData(protected_after_data);
 
         Properties restored_public_before(&registrator);
         restored_public_before.RestoreData(public_before_chunks);
@@ -1617,11 +1658,11 @@ TEST_CASE("PropertiesFullStorageRoundTrip")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("FullEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("FullEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
     props.SetValue<int32_t>(value_prop, 123);
@@ -1671,11 +1712,11 @@ TEST_CASE("PropertiesFullStorageCopyFrom")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("FullCopyEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("FullCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties source(&registrator);
     source.SetValue<int32_t>(value_prop, 321);
@@ -1701,10 +1742,10 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("ClientLocalEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("ClientLocalEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* synced_value_prop = registrator.RegisterProperty({"Common", "int32", "SyncedValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* local_value_prop = registrator.RegisterProperty({"Common", "int32", "LocalValue", "Mutable", "Persistent", "NoSync"});
+    auto synced_value_prop = registrator.RegisterProperty({"Common", "int32", "SyncedValue", "Mutable", "Persistent", "PublicSync"});
+    auto local_value_prop = registrator.RegisterProperty({"Common", "int32", "LocalValue", "Mutable", "Persistent", "NoSync"});
 
     Properties proto(&registrator);
     proto.SetValue<int32_t>(synced_value_prop, 10);
@@ -1727,10 +1768,8 @@ TEST_CASE("PropertiesOverlayPreservesUnsyncedLocalOverridesOnRestore")
         Properties server_state(&registrator, &proto);
         server_state.SetValue<int32_t>(synced_value_prop, 42);
 
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        server_state.StoreData(false, &raw_data, &raw_sizes);
-        auto owned_chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        const auto stored_data = server_state.StoreData(false);
+        auto owned_chunks = MakeOwnedStoreData(stored_data);
 
         Properties client_state(&registrator, &proto);
         client_state.SetValue<int32_t>(local_value_prop, 1);
@@ -1793,10 +1832,10 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("MalformedRestoreEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("MalformedRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
     props.SetValue<int32_t>(value_prop, 10);
@@ -1809,7 +1848,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("PointerAndSizeListsMustMatch")
     {
-        vector<const uint8_t*> payload {&full_store_type};
+        vector<nptr<const uint8_t>> payload {&full_store_type};
         vector<uint32_t> sizes;
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1817,7 +1856,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("StoreTypeMarkerMustBeOneByte")
     {
-        vector<const uint8_t*> payload {&full_store_type};
+        vector<nptr<const uint8_t>> payload {&full_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(uint16_t))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1825,7 +1864,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("StoreTypeMustBeKnown")
     {
-        vector<const uint8_t*> payload {&invalid_store_type};
+        vector<nptr<const uint8_t>> payload {&invalid_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(invalid_store_type))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1834,7 +1873,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     SECTION("SeparateIndexTableMustBeAligned")
     {
         const array<uint8_t, 1> misaligned_index_table {0};
-        vector<const uint8_t*> payload {&separate_store_type, misaligned_index_table.data()};
+        vector<nptr<const uint8_t>> payload {&separate_store_type, misaligned_index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(misaligned_index_table.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1843,7 +1882,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     SECTION("SeparatePayloadCountMustMatchIndexTable")
     {
         const auto index_table = MakeRawUInt16(value_prop->GetRegIndex());
-        vector<const uint8_t*> payload {&separate_store_type, index_table.data()};
+        vector<nptr<const uint8_t>> payload {&separate_store_type, index_table.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(index_table.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1853,13 +1892,13 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     {
         const auto payload_value_data = MakeRawInt32(payload_value);
         const auto zero_index_table = MakeRawUInt16(0);
-        vector<const uint8_t*> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
+        vector<nptr<const uint8_t>> zero_payload {&separate_store_type, zero_index_table.data(), payload_value_data.data()};
         vector<uint32_t> zero_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(zero_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
         CHECK_THROWS(props.RestoreData(zero_payload, zero_sizes));
 
         const auto out_of_bounds_index_table = MakeRawUInt16(999);
-        vector<const uint8_t*> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
+        vector<nptr<const uint8_t>> out_of_bounds_payload {&separate_store_type, out_of_bounds_index_table.data(), payload_value_data.data()};
         vector<uint32_t> out_of_bounds_sizes {numeric_cast<uint32_t>(sizeof(separate_store_type)), numeric_cast<uint32_t>(out_of_bounds_index_table.size()), numeric_cast<uint32_t>(payload_value_data.size())};
 
         CHECK_THROWS(props.RestoreData(out_of_bounds_payload, out_of_bounds_sizes));
@@ -1867,7 +1906,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("FullPayloadMustContainPodData")
     {
-        vector<const uint8_t*> payload {&full_store_type};
+        vector<nptr<const uint8_t>> payload {&full_store_type};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type))};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1876,7 +1915,7 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     SECTION("FullPodDataSizeMustMatchASectionBoundary")
     {
         const array<uint8_t, 1> pod_data {0};
-        vector<const uint8_t*> payload {&full_store_type, pod_data.data()};
+        vector<nptr<const uint8_t>> payload {&full_store_type, pod_data.data()};
         vector<uint32_t> sizes {numeric_cast<uint32_t>(sizeof(full_store_type)), numeric_cast<uint32_t>(pod_data.size())};
 
         CHECK_THROWS(props.RestoreData(payload, sizes));
@@ -1884,11 +1923,8 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
 
     SECTION("FullComplexIndexTableMustContainValidComplexProperties")
     {
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        props.StoreData(false, &raw_data, &raw_sizes);
-
-        auto chunks = MakeOwnedStoreData(raw_data, raw_sizes);
+        const auto stored_data = props.StoreData(false);
+        auto chunks = MakeOwnedStoreData(stored_data);
         REQUIRE(chunks.size() == 4);
 
         auto zero_entry_chunks = chunks;
@@ -1913,12 +1949,12 @@ TEST_CASE("PropertiesCompareData")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("CompareEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("CompareEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
-    const auto* temp_prop = registrator.RegisterProperty({"Common", "int32", "Temp", "Mutable", "NoSync"});
+    auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    auto temp_prop = registrator.RegisterProperty({"Common", "int32", "Temp", "Mutable", "NoSync"});
 
     SECTION("FullStorageFastPath")
     {
@@ -1969,8 +2005,8 @@ TEST_CASE("PropertiesCompareData")
         right.SetValue<int32_t>(value_prop, 99);
         right.SetValue<int32_t>(temp_prop, 2);
 
-        array<const Property*, 1> ignored_props {{value_prop}};
-        const span<const Property*> ignored_props_span {ignored_props.data(), ignored_props.size()};
+        array<ptr<const Property>, 1> ignored_props {{value_prop}};
+        const const_span<ptr<const Property>> ignored_props_span {ignored_props.data(), ignored_props.size()};
 
         CHECK(left.CompareData(right, ignored_props_span, true));
         CHECK_FALSE(left.CompareData(right, {}, true));
@@ -2015,11 +2051,11 @@ TEST_CASE("PropertiesCustomAccessors")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("AccessorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("AccessorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* plain_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* virtual_prop = registrator.RegisterProperty({"Common", "int32", "VirtualValue", "Mutable", "Virtual"});
-    const auto* virtual_without_setter_prop = registrator.RegisterProperty({"Common", "int32", "VirtualWithoutSetter", "Mutable", "Virtual"});
+    auto plain_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto virtual_prop = registrator.RegisterProperty({"Common", "int32", "VirtualValue", "Mutable", "Virtual"});
+    auto virtual_without_setter_prop = registrator.RegisterProperty({"Common", "int32", "VirtualWithoutSetter", "Mutable", "Virtual"});
 
     Properties props(&registrator);
     props.SetEntity(reinterpret_cast<Entity*>(size_t {1}));
@@ -2028,18 +2064,18 @@ TEST_CASE("PropertiesCustomAccessors")
     int32_t post_setter_calls = 0;
     int32_t virtual_value = 7;
 
-    plain_prop->AddSetter([&](Entity*, const Property*, PropertyRawData& prop_data) {
+    plain_prop->AddSetter([&](nptr<Entity>, ptr<const Property>, PropertyRawData& prop_data) {
         setter_calls++;
         prop_data.SetAs<int32_t>(prop_data.GetAs<int32_t>() + 5);
     });
-    plain_prop->AddPostSetter([&](Entity*, const Property*) { post_setter_calls++; });
+    plain_prop->AddPostSetter([&](nptr<Entity>, ptr<const Property>) { post_setter_calls++; });
 
-    virtual_prop->SetGetter([&](Entity*, const Property*) {
+    virtual_prop->SetGetter([&](nptr<Entity>, ptr<const Property>) {
         PropertyRawData prop_data;
         prop_data.SetAs<int32_t>(virtual_value);
         return prop_data;
     });
-    virtual_prop->AddSetter([&](Entity*, const Property*, PropertyRawData& prop_data) { virtual_value = prop_data.GetAs<int32_t>(); });
+    virtual_prop->AddSetter([&](nptr<Entity>, ptr<const Property>, PropertyRawData& prop_data) { virtual_value = prop_data.GetAs<int32_t>(); });
 
     props.SetValue<int32_t>(plain_prop, 10);
     CHECK(props.GetValue<int32_t>(plain_prop) == 15);
@@ -2107,9 +2143,8 @@ TEST_CASE("PropertyRawDataStorageModes")
 
         CHECK(data.GetSize() == source.size());
 
-        auto* stored = data.GetPtrAs<uint8_t>();
-        REQUIRE(stored != nullptr);
-        CHECK(std::equal(source.begin(), source.end(), stored));
+        auto stored = data.GetPtrAs<uint8_t>();
+        CHECK(std::equal(source.begin(), source.end(), stored.get()));
 
         source[0] = 255;
         source.back() = 254;
@@ -2122,10 +2157,10 @@ TEST_CASE("PropertiesTextRoundTrip")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("TextEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("TextEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-    const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
+    auto tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+    auto values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
     props.SetValue(tags_prop, vector<string> {"alpha", "beta", ""});
@@ -2146,10 +2181,10 @@ TEST_CASE("PropertiesHashAndEnumConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("TypedEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("TypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    auto enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
     props.SetValue<hstring>(hash_prop, hashes.ToHashedString("alpha"));
@@ -2184,8 +2219,8 @@ TEST_CASE("PropertiesEnumValueMigration")
     // A removed/renamed enum value "ModeLegacy" should migrate to "ModeA" on load instead of failing resolution.
     resolver.AddMigrationRule(hashes.ToHashedString("Enum"), hashes.ToHashedString("Mode"), hashes.ToHashedString("ModeLegacy"), hashes.ToHashedString("ModeA"));
 
-    PropertyRegistrator registrator("EnumMigrationEntity", EngineSideKind::ServerSide, hashes, resolver);
-    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    PropertyRegistrator registrator("EnumMigrationEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -2205,19 +2240,19 @@ TEST_CASE("PropertiesNumericWidthConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("NumericWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("NumericWidthsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+    auto int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    auto int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    auto int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
+    auto int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    auto bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    auto string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -2254,22 +2289,22 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("PlainAccessorsEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("PlainAccessorsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* fixed_hash_prop = registrator.RegisterProperty({"Common", "FixedHash", "FixedHashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* disabled_prop = registrator.RegisterProperty({"Client", "int32", "ClientOnlyValue", "Mutable"});
+    auto int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    auto int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    auto int32_prop = registrator.RegisterProperty({"Common", "int32", "Int32Value", "Mutable", "Persistent", "PublicSync"});
+    auto int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    auto enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    auto bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    auto fixed_hash_prop = registrator.RegisterProperty({"Common", "FixedHash", "FixedHashValue", "Mutable", "Persistent", "PublicSync"});
+    auto string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+    auto disabled_prop = registrator.RegisterProperty({"Client", "int32", "ClientOnlyValue", "Mutable"});
 
     Properties props(&registrator);
 
@@ -2360,13 +2395,13 @@ TEST_CASE("PropertiesNumericRangeValidation")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("NumericRangeEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("NumericRangeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    auto int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    auto int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -2403,17 +2438,17 @@ TEST_CASE("PropertiesTextScalarWidthConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("NumericTextWidthsEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("NumericTextWidthsEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    auto int8_prop = registrator.RegisterProperty({"Common", "int8", "Int8Value", "Mutable", "Persistent", "PublicSync"});
+    auto int16_prop = registrator.RegisterProperty({"Common", "int16", "Int16Value", "Mutable", "Persistent", "PublicSync"});
+    auto int64_prop = registrator.RegisterProperty({"Common", "int64", "Int64Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint8_prop = registrator.RegisterProperty({"Common", "uint8", "UInt8Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint16_prop = registrator.RegisterProperty({"Common", "uint16", "UInt16Value", "Mutable", "Persistent", "PublicSync"});
+    auto uint32_prop = registrator.RegisterProperty({"Common", "uint32", "UInt32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "Float32Value", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "Float64Value", "Mutable", "Persistent", "PublicSync"});
+    auto bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -2466,11 +2501,11 @@ TEST_CASE("PropertiesPrimitiveDictKeyTextConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("PrimitiveDictKeyEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("PrimitiveDictKeyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* labels_prop = registrator.RegisterProperty({"Common", "int8=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-    const auto* flags_prop = registrator.RegisterProperty({"Common", "uint16=>bool", "Flags", "Mutable", "Persistent", "PublicSync"});
-    const auto* samples_prop = registrator.RegisterProperty({"Common", "float64=>int8[]", "Samples", "Mutable", "Persistent", "PublicSync"});
+    auto labels_prop = registrator.RegisterProperty({"Common", "int8=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    auto flags_prop = registrator.RegisterProperty({"Common", "uint16=>bool", "Flags", "Mutable", "Persistent", "PublicSync"});
+    auto samples_prop = registrator.RegisterProperty({"Common", "float64=>int8[]", "Samples", "Mutable", "Persistent", "PublicSync"});
 
     const auto labels_value = []() {
         AnyData::Dict labels;
@@ -2535,11 +2570,11 @@ TEST_CASE("PropertiesBuiltinProtoReferenceSupport")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("ProtoTypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
-    const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
+    auto item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
+    auto map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
+    auto loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
 
     CHECK(item_prop->GetBaseType().IsEntity);
     CHECK(item_prop->IsBaseTypeEntityProto());
@@ -2600,19 +2635,19 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTypedInputs")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("InvalidTypedEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("InvalidTypedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
-    const auto* map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
-    const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
-    const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-    const auto* loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
-    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
-    const auto* bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
+    auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    auto enum_prop = registrator.RegisterProperty({"Common", "Mode", "ModeValue", "Mutable", "Persistent", "PublicSync"});
+    auto item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync"});
+    auto map_prop = registrator.RegisterProperty({"Common", "ProtoMap", "SpawnMapProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
+    auto values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
+    auto tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+    auto labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    auto loot_sets_prop = registrator.RegisterProperty({"Common", "string=>ProtoItem[]", "LootSets", "Mutable", "Persistent", "PublicSync"});
+    auto leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    auto bool_prop = registrator.RegisterProperty({"Common", "bool", "BoolValue", "Mutable", "Persistent", "PublicSync"});
+    auto string_prop = registrator.RegisterProperty({"Common", "string", "StringValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -2660,9 +2695,9 @@ TEST_CASE("PropertiesStoreAllDataAccumulatesHashesAcrossObjects")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("AccumulatedHashesEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("AccumulatedHashesEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
 
     Properties first(&registrator);
     first.SetValue<hstring>(hash_prop, hashes.ToHashedString("alpha"));
@@ -2686,11 +2721,11 @@ TEST_CASE("PropertiesDictConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DictEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* counters_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
-    const auto* tags_prop = registrator.RegisterProperty({"Common", "Mode=>string[]", "ModeTags", "Mutable", "Persistent", "PublicSync"});
-    const auto* routes_prop = registrator.RegisterProperty({"Common", "hstring=>Mode", "RouteModes", "Mutable", "Persistent", "PublicSync"});
+    auto counters_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+    auto tags_prop = registrator.RegisterProperty({"Common", "Mode=>string[]", "ModeTags", "Mutable", "Persistent", "PublicSync"});
+    auto routes_prop = registrator.RegisterProperty({"Common", "hstring=>Mode", "RouteModes", "Mutable", "Persistent", "PublicSync"});
 
     const auto counters_value = []() {
         AnyData::Dict counters;
@@ -2753,10 +2788,10 @@ TEST_CASE("PropertiesNumericDictConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("NumericDictEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("NumericDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* flags_prop = registrator.RegisterProperty({"Common", "int32=>bool", "Flags", "Mutable", "Persistent", "PublicSync"});
-    const auto* checkpoints_prop = registrator.RegisterProperty({"Common", "bool=>int32[]", "Checkpoints", "Mutable", "Persistent", "PublicSync"});
+    auto flags_prop = registrator.RegisterProperty({"Common", "int32=>bool", "Flags", "Mutable", "Persistent", "PublicSync"});
+    auto checkpoints_prop = registrator.RegisterProperty({"Common", "bool=>int32[]", "Checkpoints", "Mutable", "Persistent", "PublicSync"});
 
     const auto flags_value = []() {
         AnyData::Dict flags;
@@ -2809,10 +2844,10 @@ TEST_CASE("PropertiesSpecialValueDictArrays")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("SpecialDictEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("SpecialDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* mode_sets_prop = registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"});
-    const auto* route_tags_prop = registrator.RegisterProperty({"Common", "int32=>hstring[]", "RouteTags", "Mutable", "Persistent", "PublicSync"});
+    auto mode_sets_prop = registrator.RegisterProperty({"Common", "string=>Mode[]", "ModeSets", "Mutable", "Persistent", "PublicSync"});
+    auto route_tags_prop = registrator.RegisterProperty({"Common", "int32=>hstring[]", "RouteTags", "Mutable", "Persistent", "PublicSync"});
 
     const auto mode_sets_value = []() {
         AnyData::Array primary_modes;
@@ -2871,10 +2906,10 @@ TEST_CASE("PropertiesFloatDictConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("FloatDictEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("FloatDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* labels_prop = registrator.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-    const auto* samples_prop = registrator.RegisterProperty({"Common", "float32=>float32[]", "Samples", "Mutable", "Persistent", "PublicSync"});
+    auto labels_prop = registrator.RegisterProperty({"Common", "float32=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    auto samples_prop = registrator.RegisterProperty({"Common", "float32=>float32[]", "Samples", "Mutable", "Persistent", "PublicSync"});
 
     const auto labels_value = []() {
         AnyData::Dict labels;
@@ -2926,10 +2961,10 @@ TEST_CASE("PropertiesStructDictConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("StructDictEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("StructDictEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
-    const auto* patrol_prop = registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
+    auto leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    auto patrol_prop = registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
 
     const auto leader_value = []() {
         AnyData::Dict leaders;
@@ -3008,10 +3043,10 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidStructShapes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("InvalidStructEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("InvalidStructEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
-    const auto* patrol_prop = registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
+    auto leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    auto patrol_prop = registrator.RegisterProperty({"Common", "int32=>Waypoint[]", "PatrolWaypoints", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -3041,9 +3076,9 @@ TEST_CASE("PropertiesRefTypeConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("RefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("RefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    auto snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
 
     const auto snapshot_value = []() {
         AnyData::Array values;
@@ -3095,9 +3130,9 @@ TEST_CASE("PropertiesNestedRefTypeConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("NestedRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("NestedRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* envelope_prop = registrator.RegisterProperty({"Common", "RouteEnvelope", "Envelope", "Mutable", "Persistent", "PublicSync"});
+    auto envelope_prop = registrator.RegisterProperty({"Common", "RouteEnvelope", "Envelope", "Mutable", "Persistent", "PublicSync"});
 
     const auto make_snapshot = [](int32_t start_value, string_view tag, string_view note, bool anchor_flag) {
         AnyData::Array values;
@@ -3154,11 +3189,11 @@ TEST_CASE("PropertiesRefTypeCollectionConversions")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("RefTypeCollectionEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("RefTypeCollectionEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-    const auto* snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
-    const auto* snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
+    auto snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+    auto snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+    auto snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
 
     const auto make_snapshot = [](int32_t start_value, string_view tag, string_view note, bool anchor_flag) {
         AnyData::Array values;
@@ -3246,9 +3281,9 @@ TEST_CASE("PropertiesRefTypeSerializationSkipsDefaultFields")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("SparseRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("SparseRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    auto snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Dict snapshot;
     snapshot.Emplace("Note", AnyData::Value {string {"smoke"}});
@@ -3273,9 +3308,9 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidRefTypeShapes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("InvalidRefTypeEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("InvalidRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+    auto snapshot_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
     Properties props(&registrator);
 
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
@@ -3298,11 +3333,11 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidRefTypeCollectionShapes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("InvalidRefTypeCollectionEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("InvalidRefTypeCollectionEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-    const auto* snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
-    const auto* snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
+    auto snapshots_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+    auto snapshots_by_name_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+    auto snapshot_groups_prop = registrator.RegisterProperty({"Common", "int32=>RouteSnapshot[]", "SnapshotGroups", "Mutable", "Persistent", "PublicSync"});
     Properties props(&registrator);
 
     AnyData::Array invalid_snapshots;
@@ -3329,10 +3364,10 @@ TEST_CASE("PropertiesSerializatorRejectsInvalidTextStructShapes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("InvalidTextStructEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("InvalidTextStructEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* waypoint_prop = registrator.RegisterProperty({"Common", "Waypoint", "WaypointValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
+    auto waypoint_prop = registrator.RegisterProperty({"Common", "Waypoint", "WaypointValue", "Mutable", "Persistent", "PublicSync"});
+    auto leader_prop = registrator.RegisterProperty({"Common", "string=>Waypoint", "LeaderWaypoint", "Mutable", "Persistent", "PublicSync"});
 
     Properties props(&registrator);
 
@@ -3346,14 +3381,14 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
-    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    auto title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     Properties empty_props(&registrator);
-    const auto empty_doc = PropertiesSerializator::SaveToDocument(&empty_props, nullptr, hashes, resolver);
+    const auto empty_doc = PropertiesSerializator::SaveToDocument(ptr<const Properties>(&empty_props), nullptr, hashes, resolver);
     CHECK(empty_doc.Empty());
 
     Properties proto(&registrator);
@@ -3364,7 +3399,7 @@ TEST_CASE("PropertiesSaveToDocumentSkipsDefaultAndBaseValues")
     props.SetValue<string>(title_prop, "shift lead");
     props.SetValue<bool>(enabled_prop, true);
 
-    const auto doc = PropertiesSerializator::SaveToDocument(&props, &proto, hashes, resolver);
+    const auto doc = PropertiesSerializator::SaveToDocument(ptr<const Properties>(&props), nptr<const Properties>(&proto), hashes, resolver);
     CHECK(doc.Size() == 2);
     CHECK_FALSE(doc.Contains("Counter"));
     REQUIRE(doc.Contains("Title"));
@@ -3377,10 +3412,10 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentLoadEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentLoadEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
-    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+    auto counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    auto title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
     doc.Emplace("$version", int64_t {3});
@@ -3390,7 +3425,7 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
     doc.Emplace("UnknownField", int64_t {99});
 
     Properties props(&registrator);
-    CHECK(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(counter_prop) == 15);
     CHECK(props.GetValue<string>(title_prop) == "  south gate  ");
 }
@@ -3399,17 +3434,17 @@ TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
     doc.Emplace("Counter", string {"wrong-type"});
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(counter_prop) == 0);
     CHECK(props.GetValue<bool>(enabled_prop));
 }
@@ -3418,11 +3453,11 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
-    const auto* title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto counter_prop = registrator.RegisterProperty({"Common", "int32", "Counter", "Mutable", "Persistent", "PublicSync"});
+    auto title_prop = registrator.RegisterProperty({"Common", "string", "Title", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
     doc.Emplace("Counter", AnyData::Value {AnyData::Dict {}});
@@ -3430,7 +3465,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsUnsupportedAnyDataValueTypes")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(counter_prop) == 0);
     CHECK(props.GetValue<string>(title_prop).empty());
     CHECK(props.GetValue<bool>(enabled_prop));
@@ -3440,11 +3475,11 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentHashTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    auto item_prop = registrator.RegisterProperty({"Common", "ProtoItem", "ItemProto", "Mutable", "Persistent", "PublicSync", "Nullable"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
     doc.Emplace("HashValue", AnyData::Value {AnyData::Array {}});
@@ -3452,7 +3487,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidHashValueTypes")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<hstring>(hash_prop) == hstring {});
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, item_prop, hashes, resolver) == AnyData::Value {string {""}});
     CHECK(props.GetValue<bool>(enabled_prop));
@@ -3462,11 +3497,11 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentCollectionTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentCollectionTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
-    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto values_prop = registrator.RegisterProperty({"Common", "int32[]", "Values", "Mutable", "Persistent", "PublicSync"});
+    auto labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Document doc;
     doc.Emplace("Values", string {"not-an-array"});
@@ -3474,7 +3509,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongCollectionValueTypes")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<vector<int32_t>>(values_prop).empty());
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
@@ -3484,10 +3519,10 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentDictArrayTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentDictArrayTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* checkpoints_prop = registrator.RegisterProperty({"Common", "bool=>int32[]", "Checkpoints", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto checkpoints_prop = registrator.RegisterProperty({"Common", "bool=>int32[]", "Checkpoints", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Dict invalid_checkpoints;
     invalid_checkpoints.Emplace("True", string {"not-an-array"});
@@ -3497,7 +3532,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsWrongDictArrayValueTypes")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, checkpoints_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
 }
@@ -3506,11 +3541,11 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentStringCollectionInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentStringCollectionInnerTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-    const auto* labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto tags_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+    auto labels_prop = registrator.RegisterProperty({"Common", "string=>string", "Labels", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Array invalid_tags;
     invalid_tags.EmplaceBack(AnyData::Value {AnyData::Dict {}});
@@ -3524,7 +3559,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerStringCollectionValues")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<vector<string>>(tags_prop).empty());
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, labels_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
@@ -3534,10 +3569,10 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerDictArrayStringValues")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("DocumentDictArrayStringInnerTypeErrorEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("DocumentDictArrayStringInnerTypeErrorEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* mode_tags_prop = registrator.RegisterProperty({"Common", "Mode=>string[]", "ModeTags", "Mutable", "Persistent", "PublicSync"});
-    const auto* enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
+    auto mode_tags_prop = registrator.RegisterProperty({"Common", "Mode=>string[]", "ModeTags", "Mutable", "Persistent", "PublicSync"});
+    auto enabled_prop = registrator.RegisterProperty({"Common", "bool", "Enabled", "Mutable", "Persistent", "PublicSync"});
 
     AnyData::Array invalid_mode_tags_entries;
     invalid_mode_tags_entries.EmplaceBack(AnyData::Value {AnyData::Dict {}});
@@ -3550,7 +3585,7 @@ TEST_CASE("PropertiesLoadFromDocumentRejectsInvalidInnerDictArrayStringValues")
     doc.Emplace("Enabled", true);
 
     Properties props(&registrator);
-    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(&props, doc, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializator::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(PropertiesSerializator::SavePropertyToValue(&props, mode_tags_prop, hashes, resolver) == AnyData::Value {AnyData::Dict {}});
     CHECK(props.GetValue<bool>(enabled_prop));
 }
@@ -3566,29 +3601,25 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
 
     BENCHMARK("StoreData full cached public")
     {
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
-        fixture.Full->StoreData(false, &raw_data, &raw_sizes);
-        return raw_sizes->size();
+        const auto stored_data = fixture.Full.StoreData(false);
+        return stored_data.Sizes->size();
     };
 
     BENCHMARK_ADVANCED("StoreData full after plain mutation")(Catch::Benchmark::Chronometer meter)
     {
         uint32_t counter = 0;
-        vector<const uint8_t*>* raw_data = nullptr;
-        vector<uint32_t>* raw_sizes = nullptr;
 
         meter.measure([&](int) {
-            fixture.Full->SetValue<int32_t>(fixture.PublicIntProps.front(), numeric_cast<int32_t>(++counter));
-            fixture.Full->StoreData(false, &raw_data, &raw_sizes);
-            return (*raw_sizes)[0];
+            fixture.Full.SetValue<int32_t>(fixture.PublicIntProps.front(), numeric_cast<int32_t>(++counter));
+            const auto stored_data = fixture.Full.StoreData(false);
+            return stored_data.Sizes->at(0);
         });
     };
 
     BENCHMARK_ADVANCED("RestoreData derived public payload")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrator, fixture.Proto.get());
+            Properties target(&fixture.Registrator, &fixture.Proto);
             target.RestoreData(fixture.DerivedPublicChunks);
             return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
@@ -3600,7 +3631,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
-            fixture.Full->StoreAllData(all_data, str_hashes);
+            fixture.Full.StoreAllData(all_data, str_hashes);
             return all_data.size();
         });
     };
@@ -3611,7 +3642,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         set<hstring> str_hashes;
 
         meter.measure([&](int) {
-            fixture.DerivedSource->StoreAllData(all_data, str_hashes);
+            fixture.DerivedSource.StoreAllData(all_data, str_hashes);
             return all_data.size();
         });
     };
@@ -3628,7 +3659,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("RestoreAllData derived snapshot")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrator, fixture.Proto.get());
+            Properties target(&fixture.Registrator, &fixture.Proto);
             target.RestoreAllData(fixture.DerivedAllData);
             return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
@@ -3637,17 +3668,17 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("CopyFrom full to derived")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            Properties target(&fixture.Registrator, fixture.Proto.get());
-            target.CopyFrom(*fixture.Full);
+            Properties target(&fixture.Registrator, &fixture.Proto);
+            target.CopyFrom(fixture.Full);
             return target.GetValueFast<int32_t>(fixture.PublicIntProps.front());
         });
     };
 
-    Properties left(&fixture.Registrator, fixture.Proto.get());
-    left.CopyFrom(*fixture.DerivedSource);
+    Properties left(&fixture.Registrator, &fixture.Proto);
+    left.CopyFrom(fixture.DerivedSource);
 
-    Properties right(&fixture.Registrator, fixture.Proto.get());
-    right.CopyFrom(*fixture.DerivedSource);
+    Properties right(&fixture.Registrator, &fixture.Proto);
+    right.CopyFrom(fixture.DerivedSource);
 
     BENCHMARK("CompareData same-base derived fast path")
     {
@@ -3657,7 +3688,7 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("SaveToText dict-rich payload")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto text_data = dict_fixture.Source->SaveToText(nullptr);
+            const auto text_data = dict_fixture.Source.SaveToText(nullptr);
             return text_data.size();
         });
     };
@@ -3667,14 +3698,16 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
         meter.measure([&](int) {
             Properties target(&dict_fixture.Registrator);
             target.ApplyFromText(dict_fixture.TextData);
-            return target.CompareData(*dict_fixture.Source, {}, false);
+            return target.CompareData(dict_fixture.Source, {}, false);
         });
     };
+
+    auto dict_patrol_waypoints_prop = dict_fixture.GetPatrolWaypointsProp();
 
     BENCHMARK_ADVANCED("SavePropertyToValue struct dict-of-array")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(dict_fixture.Source.get(), dict_fixture.PatrolWaypointsProp, dict_fixture.Hashes, dict_fixture.Resolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(&dict_fixture.Source, dict_patrol_waypoints_prop, dict_fixture.Hashes, dict_fixture.Resolver);
             return value.AsDict().Size();
         });
     };
@@ -3683,8 +3716,8 @@ TEST_CASE("PropertiesPerformance", "[!benchmark][properties]")
     {
         meter.measure([&](int) {
             Properties target(&dict_fixture.Registrator);
-            PropertiesSerializator::LoadPropertyFromValue(&target, dict_fixture.PatrolWaypointsProp, dict_fixture.PatrolWaypointsValue->Copy(), dict_fixture.Hashes, dict_fixture.Resolver);
-            return target.CompareData(*dict_fixture.PatrolOnlySource, {}, false);
+            PropertiesSerializator::LoadPropertyFromValue(&target, dict_patrol_waypoints_prop, dict_fixture.GetPatrolWaypointsValue()->Copy(), dict_fixture.Hashes, dict_fixture.Resolver);
+            return target.CompareData(dict_fixture.PatrolOnlySource, {}, false);
         });
     };
 }
@@ -3703,85 +3736,84 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
         {
             PropertiesStorageStrategyPerfFixture fixture(prop_count, fill_percent);
 
-            CHECK(fixture.Proto);
-            CHECK(fixture.PackedSource);
-            CHECK(fixture.FullSource);
-            CHECK(fixture.ProbeIntProp != nullptr);
-            CHECK(fixture.ProbeStringProp != nullptr);
+            CHECK(static_cast<bool>(fixture.ProbeIntProp));
+            CHECK(static_cast<bool>(fixture.ProbeStringProp));
             CHECK(numeric_cast<int>(fixture.OverrideProps.size()) == std::max(1, prop_count * fill_percent / 100));
+            auto probe_int_prop = fixture.GetProbeIntProp();
+            auto probe_string_prop = fixture.GetProbeStringProp();
 
             BENCHMARK("Read simple int packed")
             {
-                return fixture.PackedSource->GetValueFast<int32_t>(fixture.ProbeIntProp);
+                return fixture.PackedSource.GetValueFast<int32_t>(probe_int_prop);
             };
 
             BENCHMARK("Read simple int full")
             {
-                return fixture.FullSource->GetValueFast<int32_t>(fixture.ProbeIntProp);
+                return fixture.FullSource.GetValueFast<int32_t>(probe_int_prop);
             };
 
             BENCHMARK("Read simple string packed")
             {
-                return fixture.PackedSource->GetValueFast<string>(fixture.ProbeStringProp).size();
+                return fixture.PackedSource.GetValueFast<string>(probe_string_prop).size();
             };
 
             BENCHMARK("Read simple string full")
             {
-                return fixture.FullSource->GetValueFast<string>(fixture.ProbeStringProp).size();
+                return fixture.FullSource.GetValueFast<string>(probe_string_prop).size();
             };
 
             BENCHMARK_ADVANCED("Modify simple int packed")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrator, fixture.Proto.get());
+                Properties target(&fixture.Registrator, &fixture.Proto);
                 int32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<int32_t>(fixture.ProbeIntProp, numeric_cast<int32_t>(10000 + ++counter));
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    target.SetValue<int32_t>(probe_int_prop, numeric_cast<int32_t>(10000 + ++counter));
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
             BENCHMARK_ADVANCED("Modify simple int full")(Catch::Benchmark::Chronometer meter)
             {
                 Properties target(&fixture.Registrator);
-                target.CopyFrom(*fixture.Proto);
+                target.CopyFrom(fixture.Proto);
                 int32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<int32_t>(fixture.ProbeIntProp, numeric_cast<int32_t>(10000 + ++counter));
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    target.SetValue<int32_t>(probe_int_prop, numeric_cast<int32_t>(10000 + ++counter));
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
             BENCHMARK_ADVANCED("Modify simple string packed")(Catch::Benchmark::Chronometer meter)
             {
-                Properties target(&fixture.Registrator, fixture.Proto.get());
+                Properties target(&fixture.Registrator, &fixture.Proto);
                 uint32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<string>(fixture.ProbeStringProp, strex("packed-{}", ++counter).str());
-                    return target.GetValueFast<string>(fixture.ProbeStringProp).size();
+                    target.SetValue<string>(probe_string_prop, strex("packed-{}", ++counter).str());
+                    return target.GetValueFast<string>(probe_string_prop).size();
                 });
             };
 
             BENCHMARK_ADVANCED("Modify simple string full")(Catch::Benchmark::Chronometer meter)
             {
                 Properties target(&fixture.Registrator);
-                target.CopyFrom(*fixture.Proto);
+                target.CopyFrom(fixture.Proto);
                 uint32_t counter = 0;
 
                 meter.measure([&](int) {
-                    target.SetValue<string>(fixture.ProbeStringProp, strex("full-{}", ++counter).str());
-                    return target.GetValueFast<string>(fixture.ProbeStringProp).size();
+                    target.SetValue<string>(probe_string_prop, strex("full-{}", ++counter).str());
+                    return target.GetValueFast<string>(probe_string_prop).size();
                 });
             };
 
             BENCHMARK_ADVANCED("Construct packed from proto and apply overrides")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrator, fixture.Proto.get());
+                    Properties target(&fixture.Registrator, &fixture.Proto);
                     fixture.ApplyOverrides(target);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
@@ -3789,40 +3821,34 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             {
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator);
-                    target.CopyFrom(*fixture.Proto);
+                    target.CopyFrom(fixture.Proto);
                     fixture.ApplyOverrides(target);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
             BENCHMARK_ADVANCED("StoreData packed public payload")(Catch::Benchmark::Chronometer meter)
             {
-                vector<const uint8_t*>* raw_data = nullptr;
-                vector<uint32_t>* raw_sizes = nullptr;
-
                 meter.measure([&](int) {
-                    fixture.PackedSource->StoreData(false, &raw_data, &raw_sizes);
-                    return raw_sizes->size();
+                    const auto stored_data = fixture.PackedSource.StoreData(false);
+                    return stored_data.Sizes->size();
                 });
             };
 
             BENCHMARK_ADVANCED("StoreData full public payload")(Catch::Benchmark::Chronometer meter)
             {
-                vector<const uint8_t*>* raw_data = nullptr;
-                vector<uint32_t>* raw_sizes = nullptr;
-
                 meter.measure([&](int) {
-                    fixture.FullSource->StoreData(false, &raw_data, &raw_sizes);
-                    return raw_sizes->size();
+                    const auto stored_data = fixture.FullSource.StoreData(false);
+                    return stored_data.Sizes->size();
                 });
             };
 
             BENCHMARK_ADVANCED("RestoreData packed public payload into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrator, fixture.Proto.get());
+                    Properties target(&fixture.Registrator, &fixture.Proto);
                     target.RestoreData(fixture.PackedPublicChunks);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
@@ -3830,9 +3856,9 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             {
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator);
-                    target.CopyFrom(*fixture.Proto);
+                    target.CopyFrom(fixture.Proto);
                     target.RestoreData(fixture.FullPublicChunks);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
@@ -3842,7 +3868,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
-                    fixture.PackedSource->StoreAllData(all_data, str_hashes);
+                    fixture.PackedSource.StoreAllData(all_data, str_hashes);
                     return all_data.size();
                 });
             };
@@ -3853,7 +3879,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 set<hstring> str_hashes;
 
                 meter.measure([&](int) {
-                    fixture.FullSource->StoreAllData(all_data, str_hashes);
+                    fixture.FullSource.StoreAllData(all_data, str_hashes);
                     return all_data.size();
                 });
             };
@@ -3861,9 +3887,9 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
             BENCHMARK_ADVANCED("RestoreAllData packed snapshot into fresh object")(Catch::Benchmark::Chronometer meter)
             {
                 meter.measure([&](int) {
-                    Properties target(&fixture.Registrator, fixture.Proto.get());
+                    Properties target(&fixture.Registrator, &fixture.Proto);
                     target.RestoreAllData(fixture.PackedAllData);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
 
@@ -3872,7 +3898,7 @@ TEST_CASE("PropertiesStorageStrategyPerformance", "[!benchmark][properties]")
                 meter.measure([&](int) {
                     Properties target(&fixture.Registrator);
                     target.RestoreAllData(fixture.FullAllData);
-                    return target.GetValueFast<int32_t>(fixture.ProbeIntProp);
+                    return target.GetValueFast<int32_t>(probe_int_prop);
                 });
             };
         }
@@ -3883,13 +3909,13 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
 {
     PropertiesComplexStrategyPerfFixture fixture;
 
-    CHECK(fixture.PackedSource);
-    CHECK(fixture.FullSource);
+    auto patrol_waypoints_prop = fixture.GetPatrolWaypointsProp();
+    auto mode_sets_prop = fixture.GetModeSetsProp();
 
     BENCHMARK_ADVANCED("Access complex patrol packed as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(fixture.PackedSource.get(), fixture.PatrolWaypointsProp, fixture.Hashes, fixture.Resolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(&fixture.PackedSource, patrol_waypoints_prop, fixture.Hashes, fixture.Resolver);
             return value.AsDict().Size();
         });
     };
@@ -3897,7 +3923,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex patrol full as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(fixture.FullSource.get(), fixture.PatrolWaypointsProp, fixture.Hashes, fixture.Resolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(&fixture.FullSource, patrol_waypoints_prop, fixture.Hashes, fixture.Resolver);
             return value.AsDict().Size();
         });
     };
@@ -3905,7 +3931,7 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex mode sets packed as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(fixture.PackedSource.get(), fixture.ModeSetsProp, fixture.Hashes, fixture.Resolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(&fixture.PackedSource, mode_sets_prop, fixture.Hashes, fixture.Resolver);
             return value.AsDict().Size();
         });
     };
@@ -3913,58 +3939,58 @@ TEST_CASE("PropertiesComplexStrategyPerformance", "[!benchmark][properties]")
     BENCHMARK_ADVANCED("Access complex mode sets full as structured value")(Catch::Benchmark::Chronometer meter)
     {
         meter.measure([&](int) {
-            const auto value = PropertiesSerializator::SavePropertyToValue(fixture.FullSource.get(), fixture.ModeSetsProp, fixture.Hashes, fixture.Resolver);
+            const auto value = PropertiesSerializator::SavePropertyToValue(&fixture.FullSource, mode_sets_prop, fixture.Hashes, fixture.Resolver);
             return value.AsDict().Size();
         });
     };
 
     BENCHMARK_ADVANCED("Modify complex patrol packed via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrator, fixture.Proto.get());
+        Properties target(&fixture.Registrator, &fixture.Proto);
         uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
-            target.SetValueAsAnyProps(fixture.PatrolWaypointsProp->GetRegIndex(), any_t {text});
-            return target.GetRawData(fixture.PatrolWaypointsProp).size();
+            target.SetValueAsAnyProps(patrol_waypoints_prop->GetRegIndex(), any_t {text});
+            return target.GetRawData(patrol_waypoints_prop).size();
         });
     };
 
     BENCHMARK_ADVANCED("Modify complex patrol full via any props")(Catch::Benchmark::Chronometer meter)
     {
         Properties target(&fixture.Registrator);
-        target.CopyFrom(*fixture.Proto);
+        target.CopyFrom(fixture.Proto);
         uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.PatrolOverrideTextA : fixture.PatrolOverrideTextB;
-            target.SetValueAsAnyProps(fixture.PatrolWaypointsProp->GetRegIndex(), any_t {text});
-            return target.GetRawData(fixture.PatrolWaypointsProp).size();
+            target.SetValueAsAnyProps(patrol_waypoints_prop->GetRegIndex(), any_t {text});
+            return target.GetRawData(patrol_waypoints_prop).size();
         });
     };
 
     BENCHMARK_ADVANCED("Modify complex mode sets packed via any props")(Catch::Benchmark::Chronometer meter)
     {
-        Properties target(&fixture.Registrator, fixture.Proto.get());
+        Properties target(&fixture.Registrator, &fixture.Proto);
         uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;
-            target.SetValueAsAnyProps(fixture.ModeSetsProp->GetRegIndex(), any_t {text});
-            return target.GetRawData(fixture.ModeSetsProp).size();
+            target.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {text});
+            return target.GetRawData(mode_sets_prop).size();
         });
     };
 
     BENCHMARK_ADVANCED("Modify complex mode sets full via any props")(Catch::Benchmark::Chronometer meter)
     {
         Properties target(&fixture.Registrator);
-        target.CopyFrom(*fixture.Proto);
+        target.CopyFrom(fixture.Proto);
         uint32_t counter = 0;
 
         meter.measure([&](int) {
             const auto& text = (++counter % 2 == 0) ? fixture.ModeOverrideTextA : fixture.ModeOverrideTextB;
-            target.SetValueAsAnyProps(fixture.ModeSetsProp->GetRegIndex(), any_t {text});
-            return target.GetRawData(fixture.ModeSetsProp).size();
+            target.SetValueAsAnyProps(mode_sets_prop->GetRegIndex(), any_t {text});
+            return target.GetRawData(mode_sets_prop).size();
         });
     };
 }
@@ -3988,15 +4014,15 @@ TEST_CASE("PropertiesStorageStrategyMetrics", "[properties]")
         string packed_text_error;
         string full_text_error;
 
-        const auto packed_text_ok = fixture.TryBuildTextData(*fixture.PackedSource, packed_text_data, packed_text_chars, packed_text_error);
-        const auto full_text_ok = fixture.TryBuildTextData(*fixture.FullSource, full_text_data, full_text_chars, full_text_error);
-        const auto packed_failing_prop = packed_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(*fixture.PackedSource);
-        const auto full_failing_prop = full_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(*fixture.FullSource);
+        const auto packed_text_ok = fixture.TryBuildTextData(fixture.PackedSource, packed_text_data, packed_text_chars, packed_text_error);
+        const auto full_text_ok = fixture.TryBuildTextData(fixture.FullSource, full_text_data, full_text_chars, full_text_error);
+        const auto packed_failing_prop = packed_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.PackedSource);
+        const auto full_failing_prop = full_text_ok ? string {} : fixture.DiagnoseTextSerializationFailure(fixture.FullSource);
 
         std::cout << strex("StorageMetrics Props={} Fill={} Overrides={} PackedPublicChunks={} PackedPublicBytes={} FullPublicChunks={} FullPublicBytes={} PackedAllDataBytes={} FullAllDataBytes={} PackedTextOk={} PackedTextEntries={} PackedTextChars={} PackedTextError={} PackedTextFailingProp={} FullTextOk={} FullTextEntries={} FullTextChars={} FullTextError={} FullTextFailingProp={}\n", prop_count, fill_percent, fixture.OverrideProps.size(), fixture.PackedPublicChunks.size(), fixture.PackedPublicBytes, fixture.FullPublicChunks.size(), fixture.FullPublicBytes, fixture.PackedAllData.size(), fixture.FullAllData.size(), packed_text_ok, packed_text_data.size(), packed_text_chars, packed_text_error, packed_failing_prop, full_text_ok, full_text_data.size(), full_text_chars, full_text_error, full_failing_prop).str();
 
-        CHECK(fixture.PackedSource);
-        CHECK(fixture.FullSource);
+        CHECK(static_cast<bool>(fixture.ProbeIntProp));
+        CHECK(static_cast<bool>(fixture.ProbeStringProp));
     }
 }
 

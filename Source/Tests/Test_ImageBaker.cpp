@@ -735,7 +735,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     frame.NextY = reader.Read<int16_t>();
 
     const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    const auto* frame_data = reader.ReadPtr<uint8_t>(data_size);
+    const uint8_t* frame_data = reader.ReadPtr<uint8_t>(data_size).get();
     frame.Data.assign(frame_data, frame_data + data_size);
 
     CHECK(reader.Read<uint8_t>() == 42);
@@ -768,7 +768,7 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
         frame.NextY = reader.Read<int16_t>();
 
         const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-        const auto* frame_data = reader.ReadPtr<uint8_t>(data_size);
+        const uint8_t* frame_data = reader.ReadPtr<uint8_t>(data_size).get();
         frame.Data.assign(frame_data, frame_data + data_size);
     }
 
@@ -951,7 +951,7 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == dir + 1);
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
-            const auto* data = reader.ReadPtr<uint8_t>(4);
+            const uint8_t* data = reader.ReadPtr<uint8_t>(4).get();
             const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
             const vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),

@@ -42,7 +42,7 @@ namespace
     class TestEntityHolder final : public EntityWithProto
     {
     public:
-        explicit TestEntityHolder(const ProtoEntity* proto) noexcept :
+        explicit TestEntityHolder(ptr<const ProtoEntity> proto) noexcept :
             EntityWithProto(proto)
         {
         }
@@ -66,9 +66,16 @@ TEST_CASE("EntityProtos")
 
         const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        auto nullable_item_registrator = meta.GetPropertyRegistrator("Item");
+        auto nullable_critter_registrator = meta.GetPropertyRegistrator("Critter");
 
-        ProtoItem item_proto {knife_pid, meta.GetPropertyRegistrator("Item")};
-        ProtoCritter critter_proto {raider_pid, meta.GetPropertyRegistrator("Critter")};
+        REQUIRE(static_cast<bool>(nullable_item_registrator));
+        REQUIRE(static_cast<bool>(nullable_critter_registrator));
+        auto item_registrator = nullable_item_registrator.as_ptr();
+        auto critter_registrator = nullable_critter_registrator.as_ptr();
+
+        ProtoItem item_proto {knife_pid, item_registrator};
+        ProtoCritter critter_proto {raider_pid, critter_registrator};
 
         CHECK(item_proto.GetProtoId() == knife_pid);
         CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
@@ -84,7 +91,9 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        const auto* registrator = meta.GetPropertyRegistrator("TestEntity");
+        auto nullable_registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(nullable_registrator));
+        auto registrator = nullable_registrator.as_ptr();
 
         const hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
         ProtoCustomEntity proto {custom_pid, registrator};
@@ -100,15 +109,23 @@ TEST_CASE("EntityProtos")
         InitEntityProtoTestMetadata(meta);
 
         const hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
-        refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, meta.GetPropertyRegistrator("TestEntity"));
+        auto nullable_registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(nullable_registrator));
+        auto registrator = nullable_registrator.as_ptr();
 
-        TestEntityHolder holder {proto.get()};
-        proto.reset();
+        optional<TestEntityHolder> holder;
 
-        REQUIRE(holder.GetProto() != nullptr);
-        CHECK(holder.GetProtoId() == custom_pid);
-        CHECK(holder.GetProto()->GetName() == string_view {"HeldProto"});
-        CHECK(holder.GetProto()->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        {
+            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrator);
+            holder.emplace(proto.as_ptr());
+        }
+
+        REQUIRE(holder.has_value());
+
+        auto held_proto = holder->GetProto();
+        CHECK(holder->GetProtoId() == custom_pid);
+        CHECK(held_proto->GetName() == string_view {"HeldProto"});
+        CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
     }
 }
 

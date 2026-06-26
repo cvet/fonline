@@ -68,40 +68,92 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
 
+static auto DataBaseStringDataAt(string& data, size_t offset) noexcept -> ptr<char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(offset < data.size(), "String offset is out of bounds");
+
+    ptr<char> data_begin = data.data();
+    return data_begin.get() + offset;
+}
+
+static auto DataBaseStringDataAt(const string& data, size_t offset) noexcept -> ptr<const char>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(offset < data.size(), "String offset is out of bounds");
+
+    ptr<const char> data_begin = data.data();
+    return data_begin.get() + offset;
+}
+
+static void DataBaseImGuiTextUnformatted(string_view text)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (text.empty()) {
+        ImGui::TextUnformatted("");
+        return;
+    }
+
+    ptr<const char> text_data = text.data();
+    ptr<const char> text_end = text_data.get() + text.size();
+    ImGui::TextUnformatted(text_data.get(), text_end.get());
+}
+
 DataBase::DataBase() = default;
+
 DataBase::DataBase(DataBase&&) noexcept = default;
-auto DataBase::operator=(DataBase&&) noexcept -> DataBase& = default;
+
+auto DataBase::operator=(DataBase&& other) noexcept -> DataBase&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (this != &other) {
+        _impl = std::move(other._impl);
+    }
+
+    return *this;
+}
+
 DataBase::~DataBase() = default;
 
-DataBase::DataBase(DataBaseImpl* impl) :
-    _impl {impl}
+DataBase::DataBase(unique_ptr<DataBaseImpl> impl) :
+    _impl {std::move(impl)}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Missing database backend state");
+    (void)_impl.as_ptr();
 }
 
 auto DataBase::InValidState() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->InValidState();
+    auto impl = _impl.as_ptr();
+    return impl->InValidState();
 }
 
 auto DataBase::GetDbRequestsPerMinute() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->GetDbRequestsPerMinute();
+    auto impl = _impl.as_ptr();
+    return impl->GetDbRequestsPerMinute();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
-    auto ids = _impl->GetAllRecordIds(collection_name);
+    auto impl = _impl.as_ptr();
+    const auto key_type = impl->GetCollectionKeyType(collection_name);
+    auto ids = impl->GetAllRecordIds(collection_name);
 
     for (auto& id : ids) {
-        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
+        id = DecodeBackendDbKey(id, key_type, impl->GetStringKeyEscaping());
 
         if (GetDbKeyType(id) != key_type) {
             throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
@@ -115,7 +167,8 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto impl = _impl.as_ptr();
+    const auto key_type = impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::IntId) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
@@ -134,7 +187,8 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto impl = _impl.as_ptr();
+    const auto key_type = impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::String) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
@@ -153,56 +207,64 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl->GetDocument(collection_name, id);
+    auto impl = _impl.as_ptr();
+    return impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return !_impl->GetDocument(collection_name, id).Empty();
+    auto impl = _impl.as_ptr();
+    return !impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->Insert(collection_name, id, doc);
+    auto impl = _impl.as_ptr();
+    impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->Update(collection_name, id, key, value);
+    auto impl = _impl.as_ptr();
+    impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->Delete(collection_name, id);
+    auto impl = _impl.as_ptr();
+    impl->Delete(collection_name, id);
 }
 
 void DataBase::StartCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->StartCommitChanges();
+    auto impl = _impl.as_ptr();
+    impl->StartCommitChanges();
 }
 
 void DataBase::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->WaitCommitChanges();
+    auto impl = _impl.as_ptr();
+    impl->WaitCommitChanges();
 }
 
 void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->ClearChanges();
+    auto impl = _impl.as_ptr();
+    impl->ClearChanges();
 }
 
 void DataBase::DrawGui()
@@ -214,11 +276,12 @@ void DataBase::DrawGui()
         return;
     }
 
-    _impl->DrawGui();
+    auto impl = _impl.as_ptr();
+    impl->DrawGui();
 }
 
-DataBaseImpl::DataBaseImpl(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) :
-    _settings {&db_settings},
+DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :
+    _settings {db_settings},
     _opLogEnabled {_settings->OpLogEnabled},
     _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->PanicOpLogSizeThreshold)},
     _panicShutdownTimeout {std::chrono::milliseconds {_settings->PanicShutdownTimeout}},
@@ -278,7 +341,7 @@ void DataBaseImpl::InitializeOpLogs()
         throw DataBaseException("Empty oplog path in settings");
     }
 
-    const auto open_log_file = [&](string_view file_path, string_view file_desc) {
+    const auto open_log_file = [&](optional<RecoveryLogHandle>& handle, string_view file_path, string_view file_desc) {
         if (file_path.empty()) {
             throw DataBaseException("Empty oplog path", file_desc);
         }
@@ -289,10 +352,10 @@ void DataBaseImpl::InitializeOpLogs()
             throw DataBaseException("Oplog directory can't be created", file_desc, dir);
         }
 
-        auto handle = SafeAlloc::MakeUnique<RecoveryLogHandle>(string(file_path));
+        handle.emplace(string(file_path));
 
         // Validate oplog line format
-        const auto& content = handle->GetContent();
+        const_span<string> content = handle->GetContent();
 
         for (size_t i = 0; i < handle->GetLinesCount(); i++) {
             const auto line = string_view {content[i]};
@@ -352,11 +415,11 @@ void DataBaseImpl::InitializeOpLogs()
             }
         }
 
-        return handle;
+        return;
     };
 
-    _pendingChangesLog = open_log_file(_settings->OpLogPath, "pending database changes file");
-    _committedChangesLog = open_log_file(strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    open_log_file(_pendingChangesLog, _settings->OpLogPath, "pending database changes file");
+    open_log_file(_committedChangesLog, strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
@@ -374,8 +437,8 @@ void DataBaseImpl::RestorePendingChanges()
     FO_VERIFY_AND_THROW(_pendingChangesLog, "Missing required pending changes log");
     FO_VERIFY_AND_THROW(_committedChangesLog, "Missing required committed changes log");
 
-    const auto& pending_changes_content = _pendingChangesLog->GetContent();
-    const auto& committed_changes_content = _committedChangesLog->GetContent();
+    const_span<string> pending_changes_content = _pendingChangesLog->GetContent();
+    const_span<string> committed_changes_content = _committedChangesLog->GetContent();
 
     if (committed_changes_content.size() > pending_changes_content.size()) {
         throw DataBaseException("Committed database changes file has more lines than pending database changes file");
@@ -463,7 +526,7 @@ void DataBaseImpl::RestorePendingChanges()
     }
 
     FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
-    FO_VERIFY_AND_THROW(_pendingChangesLog->GetContent() == _committedChangesLog->GetContent(), "Pending and committed database logs contain different command payloads");
+    FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_pendingChangesLog->Truncate()) {
@@ -578,7 +641,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -598,7 +661,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -618,7 +681,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     {
         scoped_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -676,12 +739,12 @@ void DataBaseImpl::DrawGui()
 
     constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-    const auto info_row = [](const char* key, string_view value) {
+    const auto info_row = [](string_view key, string_view value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        ImGui::TextUnformatted(key);
+        DataBaseImGuiTextUnformatted(key);
         ImGui::TableSetColumnIndex(1);
-        ImGui::TextUnformatted(value.data(), value.data() + value.size());
+        DataBaseImGuiTextUnformatted(value);
     };
 
     size_t pending_count = 0;
@@ -724,14 +787,17 @@ void DataBaseImpl::DrawGui()
     }
 
     if (!_collectionKeyTypes.empty()) {
-        if (ImGui::TreeNode(strex("Collections ({})", _collectionKeyTypes.size()).c_str())) {
+        const string collections_label = strex("Collections ({})", _collectionKeyTypes.size()).str();
+        ptr<const char> collections_label_cstr = collections_label.c_str();
+
+        if (ImGui::TreeNode(collections_label_cstr.get())) {
             if (ImGui::BeginTable("##DbCollections", 2, TABLE_FLAGS)) {
                 ImGui::TableSetupColumn("Collection", ImGuiTableColumnFlags_WidthFixed, 220.0f);
                 ImGui::TableSetupColumn("Key type", ImGuiTableColumnFlags_WidthStretch);
 
                 for (const auto& [collection_name, key_type] : _collectionKeyTypes) {
-                    const char* key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
-                    info_row(collection_name.as_str().c_str(), key_type_str);
+                    const string_view key_type_str = key_type == DataBaseKeyType::IntId ? "IntId" : "String";
+                    info_row(collection_name, key_type_str);
                 }
 
                 ImGui::EndTable();
@@ -781,7 +847,7 @@ void DataBaseImpl::StopCommitThread() noexcept
     FO_STACK_TRACE_ENTRY();
 
     try {
-        FO_VERIFY_AND_THROW(_commitThread.joinable(), "Missing required commit thread joinable");
+        FO_VERIFY_AND_THROW(_commitThread.joinable(), "Commit thread is not joinable");
 
         {
             scoped_lock locker {_stateLocker};
@@ -1054,13 +1120,15 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Empty recovery log file path");
     }
 
+    ptr<const char> path_cstr = _path.c_str();
+
 #if FO_WINDOWS
-    if (_sopen_s(&_fd, _path.c_str(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
+    if (_sopen_s(&_fd, path_cstr.get(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
         throw DataBaseException("Failed to open recovery oplog file", _path);
     }
 
 #else
-    _fd = open(_path.c_str(), O_RDWR | O_CREAT, 0666);
+    _fd = open(path_cstr.get(), O_RDWR | O_CREAT, 0666);
 
     if (_fd < 0) {
         throw DataBaseException("Failed to open recovery oplog file", _path);
@@ -1128,16 +1196,16 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     content.resize(static_cast<size_t>(size));
 
     size_t offset = 0;
-    auto* buf = content.data();
 
     while (offset < content.size()) {
         const auto remaining = content.size() - offset;
+        auto read_pos = DataBaseStringDataAt(content, offset);
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        const auto read_size = _read(_fd, buf + offset, chunk);
+        const auto read_size = _read(_fd, read_pos.get(), chunk);
 #else
-        const auto read_size = read(_fd, buf + offset, remaining);
+        const auto read_size = read(_fd, read_pos.get(), remaining);
 #endif
 
         if (read_size <= 0) {
@@ -1277,12 +1345,13 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 
     while (offset < normalized_content.size()) {
         const auto remaining = normalized_content.size() - offset;
+        auto write_pos = DataBaseStringDataAt(normalized_content, offset);
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        const auto written_size = _write(_fd, normalized_content.data() + offset, chunk);
+        const auto written_size = _write(_fd, write_pos.get(), chunk);
 #else
-        const auto written_size = write(_fd, normalized_content.data() + offset, remaining);
+        const auto written_size = write(_fd, write_pos.get(), remaining);
 #endif
 
         if (written_size <= 0) {
@@ -1311,16 +1380,15 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
     return true;
 }
 
-auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
+auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto finish_connect = [&](auto* raw_impl) -> DataBase {
-        auto impl = unique_ptr<DataBaseImpl> {raw_impl};
+    const auto finish_connect = [&](unique_ptr<DataBaseImpl> impl) -> DataBase {
         impl->InitializeCollections(collection_schemas);
         impl->InitializeOpLogs();
         impl->RestorePendingChanges();
-        return DataBase(impl.release());
+        return DataBase(std::move(impl));
     };
 
     if (const auto options = strvex(connection_info).split(' '); !options.empty()) {
@@ -1347,39 +1415,44 @@ auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_inf
     throw DataBaseException("Wrong storage options", connection_info);
 }
 
-static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson, char escape_dot)
+static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto key_buf = strex(key);
     const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
-    const char* key_data = escaped_key.data();
+    const string_view key_data = escaped_key;
     const auto key_len = numeric_cast<int32_t>(escaped_key.length());
+    ptr<const char> key_data_ptr = key_data.data();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson, key_data, key_len, value.AsInt64())) {
+        if (!bson_append_int64(bson.get(), key_data_ptr.get(), key_len, value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if (!bson_append_double(bson, key_data, key_len, value.AsDouble())) {
+        if (!bson_append_double(bson.get(), key_data_ptr.get(), key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson, key_data, key_len, value.AsBool())) {
+        if (!bson_append_bool(bson.get(), key_data_ptr.get(), key_len, value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
-        if (!bson_append_utf8(bson, key_data, key_len, value.AsString().c_str(), numeric_cast<int32_t>(value.AsString().length()))) {
-            throw DataBaseException("ValueToBson bson_append_utf8", key, value.AsString());
+        const string_view value_str = value.AsString();
+        ptr<const char> value_data_ptr = value_str.data();
+
+        if (!bson_append_utf8(bson.get(), key_data_ptr.get(), key_len, value_data_ptr.get(), numeric_cast<int32_t>(value_str.length()))) {
+            throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
+        ptr<bson_t> bson_arr_ptr = &bson_arr;
 
-        if (!bson_append_array_unsafe_begin(bson, key_data, key_len, &bson_arr)) {
+        if (!bson_append_array_unsafe_begin(bson.get(), key_data_ptr.get(), key_len, bson_arr_ptr.get())) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
@@ -1388,27 +1461,28 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
 
         for (const auto& arr_entry : arr) {
             string arr_key = strex("{}", arr_index++);
-            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
+            ValueToBson(arr_key, arr_entry, bson_arr_ptr, escape_dot);
         }
 
-        if (!bson_append_array_end(bson, &bson_arr)) {
+        if (!bson_append_array_end(bson.get(), bson_arr_ptr.get())) {
             throw DataBaseException("ValueToBson bson_append_array_end");
         }
     }
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
+        ptr<bson_t> bson_doc_ptr = &bson_doc;
 
-        if (!bson_append_document_begin(bson, key_data, key_len, &bson_doc)) {
+        if (!bson_append_document_begin(bson.get(), key_data_ptr.get(), key_len, bson_doc_ptr.get())) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
         const auto& dict = value.AsDict();
 
         for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
+            ValueToBson(dict_key, dict_value, bson_doc_ptr, escape_dot);
         }
 
-        if (!bson_append_document_end(bson, &bson_doc)) {
+        if (!bson_append_document_end(bson.get(), bson_doc_ptr.get())) {
             throw DataBaseException("ValueToBson bson_append_document_end");
         }
     }
@@ -1417,7 +1491,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
     }
 }
 
-void DocumentToBson(const AnyData::Document& doc, bson_t* bson, char escape_dot)
+void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1430,7 +1504,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* value = bson_iter_value(iter);
+    ptr<const bson_value_t> value = bson_iter_value(iter);
 
     if (value->value_type == BSON_TYPE_INT32) {
         return numeric_cast<int64_t>(value->value.v_int32);
@@ -1473,8 +1547,8 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
         AnyData::Dict dict;
 
         while (bson_iter_next(&doc_iter)) {
-            const auto* key = bson_iter_key(&doc_iter);
-            auto unescaped_key = escape_dot != 0 ? strex(key).replace(escape_dot, '.') : string(key);
+            ptr<const char> key = bson_iter_key(&doc_iter);
+            auto unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
             auto dict_value = BsonToValue(&doc_iter, escape_dot);
             dict.Emplace(std::move(unescaped_key), std::move(dict_value));
         }
@@ -1486,25 +1560,26 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
     }
 }
 
-void BsonToDocument(const bson_t* bson, AnyData::Document& doc, char escape_dot)
+void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
 {
     FO_STACK_TRACE_ENTRY();
 
     bson_iter_t iter;
 
-    if (!bson_iter_init(&iter, bson)) {
+    if (!bson_iter_init(&iter, bson.get())) {
         throw DataBaseException("BsonToDocument bson_iter_init");
     }
 
     while (bson_iter_next(&iter)) {
-        const auto* key = bson_iter_key(&iter);
+        ptr<const char> key = bson_iter_key(&iter);
+        const string_view key_text {key.get()};
 
-        if (key[0] == '_' && key[1] == 'i' && key[2] == 'd' && key[3] == 0) {
+        if (key_text == "_id") {
             continue;
         }
 
         auto value = BsonToValue(&iter, escape_dot);
-        auto unescaped_key = escape_dot != 0 ? strex(key).replace(escape_dot, '.') : string(key);
+        auto unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
         doc.Emplace(std::move(unescaped_key), std::move(value));
     }
 }
@@ -1521,7 +1596,7 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
     case AnyData::ValueType::Bool:
         return value.AsBool();
     case AnyData::ValueType::String:
-        return value.AsString();
+        return string(value.AsString());
     case AnyData::ValueType::Array: {
         auto arr_json = nlohmann::json::array();
 
@@ -1535,7 +1610,8 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
         auto dict_json = nlohmann::json::object();
 
         for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            dict_json[dict_key.c_str()] = AnyValueToJson(dict_value);
+            ptr<const char> dict_key_cstr = dict_key.c_str();
+            dict_json[dict_key_cstr.get()] = AnyValueToJson(dict_value);
         }
 
         return dict_json;
@@ -1590,7 +1666,8 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
     auto doc_json = nlohmann::json::object();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        doc_json[doc_key.c_str()] = AnyValueToJson(doc_value);
+        ptr<const char> doc_key_cstr = doc_key.c_str();
+        doc_json[doc_key_cstr.get()] = AnyValueToJson(doc_value);
     }
 
     return doc_json;

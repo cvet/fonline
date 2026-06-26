@@ -22,6 +22,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [SourceTree.md](SourceTree.md) — source-directory guide for maintainers.
 - [Applications.md](Applications.md) — executable/library entry points and CMake target ownership notes.
 - [Essentials.md](Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
+- [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary and migration rules.
 
 ## Build and generation
 
@@ -49,7 +50,8 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [Debugging.md](Debugging.md) — native debugger support, stack traces, Visual Studio helpers, and client host/runtime validation.
 - [Scripting.md](Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — native `///@ ExportMethod` file map by runtime side and receiver family.
-- [Nullability.md](Nullability.md) — `T?` / `FO_NULLABLE` script/native boundary contract and analyzers.
+- [Nullability.md](Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native boundary contract and analyzers.
+- [SmartPointers.md](SmartPointers.md) — C++ `ptr` / `nptr` / owning-pointer nullability contracts.
 - [Tools.md](Tools.md) — engine tool map: baker, AS compiler, mapper, editor, asset explorer, particle editor, and asset processors.
 - [MapperTools.md](MapperTools.md) — mapper lifecycle, automation, native mapper helpers, and known headless-render workflows.
 - [WebDebugging.md](WebDebugging.md) — WebAssembly target preparation, package layout, and debug workflow.

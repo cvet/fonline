@@ -44,15 +44,54 @@ FO_BEGIN_NAMESPACE
 // zip has no marker and keeps writing next to the exe.
 static constexpr string_view INSTALLED_MARKER_NAME = "INSTALLED";
 
-unique_ptr<Application> App {};
+static unique_nptr<Application> App {};
 
 extern void ApplicationInitHook(AppInitFlags flags, GlobalSettings& settings);
 
 static void SetupExceptionCallback(bool show_message_on_exception);
+static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing);
+static auto LoadTestingAppSettings() -> GlobalSettings;
 static void PrebakeResources(BakingSettings& settings);
 static void SetupSignals();
 
-void InitApp(int32_t argc, char** argv, AppInitFlags flags)
+auto IsAppInitialized() noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return !!App;
+}
+
+auto GetApp() noexcept -> ptr<Application>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(IsAppInitialized(), "Application accessed before initialization");
+    auto app = App.as_ptr();
+    return app;
+}
+
+void ResetApp() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    App.reset();
+}
+
+void InitApp(CommandLineArgs args, AppInitFlags flags)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    InitAppImpl(args, flags, false);
+}
+
+void InitAppForTesting(AppInitFlags flags)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    InitAppImpl({}, flags, true);
+}
+
+static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_testing)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -63,7 +102,7 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     FO_STRONG_ASSERT(first_call, "Application can be initialized only once");
 
     // Fork the process if requested
-    if (argc > 0 && std::any_of(argv, argv + argc, [](const char* arg) { return string_view(arg) == "--fork"; })) {
+    if (std::ranges::any_of(args, [](nptr<const char> arg) { return arg && string_view(arg.get()) == "--fork"; })) {
         Platform::ForkProcess();
     }
 
@@ -75,7 +114,8 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
 
     // Tracy
 #if FO_TRACY
-    TracySetProgramName(FO_NICE_NAME.c_str());
+    ptr<const char> program_name = FO_NICE_NAME.c_str();
+    TracySetProgramName(program_name.get());
 #endif
 
     // Logging
@@ -88,7 +128,7 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     WriteLog("Starting {}", FO_NICE_NAME);
 
     // Load settings
-    auto settings = LoadAppSettings(argc, argv);
+    auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
     // Installed client: the install dir is read-only, so move the log file into the per-user writable
     // data dir now that settings (and the resolved writable path) are known.
@@ -124,7 +164,7 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     App = SafeAlloc::MakeUnique<Application>(std::move(settings), flags);
 
     // Request quit on bad alloc
-    SetBadAllocCallback([]() FO_DEFERRED { App->RequestQuit(); });
+    SetBadAllocCallback([]() FO_DEFERRED { GetApp()->RequestQuit(); });
 
     // Request quit on interrupt signals
     SetupSignals();
@@ -144,30 +184,33 @@ static void SetupExceptionCallback(bool show_message_on_exception)
             WriteLogMessage(LogType::Error, "Shutdown!");
 
 #if FO_WEB
-            if (App) {
-                App->RequestQuit();
+            if (IsAppInitialized()) {
+                GetApp()->RequestQuit();
             }
 #endif
         }
 
-        if (show_message_on_exception || (!IsPackaged() && (fatal_error || !App))) {
+        if (show_message_on_exception || (!IsPackaged() && (fatal_error || !IsAppInitialized()))) {
             Application::ShowErrorMessage(message, FormatStackTrace(st), fatal_error);
         }
     });
 }
 
-auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
+static auto LoadTestingAppSettings() -> GlobalSettings
 {
     FO_STACK_TRACE_ENTRY();
 
     auto settings = GlobalSettings(false);
+    settings.ApplyDefaultSettings();
+    settings.ApplyAutoSettings();
+    return settings;
+}
 
-    if (argc == -1) {
-        // Unit testing
-        settings.ApplyDefaultSettings();
-        settings.ApplyAutoSettings();
-        return settings;
-    }
+auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto settings = GlobalSettings(false);
 
     if (!IsPackaged()) {
         // Apply config
@@ -175,16 +218,24 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
         string config_to_apply_dir;
         bool auto_find_config = false;
 
-        for (int32_t i = 0; i < argc; i++) {
-            const string_view arg = strex(argv[i]).trim().strv();
+        for (size_t i = 0; i < args.size(); i++) {
+            auto arg = GetCommandLineArg(args, i);
 
-            if (arg == "-ApplyConfig" || arg == "--ApplyConfig") {
-                if (i == argc - 1 || *argv[i + 1] == '-') {
+            if (!arg) {
+                continue;
+            }
+
+            const string_view arg_view = strex(arg.get()).trim().strv();
+
+            if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
+                auto next_arg = GetCommandLineArg(args, i + 1);
+
+                if (!next_arg || IsCommandLineOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
-                config_to_apply = strex(argv[i + 1]).trim().extract_file_name();
-                config_to_apply_dir = strex(argv[i + 1]).trim().extract_dir();
+                config_to_apply = strex(next_arg.get()).trim().extract_file_name();
+                config_to_apply_dir = strex(next_arg.get()).trim().extract_dir();
             }
         }
 
@@ -217,15 +268,23 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
         // Apply sub config
         vector<string> sub_configs_to_apply;
 
-        for (int32_t i = 0; i < argc; i++) {
-            const string_view arg = strex(argv[i]).trim().strv();
+        for (size_t i = 0; i < args.size(); i++) {
+            auto arg = GetCommandLineArg(args, i);
 
-            if (arg == "-ApplySubConfig" || arg == "--ApplySubConfig") {
-                if (i == argc - 1 || *argv[i + 1] == '-') {
+            if (!arg) {
+                continue;
+            }
+
+            const string_view arg_view = strex(arg.get()).trim().strv();
+
+            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
+                auto next_arg = GetCommandLineArg(args, i + 1);
+
+                if (!next_arg || IsCommandLineOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 
-                sub_configs_to_apply.emplace_back(strex(argv[i + 1]).trim());
+                sub_configs_to_apply.emplace_back(strex(next_arg.get()).trim());
             }
         }
 
@@ -247,7 +306,7 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
     // Apply command-line settings once before local-config lookup so writable-root overrides (and any
     // related path knobs) affect the cache path itself. ApplyCommandLine runs again later for normal
     // precedence over local config.
-    settings.ApplyCommandLine(argc, argv);
+    settings.ApplyCommandLine(args);
 
     // Resolve the installed-client writable root now that the config is applied, so the local-config
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.
@@ -264,7 +323,7 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
         }
     }
 
-    settings.ApplyCommandLine(argc, argv);
+    settings.ApplyCommandLine(args);
     settings.ApplyAutoSettings();
     return settings;
 }
@@ -326,7 +385,7 @@ static void PrebakeResources(BakingSettings& settings)
     using BakeResourcesFunc = bool (*)(void*);
     auto bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(nullptr, "FO_BakeResources");
 
-    void* baker_dll = nullptr;
+    nptr<void> baker_dll = nullptr;
     auto unload_baker_dll = scope_exit([&]() noexcept { Platform::UnloadModule(baker_dll); });
 
     const auto lib_name = strex("{}_BakerLib", FO_DEV_NAME);
@@ -336,7 +395,7 @@ static void PrebakeResources(BakingSettings& settings)
         const auto lib_path = strex(exe_path.value_or("")).extract_dir().combine_path(lib_name).str();
         baker_dll = Platform::LoadModule(lib_path);
 
-        if (baker_dll != nullptr) {
+        if (baker_dll) {
             bake_resources = Platform::GetFuncAddr<BakeResourcesFunc>(baker_dll, "FO_BakeResources");
         }
     }
@@ -376,7 +435,7 @@ auto GetExeLogFileName() -> string
 static void SignalHandler(int sig)
 {
     std::signal(sig, SignalHandler);
-    App->RequestQuit();
+    GetApp()->RequestQuit();
 }
 #endif
 

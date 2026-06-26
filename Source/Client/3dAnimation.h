@@ -62,9 +62,9 @@ public:
 
     [[nodiscard]] auto GetFileName() const noexcept -> string_view { return _animFileName; }
     [[nodiscard]] auto GetName() const noexcept -> string_view { return _animName; }
-    [[nodiscard]] auto GetBoneOutputs() const noexcept -> const vector<BoneOutput>& { return _boneOutputs; }
+    [[nodiscard]] auto GetBoneOutputs() const noexcept -> const_span<BoneOutput> { return _boneOutputs; }
     [[nodiscard]] auto GetDuration() const noexcept -> float32_t { return _duration; }
-    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const vector<vector<hstring>>& { return _bonesHierarchy; }
+    [[nodiscard]] auto GetBonesHierarchy() const noexcept -> const_span<vector<hstring>> { return _bonesHierarchy; }
 
     void Load(DataReader& reader, HashResolver& hash_resolver);
 
@@ -86,8 +86,8 @@ public:
     auto operator=(ModelAnimationController&&) noexcept = delete;
     ~ModelAnimationController() = default;
 
-    [[nodiscard]] auto Copy() const -> unique_ptr<ModelAnimationController>;
-    [[nodiscard]] auto GetAnimationBones(int32_t index) const -> const vector<vector<hstring>>&;
+    [[nodiscard]] auto Copy() const -> ModelAnimationController;
+    [[nodiscard]] auto GetAnimationBones(int32_t index) const -> const_span<vector<hstring>>;
     [[nodiscard]] auto GetAnimationDuration(int32_t index) const -> float32_t;
     [[nodiscard]] auto GetTrackEnable(int32_t track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(int32_t track) const -> float32_t;
@@ -95,8 +95,8 @@ public:
     [[nodiscard]] auto GetAnimationsCount() const -> int32_t;
 
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
-    auto RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32_t;
-    void SetTrackAnimation(int32_t track, int32_t anim_index, const unordered_set<hstring>* allowed_bones);
+    auto RegisterAnimation(ptr<ModelAnimation> animation, bool reversed) -> int32_t;
+    void SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones);
     void ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names);
     void ResetEvents();
     void AddEventEnable(int32_t track, bool enable, float32_t start_time);
@@ -112,7 +112,7 @@ private:
     struct Output
     {
         hstring BoneName {};
-        raw_ptr<mat44> Matrix {};
+        nptr<mat44> Matrix {};
         vector<bool> Valid {};
         vector<float32_t> Factor {};
         vector<vec3> Scale {};
@@ -142,9 +142,9 @@ private:
         float32_t Speed {};
         float32_t Weight {};
         float32_t Position {};
-        raw_ptr<const ModelAnimation> Anim {};
+        nptr<const ModelAnimation> Anim {};
         bool Reversed {};
-        vector<raw_ptr<Output>> AnimOutput {};
+        vector<nptr<Output>> AnimOutput {};
         vector<Event> Events {};
     };
 
@@ -154,7 +154,7 @@ private:
     template<typename T>
     void FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result);
 
-    shared_ptr<vector<pair<ModelAnimation*, bool>>> _anims {};
+    shared_ptr<vector<pair<ptr<ModelAnimation>, bool>>> _anims {};
     shared_ptr<vector<Output>> _outputs {};
     vector<Track> _tracks {};
     float32_t _eventsTime {};

@@ -61,17 +61,17 @@ public:
     ~EngineMetadata() override = default;
 
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
-    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> const PropertyRegistrator*;
-    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> const PropertyRegistrator*;
-    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> PropertyRegistrator*;
+    [[nodiscard]] auto GetPropertyRegistrator(hstring type_name) const noexcept -> nptr<const PropertyRegistrator>;
+    [[nodiscard]] auto GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>;
+    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view type_name) -> ptr<PropertyRegistrator>;
     [[nodiscard]] auto IsValidBaseType(string_view type_str) const noexcept -> bool;
     [[nodiscard]] auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& override;
     [[nodiscard]] auto GetBaseTypes() const -> const auto& { return _baseTypes; }
     [[nodiscard]] auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc override;
     [[nodiscard]] auto ResolveComplexType(span<const string_view> tokens) const -> pair<ComplexTypeDesc, size_t>;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32_t override;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32_t override;
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed = nullptr) const -> const string& override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, nptr<bool> failed = nullptr) const -> int32_t override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, nptr<bool> failed = nullptr) const -> int32_t override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view override;
     [[nodiscard]] auto IsValidEntityType(hstring type_name) const noexcept -> bool;
     [[nodiscard]] auto IsValidEntityType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetEntityType(hstring type_name) const -> const EntityTypeDesc&;
@@ -80,10 +80,10 @@ public:
     [[nodiscard]] auto IsFixedType(string_view type_name) const noexcept -> bool;
     [[nodiscard]] auto GetFixedType(hstring type_name) const -> const EntityTypeDesc&;
     [[nodiscard]] auto GetFixedTypes() const noexcept -> const map<hstring, EntityTypeDesc>&;
-    [[nodiscard]] auto GetEntityHolderIdsProp(Entity* holder, hstring entry) const -> const Property*;
+    [[nodiscard]] auto GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) const -> ptr<const Property>;
     [[nodiscard]] auto GetAllEnums() const noexcept -> const auto& { return _enums; }
-    [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> auto& { return _outboundRemoteCalls; }
-    [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> auto& { return _inboundRemoteCalls; }
+    [[nodiscard]] auto GetOutboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_outboundRemoteCalls; }
+    [[nodiscard]] auto GetInboundRemoteCalls() const noexcept -> ptr<const unordered_map<hstring, RemoteCallDesc>> { return &_inboundRemoteCalls; }
     [[nodiscard]] auto GetGameSetting(string_view name) const -> const BaseTypeDesc&;
     [[nodiscard]] auto GetGameSettings() const noexcept -> const auto& { return _gameSettings; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
@@ -92,16 +92,16 @@ public:
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _protoMngr.GetProtoCritters(); }
     [[nodiscard]] auto GetProtoMaps() const noexcept -> const auto& { return _protoMngr.GetProtoMaps(); }
     [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _protoMngr.GetProtoLocations(); }
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* override;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> nptr<const ProtoCritter>;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> nptr<const ProtoMap>;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> nptr<const ProtoLocation>;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> override;
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
     void RegisterSide(EngineSideKind side);
-    auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> PropertyRegistrator*;
-    auto RegisterFixedType(string_view name, bool exported) -> PropertyRegistrator*;
+    auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrator>;
+    auto RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrator>;
     void RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent);
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
@@ -121,34 +121,34 @@ public:
     void RegisterMigrationRules(unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>>&& migration_rules);
     void RegisterMigrationRule(string_view rule_name, string_view extra_info, string_view target, string_view replacement);
     void RegisterProtos(const FileSystem& resources);
-    void RegisterProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
+    void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
     mutable HashStorage Hashes {};
 
 private:
-    auto RegisterBaseType(string_view type_str) -> BaseTypeDesc&;
+    auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
 
     EngineSideKind _side {};
     bool _registrationFinalized {};
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};
-    unordered_map<string, raw_ptr<EntityTypeDesc>> _entityRelatives {};
-    unordered_map<string_view, raw_ptr<EntityTypeDesc>> _entityTypesByStr {};
-    unordered_map<string_view, raw_ptr<EntityTypeDesc>> _fixedTypesByStr {};
+    unordered_map<string, ptr<EntityTypeDesc>> _entityRelatives {};
+    unordered_map<string_view, ptr<EntityTypeDesc>> _entityTypesByStr {};
+    unordered_map<string_view, ptr<EntityTypeDesc>> _fixedTypesByStr {};
     ProtoManager _protoMngr;
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _entityEntries {};
     unordered_map<string, unordered_map<string, int32_t>> _enums {};
     unordered_map<string, unordered_map<int32_t, string>> _enumsRev {};
     unordered_map<string, int32_t> _enumsFullName {};
-    unordered_map<string, raw_ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
+    unordered_map<string, ptr<const BaseTypeDesc>> _enumsUnderlyingType {};
     unordered_map<string, StructLayoutDesc> _structLayouts {};
     unordered_map<string, RefTypeDesc> _refTypes {};
     unordered_map<string, unique_ptr<PropertyRegistrator>> _dynamicRefTypeRegistrators {};
     unordered_map<string, BaseTypeDesc> _baseTypes {};
     unordered_map<hstring, RemoteCallDesc> _outboundRemoteCalls {};
     unordered_map<hstring, RemoteCallDesc> _inboundRemoteCalls {};
-    unordered_map<string, raw_ptr<const BaseTypeDesc>> _gameSettings {};
+    unordered_map<string, ptr<const BaseTypeDesc>> _gameSettings {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
@@ -156,7 +156,7 @@ private:
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
-    using RemoteCallHandler = function<void(hstring, Entity*, span<uint8_t>)>;
+    using RemoteCallHandler = function<void(hstring, nptr<Entity>, span<uint8_t>)>;
 
     BaseEngine(const BaseEngine&) = delete;
     BaseEngine(BaseEngine&&) noexcept = delete;
@@ -165,7 +165,12 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
-    [[nodiscard]] auto GetImGui() noexcept -> ScriptImGui* { return _imgui.get(); }
+    [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _imgui.as_ptr();
+    }
     [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
 
     virtual void Shutdown() { }
@@ -173,22 +178,22 @@ public:
 
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
 
-    void SendRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data);
+    void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);
     void VerifyBindedRemoteCalls() const noexcept(false);
 
-    GlobalSettings& Settings;
+    ptr<GlobalSettings> Settings;
     FileSystem Resources;
     GameTimer GameTime;
     TimeEventManager TimeEventMngr;
-    unique_del_ptr<uint8_t> UserData {};
+    unique_del_nptr<uint8_t> UserData {};
 
 protected:
-    explicit BaseEngine(GlobalSettings& settings, FileSystem&& resources, const MeatdataRegistrator& registrator);
+    explicit BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator);
     ~BaseEngine() override = default;
 
-    virtual void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
-    void HandleInboundRemoteCall(hstring name, Entity* caller, span<uint8_t> data); // Called by derived class
+    virtual void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) { ignore_unused(name, caller, data); } // Managed by derived class
+    void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data); // Called by derived class
 
 private:
     refcount_ptr<ScriptImGui> _imgui;

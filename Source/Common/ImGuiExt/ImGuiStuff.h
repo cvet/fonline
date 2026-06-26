@@ -54,7 +54,7 @@ class BaseEngine;
 class ScriptImGui : public Entity
 {
 public:
-    explicit ScriptImGui(BaseEngine* engine);
+    explicit ScriptImGui(ptr<BaseEngine> engine);
     ScriptImGui(const ScriptImGui&) = delete;
     ScriptImGui(ScriptImGui&&) noexcept = delete;
     auto operator=(const ScriptImGui&) = delete;
@@ -63,10 +63,10 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "ImGui"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
-    [[nodiscard]] auto GetEngine() noexcept -> BaseEngine* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<BaseEngine> { return _engine; }
 
 private:
-    raw_ptr<BaseEngine> _engine;
+    ptr<BaseEngine> _engine;
 };
 
 ///@ ExportEnum

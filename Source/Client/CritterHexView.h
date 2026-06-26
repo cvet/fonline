@@ -53,7 +53,7 @@ class CritterHexView final : public CritterView, public HexView
 {
 public:
     CritterHexView() = delete;
-    CritterHexView(MapView* map, ident_t id, const ProtoCritter* proto, const Properties* props = nullptr);
+    CritterHexView(ptr<MapView> map, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props = nullptr);
     CritterHexView(const CritterHexView&) = delete;
     CritterHexView(CritterHexView&&) noexcept = delete;
     auto operator=(const CritterHexView&) = delete;
@@ -61,24 +61,25 @@ public:
     ~CritterHexView() override = default;
 
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
-    [[nodiscard]] auto GetMoving() noexcept -> MovingContext* { return _moving.get(); }
-    [[nodiscard]] auto GetMoving() const noexcept -> const MovingContext* { return _moving.get(); }
+    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving.as_nptr(); }
+    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving.as_nptr(); }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
 #if FO_ENABLE_3D
     [[nodiscard]] auto IsModel() const noexcept -> bool { return !!_model; }
-    [[nodiscard]] auto GetModel() noexcept -> ModelInstance* { return _model.get(); }
+    [[nodiscard]] auto GetModel() noexcept -> nptr<ModelInstance> { return _model; }
+    [[nodiscard]] auto GetModel() const noexcept -> nptr<const ModelInstance> { return _model; }
 #endif
 
     void Init();
     void ChangeDir(mdir dir);
     void ChangeLookDir(mdir dir);
     void ChangeMoveDir(mdir dir);
-    void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, Entity* context_item = nullptr);
+    void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<Entity> context_item = nullptr);
     void StopAnim();
     void RefreshView(bool no_smooth = false);
-    void Action(CritterAction action, int32_t action_data, Entity* context_item, bool local_call);
+    void Action(CritterAction action, int32_t action_data, nptr<Entity> context_item, bool local_call);
     void Process();
     void SynchronizeMoving();
     void NormalizeHexOffset();
@@ -95,22 +96,24 @@ public:
 private:
     struct CritterAnim
     {
+        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem.as_nptr(); }
+
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};
-        refcount_ptr<Entity> ContextItem {};
-        raw_ptr<const SpriteSheet> Frames {};
+        refcount_nptr<Entity> ContextItem {};
+        nptr<const SpriteSheet> Frames {};
         int32_t FrameIndex {};
         timespan FramesDuration {};
     };
 
 #if FO_ENABLE_3D
-    auto GetModelLayersData() const -> const int32_t*;
+    auto GetModelLayersData() const -> ptr<const int32_t>;
 #endif
     void OnDestroySelf() override;
-    void SetupSprite(MapSprite* mspr) override;
+    void SetupSprite(ptr<MapSprite> mspr) override;
     void ProcessMoving();
     void NextAnim();
-    void SetAnimSpr(const SpriteSheet* anim, int32_t frm_index);
+    void SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index);
 
     // Integer-pixel displacement from the current MovingContext's start hex/offset to the critter's
     // current linear position. Continuous through hex snaps because cur_hex and hex_offset jump in
@@ -119,9 +122,9 @@ private:
 
     // Picks the walk/run frame whose accumulated root motion sits closest (along T) to the current
     // anchor-relative cycle position.
-    [[nodiscard]] auto EvaluateMovementFrameIndex(const SpriteSheet* anim) const -> int32_t;
+    [[nodiscard]] auto EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t;
 
-    refcount_ptr<MovingContext> _moving {};
+    refcount_nptr<MovingContext> _moving {};
 
     bool _needReset {};
     nanotime _resetTime {};
@@ -148,12 +151,12 @@ private:
     // On a direction change inside one MovingContext the anchor is shifted so the new direction's T
     // continues at the same cycle phase as the previous one - the leg keeps walking through turns.
     // On SetMoving / StopMoving the anchor is cleared so a fresh movement starts the cycle anew.
-    raw_ptr<const SpriteSheet> _walkAnchorAnim {};
+    nptr<const SpriteSheet> _walkAnchorAnim {};
     ipos32 _walkAnchorDisp {};
 
 #if FO_ENABLE_3D
     shared_ptr<ModelSprite> _modelSpr {};
-    raw_ptr<ModelInstance> _model {};
+    nptr<ModelInstance> _model {};
 #endif
 };
 

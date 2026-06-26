@@ -110,18 +110,14 @@ namespace
         auto* array_type = engine->GetTypeInfoByDecl(array_type_decl.c_str());
         REQUIRE(array_type != nullptr);
 
-        auto* values = ScriptArray::Create(array_type, 2);
-        REQUIRE(values != nullptr);
-        auto release_values = scope_exit([&values]() noexcept { safe_call([&values] { values->Release(); }); });
+        auto values = ScriptArray::Create(array_type, 2);
 
         T low_value = low;
         T high_value = high;
         values->SetValue(0, &high_value);
         values->SetValue(1, &low_value);
 
-        auto* same_values = ScriptArray::Create(array_type, 2);
-        REQUIRE(same_values != nullptr);
-        auto release_same_values = scope_exit([&same_values]() noexcept { safe_call([&same_values] { same_values->Release(); }); });
+        auto same_values = ScriptArray::Create(array_type, 2);
 
         same_values->SetValue(0, &high_value);
         same_values->SetValue(1, &low_value);
@@ -131,12 +127,12 @@ namespace
         CHECK_FALSE(*values == *same_values);
 
         values->SortAsc();
-        CHECK(*cast_from_void<T*>(values->At(0)) == low_value);
-        CHECK(*cast_from_void<T*>(values->At(1)) == high_value);
+        CHECK(*cast_from_void<T*>(values->At(0).get()) == low_value);
+        CHECK(*cast_from_void<T*>(values->At(1).get()) == high_value);
 
         values->SortDesc();
-        CHECK(*cast_from_void<T*>(values->At(0)) == high_value);
-        CHECK(*cast_from_void<T*>(values->At(1)) == low_value);
+        CHECK(*cast_from_void<T*>(values->At(0).get()) == high_value);
+        CHECK(*cast_from_void<T*>(values->At(1).get()) == low_value);
 
         CHECK(values->Find(&low_value) == 1);
         CHECK(values->Find(1, &high_value) == -1);
@@ -532,7 +528,8 @@ namespace ScriptBuiltins
 
         return 1;
     }
-
+)"
+                    R"(
     int ArrayEdgeNoopOps()
     {
         int[] values = {1, 2};
@@ -798,7 +795,8 @@ namespace ScriptBuiltins
         int[] values = {1, 2};
         values.sortAsc(1, 3);
     }
-
+)"
+                    R"(
     void ArrayReduceTooMuchThrows()
     {
         int[] values = {1};
@@ -1238,7 +1236,7 @@ namespace ScriptBuiltins
 
         const string_view section_name = "Enum";
         writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-        writer.WritePtr(section_name.data(), section_name.size());
+        writer.WriteStringBytes(section_name);
         writer.Write<uint32_t>(uint32_t {1}); // 1 entry
 
         // GenderType int Male 0 Female 1
@@ -1246,7 +1244,7 @@ namespace ScriptBuiltins
 
         auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-            writer.WritePtr(token.data(), token.size());
+            writer.WriteStringBytes(token);
         };
 
         write_token("GenderType");
@@ -1263,7 +1261,7 @@ namespace ScriptBuiltins
     {
         const auto metadata_blob = MakeMetadataWithGenderEnum();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -1274,7 +1272,7 @@ namespace ScriptBuiltins
         const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptBuiltins.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptBuiltins.fos-bin-server", script_blob);
@@ -1285,10 +1283,8 @@ namespace ScriptBuiltins
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1302,12 +1298,18 @@ namespace ScriptBuiltins
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 TEST_CASE("ScriptBuiltinsStringOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1317,7 +1319,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1535,7 +1537,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         CHECK_FALSE(fatal);
     }
 
-    // Empty any → int must return 0
+    // Empty any в†’ int must return 0
     {
         auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::EmptyAnyToInt"));
         REQUIRE(func);
@@ -1547,7 +1549,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 TEST_CASE("ScriptBuiltinsArrayOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1557,7 +1559,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1751,17 +1753,11 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         REQUIRE(gc_node_handle_type != nullptr);
         CHECK((gc_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) != 0);
 
-        auto* int_arr = ScriptArray::Create(int_type, 2);
-        REQUIRE(int_arr != nullptr);
-        auto release_int_arr = scope_exit([&int_arr]() noexcept { safe_call([&int_arr] { int_arr->Release(); }); });
+        auto int_arr = ScriptArray::Create(int_type, 2);
 
-        auto* uint_arr = ScriptArray::Create(uint_type, 1);
-        REQUIRE(uint_arr != nullptr);
-        auto release_uint_arr = scope_exit([&uint_arr]() noexcept { safe_call([&uint_arr] { uint_arr->Release(); }); });
+        auto uint_arr = ScriptArray::Create(uint_type, 1);
 
-        auto* dummy_ref_arr = ScriptArray::Create(dummy_ref_handle_type, 1);
-        REQUIRE(dummy_ref_arr != nullptr);
-        auto release_dummy_ref_arr = scope_exit([&dummy_ref_arr]() noexcept { safe_call([&dummy_ref_arr] { dummy_ref_arr->Release(); }); });
+        auto dummy_ref_arr = ScriptArray::Create(dummy_ref_handle_type, 1);
 
         CHECK(int_arr->GetArrayObjectType() == int_type);
         CHECK(std::as_const(*int_arr).GetArrayObjectType() == int_type);
@@ -1783,8 +1779,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         {
             auto copied_int_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*int_arr);
             CHECK(copied_int_arr->GetSize() == int_arr->GetSize());
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(0)) == first_int_value);
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(1)) == second_int_value);
+            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(0).get()) == first_int_value);
+            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(1).get()) == second_int_value);
             CHECK(*copied_int_arr == *int_arr);
         }
 
@@ -1808,25 +1804,21 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         REQUIRE(gc_node != nullptr);
         auto release_gc_node = scope_exit([&]() noexcept { safe_call([&] { as_engine->ReleaseScriptObject(gc_node, gc_node_type); }); });
 
-        auto* gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
-        REQUIRE(gc_handle_arr != nullptr);
-        auto release_gc_handle_arr = scope_exit([&gc_handle_arr]() noexcept { safe_call([&gc_handle_arr] { gc_handle_arr->Release(); }); });
+        auto gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
 
         void* gc_node_handle = gc_node;
         gc_handle_arr->SetValue(0, &gc_node_handle);
         CHECK(as_engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE) >= 0);
 
         {
-            auto* defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1, &gc_node_handle);
-            REQUIRE(defaulted_gc_handle_arr != nullptr);
-            auto release_defaulted_gc_handle_arr = scope_exit([&defaulted_gc_handle_arr]() noexcept { safe_call([&defaulted_gc_handle_arr] { defaulted_gc_handle_arr->Release(); }); });
+            auto defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1, &gc_node_handle);
 
             auto copied_gc_handle_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*defaulted_gc_handle_arr);
             CHECK(copied_gc_handle_arr->GetSize() == defaulted_gc_handle_arr->GetSize());
             CHECK(copied_gc_handle_arr->FindByRef(&gc_node_handle) == 0);
         }
 
-        gc_handle_arr->ReleaseAllHandles(as_engine);
+        gc_handle_arr->ReleaseAllHandles();
         CHECK(gc_handle_arr->IsEmpty());
 
         ArrayDummyRef second_dummy_ref;
@@ -1850,7 +1842,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CheckPrimitiveScriptArrayDirectOps<float64_t>(as_engine, "double", -3.5, 4.75);
 
         int_arr->EnumReferences(as_engine);
-        int_arr->ReleaseAllHandles(as_engine);
+        int_arr->ReleaseAllHandles();
         CHECK(int_arr->IsEmpty());
     }
 
@@ -1900,7 +1892,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 TEST_CASE("ScriptBuiltinsDictOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1910,7 +1902,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1980,7 +1972,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1990,7 +1982,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

@@ -56,7 +56,7 @@ class CritterManager final
 {
 public:
     CritterManager() = delete;
-    explicit CritterManager(ServerEngine* engine);
+    explicit CritterManager(ptr<ServerEngine> engine);
     CritterManager(const CritterManager&) = delete;
     CritterManager(CritterManager&&) noexcept = delete;
     auto operator=(const CritterManager&) = delete;
@@ -65,16 +65,16 @@ public:
 
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>;
     [[nodiscard]] auto GetPlayerCritters() -> vector<refcount_ptr<Critter>>;
-    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidInvPriority(ptr<Critter> cr, hstring item_pid) -> nptr<Item>;
 
-    auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> Critter*;
-    void DestroyCritter(Critter* cr);
-    void DestroyInventory(Critter* cr);
-    auto AddItemToCritter(Critter* cr, Item* item, bool send) -> Item*;
-    void RemoveItemFromCritter(Critter* cr, Item* item, bool send);
+    auto CreateCritterOnMap(hstring proto_id, nptr<const Properties> props, ptr<Map> map, mpos hex, mdir dir) -> ptr<Critter>;
+    void DestroyCritter(ptr<Critter> cr);
+    void DestroyInventory(ptr<Critter> cr);
+    auto AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send) -> ptr<Item>;
+    void RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool send);
 
 private:
-    raw_ptr<ServerEngine> _engine;
+    ptr<ServerEngine> _engine;
 };
 
 FO_END_NAMESPACE

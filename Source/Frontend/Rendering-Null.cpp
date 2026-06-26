@@ -69,7 +69,7 @@ static void ValidateScissorRect(irect32 rect)
     FO_VERIFY_AND_THROW(rect.height >= 0, "Rectangle height is negative", rect.height);
 }
 
-static auto GetFallbackTextureSizeData() -> const float32_t*
+static auto GetFallbackTextureSizeData() -> ptr<const float32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -115,7 +115,7 @@ public:
         return result;
     }
 
-    void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch) override
+    void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -125,9 +125,9 @@ public:
             return;
         }
 
-        FO_VERIFY_AND_THROW(data != nullptr, "Missing required data");
-
         const int32_t pitch = use_dest_pitch ? Size.width : size.width;
+        const size_t required_size = (numeric_cast<size_t>(size.height - 1) * numeric_cast<size_t>(pitch)) + numeric_cast<size_t>(size.width);
+        FO_VERIFY_AND_THROW(data.size() >= required_size, "Texture update source data is smaller than the required region size");
 
         for (int32_t y = 0; y < size.height; y++) {
             for (int32_t x = 0; x < size.width; x++) {
@@ -235,11 +235,9 @@ public:
         FO_STACK_TRACE_ENTRY();
     }
 
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, const RenderTexture* custom_tex) override
+    void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
     {
         FO_STACK_TRACE_ENTRY();
-
-        FO_VERIFY_AND_THROW(dbuf != nullptr, "Missing required draw buffer");
 
         const size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
@@ -257,12 +255,21 @@ public:
 #endif
 
         if (_needMainTex) {
-            const RenderTexture* main_tex = custom_tex != nullptr ? custom_tex : MainTex.get();
+            if (!custom_tex) {
+                custom_tex = MainTex;
+            }
 
             if (_needMainTexBuf && !MainTexBuf.has_value()) {
                 auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-                const float32_t* size_data = main_tex != nullptr ? main_tex->SizeData : GetFallbackTextureSizeData();
-                MemCopy(main_tex_buf->MainTexSize, size_data, 4 * sizeof(float32_t));
+                auto size_data = GetFallbackTextureSizeData();
+
+                if (custom_tex) {
+                    auto main_tex = custom_tex.as_ptr();
+                    size_data = main_tex->SizeData;
+                }
+
+                ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
+                MemCopy(main_texture_size.get(), size_data.get(), 4 * sizeof(float32_t));
             }
         }
 
@@ -347,7 +354,7 @@ auto Null_Renderer::IsRenderTargetFlipped() const -> bool
     return false;
 }
 
-void Null_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
+void Null_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -367,13 +374,13 @@ void Null_Renderer::Present()
     FO_STACK_TRACE_ENTRY();
 }
 
-void Null_Renderer::SetRenderTarget(RenderTexture* tex)
+void Null_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
 
     _currentRenderTarget = tex;
 
-    if (tex != nullptr) {
+    if (tex) {
         _viewPortRect = {0, 0, tex->Size.width, tex->Size.height};
     }
 }
@@ -385,12 +392,13 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
     ignore_unused(depth);
     ignore_unused(stencil);
 
-    if (!color.has_value() || _currentRenderTarget == nullptr) {
+    if (!color.has_value() || !_currentRenderTarget) {
         return;
     }
 
-    auto* null_tex = dynamic_cast<Null_Texture*>(_currentRenderTarget.get());
-    FO_VERIFY_AND_THROW(null_tex != nullptr, "Missing required null texture");
+    auto nullable_null_tex = _currentRenderTarget.dyn_cast<Null_Texture>();
+    FO_VERIFY_AND_THROW(nullable_null_tex, "Missing required null texture");
+    auto null_tex = nullable_null_tex.as_ptr();
     null_tex->Clear(color.value());
 }
 
@@ -418,7 +426,7 @@ void Null_Renderer::OnResizeWindow(isize32 size)
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
-    if (_currentRenderTarget == nullptr) {
+    if (!_currentRenderTarget) {
         _viewPortRect = {0, 0, size.width, size.height};
     }
 }

@@ -41,6 +41,19 @@ HashStorage::HashStorage(HashFunc hash_func) :
     _hashFunc {hash_func}
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_hashFunc, "Hash function is null");
+}
+
+auto HashStorage::DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (data.empty()) {
+        return hashing_ex::hash(nullptr, 0);
+    }
+
+    return hashing_ex::hash(data.data(), data.size());
 }
 
 auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
@@ -51,7 +64,7 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto hash_value = _hashFunc(s.data(), s.length());
+    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
 
     shared_lock locker {_hashStorageLocker};
 
@@ -62,13 +75,13 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}, {}))>);
+    static_assert(std::same_as<hstring::hash_t, decltype(_hashFunc({}))>);
 
     if (s.empty()) {
         return {};
     }
 
-    const auto hash_value = _hashFunc(s.data(), s.length());
+    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {
@@ -91,7 +104,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     {
         // Add new entry
-        auto entry = SafeAlloc::MakeUnique<hstring::entry>();
+        unique_ptr<hstring::entry> entry = SafeAlloc::MakeUnique<hstring::entry>();
         entry->Hash = hash_value;
         entry->Str = string(s);
 
@@ -127,7 +140,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h) const -> hstring
     throw HashResolveException("Can't resolve hash", h);
 }
 
-auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring
+auto HashStorage::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -147,7 +160,7 @@ auto HashStorage::ResolveHash(hstring::hash_t h, bool* failed) const noexcept ->
 
     BreakIntoDebugger();
 
-    if (failed != nullptr) {
+    if (failed) {
         *failed = true;
     }
 

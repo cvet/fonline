@@ -52,8 +52,8 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable = _codegen.parse_export_method_signature(
-        "FO_SCRIPT_API string Client_Game_FormatTags(ClientEngine* client, string_view text, FO_NULLABLE CritterView* talker = nullptr)",
+    target, entity, name, ret, args, ret_nullable, ret_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API string Client_Game_FormatTags(ClientEngine* client, string_view text, CritterView* talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
     )

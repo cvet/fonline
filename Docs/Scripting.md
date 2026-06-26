@@ -9,7 +9,7 @@ The scripting layer is the contract between the C++ engine runtime and game-auth
 Read this page together with:
 
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) for generated metadata, `///@` annotations, and codegen output.
-- [Nullability.md](Nullability.md) for `T?` and `FO_NULLABLE` contracts across script/native boundaries.
+- [Nullability.md](Nullability.md) for `T?` (script) and `ptr<T>`·`nptr<T>` (native) contracts across script/native boundaries.
 - [EntityModel.md](EntityModel.md) for entity, prototype, property, and holder concepts exposed to scripts.
 - [ServerRuntime.md](ServerRuntime.md) and [ClientRuntime.md](ClientRuntime.md) for runtime events and script callback ownership.
 - [MapperTools.md](MapperTools.md) for mapper-specific script helpers.

@@ -49,7 +49,7 @@ class ModelSprite final : public AtlasSprite
     friend class ModelSpriteFactory;
 
 public:
-    explicit ModelSprite(SpriteManager& spr_mngr, ModelSpriteFactory* factory, unique_ptr<ModelInstance>&& model, AtlasType atlas_type);
+    explicit ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> factory, unique_ptr<ModelInstance> model, AtlasType atlas_type);
     ModelSprite(const ModelSprite&) = delete;
     ModelSprite(ModelSprite&&) noexcept = default;
     auto operator=(const ModelSprite&) = delete;
@@ -60,7 +60,12 @@ public:
     [[nodiscard]] auto GetViewSize() const -> optional<irect32> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDirectDraw() const -> bool override;
-    [[nodiscard]] auto GetModel() -> ModelInstance* { return _model.get(); }
+    [[nodiscard]] auto GetModel() -> ptr<ModelInstance>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _model.as_ptr();
+    }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
     void Prewarm() override;
@@ -73,8 +78,8 @@ public:
     void DrawInScene(fpos32 scene_pos, float32_t depth) const override;
 
 private:
-    raw_ptr<ModelSpriteFactory> _factory {};
-    mutable unique_ptr<ModelInstance> _model {};
+    ptr<ModelSpriteFactory> _factory;
+    mutable unique_ptr<ModelInstance> _model;
     AtlasType _atlasType {};
 };
 
@@ -83,27 +88,27 @@ class ModelSpriteFactory : public SpriteFactory
     friend class ModelSprite;
 
 public:
-    ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
+    ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver);
     ModelSpriteFactory(const ModelSpriteFactory&) = delete;
-    ModelSpriteFactory(ModelSpriteFactory&&) noexcept = default;
+    ModelSpriteFactory(ModelSpriteFactory&&) noexcept = delete;
     auto operator=(const ModelSpriteFactory&) = delete;
     auto operator=(ModelSpriteFactory&&) noexcept -> ModelSpriteFactory& = delete;
     ~ModelSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ModelManager* { return _modelMngr.get(); }
+    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr.as_ptr(); }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto LoadTexture(hstring path) -> pair<RenderTexture*, frect32>;
-    void DrawModelToAtlas(ModelSprite* model_spr);
+    auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
-    raw_ptr<SpriteManager> _sprMngr;
-    raw_ptr<RenderSettings> _settings;
-    unique_ptr<ModelManager> _modelMngr {};
+    ptr<SpriteManager> _sprMngr;
+    ptr<RenderSettings> _settings;
+    unique_nptr<ModelManager> _modelMngr {};
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
-    vector<raw_ptr<RenderTarget>> _rtIntermediate {};
+    vector<ptr<RenderTarget>> _rtIntermediate {};
 };
 
 FO_END_NAMESPACE

@@ -283,7 +283,8 @@ namespace ScriptMethodsTest
         Game.DestroyCritter(cr2);
         return 0;
     }
-
+)"
+                    R"(
     // ========== Game Item Operations ==========
 
     int TestGameItemQueries()
@@ -498,7 +499,8 @@ namespace ScriptMethodsTest
         Item item1 = cr.AddItem("TestItem".hstr(), 1);
         Item item2 = cr.AddItem("TestItem2".hstr(), 1);
         if (item1 is null || item2 is null) return -6;
-
+)"
+                    R"(
         ident item1Id = item1.Id;
         ident item2Id = item2.Id;
         array<ident> itemIds = {zeroId, item1Id, item2Id};
@@ -712,7 +714,8 @@ namespace ScriptMethodsTest
         Game.DbRemoveRecord("test_collection".hstr(), intId);
         if (Game.DbHasRecord("test_collection".hstr(), intId)) return -15;
         Game.DbRemoveRecord("test_collection".hstr(), intId);
-
+)"
+                    R"(
         return 0;
     }
 
@@ -960,7 +963,8 @@ namespace ScriptMethodsTest
 
         Critter? current = unlogined.GetControlledCritter();
         if (current !is null) return -4;
-
+)"
+                    R"(
         Critter cr = Game.CreateCritter("TestCritter".hstr(), true);
         if (cr is null) return -5;
 
@@ -1248,7 +1252,8 @@ namespace ScriptMethodsTest
         if (baseSize != 4) return -3;
         if (!isSynced) return -4;
         if (!enumName.isEmpty()) return -5;
-
+)"
+                    R"(
         Game.GetPropertyInfo(ItemProperty::Hidden, isDisabled, isVirtual, isDict, isArray, isStringLike, enumName, isInt, isFloat, isBool, baseSize, isSynced);
         if (isDisabled || isVirtual || isDict || isArray || isStringLike) return -6;
         if (isInt || isFloat || !isBool) return -7;
@@ -1562,7 +1567,7 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name).as_ptr()};
         proto.SetSize(map_size);
         proto.GetProperties().StoreAllData(props_data, str_hashes);
 
@@ -1587,7 +1592,7 @@ namespace ScriptMethodsTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -1606,7 +1611,7 @@ namespace ScriptMethodsTest
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
@@ -1622,10 +1627,8 @@ namespace ScriptMethodsTest
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1639,12 +1642,18 @@ namespace ScriptMethodsTest
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        ptr<GlobalSettings> settings_ptr = &settings;
+        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+    }
 }
 
 TEST_CASE("ServerCritterInventoryOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1654,7 +1663,7 @@ TEST_CASE("ServerCritterInventoryOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1700,7 +1709,7 @@ TEST_CASE("ServerCritterInventoryOperations")
 TEST_CASE("ServerCritterStateOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1710,7 +1719,7 @@ TEST_CASE("ServerCritterStateOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1756,7 +1765,7 @@ TEST_CASE("ServerCritterStateOperations")
 TEST_CASE("ServerGameCritterQueries")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1766,7 +1775,7 @@ TEST_CASE("ServerGameCritterQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1804,7 +1813,7 @@ TEST_CASE("ServerGameCritterQueries")
 TEST_CASE("ServerGameItemOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1814,7 +1823,7 @@ TEST_CASE("ServerGameItemOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1876,7 +1885,7 @@ TEST_CASE("ServerGameItemOperations")
 TEST_CASE("ServerEntityLifecycle")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1886,7 +1895,7 @@ TEST_CASE("ServerEntityLifecycle")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1972,7 +1981,7 @@ TEST_CASE("ServerEntityLifecycle")
 TEST_CASE("ServerMiscScriptOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1982,7 +1991,7 @@ TEST_CASE("ServerMiscScriptOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server.as_ptr());
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2147,12 +2156,10 @@ TEST_CASE("ServerMiscScriptOperations")
 
     SECTION("PlayerConnectionAndCritterMethods")
     {
-        const auto create_unlogined_player = [&server](string_view name) -> Player* {
-            auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        const auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
+            auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            if (unlogined_player != nullptr) {
-                unlogined_player->SetName(name);
-            }
+            unlogined_player->SetName(name);
 
             return unlogined_player;
         };
@@ -2160,69 +2167,64 @@ TEST_CASE("ServerMiscScriptOperations")
         auto methods_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
         REQUIRE(methods_func);
 
-        Player* methods_player = create_unlogined_player("ScriptPlayerMethodsStart");
-        REQUIRE(methods_player != nullptr);
+        ptr<Player> methods_player = create_unlogined_player("ScriptPlayerMethodsStart");
 
         auto methods_cleanup = scope_exit([&methods_player]() noexcept {
             safe_call([&methods_player] {
-                if (methods_player != nullptr && !methods_player->IsDestroyed()) {
+                if (!methods_player->IsDestroyed()) {
                     methods_player->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(methods_func.Call(methods_player));
+        REQUIRE(methods_func.Call(methods_player.get()));
         CHECK(methods_func.GetResult() == 0);
         CHECK(methods_player->GetName() == "ScriptPlayerMethods");
         CHECK(methods_player->GetConnection()->IsGracefulDisconnected());
-        CHECK(methods_player->GetControlledCritter() == nullptr);
+        CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
 
         auto name_validation_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
         REQUIRE(name_validation_func);
 
-        Player* name_player = create_unlogined_player("ScriptPlayerNameStart");
-        REQUIRE(name_player != nullptr);
+        ptr<Player> name_player = create_unlogined_player("ScriptPlayerNameStart");
 
         auto name_cleanup = scope_exit([&name_player]() noexcept {
             safe_call([&name_player] {
-                if (name_player != nullptr && !name_player->IsDestroyed()) {
+                if (!name_player->IsDestroyed()) {
                     name_player->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(name_validation_func.Call(name_player));
+        REQUIRE(name_validation_func.Call(name_player.get()));
         CHECK(name_validation_func.GetResult() == 0);
         CHECK(name_player->GetName() == "ScriptPlayerNameOk");
 
         auto map_view_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);
 
-        Player* map_view_player = create_unlogined_player("ScriptPlayerMapView");
-        REQUIRE(map_view_player != nullptr);
+        ptr<Player> map_view_player = create_unlogined_player("ScriptPlayerMapView");
 
         auto map_view_cleanup = scope_exit([&map_view_player]() noexcept {
             safe_call([&map_view_player] {
-                if (map_view_player != nullptr && !map_view_player->IsDestroyed()) {
+                if (!map_view_player->IsDestroyed()) {
                     map_view_player->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(map_view_func.Call(map_view_player));
+        REQUIRE(map_view_func.Call(map_view_player.get()));
         CHECK(map_view_func.GetResult() == 0);
-        CHECK(map_view_player->GetControlledCritter() == nullptr);
+        CHECK_FALSE(static_cast<bool>(map_view_player->GetControlledCritter()));
     }
 
     SECTION("PlayerLoginHelpers")
     {
-        const auto create_unlogined_player = [&server](string_view name) -> Player* {
-            auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
+        const auto create_unlogined_player = [&server](string_view name) -> ptr<Player> {
+            auto unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected));
 
-            if (unlogined_player != nullptr) {
-                unlogined_player->SetName(name);
-                unlogined_player->SetLastControlledCritterId(ident_t {1});
-            }
+            unlogined_player->SetName(name);
+            unlogined_player->SetLastControlledCritterId(ident_t {1});
 
             return unlogined_player;
         };
@@ -2235,18 +2237,17 @@ TEST_CASE("ServerMiscScriptOperations")
         auto login_new_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
         REQUIRE(login_new_func);
 
-        Player* new_unlogined = create_unlogined_player("ScriptLoginNew");
-        REQUIRE(new_unlogined != nullptr);
+        ptr<Player> new_unlogined = create_unlogined_player("ScriptLoginNew");
 
         auto new_player_cleanup = scope_exit([&new_unlogined]() noexcept {
             safe_call([&new_unlogined] {
-                if (new_unlogined != nullptr && !new_unlogined->IsDestroyed()) {
+                if (!new_unlogined->IsDestroyed()) {
                     new_unlogined->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(login_new_func.Call(new_unlogined));
+        REQUIRE(login_new_func.Call(new_unlogined.get()));
         REQUIRE(login_new_func.GetResult() == 0);
 
         const auto player_id = new_unlogined->GetId();
@@ -2255,19 +2256,17 @@ TEST_CASE("ServerMiscScriptOperations")
         auto reconnect_func = server->FindFunc<int32_t, Player*, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
         REQUIRE(reconnect_func);
 
-        Player* reconnect_unlogined = create_unlogined_player("ScriptLoginReconnect");
-        REQUIRE(reconnect_unlogined != nullptr);
+        ptr<Player> reconnect_unlogined = create_unlogined_player("ScriptLoginReconnect");
 
-        REQUIRE(reconnect_func.Call(reconnect_unlogined, player_id));
+        REQUIRE(reconnect_func.Call(reconnect_unlogined.get(), player_id));
         CHECK(reconnect_func.GetResult() == 0);
 
         auto temp_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
         REQUIRE(temp_func);
 
-        Player* temp_unlogined = create_unlogined_player("ScriptLoginTemp");
-        REQUIRE(temp_unlogined != nullptr);
+        ptr<Player> temp_unlogined = create_unlogined_player("ScriptLoginTemp");
 
-        REQUIRE(temp_func.Call(temp_unlogined));
+        REQUIRE(temp_func.Call(temp_unlogined.get()));
         CHECK(temp_func.GetResult() == 0);
     }
 

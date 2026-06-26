@@ -84,12 +84,19 @@ TEST_CASE("Settings")
         char arg1[] = "--CustomCli";
         char arg2[] = "123";
         char arg3[] = "--FlagOnly";
-        char* argv[] = {arg0, arg1, arg2, arg3};
+        const vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
 
-        settings.ApplyCommandLine(4, argv);
+        settings.ApplyCommandLine(argv);
 
         CHECK(settings.GetCustomSetting("CustomCli") == "123");
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
+    }
+
+    SECTION("MakeCommandLineArgsAcceptsEmptyNativeArgv")
+    {
+        const vector<CommandLineArg> args = MakeCommandLineArgs(0, nullptr);
+
+        CHECK(args.empty());
     }
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
@@ -115,6 +122,22 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
 
         CHECK_THROWS_AS(settings.ApplyConfigAtPath("missing.fomain", "/tmp/not_there"), SettingsException);
+    }
+
+    SECTION("FindCustomSettingReturnsNullableLookup")
+    {
+        GlobalSettings settings {false};
+
+        const auto missing = settings.FindCustomSetting("Missing");
+        CHECK_FALSE(static_cast<bool>(missing));
+        CHECK(settings.GetCustomSetting("Missing").empty());
+
+        settings.SetCustomSetting("Present", any_t(string("value")));
+        const auto present = settings.FindCustomSetting("Present");
+
+        REQUIRE(static_cast<bool>(present));
+        CHECK(*present == "value");
+        CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
     SECTION("BakingModeSaveReturnsAppliedSettings")

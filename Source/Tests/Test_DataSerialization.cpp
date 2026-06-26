@@ -60,14 +60,15 @@ TEST_CASE("DataSerialization")
         writer.Write<int16_t>(static_cast<int16_t>(-1234));
 
         const array<uint8_t, 3> raw = {1, 2, 3};
-        writer.WritePtr(raw.data(), raw.size());
+        ptr<const uint8_t> raw_data_ptr = raw.data();
+        writer.WriteBytes({raw_data_ptr.get(), raw.size()});
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 0xAABBCCDDu);
         CHECK(reader.Read<int16_t>() == static_cast<int16_t>(-1234));
 
-        const auto* raw_read = reader.ReadPtr<uint8_t>(raw.size());
-        CHECK(raw_read != nullptr);
+        const auto raw_read = reader.ReadPtr<uint8_t>(raw.size());
+        CHECK(static_cast<bool>(raw_read));
         CHECK(raw_read[0] == 1);
         CHECK(raw_read[1] == 2);
         CHECK(raw_read[2] == 3);
@@ -81,7 +82,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint8_t>(static_cast<uint8_t>(10));
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == 10);
         CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
     }
@@ -93,7 +94,7 @@ TEST_CASE("DataSerialization")
         writer.Write<uint16_t>(static_cast<uint16_t>(55));
         writer.Write<uint16_t>(static_cast<uint16_t>(66));
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint16_t>() == 55);
         CHECK_THROWS_AS(reader.VerifyEnd(), DataReadingException);
     }
@@ -102,12 +103,12 @@ TEST_CASE("DataSerialization")
     {
         vector<uint8_t> buf;
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
-        CHECK(reader.ReadPtr<uint8_t>(0) == nullptr);
+        DataReader reader {span {buf}};
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
         CHECK_NOTHROW(reader.VerifyEnd());
 
-        MutableDataReader mutable_reader {span<uint8_t> {buf.data(), buf.size()}};
-        CHECK(mutable_reader.ReadPtr<uint8_t>(0) == nullptr);
+        MutableDataReader mutable_reader {span {buf}};
+        CHECK_FALSE(static_cast<bool>(mutable_reader.ReadPtr<uint8_t>(0)));
         CHECK_NOTHROW(mutable_reader.VerifyEnd());
     }
 
@@ -118,11 +119,11 @@ TEST_CASE("DataSerialization")
         writer.Write<uint32_t>(static_cast<uint32_t>(123));
         writer.Write<uint8_t>(static_cast<uint8_t>(9));
 
-        MutableDataReader reader {span<uint8_t> {buf.data(), buf.size()}};
+        MutableDataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 123);
 
-        auto* value = reader.ReadPtr<uint8_t>(1);
-        REQUIRE(value != nullptr);
+        auto value = reader.ReadPtr<uint8_t>(1);
+        REQUIRE(static_cast<bool>(value));
         CHECK(*value == 9);
         *value = 11;
 
@@ -136,11 +137,11 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
 
         writer.Write<uint8_t>(static_cast<uint8_t>(77));
-        writer.WritePtr<uint8_t>(nullptr, 0);
+        writer.WritePtr(nullptr, 0);
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == 77);
-        CHECK(reader.ReadPtr<uint8_t>(0) == nullptr);
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
@@ -150,9 +151,10 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
 
         const array<uint8_t, 4> source = {9, 8, 7, 6};
-        writer.WritePtr(source.data(), source.size());
+        ptr<const uint8_t> source_ptr = source.data();
+        writer.WriteBytes({source_ptr.get(), source.size()});
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         array<uint8_t, 4> target = {0, 0, 0, 0};
         reader.ReadPtr(target.data(), target.size());
 
@@ -166,7 +168,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(0xABCD));
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         array<uint8_t, 3> target = {7, 8, 9};
 
         reader.ReadPtr(target.data(), 0);
@@ -181,7 +183,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(0xCAFE));
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         array<uint8_t, 4> target = {1, 2, 3, 4};
 
         CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
@@ -194,7 +196,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint8_t>(static_cast<uint8_t>(5));
 
-        MutableDataReader reader {span<uint8_t> {buf.data(), buf.size()}};
+        MutableDataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == 5);
         CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
     }
@@ -205,9 +207,9 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint16_t>(static_cast<uint16_t>(0x1234));
 
-        MutableDataReader reader {span<uint8_t> {buf.data(), buf.size()}};
+        MutableDataReader reader {span {buf}};
         CHECK(reader.Read<uint16_t>() == static_cast<uint16_t>(0x1234));
-        CHECK(reader.ReadPtr<uint8_t>(0) == nullptr);
+        CHECK_FALSE(static_cast<bool>(reader.ReadPtr<uint8_t>(0)));
 
         array<uint8_t, 2> temp = {1, 2};
         reader.ReadPtr(temp.data(), 0);
@@ -221,7 +223,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
         writer.Write<uint8_t>(static_cast<uint8_t>(42));
 
-        MutableDataReader reader {span<uint8_t> {buf.data(), buf.size()}};
+        MutableDataReader reader {span {buf}};
         array<uint8_t, 3> target = {9, 8, 7};
 
         CHECK_THROWS_AS(reader.ReadPtr(target.data(), target.size()), DataReadingException);
@@ -241,12 +243,12 @@ TEST_CASE("DataSerialization")
 
         CHECK(buf.size() == initial_size);
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 0x11223344u);
         CHECK_NOTHROW(reader.VerifyEnd());
     }
 
-    SECTION("LargeWritePtrGrowsBufferAndPreservesData")
+    SECTION("LargeWriteBytesGrowsBufferAndPreservesData")
     {
         vector<uint8_t> buf;
         DataWriter writer {buf};
@@ -256,15 +258,16 @@ TEST_CASE("DataSerialization")
         source.back() = 2;
 
         writer.Write<uint8_t>(static_cast<uint8_t>(0x11));
-        writer.WritePtr(source.data(), source.size());
+        ptr<const uint8_t> source_ptr = source.data();
+        writer.WriteBytes({source_ptr.get(), source.size()});
 
         CHECK(buf.size() == source.size() + sizeof(uint8_t));
 
-        DataReader reader {const_span<uint8_t> {buf.data(), buf.size()}};
+        DataReader reader {span {buf}};
         CHECK(reader.Read<uint8_t>() == static_cast<uint8_t>(0x11));
 
-        const auto* raw = reader.ReadPtr<uint8_t>(source.size());
-        REQUIRE(raw != nullptr);
+        const auto raw = reader.ReadPtr<uint8_t>(source.size());
+        REQUIRE(static_cast<bool>(raw));
         CHECK(raw[0] == 1);
         CHECK(raw[source.size() - 1] == 2);
         CHECK(raw[source.size() / 2] == static_cast<uint8_t>(0x5A));

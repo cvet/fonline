@@ -806,7 +806,7 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
     return {hex_pos.x / (w / 2), hex_pos.y / h};
 }
 
-auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
+auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -899,7 +899,7 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
         const int32_t ry = ra - (rx < 0 ? rx - 1 : rx) / 2;
         const ipos32 raw_hex = {rx, ry};
 
-        if (hex_offset != nullptr) {
+        if (hex_offset) {
             *hex_offset = {dx, dy};
         }
 
@@ -918,7 +918,7 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, ipos32* hex_offset) -> ipos32
         const int32_t rx = iround<int32_t>(v * 0.5f);
         const ipos32 raw_hex = {rx, ry};
 
-        if (hex_offset != nullptr) {
+        if (hex_offset) {
             const int32_t base_x = (ry - rx) * half_w;
             const int32_t base_y = (ry + rx) * h;
             *hex_offset = {pos.x - base_x, pos.y - base_y};

@@ -67,7 +67,7 @@ public:
 
 private:
     struct Impl;
-    unique_ptr<Impl> _impl;
+    unique_nptr<Impl> _impl {};
 };
 
 class StreamDecompressor final
@@ -85,7 +85,7 @@ public:
 
 private:
     struct Impl;
-    unique_ptr<Impl> _impl;
+    unique_nptr<Impl> _impl {};
 };
 
 FO_END_NAMESPACE

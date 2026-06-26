@@ -41,6 +41,40 @@ FO_DECLARE_EXCEPTION(SettingsException);
 
 class ConfigFile;
 
+using CommandLineArg = nptr<char>;
+using CommandLineArgs = const_span<CommandLineArg>;
+
+[[nodiscard]] inline auto MakeCommandLineArgs(int32_t argc, nptr<char*> argv) -> vector<CommandLineArg>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const size_t arg_count = numeric_cast<size_t>(argc);
+    FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+
+    vector<CommandLineArg> args(arg_count);
+
+    for (size_t i = 0; i < arg_count; ++i) {
+        args[i] = argv[i];
+    }
+
+    return args;
+}
+
+[[nodiscard]] inline auto GetCommandLineArg(CommandLineArgs args, size_t index) noexcept -> nptr<const char>
+{
+    return index < args.size() ? args[index] : nullptr;
+}
+
+[[nodiscard]] inline auto IsCommandLineOption(nptr<const char> nullable_arg) noexcept -> bool
+{
+    if (!nullable_arg) {
+        return false;
+    }
+
+    auto arg = nullable_arg.as_ptr();
+    return *arg == '-';
+}
+
 struct ResourcePackInfo
 {
     string Name {};
@@ -96,25 +130,6 @@ protected:
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
 public:
-    CommonSettings& Common;
-    NetworkSettings& Network;
-    ServerNetworkSettings& ServerNetwork;
-    ClientNetworkSettings& ClientNetwork;
-    AudioSettings& Audio;
-    ViewSettings& View;
-    GeometrySettings& Geometry;
-    RenderSettings& Render;
-    TimerSettings& Timer;
-    BakingSettings& Baking;
-    CritterSettings& Critter;
-    CritterViewSettings& CritterView;
-    HexSettings& Hex;
-    PlatformSettings& Platform;
-    InputSettings& Input;
-    MapperSettings& Mapper;
-    ClientSettings& Client;
-    ServerSettings& Server;
-
     explicit GlobalSettings(bool baking_mode);
     GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;
@@ -123,11 +138,12 @@ public:
     ~GlobalSettings() = default;
 
     [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
+    [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
     [[nodiscard]] auto Save() const -> map<string, string>;
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplyCommandLine(int32_t argc, char** argv);
+    void ApplyCommandLine(::fo::CommandLineArgs args);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();
@@ -138,8 +154,8 @@ public:
 
 private:
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
-    void AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir);
-    void AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir);
+    void AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir);
+    void AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir);
 
     bool _bakingMode;
     unordered_map<string, any_t> _customSettings {};

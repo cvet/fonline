@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 class AssetExplorer final : public EditorView
 {
 public:
-    explicit AssetExplorer(FOEditor& editor);
+    explicit AssetExplorer(ptr<FOEditor> editor);
     AssetExplorer(const AssetExplorer&) = delete;
     AssetExplorer(AssetExplorer&&) noexcept = default;
     auto operator=(const AssetExplorer&) = delete;

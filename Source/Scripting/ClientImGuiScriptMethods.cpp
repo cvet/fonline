@@ -105,52 +105,55 @@ static void RenderImageButtonFrame(ucolor bg_color)
     ImGui::RenderFrame(item_min, item_max, frame_color, true, style.FrameRounding);
 
     if (bg_color != ucolor::clear) {
-        auto* draw_list = ImGui::GetWindowDrawList();
+        ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(item_min, item_max, ToImU32(bg_color), style.FrameRounding);
     }
 }
 
-static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_size, ucolor tint_color)
+static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize32 image_size, ucolor tint_color)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* spr = client->AnimGetSpr(spr_id);
+    auto nullable_sprite = client_ptr->AnimGetSpr(spr_id);
 
-    if (spr == nullptr) {
+    if (!nullable_sprite) {
         return;
     }
+
+    auto sprite = nullable_sprite.as_ptr();
 
     const auto min_pos = ImGui::GetItemRectMin();
     const auto max_pos = ImGui::GetItemRectMax();
     const auto item_rect = MakeItemRect(min_pos, max_pos);
 
-    client->SprMngr.PushScissor(item_rect);
-    client->SprMngr.DrawSpriteSizeExt(spr, {min_pos.x, min_pos.y}, image_size, false, false, true, ResolveTintColor(tint_color));
-    client->SprMngr.PopScissor();
+    client_ptr->SprMngr.PushScissor(item_rect);
+    client_ptr->SprMngr.DrawSpriteSizeExt(sprite, {min_pos.x, min_pos.y}, image_size, false, false, true, ResolveTintColor(tint_color));
+    client_ptr->SprMngr.PopScissor();
 }
 
-static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_size, fpos32 uv0, fpos32 uv1, ucolor tint_color)
+static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize32 image_size, fpos32 uv0, fpos32 uv1, ucolor tint_color)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (IsFullUvRange(uv0, uv1)) {
-        DrawItemSprite(client, spr_id, image_size, tint_color);
+        DrawItemSprite(client_ptr, spr_id, image_size, tint_color);
         return;
     }
 
-    const auto* spr = client->AnimGetSpr(spr_id);
+    auto nullable_sprite = client_ptr->AnimGetSpr(spr_id);
 
-    if (spr == nullptr) {
+    if (!nullable_sprite) {
         return;
     }
+    auto sprite = nullable_sprite.as_ptr();
 
     const auto min_pos = ImGui::GetItemRectMin();
     const auto max_pos = ImGui::GetItemRectMax();
     const auto item_rect = MakeItemRect(min_pos, max_pos);
 
-    client->SprMngr.PushScissor(item_rect);
-    const auto drawn = client->SprMngr.DrawSpriteRegion(spr, uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
-    client->SprMngr.PopScissor();
+    client_ptr->SprMngr.PushScissor(item_rect);
+    const auto drawn = client_ptr->SprMngr.DrawSpriteRegion(sprite, uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
+    client_ptr->SprMngr.PopScissor();
 
     if (!drawn) {
         throw ScriptException("Partial UV is supported only for atlas-based sprites");
@@ -158,20 +161,21 @@ static void DrawItemSprite(ClientEngine* client, uint32_t spr_id, fsize32 image_
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ScriptImGui* self, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f})
+FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f})
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);
 
-    auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_VERIFY_AND_THROW(client, "Missing client instance");
+    auto nullable_client = self->GetEngine().dyn_cast<ClientEngine>();
+    FO_VERIFY_AND_THROW(nullable_client, "Missing client instance");
+    auto client = nullable_client.as_ptr();
 
     ImGui::Dummy({imageSize.width, imageSize.height});
     DrawItemSprite(client, sprId, imageSize, uv0, uv1, ucolor::clear);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f}, ucolor bgColor = ucolor {}, ucolor tintColor = ucolor {})
+FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ptr<ScriptImGui> self, string_view strId, uint32_t sprId, fsize32 imageSize, fpos32 uv0 = fpos32 {0.0f, 0.0f}, fpos32 uv1 = fpos32 {1.0f, 1.0f}, ucolor bgColor = ucolor {}, ucolor tintColor = ucolor {})
 {
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);
@@ -180,8 +184,9 @@ FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ScriptImGui* self, 
         throw ScriptException("Image button id arg is empty");
     }
 
-    auto* client = dynamic_cast<ClientEngine*>(self->GetEngine());
-    FO_VERIFY_AND_THROW(client, "Missing client instance");
+    auto nullable_client = self->GetEngine().dyn_cast<ClientEngine>();
+    FO_VERIFY_AND_THROW(nullable_client, "Missing client instance");
+    auto client = nullable_client.as_ptr();
 
     const auto button_id = string(strId);
     const auto pressed = ImGui::InvisibleButton(button_id.c_str(), {imageSize.width, imageSize.height});

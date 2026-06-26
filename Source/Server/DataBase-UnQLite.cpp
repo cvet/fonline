@@ -22,10 +22,10 @@ public:
     auto operator=(const DbUnQLite&) = delete;
     auto operator=(DbUnQLite&&) noexcept = delete;
 
-    explicit DbUnQLite(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
+    explicit DbUnQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
-        _openFlags {UNQLITE_OPEN_CREATE | (db_settings.UnQLiteOmitJournaling ? UNQLITE_OPEN_OMIT_JOURNALING : 0)}
+        _openFlags {UNQLITE_OPEN_CREATE | (db_settings->UnQLiteOmitJournaling ? UNQLITE_OPEN_OMIT_JOURNALING : 0)}
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -52,6 +52,8 @@ protected:
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
+        FO_STACK_TRACE_ENTRY();
+
         ignore_unused(key_type);
 
         scoped_lock locker {_storageLocker};
@@ -59,15 +61,17 @@ protected:
         const auto it = _collections.find(collection_name);
 
         if (it == _collections.end()) {
-            unqlite* db = nullptr;
+            nptr<unqlite> db;
             const string db_path = strex("{}/{}.unqlite", _storageDir, collection_name);
-            const auto r = unqlite_open(&db, db_path.c_str(), _openFlags);
+            ptr<const char> db_path_ptr = db_path.c_str();
+            const auto r = unqlite_open(db.get_pp(), db_path_ptr.get(), _openFlags);
 
             if (r != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite Can't open db", collection_name, r);
             }
 
-            _collections.emplace(collection_name, db);
+            FO_VERIFY_AND_THROW(db, "Opened database handle is null");
+            _collections.emplace(collection_name, db.as_ptr());
         }
     }
 
@@ -78,20 +82,17 @@ protected:
         scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
-        auto* db = GetCollection(collection_name);
+        ptr<unqlite> db = GetCollection(collection_name);
 
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
-
-        unqlite_kv_cursor* cursor = nullptr;
-        const auto kv_cursor_init = unqlite_kv_cursor_init(db, &cursor);
+        nptr<unqlite_kv_cursor> cursor;
+        const auto kv_cursor_init = unqlite_kv_cursor_init(db.get(), cursor.get_pp());
 
         if (kv_cursor_init != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_init);
         }
 
-        const auto kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor);
+        FO_VERIFY_AND_THROW(cursor, "Initialized key-value cursor is null");
+        const auto kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor.get());
 
         if (kv_cursor_first_entry != UNQLITE_OK && kv_cursor_first_entry != UNQLITE_DONE) {
             throw DataBaseException("DbUnQLite unqlite_kv_cursor_first_entry", kv_cursor_first_entry);
@@ -99,25 +100,40 @@ protected:
 
         vector<DataBaseKey> ids;
 
-        while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
+        while (unqlite_kv_cursor_valid_entry(cursor.get()) != 0) {
             vector<uint8_t> key_data;
+            ptr<vector<uint8_t>> key_data_result = &key_data;
+            ptr<void> key_data_user_data = cast_to_void(key_data_result.get());
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
-                cursor,
+                cursor.get(),
                 [](const void* output, unsigned output_len, void* user_data) {
-                    auto& result = *cast_from_void<vector<uint8_t>*>(user_data);
-                    result.assign(cast_from_void<const uint8_t*>(output), cast_from_void<const uint8_t*>(output) + output_len);
+                    nptr<vector<uint8_t>> nullable_result = cast_from_void<vector<uint8_t>*>(user_data);
+                    FO_VERIFY_AND_THROW(!!nullable_result, "Missing key callback user data");
+                    auto result = nullable_result.as_ptr();
+                    nptr<const uint8_t> nullable_output_data = cast_from_void<const uint8_t*>(output);
+
+                    if (output_len != 0) {
+                        FO_VERIFY_AND_THROW(!!nullable_output_data, "Missing key callback output data");
+                        auto output_data = nullable_output_data.as_ptr();
+                        const_span<uint8_t> output_bytes {output_data.get(), output_len};
+                        result->assign(output_bytes.begin(), output_bytes.end());
+                    }
+                    else {
+                        result->clear();
+                    }
+
                     return UNQLITE_OK;
                 },
-                &key_data);
+                key_data_user_data.get());
 
             if (kv_cursor_key_callback != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_key_callback);
             }
 
-            ids.emplace_back(ParseUnQLiteKey(key_data.data(), numeric_cast<uint32_t>(key_data.size()), key_type));
+            ids.emplace_back(ParseUnQLiteKey(key_data, key_type));
 
-            const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor);
+            const auto kv_cursor_next_entry = unqlite_kv_cursor_next_entry(cursor.get());
 
             if (kv_cursor_next_entry != UNQLITE_OK && kv_cursor_next_entry != UNQLITE_DONE) {
                 throw DataBaseException("DbUnQLite kv_cursor_next_entry", kv_cursor_next_entry);
@@ -145,14 +161,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto* db = GetCollection(collection_name);
-
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
+        ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db, key.data(), numeric_cast<int>(key.size()), [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
+        ptr<const uint8_t> key_data = key.data();
+        const int32_t key_size = numeric_cast<int32_t>(key.size());
+        const auto kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
         if (kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
@@ -162,13 +176,13 @@ protected:
         bson_init(&bson);
         DocumentToBson(doc, &bson);
 
-        const auto* bson_data = bson_get_data(&bson);
+        nptr<const uint8_t> bson_data = bson_get_data(&bson);
 
-        if (bson_data == nullptr) {
+        if (!bson_data) {
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
-        const auto kv_store = unqlite_kv_store(db, key.data(), numeric_cast<int>(key.size()), bson_data, bson.len);
+        const auto kv_store = unqlite_kv_store(db.get(), key_data.get(), key_size, bson_data.get(), bson.len);
 
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
@@ -187,13 +201,11 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto* db = GetCollection(collection_name);
-
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
+        ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        ptr<const uint8_t> key_data = key.data();
+        const int32_t key_size = numeric_cast<int32_t>(key.size());
         auto actual_doc = GetRecordUnlocked(collection_name, id);
 
         if (actual_doc.Empty()) {
@@ -208,13 +220,13 @@ protected:
         bson_init(&bson);
         DocumentToBson(actual_doc, &bson);
 
-        const auto* bson_data = bson_get_data(&bson);
+        nptr<const uint8_t> bson_data = bson_get_data(&bson);
 
-        if (bson_data == nullptr) {
+        if (!bson_data) {
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
-        const auto kv_store = unqlite_kv_store(db, key.data(), numeric_cast<int>(key.size()), bson_data, bson.len);
+        const auto kv_store = unqlite_kv_store(db.get(), key_data.get(), key_size, bson_data.get(), bson.len);
 
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
@@ -231,14 +243,12 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        auto* db = GetCollection(collection_name);
-
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
+        ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        const auto kv_delete = unqlite_kv_delete(db, key.data(), numeric_cast<int>(key.size()));
+        ptr<const uint8_t> key_data = key.data();
+        const int32_t key_size = numeric_cast<int32_t>(key.size());
+        const auto kv_delete = unqlite_kv_delete(db.get(), key_data.get(), key_size);
 
         if (kv_delete != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_delete", kv_delete);
@@ -265,17 +275,19 @@ private:
     static auto MakeUnQLiteKey(const DataBaseKey& key, DataBaseKeyType key_type) -> vector<uint8_t>
     {
         if (key_type == DataBaseKeyType::IntId) {
-            const auto* numeric_key = std::get_if<ident_t>(&key);
+            nptr<const ident_t> numeric_key = std::get_if<ident_t>(&key);
 
-            if (numeric_key == nullptr) {
+            if (!numeric_key) {
                 throw DataBaseException("DbUnQLite Invalid numeric key type", FormatUnQLiteDbKey(key));
             }
 
             static_assert(sizeof(ident_t) == sizeof(int64_t));
 
             vector<uint8_t> result(sizeof(int64_t));
-            const auto value = numeric_key->underlying_value();
-            std::memcpy(result.data(), &value, sizeof(value));
+            const int64_t value = numeric_key->underlying_value();
+            ptr<uint8_t> result_data = result.data();
+            ptr<const int64_t> value_data = &value;
+            MemCopy(result_data.get(), value_data.get(), sizeof(value));
             return result;
         }
 
@@ -283,15 +295,17 @@ private:
         return vector<uint8_t>(key_str.begin(), key_str.end());
     }
 
-    static auto ParseUnQLiteKey(const void* key_data, uint32_t key_len, DataBaseKeyType key_type) -> DataBaseKey
+    static auto ParseUnQLiteKey(const_span<uint8_t> key_data, DataBaseKeyType key_type) -> DataBaseKey
     {
         if (key_type == DataBaseKeyType::IntId) {
-            if (key_len != sizeof(int64_t)) {
-                throw DataBaseException("DbUnQLite invalid numeric key size", key_len);
+            if (key_data.size() != sizeof(int64_t)) {
+                throw DataBaseException("DbUnQLite invalid numeric key size", key_data.size());
             }
 
             int64_t value {};
-            std::memcpy(&value, key_data, sizeof(value));
+            ptr<int64_t> value_data = &value;
+            ptr<const uint8_t> key_bytes = key_data.data();
+            MemCopy(value_data.get(), key_bytes.get(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbUnQLite invalid numeric key", value);
@@ -300,11 +314,11 @@ private:
             return ident_t {value};
         }
 
-        if (key_len == 0) {
+        if (key_data.empty()) {
             throw DataBaseException("DbUnQLite empty key");
         }
 
-        return string {reinterpret_cast<const char*>(key_data), key_len};
+        return string {span_to_string(key_data)};
     }
 
     static auto FormatUnQLiteDbKey(const DataBaseKey& key) -> string
@@ -327,36 +341,41 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        unqlite* ping_db = nullptr;
+        nptr<unqlite> nullable_ping_db;
         const string ping_db_path = strex("{}/Ping.unqlite", _storageDir);
+        ptr<const char> ping_db_path_ptr = ping_db_path.c_str();
 
-        if (unqlite_open(&ping_db, ping_db_path.c_str(), _openFlags) != UNQLITE_OK) {
+        if (unqlite_open(nullable_ping_db.get_pp(), ping_db_path_ptr.get(), _openFlags) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
 
-        constexpr auto ping = 42u;
+        FO_VERIFY_AND_THROW(nullable_ping_db, "Opened ping database handle is null");
+        auto ping_db = nullable_ping_db.as_ptr();
 
-        if (unqlite_kv_store(ping_db, &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
-            unqlite_close(ping_db);
+        constexpr uint32_t ping = 42u;
+        ptr<const uint32_t> ping_data = &ping;
+
+        if (unqlite_kv_store(ping_db.get(), ping_data.get(), sizeof(ping), ping_data.get(), sizeof(ping)) != UNQLITE_OK) {
+            unqlite_close(ping_db.get());
             throw DataBaseException("DbUnQLite Can't write to db", ping_db_path);
         }
 
-        unqlite_close(ping_db);
+        unqlite_close(ping_db.get());
         fs_remove_file(ping_db_path);
     }
 
-    void CommitCollection(unqlite* db) const
+    void CommitCollection(ptr<unqlite> db) const
     {
         FO_STACK_TRACE_ENTRY();
 
-        const auto commit = unqlite_commit(db);
+        const auto commit = unqlite_commit(db.get());
 
         if (commit != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_commit", commit);
         }
     }
 
-    unqlite* GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
+    ptr<unqlite> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -366,37 +385,41 @@ private:
             throw DataBaseException("DbUnQLite Invalid collection", collection_name);
         }
 
-        return it->second.get_no_const();
+        return it->second;
     }
 
     AnyData::Document GetRecordUnlocked(hstring collection_name, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* db = GetCollection(collection_name);
-
-        if (db == nullptr) {
-            throw DataBaseException("DbUnQLite Can't open collection", collection_name);
-        }
+        ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
+        ptr<const uint8_t> key_data = key.data();
+        const int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
+        ptr<AnyData::Document> document_result = &doc;
+        ptr<void> document_user_data = cast_to_void(document_result.get());
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
-            db, key.data(), numeric_cast<int>(key.size()),
+            db.get(), key_data.get(), key_size,
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
+                nptr<const uint8_t> output_data = cast_from_void<const uint8_t*>(output);
+                FO_VERIFY_AND_THROW(!!output_data, "Missing fetch callback output data");
 
-                if (!bson_init_static(&bson, cast_from_void<const uint8_t*>(output), output_len)) {
+                if (!bson_init_static(&bson, output_data.get(), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
-                auto& doc2 = *cast_from_void<AnyData::Document*>(user_data);
-                BsonToDocument(&bson, doc2);
+                nptr<AnyData::Document> nullable_document = cast_from_void<AnyData::Document*>(user_data);
+                FO_VERIFY_AND_THROW(!!nullable_document, "Missing fetch callback document user data");
+                auto document = nullable_document.as_ptr();
+                BsonToDocument(&bson, *document);
 
                 return UNQLITE_OK;
             },
-            &doc);
+            document_user_data.get());
 
         if (kv_fetch_callback != UNQLITE_OK && kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);
@@ -408,12 +431,12 @@ private:
     string _storageDir {};
     int32_t _openFlags {};
     mutable mutex _storageLocker {};
-    unordered_map<hstring, raw_ptr<unqlite>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
+    unordered_map<hstring, ptr<unqlite>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
-auto CreateUnQLiteDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*
+auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeRaw<DbUnQLite>(db_settings, storage_dir, std::move(panic_callback));
+    return SafeAlloc::MakeUnique<DbUnQLite>(db_settings, storage_dir, std::move(panic_callback));
 }
 #endif
 

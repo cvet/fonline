@@ -65,12 +65,12 @@ static auto MakeRemoteCall(EngineMetadata& meta, std::initializer_list<ArgDesc> 
 
 static auto MakeRefTypeRawData(EngineMetadata& meta, string_view ref_type_name, const AnyData::Value& value) -> vector<uint8_t>
 {
-    PropertyRegistrator registrator("ClientDataValidationEntity", EngineSideKind::ServerSide, meta.Hashes, meta);
-    const auto* prop = registrator.RegisterProperty({"Common", ref_type_name, "Value"});
+    PropertyRegistrator registrator("ClientDataValidationEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+    auto prop = registrator.RegisterProperty({"Common", ref_type_name, "Value"});
     Properties props(&registrator);
-    PropertiesSerializator::LoadPropertyFromValue(&props, prop, value, meta.Hashes, meta);
+    PropertiesSerializator::LoadPropertyFromValue(&props, prop.get(), value, meta.Hashes, meta);
 
-    const auto raw_data = props.GetRawData(prop);
+    const auto raw_data = props.GetRawData(prop.get());
     return {raw_data.begin(), raw_data.end()};
 }
 
@@ -79,7 +79,8 @@ static void WriteRefTypePayload(DataWriter& writer, const vector<uint8_t>& raw_d
     writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
     if (!raw_data.empty()) {
-        writer.WritePtr(raw_data.data(), raw_data.size());
+        ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        writer.WriteBytes({raw_data_ptr.get(), raw_data.size()});
     }
 }
 
@@ -124,7 +125,7 @@ TEST_CASE("ClientDataValidation")
         const uint8_t true_bool = 1;
 
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WritePtr(text.data(), text.length());
+        writer.WriteStringBytes(text);
         writer.Write<int32_t>(1);
         writer.Write<float32_t>(42.0f);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
@@ -150,7 +151,7 @@ TEST_CASE("ClientDataValidation")
         const uint8_t bytes[] = {0xC3, 0x28};
 
         writer.Write<int32_t>(2);
-        writer.WritePtr(bytes, std::size(bytes));
+        writer.WriteBytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -164,7 +165,7 @@ TEST_CASE("ClientDataValidation")
         const uint8_t bytes[] = {'a', 'b', 0x00, 'c'};
 
         writer.Write<int32_t>(4);
-        writer.WritePtr(bytes, std::size(bytes));
+        writer.WriteBytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -413,7 +414,8 @@ TEST_CASE("ClientDataValidation")
         writer.Write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(full_raw.size()));
-        writer.WritePtr(full_raw.data(), full_raw.size() - 1);
+        ptr<const uint8_t> full_raw_data = full_raw.data();
+        writer.WriteBytes({full_raw_data.get(), full_raw.size() - 1});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
