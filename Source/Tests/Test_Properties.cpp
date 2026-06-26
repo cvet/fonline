@@ -2377,7 +2377,9 @@ TEST_CASE("PropertiesNumericRangeValidation")
 
     const auto float32_overflow = static_cast<float64_t>(std::numeric_limits<float32_t>::max()) * 2.0;
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {float32_overflow}, hashes, resolver));
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::numeric_limits<float64_t>::infinity()}, hashes, resolver));
+    // Build the IEEE-754 +inf bit pattern via bit_cast: numeric_limits::infinity() is flagged as UB under the
+    // engine's /fp:fast (-Wnan-infinity-disabled), but this test must feed a real non-finite float.
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::bit_cast<float64_t>(uint64_t {0x7FF0000000000000})}, hashes, resolver));
 
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "128", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "-1", hashes, resolver));
