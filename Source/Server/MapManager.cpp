@@ -1290,11 +1290,11 @@ void MapManager::ProcessVisibleCritters(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(cr);
-
-    if (cr->IsDestroyed()) {
+    if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
     }
+
+    ValidateEntityAccess(cr);
 
     if (cr->GetMapId()) {
         auto map = cr->GetParent<Map>();
@@ -1319,24 +1319,22 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
 
     FO_VERIFY_AND_THROW(map && cr && target, "Map transfer is missing map, critter, or target hex");
     ValidateEntityAccess(map);
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(target);
+
     refcount_ptr map_holder = map;
     refcount_ptr cr_holder = cr;
     refcount_ptr target_holder = target;
     ignore_unused(map_holder);
     ignore_unused(cr_holder);
     ignore_unused(target_holder);
-    const auto is_look_context_changed = [map, cr, target]() noexcept -> bool {
-        FO_NO_STACK_TRACE_ENTRY();
 
-        if (map->IsDestroyed() || cr->IsDestroyed() || target->IsDestroyed()) {
+    const auto is_look_context_changed = [map, cr, target]() noexcept -> bool {
+        if (map->IsDestroying() || map->IsDestroyed() || cr->IsDestroying() || cr->IsDestroyed() || target->IsDestroying() || target->IsDestroyed()) {
             return true;
         }
-        if (cr->GetMapId() != map->GetId()) {
+        if (map->GetCritter(cr->GetId()) != cr) {
             return true;
         }
-        if (target->GetMapId() != map->GetId()) {
+        if (map->GetCritter(target->GetId()) != target) {
             return true;
         }
 
@@ -1349,6 +1347,9 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
     if (is_look_context_changed()) {
         return;
     }
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(target);
 
     auto vis_mode = IsCritterSeeCritter(map, cr, target);
 
@@ -1506,11 +1507,11 @@ void MapManager::ProcessVisibleItems(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(cr);
-
-    if (cr->IsDestroyed()) {
+    if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
     }
+
+    ValidateEntityAccess(cr);
 
     if (!cr->GetMapId()) {
         return;

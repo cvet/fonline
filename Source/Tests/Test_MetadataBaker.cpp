@@ -60,6 +60,120 @@ TEST_CASE("MetadataBaker")
     CHECK(bakers.front()->GetOrder() == 1);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
 
+    SECTION("skips non metadata targets before parsing scripts")
+    {
+        rig.AddSourceFile("Scripts/Broken.fos", "///@ Unknown Tag");
+
+        MetadataBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "metadata.bin"));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("ignores non script inputs")
+    {
+        rig.AddSourceFile("Docs/Notes.txt", "///@ Enum Ignored Value = 1");
+
+        MetadataBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("uses bake checker per side with newest script write time")
+    {
+        rig.AddSourceFile("Scripts/01_Enum.fos", "///@ Enum CoverageSide First = 1", 11);
+        rig.AddSourceFile("Scripts/02_Enum.fos", "///@ Enum CoverageSide Second = 2", 42);
+
+        vector<pair<string, uint64_t>> checks;
+        MetadataBaker baker(rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return path.ends_with(".fometa-client");
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        REQUIRE(checks.size() == 3);
+        CHECK(checks[0] == pair<string, uint64_t> {"MetaPack.fometa-server", 42});
+        CHECK(checks[1] == pair<string, uint64_t> {"MetaPack.fometa-client", 42});
+        CHECK(checks[2] == pair<string, uint64_t> {"MetaPack.fometa-mapper", 42});
+        REQUIRE(rig.Outputs.size() == 1);
+        REQUIRE(rig.Outputs.contains("MetaPack.fometa-client"));
+
+        const auto tags = read_baked_tags(rig.Outputs.at("MetaPack.fometa-client"));
+        const auto enum_it = tags.find("Enum");
+
+        REQUIRE(enum_it != tags.end());
+        CHECK(std::ranges::count(enum_it->second, vector<string> {"CoverageSide", "uint8", "First", "1", "Second", "2"}) == 1);
+    }
+
+    SECTION("returns without output when bake checker rejects every side")
+    {
+        rig.AddSourceFile("Scripts/TestEnum.fos", "///@ Enum CoverageDisabled Value = 1", 7);
+
+        vector<pair<string, uint64_t>> checks;
+        MetadataBaker baker(rig.MakeContext("MetaPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return false;
+        }));
+
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        REQUIRE(checks.size() == 3);
+        CHECK(checks[0] == pair<string, uint64_t> {"MetaPack.fometa-server", 7});
+        CHECK(checks[1] == pair<string, uint64_t> {"MetaPack.fometa-client", 7});
+        CHECK(checks[2] == pair<string, uint64_t> {"MetaPack.fometa-mapper", 7});
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("parses continued tags and strips trailing comments")
+    {
+        rig.AddSourceFile("Scripts/TestContinuation.fos", R"(
+namespace TestContinuation
+{
+///@ Enum ContinuedCoverage \
+Value = 5 // trailing comment
+}
+)");
+
+        MetadataBaker baker(rig.MakeContext());
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        REQUIRE(rig.Outputs.contains("TestPack.fometa-client"));
+
+        const auto tags = read_baked_tags(rig.Outputs.at("TestPack.fometa-client"));
+        const auto enum_it = tags.find("Enum");
+
+        REQUIRE(enum_it != tags.end());
+        CHECK(std::ranges::count(enum_it->second, vector<string> {"ContinuedCoverage", "uint8", "Value", "5"}) == 1);
+    }
+
+    SECTION("reports empty and unknown codegen tags")
+    {
+        {
+            TestRig local_rig;
+            local_rig.AddSourceFile("Scripts/EmptyTag.fos", "///@ // comment only");
+
+            MetadataBaker baker(local_rig.MakeContext());
+            REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("empty tag"));
+        }
+        {
+            TestRig local_rig;
+            local_rig.AddSourceFile("Scripts/UnknownTag.fos", "///@ Unknown Tag");
+
+            MetadataBaker baker(local_rig.MakeContext());
+            REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("unknown tag name"));
+        }
+    }
+
+    SECTION("aggregates async metadata errors when sync mode is disabled")
+    {
+        rig.AddSourceFile("Scripts/BrokenAsync.fos", "///@ Unknown Tag");
+
+        auto context = rig.MakeContext();
+        context->ForceSyncMode = false;
+
+        MetadataBaker baker(context);
+        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
+    }
+
     SECTION("resolves optional setting groups")
     {
         rig.AddSourceFile("Scripts/TestSettings.fos", R"(

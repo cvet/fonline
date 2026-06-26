@@ -112,6 +112,73 @@ namespace EntityOps
         return 0;
     }
 
+    int TestEntityProtoAccess()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        Item item = cr.AddItem("TestItem".hstr(), 1);
+        if (item is null) {
+            Game.DestroyCritter(cr);
+            return -2;
+        }
+
+        if (cr.ProtoId != "TestCritter".hstr()) return -3;
+        if (item.ProtoId != "TestItem".hstr()) return -4;
+
+        ProtoCritter crProto = cr.Proto;
+        if (crProto is null) return -5;
+        if (crProto.ProtoId != cr.ProtoId) return -6;
+
+        ProtoItem itemProto = item.Proto;
+        if (itemProto is null) return -7;
+        if (itemProto.ProtoId != item.ProtoId) return -8;
+
+        if (!Game.CheckProtoCritter("TestCritter".hstr())) return -9;
+        if (Game.CheckProtoCritter("MissingCritter".hstr())) return -10;
+
+        ProtoCritter gameCrProto = Game.GetProtoCritter("TestCritter".hstr());
+        if (gameCrProto is null) return -11;
+        if (gameCrProto.ProtoId != "TestCritter".hstr()) return -12;
+
+        if (!Game.CheckProtoItem("TestItem".hstr())) return -13;
+        if (Game.CheckProtoItem("MissingItem".hstr())) return -14;
+
+        ProtoItem gameItemProto = Game.GetProtoItem("TestItem".hstr());
+        if (gameItemProto is null) return -15;
+        if (gameItemProto.ProtoId != "TestItem".hstr()) return -16;
+
+        array<ProtoCritter> critterProtos = Game.GetProtoCritters();
+        if (critterProtos.length() == 0) return -17;
+
+        array<ProtoItem> itemProtos = Game.GetProtoItems();
+        if (itemProtos.length() < 2) return -18;
+
+        bool foundItem2 = false;
+        for (uint i = 0; i < itemProtos.length(); i++)
+        {
+            if (itemProtos[i].ProtoId == "TestItem2".hstr())
+            {
+                foundItem2 = true;
+                break;
+            }
+        }
+        if (!foundItem2) return -19;
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    void TestMissingCritterProtoThrows()
+    {
+        Game.GetProtoCritter("MissingCritter".hstr());
+    }
+
+    void TestMissingItemProtoThrows()
+    {
+        Game.GetProtoItem("MissingItem".hstr());
+    }
+
     int TestItemContainerOps()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -620,6 +687,163 @@ namespace EntityOps
         return 0;
     }
 
+    int TestGeneratedPropertyAccessors()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        cr.LookDistance = 14;
+        if (cr.LookDistance != 14) {
+            Game.DestroyCritter(cr);
+            return -2;
+        }
+
+        ProtoCritter crProto = cr.Proto;
+        if (crProto is null) {
+            Game.DestroyCritter(cr);
+            return -3;
+        }
+        if (crProto.LookDistance < 0) {
+            Game.DestroyCritter(cr);
+            return -4;
+        }
+
+        Item item = cr.AddItem("TestItem".hstr(), 1);
+        if (item is null) {
+            Game.DestroyCritter(cr);
+            return -5;
+        }
+
+        item.Hidden = true;
+        if (!item.Hidden) {
+            Game.DestroyCritter(cr);
+            return -6;
+        }
+
+        hstring pic = "GeneratedPic".hstr();
+        item.PicMap = pic;
+        if (item.PicMap != pic) {
+            Game.DestroyCritter(cr);
+            return -7;
+        }
+
+        ProtoItem itemProto = item.Proto;
+        if (itemProto is null) {
+            Game.DestroyCritter(cr);
+            return -8;
+        }
+        hstring protoPic = itemProto.PicMap;
+        if (protoPic == pic) {
+            Game.DestroyCritter(cr);
+            return -9;
+        }
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    void TestGeneratedPropertyAccessDestroyedThrows()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Game.DestroyCritter(cr);
+
+        int lookDistance = cr.LookDistance;
+        if (lookDistance < 0) return;
+    }
+
+    int TestEntityCastHelpers()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        Item item = cr.AddItem("TestItem".hstr(), 1);
+        if (item is null) {
+            Game.DestroyCritter(cr);
+            return -2;
+        }
+
+        Entity? crEntity = cr;
+        if (crEntity is null) {
+            Game.DestroyCritter(cr);
+            return -3;
+        }
+
+        Critter? crFromEntity = cast<Critter>(crEntity);
+        if (crFromEntity is null || crFromEntity.Id != cr.Id) {
+            Game.DestroyCritter(cr);
+            return -4;
+        }
+
+        Item? itemFromCritterEntity = cast<Item>(crEntity);
+        if (itemFromCritterEntity !is null) {
+            Game.DestroyCritter(cr);
+            return -5;
+        }
+
+        Entity? itemEntity = item;
+        if (itemEntity is null) {
+            Game.DestroyCritter(cr);
+            return -6;
+        }
+
+        Item? itemFromEntity = cast<Item>(itemEntity);
+        if (itemFromEntity is null || itemFromEntity.Id != item.Id) {
+            Game.DestroyCritter(cr);
+            return -7;
+        }
+
+        Critter? crFromItemEntity = cast<Critter>(itemEntity);
+        if (crFromItemEntity !is null) {
+            Game.DestroyCritter(cr);
+            return -8;
+        }
+
+        AbstractItem? abstractItem = item;
+        if (abstractItem is null) {
+            Game.DestroyCritter(cr);
+            return -9;
+        }
+
+        Item? itemFromAbstract = cast<Item>(abstractItem);
+        if (itemFromAbstract is null || itemFromAbstract.Id != item.Id) {
+            Game.DestroyCritter(cr);
+            return -10;
+        }
+
+        StaticItem? staticFromRuntimeItem = cast<StaticItem>(itemEntity);
+        if (staticFromRuntimeItem !is null) {
+            Game.DestroyCritter(cr);
+            return -11;
+        }
+
+        ProtoItem itemProto = item.Proto;
+        if (itemProto is null) {
+            Game.DestroyCritter(cr);
+            return -12;
+        }
+
+        Entity? protoEntity = itemProto;
+        if (protoEntity is null) {
+            Game.DestroyCritter(cr);
+            return -13;
+        }
+
+        ProtoItem? protoFromEntity = cast<ProtoItem>(protoEntity);
+        if (protoFromEntity is null || protoFromEntity.ProtoId != item.ProtoId) {
+            Game.DestroyCritter(cr);
+            return -14;
+        }
+
+        Item? runtimeFromProto = cast<Item>(protoEntity);
+        if (runtimeFromProto !is null) {
+            Game.DestroyCritter(cr);
+            return -15;
+        }
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
  )" + R"(
     // ========== Global Game Queries ==========
 
@@ -852,6 +1076,17 @@ namespace EntityOps
     REQUIRE(func.Call()); \
     CHECK(func.GetResult() == 0)
 
+#define RUN_SCRIPT_FUNC_THROWS(func_name, expected_message) \
+    auto func = server->FindFunc<void>(get_func("EntityOps::" func_name)); \
+    REQUIRE(func); \
+    const auto prev_callback = GetExceptionCallback(); \
+    string message; \
+    SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); }); \
+    auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); }); \
+    CHECK_FALSE(func.Call()); \
+    INFO(message); \
+    CHECK(message.find(expected_message) != string::npos)
+
 TEST_CASE("EntityBaseOperations")
 {
     MAKE_SERVER();
@@ -869,6 +1104,21 @@ TEST_CASE("EntityBaseOperations")
     SECTION("EntityName")
     {
         RUN_SCRIPT_FUNC("TestEntityName");
+    }
+
+    SECTION("ProtoAccess")
+    {
+        RUN_SCRIPT_FUNC("TestEntityProtoAccess");
+    }
+
+    SECTION("MissingCritterProtoThrows")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestMissingCritterProtoThrows", "Critter proto not found");
+    }
+
+    SECTION("MissingItemProtoThrows")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestMissingItemProtoThrows", "Item proto not found");
     }
 
     SECTION("ItemContainerOps")
@@ -1024,6 +1274,21 @@ TEST_CASE("AdvancedServerOperations")
     SECTION("CritterPropertyAccess")
     {
         RUN_SCRIPT_FUNC("TestCritterPropertyAccess");
+    }
+
+    SECTION("GeneratedPropertyAccessors")
+    {
+        RUN_SCRIPT_FUNC("TestGeneratedPropertyAccessors");
+    }
+
+    SECTION("GeneratedPropertyAccessDestroyedThrows")
+    {
+        RUN_SCRIPT_FUNC_THROWS("TestGeneratedPropertyAccessDestroyedThrows", "Access to destroyed entity");
+    }
+
+    SECTION("EntityCastHelpers")
+    {
+        RUN_SCRIPT_FUNC("TestEntityCastHelpers");
     }
 
     SECTION("GameGetCrittersVariants")

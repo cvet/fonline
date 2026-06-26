@@ -55,13 +55,13 @@ static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) no
     case 1:
         return left[0] == right[0];
     case 2: {
-        return *reinterpret_cast<const uint16_t*>(left.data()) == *reinterpret_cast<const uint16_t*>(right.data());
+        return MemReadUnaligned<uint16_t>(left.data()) == MemReadUnaligned<uint16_t>(right.data());
     }
     case 4: {
-        return *reinterpret_cast<const uint32_t*>(left.data()) == *reinterpret_cast<const uint32_t*>(right.data());
+        return MemReadUnaligned<uint32_t>(left.data()) == MemReadUnaligned<uint32_t>(right.data());
     }
     case 8: {
-        return *reinterpret_cast<const uint64_t*>(left.data()) == *reinterpret_cast<const uint64_t*>(right.data());
+        return MemReadUnaligned<uint64_t>(left.data()) == MemReadUnaligned<uint64_t>(right.data());
     }
     default:
         return MemCompare(left.data(), right.data(), left.size());
@@ -1335,6 +1335,7 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
     scoped_lock locker {*_dataLocker};
 
     FO_STRONG_ASSERT(prop != nullptr && _registrator == prop->_registrator, "Invalid property for raw data write", _registrator->GetTypeName(), prop != nullptr ? string_view {prop->GetName()} : string_view {"<null>"}, prop != nullptr && prop->_registrator ? prop->_registrator->GetTypeName() : hstring {});
+    FO_STRONG_ASSERT(!prop->IsPlainData() || prop->GetBaseSize() == raw_data.size(), "Plain property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
     if (_baseProps) {
         PropertyRawData base_prop_data;
@@ -1405,7 +1406,6 @@ void Properties::SetRawData(const Property* prop, span<const uint8_t> raw_data) 
     else {
         if (prop->IsPlainData()) {
             FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while writing raw data", prop->GetName(), _registrator->GetTypeName());
-            FO_STRONG_ASSERT(prop->GetBaseSize() == raw_data.size(), "Property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
             MemCopy(_podData.get() + *prop->_podDataOffset, raw_data.data(), raw_data.size());
         }

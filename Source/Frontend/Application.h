@@ -208,6 +208,9 @@ struct InputEvent
         MouseDownEvent,
         MouseUpEvent,
         MouseWheelEvent,
+        TouchDownEvent,
+        TouchMoveEvent,
+        TouchUpEvent,
         TouchTapEvent,
         TouchDoubleTapEvent,
         TouchScrollEvent,
@@ -238,6 +241,29 @@ struct InputEvent
     {
         int32_t Delta {};
     } MouseWheel {};
+
+    struct TouchDownEvent
+    {
+        int64_t FingerId {};
+        int32_t TouchX {};
+        int32_t TouchY {};
+    } TouchDown {};
+
+    struct TouchMoveEvent
+    {
+        int64_t FingerId {};
+        int32_t TouchX {};
+        int32_t TouchY {};
+        int32_t DeltaX {};
+        int32_t DeltaY {};
+    } TouchMove {};
+
+    struct TouchUpEvent
+    {
+        int64_t FingerId {};
+        int32_t TouchX {};
+        int32_t TouchY {};
+    } TouchUp {};
 
     struct TouchTapEvent
     {
@@ -296,6 +322,21 @@ struct InputEvent
     explicit InputEvent(MouseWheelEvent ev) :
         Type {EventType::MouseWheelEvent},
         MouseWheel {ev}
+    {
+    }
+    explicit InputEvent(TouchDownEvent ev) :
+        Type {EventType::TouchDownEvent},
+        TouchDown {ev}
+    {
+    }
+    explicit InputEvent(TouchMoveEvent ev) :
+        Type {EventType::TouchMoveEvent},
+        TouchMove {ev}
+    {
+    }
+    explicit InputEvent(TouchUpEvent ev) :
+        Type {EventType::TouchUpEvent},
+        TouchUp {ev}
     {
     }
     explicit InputEvent(TouchTapEvent ev) :
@@ -707,6 +748,9 @@ private:
     auto AcquireTouchPoint(int64_t finger_id) -> TouchPointState*;
     void ReleaseTouchPoint(int64_t finger_id);
     void ResetTouchGestures();
+    void QueueTouchDown(int64_t finger_id, ipos32 pos);
+    void QueueTouchMove(int64_t finger_id, ipos32 pos, ipos32 delta);
+    void QueueTouchUp(int64_t finger_id, ipos32 pos);
     void QueueTouchTap(ipos32 pos);
     void QueueTouchDoubleTap(ipos32 pos);
     void QueueTouchScroll(ipos32 pos, ipos32 delta);

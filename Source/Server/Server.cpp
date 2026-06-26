@@ -1315,6 +1315,8 @@ void ServerEngine::DrawGui()
             info_row("Jobs per second", strex("{}", _stats.JobsPerSecond).str());
             info_row("Jobs per minute", strex("{}", _stats.JobsPerMinute).str());
             info_row("Total jobs", strex("{}", _stats.JobsTotal).str());
+            info_row("Rejected connections", strex("{}", _stats.RejectedConnections).str());
+            info_row("Rejected by rate", strex("{}", _stats.RejectedByRate).str());
             info_row("CPU load", _stats.CpuUsageAvailable ? strex("{:.1f}% / {:.1f}%", numeric_cast<float64_t>(_stats.CpuProcessLoad), numeric_cast<float64_t>(_stats.CpuSystemLoad)).str() : string("n/a"));
             info_row("DB requests per minute", strex("{}", DbStorage.GetDbRequestsPerMinute()).str());
 
@@ -1691,6 +1693,8 @@ auto ServerEngine::GetHealthInfo() const -> string
     buf += strex("Jobs per second: {}\n", _stats.JobsPerSecond);
     buf += strex("Jobs per minute: {}\n", _stats.JobsPerMinute);
     buf += strex("Total jobs: {}\n", _stats.JobsTotal);
+    buf += strex("Rejected connections: {}\n", _stats.RejectedConnections);
+    buf += strex("Rejected by rate: {}\n", _stats.RejectedByRate);
     buf += strex("CPU load: {}\n", _stats.CpuUsageAvailable ? strex("system {:.1f}%, process {:.1f}%", numeric_cast<float64_t>(_stats.CpuSystemLoad), numeric_cast<float64_t>(_stats.CpuProcessLoad)).str() : string("n/a"));
     buf += strex("DB requests per minute: {}\n", DbStorage.GetDbRequestsPerMinute());
 
@@ -3797,7 +3801,7 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
-    const auto new_count = *cast_from_void<const uint32_t*>(new_value);
+    const auto new_count = MemReadUnaligned<uint32_t>(new_value);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStackable() && new_count != 1) {

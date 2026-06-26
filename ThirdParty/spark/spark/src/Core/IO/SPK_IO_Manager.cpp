@@ -35,6 +35,11 @@ namespace IO
 		registerCoreObjects();
 	}
 
+	IOManager::~IOManager()
+	{
+		unregisterAll(); // (FOnline Patch) Release singleton-owned converters for LeakSanitizer-clean shutdown.
+	}
+
 	IOManager& IOManager::get()
 	{
 		static IOManager instance;

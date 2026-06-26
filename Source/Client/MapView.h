@@ -279,6 +279,7 @@ public:
     void DefferedRefreshItems();
     void MoveItem(ItemHexView* item, mpos hex);
     void DestroyItem(ItemHexView* item);
+    void DestroyItems(const_span<ItemHexView*> items);
 
     auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool;
     auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<ItemHexView*, const MapSprite*>; // With transparent egg

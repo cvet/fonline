@@ -50,7 +50,7 @@ auto ScriptDataAccessor::GetArraySize(void* data) const -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* arr = *cast_from_void<ScriptArray**>(data);
+    const auto* arr = MemReadUnaligned<ScriptArray*>(data);
     return arr != nullptr ? numeric_cast<size_t>(arr->GetSize()) : 0;
 }
 
@@ -58,7 +58,7 @@ auto ScriptDataAccessor::GetArrayElement(void* data, size_t index) const -> void
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* arr = *cast_from_void<ScriptArray**>(data);
+    const auto* arr = MemReadUnaligned<ScriptArray*>(data);
     FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     return arr->At(numeric_cast<int32_t>(index));
 }
@@ -67,7 +67,7 @@ auto ScriptDataAccessor::GetDictSize(void* data) const -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* dict = *cast_from_void<ScriptDict**>(data);
+    const auto* dict = MemReadUnaligned<ScriptDict*>(data);
     return dict != nullptr ? numeric_cast<size_t>(dict->GetSize()) : 0;
 }
 
@@ -75,7 +75,7 @@ auto ScriptDataAccessor::GetDictElement(void* data, size_t index) const -> pair<
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto* dict = *cast_from_void<ScriptDict**>(data);
+    const auto* dict = MemReadUnaligned<ScriptDict*>(data);
     FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     const auto it = std::next(dict->GetMap().begin(), static_cast<ptrdiff_t>(index));
     return pair(it->first, it->second);
@@ -85,7 +85,7 @@ auto ScriptDataAccessor::GetCallback(void* data) const -> unique_del_ptr<ScriptF
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* func = *cast_from_void<AngelScript::asIScriptFunction**>(data);
+    auto* func = MemReadUnaligned<AngelScript::asIScriptFunction*>(data);
 
     if (func != nullptr) {
         auto* func_desc = IndexScriptFunc(func);

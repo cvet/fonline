@@ -171,6 +171,11 @@ static auto RunClientFromLibrary(int32_t argc, char** argv, const RequestedClien
         return std::nullopt;
     }
 
+    if (!fs_exists(requested_runtime.Path)) {
+        WriteLog("Client runtime host: no bundled runtime DLL at {}, using embedded runtime", requested_runtime.Path);
+        return std::nullopt;
+    }
+
     ClientRuntimeExports exports {};
     void* runtime_module = TryLoadRuntime(requested_runtime, exports);
 

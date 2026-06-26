@@ -687,7 +687,9 @@ void asCReader::ReadUsedFunctions()
 		error = true;
 		return;
 	}
-	memset(usedFunctions.AddressOf(), 0, sizeof(asCScriptFunction *)*count);
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when count is 0 (UBSan nonnull-arg)
+	if( count > 0 )
+		memset(usedFunctions.AddressOf(), 0, sizeof(asCScriptFunction *)*count);
 
 	for( asUINT n = 0; n < usedFunctions.GetLength(); n++ )
 	{
@@ -1084,7 +1086,9 @@ void asCReader::ReadFunctionSignature(asCScriptFunction *func, asCObjectType **p
 		error = true;
 		return;
 	}
-	memset(func->inOutFlags.AddressOf(), 0, sizeof(asETypeModifiers)*func->inOutFlags.GetLength());
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when there are no params (UBSan nonnull-arg)
+	if( func->inOutFlags.GetLength() > 0 )
+		memset(func->inOutFlags.AddressOf(), 0, sizeof(asETypeModifiers)*func->inOutFlags.GetLength());
 	if (func->parameterTypes.GetLength() > 0)
 	{
 		count = ReadEncodedUInt();
@@ -3778,7 +3782,9 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 
 	// Build look-up table with the adjustments for each stack position
 	adjustNegativeStackByPos.SetLength(offset);
-	memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when offset is 0 (UBSan nonnull-arg)
+	if( adjustNegativeStackByPos.GetLength() > 0 )
+		memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
 	for( n = 0; n < adjustments.GetLength(); n+=2 )
 	{
 		int pos    = adjustments[n];
@@ -4996,7 +5002,9 @@ void asCWriter::CalculateAdjustmentByPos(asCScriptFunction *func)
 
 	// Build look-up table with the adjustments for each stack position
 	adjustNegativeStackByPos.SetLength(offset);
-	memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when offset is 0 (UBSan nonnull-arg)
+	if( adjustNegativeStackByPos.GetLength() > 0 )
+		memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
 	for( n = 0; n < adjustments.GetLength(); n+=2 )
 	{
 		int pos    = adjustments[n];

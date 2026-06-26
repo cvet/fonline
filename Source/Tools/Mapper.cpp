@@ -626,9 +626,16 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
     // Refresh resources after start script executed
     RefreshActiveProtoLists();
 
-    if (const auto imgui_ini = Cache.GetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY); !imgui_ini.empty()) {
-        ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
-        ImGui::GetIO().WantSaveIniSettings = false;
+    // The cached ImGui window layout only matters for the interactive editor UI. Skip it under the null
+    // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
+    // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
+    if (!Settings.NullRenderer) {
+        const auto imgui_ini = Cache.GetString(MAPPER_IMGUI_SETTINGS_CACHE_ENTRY);
+
+        if (!imgui_ini.empty()) {
+            ImGui::LoadIniSettingsFromMemory(imgui_ini.c_str(), imgui_ini.size());
+            ImGui::GetIO().WantSaveIniSettings = false;
+        }
     }
 
     // Load console history
@@ -4267,9 +4274,7 @@ void MapperEngine::SelectRemove(ClientEntity* entity, bool skip_refresh)
     // Merge multihex items
     if (!entity->IsDestroyed()) {
         if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr && item->GetMultihexGeneration() != MultihexGenerationType::None) {
-            while (item != nullptr) {
-                item = TryMergeItemToMultihexMesh(_curMap.get(), item, true);
-            }
+            CoalesceItemMultihexMesh(_curMap.get(), item, true);
         }
     }
 
@@ -4837,25 +4842,30 @@ auto MapperEngine::MergeItemsToMultihexMeshes(MapView* map) -> size_t
 
     size_t merges = 0;
 
+    // AnyUnique items merge by (proto, data), independent of position, into the lowest-id group member. Doing
+    // that with the generic per-step loop is O(N^2) (a full-map rescan per merge - the dominant cost of loading
+    // a large tiled map). Coalesce them all in one O(N*groups) grouping pass; SameSibling and AnyUnique never
+    // interact (MultihexGeneration is a proto property), so the result is identical to the interleaved loops.
+    merges += CoalesceAnyUniqueItems(map, false);
+
+    // SameSibling items merge spatially; the per-step best-by-id selection is path-dependent, so keep the exact
+    // two-phase order (modified items first, then the rest) and the incremental driver.
+
     // First merge to modified items
     for (auto* item : copy_hold_ref(map->GetItems())) {
-        if (!item->IsDestroyed() && item->GetMultihexGeneration() != MultihexGenerationType::None) {
+        if (!item->IsDestroyed() && item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
             auto ignore_props = vector<const Property*> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
             if (!item->GetProperties().CompareData(item->GetProto()->GetProperties(), ignore_props, true)) {
-                while ((item = TryMergeItemToMultihexMesh(map, item, false)) != nullptr) {
-                    merges++;
-                }
+                merges += CoalesceItemMultihexMesh(map, item, false);
             }
         }
     }
 
     // Rest merge clean items
     for (auto* item : copy_hold_ref(map->GetItems())) {
-        if (!item->IsDestroyed() && item->GetMultihexGeneration() != MultihexGenerationType::None) {
-            while ((item = TryMergeItemToMultihexMesh(map, item, false)) != nullptr) {
-                merges++;
-            }
+        if (!item->IsDestroyed() && item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
+            merges += CoalesceItemMultihexMesh(map, item, false);
         }
     }
 
@@ -4881,6 +4891,277 @@ auto MapperEngine::MergeItemsToMultihexMeshes(MapView* map) -> size_t
     }
 
     map->DefferedRefreshItems();
+    return merges;
+}
+
+auto MapperEngine::CoalesceAnyUniqueItems(MapView* map, bool skip_selected) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    // O(N*groups) bulk coalescence of every AnyUnique item on the map. AnyUnique merges any same-proto items
+    // that share per-item data (ignoring Hex and MultihexMesh) into a single mesh, regardless of position,
+    // collapsing each (proto, data) group into its lowest-id member - exactly what the original per-step loop
+    // (TryMergeItemToMultihexMesh's AnyUnique branch + the MergeItemsToMultihexMeshes while-loops) converges to,
+    // but without the O(N^2) full-map rescan per merge. The per-group merge sequence is irrelevant to the final
+    // stored mesh because MergeItemsToMultihexMeshes normalizes (sorts + origin-to-smallest) afterward.
+    size_t merges = 0;
+
+    // One (proto, data) group: its current lowest-id survivor plus the members still to be merged into it.
+    struct UniqueGroup
+    {
+        ItemHexView* survivor;
+        vector<ItemHexView*> to_merge;
+    };
+
+    // Group representatives are bucketed by proto id so data comparison is only ever done within a single
+    // proto. Within a proto the number of distinct data signatures is small in practice (clean tiles plus a
+    // few authored variants), so the linear "first matching group" assignment stays effectively O(N).
+    unordered_map<hstring, vector<UniqueGroup>> groups_by_proto;
+
+    for (auto* item : copy_hold_ref(map->GetItems())) {
+        if (item->IsDestroyed() || item->GetMultihexGeneration() != MultihexGenerationType::AnyUnique) {
+            continue;
+        }
+        if (skip_selected && SelectedEntitiesSet.contains(item)) {
+            continue;
+        }
+
+        auto ignore_props = vector<const Property*> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+        auto& proto_groups = groups_by_proto[item->GetProtoId()];
+        UniqueGroup* match = nullptr;
+
+        for (auto& group : proto_groups) {
+            if (group.survivor->GetProperties().CompareData(item->GetProperties(), ignore_props, true)) {
+                match = &group;
+                break;
+            }
+        }
+
+        if (match == nullptr) {
+            proto_groups.emplace_back(UniqueGroup {item, {}});
+        }
+        else if (item->GetId() < match->survivor->GetId()) {
+            // Keep the lowest id as the survivor (the original always merges into the lower id).
+            match->to_merge.emplace_back(match->survivor);
+            match->survivor = item;
+        }
+        else {
+            match->to_merge.emplace_back(item);
+        }
+    }
+
+    // Merge each group's members into its survivor. Rather than calling MergeItemToMultihexMesh once per
+    // member (each of which rescans the survivor's growing mesh - O(group^2), the second quadratic of a large
+    // tiled map), gather the whole group's hexes once into a dedup set and assign the survivor's mesh a single
+    // time. The resulting hex set is identical; MergeItemsToMultihexMeshes normalizes order afterward.
+    unordered_set<mpos> mesh_hexes;
+    vector<mpos> mesh_vec;
+
+    // All merged-away sources are destroyed in one bulk pass at the end - destroying them individually is the
+    // third O(N^2) on a large tiled map (each DestroyItem linearly compacts the membership vectors).
+    vector<ItemHexView*> sources_to_destroy;
+
+    for (auto& [proto_id, proto_groups] : groups_by_proto) {
+        for (auto& group : proto_groups) {
+            if (group.to_merge.empty()) {
+                continue;
+            }
+
+            mesh_hexes.clear();
+            mesh_vec.clear();
+
+            const auto add_item_hexes = [&](const ItemHexView* it) {
+                if (it->GetHex() != group.survivor->GetHex() && mesh_hexes.emplace(it->GetHex()).second) {
+                    mesh_vec.emplace_back(it->GetHex());
+                }
+
+                if (it->IsNonEmptyMultihexMesh()) {
+                    for (const auto multihex : it->GetMultihexMesh()) {
+                        if (multihex != group.survivor->GetHex() && mesh_hexes.emplace(multihex).second) {
+                            mesh_vec.emplace_back(multihex);
+                        }
+                    }
+                }
+            };
+
+            add_item_hexes(group.survivor);
+
+            for (auto* source : group.to_merge) {
+                add_item_hexes(source);
+            }
+
+            group.survivor->SetMultihexMesh(mesh_vec);
+            map->RefreshItem(group.survivor, true);
+
+            for (auto* source : group.to_merge) {
+                sources_to_destroy.emplace_back(source);
+                merges++;
+            }
+        }
+    }
+
+    map->DestroyItems(sources_to_destroy);
+
+    return merges;
+}
+
+auto MapperEngine::CoalesceItemMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_NON_CONST_METHOD_HINT();
+
+    // Incremental driver for the merge loop that used to be `while ((item = TryMergeItemToMultihexMesh(...))
+    // != nullptr) merges++;`. It produces the exact same sequence of merges (same per-step best-by-id target
+    // and source, same merge direction, same survivor) as repeatedly calling TryMergeItemToMultihexMesh, but
+    // collects the merge candidates ONCE per mesh hex instead of rescanning the whole growing mesh on every
+    // step. That turns each coalesced region from O(N^2) to O(N) (the dominant cost of the map-load merge).
+    //
+    // Only the SameSibling strategy grows a mesh hex by hex (so only it is quadratic); AnyUnique merges by a
+    // full-map scan per step and is left on the original per-step path.
+    if (item->GetMultihexGeneration() != MultihexGenerationType::SameSibling) {
+        size_t merges = 0;
+
+        while ((item = TryMergeItemToMultihexMesh(map, item, skip_selected)) != nullptr) {
+            merges++;
+        }
+
+        return merges;
+    }
+
+    size_t merges = 0;
+
+    // Candidate sets maintained across the whole loop, mirroring TryMergeItemToMultihexMesh's per-call sets:
+    // an item eligible to be merged INTO (target) and an item eligible to be merged FROM (source), each found
+    // around the survivor's mesh hexes via FindMultihexMeshForItemAroundHex. `scanned` records which hexes
+    // already contributed their neighborhood so each hex is scanned exactly once.
+    unordered_set<ItemHexView*> target_items;
+    unordered_set<ItemHexView*> source_items;
+    unordered_set<mpos> scanned;
+
+    const auto scan_hex = [&](mpos hex) {
+        // Mirror find_include_multihex_lines from the original per-step function. multihex_lines is re-read
+        // from the current survivor (proto-derived, so constant within a region) to stay faithful if the
+        // survivor object changes.
+        const auto multihex_lines = item->GetMultihexLines();
+
+        FindMultihexMeshForItemAroundHex(map, item, hex, true, target_items);
+        FindMultihexMeshForItemAroundHex(map, item, hex, false, source_items);
+
+        if (!multihex_lines.empty()) {
+            GeometryHelper::ForEachMultihexLines(multihex_lines, hex, map->GetSize(), [&](mpos hex2) {
+                FindMultihexMeshForItemAroundHex(map, item, hex2, true, target_items);
+                FindMultihexMeshForItemAroundHex(map, item, hex2, false, source_items);
+            });
+        }
+    };
+
+    // Scan one hex's neighborhood exactly once. Cheap no-op if the hex was already scanned. This is what keeps
+    // the whole region O(N): every hex contributes its neighborhood to the candidate sets a single time.
+    const auto scan_hex_once = [&](mpos hex) {
+        if (scanned.emplace(hex).second) {
+            scan_hex(hex);
+        }
+    };
+
+    // Collect a snapshot of every hex an item covers (origin + mesh). Used to fold the hexes a just-merged
+    // party brings into the survivor, scanning ONLY those new hexes instead of re-walking the whole mesh.
+    const auto collect_item_hexes = [](const ItemHexView* it, vector<mpos>& out) {
+        out.clear();
+        out.emplace_back(it->GetHex());
+
+        if (it->IsNonEmptyMultihexMesh()) {
+            const auto mesh = it->GetMultihexMesh();
+            out.insert(out.end(), mesh.begin(), mesh.end());
+        }
+    };
+
+    // Full rebuild of the candidate sets against the current survivor. Used once at the start, and again only
+    // when a merge changes the survivor's DATA (the X->clean transition), because that flips which neighbors
+    // are eligible. Within a constant-data regime the incremental scan below is sufficient.
+    vector<mpos> hex_scratch;
+
+    const auto rebuild = [&]() {
+        target_items.clear();
+        source_items.clear();
+        scanned.clear();
+        collect_item_hexes(item, hex_scratch);
+        for (const auto hex : hex_scratch) {
+            scan_hex_once(hex);
+        }
+    };
+
+    auto ignore_props = vector<const Property*> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
+
+    rebuild();
+
+    for (;;) {
+        // The survivor never merges into itself; FindMultihexMeshForItemAroundHex would never collect it
+        // (CompareMultihexItemForMerge rejects equal ids), but a prior step may have collected it before it
+        // became the survivor, so drop it explicitly.
+        target_items.erase(item);
+        source_items.erase(item);
+
+        auto sorted_target_items = vec_sorted(target_items, [](auto&& i1, auto&& i2) { return i1->GetId() < i2->GetId(); });
+        auto sorted_source_items = vec_sorted(source_items, [](auto&& i1, auto&& i2) { return i2->GetId() < i1->GetId(); });
+
+        if (skip_selected) {
+            sorted_target_items = vec_filter(sorted_target_items, [&](auto&& i) { return !SelectedEntitiesSet.contains(i); });
+            sorted_source_items = vec_filter(sorted_source_items, [&](auto&& i) { return !SelectedEntitiesSet.contains(i); });
+        }
+
+        auto* best_target_item = !sorted_target_items.empty() ? sorted_target_items.front() : nullptr;
+        auto* best_source_item = !sorted_source_items.empty() ? sorted_source_items.front() : nullptr;
+
+        ItemHexView* source_item = nullptr;
+        ItemHexView* target_item = nullptr;
+
+        if (best_target_item != nullptr && (best_source_item == nullptr || best_target_item->GetId() < item->GetId())) {
+            source_item = item;
+            target_item = best_target_item;
+        }
+        else if (best_source_item != nullptr) {
+            source_item = best_source_item;
+            target_item = item;
+        }
+
+        if (source_item == nullptr || target_item == nullptr) {
+            break;
+        }
+
+        ItemHexView* const old_survivor = item;
+
+        // All of the previous survivor's hexes are already scanned; the only hexes new to the merged survivor
+        // come from the OTHER party. Snapshot them before the merge destroys the source.
+        ItemHexView* const incoming_item = target_item == item ? source_item : target_item;
+        collect_item_hexes(incoming_item, hex_scratch);
+
+        MergeItemToMultihexMesh(map, source_item, target_item);
+        merges++;
+
+        // The merged-away source is destroyed; it must never leak back as a candidate.
+        target_items.erase(source_item);
+        source_items.erase(source_item);
+
+        item = target_item;
+
+        // The survivor's data changes only when it merges INTO a clean target whose (clean) data differs from
+        // the old survivor's data; that flips neighbor eligibility, so rebuild from scratch. This happens at
+        // most once per region (clean data is absorbing), keeping the whole region O(N).
+        const bool data_changed = item != old_survivor && !old_survivor->GetProperties().CompareData(item->GetProperties(), ignore_props, true);
+
+        if (data_changed) {
+            rebuild();
+        }
+        else {
+            for (const auto hex : hex_scratch) {
+                scan_hex_once(hex);
+            }
+        }
+    }
+
     return merges;
 }
 

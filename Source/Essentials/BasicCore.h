@@ -146,6 +146,33 @@
 #define FO_DISABLE_WARNINGS_POP()
 #endif
 
+// Compiler-specific single-warning suppression helpers
+#if defined(__GNUC__) && !defined(__clang__)
+#define FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning) _Pragma("GCC diagnostic push") FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(GCC diagnostic ignored warning)
+#define FO_GCC_IGNORE_WARNINGS_POP() _Pragma("GCC diagnostic pop")
+#else
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning)
+#define FO_GCC_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(__clang__)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning) _Pragma("clang diagnostic push") FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(clang diagnostic ignored warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#else
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning) __pragma(warning(push)) __pragma(warning(disable : warning))
+#define FO_MSVC_IGNORE_WARNINGS_POP() __pragma(warning(pop))
+#else
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning)
+#define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
 // Force inline helper
 #if defined(__GNUC__)
 #define FO_FORCE_INLINE __attribute__((always_inline)) inline

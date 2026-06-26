@@ -66,6 +66,9 @@ struct StackTraceState
     std::mutex ResolvedNativeFramesLocker {};
     std::unordered_map<uintptr_t, ResolvedNativeFrameCacheEntry> ResolvedNativeFrames {};
     std::deque<uintptr_t> ResolvedNativeFrameOrder {};
+#if HAS_NATIVE_TRACE
+    std::mutex NativeResolverLocker {};
+#endif
 };
 
 static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
@@ -74,11 +77,9 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
 static auto SameFrameFunction(void* a, void* b) noexcept -> bool;
 static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t;
 static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFrameCacheEntry;
-#if HAS_NATIVE_TRACE
-static auto ResolveNativeFrame(void* addr, uint32_t index, std::optional<backward::TraceResolver>& resolver) -> ResolvedNativeFrameCacheEntry;
-static auto ResolveNativeFrameUncached(void* addr, uint32_t index, backward::TraceResolver& resolver) noexcept -> ResolvedNativeFrameCacheEntry;
-#else
 static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry;
+#if HAS_NATIVE_TRACE
+static auto GetNativeTraceResolver() noexcept -> backward::TraceResolver&;
 #endif
 static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<ResolvedNativeFrameCacheEntry>;
 static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFrameCacheEntry& entry) noexcept;
@@ -366,25 +367,6 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
         return;
     }
 
-#if HAS_NATIVE_TRACE
-    try {
-        std::optional<backward::TraceResolver> resolver;
-
-        for (uint32_t i = from; i < to; i++) {
-            void* addr = st.NativeFrames[i];
-
-            if (addr == nullptr) {
-                continue;
-            }
-
-            out.emplace_back(ResolveNativeFrame(addr, i, resolver).Frame);
-        }
-    }
-    catch (...) {
-        BreakIntoDebugger();
-    }
-
-#else
     try {
         for (uint32_t i = from; i < to; i++) {
             void* addr = st.NativeFrames[i];
@@ -399,7 +381,6 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
     catch (...) {
         BreakIntoDebugger();
     }
-#endif
 }
 
 static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t
@@ -489,45 +470,13 @@ static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFram
         return entry;
     }
 
-#if HAS_NATIVE_TRACE
-    backward::TraceResolver resolver;
-    ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index, resolver);
-#else
     ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index);
-#endif
     StoreResolvedNativeFrameInCache(addr, entry);
     return entry;
 }
 
 #if HAS_NATIVE_TRACE
-static auto ResolveNativeFrame(void* addr, uint32_t index, std::optional<backward::TraceResolver>& resolver) -> ResolvedNativeFrameCacheEntry
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto cached = TryGetResolvedNativeFrameFromCache(addr);
-
-    if (cached.has_value()) {
-        return cached.value();
-    }
-
-    if (IsLowNativeAddress(addr)) {
-        ResolvedNativeFrameCacheEntry entry = MakeNativeAddressCacheEntry(addr);
-        StoreResolvedNativeFrameInCache(addr, entry);
-        return entry;
-    }
-
-    if (!resolver.has_value()) {
-        resolver.emplace();
-    }
-
-    ResolvedNativeFrameCacheEntry entry = ResolveNativeFrameUncached(addr, index, resolver.value());
-    StoreResolvedNativeFrameInCache(addr, entry);
-    return entry;
-}
-#endif
-
-#if HAS_NATIVE_TRACE
-static auto ResolveNativeFrameUncached(void* addr, uint32_t index, backward::TraceResolver& resolver) noexcept -> ResolvedNativeFrameCacheEntry
+static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -536,7 +485,14 @@ static auto ResolveNativeFrameUncached(void* addr, uint32_t index, backward::Tra
     }
 
     try {
-        backward::ResolvedTrace resolved = resolver.resolve(backward::Trace(addr, index));
+        backward::ResolvedTrace resolved;
+
+        {
+            StackTraceState& state = GetStackTraceState();
+            std::scoped_lock locker {state.NativeResolverLocker};
+
+            resolved = GetNativeTraceResolver().resolve(backward::Trace(addr, index));
+        }
 
         StackTraceFrame frame;
         frame.Type = StackTraceFrame::FrameType::Native;
@@ -708,5 +664,21 @@ static auto GetStackTraceState() noexcept -> StackTraceState&
     static StackTraceState state;
     return state;
 }
+
+#if HAS_NATIVE_TRACE
+static auto GetNativeTraceResolver() noexcept -> backward::TraceResolver&
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Intentionally process-lifetime and never destroyed. backward-cpp resolves native frames through
+    // libbfd, which slurps each binary's symbol table and DWARF debug info into caches hung off the open
+    // bfd handle and never fully releases them on bfd_close. Reusing one resolver loads every binary at
+    // most once (instead of once per resolved range/key), and keeping it reachable from this static root
+    // for the whole process keeps those libbfd caches reachable, so LeakSanitizer does not report them.
+    // The resolver is not thread-safe; callers serialize access via StackTraceState::NativeResolverLocker.
+    static backward::TraceResolver* resolver = new backward::TraceResolver();
+    return *resolver;
+}
+#endif
 
 FO_END_NAMESPACE
