@@ -64,7 +64,6 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi.inc"
     "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef.inc"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis>")
 

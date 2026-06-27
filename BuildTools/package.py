@@ -1140,7 +1140,45 @@ class Packager:
 	def package_ios(self) -> None:
 		assert False, 'iOS packaging is not supported in this repository state'
 
+	def sign_windows_binaries(self) -> None:
+		# Optional release-time code signing of the staged Windows PE artifacts: launcher exes, runtime DLLs, and
+		# the client-runtime update payloads (the downloaded-and-executed DLL is what makes signing matter for
+		# antivirus reputation — see the H1 finding in the project's client-AV audit). Runs before any
+		# archiving/installer step so every downstream artifact (Zip/Wix/Raw) carries the signature, and after
+		# all binary patching so the signature covers the final bytes. Tool-agnostic by design:
+		# Windows.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
+		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
+		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
+		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
+		# unsigned.
+		if self.args.platform != 'Windows':
+			return
+
+		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.CodeSigningHook', ''))
+		if not hook:
+			log('Code signing: skipped (Windows.CodeSigningHook not set)')
+			return
+
+		assert os.path.isfile(hook), 'Windows.CodeSigningHook script not found: ' + hook
+
+		binaries = sorted({
+			str(path)
+			for pattern in ('*.exe', '*.dll')
+			for path in Path(self.target_output_path).rglob(pattern)
+		})
+		if not binaries:
+			log('Code signing: no .exe/.dll found under', self.target_output_path)
+			return
+
+		log('Code signing', len(binaries), 'Windows binaries via', hook)
+		for binary in binaries:
+			result = subprocess.call([hook, binary])
+			assert result == 0, 'Windows.CodeSigningHook failed (exit ' + str(result) + ') for: ' + binary
+		log('Code signing: done')
+
 	def finalize_output(self) -> None:
+		self.sign_windows_binaries()
+
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
 			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)

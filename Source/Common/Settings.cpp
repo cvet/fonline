@@ -35,7 +35,6 @@
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
-#include "WinApi.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -340,13 +339,6 @@ void GlobalSettings::ApplyAutoSettings()
 #endif
     const_cast<bool&>(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
     const_cast<bool&>(TabletBuild) = AndroidBuild || IOsBuild;
-
-#if FO_WINDOWS
-    if (::GetSystemMetrics(SM_TABLETPC) != 0) {
-        const_cast<bool&>(DesktopBuild) = false;
-        const_cast<bool&>(TabletBuild) = true;
-    }
-#endif
 
     const_cast<bool&>(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     const_cast<bool&>(MapSquare) = GameSettings::SQUARE_GEOMETRY;

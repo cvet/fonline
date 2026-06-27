@@ -32,7 +32,12 @@
 //
 
 #include "BasicCore.h"
-#include "WinApi.inc"
+
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 #if FO_MAC
 #include <sys/sysctl.h>

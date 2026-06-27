@@ -35,7 +35,12 @@
 #include "GlobalData.h"
 #include "StackTrace.h"
 #include "UcsTables.inc"
-#include "WinApi.inc"
+
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
