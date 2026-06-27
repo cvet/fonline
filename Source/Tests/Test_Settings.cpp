@@ -111,7 +111,7 @@ TEST_CASE("Settings")
         char arg4[] = "RedactionProbe";
         char* argv[] = {arg0, arg1, arg2, arg3, arg4};
 
-        settings.ApplyCommandLine(5, argv, true);
+        settings.ApplyCommandLine(5, argv);
 
         // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
         // the credential value itself must never reach the log.
@@ -124,23 +124,24 @@ TEST_CASE("Settings")
         CHECK(settings.GameName == "RedactionProbe");
     }
 
-    SECTION("ApplyCommandLineEarlyPassDoesNotLog")
+    SECTION("ApplyCommandLineAppendAccumulatesPerCall")
     {
-        string captured;
-        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, const CatchedStackTraceData*) { captured += message; });
-        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
-
+        // '+'-prefixed overrides append to the current value, so applying the same command line twice to
+        // one settings object doubles the result. LoadAppSettings() therefore applies the command line to
+        // the live settings exactly once — this test pins the hazard that the single-application flow
+        // must avoid (it was a real bug while the command line was applied in two passes).
         GlobalSettings settings {false};
         char arg0[] = "lf_tests";
         char arg1[] = "--Common.GameName";
-        char arg2[] = "QuietProbe";
+        char arg2[] = "+Tag";
         char* argv[] = {arg0, arg1, arg2};
 
-        // The early pre-cache pass (log_changes = false) applies values but logs nothing.
-        settings.ApplyCommandLine(3, argv, false);
+        settings.ApplyCommandLine(3, argv);
+        CHECK(settings.GameName == "Tag");
 
-        CHECK(captured.find("Set Common.GameName") == string::npos);
-        CHECK(settings.GameName == "QuietProbe");
+        // A second pass over the same object appends again — what the two-pass flow used to do.
+        settings.ApplyCommandLine(3, argv);
+        CHECK(settings.GameName == "Tag Tag");
     }
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")

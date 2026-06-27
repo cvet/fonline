@@ -247,7 +247,7 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
     AddSubConfigs(config.GetSections("SubConfig"), config_dir);
 }
 
-void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv, bool log_changes)
+void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -261,11 +261,8 @@ void GlobalSettings::ApplyCommandLine(int32_t argc, char** argv, bool log_change
             const auto value = i < argc - 1 && argv[i + 1][0] != '-' ? strex("{}", argv[i + 1]).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
-                // log_changes is false on the early pre-cache pass so each override is logged once, not twice.
-                if (log_changes) {
-                    const string shown = IsSecretSettingName(key) ? string("***") : value;
-                    WriteLog(LogType::Info, "Set {} to {}", key, shown);
-                }
+                const string shown = IsSecretSettingName(key) ? string("***") : value;
+                WriteLog(LogType::Info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
         }
