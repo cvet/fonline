@@ -638,11 +638,13 @@ void MapView::DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_
             draw_order = static_cast<DrawOrderType>(static_cast<int32_t>(DrawOrderType::Tile) + item->GetTileLayer());
         }
     }
-    else if (item->GetDrawFlatten()) {
-        draw_order = !item->GetIsScenery() && !item->GetIsWall() ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery;
-    }
     else {
-        draw_order = !item->GetIsScenery() && !item->GetIsWall() ? DrawOrderType::Item : DrawOrderType::Scenery;
+        if (item->GetDrawFlatten()) {
+            draw_order = item->GetStatic() ? DrawOrderType::FlatItemPreLight : DrawOrderType::FlatItemAfterLight;
+        }
+        else {
+            draw_order = DrawOrderType::Item;
+        }
     }
 
     const auto draw_hex = _mapSize.clamp_pos(hex.x, hex.y + item->GetDrawOrderOffsetHexY());
@@ -1289,7 +1291,7 @@ void MapView::ShowHex(const ViewField& vf)
             const bool on_roof = pattern->InteractWithRoof && field.RoofNum != 0;
             auto* mspr = _mapSprites.AddSprite(on_roof ? DrawOrderType::RoofParticles : DrawOrderType::Particles, hex, //
                 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2}, &field.Offset, //
-                spr, nullptr, nullptr, nullptr, nullptr, nullptr);
+                spr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
 
             if (on_roof) {
                 mspr->SetElevation(numeric_cast<int16_t>(_engine->Settings.MapRoofElevation));
@@ -2494,13 +2496,8 @@ void MapView::DrawMap()
 
             // Tiles
             _engine->OnRenderMap_BeforeTiles.Fire(this, draw_area);
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::Tile4, GetMapDayColor());
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::PreLight, GetMapDayColor());
             _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
-
-            // Flat sprites
-            _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::HexGrid, DrawOrderType::FlatScenery, GetMapDayColor());
-            _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Lighting
             if (!_engine->Settings.DisableLighting) {
@@ -2511,6 +2508,7 @@ void MapView::DrawMap()
                 for (auto& points : _lightPoints) {
                     _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleList, &draw_area, _engine->EffectMngr.Effects.Light.get());
                 }
+
                 _engine->SprMngr.GetRtMngr().PopRenderTarget();
 
                 auto* flush_light = _engine->EffectMngr.Effects.FlushLight.get();
@@ -2537,6 +2535,11 @@ void MapView::DrawMap()
                 _engine->SprMngr.DrawRenderTarget(_rtLight.get(), true);
                 _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
+
+            // Flat sprites
+            _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::AfterLight, DrawOrderType::FlatEnd, GetMapDayColor());
+            _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
             _engine->OnRenderMap_BeforeSprites.Fire(this, draw_area);
@@ -2626,17 +2629,17 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
     const auto below_roof = static_cast<DrawOrderType>(static_cast<int32_t>(DrawOrderType::Roof) - 1);
 
     if (_engine->Settings.DisableFog || _mapperMode || !HasFogLayers()) {
-        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Ligth, below_roof, day_color);
+        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Light, below_roof, day_color);
         _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Roof, DrawOrderType::Last, day_color);
         return;
     }
 
-    // Fog slots below the main sprite pass (draw order < Ligth) blit first, at ground level
-    for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Ligth); order++) {
+    // Fog slots below the main sprite pass (draw order < Light) blit first, at ground level
+    for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Light); order++) {
         DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
     }
 
-    DrawFoggedSpriteRange(draw_area, DrawOrderType::Ligth, below_roof, day_color);
+    DrawFoggedSpriteRange(draw_area, DrawOrderType::Light, below_roof, day_color);
     DrawFoggedSpriteRange(draw_area, DrawOrderType::Roof, DrawOrderType::Last, day_color);
 }
 
@@ -3941,7 +3944,7 @@ auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order
     auto& field = _hexField->GetCellForWriting(hex);
     auto* mspr = _mapSprites.AddSprite(draw_order, _mapSize.clamp_pos(hex.x, hex.y + draw_order_hy_offset), //
         {(GameSettings::MAP_HEX_WIDTH / 2) + offset.x, (GameSettings::MAP_HEX_HEIGHT / 2) + offset.y}, &field.Offset, spr, nullptr, //
-        poffset, palpha, nullptr, callback);
+        poffset, nullptr, palpha, nullptr, callback);
     AddSpriteToChain(field, mspr);
     return mspr;
 }

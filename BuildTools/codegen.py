@@ -938,6 +938,11 @@ def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
     for raw_line in enum_lines[2:]:
         comment_position = raw_line.find('//')
         line = raw_line[:comment_position].rstrip() if comment_position != -1 else raw_line
+        stripped = line.strip()
+        if not stripped or stripped.startswith('}'):
+            # Skip blank lines, comment-only lines (truncated to empty above) and the closing brace, so they are
+            # not parsed as enum entries (which would produce empty keys and auto-values that collide).
+            continue
         separator = line.find('=')
         if separator == -1:
             next_value = str(int(require_enum_value_text(key_values[-1]), 0) + 1) if key_values else '0'

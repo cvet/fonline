@@ -83,6 +83,8 @@ struct EffectCollection
     raw_ptr<RenderEffect> TileDefault {};
     raw_ptr<RenderEffect> Roof {};
     raw_ptr<RenderEffect> RoofDefault {};
+    raw_ptr<RenderEffect> Flat {};
+    raw_ptr<RenderEffect> FlatDefault {};
     raw_ptr<RenderEffect> Rain {};
     raw_ptr<RenderEffect> RainDefault {};
     raw_ptr<RenderEffect> Iface {};
