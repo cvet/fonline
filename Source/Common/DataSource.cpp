@@ -877,13 +877,6 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     return MakeFileBufferHolder(std::move(buf));
 }
 
-static auto ReturnZipStream(ptr<void> stream) noexcept -> voidpf
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return stream.get_no_const();
-}
-
 static void CleanupZipInputFile(ptr<std::ifstream> file) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -927,7 +920,7 @@ ZipFile::ZipFile(string_view fname)
     ffunc.zopen_file = [](voidpf opaque, const char*, int32_t) -> voidpf {
         nptr<void> stream = opaque;
         FO_VERIFY_AND_THROW(stream, "Zip open callback received a null stream handle");
-        return ReturnZipStream(stream.as_ptr());
+        return stream.as_ptr().get_no_const();
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
@@ -1134,7 +1127,7 @@ EmbeddedFile::EmbeddedFile()
 
         ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
         ptr<void> stream = cast_to_void(mem_stream.get());
-        return ReturnZipStream(stream);
+        return stream.get_no_const();
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         nptr<EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);

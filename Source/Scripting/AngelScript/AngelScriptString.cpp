@@ -43,21 +43,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReturnAngelScriptStringConstant(ptr<void> string_constant) noexcept -> const void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return string_constant.get_no_const();
-}
-
-static void CleanupAngelScriptStringConstant(ptr<const string> string_constant) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const auto owned_string = adopt_unique_ptr(string_constant);
-    ignore_unused(owned_string);
-}
-
 class ScriptStringFactory final : public AngelScript::asIStringFactory
 {
 public:
@@ -68,7 +53,7 @@ public:
         auto pstr = SafeAlloc::MakeUnique<string>(data, length);
         ptr<string> released_string = std::move(pstr).release();
         ptr<void> string_constant = cast_to_void(released_string.get());
-        return ReturnAngelScriptStringConstant(string_constant);
+        return string_constant.get_no_const();
     }
 
     auto ReleaseStringConstant(const void* str) -> int override
@@ -77,8 +62,8 @@ public:
 
         nptr<const string> nullable_pstr = cast_from_void<const string*>(str);
         FO_VERIFY_AND_THROW(nullable_pstr, "String pointer is null");
-        auto pstr = nullable_pstr.as_ptr();
-        CleanupAngelScriptStringConstant(pstr);
+        const auto owned_string = adopt_unique_ptr(nullable_pstr.as_ptr());
+        ignore_unused(owned_string);
         return 0;
     }
 

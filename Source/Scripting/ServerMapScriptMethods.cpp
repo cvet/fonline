@@ -39,49 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReturnScriptLocation(nptr<Location> loc) noexcept -> Location*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(loc, "Location must not be null");
-    return loc.get_no_const();
-}
-
-static auto ReturnScriptItem(ptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnNullableScriptItem(nptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnNullableScriptStaticItem(nptr<StaticItem> item) noexcept -> StaticItem*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnScriptCritter(ptr<Critter> cr) noexcept -> Critter*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptCritter(nptr<Critter> cr) noexcept -> Critter*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_SetupScript(ptr<Map> self, ScriptFunc<void, Map*, bool> initFunc)
 {
@@ -109,7 +66,7 @@ FO_SCRIPT_API void Server_Map_SetupScriptEx(ptr<Map> self, hstring initFunc)
 FO_SCRIPT_API ptr<Location> Server_Map_GetLocation(ptr<Map> self)
 {
     auto loc = self->GetLocation();
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
@@ -126,7 +83,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring prot
     }
 
     auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -143,7 +100,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoIte
     }
 
     auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -175,11 +132,11 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring prot
 
         ptr<const Properties> props_ptr = &props_;
         auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, props_ptr);
-        return ReturnScriptItem(item);
+        return item.get_no_const();
     }
 
     auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, nullptr);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -204,11 +161,11 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoIte
 
         ptr<const Properties> props_ptr = &props_;
         auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, props_ptr);
-        return ReturnScriptItem(item);
+        return item.get_no_const();
     }
 
     auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, nullptr);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -219,7 +176,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItem(ptr<Map> self, ident_t itemId)
     }
 
     auto item = self->GetItem(itemId);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -230,7 +187,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, hstrin
     }
 
     auto item = self->GetItemOnHex(hex, pid, nullptr);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -241,7 +198,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, ptr<Pr
     }
 
     auto item = self->GetItemOnHex(hex, proto->GetProtoId(), nullptr);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -256,7 +213,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemOnHex(ptr<Map> self, mpos hex, ItemPr
 
     for (ptr<Item> item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return ReturnScriptItem(item);
+            return item.get_no_const();
         }
     }
 
@@ -277,7 +234,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int
 
     for (ptr<Item> item : hex_items) {
         if (item->GetProtoId() == pid) {
-            return ReturnScriptItem(item);
+            return item.get_no_const();
         }
     }
 
@@ -298,7 +255,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int
 
     for (ptr<Item> item : hex_items) {
         if (item->GetProtoId() == proto->GetProtoId()) {
-            return ReturnScriptItem(item);
+            return item.get_no_const();
         }
     }
 
@@ -320,7 +277,7 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int
 
     for (ptr<Item> item : hex_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return ReturnScriptItem(item);
+            return item.get_no_const();
         }
     }
 
@@ -507,7 +464,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex,
 FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItem(ptr<Map> self, ident_t id)
 {
     auto item = self->GetStaticItem(id);
-    return ReturnNullableScriptStaticItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -518,7 +475,7 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
     }
 
     auto item = self->GetStaticItemOnHex(hex, pid);
-    return ReturnNullableScriptStaticItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -529,7 +486,7 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
     }
 
     auto item = self->GetStaticItemOnHex(hex, proto->GetProtoId());
-    return ReturnNullableScriptStaticItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -652,7 +609,7 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self)
 FO_SCRIPT_API nptr<Critter> Server_Map_GetCritter(ptr<Map> self, ident_t crid)
 {
     auto cr = self->GetCritter(crid);
-    return ReturnNullableScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -668,7 +625,7 @@ FO_SCRIPT_API nptr<Critter> Server_Map_GetCritterOnHex(ptr<Map> self, mpos hex)
         cr = self->GetCritterOnHex(hex, CritterFindType::Dead);
     }
 
-    return ReturnNullableScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -679,7 +636,7 @@ FO_SCRIPT_API nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty
 
     for (ptr<Critter> cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
-            return ReturnScriptCritter(cr);
+            return cr.get_no_const();
         }
     }
 
@@ -944,7 +901,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
     }
 
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, nullptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -958,7 +915,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
     }
 
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), nullptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -986,7 +943,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
 
     ptr<const Properties> props_ptr = &props_;
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, props_ptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -1007,7 +964,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
 
     ptr<const Properties> props_ptr = &props_;
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), props_ptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -1035,7 +992,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
 
     ptr<const Properties> props_ptr = &props_;
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, props_ptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -1056,7 +1013,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
 
     ptr<const Properties> props_ptr = &props_;
     auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), props_ptr, self, hex, dir);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod

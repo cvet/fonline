@@ -108,13 +108,6 @@ static auto ReadScriptArrayInitListValue(ptr<void> init_list) noexcept -> T
     return *value;
 }
 
-static auto ReturnScriptArrayValue(ptr<void> value) noexcept -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return value.get_no_const();
-}
-
 static auto ScriptArrayInitListObjectAt(ptr<void> init_list, int32_t index, ptr<AngelScript::asITypeInfo> sub_type) noexcept -> ptr<AngelScript::asBYTE>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1553,7 +1546,7 @@ static auto ScriptArray_First(ScriptArray& arr) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(0);
-    return ReturnScriptArrayValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptArray_Last(ScriptArray& arr) -> void*
@@ -1561,7 +1554,7 @@ static auto ScriptArray_Last(ScriptArray& arr) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(arr.GetSize() - 1);
-    return ReturnScriptArrayValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptArray_At(ScriptArray& arr, int32_t index) -> void*
@@ -1569,7 +1562,7 @@ static auto ScriptArray_At(ScriptArray& arr, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(index);
-    return ReturnScriptArrayValue(value);
+    return value.get_no_const();
 }
 
 static void ScriptArray_Clear(ScriptArray& arr)

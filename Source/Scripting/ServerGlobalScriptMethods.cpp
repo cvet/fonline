@@ -55,49 +55,18 @@ static auto RequireCurrentSyncContext(ptr<ServerEngine> server) -> ptr<SyncConte
     return nullable_ctx.as_ptr();
 }
 
-static auto ReturnScriptCritter(nptr<Critter> cr) noexcept -> Critter*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(cr, "Critter must not be null");
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptItem(nptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnScriptLocation(nptr<Location> loc) noexcept -> Location*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(loc, "Location must not be null");
-    return loc.get_no_const();
-}
-
-static auto ReturnScriptPlayer(nptr<Player> player) noexcept -> Player*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(player, "Player must not be null");
-    return player.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
 {
     auto cr = server->CreateCritter(protoId, forPlayer);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer)
 {
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -118,7 +87,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, h
 
     nptr<const Properties> props_ptr = &props_;
     auto cr = server->CreateCritter(protoId, forPlayer, props_ptr);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -132,14 +101,14 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, p
 
     nptr<const Properties> props_ptr = &props_;
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer, props_ptr);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)
 {
     auto cr = server->LoadCritter(crId, forPlayer);
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -288,7 +257,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 {
     ptr<Critter> to_cr_ptr = toCr;
     auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_cr_ptr);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -300,7 +269,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 
     ptr<Critter> to_cr_ptr = toCr;
     auto moved_item = server->ItemMngr.MoveItem(item, count, to_cr_ptr);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -313,7 +282,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     }
 
     auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_map_ptr, toHex);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -330,7 +299,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     }
 
     auto moved_item = server->ItemMngr.MoveItem(item, count, to_map_ptr, toHex);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -338,7 +307,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 {
     ptr<Item> to_cont_ptr = toCont;
     auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_cont_ptr, stackId);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -350,7 +319,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 
     ptr<Item> to_cont_ptr = toCont;
     auto moved_item = server->ItemMngr.MoveItem(item, count, to_cont_ptr, stackId);
-    return ReturnNullableScriptItem(moved_item);
+    return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -597,21 +566,21 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId)
 {
     auto loc = server->MapMngr.CreateLocation(protoId);
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto)
 {
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId());
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids);
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
@@ -632,7 +601,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(protoId, {}, props_ptr);
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
@@ -646,7 +615,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, props_ptr);
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
@@ -667,7 +636,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids, props_ptr);
-    return ReturnScriptLocation(loc);
+    return loc.get_no_const();
 }
 
 ///@ ExportMethod
@@ -749,7 +718,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> se
 {
     shared_ptr<NetworkServerConnection> dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
     auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
-    return ReturnScriptPlayer(player);
+    return player.get_no_const();
 }
 
 ///@ ExportMethod
@@ -762,7 +731,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> s
     }
 
     auto player = server->LoginPlayerToNewRecord(unlogined_player);
-    return ReturnScriptPlayer(player);
+    return player.get_no_const();
 }
 
 ///@ ExportMethod
@@ -775,7 +744,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
     }
 
     auto player = server->LoginPlayerToTempSession(unlogined_player);
-    return ReturnScriptPlayer(player);
+    return player.get_no_const();
 }
 
 ///@ ExportMethod
@@ -791,7 +760,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngi
     }
 
     auto player = server->LoginPlayerToExistentRecord(unlogined_player, playerId);
-    return ReturnScriptPlayer(player);
+    return player.get_no_const();
 }
 
 ///@ ExportMethod PassOwnership

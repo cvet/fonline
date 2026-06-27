@@ -43,35 +43,6 @@ FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ClientEngine*);
 
-static auto EffectScriptValueSpan(const float32_t& value) noexcept -> const_span<float32_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const float32_t> value_ptr = &value;
-    return {value_ptr.get(), 1};
-}
-
-static auto EffectScriptValuesSpan(const_span<float32_t> values, size_t offset, size_t count) noexcept -> const_span<float32_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (count == 0) {
-        return {};
-    }
-
-    FO_STRONG_ASSERT(offset <= values.size(), "Offset out of values range");
-    FO_STRONG_ASSERT(count <= values.size() - offset, "Count out of values range");
-
-    return values.subspan(offset, count);
-}
-
-static auto BorrowScriptReceivedItem(ptr<ItemView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
@@ -1921,10 +1892,7 @@ void ClientEngine::Net_OnSomeItems()
         items.emplace_back(item);
     }
 
-    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* {
-        auto item_ptr = item.as_ptr();
-        return BorrowScriptReceivedItem(item_ptr);
-    });
+    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* { return item.as_ptr().get_no_const(); });
     OnReceiveItems.Fire(items2, context_param);
 }
 
@@ -3109,7 +3077,7 @@ void ClientEngine::SetEffectScriptValue(EffectType effectType, int64_t effectSub
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effectType, effectSubtype, valueIndex, EffectScriptValueSpan(value));
+    SetEffectScriptValues(effectType, effectSubtype, valueIndex, const_span<float32_t> {&value, 1});
 }
 
 void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSubtype, int32_t valueStartIndex, const_span<float32_t> values, int32_t valuesOffset, int32_t valuesCount)
@@ -3138,7 +3106,11 @@ void ClientEngine::SetEffectScriptValues(EffectType effectType, int64_t effectSu
     }
 
     auto effect = ResolveRequiredEffectScriptValueTarget(effectType, effectSubtype);
-    const_span<float32_t> selected_values = EffectScriptValuesSpan(values, numeric_cast<size_t>(valuesOffset), numeric_cast<size_t>(actual_values_count));
+
+    const_span<float32_t> selected_values;
+    if (actual_values_count != 0) {
+        selected_values = values.subspan(numeric_cast<size_t>(valuesOffset), numeric_cast<size_t>(actual_values_count));
+    }
 
     EffectMngr.SetEffectScriptValues(effect, valueStartIndex, selected_values);
 }

@@ -43,14 +43,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
-static auto ReturnScriptItem(nptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(item, "Item must not be null");
-    return item.get_no_const();
-}
-
 template<typename TParent, typename TEntity>
 static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
 {
@@ -100,7 +92,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -114,7 +106,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod

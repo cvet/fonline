@@ -38,29 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReturnScriptImGui(ptr<ScriptImGui> imgui) noexcept -> ScriptImGui*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return imgui.get_no_const();
-}
-
-static void ImGuiTextUnformatted(string_view text)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        ImGui::TextUnformatted("");
-        return;
-    }
-
-    ptr<const char> text_lookup = text.data();
-
-    auto text_begin = text_lookup.as_ptr();
-    ptr<const char> text_end = text_begin.get() + text.size();
-    ImGui::TextUnformatted(text_begin.get(), text_end.get());
-}
-
 static auto PrepareInputBuffer(string_view text, uint32_t max_length) -> vector<char>
 {
     FO_STACK_TRACE_ENTRY();
@@ -176,7 +153,7 @@ FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
     }
 
     auto imgui = engine->GetImGui();
-    return ReturnScriptImGui(imgui);
+    return imgui.get_no_const();
 }
 
 ///@ ExportMethod

@@ -56,17 +56,6 @@ struct AngelScriptThreadCleanupHelper
 
 [[maybe_unused]] static thread_local AngelScriptThreadCleanupHelper AngelScriptThreadCleanup {};
 
-static auto GetSafeAllocatorBytePtr(nptr<void> address) noexcept -> nptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!address) {
-        return nullptr;
-    }
-
-    return cast_from_void<uint8_t*>(address.get());
-}
-
 struct AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*
@@ -88,7 +77,7 @@ struct AngelScriptAllocator
         }
 
         constexpr SafeAllocator<uint8_t> allocator;
-        allocator.deallocate(GetSafeAllocatorBytePtr(address).get(), 0);
+        allocator.deallocate(address.reinterpret_as<uint8_t>().get(), 0);
     }
 };
 

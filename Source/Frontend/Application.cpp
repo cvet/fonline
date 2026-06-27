@@ -389,28 +389,6 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *FixedSettingForRuntimeUpdate(settings.MonitorHeight) = display_mode->h;
 }
 
-static auto ReturnImGuiTextureId(ptr<void> texture_id) noexcept -> ImTextureID
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return texture_id.get_no_const();
-}
-
-static auto GetImGuiTextureId(ptr<const RenderTexture> texture) noexcept -> ImTextureID
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ptr<void> texture_id = cast_to_void(texture.get());
-    return ReturnImGuiTextureId(texture_id);
-}
-
-static auto ReturnImGuiClipboardText(ptr<const char> clipboard_text) noexcept -> const char*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return clipboard_text.get_no_const();
-}
-
 static auto GetImGuiRenderTexture(ImTextureID texture_id) -> ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
@@ -719,8 +697,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED {
-        auto clipboard_text = GetApp()->Input.GetClipboardText().data();
-        return ReturnImGuiClipboardText(clipboard_text);
+        return GetApp()->Input.GetClipboardText().data();
     };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
     platform_io.Platform_ClipboardUserData = nullptr;
@@ -2420,7 +2397,7 @@ void Application::EndFrame()
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
                     const const_span<ucolor> tex_pixels {tex_data.get(), tex_pixels_count};
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
-                    im_tex->SetTexID(GetImGuiTextureId(font_tex.as_ptr()));
+                    im_tex->SetTexID(cast_to_void(font_tex.as_ptr().get()));
                     im_tex->SetStatus(ImTextureStatus_OK);
                     _imguiTextures.emplace_back(std::move(font_tex));
                 }

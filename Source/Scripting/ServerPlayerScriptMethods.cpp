@@ -37,13 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReturnControlledCritter(nptr<Critter> cr) noexcept -> Critter*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API string Server_Player_GetHost(ptr<Player> self)
 {
@@ -95,7 +88,7 @@ FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
     auto controlled_cr = self->GetControlledCritter();
 
-    return ReturnControlledCritter(controlled_cr);
+    return controlled_cr.get_no_const();
 }
 
 ///@ ExportMethod

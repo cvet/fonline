@@ -102,41 +102,6 @@ static auto MapperColorDataAt(vector<ucolor>& data, size_t offset) noexcept -> p
     return data_begin.get() + offset;
 }
 
-static auto ReturnScriptItemView(ptr<ItemView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnNullableScriptItemView(nptr<ItemHexView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnScriptCritterView(ptr<CritterView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnScriptCritterView(ptr<CritterHexView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptMap(nptr<MapView> map) noexcept -> MapView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return map.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstring pid, mpos hex)
 {
@@ -147,7 +112,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstrin
     }
 
     auto item = mapper->CreateItem(pid, hex, nullptr);
-    return ReturnScriptItemView(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -160,7 +125,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<Pr
     }
 
     auto item = mapper->CreateItem(proto->GetProtoId(), hex, nullptr);
-    return ReturnScriptItemView(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -173,7 +138,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     }
 
     auto cr = mapper->CreateCritter(pid, hex);
-    return ReturnScriptCritterView(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -186,7 +151,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     }
 
     auto cr = mapper->CreateCritter(proto->GetProtoId(), hex);
-    return ReturnScriptCritterView(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -194,7 +159,7 @@ FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, 
 {
     auto map = RequireCurMapperMap(mapper);
     auto item = map->GetItemOnHex(hex, hstring());
-    return ReturnNullableScriptItemView(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -216,7 +181,7 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
     }
 
     ptr<CritterHexView> cr = critters.front();
-    return ReturnScriptCritterView(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -345,7 +310,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstrin
     const auto corrected_layer = numeric_cast<uint8_t>(std::clamp(layer, 0, 4));
 
     auto tile = map->AddMapperTile(pid, hex, corrected_layer, roof);
-    return ReturnScriptItemView(tile);
+    return tile.get_no_const();
 }
 
 ///@ ExportMethod
@@ -362,7 +327,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
                                 .str();
 
-    return ReturnNullableScriptMap(mapper->LoadMapFromText(name, map_text));
+    return mapper->LoadMapFromText(name, map_text).get_no_const();
 }
 
 ///@ ExportMethod
@@ -375,14 +340,14 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return ReturnNullableScriptMap(mapper->LoadMapFromText(name, string(text)));
+    return mapper->LoadMapFromText(name, string(text)).get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<MapView> Mapper_Game_LoadMap(ptr<MapperEngine> mapper, string_view fileName)
 {
     auto map = mapper->LoadMap(fileName);
-    return ReturnNullableScriptMap(map);
+    return map.get_no_const();
 }
 
 ///@ ExportMethod

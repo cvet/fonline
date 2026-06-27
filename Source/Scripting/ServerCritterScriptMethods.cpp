@@ -40,47 +40,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto AsActionContextItem(nptr<Entity> context_item) noexcept -> nptr<const Item>
-{
-    return context_item.dyn_cast<Item>();
-}
-
-static auto ReturnNullableScriptMovingContext(nptr<MovingContext> moving) noexcept -> MovingContext*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return moving.get_no_const();
-}
-
-static auto ReturnNullableScriptPlayer(nptr<Player> player) noexcept -> Player*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return player.get_no_const();
-}
-
-static auto ReturnNullableScriptCritter(nptr<Critter> cr) noexcept -> Critter*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnScriptItem(nptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(item, "Item must not be null");
-    return item.get_no_const();
-}
-
-static auto ReturnNullableScriptItem(nptr<Item> item) noexcept -> Item*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
 template<typename TParent, typename TEntity>
 static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
 {
@@ -129,7 +88,7 @@ FO_SCRIPT_API bool Server_Critter_IsMoving(ptr<Critter> self)
 FO_SCRIPT_API nptr<MovingContext> Server_Critter_GetMovingContext(ptr<Critter> self)
 {
     auto moving = self->GetMovingContext();
-    return ReturnNullableScriptMovingContext(moving);
+    return moving.get_no_const();
 }
 
 ///@ ExportMethod
@@ -142,7 +101,7 @@ FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(ptr<Critter> self)
 FO_SCRIPT_API nptr<Player> Server_Critter_GetPlayer(ptr<Critter> self)
 {
     auto player = self->GetPlayer();
-    return ReturnNullableScriptPlayer(player);
+    return player.get_no_const();
 }
 
 ///@ ExportMethod PassOwnership
@@ -366,7 +325,7 @@ FO_SCRIPT_API void Server_Critter_SetDir(ptr<Critter> self, mdir dir)
 FO_SCRIPT_API nptr<Critter> Server_Critter_GetCritter(ptr<Critter> self, ident_t id, CritterSeeType seeType)
 {
     auto cr = self->GetCritter(id, seeType);
-    return ReturnNullableScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -502,7 +461,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, i
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -516,7 +475,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem>
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -527,21 +486,21 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemI
     }
 
     auto item = self->GetInvItem(itemId);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, hstring protoId)
 {
     auto item = self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     auto item = self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -551,7 +510,7 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty 
 
     for (ptr<Item> item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return ReturnNullableScriptItem(item);
+            return item.get_no_const();
         }
     }
 
@@ -711,7 +670,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(ptr<Critter> self, CritterConditi
     }
 
     self->SetCondition(cond);
-    const auto context_item = AsActionContextItem(contextItem);
+    const auto context_item = contextItem.dyn_cast<const Item>();
 
     if (nullable_map) {
         auto map = nullable_map.as_ptr();
@@ -737,7 +696,7 @@ FO_SCRIPT_API void Server_Critter_SetCondition(ptr<Critter> self, CritterConditi
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_Action(ptr<Critter> self, CritterAction action, int32_t actionData, nptr<AbstractItem> contextItem)
 {
-    self->SendAndBroadcast_Action(action, actionData, AsActionContextItem(contextItem));
+    self->SendAndBroadcast_Action(action, actionData, contextItem.dyn_cast<const Item>());
 }
 
 ///@ ExportMethod

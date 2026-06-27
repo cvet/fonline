@@ -39,83 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto AsHexCritter(nptr<const CritterView> cr) noexcept -> nptr<const CritterHexView>
-{
-    return cr.dyn_cast<const CritterHexView>();
-}
-
-static auto AsHexItem(nptr<const ItemView> item) noexcept -> nptr<const ItemHexView>
-{
-    return item.dyn_cast<const ItemHexView>();
-}
-
-static auto ReturnScriptCritter(nptr<CritterView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(cr, "Critter view must not be null");
-    return cr.get_no_const();
-}
-
-static auto ReturnScriptPlayer(nptr<PlayerView> player) noexcept -> PlayerView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(player, "Player view must not be null");
-    return player.get_no_const();
-}
-
-static auto ReturnScriptLocation(nptr<LocationView> loc) noexcept -> LocationView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(loc, "Location view must not be null");
-    return loc.get_no_const();
-}
-
-static auto ReturnScriptMap(nptr<MapView> map) noexcept -> MapView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(map, "Map view must not be null");
-    return map.get_no_const();
-}
-
-static auto ReturnScriptItem(ptr<ItemView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnScriptCritter(ptr<CritterHexView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptCritter(nptr<CritterView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnScriptVideoPlayback(ptr<VideoPlayback> video) noexcept -> VideoPlayback*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return video.get_no_const();
-}
-
-static auto CompareCritterViewAddresses(ptr<const CritterView> cr1, ptr<const CritterView> cr2) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr1 < cr2;
-}
-
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API bool Client_Game_HasChosen(ptr<ClientEngine> client)
 {
@@ -131,7 +54,7 @@ FO_SCRIPT_API ptr<CritterView> Client_Game_Chosen(ptr<ClientEngine> client)
         throw ScriptException("No chosen critter (check HasChosen first)");
     }
 
-    return ReturnScriptCritter(chosen);
+    return chosen.get_no_const();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -149,7 +72,7 @@ FO_SCRIPT_API ptr<PlayerView> Client_Game_CurPlayer(ptr<ClientEngine> client)
         throw ScriptException("No current player (check HasCurPlayer first)");
     }
 
-    return ReturnScriptPlayer(cur_player);
+    return cur_player.get_no_const();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -167,7 +90,7 @@ FO_SCRIPT_API ptr<LocationView> Client_Game_CurLocation(ptr<ClientEngine> client
         throw ScriptException("No current location (check HasCurLocation first)");
     }
 
-    return ReturnScriptLocation(cur_location);
+    return cur_location.get_no_const();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -185,7 +108,7 @@ FO_SCRIPT_API ptr<MapView> Client_Game_CurMap(ptr<ClientEngine> client)
         throw ScriptException("No current map (check HasCurMap first)");
     }
 
-    return ReturnScriptMap(cur_map);
+    return cur_map.get_no_const();
 }
 
 ///@ ExportMethod Getter
@@ -241,8 +164,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
 {
     ignore_unused(client);
 
-    auto nullable_hex_cr1 = AsHexCritter(cr1);
-    auto nullable_hex_cr2 = AsHexCritter(cr2);
+    auto nullable_hex_cr1 = cr1.dyn_cast<const CritterHexView>();
+    auto nullable_hex_cr2 = cr2.dyn_cast<const CritterHexView>();
 
     if (!nullable_hex_cr1 || !nullable_hex_cr2) {
         throw ScriptException("Critters not on map");
@@ -264,8 +187,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 {
     ignore_unused(client);
 
-    auto nullable_hex_item1 = AsHexItem(item1);
-    auto nullable_hex_item2 = AsHexItem(item2);
+    auto nullable_hex_item1 = item1.dyn_cast<const ItemHexView>();
+    auto nullable_hex_item2 = item2.dyn_cast<const ItemHexView>();
 
     if (!nullable_hex_item1 || !nullable_hex_item2) {
         throw ScriptException("Items not on map");
@@ -285,8 +208,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
 {
     ignore_unused(client);
 
-    auto nullable_hex_cr = AsHexCritter(cr);
-    auto nullable_hex_item = AsHexItem(item);
+    auto nullable_hex_cr = cr.dyn_cast<const CritterHexView>();
+    auto nullable_hex_item = item.dyn_cast<const ItemHexView>();
 
     if (!nullable_hex_cr || !nullable_hex_item) {
         throw ScriptException("Critter/Item not on map");
@@ -308,8 +231,8 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 {
     ignore_unused(client);
 
-    auto nullable_hex_cr = AsHexCritter(cr);
-    auto nullable_hex_item = AsHexItem(item);
+    auto nullable_hex_cr = cr.dyn_cast<const CritterHexView>();
+    auto nullable_hex_item = item.dyn_cast<const ItemHexView>();
 
     if (!nullable_hex_cr || !nullable_hex_item) {
         throw ScriptException("Item/Critter not on map");
@@ -331,7 +254,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Crit
 {
     ignore_unused(client);
 
-    auto nullable_hex_cr = AsHexCritter(cr);
+    auto nullable_hex_cr = cr.dyn_cast<const CritterHexView>();
 
     if (!nullable_hex_cr) {
         throw ScriptException("Critter not on map");
@@ -348,7 +271,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex
 {
     ignore_unused(client);
 
-    auto nullable_hex_cr = AsHexCritter(cr);
+    auto nullable_hex_cr = cr.dyn_cast<const CritterHexView>();
 
     if (!nullable_hex_cr) {
         throw ScriptException("Critter not on map");
@@ -365,7 +288,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, mpos hex
 {
     ignore_unused(client);
 
-    auto nullable_hex_item = AsHexItem(item);
+    auto nullable_hex_item = item.dyn_cast<const ItemHexView>();
 
     if (!nullable_hex_item) {
         throw ScriptException("Item not on map");
@@ -380,7 +303,7 @@ FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<Item
 {
     ignore_unused(client);
 
-    auto nullable_hex_item = AsHexItem(item);
+    auto nullable_hex_item = item.dyn_cast<const ItemHexView>();
 
     if (!nullable_hex_item) {
         throw ScriptException("Item not on map");
@@ -501,7 +424,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Game_GetItem(ptr<ClientEngine> client, ident
         return nullptr;
     }
 
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -523,11 +446,11 @@ FO_SCRIPT_API nptr<CritterView> Client_Game_GetCritter(ptr<ClientEngine> client,
             return nullptr;
         }
 
-        return ReturnScriptCritter(cr);
+        return cr.get_no_const();
     }
     else {
         auto cr = client->GetGlobalMapCritter(crId);
-        return ReturnNullableScriptCritter(cr);
+        return cr.get_no_const();
     }
 }
 
@@ -674,8 +597,8 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ptr<ClientEngi
 
         if (cr1_pos.y == cr2_pos.y) {
             if (cr1_pos.x == cr2_pos.x) {
-                auto nullable_cr1_hex = AsHexCritter(cr1);
-                auto nullable_cr2_hex = AsHexCritter(cr2);
+                auto nullable_cr1_hex = cr1.dyn_cast<const CritterHexView>();
+                auto nullable_cr2_hex = cr2.dyn_cast<const CritterHexView>();
 
                 if (nullable_cr1_hex && nullable_cr2_hex) {
                     auto cr1_hex = nullable_cr1_hex.as_ptr();
@@ -686,7 +609,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ptr<ClientEngi
                     }
                 }
 
-                return CompareCritterViewAddresses(cr1, cr2);
+                return cr1 < cr2;
             }
 
             return cr1_pos.x < cr2_pos.x;
@@ -746,7 +669,7 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
     video->AddRef();
-    return ReturnScriptVideoPlayback(video.as_ptr());
+    return video.as_ptr().get_no_const();
 }
 
 ///@ ExportMethod

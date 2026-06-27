@@ -41,20 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto SpriteDataAsPixels(ptr<const uint8_t> data) noexcept -> ptr<const ucolor>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return data.reinterpret_as<const ucolor>();
-}
-
-static auto SparkEditorMutableFloat(const float32_t& value) noexcept -> ptr<float32_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return const_cast<float32_t*>(std::addressof(value));
-}
-
 static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleManager::TextureLoader
 {
     FO_STACK_TRACE_ENTRY();
@@ -85,7 +71,7 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
         ptr<const uint8_t> data_ptr = data.data();
 
         auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        const_span<ucolor> pixels {SpriteDataAsPixels(data_ptr).get(), numeric_cast<size_t>(w) * h};
+        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
         auto nullable_tex = tex.as_nptr();
@@ -551,8 +537,8 @@ void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transforma
             ImGui::PopStyleColor();
         }
 
-        Changed |= ImGui::InputFloat3("Position", SparkEditorMutableFloat(obj->getTransform().getLocal()[12]).get());
-        Changed |= ImGui::InputFloat3("UpAxis", SparkEditorMutableFloat(obj->getTransform().getLocal()[4]).get());
+        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[12])));
+        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[4])));
 
         if (ImGui::Button("Fix transform")) {
             Changed |= true;

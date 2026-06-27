@@ -39,34 +39,12 @@
 
 #include "ufbx.h"
 
-FO_BEGIN_NAMESPACE
-
-static auto GetSafeAllocatorBytePtr(nptr<void> address) noexcept -> nptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!address) {
-        return nullptr;
-    }
-
-    return cast_from_void<uint8_t*>(address.get());
-}
-
-static auto ReturnUfbxMemory(ptr<uint8_t> bytes) noexcept -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return bytes.get_no_const();
-}
-
-FO_END_NAMESPACE
-
 extern "C" void* ufbx_malloc(size_t size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(size);
-    return ReturnUfbxMemory(bytes);
+    return bytes.get_no_const();
 }
 
 extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
@@ -74,7 +52,7 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> new_ptr = allocator.allocate(new_size);
-    auto nullable_old_data = GetSafeAllocatorBytePtr(memory);
+    auto nullable_old_data = nptr<void> {memory}.reinterpret_as<uint8_t>();
 
     if (const size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
         FO_STRONG_ASSERT(nullable_old_data, "Reallocation requested a copy but the previous block pointer is null");
@@ -83,30 +61,17 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
     }
 
     allocator.deallocate(nullable_old_data.get(), old_size);
-    return ReturnUfbxMemory(new_ptr);
+    return new_ptr.get_no_const();
 }
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(GetSafeAllocatorBytePtr(ptr).get(), old_size);
+    allocator.deallocate(nptr<void> {ptr}.reinterpret_as<uint8_t>().get(), old_size);
 }
 
 FO_BEGIN_NAMESPACE
-
-template<typename T>
-static void WriteObjectVector(DataWriter& writer, const vector<T>& values)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (values.empty()) {
-        return;
-    }
-
-    ptr<const T> values_data = values.data();
-    writer.WriteObjectArray(const_span<T> {values_data.get(), values.size()});
-}
 
 struct BakerMeshData
 {
@@ -118,10 +83,10 @@ struct BakerMeshData
 
         auto len = numeric_cast<uint32_t>(Vertices.size());
         writer.Write<uint32_t>(len);
-        WriteObjectVector(writer, Vertices);
+        writer.WriteObjectVector(Vertices);
         len = numeric_cast<uint32_t>(Indices.size());
         writer.Write<uint32_t>(len);
-        WriteObjectVector(writer, Indices);
+        writer.WriteObjectVector(Indices);
         len = numeric_cast<uint32_t>(DiffuseTexture.length());
         writer.Write<uint32_t>(len);
         writer.WriteStringBytes(DiffuseTexture);
@@ -134,7 +99,7 @@ struct BakerMeshData
         }
         len = numeric_cast<uint32_t>(SkinBoneOffsets.size());
         writer.Write<uint32_t>(len);
-        WriteObjectVector(writer, SkinBoneOffsets);
+        writer.WriteObjectVector(SkinBoneOffsets);
     }
 
     vector<Vertex3D> Vertices {};
@@ -243,16 +208,16 @@ struct BakerAnimSet
             FO_VERIFY_AND_THROW(o.TranslationTime.size() == o.TranslationValue.size(), "Model bone translation keyframe times and values have different sizes", o.Name, o.TranslationTime.size(), o.TranslationValue.size());
             len = numeric_cast<uint32_t>(o.ScaleTime.size());
             writer.Write<uint32_t>(len);
-            WriteObjectVector(writer, o.ScaleTime);
-            WriteObjectVector(writer, o.ScaleValue);
+            writer.WriteObjectVector(o.ScaleTime);
+            writer.WriteObjectVector(o.ScaleValue);
             len = numeric_cast<uint32_t>(o.RotationTime.size());
             writer.Write<uint32_t>(len);
-            WriteObjectVector(writer, o.RotationTime);
-            WriteObjectVector(writer, o.RotationValue);
+            writer.WriteObjectVector(o.RotationTime);
+            writer.WriteObjectVector(o.RotationValue);
             len = numeric_cast<uint32_t>(o.TranslationTime.size());
             writer.Write<uint32_t>(len);
-            WriteObjectVector(writer, o.TranslationTime);
-            WriteObjectVector(writer, o.TranslationValue);
+            writer.WriteObjectVector(o.TranslationTime);
+            writer.WriteObjectVector(o.TranslationValue);
         }
     }
 

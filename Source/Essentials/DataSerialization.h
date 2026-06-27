@@ -372,6 +372,23 @@ public:
         }
     }
 
+    void WriteByteVector(const vector<uint8_t>& data)
+    {
+        if (!data.empty()) {
+            ptr<const uint8_t> data_bytes = data.data();
+            WriteBytes({data_bytes.get(), data.size()});
+        }
+    }
+
+    template<typename T>
+    void WriteObjectVector(const vector<T>& values)
+    {
+        if (!values.empty()) {
+            ptr<const T> values_data = values.data();
+            WriteObjectArray(const_span<T> {values_data.get(), values.size()});
+        }
+    }
+
 private:
     auto AppendBytes(size_t size) -> span<uint8_t>
     {

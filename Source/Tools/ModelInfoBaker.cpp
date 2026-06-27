@@ -39,19 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-template<typename T>
-static void WriteObjectVector(DataWriter& writer, const vector<T>& values)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (values.empty()) {
-        return;
-    }
-
-    ptr<const T> values_data = values.data();
-    writer.WriteObjectArray(const_span<T> {values_data.get(), values.size()});
-}
-
 struct BakerModelDescriptionCut
 {
     static void WriteString(DataWriter& writer, string_view value);
@@ -1550,7 +1537,7 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
     writer.Write<float32_t>(ScaleZ);
     writer.Write<float32_t>(SpeedAjust);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledLayer.size()));
-    WriteObjectVector(writer, DisabledLayer);
+    writer.WriteObjectVector(DisabledLayer);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledMesh.size()));
     for (const string& mesh_name : DisabledMesh) {
         BakerModelDescriptionCut::WriteString(writer, mesh_name);
@@ -1578,7 +1565,7 @@ void BakerModelDescriptionCut::Save(DataWriter& writer) const
 
     WriteString(writer, FileName);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(Layers.size()));
-    WriteObjectVector(writer, Layers);
+    writer.WriteObjectVector(Layers);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(Shapes.size()));
     for (const string& shape : Shapes) {
         WriteString(writer, shape);

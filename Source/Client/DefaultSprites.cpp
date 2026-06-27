@@ -37,13 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto SpriteDataAsPixels(ptr<const uint8_t> data) noexcept -> ptr<const ucolor>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return data.reinterpret_as<ucolor>();
-}
-
 AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
@@ -472,7 +465,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     dir_anim->_sprOffset[j].x = nx;
                     dir_anim->_sprOffset[j].y = ny;
 
-                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, SpriteDataAsPixels(data_ptr));
+                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, data_ptr.reinterpret_as<const ucolor>());
 
                     if (j == 0) {
                         dir_anim->_size.width = width;
@@ -515,7 +508,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         ignore_unused(nx);
         ignore_unused(ny);
 
-        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, SpriteDataAsPixels(data_ptr));
+        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, data_ptr.reinterpret_as<const ucolor>());
 
         reader.GoForward(data.size());
 

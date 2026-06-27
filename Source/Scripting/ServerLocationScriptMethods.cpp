@@ -38,20 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReturnScriptMap(ptr<Map> map) noexcept -> Map*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return map.get_no_const();
-}
-
-static auto ReturnNullableScriptMap(nptr<Map> map) noexcept -> Map*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return map.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, Map*, bool> initFunc)
 {
@@ -84,7 +70,7 @@ FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, hstring mapPid
     }
 
     auto map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
-    return ReturnScriptMap(map);
+    return map.get_no_const();
 }
 
 ///@ ExportMethod
@@ -97,7 +83,7 @@ FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> 
     }
 
     auto map = self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self);
-    return ReturnScriptMap(map);
+    return map.get_no_const();
 }
 
 ///@ ExportMethod
@@ -113,11 +99,11 @@ FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPi
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == mapPid) {
-            return ReturnScriptMap(map);
+            return map.get_no_const();
         }
     }
 
-    return ReturnNullableScriptMap(nullptr);
+    return nullptr;
 }
 
 ///@ ExportMethod
@@ -128,18 +114,18 @@ FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap>
 
     for (ptr<Map> map : maps) {
         if (map->GetProtoId() == map_proto_ptr->GetProtoId()) {
-            return ReturnScriptMap(map);
+            return map.get_no_const();
         }
     }
 
-    return ReturnNullableScriptMap(nullptr);
+    return nullptr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
     auto map = self->GetMapByIndex(index).as_ptr();
-    return ReturnScriptMap(map);
+    return map.get_no_const();
 }
 
 ///@ ExportMethod

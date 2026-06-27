@@ -40,82 +40,6 @@
 
 FO_BEGIN_NAMESPACE
 
-[[maybe_unused]] static auto AsHexCritter(nptr<CritterView> cr) noexcept -> nptr<CritterHexView>
-{
-    return cr.dyn_cast<CritterHexView>();
-}
-
-[[maybe_unused]] static auto AsHexCritter(ptr<CritterView> cr) noexcept -> nptr<CritterHexView>
-{
-    return cr.dyn_cast<CritterHexView>();
-}
-
-[[maybe_unused]] static auto AsHexCritter(nptr<const CritterView> cr) noexcept -> nptr<const CritterHexView>
-{
-    return cr.dyn_cast<const CritterHexView>();
-}
-
-[[maybe_unused]] static auto AsHexCritter(ptr<const CritterView> cr) noexcept -> nptr<const CritterHexView>
-{
-    return cr.dyn_cast<const CritterHexView>();
-}
-
-static auto ReturnNullableScriptItem(nptr<ItemView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnScriptItem(ptr<ItemHexView> item) noexcept -> ItemView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return item.get_no_const();
-}
-
-static auto ReturnNullableScriptCritter(nptr<CritterView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnScriptCritter(ptr<CritterHexView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptCritter(nptr<CritterHexView> cr) noexcept -> CritterView*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cr.get_no_const();
-}
-
-static auto ReturnNullableScriptEntity(nptr<ClientEntity> entity) noexcept -> ClientEntity*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return entity.get_no_const();
-}
-
-static auto ReturnScriptFog(ptr<FogLayer> fog) noexcept -> FogLayer*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return fog.get_no_const();
-}
-
-static auto ReturnNullableScriptSpritePattern(nptr<SpritePattern> sprite_pattern) noexcept -> SpritePattern*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return sprite_pattern.get_no_const();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
 {
@@ -278,7 +202,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     }
 
     auto item = self->GetItem(itemId);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -289,7 +213,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex
     }
 
     auto item = self->GetItemOnHex(hex);
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -320,7 +244,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritter(ptr<MapView> self, ident_t
     }
 
     nptr<CritterView> cr = self->GetCritter(critterId);
-    return ReturnNullableScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -343,7 +267,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterOnHex(ptr<MapView> self, mp
     }
 
     ptr<CritterHexView> cr = critters.front();
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -366,7 +290,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self,
     }
 
     ptr<CritterHexView> cr = critters.front();
-    return ReturnScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
@@ -554,7 +478,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView
         throw ScriptException("Invalid toHex arg");
     }
 
-    auto hex_cr = AsHexCritter(cr_arg);
+    auto hex_cr = cr_arg.dyn_cast<CritterHexView>();
     if (!hex_cr) {
         throw ScriptException("Critter is not on map");
     }
@@ -629,7 +553,7 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterVie
         throw ScriptException("Invalid toHex arg");
     }
 
-    auto hex_cr = AsHexCritter(cr_arg);
+    auto hex_cr = cr_arg.dyn_cast<CritterHexView>();
 
     if (!hex_cr) {
         throw ScriptException("Critter is not on map");
@@ -798,7 +722,7 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
 FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, nptr<CritterView> cr)
 {
     ptr<const MapView> self_const = self;
-    auto nullable_cr_hex = AsHexCritter(cr);
+    auto nullable_cr_hex = cr.dyn_cast<CritterHexView>();
 
     if (!nullable_cr_hex) {
         self->ClearTransparentEgg(slot);
@@ -831,7 +755,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemAtScreenPos(ptr<MapView> self, ip
 {
     bool item_egg;
     nptr<ItemHexView> item = self->GetItemAtScreen(pos, item_egg, 0, true).first;
-    return ReturnNullableScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod
@@ -843,14 +767,14 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> se
         cr = self->GetCritterAtScreen(pos, true, extraRange, false).first;
     }
 
-    return ReturnNullableScriptCritter(cr);
+    return cr.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos)
 {
     nptr<ClientEntity> entity = self->GetEntityAtScreen(pos, 0, true).first;
-    return ReturnNullableScriptEntity(entity);
+    return entity.get_no_const();
 }
 
 ///@ ExportMethod
@@ -925,7 +849,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterVie
     nptr<RenderEffect> customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
 
     auto fog = self->AddFog(cr, drawOrder, customFlushEffect);
-    return ReturnScriptFog(fog);
+    return fog.get_no_const();
 }
 
 ///@ ExportMethod
@@ -938,7 +862,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawO
     nptr<RenderEffect> customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
 
     auto fog = self->AddFog(hex, drawOrder, customFlushEffect);
-    return ReturnScriptFog(fog);
+    return fog.get_no_const();
 }
 
 ///@ ExportMethod
@@ -949,7 +873,7 @@ FO_SCRIPT_API nptr<SpritePattern> Client_Map_RunSpritePattern(ptr<MapView> self,
     }
 
     auto sprite_pattern = self->RunSpritePattern(spriteName, spriteCount);
-    return ReturnNullableScriptSpritePattern(sprite_pattern);
+    return sprite_pattern.get_no_const();
 }
 
 ///@ ExportMethod
@@ -971,7 +895,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Map_CreateLocalItem(ptr<MapView> self, hstrin
     }
 
     auto item = self->AddLocalItem(pid, hex);
-    return ReturnScriptItem(item);
+    return item.get_no_const();
 }
 
 ///@ ExportMethod

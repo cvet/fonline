@@ -59,13 +59,6 @@ struct ScriptDictInitListValueLayout
     bool ReadAsRefSlot {};
 };
 
-static auto ReturnScriptDictValue(ptr<void> value) noexcept -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return value.get_no_const();
-}
-
 static auto ScriptDictBufferAsVoid(ptr<AngelScript::asBYTE> buffer) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1271,7 +1264,7 @@ static auto ScriptDict_Get(const ScriptDict& dict, void* key) -> void*
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.Get(key_ptr);
-    return ReturnScriptDictValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
@@ -1281,7 +1274,7 @@ static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.GetOrCreate(key_ptr);
-    return ReturnScriptDictValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptDict_Remove(ScriptDict& dict, void* key) -> bool
@@ -1333,7 +1326,7 @@ static auto ScriptDict_GetDefault(const ScriptDict& dict, void* key, void* def_v
     auto key_ptr = RequireScriptDictValue(key_arg);
     auto def_val_ptr = RequireScriptDictValue(def_val_arg);
     ptr<void> value = dict.GetDefault(key_ptr, def_val_ptr);
-    return ReturnScriptDictValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptDict_GetKey(const ScriptDict& dict, int32_t index) -> void*
@@ -1341,7 +1334,7 @@ static auto ScriptDict_GetKey(const ScriptDict& dict, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> key = dict.GetKey(index);
-    return ReturnScriptDictValue(key);
+    return key.get_no_const();
 }
 
 static auto ScriptDict_GetValue(const ScriptDict& dict, int32_t index) -> void*
@@ -1349,7 +1342,7 @@ static auto ScriptDict_GetValue(const ScriptDict& dict, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = dict.GetValue(index);
-    return ReturnScriptDictValue(value);
+    return value.get_no_const();
 }
 
 static auto ScriptDict_GetKeys(const ScriptDict& dict) -> ScriptArray*

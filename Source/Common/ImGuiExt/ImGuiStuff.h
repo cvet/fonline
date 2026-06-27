@@ -486,4 +486,18 @@ enum class ImGui_StyleVar : int32_t
     SelectableTextAlign = 37, // ImGuiStyleVar_SelectableTextAlign
 };
 
+inline void ImGuiTextUnformatted(string_view text)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (text.empty()) {
+        ImGui::TextUnformatted("");
+        return;
+    }
+
+    ptr<const char> text_begin = text.data();
+    ptr<const char> text_end = text_begin.get() + text.size();
+    ImGui::TextUnformatted(text_begin.get(), text_end.get());
+}
+
 FO_END_NAMESPACE

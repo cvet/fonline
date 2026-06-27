@@ -55,37 +55,6 @@ static auto MakeRectFromEdges(int32_t left, int32_t top, int32_t right, int32_t 
     return {left, top, right - left, bottom - top};
 }
 
-static auto ReturnImGuiTextureId(ptr<void> texture_id) noexcept -> ImTextureID
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return texture_id.get_no_const();
-}
-
-static auto GetImGuiTextureId(nptr<const RenderTexture> nullable_texture) -> ImTextureID
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(nullable_texture, "ImGui texture handle is null");
-    auto texture = nullable_texture.as_ptr();
-    ptr<void> texture_id = cast_to_void(texture.get());
-    return ReturnImGuiTextureId(texture_id);
-}
-
-static void ImGuiTextUnformatted(string_view text)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        ImGui::TextUnformatted("");
-        return;
-    }
-
-    ptr<const char> text_ptr = text.data();
-    ptr<const char> text_end = text_ptr.get() + text.size();
-    ImGui::TextUnformatted(text_ptr.get(), text_end.get());
-}
-
 static auto ShiftDayTimeWithWrap(int32_t day_time, int32_t delta_minutes) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -2296,7 +2265,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                             const auto draw_height = numeric_cast<float32_t>(sprite_size.height) * scale;
                             const ImVec2 image_min {preview_min.x + (56.0f - draw_width) * 0.5f, preview_min.y + (56.0f - draw_height) * 0.5f};
                             const ImVec2 image_max {image_min.x + draw_width, image_min.y + draw_height};
-                            draw_list->AddImage(GetImGuiTextureId(texture), image_min, image_max, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                            draw_list->AddImage(cast_to_void(texture.get()), image_min, image_max, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
                         }
                     }
 
@@ -2315,7 +2284,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                     auto texture = nullable_texture.as_ptr();
                                     const auto uv = atlas_sprite->GetAtlasRect();
                                     const auto sprite_size = sprite->GetSize();
-                                    ImGui::Image(GetImGuiTextureId(texture), {numeric_cast<float32_t>(std::max(1, sprite_size.width)), numeric_cast<float32_t>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
+                                    ImGui::Image(cast_to_void(texture.get()), {numeric_cast<float32_t>(std::max(1, sprite_size.width)), numeric_cast<float32_t>(std::max(1, sprite_size.height))}, {uv.x, uv.y}, {uv.x + uv.width, uv.y + uv.height});
                                 }
                                 else {
                                     ImGui::TextDisabled("No texture");

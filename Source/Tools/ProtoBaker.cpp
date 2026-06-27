@@ -41,18 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static void WriteBakedBytes(ptr<DataWriter> writer, const vector<uint8_t>& data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (data.empty()) {
-        return;
-    }
-
-    ptr<const uint8_t> data_ptr = data.data();
-    writer->WriteBytes({data_ptr.get(), data.size()});
-}
-
 ProtoBaker::ProtoBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
@@ -330,7 +318,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                 proto->GetProperties().StoreAllData(props_data, str_hashes);
                 writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                 ptr<DataWriter> writer_ptr = &writer;
-                WriteBakedBytes(writer_ptr, props_data);
+                writer_ptr->WriteByteVector(props_data);
             }
         }
     }
@@ -349,7 +337,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
         }
 
         ptr<DataWriter> final_writer_ptr = &final_writer;
-        WriteBakedBytes(final_writer_ptr, protos_data);
+        final_writer_ptr->WriteByteVector(protos_data);
     }
 
     return final_data;

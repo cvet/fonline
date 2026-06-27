@@ -43,13 +43,6 @@ ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-static auto ReturnImGuiAllocBytes(ptr<uint8_t> bytes) noexcept -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return bytes.get_no_const();
-}
-
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -58,7 +51,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(sz);
-    return ReturnImGuiAllocBytes(bytes);
+    return bytes.get_no_const();
 }
 
 static void ImGuiFree(void* raw_mem, void* user_data)
