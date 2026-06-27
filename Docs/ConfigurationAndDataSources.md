@@ -19,7 +19,7 @@ Read this together with:
 - `Source/Common/ConfigFile.cpp`
 - `Source/Common/Settings.h`
 - `Source/Common/Settings.cpp`
-- `Source/Common/Settings-Include.h`
+- `Source/Common/Settings.inc`
 - `Source/Common/DataSource.h`
 - `Source/Common/DataSource.cpp`
 - `Source/Common/FileSystem.h`
@@ -47,7 +47,7 @@ Read this together with:
 ## Layer map
 
 1. **Config text parser** — `ConfigFile` parses sections, keys, values, repeated sections, optional collected content, and first-section reads.
-2. **Settings model** — `Settings-Include.h` declares setting groups; `Settings.*` turns config files, command-line overrides, internal config, defaults, auto-settings, sub-configs, and resource-pack declarations into `GlobalSettings`.
+2. **Settings model** — `Settings.inc` declares setting groups; `Settings.*` turns config files, command-line overrides, internal config, defaults, auto-settings, sub-configs, and resource-pack declarations into `GlobalSettings`.
 3. **Data-source abstraction** — `DataSource` mounts disk directories and pack files behind a uniform file-list/open interface.
 4. **File-system view** — `FileSystem` combines mounted data sources, exposes `FileHeader`, `File`, `FileReader`, and `FileCollection`, and resolves file reads by path/name.
 5. **Cache storage** — `CacheStorage` persists named string/data entries for reusable cache consumers.
@@ -64,7 +64,7 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
-`Source/Common/Settings-Include.h` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
+`Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. `Settings.h` exposes:
 
 - `ResourcePackInfo` — name, input directories/files, recursive flag, side flags, and baker list.
 - `SubConfigInfo` — named config overlays and setting maps.
@@ -78,11 +78,11 @@ The parser stores owned strings internally and returns `string_view` values from
 - `ApplySubConfigSection()` for named overlays;
 - `ApplyDefaultSettings()` and `ApplyAutoSettings()` for engine defaults/derived values.
 
-`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) bakes the config by re-deriving each sub-config from the root and saving every registered setting; a setting that `GlobalSettings::Save()` does not emit is reported as `Uninitialized server/client setting <name>` and fails the bake. `Save()` only emits settings present in `_appliedSettings`, which is populated from the keys of every applied config plus a fixed **auto-settings** allow-list seeded in the baking-mode `GlobalSettings` constructor. Author-tunable settings reach `_appliedSettings` by being enumerated in the embedding project's config; settings that are resolved at runtime and never authored in any config (platform/build flags, monitor size, command-line/git/compatibility values, and `Client.UserWritablePath`) must be added to that auto-settings allow-list, or baking fails. When adding such a runtime-only engine setting to `Settings-Include.h`, register it in the auto-settings list in the same change.
+`ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) bakes the config by re-deriving each sub-config from the root and saving every registered setting; a setting that `GlobalSettings::Save()` does not emit is reported as `Uninitialized server/client setting <name>` and fails the bake. `Save()` only emits settings present in `_appliedSettings`, which is populated from the keys of every applied config plus a fixed **auto-settings** allow-list seeded in the baking-mode `GlobalSettings` constructor. Author-tunable settings reach `_appliedSettings` by being enumerated in the embedding project's config; settings that are resolved at runtime and never authored in any config (platform/build flags, monitor size, command-line/git/compatibility values, and `Client.UserWritablePath`) must be added to that auto-settings allow-list, or baking fails. When adding such a runtime-only engine setting to `Settings.inc`, register it in the auto-settings list in the same change.
 
 Do not document one embedding project's `.fomain` contents as universal engine behavior. Use project docs for concrete values; use this page for the engine mechanics that consume them.
 
-Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read, then command-line settings are applied again for final precedence. Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
+Client startup has one extra resolution step for installed layouts: `ResolveUserWritablePath(settings)` in `Source/Frontend/ApplicationInit.cpp` resolves `Client.UserWritablePath` before the local-config cache is read, then command-line settings are applied again for final precedence. Only this final pass logs each `Set <name> to <value>` override — the early pass is invoked with `log_changes=false`, so overrides are not logged twice. In that log, settings whose name contains one of the masking tokens are printed as `Set <name> to ***`, so a credential such as `Auth.WebTokenVerifySecret` never appears in plaintext (server logs may be shared). The tokens are the `Common.SecretSettingTokens` setting (a case-insensitive substring list, default `secret token password apikey`), which `GlobalSettings::IsSecretSettingName()` reads. Command-line overrides are logged only on the final pass — after `ApplyDefaultSettings()` and the config file have run — so the list is already populated, and an embedding project extends it through config to cover credentials the generic tokens miss (Last Frontier sets `Common.SecretSettingTokens = secret token password apikey dsn` so `Sentry.Dsn` is masked). Empty means portable unless an `INSTALLED` marker sits next to the executable; `*` resolves through `Platform::GetUserDataBase()` plus `Common.GameName`; an explicit path is resolved directly. If the target directory or required cache/resource subdirs cannot be created, the resolver logs a warning and reverts to portable layout.
 
 ## Resource packs and data sources
 
@@ -132,7 +132,7 @@ Related consumers are covered by resource, client, server, script, and baker tes
 ## Change routing
 
 - Config grammar and parsed section/key behavior: `Source/Common/ConfigFile.*`.
-- Setting groups, defaults, command-line/config/sub-config application: `Source/Common/Settings.*` and `Settings-Include.h`.
+- Setting groups, defaults, command-line/config/sub-config application: `Source/Common/Settings.*` and `Settings.inc`.
 - Installed-client writable-root resolution: `Source/Frontend/ApplicationInit.cpp`, `Source/Essentials/Platform.*`, and `Source/Essentials/DiskFileSystem.*`.
 - Mounted resource lookup: `Source/Common/DataSource.*` and `FileSystem.*`.
 - Raw disk operations: `Source/Essentials/DiskFileSystem.*`.

@@ -32,7 +32,7 @@
 //
 
 #include "DataSource.h"
-#include "EmbeddedResources-Include.h"
+#include "EmbeddedResources.gen.inc"
 
 #include "minizip/unzip.h"
 

@@ -894,6 +894,7 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
     if (_stats.LastCpuUsageSnapshot.has_value()) {
         const Platform::CpuUsageSnapshot& previous_snapshot = *_stats.LastCpuUsageSnapshot;
         const size_t core_count = std::min(previous_snapshot.Cores.size(), current_snapshot.Cores.size());
+        const size_t logical_core_count = std::max<size_t>(numeric_cast<size_t>(current_snapshot.LogicalCoreCount), 1);
 
         _stats.CpuCoreLoads.clear();
         _stats.CpuCoreLoads.reserve(core_count);
@@ -924,10 +925,10 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
 
             if (sample_duration_ns > 0) {
                 const uint64_t process_delta_ns = current_snapshot.ProcessTimeNs - previous_snapshot.ProcessTimeNs;
-                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(std::max<size_t>(core_count, 1)) * 100.0);
+                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(logical_core_count) * 100.0);
 
                 _stats.CpuProcessCoreLoad = numeric_cast<float32_t>(process_core_load);
-                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(std::max<size_t>(core_count, 1)));
+                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(logical_core_count));
             }
         }
     }

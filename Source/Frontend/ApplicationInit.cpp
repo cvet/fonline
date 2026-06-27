@@ -246,8 +246,9 @@ auto LoadAppSettings(int32_t argc, char** argv) -> GlobalSettings
 
     // Apply command-line settings once before local-config lookup so writable-root overrides (and any
     // related path knobs) affect the cache path itself. ApplyCommandLine runs again later for normal
-    // precedence over local config.
-    settings.ApplyCommandLine(argc, argv);
+    // precedence over local config; this early pass does NOT log (log_changes=false) so each override
+    // is logged exactly once, by the normal pass below.
+    settings.ApplyCommandLine(argc, argv, false);
 
     // Resolve the installed-client writable root now that the config is applied, so the local-config
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.

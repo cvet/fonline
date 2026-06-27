@@ -91,7 +91,7 @@ protected:
 #define SETTING_GROUP_END() }
 #define FIXED_SETTING(type, group, name, ...) const type name = {}
 #define VARIABLE_SETTING(type, group, name, ...) type name = {}
-#include "Settings-Include.h"
+#include "Settings.inc"
 
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
@@ -127,7 +127,7 @@ public:
 
     void ApplyConfigAtPath(string_view config_name, string_view config_dir);
     void ApplyConfigFile(ConfigFile& config, string_view config_dir);
-    void ApplyCommandLine(int32_t argc, char** argv);
+    void ApplyCommandLine(int32_t argc, char** argv, bool log_changes = true);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
     void ApplyDefaultSettings();
@@ -137,6 +137,7 @@ public:
     void Draw(bool editable);
 
 private:
+    bool IsSecretSettingName(string_view name) const;
     void SetValue(const string& setting_name, const string& setting_value, string_view config_dir = "");
     void AddResourcePacks(const vector<map<string_view, string_view>*>& res_packs, string_view config_dir);
     void AddSubConfigs(const vector<map<string_view, string_view>*>& sub_configs, string_view config_dir);

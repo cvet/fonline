@@ -46,7 +46,7 @@
 #endif
 // ReSharper disable CppRedundantQualifier
 
-#include "WinApiUndef-Include.h" // Remove garbage from includes above
+#include "WinApiUndef.inc" // Remove garbage from includes above
 
 FO_BEGIN_NAMESPACE
 
