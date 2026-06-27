@@ -230,6 +230,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T> { return ptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
@@ -473,6 +475,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE constexpr auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE constexpr auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE constexpr auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
         assert(_ptr != nullptr);
@@ -708,6 +712,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T> { return ptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
@@ -854,6 +860,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
         assert(_ptr != nullptr);
@@ -1085,6 +1093,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T> { return ptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
@@ -1335,6 +1345,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
         assert(_ptr != nullptr);
