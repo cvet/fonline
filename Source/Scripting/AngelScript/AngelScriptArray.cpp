@@ -176,17 +176,26 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
     const int32_t length = *cast_from_void<int32_t*>(init_list);
     CheckArraySize(length);
 
+    // (FOnline Patch) inline primitive/value elements may be 8-byte aligned in the list buffer, so the first
+    // element starts at this aligned offset rather than a hard-coded 4-byte header (handles keep 4-byte packing).
+    const auto list_buffer_first_offset = [](int32_t element_size) -> size_t {
+        return element_size >= 8 ? sizeof(int64_t) : sizeof(int32_t);
+    };
+
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         CreateBuffer(length);
 
         if (length != 0) {
-            MemCopy(At(0), cast_from_void<int32_t*>(init_list) + 1, numeric_cast<size_t>(length * _elementSize));
+            auto* src = cast_from_void<AngelScript::asBYTE*>(init_list) + list_buffer_first_offset(_elementSize);
+            MemCopy(At(0), src, numeric_cast<size_t>(length * _elementSize));
         }
     }
     else if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         CreateBuffer(length);
 
         if (length != 0) {
+            // Handle elements keep the historical 4-byte header packing (a hard-coded +1 int32), unlike the
+            // aligned offset used for primitive/value elements above.
             MemCopy(At(0), cast_from_void<int32_t*>(init_list) + 1, numeric_cast<size_t>(length * _elementSize));
             MemFill(cast_from_void<int32_t*>(init_list) + 1, 0, numeric_cast<size_t>(length * _elementSize));
         }
@@ -194,10 +203,13 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
     else {
         CreateBuffer(length);
 
+        const int32_t sub_size = ti->GetSubType()->GetSize();
+        const size_t first_off = list_buffer_first_offset(sub_size);
+
         for (int32_t i = 0; i < length; i++) {
             void* obj = At(i);
             auto* src_obj = cast_from_void<AngelScript::asBYTE*>(init_list);
-            src_obj += sizeof(int32_t) + numeric_cast<size_t>(i * ti->GetSubType()->GetSize());
+            src_obj += first_off + numeric_cast<size_t>(i * sub_size);
             engine->AssignScriptObject(obj, src_obj, ti->GetSubType());
         }
     }

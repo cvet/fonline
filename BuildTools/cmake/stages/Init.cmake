@@ -30,7 +30,6 @@ DeclareValueOptions(
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
-	FO_UBSAN_IGNORELIST "Path to UndefinedBehaviorSanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/ubsan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -278,13 +277,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC AND CMAKE_SYSTEM_NAME MATC
 	endif()
 endif()
 
-# UBSan: scoped ignorelist for the inherent AngelScript value-type alignment sites (the [alignment] section keeps
-# every other UBSan check active). See BuildTools/sanitizers/ubsan-ignorelist.txt for the rationale and the
-# tracked plan to remove it. Applied on Clang for the Undefined-sanitizer configs only.
-SetValue(expr_UndefinedSanitizerConfigs $<CONFIG:San_Undefined,San_Address_Undefined>)
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND EXISTS "${FO_UBSAN_IGNORELIST}")
-	AddCompileOptionsList($<${expr_UndefinedSanitizerConfigs}:-fsanitize-ignorelist=${FO_UBSAN_IGNORELIST}>)
-endif()
+# UBSan: there is no file-based ignorelist. The AngelScript value-type alignment UB was fixed at the source, so the
+# ubsan-ignorelist.txt is gone entirely. The only UBSan suppressions left are the per-target vendored-third-party
+# excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for unqlite /
+# AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
 
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
 # Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
@@ -595,6 +591,17 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-legl.js
 		-lhtml5_webgl.js
 		-lidbfs.js)
+
+	if(FO_UNIT_TESTS)
+		# The wasm unit-test executable links server code (DataBase file-lock, raw NetSockets) and the
+		# mongo-c-driver, which reference POSIX functions/syscalls Emscripten does not implement (flock,
+		# getpwuid_r, setsockopt, uname, getuid/geteuid). The web-runnable tests (AngelScript / serializer /
+		# in-memory) never call those paths, so allow them as abort-if-called stubs purely so the test binary
+		# links and runs under node. The shipping web client keeps the strict defaults above.
+		AddLinkOptionsList(
+			-sERROR_ON_UNDEFINED_SYMBOLS=0
+			-sALLOW_UNIMPLEMENTED_SYSCALLS=1)
+	endif()
 
 else()
 	AbortMessage("Unknown OS")

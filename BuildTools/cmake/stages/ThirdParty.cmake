@@ -341,7 +341,7 @@ if(FO_BUILD_OPENSSL_LIB)
 endif()
 
 # Asio & Websockets
-if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND FO_BUILD_SERVER_LIB)
+if(NOT FO_DISABLE_ASIO AND NOT FO_ANDROID AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ Asio")
     SetValue(FO_ASIO_DIR "${FO_ENGINE_ROOT}/ThirdParty/Asio")
     AddIncludeDirectories("${FO_ASIO_DIR}/include")

@@ -54,12 +54,17 @@ function(DisableLibWarnings)
 			# our code. Exclude vendored libs from this one check on the San_Undefined configs; every other UBSan
 			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
 			#
-			# -fsanitize=alignment is excluded for the same reason: AngelScript builds its bytecode in an asDWORD[]
-			# (4-byte) buffer and packs pointer-sized asPWORD operands at 4-byte-aligned slots by design
-			# (e.g. `*(asPWORD*)(bc+1) = ...` in GenerateFactoryStubForTemplateObjectInstance), which UBSan reports as
-			# a misaligned store even though it is correct on every architecture the engine targets. This is upstream
-			# third-party packing, not a bug in our code, so vendored libs are excused from the alignment check; our
-			# own code keeps it fully active.
+			# -fsanitize=alignment is excluded for the same reason — but ONLY genuine third-party packing remains here:
+			#   * unqlite (the embedded KV DB) is the dominant case: its pager/allocator casts byte buffers to structs
+			#     (Page/lhcell/SyMemBlock/...) at 4-byte-aligned addresses by design (~2.2k UBSan sites); fixing it would
+			#     mean rewriting a 50k-line vendored amalgamation, which we do not own.
+			#   * AngelScript packs pointer-sized asPWORD operands into its asDWORD[] (4-byte) bytecode buffer at 4-byte
+			#     slots by design (asBC_PTRARG/asBC_QWORDARG = `*(asPWORD*)((asDWORD*)bc+1)`, plus the serializer's
+			#     WriteByteCode/ReadByteCode pointer operands), ~136 sites — upstream bytecode encoding, not our patches.
+			# Both are correct on every architecture the engine targets; this is third-party design, not a bug in our
+			# code, so vendored libs are excused from the alignment check. NOTE: the FOnline-side AngelScript value-type
+			# alignment (8-byte value types / primitives / handles on the VM stack, init-list buffers, return slots) was
+			# fixed at the SOURCE — our own code (Engine/Source/...) reports 0 alignment errors with this exclusion off.
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()

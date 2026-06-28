@@ -1120,6 +1120,8 @@ void MapManager::AddCritterToMap(Critter* cr, Map* map, mpos hex, mdir dir, iden
     auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
 
     if (map != nullptr) {
+        FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Cannot add a critter to an already destroyed map", map->GetId(), cr->GetId());
+        FO_VERIFY_AND_THROW(!map->IsDestroying(), "Cannot add a critter to a map that is being destroyed", map->GetId(), cr->GetId());
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter map placement target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
 
         cr->SetMapId(map->GetId());
