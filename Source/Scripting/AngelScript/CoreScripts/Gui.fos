@@ -169,6 +169,9 @@ funcdef bool DragAndDropHandler(Object obj, Object? target);
 //   SpriteLayout BackgroundImageLayout
 //   void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
 //   void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
+//   void SetFrameImage(string imageName)
+//   void SetFrameImage(hstring imageName)
+//   void SetCapInsets(int left, int top, int right, int bottom)
 //   void SetCropContent(bool enabled)
 //   void SetAutoScroll(bool ver, bool hor)
 //   int VerticalScrollValue
@@ -1425,6 +1428,10 @@ class Panel : Object
     }
 
     Sprite::Sprite? _BackgroundImage;
+    int _CapLeft;
+    int _CapTop;
+    int _CapRight;
+    int _CapBottom;
     bool _CropContent;
     bool _IsVerticalScroll;
     bool _IsHorizontalScroll;
@@ -1533,19 +1540,175 @@ class Panel : Object
 
     void _DrawImage(Sprite::Sprite image)
     {
-        if (_Size != isize()) {
-            image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::None, _Color);
+        if (_Size == isize()) {
+            return;
         }
+
+        // Normal background (no 9-slice cap insets authored): draw with the sprite's stored layout.
+        if (_CapLeft <= 0 && _CapTop <= 0 && _CapRight <= 0 && _CapBottom <= 0) {
+            image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::None, _Color);
+            return;
+        }
+
+        // 9-slice frame: fixed corners, stretched edges and center, into the current size. Cap insets
+        // are measured in the frame sprite's own source pixels.
+        if (image.Id == 0) {
+            return;
+        }
+
+        isize src = image.Size;
+        if (src.width <= 0 || src.height <= 0) {
+            image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::Stretch, _Color);
+            return;
+        }
+
+        int dw = _Size.width;
+        int dh = _Size.height;
+
+        // Source and destination cap sizes, clamped so malformed authored values cannot produce
+        // invalid UV ranges and opposite caps never overlap on a small frame.
+        int sl = Math::Clamp(_CapLeft, 0, src.width);
+        int sr = Math::Clamp(_CapRight, 0, src.width - sl);
+        int st = Math::Clamp(_CapTop, 0, src.height);
+        int sb = Math::Clamp(_CapBottom, 0, src.height - st);
+
+        int dl = Math::Clamp(sl, 0, dw);
+        int dr = Math::Clamp(sr, 0, dw - dl);
+        int dt = Math::Clamp(st, 0, dh);
+        int db = Math::Clamp(sb, 0, dh - dt);
+
+        // Source cap UV fractions.
+        float uL = float(sl) / float(src.width);
+        float uR = float(src.width - sr) / float(src.width);
+        float vT = float(st) / float(src.height);
+        float vB = float(src.height - sb) / float(src.height);
+
+        int x0 = _AbsolutePos.x;
+        int y0 = _AbsolutePos.y;
+        int xR = x0 + dw - dr;
+        int yB = y0 + dh - db;
+        int midW = dw - dl - dr;
+        int midH = dh - dt - db;
+        uint id = image.Id;
+        ucolor color = _Color;
+
+        // Corners (drawn 1:1, kept crisp).
+        if (!_DrawSlice(id, 0.0f, 0.0f, uL, vT, ipos(x0, y0), isize(dl, dt), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+        if (!_DrawSlice(id, uR, 0.0f, 1.0f, vT, ipos(xR, y0), isize(dr, dt), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+        if (!_DrawSlice(id, 0.0f, vB, uL, 1.0f, ipos(x0, yB), isize(dl, db), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+        if (!_DrawSlice(id, uR, vB, 1.0f, 1.0f, ipos(xR, yB), isize(dr, db), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+
+        // Horizontal edges (stretched along the width).
+        if (!_DrawSlice(id, uL, 0.0f, uR, vT, ipos(x0 + dl, y0), isize(midW, dt), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+        if (!_DrawSlice(id, uL, vB, uR, 1.0f, ipos(x0 + dl, yB), isize(midW, db), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+
+        // Vertical edges (stretched along the height).
+        if (!_DrawSlice(id, 0.0f, vT, uL, vB, ipos(x0, y0 + dt), isize(dl, midH), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+        if (!_DrawSlice(id, uR, vT, 1.0f, vB, ipos(xR, y0 + dt), isize(dr, midH), color)) {
+            _DrawFallbackImage(image);
+            return;
+        }
+
+        // Center fill (stretched; transparent in hollow frames).
+        if (!_DrawSlice(id, uL, vT, uR, vB, ipos(x0 + dl, y0 + dt), isize(midW, midH), color)) {
+            _DrawFallbackImage(image);
+        }
+    }
+
+    private
+    bool _DrawSlice(uint id, float u0, float v0, float u1, float v1, ipos pos, isize size, ucolor color)
+    {
+        if (size.width > 0 && size.height > 0) {
+            return Game.DrawSpriteRegion(id, fpos(u0, v0), fpos(u1, v1), pos, size, color);
+        }
+
+        return true;
+    }
+
+    void _DrawFallbackImage(Sprite::Sprite image)
+    {
+        image.Draw(_AbsolutePos, _Size, -1, -1, SpriteLayout::Stretch, _Color);
+    }
+
+    // Generic UI: enabling 9-slice for this panel/screen background. Cap insets in source pixels.
+    void SetCapInsets(int left, int top, int right, int bottom)
+    {
+        _CapLeft = left;
+        _CapTop = top;
+        _CapRight = right;
+        _CapBottom = bottom;
+        _RefreshNeedDraw();
+    }
+
+    void SetFrameImage(string imageName)
+    {
+        SetFrameImage(imageName.hstr());
+    }
+
+    // Loads the (9-slice) frame sprite without auto-resizing to its native size, so the panel/screen
+    // keeps its authored/docked size and reslices the sprite to fit.
+    void SetFrameImage(hstring imageName)
+    {
+        Sprite::Sprite? curImage = _BackgroundImage;
+        if (curImage != null && curImage.LoadedName == imageName) {
+            return;
+        }
+
+        _BackgroundImage = null;
+
+        if (imageName != EMPTY_HSTRING) {
+            Sprite::Sprite spr = Sprite::Sprite();
+            if (spr.Load(imageName)) {
+                _BackgroundImage = spr;
+            }
+        }
+
+        _RefreshNeedDraw();
     }
 
     void SetBackgroundImage(string imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
+        _ClearCapInsets();
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
     void SetBackgroundImage(hstring imageName, SpriteLayout imageLayout = SpriteLayout::None)
     {
+        _ClearCapInsets();
         _SetImage(_BackgroundImage, imageName, imageLayout);
+    }
+
+    void _ClearCapInsets()
+    {
+        bool hadCapInsets = _CapLeft != 0 || _CapTop != 0 || _CapRight != 0 || _CapBottom != 0;
+        _CapLeft = 0;
+        _CapTop = 0;
+        _CapRight = 0;
+        _CapBottom = 0;
+        if (hadCapInsets) {
+            _RefreshNeedDraw();
+        }
     }
 
     void _SetImage(Sprite::Sprite?& curImage, string imageName, SpriteLayout imageLayout)

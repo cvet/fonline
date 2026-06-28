@@ -986,6 +986,24 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(ClientEngine* client, uint32_t 
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ClientEngine* client, uint32_t sprId, fpos32 uv0, fpos32 uv1, ipos32 pos, isize32 size, ucolor color = ucolor {})
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    const auto* spr = client->AnimGetSpr(sprId);
+
+    if (spr == nullptr) {
+        return false;
+    }
+
+    return client->SprMngr.DrawSpriteRegion(spr, uv0, uv1, fpos32(pos), fsize32(size), color != ucolor::clear ? color : Color::Neutral);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawText(ClientEngine* client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
     if (!client->CanDrawInScripts) {
