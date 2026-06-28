@@ -58,20 +58,6 @@ enum class WindowLayoutMode : uint8_t
 
 constexpr int32_t TAB_BAR_HEIGHT_PX = 32;
 
-static void ServerAppImGuiTextUnformatted(string_view text)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        ImGui::TextUnformatted("");
-        return;
-    }
-
-    ptr<const char> text_data = text.data();
-    ptr<const char> text_end = text_data.get() + text.size();
-    ImGui::TextUnformatted(text_data.get(), text_end.get());
-}
-
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
 #else
@@ -555,13 +541,13 @@ int main(int argc, char** argv) // Handled by SDL
                                 for (const auto& [lines, st] : log_buffer) {
                                     if (ImGui::TreeNodeEx(lines.front().c_str(), ImGuiTreeNodeFlags_SpanAvailWidth)) {
                                         for (size_t i = 1; i < lines.size(); i++) {
-                                            ServerAppImGuiTextUnformatted(lines[i]);
+                                            ImGuiTextUnformatted(lines[i]);
                                         }
 
                                         const auto formatted = st.Origin.has_value() ? FormatStackTrace(st) : FormatStackTrace(st.Catched);
 
                                         for (const auto& st_line : strex(formatted).split('\n')) {
-                                            ServerAppImGuiTextUnformatted(st_line);
+                                            ImGuiTextUnformatted(st_line);
                                         }
 
                                         ImGui::TreePop();

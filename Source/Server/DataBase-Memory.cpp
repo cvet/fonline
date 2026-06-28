@@ -4,20 +4,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static void DataBaseMemoryImGuiTextUnformatted(string_view text)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        ImGui::TextUnformatted("");
-        return;
-    }
-
-    ptr<const char> text_data = text.data();
-    ptr<const char> text_end = text_data.get() + text.size();
-    ImGui::TextUnformatted(text_data.get(), text_end.get());
-}
-
 class DbMemory final : public DataBaseImpl
 {
 public:
@@ -139,9 +125,9 @@ protected:
         const auto info_row = [](string_view key, string_view value) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            DataBaseMemoryImGuiTextUnformatted(key);
+            ImGuiTextUnformatted(key);
             ImGui::TableSetColumnIndex(1);
-            DataBaseMemoryImGuiTextUnformatted(value);
+            ImGuiTextUnformatted(value);
         };
 
         scoped_lock locker {_storageLocker};

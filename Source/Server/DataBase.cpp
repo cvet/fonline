@@ -88,20 +88,6 @@ static auto DataBaseStringDataAt(const string& data, size_t offset) noexcept -> 
     return data_begin.get() + offset;
 }
 
-static void DataBaseImGuiTextUnformatted(string_view text)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        ImGui::TextUnformatted("");
-        return;
-    }
-
-    ptr<const char> text_data = text.data();
-    ptr<const char> text_end = text_data.get() + text.size();
-    ImGui::TextUnformatted(text_data.get(), text_end.get());
-}
-
 DataBase::DataBase() = default;
 
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -742,9 +728,9 @@ void DataBaseImpl::DrawGui()
     const auto info_row = [](string_view key, string_view value) {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        DataBaseImGuiTextUnformatted(key);
+        ImGuiTextUnformatted(key);
         ImGui::TableSetColumnIndex(1);
-        DataBaseImGuiTextUnformatted(value);
+        ImGuiTextUnformatted(value);
     };
 
     size_t pending_count = 0;
