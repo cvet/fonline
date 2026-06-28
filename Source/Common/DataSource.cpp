@@ -68,20 +68,15 @@ static auto GetFileNamesGeneric(const vector<string>& fnames, string_view dir, b
     return result;
 }
 
-static void CleanupFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    unique_arr_ptr<const uint8_t> owned_buf {p.get()};
-    ignore_unused(owned_buf);
-}
-
 static auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
     ptr<const uint8_t> released_buf = std::move(buf).release();
-    return make_unique_del_ptr(released_buf, CleanupFileBuffer);
+    return make_unique_del_ptr(released_buf, [](const uint8_t* raw_buf) noexcept {
+        unique_arr_ptr<const uint8_t> owned_buf {raw_buf};
+        ignore_unused(owned_buf);
+    });
 }
 
 class DummySpace final : public DataSource

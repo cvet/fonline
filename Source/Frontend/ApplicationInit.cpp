@@ -219,7 +219,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         bool auto_find_config = false;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = GetCommandLineArg(args, i);
+            auto arg = args.Get(i);
 
             if (!arg) {
                 continue;
@@ -228,9 +228,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             const string_view arg_view = strex(arg.get()).trim().strv();
 
             if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
-                auto next_arg = GetCommandLineArg(args, i + 1);
+                auto next_arg = args.Get(i + 1);
 
-                if (!next_arg || IsCommandLineOption(next_arg)) {
+                if (!next_arg || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
@@ -269,7 +269,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         vector<string> sub_configs_to_apply;
 
         for (size_t i = 0; i < args.size(); i++) {
-            auto arg = GetCommandLineArg(args, i);
+            auto arg = args.Get(i);
 
             if (!arg) {
                 continue;
@@ -278,9 +278,9 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             const string_view arg_view = strex(arg.get()).trim().strv();
 
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
-                auto next_arg = GetCommandLineArg(args, i + 1);
+                auto next_arg = args.Get(i + 1);
 
-                if (!next_arg || IsCommandLineOption(next_arg)) {
+                if (!next_arg || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 

@@ -39,16 +39,6 @@ FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
 
-static auto FontManagerCStringAt(const string& str, size_t offset) noexcept -> ptr<const char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset <= str.size(), "String offset is past the end of the string");
-
-    ptr<const char> cstr = str.c_str();
-    return cstr.get() + offset;
-}
-
 FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
 {
@@ -347,7 +337,8 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
             utf8_letter_begin++;
 
             size_t letter_len = letter_buf.length() - utf8_letter_begin;
-            auto letter_pos = FontManagerCStringAt(letter_buf, utf8_letter_begin);
+            FO_STRONG_ASSERT(utf8_letter_begin <= letter_buf.size(), "String offset is past the end of the string");
+            ptr<const char> letter_pos = letter_buf.c_str() + utf8_letter_begin;
             auto letter = utf8::Decode(letter_pos, letter_len);
 
             if (!utf8::IsValid(letter)) {

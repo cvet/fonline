@@ -38,8 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-[[nodiscard]] static auto ReadProtoString(DataReader& reader, size_t size) -> string;
-
 ProtoManager::ProtoManager(ptr<EngineMetadata> meta) :
     _meta {meta},
     _migrationRuleName {_meta->Hashes.ToHashedString("Proto")},
@@ -157,14 +155,18 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                 const auto protos_count = reader.Read<uint32_t>();
 
                 const auto type_name_len = reader.Read<uint16_t>();
-                const string type_name_str = ReadProtoString(reader, type_name_len);
+                string type_name_str;
+                type_name_str.resize(type_name_len);
+                reader.ReadStringBytes(type_name_str);
                 const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
                 FO_VERIFY_AND_THROW(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name), "Proto file references unknown entity or fixed type");
 
                 for (uint32_t j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16_t>();
-                    const string proto_name = ReadProtoString(reader, proto_name_len);
+                    string proto_name;
+                    proto_name.resize(proto_name_len);
+                    reader.ReadStringBytes(proto_name);
                     const auto proto_id = _meta->Hashes.ToHashedString(proto_name);
 
                     auto proto = CreateProto(type_name, proto_id, nullptr);
@@ -180,16 +182,6 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
         reader.VerifyEnd();
     }
-}
-
-static auto ReadProtoString(DataReader& reader, size_t size) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string str;
-    str.resize(size);
-    reader.ReadStringBytes(str);
-    return str;
 }
 
 auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>

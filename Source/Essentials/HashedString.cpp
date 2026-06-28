@@ -104,7 +104,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
 
     {
         // Add new entry
-        unique_ptr<hstring::entry> entry = SafeAlloc::MakeUnique<hstring::entry>();
+        auto entry = SafeAlloc::MakeUnique<hstring::entry>();
         entry->Hash = hash_value;
         entry->Str = string(s);
 

@@ -86,15 +86,15 @@ TEST_CASE("Settings")
         char arg3[] = "--FlagOnly";
         const vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
 
-        settings.ApplyCommandLine(argv);
+        settings.ApplyCommandLine(CommandLineArgs {argv});
 
         CHECK(settings.GetCustomSetting("CustomCli") == "123");
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
     }
 
-    SECTION("MakeCommandLineArgsAcceptsEmptyNativeArgv")
+    SECTION("CommandLineArgsMakeAcceptsEmptyNativeArgv")
     {
-        const vector<CommandLineArg> args = MakeCommandLineArgs(0, nullptr);
+        const vector<CommandLineArg> args = CommandLineArgs::Make(0, nullptr);
 
         CHECK(args.empty());
     }

@@ -182,7 +182,7 @@ void CritterHexView::Action(CritterAction action, int32_t action_data, nptr<Enti
 {
     FO_STACK_TRACE_ENTRY();
 
-    _engine->OnCritterAction.Fire(local_call, this, action, action_data, context_item.get());
+    _engine->OnCritterAction.Fire(local_call, this, action, action_data, context_item);
 
     switch (action) {
     case CritterAction::Knockout:
@@ -243,7 +243,7 @@ void CritterHexView::NextAnim()
     _curAnim = std::move(_animSequence.front());
     _animSequence.erase(_animSequence.begin());
 
-    _engine->OnCritterAnimationInit.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem().get());
+    _engine->OnCritterAnimationInit.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem());
 
 #if FO_ENABLE_3D
     if (_model) {
@@ -271,7 +271,7 @@ void CritterHexView::NextAnim()
         _curAnim->FramesDuration = timespan(std::chrono::milliseconds(frames->GetWholeTicks() != 0 ? frames->GetWholeTicks() : 100));
     }
 
-    _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem().get(), false);
+    _engine->OnCritterAnimationProcess.Fire(this, _curAnim->StateAnim, _curAnim->ActionAnim, _curAnim->GetContextItem(), false);
 
 #if FO_ENABLE_3D
     if (_model) {

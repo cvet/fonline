@@ -301,7 +301,7 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    shared_ptr<std::packaged_task<ResultType()>> packaged = SafeAlloc::MakeShared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
+    auto packaged = SafeAlloc::MakeShared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
     auto future = packaged->get_future();
 
     if (mode.use_deferred) {

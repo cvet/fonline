@@ -124,7 +124,7 @@ Direct `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` constructi
 
 ## Strict Flags
 
-`SmartPointers.h` defines strict migration flags. They are enabled by default and can be overridden explicitly when a temporary compatibility build is needed:
+The strict migration flags are mandatorily defined by the build system (`FO_STRICT_*` CMake options in `BuildTools/cmake/stages/Init.cmake`, default `ON`), never through a header fallback; `SmartPointers.h` only gates on them with `#if FO_STRICT_*`. They are enabled by default and can be overridden explicitly when a temporary compatibility build is needed:
 
 - `FO_STRICT_REFCOUNT_EXPLICIT` disables direct raw `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` construction. Use the named factories above.
 - `FO_STRICT_PTR_NONNULL` disables `ptr<T>` default/null construction, `nullptr` assignment/comparison, `operator bool`, `get_pp()`, and `reset()` without a replacement pointer.

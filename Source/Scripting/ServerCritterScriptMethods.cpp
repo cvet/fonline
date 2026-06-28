@@ -616,7 +616,7 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
 
         ValidateEntityAccess(self);
         ValidateEntityAccess(item);
-        self->GetEngine()->OnCritterItemMoved.Fire(self.get(), item.get(), from_slot);
+        self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
     else {
         auto nullable_item_swap = self->GetInvItemBySlot(slot);
@@ -638,13 +638,13 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(ptr<Critter> self, ident_t item
 
             ValidateEntityAccess(self);
             ValidateEntityAccess(item_swap);
-            self->GetEngine()->OnCritterItemMoved.Fire(self.get(), item_swap.get(), slot);
+            self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);
         }
 
         // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
         ValidateEntityAccess(self);
         ValidateEntityAccess(item);
-        self->GetEngine()->OnCritterItemMoved.Fire(self.get(), item.get(), from_slot);
+        self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);
     }
 }
 

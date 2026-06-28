@@ -262,33 +262,33 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppeared, ptr<Critter> /*appearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAppearedDist1, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist1, ptr<Critter> /*appearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAppearedDist2, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist2, ptr<Critter> /*appearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAppearedDist3, Critter* /*appearedCr*/);
+    FO_ENTITY_EVENT(OnCritterAppearedDist3, ptr<Critter> /*appearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterDisappeared, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappeared, ptr<Critter> /*disappearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterDisappearedDist1, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist1, ptr<Critter> /*disappearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterDisappearedDist2, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist2, ptr<Critter> /*disappearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
+    FO_ENTITY_EVENT(OnCritterDisappearedDist3, ptr<Critter> /*disappearedCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, Critter* /*targetCr*/, CritterVisibilityMode /*mode*/);
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<Critter> /*targetCr*/, CritterVisibilityMode /*mode*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, Critter* /*dropper*/);
+    FO_ENTITY_EVENT(OnItemOnMapAppeared, ptr<Item> /*item*/, nptr<Critter> /*dropper*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, Critter* /*picker*/);
+    FO_ENTITY_EVENT(OnItemOnMapDisappeared, ptr<Item> /*item*/, nptr<Critter> /*picker*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
+    FO_ENTITY_EVENT(OnItemOnMapChanged, ptr<Item> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
+    FO_ENTITY_EVENT(OnTalk, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*talkers*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
+    FO_ENTITY_EVENT(OnBarter, ptr<Critter> /*playerCr*/, bool /*begin*/, int32_t /*barterCount*/);
 
 private:
     auto GetMapSpectators() -> vector<refcount_ptr<Player>>;

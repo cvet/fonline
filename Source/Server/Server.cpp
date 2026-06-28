@@ -50,16 +50,7 @@ extern void ServerInitHook(ServerEngine*);
 // (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
 // their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
 // constructs+activates one, Unlock releases+deactivates it.
-thread_local optional<SyncContext> ExternalLockSyncCtx {};
-
-static auto MakeUnloginedPlayerWorkerJobKey(ptr<const Player> player) noexcept -> WorkerJobKey
-{
-    FO_STACK_TRACE_ENTRY();
-
-    static_assert(sizeof(uintptr_t) == sizeof(player.get()));
-
-    return {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(player.get()))};
-}
+thread_local unique_nptr<SyncContext> ExternalLockSyncCtx {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -790,7 +781,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key = MakeUnloginedPlayerWorkerJobKey(unlogined_player);
+    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.get()))};
 
     {
         ScopedSyncContext ctx;
@@ -845,12 +836,12 @@ void ServerEngine::OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_pl
     FO_STACK_TRACE_ENTRY();
 
     if (unlogined_player) {
-        const auto unlogined_key = MakeUnloginedPlayerWorkerJobKey(unlogined_player.as_ptr());
+        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.as_ptr().get()))};
         _workerPool->Cancel(unlogined_key);
     }
 
     if (!unlogined_player || !(player == unlogined_player)) {
-        const auto same_addr_key = MakeUnloginedPlayerWorkerJobKey(player);
+        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(player.get()))};
         _workerPool->Cancel(same_addr_key);
     }
 
@@ -1224,8 +1215,8 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // Now this thread is allowed to touch engine state - stand up a SyncContext to satisfy the
     // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
-    ExternalLockSyncCtx.emplace();
-    ptr<SyncContext> external_lock_sync_ctx = &*ExternalLockSyncCtx;
+    ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
+    ptr<SyncContext> external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Activate();
     return true;
 }
@@ -1235,7 +1226,7 @@ void ServerEngine::Unlock()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
-    ptr<SyncContext> external_lock_sync_ctx = &*ExternalLockSyncCtx;
+    ptr<SyncContext> external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Release();
     external_lock_sync_ctx->Deactivate();
     ExternalLockSyncCtx.reset();
@@ -1983,7 +1974,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         ValidateEntityAccess(player);
         ValidateEntityAccess(player->GetControlledCritter());
-        OnPlayerLogout.Fire(player.get());
+        OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
         player->DetachCritter();
@@ -2168,7 +2159,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
 
     if (!cr_ptr->IsDestroyed()) {
         ValidateEntityAccess(cr_ptr);
-        OnGlobalMapCritterIn.Fire(cr_ptr.get());
+        OnGlobalMapCritterIn.Fire(cr_ptr);
     }
     if (!cr_ptr->IsDestroyed()) {
         EntityMngr.CallInit(cr_ptr, true);
@@ -2249,7 +2240,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr);
-        OnGlobalMapCritterIn.Fire(cr.get());
+        OnGlobalMapCritterIn.Fire(cr);
     }
     if (!cr->IsDestroyed()) {
         EntityMngr.CallInit(cr, false);
@@ -2258,7 +2249,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
     }
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr);
-        OnCritterLoad.Fire(cr.get());
+        OnCritterLoad.Fire(cr);
     }
 
     if (cr->IsDestroyed()) {
@@ -2288,7 +2279,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     cr->MarkAsDestroying();
 
     ValidateEntityAccess(cr);
-    OnCritterUnload.Fire(cr.get());
+    OnCritterUnload.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
@@ -2471,7 +2462,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
         ValidateEntityAccess(player);
         ValidateEntityAccess(cr);
         ValidateEntityAccess(prev_cr);
-        OnPlayerCritterSwitched.Fire(player.get(), cr.get(), prev_cr.get());
+        OnPlayerCritterSwitched.Fire(player, cr, prev_cr);
     }
 }
 
@@ -2633,7 +2624,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     }
 
     ValidateEntityAccess(cr);
-    OnCritterSendInitialInfo.Fire(cr.get());
+    OnCritterSendInitialInfo.Fire(cr);
 
     if (cr->IsDestroyed()) {
         return;
@@ -3268,7 +3259,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player.get(), cr.get(), corrected_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3442,7 +3433,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player.get(), cr.get(), zero_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3532,7 +3523,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult dir_result = OnPlayerDirCritter.Fire(player.get(), cr.get(), checked_dir);
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -4219,7 +4210,7 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
             }
 
             ValidateEntityAccess(cr);
-            OnCritterMoved.Fire(cr.get(), old_hex);
+            OnCritterMoved.Fire(cr, old_hex);
 
             if (!validate_moving(target_hex)) {
                 return;
@@ -4377,7 +4368,7 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult dir_result = OnPlayerDirCritter.Fire(player.get(), cr.get(), checked_dir);
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
 
     if (player->GetConnection()->IsHardDisconnected() || player->GetConnection()->IsGracefulDisconnected()) {
         return false;
@@ -4517,7 +4508,7 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     }
 
     ValidateEntityAccess(cr);
-    OnCritterMoved.Fire(cr.get(), old_hex);
+    OnCritterMoved.Fire(cr, old_hex);
 
     if (!validate_moved_critter()) {
         return false;
@@ -4565,7 +4556,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     cr->SendAndBroadcast(initiator, [cr](ptr<Player> p) { p->Send_Moving(cr); });
 
     ValidateEntityAccess(cr);
-    OnCritterStartMoving.Fire(cr.get(), was_moving);
+    OnCritterStartMoving.Fire(cr, was_moving);
 }
 
 auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
@@ -4652,7 +4643,7 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     }
 
     ValidateEntityAccess(cr);
-    OnCritterStopMoving.Fire(cr.get());
+    OnCritterStopMoving.Fire(cr);
 }
 
 void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
@@ -4684,7 +4675,7 @@ void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
     cr->SendAndBroadcast(nullptr, [cr](ptr<Player> p) { p->Send_MovingSpeed(cr); });
 
     ValidateEntityAccess(cr);
-    OnCritterStartMoving.Fire(cr.get(), true);
+    OnCritterStartMoving.Fire(cr, true);
 }
 
 void ServerEngine::Process_RemoteCall(ptr<Player> player)

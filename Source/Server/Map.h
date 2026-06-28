@@ -257,9 +257,9 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckLook, Critter* /*cr*/, Critter* /*target*/);
+    FO_ENTITY_EVENT(OnCheckLook, ptr<Critter> /*cr*/, ptr<Critter> /*target*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCheckTrapLook, Critter* /*cr*/, Item* /*item*/);
+    FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
 private:
     struct Field
@@ -277,11 +277,11 @@ private:
         bool ManualBlockFull {};
     };
 
-    [[nodiscard]] static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
+    static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
     void RecacheHexFlags(ptr<Field> field);
-    [[nodiscard]] auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
+    auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
 
     ptr<const ProtoMap> _protoMap;
     ptr<StaticMap> _staticMap;

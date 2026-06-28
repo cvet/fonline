@@ -68,26 +68,6 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
 
-static auto DataBaseStringDataAt(string& data, size_t offset) noexcept -> ptr<char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < data.size(), "String offset is out of bounds");
-
-    ptr<char> data_begin = data.data();
-    return data_begin.get() + offset;
-}
-
-static auto DataBaseStringDataAt(const string& data, size_t offset) noexcept -> ptr<const char>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < data.size(), "String offset is out of bounds");
-
-    ptr<const char> data_begin = data.data();
-    return data_begin.get() + offset;
-}
-
 DataBase::DataBase() = default;
 
 DataBase::DataBase(DataBase&&) noexcept = default;
@@ -1185,7 +1165,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 
     while (offset < content.size()) {
         const auto remaining = content.size() - offset;
-        auto read_pos = DataBaseStringDataAt(content, offset);
+        ptr<char> read_pos = content.data() + offset;
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
@@ -1331,7 +1311,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 
     while (offset < normalized_content.size()) {
         const auto remaining = normalized_content.size() - offset;
-        auto write_pos = DataBaseStringDataAt(normalized_content, offset);
+        ptr<const char> write_pos = normalized_content.data() + offset;
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));

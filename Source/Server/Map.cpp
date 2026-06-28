@@ -370,7 +370,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
             ValidateEntityAccess(cr);
             ValidateEntityAccess(item);
             ValidateEntityAccess(dropper);
-            cr->OnItemOnMapAppeared.Fire(item.get(), dropper.get());
+            cr->OnItemOnMapAppeared.Fire(item, dropper);
 
             if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
                 return;
@@ -501,7 +501,7 @@ void Map::RemoveItem(ident_t item_id)
             cr->Send_RemoveItemFromMap(item);
             ValidateEntityAccess(cr);
             ValidateEntityAccess(item);
-            cr->OnItemOnMapDisappeared.Fire(item.get(), nullptr);
+            cr->OnItemOnMapDisappeared.Fire(item, nullptr);
 
             if (IsDestroyed() || item->IsDestroyed()) {
                 return;
@@ -558,7 +558,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
                 cr->Send_Property(type, prop, entity);
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(nullable_item);
-                cr->OnItemOnMapChanged.Fire(item.get());
+                cr->OnItemOnMapChanged.Fire(item);
 
                 if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
                     return;
@@ -661,7 +661,7 @@ void Map::ChangeViewItem(ptr<Item> item)
                 cr->Send_RemoveItemFromMap(item);
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(item);
-                cr->OnItemOnMapDisappeared.Fire(item.get(), nullptr);
+                cr->OnItemOnMapDisappeared.Fire(item, nullptr);
 
                 if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
                     return;
@@ -673,7 +673,7 @@ void Map::ChangeViewItem(ptr<Item> item)
             cr->Send_AddItemOnMap(item);
             ValidateEntityAccess(cr);
             ValidateEntityAccess(item);
-            cr->OnItemOnMapAppeared.Fire(item.get(), nullptr);
+            cr->OnItemOnMapAppeared.Fire(item, nullptr);
 
             if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {
                 return;
@@ -1229,7 +1229,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 
             ValidateEntityAccess(item);
             ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(item.get(), cr.get(), false, dir);
+            _engine->OnStaticItemWalk.Fire(item, cr, false, dir);
 
             if (is_trigger_context_changed()) {
                 return;
@@ -1249,7 +1249,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 
             ValidateEntityAccess(item);
             ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(item.get(), cr.get(), true, dir);
+            _engine->OnStaticItemWalk.Fire(item, cr, true, dir);
 
             if (is_trigger_context_changed()) {
                 return;
@@ -1265,7 +1265,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 
             ValidateEntityAccess(item);
             ValidateEntityAccess(cr);
-            item->OnCritterWalk.Fire(cr.get(), false, dir);
+            item->OnCritterWalk.Fire(cr, false, dir);
 
             if (is_trigger_context_changed()) {
                 return;
@@ -1281,7 +1281,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
 
             ValidateEntityAccess(item);
             ValidateEntityAccess(cr);
-            item->OnCritterWalk.Fire(cr.get(), true, dir);
+            item->OnCritterWalk.Fire(cr, true, dir);
 
             if (is_trigger_context_changed()) {
                 return;

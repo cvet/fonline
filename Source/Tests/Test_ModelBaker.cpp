@@ -19,19 +19,11 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 
-static void WriteTestModelString(DataWriter& writer, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(value.length()));
-    writer.WriteStringBytes(value);
-}
-
 static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names)
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteTestModelString(writer, name);
+    writer.WriteString(name);
 
     const mat44 matrix {1.0f};
     writer.Write<mat44>(matrix);
@@ -41,11 +33,11 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
     if (attached_mesh) {
         writer.Write<uint32_t>(uint32_t {0}); // Vertices
         writer.Write<uint32_t>(uint32_t {0}); // Indices
-        WriteTestModelString(writer, diffuse_texture);
+        writer.WriteString(diffuse_texture);
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bones
         for (string_view skin_bone_name : skin_bone_names) {
-            WriteTestModelString(writer, skin_bone_name);
+            writer.WriteString(skin_bone_name);
         }
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bone offsets
@@ -68,14 +60,14 @@ static auto MakeTestBakedModel(string_view file_name, string_view root_bone, boo
     writer.Write<uint32_t>(numeric_cast<uint32_t>(anim_names.size()));
 
     for (string_view anim_name : anim_names) {
-        WriteTestModelString(writer, file_name);
-        WriteTestModelString(writer, anim_name);
+        writer.WriteString(file_name);
+        writer.WriteString(anim_name);
         writer.Write<float32_t>(1.0f);
         writer.Write<uint32_t>(uint32_t {0}); // Bones hierarchy
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(animation_output_bones.size())); // Bone outputs
         for (string_view bone_name : animation_output_bones) {
-            WriteTestModelString(writer, bone_name);
+            writer.WriteString(bone_name);
             writer.Write<uint32_t>(uint32_t {0}); // Position times
             writer.Write<uint32_t>(uint32_t {0}); // Rotation times
             writer.Write<uint32_t>(uint32_t {0}); // Scale times

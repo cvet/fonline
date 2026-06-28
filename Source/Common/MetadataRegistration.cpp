@@ -46,7 +46,6 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
-[[nodiscard]] static auto ReadMetadataStringView(DataReader& reader, size_t size) -> string_view;
 
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
@@ -61,7 +60,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
         ignore_unused(i);
 
         const auto section_name_size = reader.Read<uint16_t>();
-        const string_view section_name = ReadMetadataStringView(reader, section_name_size);
+        const string_view section_name = reader.ReadStringView(section_name_size);
 
         const auto entries_count = reader.Read<uint32_t>();
         vector<vector<string_view>> entries;
@@ -77,7 +76,7 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
                 ignore_unused(k);
 
                 const auto token_size = reader.Read<uint16_t>();
-                const string_view token = ReadMetadataStringView(reader, token_size);
+                const string_view token = reader.ReadStringView(token_size);
 
                 cur_entry.emplace_back(token);
             }
@@ -99,21 +98,6 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
     RegisterDynamicMetadataRemoteCalls(meta, engine_data["RemoteCall"]);
     RegisterDynamicMetadataSettings(meta, engine_data["Setting"]);
     RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
-}
-
-static auto ReadMetadataStringView(DataReader& reader, size_t size) -> string_view
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const_span<uint8_t> bytes = reader.ReadBytes(size);
-
-    if (bytes.empty()) {
-        return {};
-    }
-
-    ptr<const uint8_t> data = bytes.data();
-    ptr<const char> chars = data.reinterpret_as<const char>();
-    return {chars.get(), bytes.size()};
 }
 
 static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)

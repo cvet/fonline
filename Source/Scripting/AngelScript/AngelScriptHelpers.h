@@ -94,23 +94,6 @@ void CheckScriptEntityNonNull(nptr<const Entity> entity);
 void CheckScriptEntityNonDestroyed(nptr<const Entity> nullable_entity);
 void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> nullable_entity);
 
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(ptr<const T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return const_cast<T*>(std::addressof(*value));
-}
-
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(nptr<const T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(value, "Script value pointer is null");
-    return ScriptMutablePtr(value.as_ptr());
-}
-
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string;
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string;
 auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable = false) -> string;

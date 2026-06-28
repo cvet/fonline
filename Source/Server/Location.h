@@ -81,9 +81,9 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapAdded, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapAdded, ptr<Map> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapRemoved, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapRemoved, ptr<Map> /*map*/);
 
 private:
     vector<refcount_ptr<Map>> _locMaps {};

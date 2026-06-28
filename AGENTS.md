@@ -51,6 +51,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 
 - Prefer existing engine idioms over new local abstractions.
 - Prefer `static` free functions for file-local helpers instead of unnamed namespaces.
+- Gate conditional compilation on our own (`FO_*` / project) macros with `#if FOO` / `#if !FOO`, never `#ifdef` / `#ifndef`: every such macro is mandatorily `#define`d to `0` or `1`, so its definedness must never carry meaning — only its value does.
 - Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
 - Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.
 - For C++ string/text construction and parsing, prefer existing engine helpers such as `strex` and `strvex` when they make formatting or token handling clearer. If the helper surface is missing a repeated string-formatting operation, add a reusable helper in the appropriate engine utility layer instead of open-coding ad hoc parsing/formatting at call sites.

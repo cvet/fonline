@@ -34,7 +34,6 @@
 #include "ExceptionHandling.h"
 #include "BaseLogging.h"
 #include "GlobalData.h"
-#include "SmartPointers.h"
 #include "StringUtils.h"
 
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER

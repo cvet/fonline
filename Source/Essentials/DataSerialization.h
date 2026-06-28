@@ -35,10 +35,11 @@
 
 #include "BasicCore.h"
 #include "ExceptionHandling.h"
+#include "SafeArithmetics.h"
 
 FO_BEGIN_NAMESPACE
 
-// Data serialization helpers
+// Data serialization helpers.
 FO_DECLARE_EXCEPTION(DataReadingException);
 
 class DataReader
@@ -78,6 +79,44 @@ public:
         }
     }
 
+    // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer.
+    auto ReadStringView(size_t size) -> string_view
+    {
+        const_span<uint8_t> bytes = TakeBytes(size);
+
+        if (bytes.empty()) {
+            return {};
+        }
+
+        ptr<const uint8_t> data = ReadBytesPtr(bytes);
+        ptr<const char> chars = data.reinterpret_as<const char>();
+        return {chars.get(), bytes.size()};
+    }
+
+    // Reads a self-describing string written with WriteString (uint32 length prefix + bytes).
+    auto ReadString() -> string
+    {
+        const auto len = Read<uint32_t>();
+        string value;
+        value.resize(len);
+        ReadStringBytes(value);
+        return value;
+    }
+
+    // Reads a self-describing vector of strings written with WriteStringVector (uint32 count + each element via ReadString).
+    auto ReadStringVector() -> vector<string>
+    {
+        const auto count = Read<uint32_t>();
+        vector<string> values;
+        values.reserve(count);
+
+        for (uint32_t i = 0; i < count; i++) {
+            values.emplace_back(ReadString());
+        }
+
+        return values;
+    }
+
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     void ReadObjectArray(span<T> out)
@@ -89,6 +128,20 @@ public:
             ptr<uint8_t> bytes = target.reinterpret_as<uint8_t>();
             ReadBytes({bytes.get(), out.size() * sizeof(T)});
         }
+    }
+
+    // Reads a self-describing vector of trivially-copyable objects written with WriteSizedObjectVector (uint32 count + elements).
+    template<typename T>
+        requires(std::is_standard_layout_v<T>)
+    auto ReadSizedObjectVector() -> vector<T>
+    {
+        static_assert(std::is_trivially_copyable_v<T>);
+
+        const auto count = Read<uint32_t>();
+        vector<T> values;
+        values.resize(count);
+        ReadObjectArray(span<T> {values});
+        return values;
     }
 
     template<typename T>
@@ -349,6 +402,13 @@ public:
         }
     }
 
+    // Writes a self-describing string (uint32 length prefix + bytes); read back with DataReader::ReadString.
+    void WriteString(string_view data)
+    {
+        Write<uint32_t>(numeric_cast<uint32_t>(data.length()));
+        WriteStringBytes(data);
+    }
+
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     void WriteObjectArray(const_span<T> data)
@@ -380,12 +440,31 @@ public:
         }
     }
 
+    // Writes the elements of a vector without a length prefix; the reader must already know the count.
     template<typename T>
     void WriteObjectVector(const vector<T>& values)
     {
         if (!values.empty()) {
             ptr<const T> values_data = values.data();
             WriteObjectArray(const_span<T> {values_data.get(), values.size()});
+        }
+    }
+
+    // Writes a self-describing vector of trivially-copyable objects (uint32 count + elements); read back with DataReader::ReadObjectVector.
+    template<typename T>
+    void WriteSizedObjectVector(const vector<T>& values)
+    {
+        Write<uint32_t>(numeric_cast<uint32_t>(values.size()));
+        WriteObjectVector(values);
+    }
+
+    // Writes a self-describing vector of strings (uint32 count + each element via WriteString); read back with DataReader::ReadStringVector.
+    void WriteStringVector(const vector<string>& values)
+    {
+        Write<uint32_t>(numeric_cast<uint32_t>(values.size()));
+
+        for (const string& value : values) {
+            WriteString(value);
         }
     }
 

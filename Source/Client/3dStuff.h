@@ -445,9 +445,6 @@ private:
     [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
-    [[nodiscard]] auto ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>;
-    [[nodiscard]] auto ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>;
-    [[nodiscard]] auto ReadBakedModelDescriptionString(DataReader& reader) const -> string;
 
     [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
     [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;

@@ -32,7 +32,6 @@
 //
 
 #include "Platform.h"
-#include "SmartPointers.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -79,6 +78,7 @@ static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
     ptr<const char> proc_name = name.c_str();
 
     const auto hmod = ::GetModuleHandleA(module_name.get());
+
     if (hmod != nullptr) {
         FARPROC proc = ::GetProcAddress(hmod, proc_name.get());
         return reinterpret_cast<T>(proc); // NOLINT(clang-diagnostic-cast-function-type-strict)
@@ -109,30 +109,6 @@ static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& fun
     }
 
     return reinterpret_cast<void*>(proc);
-}
-#endif
-
-template<typename T>
-static auto ObjectOutPtr(T& value) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return &value;
-}
-
-#if FO_LINUX || FO_ANDROID
-static auto ParseUInt64(string_view text, uint64_t& value) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (text.empty()) {
-        return false;
-    }
-
-    ptr<const char> text_begin = text.data();
-    ptr<const char> text_end = text_begin.get() + text.size();
-    const auto result = std::from_chars(text_begin.get(), text_end.get(), value);
-    return result.ec == std::errc {} && text_end == result.ptr;
 }
 #endif
 
@@ -294,8 +270,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS pmc {};
-    auto pmc_data = ObjectOutPtr(pmc);
-    if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_data.get(), sizeof(pmc)) != 0) {
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), &pmc, sizeof(pmc)) != 0) {
         return static_cast<size_t>(pmc.WorkingSetSize);
     }
     return 0;
@@ -308,9 +283,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
     }
     unsigned long size_pages = 0;
     unsigned long rss_pages = 0;
-    auto size_pages_data = ObjectOutPtr(size_pages);
-    auto rss_pages_data = ObjectOutPtr(rss_pages);
-    const int matched = std::fscanf(file.get(), "%lu %lu", size_pages_data.get(), rss_pages_data.get());
+    const int matched = std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages);
     std::fclose(file.get());
     if (matched != 2) {
         return 0;
@@ -324,10 +297,8 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    auto info_data = ObjectOutPtr(info);
-    ptr<integer_t> task_info_data = info_data.reinterpret_as<integer_t>();
-    auto count_data = ObjectOutPtr(count);
-    if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), count_data.get()) == KERN_SUCCESS) {
+    ptr<integer_t> task_info_data = ptr<decltype(info)>{&info}.reinterpret_as<integer_t>();
+    if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
     }
     return 0;
@@ -343,8 +314,8 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS_EX pmc {};
-    auto pmc_data = ObjectOutPtr(pmc);
-    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = pmc_data.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)>{&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+
     if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
         return pmc.PrivateUsage;
     }
@@ -360,8 +331,7 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
     size_t result = 0;
     while (std::fgets(line, sizeof(line), file.get()) != nullptr) {
         size_t value_kib = 0;
-        auto value_kib_data = ObjectOutPtr(value_kib);
-        if (std::sscanf(line, "VmData:%zu kB", value_kib_data.get()) == 1) {
+        if (std::sscanf(line, "VmData:%zu kB", &value_kib) == 1) {
             result = value_kib * 1024;
             break;
         }
@@ -403,11 +373,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     FILETIME kernel_time {};
     FILETIME user_time {};
 
-    auto creation_time_data = ObjectOutPtr(creation_time);
-    auto exit_time_data = ObjectOutPtr(exit_time);
-    auto kernel_time_data = ObjectOutPtr(kernel_time);
-    auto user_time_data = ObjectOutPtr(user_time);
-    if (::GetProcessTimes(::GetCurrentProcess(), creation_time_data.get(), exit_time_data.get(), kernel_time_data.get(), user_time_data.get()) != 0) {
+    if (::GetProcessTimes(::GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time) != 0) {
         // FILETIME process times are in 100 ns units.
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
@@ -430,8 +396,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         const ULONG buffer_size = static_cast<ULONG>(processor_info.size() * sizeof(WindowsSystemProcessorPerformanceInformation));
         ptr<WindowsSystemProcessorPerformanceInformation> processor_info_data = processor_info.data();
         ptr<void> processor_info_buffer = cast_to_void(processor_info_data.get());
-        auto returned_length_data = ObjectOutPtr(returned_length);
-        const LONG status = nt_query_system_information(SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS, processor_info_buffer.get(), buffer_size, returned_length_data.get());
+        const LONG status = nt_query_system_information(SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS, processor_info_buffer.get(), buffer_size, &returned_length);
 
         if (status >= 0) {
             const size_t actual_count = returned_length != 0 ? std::min(processor_info.size(), static_cast<size_t>(returned_length / sizeof(WindowsSystemProcessorPerformanceInformation))) : processor_info.size();
@@ -453,10 +418,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         FILETIME system_kernel_time {};
         FILETIME system_user_time {};
 
-        auto idle_time_data = ObjectOutPtr(idle_time);
-        auto system_kernel_time_data = ObjectOutPtr(system_kernel_time);
-        auto system_user_time_data = ObjectOutPtr(system_user_time);
-        if (::GetSystemTimes(idle_time_data.get(), system_kernel_time_data.get(), system_user_time_data.get()) != 0) {
+        if (::GetSystemTimes(&idle_time, &system_kernel_time, &system_user_time) != 0) {
             result.Cores.emplace_back(CpuUsageCoreSnapshot {
                 .IdleTime = file_time_to_uint64(idle_time),
                 .TotalTime = file_time_to_uint64(system_kernel_time) + file_time_to_uint64(system_user_time),
@@ -471,6 +433,17 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     constexpr size_t IDLE_FIELD_INDEX = 3;
     constexpr size_t IOWAIT_FIELD_INDEX = 4;
     constexpr size_t TOTAL_TIME_FIELD_COUNT = 8; // user..steal; guest/guest_nice are folded into user/nice
+
+    const auto parse_uint64 = [](string_view text, uint64_t& value) noexcept -> bool {
+        if (text.empty()) {
+            return false;
+        }
+
+        ptr<const char> text_begin = text.data();
+        ptr<const char> text_end = text_begin.get() + text.size();
+        const auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
+        return parse_result.ec == std::errc {} && text_end == parse_result.ptr;
+    };
 
     std::ifstream stat_file {"/proc/stat"};
 
@@ -502,7 +475,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
 
                 uint64_t value = 0;
 
-                if (!ParseUInt64(field, value)) {
+                if (!parse_uint64(field, value)) {
                     parse_failed = true;
                     break;
                 }
@@ -529,7 +502,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         }
     }
 
-    result.ProcessTimeNs = []() noexcept -> uint64_t {
+    result.ProcessTimeNs = [&parse_uint64]() noexcept -> uint64_t {
         std::ifstream file {"/proc/self/stat"};
 
         if (!file) {
@@ -556,11 +529,11 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         uint64_t user_ticks = 0;
         uint64_t system_ticks = 0;
 
-        if (!ParseUInt64(fields[11], user_ticks)) {
+        if (!parse_uint64(fields[11], user_ticks)) {
             return 0;
         }
 
-        if (!ParseUInt64(fields[12], system_ticks)) {
+        if (!parse_uint64(fields[12], system_ticks)) {
             return 0;
         }
 
@@ -578,10 +551,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     processor_info_array_t raw_processor_info {};
     mach_msg_type_number_t processor_info_count = 0;
 
-    auto processor_count_data = ObjectOutPtr(processor_count);
-    auto processor_info_data = ObjectOutPtr(raw_processor_info);
-    auto processor_info_count_data = ObjectOutPtr(processor_info_count);
-    if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, processor_count_data.get(), processor_info_data.get(), processor_info_count_data.get()) == KERN_SUCCESS) {
+    if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "processor_info");
         ptr<const integer_t> processor_info = raw_processor_info;
         ptr<const processor_cpu_load_info_data_t> load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
@@ -608,11 +578,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};
         mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-        auto info_data = ObjectOutPtr(info);
-        ptr<integer_t> task_info_data = info_data.reinterpret_as<integer_t>();
-        auto count_data = ObjectOutPtr(count);
+        ptr<integer_t> task_info_data = ptr<decltype(info)>{&info}.reinterpret_as<integer_t>();
 
-        if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), count_data.get()) != KERN_SUCCESS) {
+        if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
             return 0;
         }
 

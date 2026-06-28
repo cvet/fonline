@@ -38,13 +38,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto GetSparkSystemPtr(SPK::Ref<SPK::System>& system) noexcept -> nptr<SPK::System>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return system.get();
-}
-
 struct ParticleManager::Impl
 {
     unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
@@ -170,7 +163,7 @@ auto ParticleSystem::GetBaseSystem() -> nptr<SPK::System>
     FO_STACK_TRACE_ENTRY();
 
     auto impl = _impl.as_ptr();
-    return GetSparkSystemPtr(impl->BaseSystem);
+    return impl->BaseSystem.get();
 }
 
 void ParticleSystem::SetBaseSystem(nptr<SPK::System> system)

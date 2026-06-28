@@ -42,25 +42,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32_t>>& funcs, ScriptFunc<void> func, int32_t priority)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    funcs.emplace_back(std::move(func), priority);
-    std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
-}
-
-static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, string_view error)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto& func : funcs | std::views::keys) {
-        if (!func.Call()) {
-            throw ScriptSystemException(error);
-        }
-    }
-}
-
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
     _registrator {registrator},
     _props {std::in_place, _registrator}
@@ -320,7 +301,8 @@ void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    AddModuleFunc(_initFunc, std::move(func), priority);
+    _initFunc.emplace_back(std::move(func), priority);
+    std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
 auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
@@ -431,7 +413,13 @@ void ScriptSystem::InitModules()
     FO_STACK_TRACE_ENTRY();
 
     UnfreezeGlobalVars();
-    RunModuleFuncs(_initFunc, "Module initialization failed");
+
+    for (auto& func : _initFunc | std::views::keys) {
+        if (!func.Call()) {
+            throw ScriptSystemException("Module initialization failed");
+        }
+    }
+
     FreezeGlobalVars();
 }
 

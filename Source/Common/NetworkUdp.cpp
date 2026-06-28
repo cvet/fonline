@@ -39,67 +39,6 @@ constexpr uint32_t UDP_PACKET_MAGIC = 0x31445055;
 constexpr uint16_t UDP_PACKET_VERSION = 1;
 constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint16_t);
 
-template<typename T>
-static auto ScalarBytes(const T& value) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const T> value_ptr = &value;
-    return value_ptr.reinterpret_as<const uint8_t>();
-}
-
-template<typename T>
-static auto MutableScalarBytes(T& value) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<T> value_ptr = &value;
-    return value_ptr.reinterpret_as<uint8_t>();
-}
-
-static auto UdpDataAt(const_span<uint8_t> data, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
-
-    ptr<const uint8_t> data_ptr = data.data();
-    ptr<const uint8_t> data_pos = data_ptr.get() + pos;
-    return data_pos;
-}
-
-template<typename T>
-static void AppendScalar(vector<uint8_t>& data, T value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    array<uint8_t, sizeof(T)> value_bytes {};
-    ptr<uint8_t> target = value_bytes.data();
-    auto source = ScalarBytes(value);
-    MemCopy(target.get(), source.get(), sizeof(T));
-    data.insert(data.end(), value_bytes.begin(), value_bytes.end());
-}
-
-template<typename T>
-static auto ReadScalar(const_span<uint8_t> data, size_t& pos, T& value) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    if (pos + sizeof(T) > data.size()) {
-        return false;
-    }
-
-    auto target = MutableScalarBytes(value);
-    auto source = UdpDataAt(data, pos);
-    MemCopy(target.get(), source.get(), sizeof(T));
-    pos += sizeof(T);
-    return true;
-}
-
 static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<uint8_t> payload) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -107,17 +46,26 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
     vector<uint8_t> data;
     data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
 
-    AppendScalar<uint32_t>(data, UDP_PACKET_MAGIC);
-    AppendScalar<uint16_t>(data, UDP_PACKET_VERSION);
-    AppendScalar<uint8_t>(data, static_cast<uint8_t>(type));
-    AppendScalar<uint8_t>(data, payload.empty() ? 0U : 1U);
-    AppendScalar<uint32_t>(data, session_id);
-    AppendScalar<uint32_t>(data, sequence);
-    AppendScalar<uint32_t>(data, ack_sequence);
-    AppendScalar<uint32_t>(data, ack_bits);
-    AppendScalar<uint32_t>(data, value);
-    AppendScalar<uint16_t>(data, numeric_cast<uint16_t>(payload.size()));
-    AppendScalar<uint16_t>(data, 0U);
+    const auto append_scalar = [&data](auto scalar) {
+        static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
+        array<uint8_t, sizeof(scalar)> scalar_bytes {};
+        ptr<uint8_t> target = scalar_bytes.data();
+        auto source = ptr<const decltype(scalar)> {&scalar}.reinterpret_as<const uint8_t>();
+        MemCopy(target.get(), source.get(), sizeof(scalar));
+        data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
+    };
+
+    append_scalar(UDP_PACKET_MAGIC);
+    append_scalar(UDP_PACKET_VERSION);
+    append_scalar(static_cast<uint8_t>(type));
+    append_scalar(static_cast<uint8_t>(payload.empty() ? 0U : 1U));
+    append_scalar(session_id);
+    append_scalar(sequence);
+    append_scalar(ack_sequence);
+    append_scalar(ack_bits);
+    append_scalar(value);
+    append_scalar(numeric_cast<uint16_t>(payload.size()));
+    append_scalar(static_cast<uint16_t>(0U));
     data.insert(data.end(), payload.begin(), payload.end());
 
     return data;
@@ -428,15 +376,31 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     uint16_t payload_size = 0;
     uint16_t reserved = 0;
 
-    if (!ReadScalar<uint32_t>(data, pos, magic) || magic != UDP_PACKET_MAGIC) {
+    const auto read_scalar = [&data, &pos](auto& scalar) {
+        using ScalarType = std::remove_reference_t<decltype(scalar)>;
+        static_assert(std::is_trivially_copyable_v<ScalarType>);
+
+        if (pos + sizeof(ScalarType) > data.size()) {
+            return false;
+        }
+
+        ptr<ScalarType> scalar_ptr = &scalar;
+        auto target = scalar_ptr.reinterpret_as<uint8_t>();
+        ptr<const uint8_t> source = data.data() + pos;
+        MemCopy(target.get(), source.get(), sizeof(ScalarType));
+        pos += sizeof(ScalarType);
+        return true;
+    };
+
+    if (!read_scalar(magic) || magic != UDP_PACKET_MAGIC) {
         return false;
     }
 
-    if (!ReadScalar<uint16_t>(data, pos, version) || version != UDP_PACKET_VERSION) {
+    if (!read_scalar(version) || version != UDP_PACKET_VERSION) {
         return false;
     }
 
-    if (!ReadScalar<uint8_t>(data, pos, type) || !ReadScalar<uint8_t>(data, pos, flags)) {
+    if (!read_scalar(type) || !read_scalar(flags)) {
         return false;
     }
 
@@ -451,7 +415,9 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         return false;
     }
 
-    if (!ReadScalar<uint32_t>(data, pos, packet.SessionId) || !ReadScalar<uint32_t>(data, pos, packet.Sequence) || !ReadScalar<uint32_t>(data, pos, packet.AckSequence) || !ReadScalar<uint32_t>(data, pos, packet.AckBits) || !ReadScalar<uint32_t>(data, pos, packet.Value) || !ReadScalar<uint16_t>(data, pos, payload_size) || !ReadScalar<uint16_t>(data, pos, reserved)) {
+    if (!read_scalar(packet.SessionId) || !read_scalar(packet.Sequence) || //
+        !read_scalar(packet.AckSequence) || !read_scalar(packet.AckBits) || //
+        !read_scalar(packet.Value) || !read_scalar(payload_size) || !read_scalar(reserved)) {
         return false;
     }
 
@@ -473,7 +439,8 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         packet.Payload = {};
     }
     else {
-        auto payload_begin = UdpDataAt(data, pos);
+        FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
+        ptr<const uint8_t> payload_begin = data.data() + pos;
         packet.Payload = {payload_begin.get(), payload_size};
     }
 

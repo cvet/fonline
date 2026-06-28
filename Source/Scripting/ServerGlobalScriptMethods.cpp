@@ -1648,7 +1648,6 @@ FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
 FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)
 {
     auto ctx = RequireCurrentSyncContext(server);
-
     vector<ptr<ServerEntity>> held_entities = ctx->GetHeldEntities();
     return MakeScriptHandleVector<ServerEntity>(held_entities);
 }

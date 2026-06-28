@@ -224,7 +224,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
 
     // Finish events
     ValidateEntityAccess(item);
-    _engine->OnItemFinish.Fire(item.get());
+    _engine->OnItemFinish.Fire(item);
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     // Tear off from environment

@@ -11,29 +11,6 @@ FO_DISABLE_WARNINGS_POP()
 FO_BEGIN_NAMESPACE
 
 #if FO_HAVE_MONGO
-static void DestroyBson(nptr<bson_t> doc) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (doc) {
-        bson_destroy(doc.get());
-    }
-}
-
-static void CleanupOwnedBson(ptr<bson_t> doc) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DestroyBson(doc);
-}
-
-static auto MakeOwnedBson(ptr<bson_t> doc) -> unique_del_ptr<bson_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return make_unique_del_ptr(doc, CleanupOwnedBson);
-}
-
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -126,7 +103,7 @@ public:
 
         nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
         FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
-        auto ping = MakeOwnedBson(nullable_ping.as_ptr());
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
 
@@ -206,7 +183,7 @@ protected:
 
         nptr<bson_t> nullable_opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
         FO_VERIFY_AND_THROW(nullable_opts, "Failed to build query options document");
-        auto opts = MakeOwnedBson(nullable_opts.as_ptr());
+        auto opts = make_unique_del_ptr(nullable_opts.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
         ptr<const bson_t> opts_ptr = opts.get();
         nptr<mongoc_cursor_t> cursor = mongoc_collection_find_with_opts(collection.get(), &filter, opts_ptr.get(), nullptr);
 
@@ -412,7 +389,7 @@ protected:
 
         nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
         FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
-        auto ping = MakeOwnedBson(nullable_ping.as_ptr());
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
         bson_error_t error;

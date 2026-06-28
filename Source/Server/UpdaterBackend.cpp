@@ -41,35 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto UpdateVectorBytesAt(const vector<uint8_t>& data, size_t offset) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < data.size(), "Byte offset is past the end of the update data buffer");
-
-    ptr<const uint8_t> data_begin = data.data();
-    return data_begin.get() + offset;
-}
-
-static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto file = fs_open_ifstream(disk_path);
-
-    if (!file) {
-        return false;
-    }
-
-    file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
-
-    if (!file) {
-        return false;
-    }
-
-    return stream_read_exact(file, data);
-}
-
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -244,7 +215,25 @@ void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t
     if (update_portion_size != 0 && !update_file.InMemory) {
         disk_update_data.resize(update_portion_size);
 
-        if (!ReadUpdateFilePortion(update_file.DiskPath, start_offset, disk_update_data)) {
+        const auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
+            FO_STACK_TRACE_ENTRY();
+
+            auto file = fs_open_ifstream(disk_path);
+
+            if (!file) {
+                return false;
+            }
+
+            file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
+
+            if (!file) {
+                return false;
+            }
+
+            return stream_read_exact(file, data);
+        };
+
+        if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
             WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
             connection->HardDisconnect();
             return;
@@ -258,7 +247,8 @@ void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
             const size_t offset = numeric_cast<size_t>(start_offset);
-            auto update_data = UpdateVectorBytesAt(update_file.MemoryData, offset);
+            FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
+            ptr<const uint8_t> update_data = update_file.MemoryData.data() + offset;
             out_buf->Push(update_data, update_portion_size);
         }
         else {

@@ -41,20 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto AsioReceiveSpan(std::vector<uint8_t>& data, size_t bytes) noexcept -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (bytes == 0) {
-        return {};
-    }
-
-    FO_STRONG_ASSERT(bytes <= data.size(), "Received byte count exceeds the receive buffer size");
-
-    ptr<const uint8_t> data_ptr = data.data();
-    return {data_ptr.get(), bytes};
-}
-
 class NetworkServerConnection_Asio final : public NetworkServerConnection
 {
 public:
@@ -183,7 +169,8 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
     FO_STACK_TRACE_ENTRY();
 
     if (!error) {
-        const_span<uint8_t> received_data = AsioReceiveSpan(_inBufData, bytes);
+        FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
+        const_span<uint8_t> received_data {_inBufData.data(), bytes};
         ReceiveCallback(received_data);
         NextAsyncRead();
     }

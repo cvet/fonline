@@ -924,26 +924,6 @@ static auto ResolveInstructionFunction(ptr<const AngelScript::asDWORD> instructi
     }
 }
 
-static void SerializeString(DataWriter& writer, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(value.length()));
-    writer.WriteStringBytes(value);
-}
-
-static auto DeserializeString(DataReader& reader) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto value_len = reader.Read<uint32_t>();
-    string value;
-    value.resize(value_len);
-    reader.ReadStringBytes(value);
-
-    return value;
-}
-
 static void CleanupScriptFunctionAttributeUserData(ptr<ScriptFunctionAttributeUserData> user_data) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1128,17 +1108,17 @@ void SerializeFunctionAttributeRecords(DataWriter& writer, const vector<ParsedFu
     writer.Write<uint32_t>(numeric_cast<uint32_t>(records.size()));
 
     for (const auto& record : records) {
-        SerializeString(writer, record.Namespace);
-        SerializeString(writer, record.ObjectType);
-        SerializeString(writer, record.Name);
+        writer.WriteString(record.Namespace);
+        writer.WriteString(record.ObjectType);
+        writer.WriteString(record.Name);
         writer.Write<uint32_t>(record.OverloadIndex);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(record.Attributes.size()));
 
         for (const auto& attr : record.Attributes) {
-            SerializeString(writer, attr);
+            writer.WriteString(attr);
         }
 
-        SerializeString(writer, record.SourceFile);
+        writer.WriteString(record.SourceFile);
         writer.Write<uint32_t>(record.SourceLine);
     }
 }
@@ -1153,19 +1133,19 @@ auto DeserializeFunctionAttributeRecords(DataReader& reader) -> vector<ParsedFun
 
     for (uint32_t i = 0; i < count; i++) {
         ParsedFunctionAttributeRecord record;
-        record.Namespace = DeserializeString(reader);
-        record.ObjectType = DeserializeString(reader);
-        record.Name = DeserializeString(reader);
+        record.Namespace = reader.ReadString();
+        record.ObjectType = reader.ReadString();
+        record.Name = reader.ReadString();
         record.OverloadIndex = reader.Read<uint32_t>();
 
         const auto attrs_count = reader.Read<uint32_t>();
         record.Attributes.reserve(attrs_count);
 
         for (uint32_t j = 0; j < attrs_count; j++) {
-            record.Attributes.emplace_back(DeserializeString(reader));
+            record.Attributes.emplace_back(reader.ReadString());
         }
 
-        record.SourceFile = DeserializeString(reader);
+        record.SourceFile = reader.ReadString();
         record.SourceLine = reader.Read<uint32_t>();
         records.emplace_back(std::move(record));
     }

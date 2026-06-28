@@ -35,18 +35,6 @@
 
 #include "BasicCore.h"
 
-#ifndef FO_STRICT_PTR_NONNULL
-#define FO_STRICT_PTR_NONNULL 1
-#endif
-
-#ifndef FO_STRICT_OWNING_NONNULL
-#define FO_STRICT_OWNING_NONNULL 1
-#endif
-
-#ifndef FO_STRICT_REFCOUNT_EXPLICIT
-#define FO_STRICT_REFCOUNT_EXPLICIT 1
-#endif
-
 FO_BEGIN_NAMESPACE
 
 // Template helpers
@@ -930,7 +918,6 @@ private:
     struct adopt_tag
     {
     } static constexpr adopt {};
-
 #endif
 
 #if FO_STRICT_OWNING_NONNULL

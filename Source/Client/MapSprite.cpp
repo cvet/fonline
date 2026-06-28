@@ -36,15 +36,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MapSpriteLightAt(const_span<ucolor> lights, size_t pos) noexcept -> ptr<const ucolor>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
-
-    return &lights[pos];
-}
-
 MapSprite::~MapSprite()
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -213,27 +204,31 @@ void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size)
         const size_t height = numeric_cast<size_t>(size.height);
         const size_t light_count = width * height;
         const_span<ucolor> lights {light.get(), light_count};
+        const auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
+            FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
+            return &lights[pos];
+        };
         const size_t light_index = numeric_cast<size_t>(_hex.y) * width + numeric_cast<size_t>(_hex.x);
-        _light = MapSpriteLightAt(lights, light_index);
+        _light = light_at(light_index);
 
         switch (corner) {
         case CornerType::EastWest:
         case CornerType::East:
-            _lightRight = MapSpriteLightAt(lights, light_index - 1);
-            _lightLeft = MapSpriteLightAt(lights, light_index + 1);
+            _lightRight = light_at(light_index - 1);
+            _lightLeft = light_at(light_index + 1);
             break;
         case CornerType::NorthSouth:
         case CornerType::West:
-            _lightRight = MapSpriteLightAt(lights, light_index + width);
-            _lightLeft = MapSpriteLightAt(lights, light_index - width);
+            _lightRight = light_at(light_index + width);
+            _lightLeft = light_at(light_index - width);
             break;
         case CornerType::South:
-            _lightRight = MapSpriteLightAt(lights, light_index - 1);
-            _lightLeft = MapSpriteLightAt(lights, light_index - width);
+            _lightRight = light_at(light_index - 1);
+            _lightLeft = light_at(light_index - width);
             break;
         case CornerType::North:
-            _lightRight = MapSpriteLightAt(lights, light_index + width);
-            _lightLeft = MapSpriteLightAt(lights, light_index + 1);
+            _lightRight = light_at(light_index + width);
+            _lightLeft = light_at(light_index + 1);
             break;
         }
     }

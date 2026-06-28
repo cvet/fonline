@@ -48,7 +48,6 @@ FO_BEGIN_NAMESPACE
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
-static void CleanupSdlAudioStream(SDL_AudioStream* raw_audio_stream) noexcept;
 
 struct Application::Context
 {
@@ -63,10 +62,8 @@ struct Application::Context
     SDL_AudioSpec AudioSpec {};
     AppAudio::AudioStreamCallback AudioStreamWriter {};
     vector<uint8_t> AudioStreamBuf {};
-    unordered_map<SDL_Keycode, KeyCode> KeysMap {};
-    unordered_map<int32_t, MouseButton> MouseButtonsMap {};
-
-    Context();
+    unordered_map<SDL_Keycode, KeyCode> KeysMap {MakeInputKeyMap()};
+    unordered_map<int32_t, MouseButton> MouseButtonsMap {MakeMouseButtonMap()};
 };
 
 int32_t AppRender::MAX_ATLAS_WIDTH {};
@@ -77,13 +74,6 @@ const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 
 static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;
 static constexpr float32_t GAMEPAD_TRIGGER_DEADZONE = 0.15f;
-
-Application::Context::Context() :
-    KeysMap {MakeInputKeyMap()},
-    MouseButtonsMap {MakeMouseButtonMap()}
-{
-    FO_STACK_TRACE_ENTRY();
-}
 
 static auto GetActiveRenderer(auto ctx)
 {
@@ -245,54 +235,41 @@ static auto ScreenPosToWindowPos(ptr<Renderer> renderer, isize32 screen_size, ip
     return {win_x, win_y};
 }
 
-static auto TryGetSdlWindow(nptr<WindowInternalHandle> handle) noexcept -> nptr<SDL_Window>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return handle ? cast_from_void<SDL_Window*>(handle.get()) : nullptr;
-}
-
 static auto GetSdlWindow(nptr<WindowInternalHandle> handle) -> ptr<SDL_Window>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_sdl_window = TryGetSdlWindow(handle);
+    nptr<SDL_Window> nullable_sdl_window = handle ? cast_from_void<SDL_Window*>(handle.get()) : nullptr;
     FO_VERIFY_AND_THROW(nullable_sdl_window, "Window handle does not reference a valid SDL window");
     return nullable_sdl_window.as_ptr();
-}
-
-static void CleanupSdlWindow(SDL_Window* raw_window) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_window != nullptr) {
-        ptr<SDL_Window> window = raw_window;
-        SDL_DestroyWindow(window.get());
-    }
 }
 
 static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_ptr<SDL_Window>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Window> {window.get_no_const(), CleanupSdlWindow};
-}
+    return unique_del_ptr<SDL_Window> {window.get_no_const(), [](SDL_Window* raw_window) {
+        FO_NO_STACK_TRACE_ENTRY();
 
-static void CleanupTemporarySdlRenderer(SDL_Renderer* raw_renderer) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_renderer != nullptr) {
-        ptr<SDL_Renderer> renderer = raw_renderer;
-        SDL_DestroyRenderer(renderer.get());
-    }
+        if (raw_window != nullptr) {
+            ptr<SDL_Window> window = raw_window;
+            SDL_DestroyWindow(window.get());
+        }
+    }};
 }
 
 static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique_del_ptr<SDL_Renderer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Renderer> {renderer.get_no_const(), CleanupTemporarySdlRenderer};
+    return unique_del_ptr<SDL_Renderer> {renderer.get_no_const(), [](SDL_Renderer* raw_renderer) {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (raw_renderer != nullptr) {
+            ptr<SDL_Renderer> renderer = raw_renderer;
+            SDL_DestroyRenderer(renderer.get());
+        }
+    }};
 }
 
 struct TemporarySdlWindowRenderer
@@ -328,90 +305,21 @@ static auto TryCreateTemporarySdlWindowRenderer(ptr<const char> title, int32_t w
     return TemporarySdlWindowRenderer {MakeSdlWindowHolder(window_out.as_ptr()), MakeSdlRendererHolder(renderer_out.as_ptr())};
 }
 
-static void CleanupSdlAudioStream(SDL_AudioStream* raw_audio_stream) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_audio_stream != nullptr) {
-        ptr<SDL_AudioStream> audio_stream = raw_audio_stream;
-        SDL_DestroyAudioStream(audio_stream.get());
-    }
-}
-
-template<typename T>
-static void CleanupSdlAllocatedMemory(T* raw_data) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_data != nullptr) {
-        ptr<T> data = raw_data;
-        SDL_free(data.get());
-    }
-}
-
-static auto TryGetSdlDisplayMode(SDL_DisplayID display_id) noexcept -> nptr<const SDL_DisplayMode>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
-}
-
 static auto GetSdlDisplayMode(SDL_DisplayID display_id) -> ptr<const SDL_DisplayMode>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_display_mode = TryGetSdlDisplayMode(display_id);
+    nptr<const SDL_DisplayMode> nullable_display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
     FO_VERIFY_AND_THROW(nullable_display_mode, "SDL current display mode is unavailable");
     return nullable_display_mode.as_ptr();
-}
-
-static auto TakeSdlWindow(ptr<WindowInternalHandle> handle) noexcept -> unique_del_ptr<SDL_Window>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto window = GetSdlWindow(handle);
-    return MakeSdlWindowHolder(window);
-}
-
-template<typename T>
-static auto FixedSettingForRuntimeUpdate(const T& setting) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return const_cast<T*>(&setting);
 }
 
 static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_DisplayMode> display_mode) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    *FixedSettingForRuntimeUpdate(settings.MonitorWidth) = display_mode->w;
-    *FixedSettingForRuntimeUpdate(settings.MonitorHeight) = display_mode->h;
-}
-
-static auto GetImGuiRenderTexture(ImTextureID texture_id) -> ptr<RenderTexture>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<RenderTexture> nullable_texture = cast_from_void<RenderTexture*>(texture_id);
-    FO_VERIFY_AND_THROW(nullable_texture, "ImGui texture id does not reference a render texture");
-    return nullable_texture.as_ptr();
-}
-
-static auto GetImGuiTexturePixels(nptr<void> pixels) -> ptr<const ucolor>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<const ucolor> nullable_pixel_data = cast_from_void<const ucolor*>(pixels.get());
-    FO_VERIFY_AND_THROW(nullable_pixel_data, "ImGui texture pixel data is null");
-    return nullable_pixel_data.as_ptr();
-}
-
-static auto MouseIdToImGuiMouseSource(SDL_MouseID mouse_id) noexcept -> ImGuiMouseSource
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return mouse_id == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse;
+    *const_cast<std::remove_cvref_t<decltype(settings.MonitorWidth)>*>(&settings.MonitorWidth) = display_mode->w;
+    *const_cast<std::remove_cvref_t<decltype(settings.MonitorHeight)>*>(&settings.MonitorHeight) = display_mode->h;
 }
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
@@ -497,7 +405,14 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
             nptr<SDL_AudioStream> nullable_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, audio_userdata.get());
 
             if (nullable_audio_stream) {
-                auto audio_stream = make_unique_del_ptr(nullable_audio_stream.as_ptr(), CleanupSdlAudioStream);
+                auto audio_stream = make_unique_del_ptr(nullable_audio_stream.as_ptr(), [](SDL_AudioStream* raw_audio_stream) {
+                    FO_NO_STACK_TRACE_ENTRY();
+
+                    if (raw_audio_stream != nullptr) {
+                        ptr<SDL_AudioStream> audio_stream = raw_audio_stream;
+                        SDL_DestroyAudioStream(audio_stream.get());
+                    }
+                });
 
                 if (SDL_GetAudioDeviceFormat(SDL_GetAudioStreamDevice(audio_stream.get()), &_ctx->AudioSpec, nullptr)) {
                     if (SDL_ResumeAudioStreamDevice(audio_stream.get())) {
@@ -696,9 +611,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     }
 
-    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED {
-        return GetApp()->Input.GetClipboardText().data();
-    };
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().data(); };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
     platform_io.Platform_ClipboardUserData = nullptr;
 
@@ -946,7 +859,7 @@ auto Application::IsMainWindowDisplayModeSize(isize32 size) const -> bool
 
     auto sdl_window = GetSdlWindow(MainWindow._windowHandle);
     const SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window.get());
-    auto display_mode = TryGetSdlDisplayMode(display_id);
+    auto display_mode = (display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr);
     return display_mode && display_mode->w == size.width && display_mode->h == size.height;
 }
 
@@ -970,7 +883,7 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
         }
 
         const SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window.get());
-        auto display_mode = TryGetSdlDisplayMode(display_id);
+        auto display_mode = (display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr);
 
         if (display_mode && display_mode->w > 0 && display_mode->h > 0) {
             return {display_mode->w, display_mode->h};
@@ -1554,7 +1467,14 @@ void Application::RefreshGamepadConnection()
         return;
     }
 
-    auto gamepads = make_unique_del_ptr(nullable_gamepads.as_ptr(), CleanupSdlAllocatedMemory<SDL_JoystickID>);
+    auto gamepads = make_unique_del_ptr(nullable_gamepads.as_ptr(), [](SDL_JoystickID* raw_data) {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        if (raw_data != nullptr) {
+            ptr<SDL_JoystickID> data = raw_data;
+            SDL_free(data.get());
+        }
+    });
     auto gamepad_ids = gamepads.as_ptr();
 
     for (int i = 0; i < count; i++) {
@@ -1783,7 +1703,7 @@ void Application::BeginFrame()
                 _ctx->EventsQueue.emplace_back(ev);
             }
 
-            io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.motion.which));
+            io.AddMouseSourceEvent(sdl_event.motion.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
             io.AddMousePosEvent(numeric_cast<float32_t>(screen_pos.x), numeric_cast<float32_t>(screen_pos.y));
         } break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -1832,7 +1752,7 @@ void Application::BeginFrame()
             }
 
             if (mouse_button != -1) {
-                io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.button.which));
+                io.AddMouseSourceEvent(sdl_event.button.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
                 io.AddMouseButtonEvent(mouse_button, (sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN));
                 _mouseButtonsDown = sdl_event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? (_mouseButtonsDown | (1 << mouse_button)) : (_mouseButtonsDown & ~(1 << mouse_button));
             }
@@ -2029,7 +1949,7 @@ void Application::BeginFrame()
 
             float32_t wheel_x = sdl_event.wheel.x > 0 ? 1.0f : (sdl_event.wheel.x < 0 ? -1.0f : 0.0f);
             float32_t wheel_y = sdl_event.wheel.y > 0 ? 1.0f : (sdl_event.wheel.y < 0 ? -1.0f : 0.0f);
-            io.AddMouseSourceEvent(MouseIdToImGuiMouseSource(sdl_event.wheel.which));
+            io.AddMouseSourceEvent(sdl_event.wheel.which == SDL_TOUCH_MOUSEID ? ImGuiMouseSource_TouchScreen : ImGuiMouseSource_Mouse);
             io.AddMouseWheelEvent(wheel_x, wheel_y);
         } break;
         case SDL_EVENT_GAMEPAD_ADDED: {
@@ -2070,7 +1990,14 @@ void Application::BeginFrame()
                     paste_ev.Code = KeyCode::Text;
                     nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
                     if (nullable_clipboard_text) {
-                        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), CleanupSdlAllocatedMemory<char>);
+                        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
+                            FO_NO_STACK_TRACE_ENTRY();
+
+                            if (raw_data != nullptr) {
+                                ptr<char> data = raw_data;
+                                SDL_free(data.get());
+                            }
+                        });
                         paste_ev.Text = string {clipboard_text.get()};
                     }
                     else {
@@ -2249,7 +2176,7 @@ void Application::BeginFrame()
             }
 
             for (ptr<AppWindow> window : copy(_allWindows)) {
-                if (TryGetSdlWindow(window->_windowHandle) == resized_window) {
+                if ((window->_windowHandle ? cast_from_void<SDL_Window*>(window->_windowHandle.get()) : nullptr) == resized_window) {
                     window->_onWindowSizeChangedDispatcher();
 
                     if (screen_size_changed || !is_main) {
@@ -2393,7 +2320,9 @@ void Application::EndFrame()
                     const auto tex_size = isize(im_tex->Width, im_tex->Height);
                     FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
                     auto font_tex = active_renderer->CreateTexture(tex_size, true, false);
-                    auto tex_data = GetImGuiTexturePixels(im_tex->GetPixels());
+                    nptr<const ucolor> nullable_tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
+                    FO_VERIFY_AND_THROW(nullable_tex_data, "ImGui texture pixel data is null");
+                    auto tex_data = nullable_tex_data.as_ptr();
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
                     const const_span<ucolor> tex_pixels {tex_data.get(), tex_pixels_count};
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
@@ -2404,16 +2333,22 @@ void Application::EndFrame()
                 else if (im_tex->Status == ImTextureStatus_WantUpdates) {
                     const auto update_pos = ipos32(im_tex->UpdateRect.x, im_tex->UpdateRect.y);
                     const auto update_size = isize32(im_tex->UpdateRect.w, im_tex->UpdateRect.h);
-                    auto update_data = GetImGuiTexturePixels(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
+                    nptr<const ucolor> nullable_update_data = cast_from_void<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
+                    FO_VERIFY_AND_THROW(nullable_update_data, "ImGui texture pixel data is null");
+                    auto update_data = nullable_update_data.as_ptr();
                     const size_t update_pitch = numeric_cast<size_t>(im_tex->Width);
                     const size_t update_size_in_pixels = update_size.height != 0 ? (numeric_cast<size_t>(update_size.height - 1) * update_pitch) + numeric_cast<size_t>(update_size.width) : 0;
-                    auto tex = GetImGuiRenderTexture(im_tex->GetTexID());
+                    nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
+                    FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
+                    auto tex = nullable_tex.as_ptr();
                     const const_span<ucolor> update_pixels {update_data.get(), update_size_in_pixels};
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
                 else if (im_tex->Status == ImTextureStatus_WantDestroy) {
-                    auto tex = GetImGuiRenderTexture(im_tex->GetTexID());
+                    nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
+                    FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
+                    auto tex = nullable_tex.as_ptr();
                     const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), tex.get());
                     FO_VERIFY_AND_THROW(it != _imguiTextures.end(), "Lookup failed in imgui textures");
                     _imguiTextures.erase(it);
@@ -2472,7 +2407,9 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    auto texture = GetImGuiRenderTexture(pcmd->TexRef.GetTexID());
+                    nptr<RenderTexture> nullable_texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
+                    FO_VERIFY_AND_THROW(nullable_texture, "ImGui texture id does not reference a render texture");
+                    auto texture = nullable_texture.as_ptr();
                     imgui_effect->DrawBuffer(imgui_draw_buf, pcmd->IdxOffset, pcmd->ElemCount, texture);
                     active_renderer->DisableScissor();
                 }
@@ -2850,7 +2787,7 @@ void AppWindow::Destroy()
 
     if (_windowHandle && this != &_app->MainWindow) {
         auto window_handle = _windowHandle.as_ptr();
-        auto owned_window = TakeSdlWindow(window_handle);
+        auto owned_window = MakeSdlWindowHolder(GetSdlWindow(window_handle));
         ignore_unused(owned_window);
         _windowHandle = nullptr;
     }
@@ -3146,7 +3083,14 @@ auto AppInput::GetClipboardText() -> string_view
 
     nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
     if (nullable_clipboard_text) {
-        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), CleanupSdlAllocatedMemory<char>);
+        auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            if (raw_data != nullptr) {
+                ptr<char> data = raw_data;
+                SDL_free(data.get());
+            }
+        });
         _clipboardTextStorage = string {clipboard_text.get()};
     }
     else {
@@ -3203,7 +3147,14 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
 
         FO_VERIFY_AND_THROW(nullable_dst_data, "SDL audio conversion returned null output data");
         auto dst_data = nullable_dst_data.as_ptr();
-        auto converted_data = make_unique_del_ptr(dst_data, CleanupSdlAllocatedMemory<uint8_t>);
+        auto converted_data = make_unique_del_ptr(dst_data, [](uint8_t* raw_data) {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            if (raw_data != nullptr) {
+                ptr<uint8_t> data = raw_data;
+                SDL_free(data.get());
+            }
+        });
 
         buf.resize(numeric_cast<size_t>(dst_len));
 

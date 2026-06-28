@@ -484,7 +484,7 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
         }
 
         if (context->IsDataChanged()) {
-            const_span<any_t> data = context->GetDataRaw();
+            const_span<any_t> data = context->GetRawData();
             te->Data.assign(data.begin(), data.end());
         }
 

@@ -33,7 +33,6 @@
 
 #include "Common.h"
 
-#include "AngelScript/AngelScriptHelpers.h"
 #include "Application.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"

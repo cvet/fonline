@@ -326,11 +326,11 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapperMessage, string& /*text*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
+    FO_ENTITY_EVENT(OnEditMapLoad, ptr<MapView> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
+    FO_ENTITY_EVENT(OnEditMapSave, ptr<MapView> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int32_t>& /*properties*/);
+    FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
     FileSystem MapsFileSys {};
     vector<refcount_ptr<MapView>> LoadedMaps {};

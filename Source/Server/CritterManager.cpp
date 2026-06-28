@@ -101,7 +101,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(item);
-    _engine->OnCritterItemMoved.Fire(cr.get(), item.get(), CritterItemSlot::Outside);
+    _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
 
     if (cr->IsDestroyed() || item->IsDestroyed()) {
         throw CritterManagerException("Critter item add event destroyed the committed entity", cr->GetId(), item->GetId());
@@ -149,7 +149,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
     ValidateEntityAccess(item);
 
     if (!cr->IsDestroying()) {
-        _engine->OnCritterItemMoved.Fire(cr.get(), item.get(), prev_slot);
+        _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
     }
 }
 
@@ -232,7 +232,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(map);
         ValidateEntityAccess(cr.as_nptr());
-        _engine->OnMapCritterIn.Fire(map.get(), cr.get());
+        _engine->OnMapCritterIn.Fire(map, cr.as_ptr());
 
         if (!cr->IsDestroyed()) {
             _engine->EntityMngr.CallInit(cr.as_ptr(), true);
@@ -282,7 +282,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
     }
 
     ValidateEntityAccess(cr);
-    _engine->OnCritterFinish.Fire(cr.get());
+    _engine->OnCritterFinish.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     if (cr->GetMapId()) {

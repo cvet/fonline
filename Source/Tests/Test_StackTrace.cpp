@@ -210,7 +210,7 @@ TEST_CASE("StackTrace")
         std::vector<ScriptStackTraceLayer> layers;
         layers.push_back(std::move(child));
         layers.push_back(std::move(parent));
-        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         const auto resolved = ResolveStackTrace(st);
 
@@ -261,7 +261,7 @@ TEST_CASE("StackTrace")
 
         std::vector<ScriptStackTraceLayer> layers;
         layers.push_back(std::move(layer));
-        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         const auto resolved = ResolveStackTrace(st);
 
@@ -368,7 +368,7 @@ TEST_CASE("StackTrace")
 
         std::vector<ScriptStackTraceLayer> layers;
         layers.push_back(std::move(layer));
-        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         const auto resolved = ResolveStackTrace(st);
 
@@ -393,7 +393,7 @@ TEST_CASE("StackTrace")
         std::vector<ScriptStackTraceLayer> layers;
         layers.push_back(MakeLayer({MakeScriptFrame("OnlyScript", "Scripts/Only.fos", 1)}));
         // No BirthNativeFrameCount set - left at default 0.
-        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         const auto resolved = ResolveStackTrace(st);
 
@@ -446,7 +446,7 @@ TEST_CASE("StackTrace")
             MakeScriptFrame("FuncA", "/tmp/a.fos", 11),
             MakeScriptFrame("FuncB", "/tmp/b.fos", 22),
         }));
-        st.ScriptLayers = MakeScriptStackTraceLayers(std::move(layers));
+        st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
 
         std::ostringstream captured;
         std::streambuf* prev_buf = std::cout.rdbuf(captured.rdbuf());

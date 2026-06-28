@@ -108,19 +108,6 @@ private:
     string _workPath {};
 };
 
-static void CleanupUnqlite(ptr<unqlite> db) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    unqlite_close(db.get());
-}
-
-static auto MakeUnqliteHolder(ptr<unqlite> db) -> unique_del_ptr<unqlite>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return make_unique_del_ptr(db, CleanupUnqlite);
-}
 #endif
 
 static auto CreateCacheStorageBackend(string_view path) -> unique_ptr<CacheStorageImpl>
@@ -319,7 +306,10 @@ auto UnqliteCacheStorage::InitCacheStorage() -> bool
             return false;
         }
 
-        _db = MakeUnqliteHolder(db.as_ptr());
+        _db = make_unique_del_ptr(db.as_ptr(), [](unqlite* raw_db) noexcept {
+            ptr<unqlite> closing_db = raw_db;
+            unqlite_close(closing_db.get());
+        });
     }
 
     return true;

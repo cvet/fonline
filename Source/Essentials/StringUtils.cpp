@@ -1225,6 +1225,7 @@ auto strex::parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&
     own_storage();
 
     const size_t wide_len = ::wcslen(str.get());
+
     if (wide_len > static_cast<size_t>(std::numeric_limits<int32_t>::max())) {
         _sv = _s;
         return *this;

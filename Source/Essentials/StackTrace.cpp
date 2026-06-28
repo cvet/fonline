@@ -92,13 +92,6 @@ static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool;
 static void TrimInPlace(std::string& s) noexcept;
 static auto GetStackTraceState() noexcept -> StackTraceState&;
 
-extern auto MakeScriptStackTraceLayers(std::vector<ScriptStackTraceLayer>&& layers) -> std::shared_ptr<const std::vector<ScriptStackTraceLayer>>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(layers));
-}
-
 extern auto GetStackTrace() noexcept -> StackTraceData
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -112,7 +105,7 @@ extern auto GetStackTrace() noexcept -> StackTraceData
         CollectScriptLayers(script_layers);
 
         if (!script_layers.empty()) {
-            st.ScriptLayers = MakeScriptStackTraceLayers(std::move(script_layers));
+            st.ScriptLayers = std::make_shared<const std::vector<ScriptStackTraceLayer>>(std::move(script_layers));
         }
     }
     catch (...) {

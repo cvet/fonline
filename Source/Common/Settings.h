@@ -41,40 +41,6 @@ FO_DECLARE_EXCEPTION(SettingsException);
 
 class ConfigFile;
 
-using CommandLineArg = nptr<char>;
-using CommandLineArgs = const_span<CommandLineArg>;
-
-[[nodiscard]] inline auto MakeCommandLineArgs(int32_t argc, nptr<char*> argv) -> vector<CommandLineArg>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const size_t arg_count = numeric_cast<size_t>(argc);
-    FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
-
-    vector<CommandLineArg> args(arg_count);
-
-    for (size_t i = 0; i < arg_count; ++i) {
-        args[i] = argv[i];
-    }
-
-    return args;
-}
-
-[[nodiscard]] inline auto GetCommandLineArg(CommandLineArgs args, size_t index) noexcept -> nptr<const char>
-{
-    return index < args.size() ? args[index] : nullptr;
-}
-
-[[nodiscard]] inline auto IsCommandLineOption(nptr<const char> nullable_arg) noexcept -> bool
-{
-    if (!nullable_arg) {
-        return false;
-    }
-
-    auto arg = nullable_arg.as_ptr();
-    return *arg == '-';
-}
-
 struct ResourcePackInfo
 {
     string Name {};

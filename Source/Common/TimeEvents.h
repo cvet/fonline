@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetRepeat() const noexcept -> timespan { return _repeat; }
     [[nodiscard]] auto IsRepeatChanged() const noexcept -> bool { return _repeatChanged; }
     [[nodiscard]] auto IsDataChanged() const noexcept -> bool { return _dataChanged; }
-    [[nodiscard]] auto GetDataRaw() const noexcept -> const_span<any_t> { return _data; }
+    [[nodiscard]] auto GetRawData() const noexcept -> const_span<any_t> { return _data; }
 
     void Stop() noexcept;
     void Repeat(timespan repeat) noexcept;

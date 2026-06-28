@@ -128,8 +128,7 @@ public:
     using HashFunc = uint64_t (*)(const_span<uint8_t> data);
     using ResolveHashFailureHandler = function<void(hstring::hash_t hash)>;
 
-    [[nodiscard]] static auto DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t;
-
+    static auto DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t;
     explicit HashStorage(HashFunc hash_func = DefaultHash);
     auto CheckHashedString(string_view s) const noexcept -> bool;
     auto ToHashedString(string_view s) -> hstring override;

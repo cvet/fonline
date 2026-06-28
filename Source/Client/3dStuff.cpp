@@ -2360,7 +2360,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string model = ReadBakedModelDescriptionString(reader);
+    const string model = reader.ReadString();
     const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
     _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
@@ -2382,7 +2382,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         _viewSize.height = view_height;
     }
 
-    const string rotation_bone = ReadBakedModelDescriptionString(reader);
+    const string rotation_bone = reader.ReadString();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
 
     BakedModelDescriptionLink default_link = ReadBakedModelDescriptionLink(reader);
@@ -2433,7 +2433,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < fast_transition_bones_count; i++) {
-        const string bone_name = ReadBakedModelDescriptionString(reader);
+        const string bone_name = reader.ReadString();
         _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(bone_name));
     }
 
@@ -2605,9 +2605,9 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.LayerValue = reader.Read<int32_t>();
     FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Model link layer is out of range", link.Data.Layer);
 
-    const string link_bone = ReadBakedModelDescriptionString(reader);
+    const string link_bone = reader.ReadString();
     link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
-    link.Data.ChildName = ReadBakedModelDescriptionString(reader);
+    link.Data.ChildName = reader.ReadString();
     link.Data.IsParticles = reader.Read<uint8_t>() != 0;
     link.Data.RotX = reader.Read<float32_t>();
     link.Data.RotY = reader.Read<float32_t>();
@@ -2620,7 +2620,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.ScaleZ = reader.Read<float32_t>();
     link.Data.SpeedAjust = reader.Read<float32_t>();
     FO_VERIFY_AND_THROW(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
-    link.Data.DisabledLayer = ReadBakedModelDescriptionInt32Vector(reader);
+    link.Data.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
 
     for (const int32_t disabled_layer : link.Data.DisabledLayer) {
         FO_VERIFY_AND_THROW(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Disabled model layer is out of range", disabled_layer);
@@ -2630,7 +2630,7 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.DisabledMesh.reserve(disabled_mesh_count);
 
     for (uint32_t i = 0; i < disabled_mesh_count; i++) {
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        const string mesh_name = reader.ReadString();
         link.Data.DisabledMesh.emplace_back(!mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
@@ -2638,8 +2638,8 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.TextureInfo.reserve(texture_count);
 
     for (uint32_t i = 0; i < texture_count; i++) {
-        string texture_name = ReadBakedModelDescriptionString(reader);
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        string texture_name = reader.ReadString();
+        const string mesh_name = reader.ReadString();
         const int32_t texture_index = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
         link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
@@ -2649,8 +2649,8 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.EffectInfo.reserve(effect_count);
 
     for (uint32_t i = 0; i < effect_count; i++) {
-        string effect_name = ReadBakedModelDescriptionString(reader);
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        string effect_name = reader.ReadString();
+        const string mesh_name = reader.ReadString();
         link.Data.EffectInfo.emplace_back(std::move(effect_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
@@ -2669,12 +2669,12 @@ auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) cons
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionCutInfo cut;
-    cut.FileName = ReadBakedModelDescriptionString(reader);
-    cut.Layers = ReadBakedModelDescriptionInt32Vector(reader);
-    cut.Shapes = ReadBakedModelDescriptionStringVector(reader);
-    cut.UnskinBone1 = ReadBakedModelDescriptionString(reader);
-    cut.UnskinBone2 = ReadBakedModelDescriptionString(reader);
-    cut.UnskinShape = ReadBakedModelDescriptionString(reader);
+    cut.FileName = reader.ReadString();
+    cut.Layers = reader.ReadSizedObjectVector<int32_t>();
+    cut.Shapes = reader.ReadStringVector();
+    cut.UnskinBone1 = reader.ReadString();
+    cut.UnskinBone2 = reader.ReadString();
+    cut.UnskinShape = reader.ReadString();
     cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
     return cut;
 }
@@ -2686,8 +2686,8 @@ auto ModelInformation::ReadBakedModelDescriptionAnimEntry(DataReader& reader) co
     BakedModelDescriptionAnimEntry anim_entry;
     anim_entry.StateAnim = reader.Read<int32_t>();
     anim_entry.ActionAnim = reader.Read<int32_t>();
-    anim_entry.FileName = ReadBakedModelDescriptionString(reader);
-    anim_entry.Name = ReadBakedModelDescriptionString(reader);
+    anim_entry.FileName = reader.ReadString();
+    anim_entry.Name = reader.ReadString();
     return anim_entry;
 }
 
@@ -2701,43 +2701,6 @@ auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(DataReader& reade
     value.Layer = reader.Read<int32_t>();
     value.LayerValue = reader.Read<int32_t>();
     FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Animation layer is out of range", value.Layer);
-    return value;
-}
-
-auto ModelInformation::ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t count = reader.Read<uint32_t>();
-    vector<string> values;
-    values.reserve(count);
-
-    for (uint32_t i = 0; i < count; i++) {
-        values.emplace_back(ReadBakedModelDescriptionString(reader));
-    }
-
-    return values;
-}
-
-auto ModelInformation::ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t count = reader.Read<uint32_t>();
-    vector<int32_t> values;
-    values.resize(count);
-    reader.ReadObjectArray(span {values});
-    return values;
-}
-
-auto ModelInformation::ReadBakedModelDescriptionString(DataReader& reader) const -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = reader.Read<uint32_t>();
-    string value;
-    value.resize(len);
-    reader.ReadStringBytes(value);
     return value;
 }
 

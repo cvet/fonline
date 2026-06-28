@@ -37,68 +37,12 @@
 
 FO_BEGIN_NAMESPACE
 
-static void CleanupTheoraSetupInfo(th_setup_info* raw_setup_info) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_setup_info != nullptr) {
-        ptr<th_setup_info> setup_info = raw_setup_info;
-        th_setup_free(setup_info.get());
-    }
-}
-
-static void CleanupTheoraDecoderContext(th_dec_ctx* raw_decoder_context) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_decoder_context != nullptr) {
-        ptr<th_dec_ctx> decoder_context = raw_decoder_context;
-        th_decode_free(decoder_context.get());
-    }
-}
-
-static auto DecodeTheoraHeader(ptr<th_info> info, ptr<th_comment> comment, ptr<unique_del_nptr<th_setup_info>> setup_info, ptr<ogg_packet> packet) -> int32_t
-{
-    FO_STACK_TRACE_ENTRY();
-
-    th_setup_info* setup_info_raw = setup_info->release();
-    const int32_t result = th_decode_headerin(info.get(), comment.get(), &setup_info_raw, packet.get());
-    setup_info->reset(setup_info_raw);
-    return result;
-}
-
-static auto MakeTheoraDecoderContext(ptr<const th_info> info, ptr<const th_setup_info> setup_info) -> unique_del_ptr<th_dec_ctx>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<th_dec_ctx> decoder_context = th_decode_alloc(info.get(), setup_info.get());
-    FO_VERIFY_AND_THROW(decoder_context, "Theora decoder context allocation failed");
-    return make_unique_del_ptr(decoder_context.as_ptr(), CleanupTheoraDecoderContext);
-}
+using TheoraInfo = scoped_init_clear<th_info, th_info_init, th_info_clear>;
+using TheoraComment = scoped_init_clear<th_comment, th_comment_init, th_comment_clear>;
+using OggSyncState = scoped_init_clear<ogg_sync_state, ogg_sync_init, ogg_sync_clear>;
 
 struct VideoClip::Impl
 {
-    Impl()
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        th_info_init(&VideoInfo);
-        th_comment_init(&Comment);
-        ogg_sync_init(&SyncState);
-    }
-    Impl(const Impl&) = delete;
-    Impl(Impl&&) noexcept = delete;
-    auto operator=(const Impl&) = delete;
-    auto operator=(Impl&&) noexcept = delete;
-    ~Impl() noexcept
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        th_info_clear(&VideoInfo);
-        th_comment_clear(&Comment);
-        ogg_sync_clear(&SyncState);
-    }
-
     struct StreamStates
     {
         static constexpr size_t COUNT = 10;
@@ -113,12 +57,12 @@ struct VideoClip::Impl
     bool Looped {};
     vector<uint8_t> RawVideoData {};
     size_t ReadPos {};
-    unique_del_nptr<th_dec_ctx> DecoderContext {nullptr, CleanupTheoraDecoderContext};
-    th_info VideoInfo {};
-    th_comment Comment {};
-    unique_del_nptr<th_setup_info> SetupInfo {nullptr, CleanupTheoraSetupInfo};
+    unique_del_nptr<th_dec_ctx> DecoderContext {};
+    TheoraInfo VideoInfo {};
+    TheoraComment Comment {};
+    unique_del_nptr<th_setup_info> SetupInfo {};
     th_ycbcr_buffer ColorBuffer {};
-    ogg_sync_state SyncState {};
+    OggSyncState SyncState {};
     ogg_packet Packet {};
     StreamStates Streams {};
     vector<ucolor> RenderedTextureData {};
@@ -137,6 +81,12 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
     FO_STACK_TRACE_ENTRY();
 
     auto impl = _impl.as_ptr();
+    impl->SetupInfo = make_unique_del_ptr(nptr<th_setup_info> {}, [](th_setup_info* raw_setup_info) noexcept {
+        if (raw_setup_info != nullptr) {
+            ptr<th_setup_info> owned_setup_info = raw_setup_info;
+            th_setup_free(owned_setup_info.get());
+        }
+    });
     impl->RawVideoData = std::move(video_data);
 
     impl->Streams.Streams.resize(Impl::StreamStates::COUNT);
@@ -150,7 +100,9 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
             throw VideoClipException("Decode header packet failed");
         }
 
-        const int32_t r = DecodeTheoraHeader(&impl->VideoInfo, &impl->Comment, &impl->SetupInfo, &impl->Packet);
+        th_setup_info* setup_info_raw = impl->SetupInfo.release();
+        const int32_t r = th_decode_headerin(&impl->VideoInfo.Value, &impl->Comment.Value, &setup_info_raw, &impl->Packet);
+        impl->SetupInfo.reset(setup_info_raw);
 
         if (r == 0) {
             if (stream_index != impl->Streams.MainIndex) {
@@ -173,8 +125,16 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
         }
     }
 
-    impl->DecoderContext = MakeTheoraDecoderContext(&impl->VideoInfo, impl->SetupInfo.as_ptr());
-    impl->RenderedTextureData.resize(numeric_cast<size_t>(impl->VideoInfo.pic_width) * impl->VideoInfo.pic_height);
+    ptr<const th_setup_info> setup_info = impl->SetupInfo.as_ptr();
+    nptr<th_dec_ctx> decoder_context = th_decode_alloc(&impl->VideoInfo.Value, setup_info.get());
+    FO_VERIFY_AND_THROW(decoder_context, "Theora decoder context allocation failed");
+    impl->DecoderContext = make_unique_del_ptr(decoder_context.as_ptr(), [](th_dec_ctx* raw_decoder_context) noexcept {
+        if (raw_decoder_context != nullptr) {
+            ptr<th_dec_ctx> owned_decoder_context = raw_decoder_context;
+            th_decode_free(owned_decoder_context.get());
+        }
+    });
+    impl->RenderedTextureData.resize(numeric_cast<size_t>(impl->VideoInfo.Value.pic_width) * impl->VideoInfo.Value.pic_height);
     impl->StartTime = nanotime::now();
 }
 
@@ -234,7 +194,7 @@ auto VideoClip::GetSize() const -> isize32
     FO_NO_STACK_TRACE_ENTRY();
 
     auto impl = _impl.as_ptr();
-    return {numeric_cast<int32_t>(impl->VideoInfo.pic_width), numeric_cast<int32_t>(impl->VideoInfo.pic_height)};
+    return {numeric_cast<int32_t>(impl->VideoInfo.Value.pic_width), numeric_cast<int32_t>(impl->VideoInfo.Value.pic_height)};
 }
 
 void VideoClip::Stop()
@@ -305,7 +265,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
     // Calculate next frame
     const float64_t cur_second = (impl->RenderTime - impl->StartTime + impl->AverageRenderTime).to_ms<float64_t>() / 1000.0;
-    const int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(impl->VideoInfo.fps_numerator) / numeric_cast<float64_t>(impl->VideoInfo.fps_denominator));
+    const int32_t new_frame = iround<int32_t>(cur_second * numeric_cast<float64_t>(impl->VideoInfo.Value.fps_numerator) / numeric_cast<float64_t>(impl->VideoInfo.Value.fps_denominator));
     const int32_t next_frame_diff = new_frame - impl->CurFrame;
 
     if (next_frame_diff <= 0) {
@@ -357,7 +317,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     int32_t di;
     int32_t dj;
 
-    switch (impl->VideoInfo.pixel_fmt) {
+    switch (impl->VideoInfo.Value.pixel_fmt) {
     case TH_PF_420:
         di = 2;
         dj = 2;
@@ -371,14 +331,14 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         dj = 1;
         break;
     default:
-        WriteLog("Wrong pixel format {}", impl->VideoInfo.pixel_fmt);
+        WriteLog("Wrong pixel format {}", impl->VideoInfo.Value.pixel_fmt);
         Stop();
         return impl->RenderedTextureData;
     }
 
     // Fill texture data
-    const auto w = numeric_cast<int32_t>(impl->VideoInfo.pic_width);
-    const auto h = numeric_cast<int32_t>(impl->VideoInfo.pic_height);
+    const auto w = numeric_cast<int32_t>(impl->VideoInfo.Value.pic_width);
+    const auto h = numeric_cast<int32_t>(impl->VideoInfo.Value.pic_height);
 
     for (int32_t y = 0; y < h; y++) {
         for (int32_t x = 0; x < w; x++) {
@@ -452,7 +412,7 @@ int32_t VideoClip::DecodePacket()
     do {
         ogg_page op;
 
-        while (ogg_sync_pageout(&impl->SyncState, &op) != 1) {
+        while (ogg_sync_pageout(&impl->SyncState.Value, &op) != 1) {
             auto read_bytes = numeric_cast<int32_t>(impl->RawVideoData.size() - impl->ReadPos);
             read_bytes = std::min(1024, read_bytes);
 
@@ -460,11 +420,11 @@ int32_t VideoClip::DecodePacket()
                 return -2;
             }
 
-            ptr<char> dest_buf = ogg_sync_buffer(&impl->SyncState, read_bytes);
+            ptr<char> dest_buf = ogg_sync_buffer(&impl->SyncState.Value, read_bytes);
             ptr<const uint8_t> source = ptr<const uint8_t> {impl->RawVideoData.data()}.offset(impl->ReadPos);
             MemCopy(dest_buf.get(), source.get(), read_bytes);
             impl->ReadPos += read_bytes;
-            ogg_sync_wrote(&impl->SyncState, read_bytes);
+            ogg_sync_wrote(&impl->SyncState.Value, read_bytes);
         }
 
         if (ogg_page_bos(&op) != 0 && rv != 1) {

@@ -71,6 +71,55 @@ inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept;
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
 
+// Command line arguments
+using CommandLineArg = nptr<char>;
+
+class CommandLineArgs
+{
+public:
+    CommandLineArgs() = default;
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    CommandLineArgs(const_span<CommandLineArg> args) noexcept :
+        _args {args}
+    {
+    }
+
+    [[nodiscard]] static auto Make(int32_t argc, nptr<char*> argv) -> vector<CommandLineArg>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        const size_t arg_count = numeric_cast<size_t>(argc);
+        FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+
+        vector<CommandLineArg> args(arg_count);
+
+        for (size_t i = 0; i < arg_count; ++i) {
+            args[i] = argv[i];
+        }
+
+        return args;
+    }
+
+    [[nodiscard]] static auto IsOption(nptr<const char> nullable_arg) noexcept -> bool
+    {
+        if (!nullable_arg) {
+            return false;
+        }
+
+        auto arg = nullable_arg.as_ptr();
+        return *arg == '-';
+    }
+
+    [[nodiscard]] auto Get(size_t index) const noexcept -> nptr<const char> { return index < _args.size() ? _args[index] : nullptr; }
+    [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
+    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
+    [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
+    [[nodiscard]] auto end() const noexcept { return _args.end(); }
+
+private:
+    const_span<CommandLineArg> _args {};
+};
+
 // Custom any as string
 class any_t : public string
 {

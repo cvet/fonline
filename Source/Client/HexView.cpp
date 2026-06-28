@@ -39,14 +39,6 @@
 
 FO_BEGIN_NAMESPACE
 
-// Explicit, greppable wrapper-to-void boundary for diagnostic pointer-identity logging
-static auto MapSprLogId(const void* raw) noexcept -> const void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return raw;
-}
-
 HexView::HexView(ptr<MapView> map) :
     _map {map}
 {
@@ -65,7 +57,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     _mapSpr = mspr;
     SetupSprite(mspr);
 
-    FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex, MapSprLogId(mspr.get()), MapSprLogId(_mapSpr.get()));
+    FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex, static_cast<const void*>(mspr.get()), static_cast<const void*>(_mapSpr.get()));
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr.as_ptr();

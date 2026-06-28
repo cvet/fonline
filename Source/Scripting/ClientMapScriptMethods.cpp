@@ -53,33 +53,32 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
-    ptr<MapSpriteHolder> map_spr = mapSpr;
     auto engine_ptr = self->GetEngine();
 
-    if (!self->GetSize().is_valid_pos(map_spr->Hex)) {
+    if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
         return;
     }
-    if (!self->IsHexToDraw(map_spr->Hex)) {
+    if (!self->IsHexToDraw(mapSpr->Hex)) {
         return;
     }
 
-    auto anim = engine_ptr->AnimGetSpr(map_spr->SprId);
+    auto anim = engine_ptr->AnimGetSpr(mapSpr->SprId);
 
     if (!anim) {
         return;
     }
     auto sprite = anim.as_ptr();
 
-    ucolor color = map_spr->Color;
-    bool is_flat = map_spr->IsFlat;
-    bool no_light = map_spr->NoLight;
-    DrawOrderType draw_order = map_spr->DrawOrder;
-    int32_t draw_order_hy_offset = map_spr->DrawOrderHyOffset;
-    CornerType corner = map_spr->Corner;
-    bool disable_egg = map_spr->DisableEgg;
+    ucolor color = mapSpr->Color;
+    bool is_flat = mapSpr->IsFlat;
+    bool no_light = mapSpr->NoLight;
+    DrawOrderType draw_order = mapSpr->DrawOrder;
+    int32_t draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
+    CornerType corner = mapSpr->Corner;
+    bool disable_egg = mapSpr->DisableEgg;
 
-    if (map_spr->ProtoId) {
-        auto nullable_proto = engine_ptr->GetProtoItem(map_spr->ProtoId);
+    if (mapSpr->ProtoId) {
+        auto nullable_proto = engine_ptr->GetProtoItem(mapSpr->ProtoId);
         FO_VERIFY_AND_THROW(nullable_proto, "Map sprite references unknown item proto");
         auto proto = nullable_proto.as_ptr();
         color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
@@ -92,16 +91,16 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         disable_egg = proto->GetDisableEgg();
     }
 
-    ptr<MapSprite> mspr = self->AddMapSprite(sprite, map_spr->Hex, draw_order, draw_order_hy_offset, //
-        map_spr->Offset, map_spr->IsTweakOffs ? &map_spr->TweakOffset : nullptr, //
-        map_spr->IsTweakAlpha ? &map_spr->TweakAlpha : nullptr, &map_spr->Valid);
+    ptr<MapSprite> mspr = self->AddMapSprite(sprite, mapSpr->Hex, draw_order, draw_order_hy_offset, //
+        mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
+        mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
-    map_spr->MSpr = mspr;
+    mapSpr->MSpr = mspr;
 
-    if (map_spr->Angle != 0) {
-        mspr->SetAngle(map_spr->Angle);
+    if (mapSpr->Angle != 0) {
+        mspr->SetAngle(mapSpr->Angle);
     }
-    if (map_spr->MapProjected) {
+    if (mapSpr->MapProjected) {
         mspr->SetMapProjected(true);
     }
     if (!no_light) {

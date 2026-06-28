@@ -58,13 +58,6 @@ struct SoundManager::Sound
 
 struct OggFileContext
 {
-    explicit OggFileContext(File&& file) :
-        Holder {std::move(file)},
-        Reader {Holder.GetReader()}
-    {
-        FO_STACK_TRACE_ENTRY();
-    }
-
     File Holder;
     FileReader Reader;
 };
@@ -72,40 +65,6 @@ struct OggFileContext
 static constexpr auto MakeUInt(uint8_t ch0, uint8_t ch1, uint8_t ch2, uint8_t ch3) -> uint32_t
 {
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
-}
-
-static void CleanupOggVorbisFile(ptr<OggVorbis_File> vf) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto owned_vf = adopt_unique_ptr(vf);
-    ov_clear(owned_vf.get());
-}
-
-static auto MakeOggVorbisFileHolder(ptr<OggVorbis_File> vf) -> unique_del_ptr<OggVorbis_File>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return make_unique_del_ptr(vf, CleanupOggVorbisFile);
-}
-
-static void CleanupOggFileContext(ptr<OggFileContext> file_context) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto owned_file_context = adopt_unique_ptr(file_context);
-    ignore_unused(owned_file_context);
-}
-
-static auto SoundBytesAsSamples16(span<uint8_t> data) noexcept -> ptr<uint16_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Sound data is empty");
-    FO_STRONG_ASSERT(data.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
-
-    ptr<uint8_t> bytes = data.data();
-    return bytes.reinterpret_as<uint16_t>();
 }
 
 SoundManager::SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio) :
@@ -437,7 +396,10 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     sound->BaseBufLen = sound->BaseBuf.size();
 
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
-    auto buf = SoundBytesAsSamples16(base_buf);
+    FO_STRONG_ASSERT(!base_buf.empty(), "Sound data is empty");
+    FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
+    ptr<uint8_t> base_buf_bytes = base_buf.data();
+    auto buf = base_buf_bytes.reinterpret_as<uint16_t>();
     const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
     if (dec_data != buf_size) {
@@ -505,7 +467,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
         auto file_context = nullable_file_context.as_ptr();
-        CleanupOggFileContext(file_context);
+        auto owned_file_context = adopt_unique_ptr(file_context);
+        ignore_unused(owned_file_context);
         return 0;
     };
 
@@ -518,10 +481,15 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     unique_ptr<OggVorbis_File> ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
     ptr<OggVorbis_File> released_ogg_stream = std::move(ogg_stream_owner).release();
-    sound->OggStream = MakeOggVorbisFileHolder(released_ogg_stream);
+    sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
+        ptr<OggVorbis_File> vf = raw_vf;
+        auto owned_vf = adopt_unique_ptr(vf);
+        ov_clear(owned_vf.get());
+    });
     auto ogg_stream = sound->OggStream.as_ptr();
 
-    unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(std::move(file));
+    FileReader reader = file.GetReader();
+    unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
     auto file_context_ptr = file_context.as_ptr();
     ptr<void> file_context_userdata = cast_to_void(file_context_ptr.get());
     const auto error = ov_open_callbacks(file_context_userdata.get(), ogg_stream.get(), nullptr, 0, callbacks);

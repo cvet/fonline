@@ -535,7 +535,7 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
     if (!map->IsDestroyed()) {
         ValidateEntityAccess(loc);
         ValidateEntityAccess(map.as_nptr());
-        loc->OnMapAdded.Fire(map.get());
+        loc->OnMapAdded.Fire(map.as_ptr());
     }
 
     if (map->IsDestroyed()) {
@@ -631,12 +631,12 @@ void MapManager::DestroyLocation(ptr<Location> loc)
     }
 
     ValidateEntityAccess(loc);
-    _engine->OnLocationFinish.Fire(loc.get());
+    _engine->OnLocationFinish.Fire(loc);
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
 
     for (ptr<Map> map : loc->GetMaps()) {
         ValidateEntityAccess(map);
-        _engine->OnMapFinish.Fire(map.get());
+        _engine->OnMapFinish.Fire(map);
         FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         FO_VERIFY_AND_THROW(map->GetLocation() == loc, "Map is attached to a different location during location destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
@@ -686,7 +686,7 @@ void MapManager::DestroyMap(ptr<Map> map)
 
     map->MarkAsDestroying();
     ValidateEntityAccess(map);
-    _engine->OnMapFinish.Fire(map.get());
+    _engine->OnMapFinish.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     auto nullable_loc = map->GetLocation();
@@ -694,7 +694,7 @@ void MapManager::DestroyMap(ptr<Map> map)
     auto loc = nullable_loc.as_ptr().hold_ref();
     ValidateEntityAccess(loc.as_nptr());
     ValidateEntityAccess(map.as_nptr());
-    loc->OnMapRemoved.Fire(map.get());
+    loc->OnMapRemoved.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
     FO_VERIFY_AND_THROW(map->GetLocation() == loc.as_nptr(), "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
@@ -1038,7 +1038,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         if (map) {
             ValidateEntityAccess(map);
             ValidateEntityAccess(cr);
-            _engine->OnMapCritterIn.Fire(map.get(), cr.get());
+            _engine->OnMapCritterIn.Fire(map.as_ptr(), cr);
 
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return;
@@ -1056,7 +1056,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         }
         else {
             ValidateEntityAccess(cr);
-            _engine->OnGlobalMapCritterIn.Fire(cr.get());
+            _engine->OnGlobalMapCritterIn.Fire(cr);
 
             if (cr->IsDestroyed()) {
                 return;
@@ -1082,7 +1082,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
         sync_ctx->EnsureEntitySynced(map);
         sync_ctx->EnsureEntitySynced(cr);
-        _engine->OnCritterSendInitialInfo.Fire(cr.get());
+        _engine->OnCritterSendInitialInfo.Fire(cr);
 
         if (cr->IsDestroyed()) {
             return;
@@ -1246,7 +1246,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
         ignore_unused(map_holder);
         ValidateEntityAccess(nullable_map);
         ValidateEntityAccess(cr);
-        _engine->OnMapCritterOut.Fire(map.get(), cr.get());
+        _engine->OnMapCritterOut.Fire(map, cr);
 
         if (cr->IsDestroyed() || nullable_map->IsDestroyed()) {
             return;
@@ -1267,7 +1267,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
 
             ValidateEntityAccess(other);
             ValidateEntityAccess(cr);
-            other->OnCritterDisappeared.Fire(cr.get());
+            other->OnCritterDisappeared.Fire(cr);
 
             if (cr->IsDestroyed() || nullable_map->IsDestroyed()) {
                 return;
@@ -1307,7 +1307,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
         FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
         FO_VERIFY_AND_THROW(!cr->GetMapId(), "Critter still has a map id before global map insertion");
         ValidateEntityAccess(cr);
-        _engine->OnGlobalMapCritterOut.Fire(cr.get());
+        _engine->OnGlobalMapCritterOut.Fire(cr);
 
         if (cr->IsDestroyed()) {
             return;
@@ -1416,7 +1416,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             cr->Send_AddCritter(target);
             ValidateEntityAccess(cr);
             ValidateEntityAccess(target);
-            cr->OnCritterAppeared.Fire(target.get());
+            cr->OnCritterAppeared.Fire(target);
 
             if (is_look_context_changed()) {
                 return;
@@ -1430,7 +1430,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
                 cr->Send_CritterVisibilityMode(target, vis_mode);
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterVisibilityModeChanged.Fire(target.get(), vis_mode);
+                cr->OnCritterVisibilityModeChanged.Fire(target, vis_mode);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1443,7 +1443,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             cr->Send_RemoveCritter(target);
             ValidateEntityAccess(cr);
             ValidateEntityAccess(target);
-            cr->OnCritterDisappeared.Fire(target.get());
+            cr->OnCritterDisappeared.Fire(target);
 
             if (is_look_context_changed()) {
                 return;
@@ -1461,7 +1461,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->AddCrIntoVisGroup1(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterAppearedDist1.Fire(target.get());
+                cr->OnCritterAppearedDist1.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1472,7 +1472,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->RemoveCrFromVisGroup1(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterDisappearedDist1.Fire(target.get());
+                cr->OnCritterDisappearedDist1.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1486,7 +1486,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->AddCrIntoVisGroup2(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterAppearedDist2.Fire(target.get());
+                cr->OnCritterAppearedDist2.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1497,7 +1497,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->RemoveCrFromVisGroup2(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterDisappearedDist2.Fire(target.get());
+                cr->OnCritterDisappearedDist2.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1511,7 +1511,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->AddCrIntoVisGroup3(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterAppearedDist3.Fire(target.get());
+                cr->OnCritterAppearedDist3.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1522,7 +1522,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
             if (cr->RemoveCrFromVisGroup3(target->GetId())) {
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(target);
-                cr->OnCritterDisappearedDist3.Fire(target.get());
+                cr->OnCritterDisappearedDist3.Fire(target);
 
                 if (is_look_context_changed()) {
                     return;
@@ -1575,7 +1575,7 @@ void MapManager::ProcessVisibleItems(ptr<Critter> cr)
                 cr->Send_AddItemOnMap(item);
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(item);
-                cr->OnItemOnMapAppeared.Fire(item.get(), nullptr);
+                cr->OnItemOnMapAppeared.Fire(item, nullptr);
             }
         }
         else {
@@ -1583,7 +1583,7 @@ void MapManager::ProcessVisibleItems(ptr<Critter> cr)
                 cr->Send_RemoveItemFromMap(item);
                 ValidateEntityAccess(cr);
                 ValidateEntityAccess(item);
-                cr->OnItemOnMapDisappeared.Fire(item.get(), nullptr);
+                cr->OnItemOnMapDisappeared.Fire(item, nullptr);
             }
         }
     }

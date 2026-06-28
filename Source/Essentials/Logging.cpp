@@ -84,12 +84,14 @@ extern void WriteLogMessage(LogType type, string_view message, nptr<const Catche
             result.reserve(message.length() + 1);
             result += message;
             result += '\n';
+
             if (st) {
                 WriteBaseLog(result, *st);
             }
             else {
                 WriteBaseLog(result);
             }
+
             return;
         }
 

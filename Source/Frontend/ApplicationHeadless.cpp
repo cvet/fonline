@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 struct Application::Context
 {
-    Context();
-
     Null_Renderer HeadlessRenderer {};
     nptr<RenderTexture> HeadlessRenderTarget {};
     vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
@@ -49,11 +47,6 @@ int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
 int32_t AppRender::MAX_BONES {32};
 const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
-
-Application::Context::Context()
-{
-    FO_STACK_TRACE_ENTRY();
-}
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},

@@ -41,8 +41,6 @@ FO_BEGIN_NAMESPACE
 
 struct BakerModelDescriptionCut
 {
-    static void WriteString(DataWriter& writer, string_view value);
-
     void Save(DataWriter& writer) const;
 
     string FileName {};
@@ -205,7 +203,6 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
 static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info);
 static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info, string_view owner_bone);
 static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& info);
-static auto ReadBakedModelMeshString(DataReader& reader) -> string;
 static void SkipBakedModelMeshBytes(DataReader& reader, size_t size);
 static auto SkipBakedModelMeshFloatArray(DataReader& reader) -> uint32_t;
 
@@ -1327,7 +1324,7 @@ static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string bone_name = ReadBakedModelMeshString(reader);
+    const string bone_name = reader.ReadString();
 
     if (!bone_name.empty()) {
         info.Bones.emplace(bone_name);
@@ -1365,7 +1362,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     len = reader.Read<uint32_t>();
     SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(len) * sizeof(vindex_t));
 
-    const string diffuse_texture = ReadBakedModelMeshString(reader);
+    const string diffuse_texture = reader.ReadString();
 
     if (!diffuse_texture.empty()) {
         info.DiffuseTextures.emplace_back(diffuse_texture);
@@ -1374,7 +1371,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     const uint32_t skin_bones_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < skin_bones_count; i++) {
-        string skin_bone = ReadBakedModelMeshString(reader);
+        string skin_bone = reader.ReadString();
 
         if (!skin_bone.empty()) {
             info.SkinBoneRefs.emplace_back(std::move(skin_bone));
@@ -1397,9 +1394,9 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    (void)ReadBakedModelMeshString(reader); // Animation file name
+    (void)reader.ReadString(); // Animation file name
 
-    const string anim_name = ReadBakedModelMeshString(reader);
+    const string anim_name = reader.ReadString();
 
     if (anim_name.empty()) {
         throw ModelInfoBakerException(strex("Invalid baked model '{}': empty animation name", info.FileName));
@@ -1414,7 +1411,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
         const uint32_t hierarchy_bones_count = reader.Read<uint32_t>();
 
         for (uint32_t j = 0; j < hierarchy_bones_count; j++) {
-            string bone_name = ReadBakedModelMeshString(reader);
+            string bone_name = reader.ReadString();
 
             if (!bone_name.empty()) {
                 info.AnimationBoneRefs.emplace_back(std::move(bone_name));
@@ -1425,7 +1422,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     const uint32_t outputs_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < outputs_count; i++) {
-        string bone_name = ReadBakedModelMeshString(reader);
+        string bone_name = reader.ReadString();
 
         if (!bone_name.empty()) {
             info.AnimationBoneRefs.emplace_back(std::move(bone_name));
@@ -1440,17 +1437,6 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
         len = SkipBakedModelMeshFloatArray(reader);
         SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(len) * sizeof(vec3));
     }
-}
-
-static auto ReadBakedModelMeshString(DataReader& reader) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = reader.Read<uint32_t>();
-    string value;
-    value.resize(len);
-    reader.ReadStringBytes(value);
-    return value;
 }
 
 static void SkipBakedModelMeshBytes(DataReader& reader, size_t size)
@@ -1473,7 +1459,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    BakerModelDescriptionCut::WriteString(writer, Model);
+    writer.WriteString(Model);
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
@@ -1481,7 +1467,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     writer.Write<int32_t>(DrawHeight);
     writer.Write<int32_t>(ViewWidth);
     writer.Write<int32_t>(ViewHeight);
-    BakerModelDescriptionCut::WriteString(writer, RotationBone);
+    writer.WriteString(RotationBone);
     DefaultLink.Save(writer);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(Links.size()));
     for (const BakerModelDescriptionLink& link : Links) {
@@ -1501,10 +1487,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     for (const BakerModelDescriptionAnimLayerValue& value : AnimLayerValues) {
         value.Save(writer);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(FastTransitionBones.size()));
-    for (const string& bone_name : FastTransitionBones) {
-        BakerModelDescriptionCut::WriteString(writer, bone_name);
-    }
+    writer.WriteStringVector(FastTransitionBones);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(StateAnimEquals.size()));
     for (const auto& [from, to] : StateAnimEquals) {
         writer.Write<int32_t>(from);
@@ -1523,8 +1506,8 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
 
     writer.Write<int32_t>(Layer);
     writer.Write<int32_t>(LayerValue);
-    BakerModelDescriptionCut::WriteString(writer, LinkBone);
-    BakerModelDescriptionCut::WriteString(writer, ChildName);
+    writer.WriteString(LinkBone);
+    writer.WriteString(ChildName);
     writer.Write<uint8_t>(IsParticles ? uint8_t {1} : uint8_t {0});
     writer.Write<float32_t>(RotX);
     writer.Write<float32_t>(RotY);
@@ -1536,22 +1519,18 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
     writer.Write<float32_t>(ScaleY);
     writer.Write<float32_t>(ScaleZ);
     writer.Write<float32_t>(SpeedAjust);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledLayer.size()));
-    writer.WriteObjectVector(DisabledLayer);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledMesh.size()));
-    for (const string& mesh_name : DisabledMesh) {
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
-    }
+    writer.WriteSizedObjectVector(DisabledLayer);
+    writer.WriteStringVector(DisabledMesh);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
     for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
-        BakerModelDescriptionCut::WriteString(writer, texture_name);
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
+        writer.WriteString(texture_name);
+        writer.WriteString(mesh_name);
         writer.Write<int32_t>(texture_index);
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
     for (const auto& [effect_name, mesh_name] : EffectInfo) {
-        BakerModelDescriptionCut::WriteString(writer, effect_name);
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
+        writer.WriteString(effect_name);
+        writer.WriteString(mesh_name);
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
     for (const BakerModelDescriptionCut& cut : CutInfo) {
@@ -1563,16 +1542,12 @@ void BakerModelDescriptionCut::Save(DataWriter& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteString(writer, FileName);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(Layers.size()));
-    writer.WriteObjectVector(Layers);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(Shapes.size()));
-    for (const string& shape : Shapes) {
-        WriteString(writer, shape);
-    }
-    WriteString(writer, UnskinBone1);
-    WriteString(writer, UnskinBone2);
-    WriteString(writer, UnskinShape);
+    writer.WriteString(FileName);
+    writer.WriteSizedObjectVector(Layers);
+    writer.WriteStringVector(Shapes);
+    writer.WriteString(UnskinBone1);
+    writer.WriteString(UnskinBone2);
+    writer.WriteString(UnskinShape);
     writer.Write<uint8_t>(RevertUnskinShape ? uint8_t {1} : uint8_t {0});
 }
 
@@ -1582,8 +1557,8 @@ void BakerModelDescriptionAnimEntry::Save(DataWriter& writer) const
 
     writer.Write<int32_t>(StateAnim);
     writer.Write<int32_t>(ActionAnim);
-    BakerModelDescriptionCut::WriteString(writer, FileName);
-    BakerModelDescriptionCut::WriteString(writer, Name);
+    writer.WriteString(FileName);
+    writer.WriteString(Name);
 }
 
 void BakerModelDescriptionAnimLayerValue::Save(DataWriter& writer) const
@@ -1594,15 +1569,6 @@ void BakerModelDescriptionAnimLayerValue::Save(DataWriter& writer) const
     writer.Write<int32_t>(ActionAnim);
     writer.Write<int32_t>(Layer);
     writer.Write<int32_t>(LayerValue);
-}
-
-void BakerModelDescriptionCut::WriteString(DataWriter& writer, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = numeric_cast<uint32_t>(value.length());
-    writer.Write<uint32_t>(len);
-    writer.WriteStringBytes(value);
 }
 
 static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>

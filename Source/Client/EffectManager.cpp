@@ -36,14 +36,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto EffectManagerValueSpan(const float32_t& value) noexcept -> const_span<float32_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const float32_t> value_ptr = &value;
-    return {value_ptr.get(), 1};
-}
-
 EffectManager::EffectManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<IAppRender> render) :
     _settings {settings},
     _resources {resources},
@@ -101,7 +93,7 @@ void EffectManager::SetEffectScriptValue(ptr<RenderEffect> effect, int32_t value
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetEffectScriptValues(effect, valueIndex, EffectManagerValueSpan(value));
+    SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
 }
 
 void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values)

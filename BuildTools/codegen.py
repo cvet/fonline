@@ -1119,6 +1119,11 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
         'float32_t': 'float32', 'float64_t': 'float64', 'bool': 'bool', 'void': 'void',
         'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
+    # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
+    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
+    for prefix in ('ptr<', 'nptr<'):
+        if engine_type.startswith(prefix) and engine_type.endswith('>'):
+            return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types)
     if engine_type.startswith('ScriptFunc<'):
         function_args = split_engine_args(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')])
         return 'callback(' + ','.join([engine_type_to_unified_type(arg.strip(), valid_types) for arg in function_args]) + ')'

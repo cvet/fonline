@@ -37,8 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeScriptImGui(ptr<BaseEngine> engine) -> refcount_ptr<ScriptImGui>;
-
 struct EngineBaseData
 {
     EngineBaseData()
@@ -1132,13 +1130,6 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
     _protoMngr.LoadFromResources(resources);
 }
 
-static auto MakeScriptImGui(ptr<BaseEngine> engine) -> refcount_ptr<ScriptImGui>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return SafeAlloc::MakeRefCounted<ScriptImGui>(engine);
-}
-
 BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
     ScriptSystem(),
@@ -1148,7 +1139,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     Resources {std::move(resources)},
     GameTime(Settings),
     TimeEventMngr(ptr<BaseEngine> {this}),
-    _imgui {MakeScriptImGui(ptr<BaseEngine> {this})}
+    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(ptr<BaseEngine> {this})}
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -1079,7 +1079,7 @@ void MapView::RebuildMapNow()
     _needRebuildLightPrimitives = true;
     _needReapplyLights = true;
     ptr<MapView> map = this;
-    _engine->OnRenderMap_Rebuild.Fire(map.get());
+    _engine->OnRenderMap_Rebuild.Fire(map);
 }
 
 void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
@@ -1156,7 +1156,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
 
     _needRebuildLightPrimitives = true;
     ptr<MapView> map = this;
-    _engine->OnRenderMap_Rebuild.Fire(map.get());
+    _engine->OnRenderMap_Rebuild.Fire(map);
 }
 
 void MapView::ShowHexLines(int ox, int oy)

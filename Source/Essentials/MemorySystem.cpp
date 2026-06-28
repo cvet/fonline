@@ -51,14 +51,6 @@ static constexpr size_t BACKUP_MEMORY_CHUNK_SIZE = 100000; // 100 chunks x 100kb
 static unique_arr_ptr<unique_arr_ptr<uint8_t>> BackupMemoryChunks;
 static std::atomic_size_t BackupMemoryChunksCount;
 
-template<typename T>
-static auto make_backup_array(size_t count) -> unique_arr_ptr<T>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return unique_arr_ptr<T> {new T[count]()};
-}
-
 // Replace memory allocator
 #if FO_HAVE_RPMALLOC
 
@@ -419,10 +411,16 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    BackupMemoryChunks = make_backup_array<unique_arr_ptr<uint8_t>>(BACKUP_MEMORY_CHUNKS);
+    const auto make_backup_array = []<typename T>(size_t count) -> unique_arr_ptr<T> {
+        FO_STACK_TRACE_ENTRY();
+
+        return unique_arr_ptr<T> {new T[count]()};
+    };
+
+    BackupMemoryChunks = make_backup_array.operator()<unique_arr_ptr<uint8_t>>(BACKUP_MEMORY_CHUNKS);
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        BackupMemoryChunks[i] = make_backup_array<uint8_t>(BACKUP_MEMORY_CHUNK_SIZE);
+        BackupMemoryChunks[i] = make_backup_array.operator()<uint8_t>(BACKUP_MEMORY_CHUNK_SIZE);
     }
 
     BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);

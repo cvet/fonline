@@ -47,6 +47,7 @@ FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
     if (!nullable_hex_item) {
         throw ScriptException("Item is not on map");
     }
+
     auto hex_item = nullable_hex_item.as_ptr();
 
     return hex_item->IsMapSpriteVisible();

@@ -90,7 +90,6 @@ using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTrace
 
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
 extern auto HasScriptStackTraceProvider() noexcept -> bool;
-[[nodiscard]] extern auto MakeScriptStackTraceLayers(std::vector<ScriptStackTraceLayer>&& layers) -> std::shared_ptr<const std::vector<ScriptStackTraceLayer>>;
 extern auto GetStackTrace() noexcept -> StackTraceData;
 extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
 extern void ClearResolvedStackTraceCache() noexcept;

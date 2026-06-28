@@ -195,33 +195,33 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_Rebuild, MapView* /*map*/);
+    FO_ENTITY_EVENT(OnRenderMap_Rebuild, ptr<MapView> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeTiles, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterTiles, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterTiles, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlatSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterFlatSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlatSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeLighting, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterLighting, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterLighting, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterSprites, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterSprites, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeFog, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterFog, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterSpritesAndFog, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterSpritesAndFog, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_BeforeFlushMap, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, MapView* /*map*/, irect32 /*drawArea*/);
+    FO_ENTITY_EVENT(OnRenderMap_AfterFlushMap, ptr<MapView> /*map*/, irect32 /*drawArea*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
@@ -249,23 +249,23 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterIn, ptr<CritterView> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterOut, ptr<CritterView> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, CritterView* /*cr*/, CritterVisibilityMode /*mode*/);
+    FO_ENTITY_EVENT(OnCritterVisibilityModeChanged, ptr<CritterView> /*cr*/, CritterVisibilityMode /*mode*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemMapIn, ptr<ItemView> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemMapOut, ptr<ItemView> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemInvIn, ptr<ItemView> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
+    FO_ENTITY_EVENT(OnItemInvOut, ptr<ItemView> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCustomEntityIn, ClientEntity* /*entity*/);
+    FO_ENTITY_EVENT(OnCustomEntityIn, ptr<ClientEntity> /*entity*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCustomEntityOut, ClientEntity* /*entity*/);
+    FO_ENTITY_EVENT(OnCustomEntityOut, ptr<ClientEntity> /*entity*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnPreLoadMap, hstring /*locPid*/, hstring /*mapPid*/, isize32& /*screenSize*/);
     ///@ ExportEvent
@@ -275,13 +275,13 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, any_t /*contextParam*/);
+    FO_ENTITY_EVENT(OnReceiveItems, vector<ptr<ItemView>> /*items*/, any_t /*contextParam*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, CritterAction /*action*/, int32_t /*actionData*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAction, bool /*localCall*/, ptr<CritterView> /*cr*/, CritterAction /*action*/, int32_t /*actionData*/, nptr<AbstractItem> /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationInit, CritterView* /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, AbstractItem* /*contextItem*/);
+    FO_ENTITY_EVENT(OnCritterAnimationInit, ptr<CritterView> /*cr*/, CritterStateAnim& /*stateAnim*/, CritterActionAnim& /*actionAnim*/, nptr<AbstractItem> /*contextItem*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterAnimationProcess, CritterView* /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, AbstractItem* /*contextItem*/, bool /*refreshAnim*/);
+    FO_ENTITY_EVENT(OnCritterAnimationProcess, ptr<CritterView> /*cr*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, nptr<AbstractItem> /*contextItem*/, bool /*refreshAnim*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterAnimationFrames, hstring /*modelName*/, CritterStateAnim /*stateAnim*/, CritterActionAnim /*actionAnim*/, int32_t& /*pass*/, uint32_t& /*flags*/, int32_t& /*ox*/, int32_t& /*oy*/, string& /*animName*/);
     ///@ ExportEvent

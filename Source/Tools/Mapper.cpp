@@ -3799,7 +3799,7 @@ auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
 
     if (entity) {
         vector<int32_t> prop_indices;
-        OnInspectorProperties.Fire(entity.get(), prop_indices);
+        OnInspectorProperties.Fire(entity.as_ptr(), prop_indices);
 
         for (const auto prop_index : prop_indices) {
             ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
@@ -6787,7 +6787,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     FO_VERIFY_AND_THROW(load_merge_repeat_count == 0, "Loaded map merge-items normalization is not idempotent", map_name, load_merge_repeat_count);
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
-    OnEditMapLoad.Fire(new_map.get());
+    OnEditMapLoad.Fire(new_map.as_ptr());
     LoadedMaps.emplace_back(std::move(new_map));
     auto loaded_map = LoadedMaps.back().as_nptr();
 
@@ -6972,7 +6972,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     }
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
 
-    OnEditMapSave.Fire(map.get());
+    OnEditMapSave.Fire(map);
     auto ctx = GetUndoContext(map, true).as_ptr();
     ctx->CleanUndoDepth = numeric_cast<int32_t>(ctx->UndoStack.size());
     SetMapDirty(map, false);
@@ -7032,7 +7032,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
 
     FO_VERIFY_AND_THROW(fomap_file, "Unable to write the fomap file", fomap_path);
 
-    OnEditMapSave.Fire(map.get());
+    OnEditMapSave.Fire(map);
     auto ctx = GetUndoContext(map, true).as_ptr();
     ctx->CleanUndoDepth = numeric_cast<int32_t>(ctx->UndoStack.size());
     SetMapDirty(map, false);

@@ -104,7 +104,7 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterWalk, Critter* /*critter*/, bool /*isIn*/, mdir /*dir*/);
+    FO_ENTITY_EVENT(OnCritterWalk, ptr<Critter> /*critter*/, bool /*isIn*/, mdir /*dir*/);
 
     ScriptFunc<bool, Critter*, StaticItem*, Item*, any_t> StaticScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, mdir> TriggerScriptFunc {};

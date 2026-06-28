@@ -62,7 +62,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 
 // Smart pointer helpers
 template<typename T, typename U>
-inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
+[[nodiscard]] inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
 {
     auto casted = p->as_nptr().template dyn_cast<T>();
 
@@ -77,7 +77,7 @@ inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
 }
 
 template<typename T, typename U>
-inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
+[[nodiscard]] inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
 {
     return std::dynamic_pointer_cast<T>(p.get_underlying());
 }
@@ -278,6 +278,22 @@ template<typename T>
     return ref_vec;
 }
 
+// RAII holder for a value-typed C resource bracketed by paired init/clear free functions (e.g. th_info_init / th_info_clear).
+// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction.
+template<typename T, auto InitFn, auto ClearFn>
+    requires(std::is_invocable_v<decltype(InitFn), T*> && std::is_invocable_v<decltype(ClearFn), T*>)
+struct scoped_init_clear
+{
+    scoped_init_clear() noexcept { InitFn(&Value); }
+    scoped_init_clear(const scoped_init_clear&) = delete;
+    scoped_init_clear(scoped_init_clear&&) noexcept = delete;
+    auto operator=(const scoped_init_clear&) -> scoped_init_clear& = delete;
+    auto operator=(scoped_init_clear&&) noexcept -> scoped_init_clear& = delete;
+    ~scoped_init_clear() noexcept { ClearFn(&Value); }
+
+    T Value {};
+};
+
 // Vector helpers
 template<std::ranges::range T>
 constexpr void vec_add_unique_value(T& vec, typename T::value_type value)
@@ -398,28 +414,7 @@ template<std::ranges::range T>
     }
 }
 
-[[nodiscard]] inline auto string_to_span(string_view str) noexcept -> const_span<uint8_t>
-{
-    return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
-}
 
-[[nodiscard]] inline auto string_to_span(string& str) noexcept -> span<uint8_t>
-{
-    return {reinterpret_cast<uint8_t*>(str.data()), str.size()};
-}
-
-[[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view
-{
-    return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
-}
-
-// Make a byte span over `byte_size` bytes starting at a pointer, replacing the verbose
-// `span<uint8_t> {p.reinterpret_as<uint8_t>().get(), size}` spelling at pointer+size buffer
-// boundaries (hashing, stream IO, serialization). Const-correct: a pointer to const data yields
-// `const_span<uint8_t>`, a mutable one yields `span<uint8_t>`. Overloaded for raw pointers (typed
-// and `void`) and, via a forwarding-reference template, for every project smart-pointer wrapper
-// (`ptr` / `nptr` / `unique_ptr` / `unique_nptr` / `unique_del_*` / `refcount_*` — all expose
-// `get()`); the wrapper preserves the underlying const-ness through the wrapper's `get()`.
 template<typename T>
     requires(!std::is_void_v<T>)
 [[nodiscard]] FO_FORCE_INLINE auto make_span(T* data, size_t byte_size) noexcept -> span<std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>>
@@ -450,6 +445,21 @@ template<typename R>
 [[nodiscard]] FO_FORCE_INLINE auto make_span(R&& range) noexcept
 {
     return make_span(std::ranges::data(range), std::ranges::size(range) * sizeof(std::ranges::range_value_t<R>));
+}
+
+[[nodiscard]] inline auto string_to_span(string_view str) noexcept -> const_span<uint8_t>
+{
+    return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
+}
+
+[[nodiscard]] inline auto string_to_span(string& str) noexcept -> span<uint8_t>
+{
+    return {reinterpret_cast<uint8_t*>(str.data()), str.size()};
+}
+
+[[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view
+{
+    return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
 }
 
 FO_END_NAMESPACE

@@ -55,18 +55,6 @@ using ssl_context = asio::ssl::context;
 
 FO_BEGIN_NAMESPACE
 
-static auto PayloadBytesAsSpan(string_view payload) noexcept -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (payload.empty()) {
-        return {};
-    }
-
-    ptr<const char> chars = payload.data();
-    return {chars.reinterpret_as<const uint8_t>().get(), payload.size()};
-}
-
 template<bool Secured>
 class NetworkServerConnection_WebSockets final : public NetworkServerConnection
 {
@@ -213,7 +201,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback(PayloadBytesAsSpan(payload));
+        ReceiveCallback(string_to_span(payload));
     }
 }
 

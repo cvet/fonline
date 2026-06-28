@@ -314,28 +314,6 @@ EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {
 });
 // clang-format on
 
-FO_BEGIN_NAMESPACE
-
-static void CleanupEmscriptenOwnedText(char* text) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<char> text_lookup = text;
-
-    if (text_lookup) {
-        std::free(text_lookup.get());
-    }
-}
-
-static auto ReturnEmscriptenClipboardText(ptr<const char> clipboard_text) noexcept -> const char*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return clipboard_text.get_no_const();
-}
-
-FO_END_NAMESPACE
-
 extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
@@ -343,7 +321,7 @@ extern "C"
         FO_NO_STACK_TRACE_ENTRY();
 
         FO_NAMESPACE ptr<const char> clipboard_text = FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
-        return FO_NAMESPACE ReturnEmscriptenClipboardText(clipboard_text);
+        return clipboard_text.get_no_const();
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
@@ -373,7 +351,13 @@ extern "C"
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_NAMESPACE unique_del_ptr<char> owned_text {text, FO_NAMESPACE CleanupEmscriptenOwnedText};
+        FO_NAMESPACE unique_del_ptr<char> owned_text {text, [](FO_NAMESPACE nptr<char> owned) {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            if (owned) {
+                std::free(owned.get());
+            }
+        }};
         Emscripten_InjectPasteText(owned_text.get());
     }
 

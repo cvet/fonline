@@ -961,7 +961,7 @@ void EntityManager::CallInit(ptr<Location> loc, bool first_time)
 
     loc->SetInitCalled();
 
-    _engine->OnLocationInit.Fire(loc.get(), first_time);
+    _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
         ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), loc, loc->GetInitScript(), first_time);
@@ -991,7 +991,7 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
 
     map->SetInitCalled();
 
-    _engine->OnMapInit.Fire(map.get(), first_time);
+    _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
         ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), map, map->GetInitScript(), first_time);
@@ -1029,7 +1029,7 @@ void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
 
     cr->SetInitCalled();
 
-    _engine->OnCritterInit.Fire(cr.get(), first_time);
+    _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
         ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), cr, cr->GetInitScript(), first_time);
@@ -1059,7 +1059,7 @@ void EntityManager::CallInit(ptr<Item> item, bool first_time)
 
     item->SetInitCalled();
 
-    _engine->OnItemInit.Fire(item.get(), first_time);
+    _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {
         ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), item, item->GetInitScript(), first_time);

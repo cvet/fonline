@@ -147,7 +147,9 @@ FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
     if (!nullable_imgui_context) {
         throw ScriptException("ImGui context is not available");
     }
+
     auto imgui_context = nullable_imgui_context.as_ptr();
+
     if (!imgui_context->WithinFrameScope) {
         throw ScriptException("You can use this function only in active ImGui frame");
     }

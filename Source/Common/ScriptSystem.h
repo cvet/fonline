@@ -34,7 +34,6 @@
 #pragma once
 
 #include "Common.h"
-#include "Properties.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -957,6 +956,23 @@ template<typename T>
     }
 
     return ReleaseScriptOwnership(std::move(value).take_not_null());
+}
+
+template<typename T>
+[[nodiscard]] auto ScriptMutablePtr(ptr<const T> value) noexcept -> T*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return const_cast<T*>(std::addressof(*value));
+}
+
+template<typename T>
+[[nodiscard]] auto ScriptMutablePtr(nptr<const T> value) noexcept -> T*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(value, "Script value pointer is null");
+    return ScriptMutablePtr(value.as_ptr());
 }
 
 FO_END_NAMESPACE

@@ -1037,7 +1037,7 @@ void ClientEngine::Net_OnAddCritter()
         }
     }
 
-    OnCritterIn.Fire(cr.get());
+    OnCritterIn.Fire(cr.as_ptr());
 }
 
 void ClientEngine::Net_OnRemoveCritter()
@@ -1058,7 +1058,7 @@ void ClientEngine::Net_OnRemoveCritter()
         auto cr = nullable_cr.as_ptr();
         cr->Finish();
 
-        OnCritterOut.Fire(cr.get());
+        OnCritterOut.Fire(cr);
 
         nptr<CritterView> removed_cr = cr;
 
@@ -1085,7 +1085,7 @@ void ClientEngine::Net_OnRemoveCritter()
 
         refcount_ptr<CritterView> cr = copy(_globalMapCritters[erase_index]);
 
-        OnCritterOut.Fire(cr.get());
+        OnCritterOut.Fire(cr.as_ptr());
         _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
 
         if (GetChosen() == cr.as_nptr()) {
@@ -1109,7 +1109,7 @@ void ClientEngine::Net_OnCritterVisibilityMode()
         if (nptr<CritterHexView> nullable_cr = map->GetCritter(cr_id)) {
             auto cr = nullable_cr.as_ptr();
             cr->SetVisibilityMode(mode);
-            OnCritterVisibilityModeChanged.Fire(cr.get(), mode);
+            OnCritterVisibilityModeChanged.Fire(cr, mode);
         }
         else {
             BreakIntoDebugger();
@@ -1555,7 +1555,7 @@ void ClientEngine::Net_OnChosenAddItem()
         }
     }
 
-    OnItemInvIn.Fire(item.get());
+    OnItemInvIn.Fire(item);
 }
 
 void ClientEngine::Net_OnChosenRemoveItem()
@@ -1584,7 +1584,7 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto item_clone = item->CreateRefClone();
     chosen->DeleteInvItem(item);
 
-    OnItemInvOut.Fire(item_clone.get());
+    OnItemInvOut.Fire(item_clone.as_ptr());
 
     if (_curMap) {
         auto map = GetCurMapPtr();
@@ -1620,7 +1620,7 @@ void ClientEngine::Net_OnAddItemOnMap()
 
     ReceiveCustomEntities(item);
 
-    OnItemMapIn.Fire(item.get());
+    OnItemMapIn.Fire(item);
 }
 
 void ClientEngine::Net_OnRemoveItemFromMap()
@@ -1639,7 +1639,7 @@ void ClientEngine::Net_OnRemoveItemFromMap()
 
     if (nullable_item) {
         auto item = nullable_item.as_ptr();
-        OnItemMapOut.Fire(item.get());
+        OnItemMapOut.Fire(item);
 
         // Refresh borders
         if (!item->GetShootThru()) {
@@ -1892,7 +1892,7 @@ void ClientEngine::Net_OnSomeItems()
         items.emplace_back(item);
     }
 
-    const auto items2 = vec_transform(items, [](auto&& item) -> ItemView* { return item.as_ptr().get_no_const(); });
+    const auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item.as_ptr().get_no_const(); });
     OnReceiveItems.Fire(items2, context_param);
 }
 
@@ -1952,7 +1952,7 @@ void ClientEngine::Net_OnAddCustomEntity()
     auto holder = nullable_holder.as_ptr();
     auto entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
 
-    OnCustomEntityIn.Fire(entity.get());
+    OnCustomEntityIn.Fire(entity);
 }
 
 void ClientEngine::Net_OnRemoveCustomEntity()
@@ -1978,7 +1978,7 @@ void ClientEngine::Net_OnRemoveCustomEntity()
 
     auto custom_entity = nullable_custom_entity.as_ptr();
 
-    OnCustomEntityOut.Fire(custom_entity.get());
+    OnCustomEntityOut.Fire(custom_entity);
 
     nptr<Entity> nullable_holder;
 

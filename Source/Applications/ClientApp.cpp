@@ -105,7 +105,7 @@ int main(int argc, char** argv) // Handled by SDL
     LogToFile(GetExeLogFileName(), false);
 
 #if !FO_TESTING_APP
-    const vector<CommandLineArg> args_holder = MakeCommandLineArgs(numeric_cast<int32_t>(argc), argv);
+    const vector<CommandLineArg> args_holder = CommandLineArgs::Make(numeric_cast<int32_t>(argc), argv);
     const CommandLineArgs args {args_holder};
 #endif
     const bool run_result = RunEmbeddedOrLoadedClient(args);
@@ -583,14 +583,14 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
     requested_runtime.Path = ResolveBundledRuntimePath();
 
     for (size_t index = 1; index < args.size(); index++) {
-        auto arg = GetCommandLineArg(args, index);
+        auto arg = args.Get(index);
 
         if (!arg) {
             continue;
         }
 
         const string_view arg_view = arg.get();
-        auto next_arg = GetCommandLineArg(args, index + 1);
+        auto next_arg = args.Get(index + 1);
 
         if (arg_view == "--ClientLibPath" && next_arg) {
             requested_runtime.ExplicitPath = true;
@@ -603,7 +603,7 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
         }
 
         if (arg_view == "--ForceEmbeddedRuntime" || arg_view == "-ForceEmbeddedRuntime") {
-            const string_view value = next_arg && !IsCommandLineOption(next_arg) ? string_view(next_arg.get()) : string_view("1");
+            const string_view value = next_arg && !CommandLineArgs::IsOption(next_arg) ? string_view(next_arg.get()) : string_view("1");
             requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
         }
     }

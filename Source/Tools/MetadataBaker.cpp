@@ -50,13 +50,6 @@ MetadataBaker::~MetadataBaker()
     FO_STACK_TRACE_ENTRY();
 }
 
-MetadataBaker::TagsParsingContext::TagsParsingContext(string_view target) :
-    Meta {[] { }},
-    Target {target}
-{
-    FO_STACK_TRACE_ENTRY();
-}
-
 void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
@@ -151,7 +144,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
         readed_files.emplace_back(file.GetStr());
     }
 
-    TagsParsingContext ctx {target};
+    TagsParsingContext ctx {.Target = target};
     ctx.ResultTags["Target"].emplace_back(vector<string> {string(target)});
 
     for (size_t i = 0; i < files.size(); i++) {

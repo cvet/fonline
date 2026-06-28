@@ -73,7 +73,7 @@ FO_BEGIN_NAMESPACE
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
     { \
-        this \
+        ptr<Entity> {this} \
     }
 
 class EntityProperties

@@ -46,26 +46,6 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
 static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
 static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
 
-static auto ClientDataBytes(const_span<uint8_t> data) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(!data.empty(), "Client data buffer is empty");
-
-    return data.data();
-}
-
-template<typename T>
-static auto MutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<T> value_ptr = &value;
-    return value_ptr.reinterpret_as<uint8_t>();
-}
-
 template<typename T>
 static auto ReadTrivialValue(const_span<uint8_t> data) -> T
 {
@@ -78,8 +58,8 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
     T value {};
 
     if (!data.empty()) {
-        auto target = MutableObjectBytes(value);
-        auto source = ClientDataBytes(data);
+        ptr<uint8_t> target = ptr<T> {&value}.reinterpret_as<uint8_t>();
+        ptr<const uint8_t> source = data.data();
         MemCopy(target.get(), source.get(), sizeof(T));
     }
 
@@ -95,8 +75,8 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     int32_t value = 0;
 
     if (!data.empty()) {
-        auto target = MutableObjectBytes(value);
-        auto source = ClientDataBytes(data);
+        ptr<uint8_t> target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
+        ptr<const uint8_t> source = data.data();
         MemCopy(target.get(), source.get(), data.size());
     }
 
