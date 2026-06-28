@@ -176,9 +176,7 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
     const int32_t length = *cast_from_void<int32_t*>(init_list);
     CheckArraySize(length);
 
-    // (FOnline Patch) inline primitive/value elements may be 8-byte aligned in the list buffer, so the first
-    // element starts at this aligned offset rather than a hard-coded 4-byte header (handles keep 4-byte packing).
-    const auto list_buffer_first_offset = [](int32_t element_size) -> size_t {
+    const auto list_buffer_first_offset = [](int32_t element_size) -> size_t { //
         return element_size >= 8 ? sizeof(int64_t) : sizeof(int32_t);
     };
 
