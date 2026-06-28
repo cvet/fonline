@@ -751,6 +751,43 @@ int  asCDataType::GetAlignment() const
 }
 #endif
 
+// (FOnline Patch) Single authority for VM-stack value alignment. Returns the required alignment of this
+// variable's stack slot in DWORDs (1 = 4-byte, 2 = 8-byte). Shared bit-for-bit by the compiler layout
+// (GetVariableOffset/GetVariableSlot) and the bytecode serializer (asCReader/asCWriter), so every 8-byte
+// value carried inline on the stack lands on an 8-byte-aligned slot. Covers inline 8-byte value types,
+// 8-byte built-in primitives (int64/uint64/double), and 8-byte object/funcdef handles (only when
+// AS_PTR_SIZE == 2). Returns 1 (no extra alignment) for everything else, including references.
+int  asCDataType::GetStackAlignmentDWords(bool isInlineValue) const
+{
+	// (FOnline Patch) Inline 8-byte value types (registered with alignment 8) need their on-stack slot aligned.
+	if( isInlineValue && typeInfo != 0 )
+	{
+		asCObjectType *ot = CastToObjectType(typeInfo);
+		if( ot != 0 && ot->alignment > 4 )
+			return (ot->alignment + 3) / 4; // bytes -> dwords (8 -> 2)
+	}
+
+	// (FOnline Patch) 8-byte built-in primitives (int64/uint64/double) are carried inline on the stack by value
+	// and are read/written as 8-byte loads/stores, so their slot must be 8-byte aligned too. They have no
+	// typeInfo, so they are handled here by size. References (pointers to the value) do not need this. The
+	// memory size is bitness-independent (always 2 dwords), so the serializer's alignment pass re-derives it
+	// identically on every target.
+	if( !isReference && typeInfo == 0 && tokenType != ttQuestion && GetSizeInMemoryDWords() == 2 )
+		return 2;
+
+	// (FOnline Patch) Object handles (and funcdef handles) held by value on the stack are a single pointer. On
+	// 64-bit targets (AS_PTR_SIZE == 2) that pointer is an 8-byte value read/written through an 8-byte load, so
+	// its slot must be 8-byte aligned. On 32-bit targets (AS_PTR_SIZE == 1) a pointer is 4 bytes and needs no
+	// alignment, so this is naturally bitness-correct: the serializer's pad pass uses AS_PTR_SIZE-derived sizes
+	// and re-derives the (zero, on 32-bit) pad per target. References (pointer-to-handle) are not aligned here.
+#if AS_PTR_SIZE == 2
+	if( !isReference && IsObjectHandle() )
+		return 2;
+#endif
+
+	return 1;
+}
+
 asSTypeBehaviour *asCDataType::GetBehaviour() const
 {
 	if (!typeInfo) return 0;

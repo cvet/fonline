@@ -1953,10 +1953,12 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 		type->name       = typeName;
 		type->nameSpace  = defaultNamespace;
 		type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-		// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+
+		// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+		// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+		// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
+
 		type->flags      = flags;
 		type->accessMask = defaultAccessMask;
 
@@ -2023,10 +2025,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 			type->name       = typeName;
 			type->nameSpace  = defaultNamespace;
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -2085,10 +2087,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 					type->templateSubTypes[s].GetTypeInfo()->AddRefInternal();
 			}
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -6899,12 +6901,15 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 					if( ti->flags & asOBJ_VALUE )
 					{
 						asUINT size = ti->GetSize();
-
-						// Align the offset to 4 bytes boundary
-						if( size >= 4 && (asPWORD(buffer) & 0x3) )
-							buffer += 4 - (asPWORD(buffer) & 0x3);
-
 						asCObjectType *ot = CastToObjectType(ti);
+
+						// (FOnline Patch) align the offset to the value type's natural alignment (8 for 8-byte value
+						// types); the list-buffer base is allocated 16-aligned, so this matches the layout produced
+						// by asCReader::SListAdjuster and the list-factory consumers.
+						asUINT elemAlign = (ot != 0 && ot->alignment > 4) ? (asUINT)ot->alignment : 4u;
+						if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+							buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
+
 						if( ot && ot->beh.destruct )
 						{
 							// Only call the destructor if the object has been created
@@ -6947,9 +6952,10 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 				{
 					asUINT size = dt.GetSizeInMemoryBytes();
 
-					// Align the offset to 4 bytes boundary
-					if( size >= 4 && (asPWORD(buffer) & 0x3) )
-						buffer += 4 - (asPWORD(buffer) & 0x3);
+					// (FOnline Patch) align the offset to the primitive's natural alignment (8 for 8-byte primitives)
+					asUINT elemAlign = size >= 8 ? 8u : 4u;
+					if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+						buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
 
 					// Advance the buffer
 					buffer += size;

@@ -133,6 +133,13 @@ public:
 #ifdef WIP_16BYTE_ALIGN
 	int  GetAlignment()          const;
 #endif
+	// (FOnline Patch) 8-byte VM-stack value alignment. Required alignment (in DWORDs, 1 = 4-byte, 2 = 8-byte)
+	// of this variable's stack slot. `isInlineValue` = the slot holds a value type inline (not on heap / not a
+	// handle/reference). The single authority for stack alignment, shared by the compiler layout
+	// (GetVariableOffset/GetVariableSlot) and the bytecode serializer (asCReader/asCWriter). Returns 1 for every
+	// type until per-type 8-byte alignment is activated, so the alignment-aware layout is byte-identical (inert).
+	// See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
+	int  GetStackAlignmentDWords(bool isInlineValue) const;
 
 	void SetTokenType(eTokenType tt)         {tokenType = tt;}
 	void SetTypeInfo(asCTypeInfo *ti)       {typeInfo = ti;}
