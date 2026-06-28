@@ -508,6 +508,13 @@ void Application::EndFrame()
 #endif
 }
 
+auto Application::IsHeadless() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return true;
+}
+
 void Application::RequestQuit(bool success) noexcept
 {
     FO_STACK_TRACE_ENTRY();

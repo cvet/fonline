@@ -666,6 +666,7 @@ public:
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
     [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
+    [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> AppWindow* { return _activeWindow.get_no_const(); }
     [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> AppWindow* { return index < _childWindows.size() ? _childWindows[index].get() : nullptr; }

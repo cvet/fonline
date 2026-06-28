@@ -802,7 +802,7 @@ class Packager:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
@@ -813,7 +813,7 @@ class Packager:
 					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
 
 				if self.args.target == 'Client' and not is_lib:
-					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
 					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
