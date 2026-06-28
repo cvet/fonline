@@ -2055,7 +2055,6 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
     }
 
     auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto, props);
-
     EntityMngr.RegisterCritter(cr.get());
 
     if (for_player) {
@@ -2063,29 +2062,6 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
     }
 
     MapMngr.AddCritterToMap(cr.get(), nullptr, {}, hdir {}, {});
-
-    bool release_empty_sync_context = false;
-
-    if (!cr->IsDestroyed()) {
-        auto* ctx = GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr.get());
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr.get());
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
-                ctx->Release();
-            }
-        }
-    });
 
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr.get());
@@ -2119,6 +2095,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     bool is_error = false;
     Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
     refcount_ptr cr_holder = cr;
+    EnsureEntitySynced(cr);
 
     if (is_error) {
         if (cr != nullptr) {
@@ -2142,31 +2119,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     EntityMngr.MakePersistent(cr, true, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
-    bool release_empty_sync_context = false;
-
     if (!cr->IsDestroyed()) {
-        auto* ctx = GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr);
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr);
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
-                ctx->Release();
-            }
-        }
-    });
-
-    if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
         OnGlobalMapCritterIn.Fire(cr);
     }
     if (!cr->IsDestroyed()) {
@@ -2175,7 +2128,6 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         MapMngr.ProcessVisibleItems(cr);
     }
     if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
         OnCritterLoad.Fire(cr);
     }
 
@@ -2293,33 +2245,11 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
     FO_VERIFY_AND_THROW(player, "Missing player instance");
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
-    auto* ctx = GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        ServerEntity* sync_entities[] = {player, cr};
-        ctx->SyncEntities(span<ServerEntity*> {sync_entities});
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(player);
-        ctx->EnsureEntitySynced(player->GetControlledCritter());
-        ctx->EnsureEntitySynced(cr);
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(player);
-    ValidateEntityAccess(cr);
+    EnsureEntitySynced(player);
+    EnsureEntitySynced(cr);
 
     Critter* prev_cr = player->GetControlledCritter();
-    ValidateEntityAccess(prev_cr);
+    EnsureEntitySynced(prev_cr);
 
     if (cr == nullptr) {
         if (prev_cr == nullptr) {
@@ -2386,41 +2316,12 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(prev_cr);
+    EnsureEntitySynced(cr);
+    EnsureEntitySynced(prev_cr);
 
     auto map = cr->GetParent<Map>();
     FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {}, prev_cr != nullptr ? prev_cr->GetId() : ident_t {});
-
-    auto* ctx = GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        if (map) {
-            ServerEntity* sync_entities[] = {cr, map.get()};
-            ctx->SyncEntities(span<ServerEntity*> {sync_entities});
-        }
-        else {
-            ctx->SyncEntity(cr);
-        }
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(cr);
-        ctx->EnsureEntitySynced(map.get());
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(prev_cr);
-    ValidateEntityAccess(map.get());
+    EnsureEntitySynced(map.get());
 
     cr->Send_TimeSync();
 
@@ -2448,7 +2349,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         if (map) {
             auto* loc = map->GetLocation();
             FO_VERIFY_AND_THROW(loc, "Missing location instance");
-            ctx->EnsureEntitySynced(loc);
+            EnsureEntitySynced(loc);
         }
 
         cr->Send_LoadMap(map.get());

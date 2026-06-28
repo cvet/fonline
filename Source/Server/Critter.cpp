@@ -613,7 +613,6 @@ auto Critter::AddVisibleCritter(Critter* cr, CritterVisibilityMode mode) -> bool
     FO_VERIFY_AND_THROW(cr->GetId() != GetId(), "Critter visibility target has the same id as source");
     FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
     FO_VERIFY_AND_THROW(mode != CritterVisibilityMode::None, "Critter visibility mode is not set");
-
     ValidateEntityAccess(cr);
 
     const auto inserted = _visibleCrWhoSeeMeMap.emplace(cr->GetId(), cr).second;
@@ -642,7 +641,6 @@ auto Critter::RemoveVisibleCritter(Critter* cr) -> bool
     FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
     FO_VERIFY_AND_THROW(cr->GetId() != GetId(), "Critter visibility target has the same id as source");
     FO_VERIFY_AND_THROW(cr->GetMapId() == GetMapId(), "Critter belongs to a different map");
-
     ValidateEntityAccess(cr);
 
     const auto it_map = _visibleCrWhoSeeMeMap.find(cr->GetId());

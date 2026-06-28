@@ -3403,13 +3403,11 @@ static asUINT GetListElementAlignment(const asCDataType &dt, asUINT size)
 	if( dt.IsPrimitive() )
 		return size >= 8 ? 8u : 4u;
 
-	if( !dt.IsObjectHandle() && dt.GetTypeInfo() != 0 && (dt.GetTypeInfo()->flags & asOBJ_VALUE) )
-	{
-		asCObjectType *ot = CastToObjectType(dt.GetTypeInfo());
-		if( ot != 0 && ot->alignment > 4 )
-			return (asUINT)ot->alignment;
-	}
-
+	// Inline value-type list-buffer elements stay 4-byte packed (the stock AngelScript layout):
+	// the list factory copies each element out with AssignScriptObject into the array's own properly-aligned
+	// storage, so the staging buffer needs no natural alignment. Aligning 8-byte value types (e.g. string) here
+	// desynced the list-factory read offset from the buffer and crashed value-type init-lists. Only 8-byte
+	// primitives keep natural alignment (above).
 	return 4u;
 }
 

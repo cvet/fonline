@@ -233,10 +233,7 @@ void Item::RemoveItemFromContainer(Item* item)
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
     FO_VERIFY_AND_THROW(item, "Missing item instance");
 
-    RevertEntityLock(item);
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item);
+    EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);

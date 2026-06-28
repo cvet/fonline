@@ -506,6 +506,8 @@ namespace CommonMethods
         LanguageName englLang = LanguageName("engl".hstr());
         LanguageName russLang = LanguageName("russ".hstr());
         if (!(englLang < russLang || russLang < englLang)) return -50;
+)"
+                                          R"(
 
         TextPackKey defaultKey;
         if (defaultKey.Collection.Name != EMPTY_HSTRING) return -51;

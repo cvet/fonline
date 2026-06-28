@@ -6903,12 +6903,11 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 						asUINT size = ti->GetSize();
 						asCObjectType *ot = CastToObjectType(ti);
 
-						// (FOnline Patch) align the offset to the value type's natural alignment (8 for 8-byte value
-						// types); the list-buffer base is allocated 16-aligned, so this matches the layout produced
-						// by asCReader::SListAdjuster and the list-factory consumers.
-						asUINT elemAlign = (ot != 0 && ot->alignment > 4) ? (asUINT)ot->alignment : 4u;
-						if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
-							buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
+						// (FOnline Patch) Inline value-type list-buffer elements stay 4-byte packed (stock layout),
+						// matching asCReader::GetListElementAlignment and the list-factory consumer. Aligning 8-byte
+						// value types here desynced destruction from the buffer and crashed value-type init-lists.
+						if( size >= 4 && (asPWORD(buffer) & 0x3) != 0 )
+							buffer += 4 - asUINT(asPWORD(buffer) & 0x3);
 
 						if( ot && ot->beh.destruct )
 						{

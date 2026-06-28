@@ -703,10 +703,7 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controlla
     if (self->GetMapId()) {
         auto map = self->GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
-
-        auto* sync_ctx = self->GetEngine()->GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(sync_ctx, "Missing script execution context");
-        sync_ctx->EnsureEntitySynced(map.get());
+        EnsureEntitySynced(map.get());
     }
 
     if (controllable) {

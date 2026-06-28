@@ -600,6 +600,8 @@ namespace ScriptMethodsTest
 
     int TestGameCreateCritterOverloads()
     {
+)"
+                    R"(
         ProtoCritter? proto = Game.GetProtoCritter("TestCritter".hstr());
         if (proto is null) return -1;
 
@@ -1117,6 +1119,8 @@ namespace ScriptMethodsTest
         if (reconnected_player is null) return -2;
         if (reconnected_player.Id != playerId) return -3;
 
+)"
+                    R"(
         reconnected_player.HardDisconnect();
         return 0;
     }

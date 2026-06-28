@@ -697,6 +697,8 @@ namespace ScriptBuiltins
         if (names[0] != "seed" || names[1] != "seed") return -6;
 
         array<int> source = {1, 2, 3};
+)"
+                    R"(
         array<int> copied = array<int>(source);
         if (copied.length() != 3) return -7;
         if (copied[0] != 1 || copied[1] != 2 || copied[2] != 3) return -8;

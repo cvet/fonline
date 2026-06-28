@@ -1552,7 +1552,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ServerEngine* server, FO_NULLABLE 
 {
     auto* ctx = server->GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    return IsEntityAccessValid(entity);
+    return IsEntityAccessValid(entity, false);
 }
 
 ///@ ExportMethod

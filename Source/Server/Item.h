@@ -51,7 +51,6 @@ class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
     friend void PropagateEntityLock(Item* item, EntityLock* parent_lock);
-    friend void RevertEntityLock(Item* item);
 
 public:
     Item() = delete;

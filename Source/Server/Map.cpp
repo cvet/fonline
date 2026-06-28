@@ -329,6 +329,7 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     FO_VERIFY_AND_THROW(item, "Missing item instance");
     FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
+    EnsureEntitySynced(item);
     refcount_ptr map_holder = this;
     refcount_ptr item_holder = item;
     ignore_unused(map_holder);
@@ -387,6 +388,7 @@ void Map::SetItem(Item* item)
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add an item to an already destroyed map", GetId());
     FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add an item to a map that is being destroyed", GetId());
     FO_VERIFY_AND_THROW(!_itemsMap.count(item->GetId()), "Server map already contains an item with the same id", GetId(), item->GetId(), item->GetProtoId());
+    EnsureEntitySynced(item);
 
     _itemsMap.emplace(item->GetId(), item);
     vec_add_unique_value(_items, item);
@@ -440,6 +442,7 @@ void Map::RemoveItem(ident_t item_id)
     const auto it = _itemsMap.find(item_id);
     FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
     Item* item = it->second.get();
+    EnsureEntitySynced(item);
     refcount_ptr map_holder = this;
     refcount_ptr item_holder = item;
     ignore_unused(map_holder);
@@ -452,11 +455,6 @@ void Map::RemoveItem(ident_t item_id)
     auto& field = _hexField->GetCellForWriting(hex);
 
     vec_remove_unique_value(field.Items, item);
-
-    RevertEntityLock(item);
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);

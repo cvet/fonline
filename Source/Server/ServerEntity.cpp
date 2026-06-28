@@ -140,6 +140,12 @@ void ServerEntity::SetParent(ServerEntity* parent) noexcept
 
     FO_NO_VALIDATE_ENTITY_ACCESS();
 
+    if (_parent.load(std::memory_order_relaxed) != nullptr) {
+        const SyncContext* ctx = SyncContext::GetCurrentOnThisThread();
+        const EntityLock* lock = GetEntityLock();
+        FO_VERIFY_AND_CONTINUE(ctx == nullptr || ctx->IsEmpty() || (lock != nullptr && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
+    }
+
     if (parent != nullptr) {
         parent->AddRef();
     }
