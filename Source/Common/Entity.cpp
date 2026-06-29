@@ -177,8 +177,6 @@ void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackD
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
         throw GenericException("Highest callback already added");
     }
@@ -199,8 +197,6 @@ void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t su
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks.end()) {
         callbacks.erase(it);
     }
@@ -211,8 +207,6 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_RETURN_VALUE(!_isDestroyed, EventResult::ContinueChain, "Destroyed entity tried to fire cached event callbacks", GetName(), GetTypeName(), GetId());
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (callbacks.empty()) {
         return EventResult::ContinueChain;

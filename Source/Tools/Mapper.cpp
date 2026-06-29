@@ -3476,8 +3476,6 @@ void MapperEngine::ApplyInspectorPropertyEdit(Entity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     constexpr auto start_line = 3;
 
     if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size())) {
@@ -4026,8 +4024,6 @@ void MapperEngine::SetActivePanelMode(int32_t mode)
 void MapperEngine::MoveEntity(ClientEntity* entity, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!_curMap->GetSize().is_valid_pos(hex)) {
         return;
@@ -4838,8 +4834,6 @@ auto MapperEngine::MergeItemsToMultihexMeshes(MapView* map) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     size_t merges = 0;
 
     // AnyUnique items merge by (proto, data), independent of position, into the lowest-id group member. Doing
@@ -4897,8 +4891,6 @@ auto MapperEngine::MergeItemsToMultihexMeshes(MapView* map) -> size_t
 auto MapperEngine::CoalesceAnyUniqueItems(MapView* map, bool skip_selected) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // O(N*groups) bulk coalescence of every AnyUnique item on the map. AnyUnique merges any same-proto items
     // that share per-item data (ignoring Hex and MultihexMesh) into a single mesh, regardless of position,
@@ -5010,8 +5002,6 @@ auto MapperEngine::CoalesceAnyUniqueItems(MapView* map, bool skip_selected) -> s
 auto MapperEngine::CoalesceItemMultihexMesh(MapView* map, ItemHexView* item, bool skip_selected) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Incremental driver for the merge loop that used to be `while ((item = TryMergeItemToMultihexMesh(...))
     // != nullptr) merges++;`. It produces the exact same sequence of merges (same per-step best-by-id target
@@ -5169,8 +5159,6 @@ auto MapperEngine::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, b
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (item->GetMultihexGeneration() == MultihexGenerationType::None) {
         return nullptr;
     }
@@ -5254,8 +5242,6 @@ auto MapperEngine::TryMergeItemToMultihexMesh(MapView* map, ItemHexView* item, b
 void MapperEngine::MergeItemToMultihexMesh(MapView* map, ItemHexView* source_item, ItemHexView* target_item)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto multihex_mesh = target_item->GetMultihexMesh();
     bool some_hex_added = false;
@@ -5355,8 +5341,6 @@ auto MapperEngine::BreakItemsMultihexMeshes(MapView* map) -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     size_t breaks = 0;
 
     for (auto& item : to_vector(map->GetItems())) {
@@ -5382,8 +5366,6 @@ auto MapperEngine::BreakItemsMultihexMeshes(MapView* map) -> size_t
 auto MapperEngine::TryBreakItemFromMultihexMesh(MapView* map, ItemHexView* item, mpos hex) -> ItemHexView*
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!item->IsNonEmptyMultihexMesh()) {
         return item;
@@ -5946,8 +5928,6 @@ auto MapperEngine::IsCurInInterface() const -> bool
 auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     hex = {};
 

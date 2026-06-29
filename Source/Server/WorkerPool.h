@@ -92,6 +92,7 @@ public:
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
 
     void Resume();
+    void Pause();
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);

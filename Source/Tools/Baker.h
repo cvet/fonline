@@ -139,7 +139,6 @@ private:
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
     unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
-    bool _nonConstHelper {};
 };
 
 class BakerServerEngine : public EngineMetadata, public ScriptSystem, public EntityManagerApi

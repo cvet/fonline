@@ -549,8 +549,6 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 

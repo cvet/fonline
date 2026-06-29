@@ -291,8 +291,6 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     // Skip empty
     if (texture_name.empty()) {
         return nullptr;
@@ -1478,8 +1476,6 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const auto& mesh_data = mesh_instance->Mesh;
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
@@ -1636,8 +1632,6 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
 void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;

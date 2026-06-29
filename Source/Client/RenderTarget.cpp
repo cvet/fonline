@@ -110,8 +110,6 @@ void RenderTargetManager::AllocateRenderTargetTexture(RenderTarget* rt, bool lin
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     auto tex_size = rt->_size;
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);
@@ -201,8 +199,6 @@ auto RenderTargetManager::GetRenderTargetPixel(const RenderTarget* rt, ipos32 po
 void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _render->ClearRenderTarget(color, with_depth);
 }

@@ -80,7 +80,6 @@ private:
     shared_ptr<SpriteSheet> _critterDummyAnimFrames {};
     shared_ptr<Sprite> _itemHexDummyAnim {};
     map<string, string> _soundNames {};
-    bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unordered_map<hstring, shared_ptr<ModelSprite>> _critterModels {};
 #endif

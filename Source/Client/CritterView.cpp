@@ -159,8 +159,6 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     for (auto& item : _invItems) {
         if (item->GetId() == item_id) {
             return item.get();
@@ -173,8 +171,6 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> ItemView*
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> ItemView*
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
         if (item->GetProtoId() == item_pid) {

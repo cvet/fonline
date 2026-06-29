@@ -2312,8 +2312,6 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (!field.SpriteChain) {
         field.SpriteChain = mspr;
         mspr->CreateExtraChain(field.SpriteChain.get_pp());
@@ -2326,8 +2324,6 @@ void MapView::AddSpriteToChain(Field& field, MapSprite* mspr)
 void MapView::InvalidateSpriteChain(Field& field)
 {
     FO_NO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (field.SpriteChain) {
         FO_VERIFY_AND_THROW(field.SpriteChain->IsValid(), "Map field sprite chain is invalid");

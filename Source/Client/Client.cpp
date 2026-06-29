@@ -2129,8 +2129,6 @@ void ClientEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->GetIsChosen()) {
@@ -2141,8 +2139,6 @@ void ClientEngine::OnSetCritterLookDistance(Entity* entity, const Property* prop
 void ClientEngine::OnSetCritterModelName(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 
@@ -2163,8 +2159,6 @@ void ClientEngine::OnSetCritterHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
@@ -2176,8 +2170,6 @@ void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
@@ -2188,8 +2180,6 @@ void ClientEngine::OnSetCritterElevation(Entity* entity, const Property* prop)
 void ClientEngine::OnSetItemFlags(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
 
@@ -2222,8 +2212,6 @@ void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     // LightSource, LightIntensity, LightDistance, LightFlags, LightColor.
 
     ignore_unused(prop);
@@ -2236,8 +2224,6 @@ void ClientEngine::OnSetItemSomeLight(Entity* entity, const Property* prop)
 void ClientEngine::OnSetCritterLight(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Re-apply the critter's light fan after a single bundled write to Critter.Light.
 
@@ -2252,8 +2238,6 @@ void ClientEngine::OnSetItemPicMap(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2264,8 +2248,6 @@ void ClientEngine::OnSetItemPicMap(Entity* entity, const Property* prop)
 void ClientEngine::OnSetItemOffsetCoords(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 
@@ -2279,8 +2261,6 @@ void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2291,8 +2271,6 @@ void ClientEngine::OnSetItemHideSprite(Entity* entity, const Property* prop)
 void ClientEngine::OnSetItemElevation(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 

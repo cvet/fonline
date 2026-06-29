@@ -137,7 +137,6 @@ private:
     std::atomic_uint32_t _timeEventCounter {};
     DispatcherHooks _dispatcher {};
     any_t _emptyAnyValue {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE

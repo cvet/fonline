@@ -1265,8 +1265,6 @@ void MapManager::ProcessCritterLook(Map* map, Critter* cr, Critter* target)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(map && cr && target, "Map transfer is missing map, critter, or target hex");
     ValidateEntityAccess(map);
 

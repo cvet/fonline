@@ -400,8 +400,6 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (stay_frm_base == nullptr) {
         return;
     }
@@ -421,8 +419,6 @@ void ResourceManager::FixAnimFramesOffs(SpriteSheet* frames_base, const SpriteSh
 void ResourceManager::FixAnimFramesOffsNext(SpriteSheet* frames_base, const SpriteSheet* stay_frm_base)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
         return;

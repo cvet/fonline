@@ -531,7 +531,6 @@ private:
     unique_ptr<RenderTexture> _virtualRenderTex {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {OnScreenSizeChanged};
-    int32_t _nonConstHelper {};
 };
 
 class AppRender final : public IAppRender
@@ -566,7 +565,6 @@ private:
     }
 
     raw_ptr<Application> _app;
-    int32_t _nonConstHelper {};
 };
 
 class AppInput final : public IAppInput
@@ -600,7 +598,6 @@ private:
     raw_ptr<Application> _app;
     string _clipboardTextStorage {};
     ipos32 _lastMousePos {};
-    int32_t _nonConstHelper {};
     bool _shiftDown {};
     bool _ctrlDown {};
     bool _altDown {};
@@ -631,7 +628,6 @@ private:
     }
 
     raw_ptr<Application> _app;
-    int32_t _nonConstHelper {};
 };
 
 enum class AppInitFlags : uint8_t
@@ -806,7 +802,6 @@ private:
     EventDispatcher<> _onResumeDispatcher {OnResume};
     EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {OnQuit};
-    int32_t _nonConstHelper {};
 };
 
 inline auto AppWindow::GetRender() noexcept -> IAppRender&

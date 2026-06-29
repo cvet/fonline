@@ -111,7 +111,6 @@ auto Location::GetMapByIndex(int32_t index) noexcept -> Map*
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     if (index < 0 || index >= numeric_cast<int32_t>(_locMaps.size())) {
         return nullptr;
@@ -125,7 +124,6 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> Map*
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {

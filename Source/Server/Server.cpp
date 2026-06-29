@@ -145,8 +145,6 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         ScopedSyncContext sync_ctx;
 
@@ -261,8 +259,6 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 auto ServerEngine::WriteHealthFile(string_view text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
 
@@ -1052,6 +1048,9 @@ void ServerEngine::Shutdown()
         }
 
         WriteLog("Shutdown stage: workerPool.reset");
+
+        scoped_lock sync_locker {_syncLocker};
+
         _workerPool.reset();
     }
 
@@ -1195,6 +1194,16 @@ void ServerEngine::SyncPoint()
     unique_lock locker {_syncLocker};
 
     if (_syncRequest > 0) {
+        // Make ServerEngine::Lock a true stop-the-world. The main worker is about to park here until
+        // every external lock holder releases, but worker-pool jobs would otherwise keep mutating
+        // entities in parallel — so an external reader holding only the engine lock would race them.
+        // Pause and drain the pool so the lock holder has exclusive, race-free access; resume once the
+        // last holder unlocks. `_workerPool` may already be gone during late shutdown; that reset is
+        // serialized on `_syncLocker`, so this null check under the lock is race-free.
+        if (_workerPool != nullptr) {
+            _workerPool->Pause();
+        }
+
         _syncPointReady = true;
 
         locker.unlock();
@@ -1206,6 +1215,10 @@ void ServerEngine::SyncPoint()
         }
 
         _syncPointReady = false;
+
+        if (_workerPool != nullptr) {
+            _workerPool->Resume();
+        }
     }
 }
 
@@ -1986,8 +1999,6 @@ void ServerEngine::ProcessConnection(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (connection->IsHardDisconnected()) {
         return;
     }
@@ -2614,8 +2625,6 @@ void ServerEngine::SendAllReportedHashes(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     vector<string> snapshot;
 
     {
@@ -2667,8 +2676,6 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
 void ServerEngine::Process_Ping(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto in_buf = connection->ReadBuf();
 
@@ -3565,8 +3572,6 @@ void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     auto* player = dynamic_cast<Player*>(entity);
     FO_VERIFY_AND_THROW(player, "Missing player instance");
 
@@ -3576,8 +3581,6 @@ void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
@@ -3593,8 +3596,6 @@ void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto* item = dynamic_cast<Item*>(entity);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
@@ -3641,8 +3642,6 @@ void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (prop->IsPublicSync()) {
         auto* map = dynamic_cast<Map*>(entity);
         FO_VERIFY_AND_THROW(map, "Missing map instance");
@@ -3654,8 +3653,6 @@ void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (prop->IsPublicSync()) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -3699,7 +3696,6 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
@@ -3718,7 +3714,6 @@ void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
@@ -3748,7 +3743,6 @@ void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
@@ -3768,7 +3762,6 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
@@ -4184,8 +4177,6 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
     }
@@ -4291,8 +4282,6 @@ void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<v
 void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!cr->IsMoving()) {
         return;

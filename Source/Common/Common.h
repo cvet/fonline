@@ -55,8 +55,6 @@ extern auto IsPackaged() -> bool;
 extern auto GetPackagedRuntimeName() -> string;
 extern bool IsTestingInProgress;
 
-#define FO_NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
-#define FO_NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define FO_DEFERRED // Lambda annotation
 
 // Entity access validation.

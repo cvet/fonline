@@ -464,8 +464,6 @@ void AngelScriptContextManager::SuspendScriptContext(AngelScript::asIScriptConte
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
         ctx->Suspend();
     }

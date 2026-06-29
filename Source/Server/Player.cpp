@@ -828,7 +828,6 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, const Critter* cr)
 
     FO_NO_VALIDATE_ENTITY_ACCESS();
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
-    FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 

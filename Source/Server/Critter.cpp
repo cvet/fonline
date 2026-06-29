@@ -798,7 +798,6 @@ auto Critter::GetInvItem(ident_t item_id) noexcept -> Item*
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
         if (item->GetId() == item_id) {
@@ -814,7 +813,6 @@ auto Critter::GetInvItems() noexcept -> vector<raw_ptr<Item>>
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     return _invItems;
 }
@@ -847,7 +845,6 @@ auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> Item*
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& item : _invItems) {
         if (item->GetProtoId() == item_pid) {
@@ -863,7 +860,6 @@ auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     const auto it = std::ranges::find_if(_invItems, [&](auto&& item) noexcept -> bool { return item->GetCritterSlot() == slot; });
 
@@ -935,7 +931,6 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, const S
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& player : GetBroadcastRecipients()) {
         player->Send_Property(type, prop, entity);
@@ -947,7 +942,6 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, const 
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& player : GetBroadcastRecipients()) {
         player->Send_Action(this, action, action_data, item);
@@ -959,7 +953,6 @@ void Critter::Broadcast_Dir()
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& player : GetBroadcastRecipients()) {
         player->Send_Dir(this);
@@ -971,7 +964,6 @@ void Critter::Broadcast_Teleport(mpos to_hex)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY_ACCESS();
-    FO_NON_CONST_METHOD_HINT();
 
     for (auto& player : GetBroadcastRecipients()) {
         player->Send_Teleport(this, to_hex);
