@@ -1137,16 +1137,15 @@ void EntityManager::RegisterCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterEntity(cr);
+    EnsureEntitySynced(cr);
 
     {
         scoped_lock lock {_registryLock};
 
+        RegisterEntity(cr);
         const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
         FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
     }
-
-    EnsureEntitySynced(cr);
 }
 
 void EntityManager::UnregisterCritter(Critter* cr)
