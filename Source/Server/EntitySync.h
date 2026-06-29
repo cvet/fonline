@@ -155,10 +155,10 @@ private:
     // True if a thread OTHER than `self` currently holds a descendant-mark on this lock — i.e. some
     // other thread is working inside this entity's subtree, so an exclusive Acquire here must wait.
     // Caller holds `_mutex`. Own marks (escalating up into a subtree you already hold) never block.
-    [[nodiscard]] auto HasForeignDescendantHolder(std::thread::id self) const noexcept -> bool FO_TSA_REQUIRES(_mutex);
+    [[nodiscard]] bool HasForeignDescendantHolder(std::thread::id self) const noexcept FO_TSA_REQUIRES(_mutex);
     // True if an exclusive waiter is already parked ahead — a new Shared/DescendantHold request queues
     // behind it so a writer is not starved by a stream of readers/sibling marks. Caller holds `_mutex`.
-    [[nodiscard]] auto HasWaitingExclusive() const noexcept -> bool FO_TSA_REQUIRES(_mutex);
+    [[nodiscard]] bool HasWaitingExclusive() const noexcept FO_TSA_REQUIRES(_mutex);
 
     mutable mutex _mutex {};
     std::atomic<std::thread::id> _ownerThread {};
