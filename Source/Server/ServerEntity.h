@@ -55,37 +55,13 @@ public:
     auto operator=(ServerEntity&&) noexcept = delete;
     ~ServerEntity() override;
 
-    [[nodiscard]] auto GetId() const noexcept -> ident_t override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _id;
-    }
-    [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _engine.get();
-    }
-    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _engine.get();
-    }
-    [[nodiscard]] auto IsInitCalled() const noexcept -> bool
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _initCalled;
-    }
-    [[nodiscard]] auto IsPersistent() const noexcept -> bool
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _isPersistent;
-    }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t override;
+    [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine*;
+    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine*;
+    [[nodiscard]] auto IsInitCalled() const noexcept -> bool;
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool;
     [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
-    [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _entityLock.get();
-    }
+    [[nodiscard]] auto GetEntityLock() const noexcept -> EntityLock*;
 
     void ValidateAccess() const override;
 
@@ -95,13 +71,13 @@ public:
     template<typename T>
     [[nodiscard]] auto GetParent() -> refcount_ptr<T>
     {
-        FO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
         return refcount_ptr<T>(dynamic_cast<T*>(_parent.load(std::memory_order_acquire)));
     }
     template<typename T>
     [[nodiscard]] auto GetParent() const -> refcount_ptr<const T>
     {
-        FO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
         return refcount_ptr<const T>(dynamic_cast<const T*>(_parent.load(std::memory_order_acquire)));
     }
 
@@ -110,22 +86,10 @@ public:
 
     // Return the entity that should be auto-widened into the SyncContext alongside this one,
     // outside of the parent-chain.
-    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> ServerEntity*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return nullptr;
-    }
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> ServerEntity*;
 
-    void SetInitCalled() noexcept
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        _initCalled = true;
-    }
-    void SetEntityLock(EntityLock* lock) noexcept
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        _entityLock = lock;
-    }
+    void SetInitCalled() noexcept;
+    void SetEntityLock(EntityLock* lock) noexcept;
     void SetParent(ServerEntity* parent) noexcept;
 
 protected:
@@ -154,14 +118,10 @@ public:
         ServerEntity(engine, id, registrator, props, base_props),
         EntityProperties(GetInitRef())
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _propsRef->GetRegistrator()->GetTypeName();
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
@@ -171,14 +131,10 @@ public:
         CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _proto->GetName();
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 FO_END_NAMESPACE

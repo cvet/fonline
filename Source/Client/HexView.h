@@ -89,6 +89,7 @@ protected:
     raw_ptr<MapView> _map;
     raw_ptr<const Sprite> _spr {};
     ipos32 _sprOffset {};
+    ipos32 _rootOffset {};
 
     virtual void SetupSprite(MapSprite* mspr);
     void ProcessFading();

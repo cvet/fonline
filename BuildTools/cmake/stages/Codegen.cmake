@@ -16,6 +16,44 @@ AppendList(FO_CODEGEN_COMMAND_ARGS -nicename "${FO_NICE_NAME}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -embedded "${FO_EMBEDDED_DATA_CAPACITY}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -internalcfg "${FO_INTERNAL_CONFIG_CAPACITY}")
 
+# Engine configuration macros, emitted into EngineConfig.gen.h instead of cluttering the compiler command
+# line. The codegen args file is written with file(WRITE), which does not evaluate generator expressions, so
+# resolve every value to a literal here.
+# Scope: only value/shape config that is consumed *after* an engine header is included. The feature/backend
+# toggles (FO_ENABLE_3D, FO_*_SCRIPTING) and per-config FO_DEBUG stay -D compiler defines — they gate whole
+# files/headers and are evaluated before any engine header is pulled in (see Init.cmake).
+if(FO_GEOMETRY STREQUAL "HEXAGONAL")
+	SetValue(foGeometryValue 1)
+elseif(FO_GEOMETRY STREQUAL "SQUARE")
+	SetValue(foGeometryValue 2)
+else()
+	SetValue(foGeometryValue 0)
+endif()
+
+if(FO_DISABLE_NAMESPACE)
+	SetValue(foUseNamespaceValue 0)
+else()
+	SetValue(foUseNamespaceValue 1)
+endif()
+
+AppendList(FO_CODEGEN_COMMAND_ARGS
+	-enginedefine "FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
+	-enginedefine "FO_GEOMETRY=${foGeometryValue}"
+	-enginedefine "FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}"
+	-enginedefine "FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}"
+	-enginedefine "FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}"
+	-enginedefine "FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}"
+	-enginedefine "FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}"
+	-enginedefine "FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}"
+	-enginedefine "FO_MODEL_MAX_TEXTURES=${FO_MODEL_MAX_TEXTURES}"
+	-enginedefine "FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}"
+	-enginedefine "FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}"
+	-enginedefine "FO_NO_EXTRA_ASSERTS=0"
+	-enginedefine "FO_USE_NAMESPACE=${foUseNamespaceValue}"
+	-enginedefine "FO_NO_TEXTURE_LOOKUP=0"
+	-enginedefine "FO_DIRECT_SPRITES_DRAW=0"
+	-enginedefine "FO_RENDER_32BIT_INDEX=0")
+
 AppendList(FO_CODEGEN_META_SOURCE
     ${FO_SOURCE_META_FILES}
     ${FO_MANAGED_SOURCE_FILES})
@@ -30,16 +68,16 @@ endforeach()
 
 AppendList(FO_CODEGEN_OUTPUT
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EngineConfig.gen.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp")
 
 FileWrite("${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt" "")
 

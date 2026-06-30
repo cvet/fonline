@@ -2278,6 +2278,8 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
     auto* png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
 
+    png_infop info_ptr = nullptr;
+
     try {
         struct PngMessage
         {
@@ -2297,7 +2299,7 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
 
         png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
 
-        auto* info_ptr = png_create_info_struct(png_ptr);
+        info_ptr = png_create_info_struct(png_ptr);
         FO_VERIFY_AND_THROW(info_ptr, "Failed to create PNG info structure");
 
         struct PngReader
@@ -2358,7 +2360,7 @@ static auto PngLoad(const uint8_t* data, int32_t& result_width, int32_t& result_
         return result;
     }
     catch (...) {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
 
         throw;
     }

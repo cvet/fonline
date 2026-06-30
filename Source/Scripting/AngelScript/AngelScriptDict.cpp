@@ -89,6 +89,27 @@ auto ScriptDict::Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
     return SafeAlloc::MakeRefCounted<ScriptDict>(ti).release_ownership();
 }
 
+static auto ListElementAlignment(int32_t type_id, const AngelScript::asITypeInfo* type_info, int32_t element_size) -> AngelScript::asPWORD
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ignore_unused(type_info);
+
+    if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
+        if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
+            return 4;
+        }
+
+        return element_size >= 8 ? 8 : 4;
+    }
+
+    if (type_id == AngelScript::asTYPEID_VOID) {
+        return 4;
+    }
+
+    return element_size >= 8 ? 8 : 4;
+}
+
 auto ScriptDict::Create(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
 {
     FO_STACK_TRACE_ENTRY();
@@ -209,7 +230,7 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
     buffer += sizeof(AngelScript::asUINT);
 
     while (length-- != 0) {
-        // Align to 4-byte boundary before key if key size >= 4 (matching compiler layout)
+        // Align the buffer cursor to the key element's natural alignment (matching the VM list-buffer layout)
         {
             int32_t key_size;
 
@@ -224,8 +245,10 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
                 key_size = engine->GetSizeOfPrimitiveType(_keyTypeId);
             }
 
-            if (key_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3) != 0) {
-                buffer += 4 - (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3);
+            const auto key_align = ListElementAlignment(_keyTypeId, engine->GetTypeInfoById(_keyTypeId), key_size);
+
+            if (key_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & (key_align - 1)) != 0) {
+                buffer += key_align - (reinterpret_cast<AngelScript::asPWORD>(buffer) & (key_align - 1));
             }
         }
 
@@ -252,7 +275,7 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
             buffer += engine->GetSizeOfPrimitiveType(_keyTypeId);
         }
 
-        // Align to 4-byte boundary before value if value size >= 4 (matching compiler layout)
+        // Align the buffer cursor to the value element's natural alignment (matching the VM list-buffer layout)
         {
             int32_t value_size;
 
@@ -267,8 +290,10 @@ ScriptDict::ScriptDict(AngelScript::asITypeInfo* ti, void* init_list) :
                 value_size = engine->GetSizeOfPrimitiveType(_valueTypeId);
             }
 
-            if (value_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3) != 0) {
-                buffer += 4 - (reinterpret_cast<AngelScript::asPWORD>(buffer) & 0x3);
+            const auto value_align = ListElementAlignment(_valueTypeId, engine->GetTypeInfoById(_valueTypeId), value_size);
+
+            if (value_size >= 4 && (reinterpret_cast<AngelScript::asPWORD>(buffer) & (value_align - 1)) != 0) {
+                buffer += value_align - (reinterpret_cast<AngelScript::asPWORD>(buffer) & (value_align - 1));
             }
         }
 

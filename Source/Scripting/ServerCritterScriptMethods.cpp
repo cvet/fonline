@@ -304,17 +304,23 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Critter_GetCritter(Critter* self, iden
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(Critter* self, CritterSeeType seeType, CritterFindType findType)
 {
-    auto critters = self->GetCritters(seeType, findType);
-
     if (self->GetMapId()) {
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        ValidateEntityAccess(map.get());
+
+        auto critters = self->GetCritters(seeType, findType);
+
         std::ranges::stable_sort(critters, [hex = self->GetHex()](Critter* cr1, Critter* cr2) {
             const auto dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
             const auto dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
             return dist1 < dist2;
         });
+
+        return critters;
     }
 
-    return critters;
+    return self->GetCritters(seeType, findType);
 }
 
 ///@ ExportMethod
@@ -703,10 +709,7 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(Critter* self, bool controlla
     if (self->GetMapId()) {
         auto map = self->GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
-
-        auto* sync_ctx = self->GetEngine()->GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(sync_ctx, "Missing script execution context");
-        sync_ctx->EnsureEntitySynced(map.get());
+        EnsureEntitySynced(map.get());
     }
 
     if (controllable) {

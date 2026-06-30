@@ -244,8 +244,6 @@ protected:
     auto GetInitRef() noexcept -> Properties& { return _props; }
     auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
-    bool _nonConstHelper {};
-
 protected:
     virtual auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
 

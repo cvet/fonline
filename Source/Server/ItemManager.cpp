@@ -60,6 +60,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
     auto holder = item->GetParent();
     FO_VERIFY_AND_THROW(holder, "Missing required holder");
     ValidateEntityAccess(holder.get());
+
     return holder.get();
 }
 
@@ -70,8 +71,8 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
     FO_VERIFY_AND_THROW(item, "Missing item instance");
     FO_VERIFY_AND_THROW(holder, "Missing required holder");
 
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(holder);
+    EnsureEntitySynced(dynamic_cast<ServerEntity*>(holder));
+    EnsureEntitySynced(item);
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
@@ -118,10 +119,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine.get(), ident_t {}, proto, props);
-
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item.get());
+    _engine->EntityMngr.RegisterItem(item.get());
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -136,8 +134,6 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, const Properties* props
         item->SetContainerStack({});
         item->SetInnerItemIds({});
     }
-
-    _engine->EntityMngr.RegisterItem(item.get());
 
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
@@ -212,7 +208,7 @@ void ItemManager::DestroyItem(Item* item)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
 
     // Redundant calls
     if (item->IsDestroying() || item->IsDestroyed()) {
@@ -222,7 +218,6 @@ void ItemManager::DestroyItem(Item* item)
     item->MarkAsDestroying();
 
     // Finish events
-    ValidateEntityAccess(item);
     _engine->OnItemFinish.Fire(item);
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
@@ -235,11 +230,7 @@ void ItemManager::DestroyItem(Item* item)
 
             while (item->HasInnerItems()) {
                 auto* inner = item->GetAllInnerItems().front();
-                // Inner item has its own EntityLock; pull it into the current sync context so the
-                // recursive DestroyItem call's ValidateEntityAccess passes.
-                auto* ctx = _engine->GetCurrentSyncContext();
-                FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-                ctx->EnsureEntitySynced(inner);
+                EnsureEntitySynced(inner);
                 DestroyItem(inner);
             }
 
@@ -310,7 +301,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Critter* to_cr) -> Item*
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_cr);
     refcount_ptr item_holder = item;
     refcount_ptr to_cr_holder = to_cr;
@@ -358,7 +349,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Map* to_map, mpos to_hex) 
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_map);
     refcount_ptr item_holder = item;
     refcount_ptr to_map_holder = to_map;
@@ -427,7 +418,7 @@ auto ItemManager::MoveItem(Item* item, int32_t count, Item* to_cont, const any_t
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_cont);
     refcount_ptr item_holder = item;
     refcount_ptr to_cont_holder = to_cont;

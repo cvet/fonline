@@ -4719,9 +4719,15 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 			else
 				size = AS_PTR_SIZE*4;
 
-			// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-			if( size >= 4 && (bufferSize & 0x3) )
-				bufferSize += 4 - (bufferSize & 0x3);
+			// (FOnline Patch) Align the element on its natural alignment in the list buffer (8 bytes for 8-byte
+			// inline value types such as ident_t/hstring/any_t/string and 8-byte primitives, 4 bytes otherwise).
+			// Shared with the writer/reader serializer and the list factories via GetListElementAlignment so the
+			// compile-and-run layout matches the loaded layout. Smaller types stay 4-byte packed.
+			{
+				const asUINT listElemAlign = GetListElementAlignment(dt, size);
+				if( size >= 4 && (bufferSize % listElemAlign) != 0 )
+					bufferSize += listElemAlign - (bufferSize % listElemAlign);
+			}
 
 			// Compile the lvalue
 			lctx.bc.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
@@ -4846,9 +4852,11 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 					}
 					else if( func )
 					{
-						// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-						if( bufferSize & 0x3 )
-							bufferSize += 4 - (bufferSize & 0x3);
+						// (FOnline Patch) Align the default-constructed value-type element on its natural alignment
+						// (8 for 8-byte value types), matching GetListElementAlignment used everywhere else.
+						const asUINT listElemAlign = GetListElementAlignment(dt, (asUINT)dt.GetSizeInMemoryBytes());
+						if( (bufferSize % listElemAlign) != 0 )
+							bufferSize += listElemAlign - (bufferSize % listElemAlign);
 
 						// Call the constructor as a normal function
 						bcInit.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
@@ -7235,25 +7243,33 @@ int asCCompiler::GetVariableOffset(int varIndex)
 	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
 	int varOffset = 1;
 
-	// Skip lower variables
-	for( int n = 0; n < varIndex; n++ )
+	// (FOnline Patch) Single alignment-aware layout walk (mirrored in GetVariableSlot and the bytecode
+	// serializer). Pad each variable so its slot meets GetStackAlignmentDWords. Inert (no padding) until
+	// 8-byte value alignment is activated, so the layout stays byte-identical to the historical packing.
+	for( int n = 0; n <= varIndex && n < (int)variableAllocations.GetLength(); n++ )
 	{
-		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
-			varOffset += variableAllocations[n].GetSizeInMemoryDWords();
-		else
-			varOffset += variableAllocations[n].GetSizeOnStackDWords();
-	}
+		const bool inlineValue = !variableIsOnHeap[n] && variableAllocations[n].IsObject();
+		const int size = inlineValue ? variableAllocations[n].GetSizeInMemoryDWords()
+		                             : variableAllocations[n].GetSizeOnStackDWords();
+		const int alignDw = variableAllocations[n].GetStackAlignmentDWords(inlineValue);
 
-	if( varIndex < (int)variableAllocations.GetLength() )
-	{
-		// For variables larger than 1 dword the returned offset should be to the last dword
-		int size;
-		if( !variableIsOnHeap[varIndex] && variableAllocations[varIndex].IsObject() )
-			size = variableAllocations[varIndex].GetSizeInMemoryDWords();
-		else
-			size = variableAllocations[varIndex].GetSizeOnStackDWords();
-		if( size > 1 )
-			varOffset += size-1;
+		// Pad so the variable's last dword (its access offset, i.e. the base of the slot) is a multiple of alignDw
+		if( alignDw > 1 && size > 0 )
+		{
+			const int rem = (varOffset + size - 1) % alignDw;
+			if( rem != 0 )
+				varOffset += alignDw - rem;
+		}
+
+		if( n == varIndex )
+		{
+			// For variables larger than 1 dword the returned offset should be to the last dword
+			if( size > 1 )
+				varOffset += size - 1;
+			return varOffset;
+		}
+
+		varOffset += size;
 	}
 
 	return varOffset;
@@ -7265,10 +7281,21 @@ int asCCompiler::GetVariableSlot(int offset)
 	int varOffset = 1;
 	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
 	{
-		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
-			varOffset += -1 + variableAllocations[n].GetSizeInMemoryDWords();
-		else
-			varOffset += -1 + variableAllocations[n].GetSizeOnStackDWords();
+		// (FOnline Patch) Mirror the alignment padding applied in GetVariableOffset so offset->slot inversion
+		// stays consistent. Inert until 8-byte value alignment is activated.
+		const bool inlineValue = !variableIsOnHeap[n] && variableAllocations[n].IsObject();
+		const int size = inlineValue ? variableAllocations[n].GetSizeInMemoryDWords()
+		                             : variableAllocations[n].GetSizeOnStackDWords();
+		const int alignDw = variableAllocations[n].GetStackAlignmentDWords(inlineValue);
+
+		if( alignDw > 1 && size > 0 )
+		{
+			const int rem = (varOffset + size - 1) % alignDw;
+			if( rem != 0 )
+				varOffset += alignDw - rem;
+		}
+
+		varOffset += size - 1;
 
 		if( varOffset == offset )
 			return n;

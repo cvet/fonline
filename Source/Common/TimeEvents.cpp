@@ -160,7 +160,6 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
@@ -222,7 +221,6 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 

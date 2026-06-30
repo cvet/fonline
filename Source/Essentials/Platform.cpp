@@ -36,9 +36,11 @@
 #include "StringUtils.h"
 
 #if FO_WINDOWS
-#include "WinApi-Include.h"
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #include <psapi.h>
 #endif
+#include "WinApiUndef.inc"
 
 #if FO_LINUX || FO_MAC
 #include <dlfcn.h>
@@ -309,16 +311,6 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     CpuUsageSnapshot result;
 
 #if FO_WINDOWS
-    struct WindowsSystemProcessorPerformanceInformation
-    {
-        LARGE_INTEGER IdleTime {};
-        LARGE_INTEGER KernelTime {};
-        LARGE_INTEGER UserTime {};
-        LARGE_INTEGER DpcTime {};
-        LARGE_INTEGER InterruptTime {};
-        ULONG InterruptCount {};
-    };
-
     const auto file_time_to_uint64 = [](FILETIME time) noexcept -> uint64_t {
         ULARGE_INTEGER value {};
         value.LowPart = time.dwLowDateTime;
@@ -336,50 +328,18 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
 
-    using NtQuerySystemInformationFn = LONG(WINAPI*)(ULONG, PVOID, ULONG, PULONG);
-    constexpr ULONG SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS = 8;
-    const auto nt_query_system_information = WinApi_GetProcAddress<NtQuerySystemInformationFn>("ntdll.dll", "NtQuerySystemInformation");
+    const DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    result.LogicalCoreCount = processor_count != 0 ? static_cast<uint32_t>(processor_count) : 1U;
 
-    if (nt_query_system_information != nullptr) {
-        DWORD processor_count = ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    FILETIME idle_time {};
+    FILETIME system_kernel_time {};
+    FILETIME system_user_time {};
 
-        if (processor_count == 0) {
-            processor_count = 1;
-        }
-
-        vector<WindowsSystemProcessorPerformanceInformation> processor_info;
-        processor_info.resize(static_cast<size_t>(processor_count));
-
-        ULONG returned_length = 0;
-        const ULONG buffer_size = static_cast<ULONG>(processor_info.size() * sizeof(WindowsSystemProcessorPerformanceInformation));
-        const LONG status = nt_query_system_information(SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION_CLASS, processor_info.data(), buffer_size, &returned_length);
-
-        if (status >= 0) {
-            const size_t actual_count = returned_length != 0 ? std::min(processor_info.size(), static_cast<size_t>(returned_length / sizeof(WindowsSystemProcessorPerformanceInformation))) : processor_info.size();
-
-            result.Cores.reserve(actual_count);
-
-            for (size_t i = 0; i < actual_count; i++) {
-                const WindowsSystemProcessorPerformanceInformation& info = processor_info[i];
-                result.Cores.emplace_back(CpuUsageCoreSnapshot {
-                    .IdleTime = static_cast<uint64_t>(info.IdleTime.QuadPart),
-                    .TotalTime = static_cast<uint64_t>(info.KernelTime.QuadPart + info.UserTime.QuadPart),
-                });
-            }
-        }
-    }
-
-    if (result.Cores.empty()) {
-        FILETIME idle_time {};
-        FILETIME system_kernel_time {};
-        FILETIME system_user_time {};
-
-        if (::GetSystemTimes(&idle_time, &system_kernel_time, &system_user_time) != 0) {
-            result.Cores.emplace_back(CpuUsageCoreSnapshot {
-                .IdleTime = file_time_to_uint64(idle_time),
-                .TotalTime = file_time_to_uint64(system_kernel_time) + file_time_to_uint64(system_user_time),
-            });
-        }
+    if (::GetSystemTimes(&idle_time, &system_kernel_time, &system_user_time) != 0) {
+        result.Cores.emplace_back(CpuUsageCoreSnapshot {
+            .IdleTime = file_time_to_uint64(idle_time),
+            .TotalTime = file_time_to_uint64(system_kernel_time) + file_time_to_uint64(system_user_time),
+        });
     }
 
 #elif FO_LINUX || FO_ANDROID
@@ -449,6 +409,8 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             });
         }
     }
+
+    result.LogicalCoreCount = static_cast<uint32_t>(result.Cores.size());
 
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         std::ifstream file {"/proc/self/stat"};
@@ -525,6 +487,8 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
 
         (void)::vm_deallocate(::mach_task_self(), reinterpret_cast<vm_address_t>(processor_info), processor_info_count * sizeof(integer_t));
     }
+
+    result.LogicalCoreCount = static_cast<uint32_t>(result.Cores.size());
 
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};

@@ -33,7 +33,12 @@
 
 #include "BaseLogging.h"
 #include "GlobalData.h"
-#include "WinApi-Include.h"
+
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -43,7 +48,7 @@ static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
 static void WriteSync(string_view message) noexcept;
-[[maybe_unused]] static void FlushLogAtExit();
+static void FlushLogAtExit();
 
 struct BaseLoggingData
 {
@@ -52,6 +57,8 @@ struct BaseLoggingData
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         const auto result = std::at_quick_exit(FlushLogAtExit);
         ignore_unused(result);
+#else
+        ignore_unused(FlushLogAtExit);
 #endif
 
 #if FO_WINDOWS

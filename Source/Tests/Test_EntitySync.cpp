@@ -698,6 +698,300 @@ TEST_CASE("EntityLockNegative")
 }
 
 // ============================================================================
+// EntityLock — descendant-hold (hierarchical intention) mechanism
+// ============================================================================
+
+TEST_CASE("EntityLockDescendantHold")
+{
+    SECTION("BasicRegisterUnregister")
+    {
+        EntityLock lock;
+
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 0);
+        lock.RegisterDescendantHold(0);
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 1);
+        lock.UnregisterDescendantHold();
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 0);
+    }
+
+    SECTION("RegisterRecursionPerThread")
+    {
+        EntityLock lock;
+
+        lock.RegisterDescendantHold(0); // two descendants of the same ancestor on one thread
+        lock.RegisterDescendantHold(0);
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 2);
+
+        lock.UnregisterDescendantHold();
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 1);
+        lock.UnregisterDescendantHold();
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 0);
+    }
+
+    SECTION("ForeignDescendantHoldBlocksExclusiveAcquire")
+    {
+        // Down-direction: while another thread holds a descendant, the ancestor's exclusive Acquire
+        // must wait (you cannot take a node while a descendant of it is busy elsewhere).
+        EntityLock lock;
+        std::atomic_bool holder_in {false};
+        std::atomic_bool writer_got {false};
+        std::atomic_bool release_holder {false};
+
+        std::thread holder([&]() {
+            lock.RegisterDescendantHold(0);
+            holder_in.store(true);
+            while (!release_holder.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            lock.UnregisterDescendantHold();
+        });
+
+        while (!holder_in.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        std::thread writer([&]() {
+            lock.Acquire(10);
+            writer_got.store(true);
+            lock.Release();
+        });
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        CHECK_FALSE(writer_got.load()); // exclusive blocked by a foreign descendant-mark
+
+        release_holder.store(true);
+        writer.join();
+        CHECK(writer_got.load());
+        holder.join();
+    }
+
+    SECTION("ForeignExclusiveBlocksRegister")
+    {
+        // Up-direction: while another thread holds the ancestor exclusively, a descendant-mark
+        // registration must wait (you cannot take a descendant under a foreign-held ancestor).
+        EntityLock lock;
+        std::atomic_bool holder_got {false};
+
+        lock.Acquire(0); // main thread holds exclusive
+
+        std::thread holder([&]() {
+            lock.RegisterDescendantHold(10);
+            holder_got.store(true);
+            lock.UnregisterDescendantHold();
+        });
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        CHECK_FALSE(holder_got.load()); // register blocked while exclusive is held
+
+        lock.Release();
+        holder.join();
+        CHECK(holder_got.load());
+    }
+
+    SECTION("SiblingDescendantHoldsAreConcurrent")
+    {
+        // Two threads marking the same ancestor (their shared parent) are compatible — neither blocks.
+        EntityLock lock;
+        std::atomic_int in_count {0};
+        std::atomic_bool release_all {false};
+
+        const auto worker = [&]() {
+            lock.RegisterDescendantHold(0);
+            in_count.fetch_add(1);
+            while (!release_all.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            lock.UnregisterDescendantHold();
+        };
+
+        std::thread a(worker);
+        std::thread b(worker);
+
+        // Both must be able to hold their marks simultaneously (sibling parallelism).
+        while (in_count.load() != 2) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        CHECK(in_count.load() == 2);
+
+        release_all.store(true);
+        a.join();
+        b.join();
+    }
+
+    SECTION("OwnExclusiveOwnerMayRegister")
+    {
+        // The exclusive owner escalating down into its own subtree (it locks a descendant while
+        // holding this node) must not self-deadlock — its own marks never conflict with its ownership.
+        EntityLock lock;
+
+        lock.Acquire(0);
+        lock.RegisterDescendantHold(0); // own mark on a lock we own exclusively
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 1);
+        CHECK(lock.IsLockedByCurrentThread());
+
+        lock.UnregisterDescendantHold();
+        lock.Release();
+        CHECK_FALSE(lock.IsLockedByCurrentThread());
+    }
+
+    SECTION("OwnDescendantHoldAllowsUpEscalationToExclusive")
+    {
+        // Holding a descendant-mark, the same thread escalates up and takes this node exclusively
+        // (lock a critter, then lock its map). Own marks must not block its own Acquire.
+        EntityLock lock;
+
+        lock.RegisterDescendantHold(0);
+        lock.Acquire(0); // own mark present — must still grant immediately
+        CHECK(lock.IsLockedByCurrentThread());
+
+        lock.Release();
+        lock.UnregisterDescendantHold();
+        CHECK(lock.GetDescendantHoldCountForCurrentThread() == 0);
+    }
+
+    SECTION("TryRegisterFailsUnderForeignExclusive")
+    {
+        EntityLock lock;
+        std::atomic<int> try_result {-1};
+
+        lock.Acquire(0); // main holds exclusive
+
+        std::thread t([&]() { try_result.store(lock.TryRegisterDescendantHold() ? 1 : 0); });
+        t.join();
+        CHECK(try_result.load() == 0); // cannot mark a foreign-held node without blocking
+
+        lock.Release();
+    }
+
+    SECTION("TryAcquireFailsUnderForeignDescendantHold")
+    {
+        EntityLock lock;
+        std::atomic_bool holder_in {false};
+        std::atomic_bool release_holder {false};
+        std::atomic<int> try_result {-1};
+
+        std::thread holder([&]() {
+            lock.RegisterDescendantHold(0);
+            holder_in.store(true);
+            while (!release_holder.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            lock.UnregisterDescendantHold();
+        });
+
+        while (!holder_in.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        try_result.store(lock.TryAcquire() ? 1 : 0);
+        CHECK(try_result.load() == 0); // exclusive TryAcquire fails on a foreign descendant-mark
+
+        release_holder.store(true);
+        holder.join();
+        CHECK(lock.TryAcquire()); // succeeds once the mark is gone
+        lock.Release();
+    }
+
+    SECTION("RegisterYieldsToWaitingExclusive")
+    {
+        // Anti-starvation: once a writer is parked waiting for the node, later sibling-mark requests
+        // queue BEHIND it rather than jumping ahead — otherwise an endless stream of sibling locks
+        // could starve a map/location-exclusive op forever (the real livelock hazard of this model).
+        EntityLock lock;
+        std::atomic_bool holder_in {false};
+        std::atomic_bool release_holder {false};
+        std::atomic_bool writer_got {false};
+        std::atomic_bool release_writer {false};
+        std::atomic_bool late_registered {false};
+
+        std::thread holder([&]() {
+            lock.RegisterDescendantHold(0);
+            holder_in.store(true);
+            while (!release_holder.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            lock.UnregisterDescendantHold();
+        });
+
+        while (!holder_in.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        // Writer parks waiting exclusive (blocked by holder's mark).
+        std::thread writer([&]() {
+            lock.Acquire(10);
+            writer_got.store(true);
+            while (!release_writer.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+            lock.Release();
+        });
+
+        while (lock.WaiterCount() != 1) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        // Late sibling-mark request: must queue behind the parked writer, not register immediately.
+        std::thread late([&]() {
+            lock.RegisterDescendantHold(20);
+            late_registered.store(true);
+            lock.UnregisterDescendantHold();
+        });
+
+        while (lock.WaiterCount() != 2) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        CHECK_FALSE(late_registered.load()); // queued behind the writer
+        CHECK_FALSE(writer_got.load());
+
+        // Drain the original holder: the WRITER must win next (not the later sibling mark).
+        release_holder.store(true);
+        while (!writer_got.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        CHECK(writer_got.load());
+        CHECK_FALSE(late_registered.load()); // still behind the now-running writer
+
+        // Writer releases — the late sibling mark finally proceeds.
+        release_writer.store(true);
+        late.join();
+        CHECK(late_registered.load());
+
+        holder.join();
+        writer.join();
+    }
+
+    SECTION("AbortPendingWaitersAbortsDescendantHoldWaiter")
+    {
+        EntityLock lock;
+        std::atomic_bool threw {false};
+
+        lock.Acquire(0); // exclusive held so the register must park
+
+        std::thread holder([&]() {
+            try {
+                lock.RegisterDescendantHold(10);
+                lock.UnregisterDescendantHold();
+            }
+            catch (const std::exception&) {
+                threw.store(true);
+            }
+        });
+
+        while (lock.WaiterCount() != 1) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        lock.AbortPendingWaiters();
+        holder.join();
+        CHECK(threw.load());
+
+        lock.Release();
+    }
+}
+
+// ============================================================================
 // SyncContext — positive
 // ============================================================================
 

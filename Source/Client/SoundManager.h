@@ -78,7 +78,6 @@ private:
     vector<unique_ptr<Sound>> _playingSounds;
     vector<uint8_t> _outputBuf {};
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE

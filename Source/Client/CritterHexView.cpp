@@ -155,8 +155,6 @@ void CritterHexView::MoveAttachedCritters()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const auto hex = GetHex();
     const auto hex_offset = GetHexOffset();
 
@@ -500,8 +498,6 @@ void CritterHexView::ChangeLookDir(mdir dir)
 void CritterHexView::ChangeMoveDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
 #if FO_ENABLE_3D
     if (_model) {

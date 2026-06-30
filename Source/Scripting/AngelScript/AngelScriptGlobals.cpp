@@ -816,7 +816,7 @@ void RegisterAngelScriptGlobals(AngelScript::asIScriptEngine* as_engine)
 #define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}).c_str(), #name, settings.name, true)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#include "Settings-Include.h"
+#include "Settings.inc"
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {
         const auto path = SplitSettingPath(setting_name);

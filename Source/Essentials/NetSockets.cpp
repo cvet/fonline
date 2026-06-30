@@ -37,7 +37,9 @@
 #include "StringUtils.h"
 
 #if FO_WINDOWS
-#include "WinApi-Include.h"
+#define WIN32_LEAN_AND_MEAN
+#include <WinSock2.h>
+#include <Windows.h>
 #else
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -48,6 +50,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 

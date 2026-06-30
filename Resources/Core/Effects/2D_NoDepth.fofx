@@ -1,8 +1,5 @@
-// Roof sprite effect: identical to 2D_Default but DepthFunc = Always so a roof NEVER tests the scene depth buffer.
-// Roof tiles are drawn in their own trailing pass (MapView::DrawSpritesWithFog draws [Roof..Last] last), so ignoring
-// the depth test makes the roof layer render on TOP of everything regardless of what was drawn (and its elevation
-// depth) — a roof always covers the building, never occluded by walls/items/critters underneath it.
 [Effect]
+DepthWrite = False
 DepthFunc = Always
 
 [VertexShader]

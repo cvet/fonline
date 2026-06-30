@@ -66,6 +66,9 @@ void ItemHexView::Init()
     if (GetIsTile()) {
         SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof.get() : _engine->EffectMngr.Effects.Tile.get());
     }
+    else if (GetDrawFlatten()) {
+        SetDrawEffect(_engine->EffectMngr.Effects.Flat.get());
+    }
     else {
         SetDrawEffect(_engine->EffectMngr.Effects.Generic.get());
     }
@@ -287,6 +290,7 @@ void ItemHexView::RefreshOffs()
 
     const auto offset = GetOffset();
     _sprOffset = ipos32 {offset.x, offset.y};
+    _rootOffset = ipos32 {offset.x, offset.y};
 
     if (_isMoving) {
         _sprOffset.x += iround<int32_t>(_moveCurOffset.x);

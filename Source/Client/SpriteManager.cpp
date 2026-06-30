@@ -1109,9 +1109,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t elevation = numeric_cast<float32_t>(mspr->GetElevation());
         return GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(mspr->GetHex(), mspr->GetMapRootOffset(), elevation));
     };
-    const auto is_ground_tile = [](DrawOrderType draw_order) -> bool { //
-        return draw_order >= DrawOrderType::Tile && draw_order <= DrawOrderType::Tile4;
-    };
     const auto is_standing_sprite = [](DrawOrderType draw_order) -> bool { //
         return draw_order >= DrawOrderType::NormalBegin && draw_order <= DrawOrderType::NormalEnd;
     };
@@ -1215,14 +1212,9 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
         auto& vbuf = _spritesDrawBuf->Vertices;
         const DrawOrderType draw_order = mspr->GetDrawOrder();
-        const bool ground_tile = is_ground_tile(draw_order);
         const bool standing_sprite = is_standing_sprite(draw_order);
         const vec3 sprite_proj = get_map_sprite_proj(mspr.get());
-        // Ground and standing proxy geometry must use pure world depth. A draw-order-sized depth bias moves
-        // vertical sprite planes toward the camera, so particles only appear in front after crossing an
-        // artificial line near the bitmap's lower center instead of the logical root point.
-        const float32_t layer_bias = ground_tile || standing_sprite ? 0.0f : numeric_cast<float32_t>(static_cast<int32_t>(draw_order)) * MAP_LAYER_DEPTH_BIAS;
-        const float32_t pos_z = sprite_proj.z + layer_bias;
+        const float32_t pos_z = sprite_proj.z;
 
         for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
             vbuf[j].PosZ = pos_z;
@@ -1248,33 +1240,16 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             }
         }
 
-        // Ground tiles and standing sprites override the flat per-vertex depth with a real ground/vertical plane
-        // so 3D models and in-scene particles occlude them by world depth. Only these layers consume the sprite
-        // root Y (== mspr_rect.y + root offset, already computed by GetDrawRect above), and the map camera angle
-        // is fixed, so the root and sin/cos are resolved once per sprite here instead of once per vertex. The
-        // per-vertex math is the inlined, hoisted form of GeometryHelper::ProjectMapYTo{Ground,Vertical}Depth.
-        if (ground_tile || standing_sprite) {
-            const float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y);
+        if (standing_sprite) {
+            const float32_t scene_pos_y = numeric_cast<float32_t>(mspr_rect.y + mspr->GetSpriteRootOffset().y - mspr->GetRootOffset().y);
             const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
             const float32_t sin_a = std::sin(angle_rad);
             const float32_t cos_a = std::cos(angle_rad);
+            const float32_t tan_a = sin_a / cos_a;
 
-            if (ground_tile) {
-                const float32_t cot_a = cos_a / sin_a;
-                const float32_t intercept = numeric_cast<float32_t>(mspr->GetElevation()) / sin_a + layer_bias;
-
-                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                    const float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
-                    vbuf[j].PosZ = map_y * cot_a + intercept;
-                }
-            }
-            else {
-                const float32_t tan_a = sin_a / cos_a;
-
-                for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
-                    const float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
-                    vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a + layer_bias;
-                }
+            for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
+                const float32_t map_y = sprite_proj.y + (vbuf[j].PosY - scene_pos_y);
+                vbuf[j].PosZ = sprite_proj.z - (map_y - sprite_proj.y) * tan_a;
             }
         }
 

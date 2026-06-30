@@ -41,7 +41,14 @@
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
-#include "WinApi-Include.h"
+
+// SystemCall spawns a subprocess (CreateProcessW). This file is server-only, so the process-spawning code is
+// never compiled into the client binary — keep it that way to avoid antivirus heuristics flagging the client.
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -628,7 +635,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, Cri
 
     for (auto& cr : critters) {
         if (cr->CheckFind(findType)) {
-            result.emplace_back(cr.release_ownership());
+            result.emplace_back(cr.get());
         }
     }
 
@@ -697,14 +704,14 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ident_t 
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount = 0)
 {
     auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
-    return map.release_ownership();
+    return map.get();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount = 0)
 {
     auto map = server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
-    return map.release_ownership();
+    return map.get();
 }
 
 ///@ ExportMethod
@@ -767,14 +774,14 @@ FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount = 0)
 {
     auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
-    return loc.release_ownership();
+    return loc.get();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount = 0)
 {
     auto loc = server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
-    return loc.release_ownership();
+    return loc.get();
 }
 
 ///@ ExportMethod PassOwnership
@@ -800,7 +807,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server)
     result.reserve(locs.size());
 
     for (auto& loc : locs) {
-        result.emplace_back(loc.release_ownership());
+        result.emplace_back(loc.get());
     }
 
     return result;
@@ -818,7 +825,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, h
 
     for (auto& loc : locs) {
         if (!pid || pid == loc->GetProtoId()) {
-            result.emplace_back(loc.release_ownership());
+            result.emplace_back(loc.get());
         }
     }
 
@@ -837,7 +844,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, P
 
     for (auto& loc : locs) {
         if (proto == nullptr || proto->GetProtoId() == loc->GetProtoId()) {
-            result.emplace_back(loc.release_ownership());
+            result.emplace_back(loc.get());
         }
     }
 
@@ -854,7 +861,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, L
 
     for (auto& loc : locs) {
         if (loc->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(loc.release_ownership());
+            result.emplace_back(loc.get());
         }
     }
 
@@ -873,7 +880,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, hstrin
 
     for (auto& item : items) {
         if (!pid || pid == item->GetProtoId()) {
-            result.emplace_back(item.release_ownership());
+            result.emplace_back(item.get());
         }
     }
 
@@ -892,7 +899,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, ProtoI
 
     for (auto& item : items) {
         if (proto == nullptr || proto->GetProtoId() == item->GetProtoId()) {
-            result.emplace_back(item.release_ownership());
+            result.emplace_back(item.get());
         }
     }
 
@@ -907,7 +914,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
     result.reserve(players.size());
 
     for (auto& player : players) {
-        result.emplace_back(player.release_ownership());
+        result.emplace_back(player.get());
     }
 
     return result;
@@ -1322,6 +1329,8 @@ FO_SCRIPT_API int32_t Server_Game_GetTextCount(ServerEngine* server, TextPackKey
     return numeric_cast<int32_t>(server->GetLangPack().GetTextCount(textKey));
 }
 
+// Server-only on purpose: the subprocess-spawning Win32 path (CreateProcessW with a hidden window + pipe
+// capture) must not land in the client binary, where antivirus heuristics would flag it.
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {
@@ -1543,7 +1552,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ServerEngine* server, FO_NULLABLE 
 {
     auto* ctx = server->GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    return IsEntityAccessValid(entity);
+    return IsEntityAccessValid(entity, false);
 }
 
 ///@ ExportMethod

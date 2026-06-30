@@ -59,6 +59,8 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     refcount_ptr item_holder = item;
     ignore_unused(cr_holder);
     ignore_unused(item_holder);
+    EnsureEntitySynced(cr);
+    EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
         auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
@@ -98,8 +100,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         }
     }
 
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(item);
     _engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);
 
     if (cr->IsDestroyed() || item->IsDestroyed()) {
@@ -118,13 +118,10 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
 
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
     FO_VERIFY_AND_THROW(item, "Missing item instance");
+    EnsureEntitySynced(cr);
+    EnsureEntitySynced(item);
 
     cr->RemoveItem(item);
-
-    RevertEntityLock(item);
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
 
@@ -148,9 +145,6 @@ void CritterManager::RemoveItemFromCritter(Critter* cr, Item* item, bool send)
         _engine->EntityMngr.MakePersistent(item, false);
     }
 
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(item);
-
     if (!cr->IsDestroying()) {
         _engine->OnCritterItemMoved.Fire(cr, item, prev_slot);
     }
@@ -163,24 +157,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
     FO_VERIFY_AND_THROW(map, "Missing map instance");
     refcount_ptr map_holder = map;
     ignore_unused(map_holder);
-
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        ctx->SyncEntity(map);
-        release_empty_sync_context = true;
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(map);
+    EnsureEntitySynced(map);
     FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter creation hex is outside target map bounds", proto_id, map->GetId(), hex, map->GetSize());
 
     const auto* proto = _engine->GetProtoCritter(proto_id);
@@ -224,7 +201,6 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     // Create critter
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine.get(), ident_t {}, proto, props);
-
     _engine->EntityMngr.RegisterCritter(cr.get());
 
     const auto* loc = map->GetLocation();
@@ -236,12 +212,9 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, const Properties* prop
 
     if (!cr->IsDestroyed()) {
         if (map != nullptr) {
-            ValidateEntityAccess(map);
-            ValidateEntityAccess(cr.get());
             _engine->OnMapCritterIn.Fire(map, cr.get());
         }
         else {
-            ValidateEntityAccess(cr.get());
             _engine->OnGlobalMapCritterIn.Fire(cr.get());
         }
 
@@ -269,9 +242,8 @@ void CritterManager::DestroyCritter(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     FO_VERIFY_AND_THROW(!cr->GetControlledByPlayer(), "Critter is controlled by a player in an NPC-only operation");
+    EnsureEntitySynced(cr);
 
     // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
@@ -281,26 +253,19 @@ void CritterManager::DestroyCritter(Critter* cr)
     cr->MarkAsDestroying();
 
     // Finish event
-    if (cr->GetMapId()) {
-        auto map = cr->GetParent<Map>();
-        FO_VERIFY_AND_THROW(map, "Missing map instance");
-        ctx->EnsureEntitySynced(map.get());
-    }
-
-    ValidateEntityAccess(cr);
     _engine->OnCritterFinish.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-
-    if (cr->GetMapId()) {
-        auto map = cr->GetParent<Map>();
-        FO_VERIFY_AND_THROW(map, "Missing map instance");
-        ctx->EnsureEntitySynced(map.get());
-    }
 
     // Tear off from environment
     {
         cr->LockMapTransfers();
         auto restore_transfers = scope_exit([cr]() noexcept { cr->UnlockMapTransfers(); });
+
+        if (cr->GetMapId()) {
+            auto map = cr->GetParent<Map>();
+            FO_VERIFY_AND_THROW(map, "Missing map instance");
+            EnsureEntitySynced(map.get());
+        }
 
         for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
             try {
@@ -323,7 +288,7 @@ void CritterManager::DestroyCritter(Critter* cr)
                 if (cr->GetMapId()) {
                     auto map = cr->GetParent<Map>();
                     FO_VERIFY_AND_THROW(map, "Missing map instance");
-                    ctx->EnsureEntitySynced(map.get());
+                    EnsureEntitySynced(map.get());
                     _engine->MapMngr.RemoveCritterFromMap(cr, map.get());
                 }
                 else if (cr->GetRawGlobalMapGroup()) {
@@ -353,12 +318,11 @@ void CritterManager::DestroyInventory(Critter* cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    EnsureEntitySynced(cr);
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems();) {
         auto* item = cr->GetInvItems().front().get();
-        ctx->EnsureEntitySynced(item);
+        EnsureEntitySynced(item);
         _engine->ItemMngr.DestroyItem(item);
 
         const size_t remaining_deps = cr->GetInvItems().size();

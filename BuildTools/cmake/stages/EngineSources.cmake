@@ -33,7 +33,7 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables.inc"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/Platform.cpp"
@@ -64,8 +64,7 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef.inc"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis>")
 
 AppendList(FO_COMMON_SOURCE
@@ -117,7 +116,7 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Common/Settings.inc"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.cpp"
@@ -130,10 +129,10 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EngineConfig.gen.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
 if(FO_MANAGED_SCRIPTING)
@@ -274,11 +273,11 @@ AppendList(FO_CLIENT_BASE_SOURCE
 
 AppendList(FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.gen.cpp")
 
 AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
 AppendList(FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
@@ -301,7 +300,7 @@ AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.gen.cpp")
 
 AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.h"
@@ -330,9 +329,9 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
@@ -351,9 +350,9 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/Settings.inc"
+    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/GenericCode.template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
     "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"

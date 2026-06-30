@@ -44,6 +44,7 @@ static auto* StrConnectionEstablished = "Connection established";
 static auto* StrConnectionFailure = "Connection failure!";
 static auto* StrFilesystemError = "File system error!";
 static auto* StrUpdaterOutdated = "Client updater outdated, please update the base client";
+static auto* StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 
@@ -186,6 +187,10 @@ auto Updater::Process() -> bool
     _sprMngr.EndScene();
     _conn.Process();
 
+    if (_restartPrompt && !App->IsQuitRequested()) {
+        return false;
+    }
+
     return _result.has_value() || IsFinished();
 }
 
@@ -324,6 +329,12 @@ void Updater::GetNextFile()
         if (_binariesMode) {
             WriteLog("Client updater: finished binary update, binaries staged for reload");
             _result = UpdaterResult::BinariesStaged;
+
+            // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold).
+            if (!App->IsHeadless()) {
+                AddText(StrRestartRequired);
+                _restartPrompt = true;
+            }
         }
         else {
             WriteLog("Client updater: finished resource update, resources ready");

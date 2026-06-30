@@ -51,7 +51,6 @@ class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
     friend void PropagateEntityLock(Item* item, EntityLock* parent_lock);
-    friend void RevertEntityLock(Item* item);
 
 public:
     Item() = delete;
@@ -62,16 +61,8 @@ public:
     auto operator=(Item&&) noexcept = delete;
     ~Item() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _proto->GetName();
-    }
-    [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return static_cast<const ProtoItem*>(_proto.get());
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetProtoItem() const noexcept -> const ProtoItem*;
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*;
     [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<Item*>;
@@ -80,21 +71,9 @@ public:
     [[nodiscard]] auto GetAllInnerItems() const -> vector<const Item*>;
     [[nodiscard]] auto GetRawInnerItems() -> vector<refcount_ptr<Item>>&;
     [[nodiscard]] auto CanSendItem(bool as_public) const noexcept -> bool;
-    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return !!_multihexEntries;
-    }
-    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>&
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return *_multihexEntries;
-    }
-    [[nodiscard]] auto GetOwnedLock() noexcept -> EntityLock&
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _ownedLock;
-    }
+    [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool;
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>&;
+    [[nodiscard]] auto GetOwnedLock() noexcept -> EntityLock&;
 
     auto AddItemToContainer(Item* item, const any_t& stack_id) -> Item*;
     void RemoveItemFromContainer(Item* item);

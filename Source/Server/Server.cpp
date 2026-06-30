@@ -146,8 +146,6 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         ScopedSyncContext sync_ctx;
 
@@ -262,8 +260,6 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 auto ServerEngine::WriteHealthFile(string_view text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
 
@@ -898,6 +894,7 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
     if (_stats.LastCpuUsageSnapshot.has_value()) {
         const Platform::CpuUsageSnapshot& previous_snapshot = *_stats.LastCpuUsageSnapshot;
         const size_t core_count = std::min(previous_snapshot.Cores.size(), current_snapshot.Cores.size());
+        const size_t logical_core_count = std::max<size_t>(numeric_cast<size_t>(current_snapshot.LogicalCoreCount), 1);
 
         _stats.CpuCoreLoads.clear();
         _stats.CpuCoreLoads.reserve(core_count);
@@ -928,10 +925,10 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
 
             if (sample_duration_ns > 0) {
                 const uint64_t process_delta_ns = current_snapshot.ProcessTimeNs - previous_snapshot.ProcessTimeNs;
-                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(std::max<size_t>(core_count, 1)) * 100.0);
+                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(logical_core_count) * 100.0);
 
                 _stats.CpuProcessCoreLoad = numeric_cast<float32_t>(process_core_load);
-                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(std::max<size_t>(core_count, 1)));
+                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(logical_core_count));
             }
         }
     }
@@ -1055,6 +1052,9 @@ void ServerEngine::Shutdown()
         }
 
         WriteLog("Shutdown stage: workerPool.reset");
+
+        scoped_lock sync_locker {_syncLocker};
+
         _workerPool.reset();
     }
 
@@ -1198,6 +1198,16 @@ void ServerEngine::SyncPoint()
     unique_lock locker {_syncLocker};
 
     if (_syncRequest > 0) {
+        // Make ServerEngine::Lock a true stop-the-world. The main worker is about to park here until
+        // every external lock holder releases, but worker-pool jobs would otherwise keep mutating
+        // entities in parallel — so an external reader holding only the engine lock would race them.
+        // Pause and drain the pool so the lock holder has exclusive, race-free access; resume once the
+        // last holder unlocks. `_workerPool` may already be gone during late shutdown; that reset is
+        // serialized on `_syncLocker`, so this null check under the lock is race-free.
+        if (_workerPool != nullptr) {
+            _workerPool->Pause();
+        }
+
         _syncPointReady = true;
 
         locker.unlock();
@@ -1209,6 +1219,10 @@ void ServerEngine::SyncPoint()
         }
 
         _syncPointReady = false;
+
+        if (_workerPool != nullptr) {
+            _workerPool->Resume();
+        }
     }
 }
 
@@ -1989,8 +2003,6 @@ void ServerEngine::ProcessConnection(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (connection->IsHardDisconnected()) {
         return;
     }
@@ -2058,7 +2070,6 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
     }
 
     auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto, props);
-
     EntityMngr.RegisterCritter(cr.get());
 
     if (for_player) {
@@ -2066,29 +2077,6 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, const Properties*
     }
 
     MapMngr.AddCritterToMap(cr.get(), nullptr, {}, hdir {}, {});
-
-    bool release_empty_sync_context = false;
-
-    if (!cr->IsDestroyed()) {
-        auto* ctx = GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr.get());
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr.get());
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
-                ctx->Release();
-            }
-        }
-    });
 
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr.get());
@@ -2122,6 +2110,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     bool is_error = false;
     Critter* cr = EntityMngr.LoadCritter(cr_id, is_error);
     refcount_ptr cr_holder = cr;
+    EnsureEntitySynced(cr);
 
     if (is_error) {
         if (cr != nullptr) {
@@ -2145,31 +2134,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
     EntityMngr.MakePersistent(cr, true, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
-    bool release_empty_sync_context = false;
-
     if (!cr->IsDestroyed()) {
-        auto* ctx = GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr);
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr);
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto* ctx = GetCurrentSyncContext(); ctx != nullptr) {
-                ctx->Release();
-            }
-        }
-    });
-
-    if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
         OnGlobalMapCritterIn.Fire(cr);
     }
     if (!cr->IsDestroyed()) {
@@ -2178,7 +2143,6 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> Critter*
         MapMngr.ProcessVisibleItems(cr);
     }
     if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
         OnCritterLoad.Fire(cr);
     }
 
@@ -2296,33 +2260,11 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
     FO_VERIFY_AND_THROW(player, "Missing player instance");
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
-    auto* ctx = GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        ServerEntity* sync_entities[] = {player, cr};
-        ctx->SyncEntities(span<ServerEntity*> {sync_entities});
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(player);
-        ctx->EnsureEntitySynced(player->GetControlledCritter());
-        ctx->EnsureEntitySynced(cr);
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(player);
-    ValidateEntityAccess(cr);
+    EnsureEntitySynced(player);
+    EnsureEntitySynced(cr);
 
     Critter* prev_cr = player->GetControlledCritter();
-    ValidateEntityAccess(prev_cr);
+    EnsureEntitySynced(prev_cr);
 
     if (cr == nullptr) {
         if (prev_cr == nullptr) {
@@ -2389,41 +2331,12 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(prev_cr);
+    EnsureEntitySynced(cr);
+    EnsureEntitySynced(prev_cr);
 
     auto map = cr->GetParent<Map>();
     FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {}, prev_cr != nullptr ? prev_cr->GetId() : ident_t {});
-
-    auto* ctx = GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        if (map) {
-            ServerEntity* sync_entities[] = {cr, map.get()};
-            ctx->SyncEntities(span<ServerEntity*> {sync_entities});
-        }
-        else {
-            ctx->SyncEntity(cr);
-        }
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(cr);
-        ctx->EnsureEntitySynced(map.get());
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(prev_cr);
-    ValidateEntityAccess(map.get());
+    EnsureEntitySynced(map.get());
 
     cr->Send_TimeSync();
 
@@ -2451,7 +2364,7 @@ void ServerEngine::SendCritterInitialInfo(Critter* cr, Critter* prev_cr)
         if (map) {
             auto* loc = map->GetLocation();
             FO_VERIFY_AND_THROW(loc, "Missing location instance");
-            ctx->EnsureEntitySynced(loc);
+            EnsureEntitySynced(loc);
         }
 
         cr->Send_LoadMap(map.get());
@@ -2716,8 +2629,6 @@ void ServerEngine::SendAllReportedHashes(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     vector<string> snapshot;
 
     {
@@ -2769,8 +2680,6 @@ void ServerEngine::BroadcastReportedString(string_view reported_string)
 void ServerEngine::Process_Ping(ServerConnection* connection)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto in_buf = connection->ReadBuf();
 
@@ -3667,8 +3576,6 @@ void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     auto* player = dynamic_cast<Player*>(entity);
     FO_VERIFY_AND_THROW(player, "Missing player instance");
 
@@ -3678,8 +3585,6 @@ void ServerEngine::OnSendPlayerValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto* cr = dynamic_cast<Critter*>(entity);
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
@@ -3695,8 +3600,6 @@ void ServerEngine::OnSendCritterValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendItemValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto* item = dynamic_cast<Item*>(entity);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
@@ -3743,8 +3646,6 @@ void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (prop->IsPublicSync()) {
         auto* map = dynamic_cast<Map*>(entity);
         FO_VERIFY_AND_THROW(map, "Missing map instance");
@@ -3756,8 +3657,6 @@ void ServerEngine::OnSendMapValue(Entity* entity, const Property* prop)
 void ServerEngine::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (prop->IsPublicSync()) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -3801,7 +3700,6 @@ void ServerEngine::OnSetItemCount(Entity* entity, const Property* prop, const vo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
@@ -3820,7 +3718,6 @@ void ServerEngine::OnSetItemHidden(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
@@ -3850,7 +3747,6 @@ void ServerEngine::OnSetItemRecacheHex(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
@@ -3870,7 +3766,6 @@ void ServerEngine::OnSetItemMultihexLines(Entity* entity, const Property* prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     const auto* item = dynamic_cast<Item*>(entity);
@@ -4286,8 +4181,6 @@ void ServerEngine::StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> m
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
     }
@@ -4320,23 +4213,36 @@ auto ServerEngine::CritterMovingJob(Critter* cr) -> std::optional<timespan>
 
     auto* ctx = GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->SyncEntity(cr);
 
-    auto map = cr->GetParent<Map>();
-    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    auto parent = cr->GetParentRaw();
 
-    if (map) {
-        ServerEntity* sync_entities[] = {map.get(), cr};
+    if (parent) {
+        ServerEntity* sync_entities[] = {parent.get(), cr};
         ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+        if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {
+            return std::nullopt;
+        }
+    }
+    else {
+        ctx->SyncEntity(cr);
+
+        if (cr->IsDestroyed()) {
+            return std::nullopt;
+        }
     }
 
-    if (cr->IsDestroyed() || !cr->IsMoving()) {
+    if (!cr->IsMoving()) {
         return std::nullopt;
     }
 
+    auto* map = dynamic_cast<Map*>(parent.get());
+    FO_STRONG_ASSERT(!parent || !!map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    FO_STRONG_ASSERT(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+
     try {
-        if (map && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map.get());
+        if (map != nullptr && !cr->GetIsAttached()) {
+            ProcessCritterMovingBySteps(cr, map);
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;
@@ -4393,8 +4299,6 @@ void ServerEngine::StopCritterMoving(Critter* cr, MovingState reason, function<v
 void ServerEngine::ChangeCritterMovingSpeed(Critter* cr, uint16_t speed)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!cr->IsMoving()) {
         return;

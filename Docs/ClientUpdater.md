@@ -38,7 +38,7 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `Source/Server/UpdaterBackend.cpp`
 - `Source/Server/Server.cpp`
 - `Source/Common/Common.h`
-- `Source/Common/Settings-Include.h`
+- `Source/Common/Settings.inc`
 - `Source/Essentials/DiskFileSystem.h`
 - `Source/Essentials/DiskFileSystem.cpp`
 - `Source/Essentials/Platform.h`
@@ -86,17 +86,17 @@ No sibling DLL / LoadModule fails, or ForceEmbeddedRuntime is set:    â”€â
     signals ReloadRequested, the host tears down its own Application instance and goes
     to the reload step below.
 
-Reload step (taken on either Case after ReloadRequested):
-    ApplyStagedBinaryUpdate(RequestedRuntimePath) renames `<runtime>-staging` over `<runtime>`
-    when a staged file exists (atomic .bak rollback), then RunClientFromLibrary loads that
-    requested runtime path. For installed clients this requested path can be in the writable
-    root rather than the install directory. Compat is not re-checked against the host's
-    built-in version because the new module by definition carries a newer compatibility string.
+Reload step (taken on either Case after ReloadRequested) — PromoteStagedReloadForRestart:
+    The runtime already asked the user to restart (ShowUpdaterRestartRequired). The host runs
+    ApplyStagedBinaryUpdate(RequestedRuntimePath), renaming `<runtime>-staging` over `<runtime>`
+    when a staged file exists (atomic .bak rollback), and then EXITS. The update is applied on the
+    next launch, which loads the promoted runtime as its single InitApp. The update is not applied
+    in-process. See "Self-update applies on the next launch" below for why.
 ```
 
 `ApplyStagedBinaryUpdate` is idempotent: if no `<live>-staging` file exists it returns
 `true` and does nothing. That makes startup-time recovery (host crash mid-update) and the
-in-process reload path use the same code.
+exit-time promotion use the same code.
 
 The embedded client (host module hosts the game and the updater itself) runs when:
 - the bundled runtime DLL could not be loaded (cold install / missing or invalid DLL); if
@@ -155,31 +155,53 @@ released before `Platform::UnloadModule`. Both embedded and DLL-backed runtime e
 that hook to stop process-global integrations such as in-process crash handlers before a
 runtime module can be unloaded.
 
-### Reload must map a fresh module
+### Self-update applies on the next launch (user restart)
 
-`InitApp` ([../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp)) is
-guarded by a module-static `std::once_flag` + `FO_STRONG_ASSERT(first_call)`: it must run exactly once
-per *loaded module*. A reload therefore must execute in a **different** module than the one that asked
-for it.
+A native self-update is **not** applied in the running process. When the updater stages the native
+binaries it prints a "please restart" line **on the update screen** (`Updater::AddText` + `_restartPrompt`
+in [../Source/Client/Updater.cpp](../Source/Client/Updater.cpp)) and holds that screen until the user
+closes the client (Escape, which the updater already handles). The runtime then returns `ReloadRequested`
+and the host (`PromoteStagedReloadForRestart` in
+[../Source/Applications/ClientApp.cpp](../Source/Applications/ClientApp.cpp)) promotes the staged runtime
+onto the live path (`ApplyStagedBinaryUpdate`) and **exits**. The next launch loads the promoted module
+as its single, clean `InitApp`.
 
-When the host loaded the bundled DLL first, a self-update reloads the **same** `<live>` path after
-staging the new module. If `Platform::UnloadModule` did not bring the previous module's OS refcount to
-zero (Windows `LoadLibrary` dedup, glibc keeping a `.so` resident), the reload's `LoadModule` returns
-the **still-resident previous module** instead of the freshly-swapped file. Running it re-enters
-`InitApp` whose `once_flag` is already consumed → fatal `StrongAssertionException: first_call`, and the
-runtime never actually updates. (Runs that started embedded — cold install or `ForceEmbeddedRuntime` —
-sidestep this because their first-stage module is the host, not the `<live>` DLL.)
+The message + hold are gated by `App->IsHeadless()` (a **runtime** check, since `FO_HEADLESS_APP` is an
+app-target define that is not set when compiling `ClientLib` where the updater lives): a headless client
+has no UI and no user to dismiss the prompt, so it skips the message/hold and the host promotes + exits
+immediately.
 
-`RunClientFromLibrary` guards against this: it threads the requesting module's `BuildHash` into the
-reload pass (`RequestedClientRuntime::PreviousBuildHash`) and, after `LoadModule`, aborts the reload
-with a pre-init-safe diagnostic if the loaded module's `BuildHash` is unchanged — instead of running it into the
-opaque assert. The next process launch starts clean (a fresh process resets the `once_flag`) and
-`ApplyStagedBinaryUpdate` has already promoted the staged file, so it loads the new module normally.
+An in-process reload is avoided because it is unsafe for two independent reasons:
+
+1. **Stale module.** Reloading the **same** `<live>` path after staging the new module: if
+   `Platform::UnloadModule` does not bring the previous module's OS refcount to zero (Windows
+   `LoadLibrary` path dedup, glibc keeping a `.so` resident), the reload's `LoadModule` returns the
+   **still-resident previous module** instead of the freshly-swapped file — so the runtime never
+   actually updates. This is reliable, not occasional, on Windows.
+2. **Second `InitApp`.** `InitApp`
+   ([../Source/Frontend/ApplicationInit.cpp](../Source/Frontend/ApplicationInit.cpp)) is guarded by a
+   module-static `std::once_flag` + `FO_STRONG_ASSERT(first_call)` and brings up SDL (video device,
+   window, audio device + thread). Even if a fresh *module* is mapped (e.g. via a renamed copy),
+   running `InitApp` a **second time in the same process** crashes during SDL re-initialization —
+   `CreateInternalWindow` fails (`EXCEPTION_ACCESS_VIOLATION`, "window creation failed") and the prior
+   App's audio thread faults touching torn-down state. The historical build-hash reload guard *masked*
+   this by aborting on the stale module before the second `InitApp` ran.
+
+A fresh launch sidesteps both: the new process loads the promoted runtime as its first and only
+`InitApp` in a clean address space, and its compatibility now matches the server, so it syncs resources
+and enters the game without staging another update.
+
+> **Installed (writable-root) clients.** A self-updated installed client loads its frozen install-dir
+> base DLL first and the runtime requests a switch to the writable-root DLL on every launch (see the
+> installed-vs-portable section). With user-restart, that switch also surfaces the restart prompt, so an
+> installed client would prompt on each launch until that path-switch is handled without a process
+> restart. Portable clients (zip / staging deployments) are unaffected. Track this before shipping the
+> writable-root self-update to installed (Wix) builds.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
-> DLL is). A client built before this reload guard (the host loaded the bundled DLL first and crashed on
-> the same-path reload) cannot be fixed in place by any server or DLL update — it needs a one-time
-> manual reinstall of a client carrying the fix, after which in-place self-updates work again.
+> DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
+> fixed in place by any server or DLL update — it needs a one-time manual reinstall of a client carrying
+> the fix, after which self-updates work again.
 
 ## Host CLI surface
 
@@ -331,11 +353,12 @@ Because the host resolves and loads the runtime DLL *before* settings (so it can
 so it knows `<root>`) stages/promotes the update under `<root>` and returns `<root>/<runtime_name><ext>` as
 `ClientRuntimeResult::RequestedRuntimePath`; the host reloads exactly that path (`Updater::GetRuntimeLivePath`
 feeds `Data->StagedRuntimePath`). A consequence: an installed client that has self-updated loads its frozen
-install-dir base DLL on every launch, then reloads to the current writable DLL — the updater confirms the
-writable copy by its cached hash, so there is no re-download, just one extra module load/unload (the build-hash
-reload guard sees different builds, so it proceeds). During that updater pass the writable DLL is not the
-currently loaded module (the host loaded the exe-dir base), so the immediate post-download promote usually
-succeeds and the host's reload-pass `ApplyStagedBinaryUpdate` is a no-op on the already-promoted file.
+install-dir base DLL on every launch, then relaunches into the current writable DLL — the updater confirms the
+writable copy by its cached hash, so there is no re-download, just one extra process launch (the relaunched
+process loads `<root>/<runtime_name><ext>` via `FO_CLIENT_RELOAD_PATH` and its compatibility now matches, so it
+does not relaunch again). During that updater pass the writable DLL is not the currently loaded module (the host
+loaded the exe-dir base), so the immediate post-download promote usually succeeds and the relaunch-pass
+`ApplyStagedBinaryUpdate` is a no-op on the already-promoted file.
 
 **Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
 is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
@@ -385,17 +408,17 @@ LF_Client.exe main
     â”‚     â”‚     â”œâ”€â”€ On BinariesStaged: set ResultKind = ReloadRequested, RequestedRuntimePath
     â”‚     â”‚     â”œâ”€â”€ On any other non-success result: ShowUpdaterFailure(result) and quit
     â”‚     â”‚     â””â”€â”€ unload of DLL (scope_exit) frees the loaded module
-    â”‚     â””â”€â”€ If ResultKind == ReloadRequested: RunReloadedRuntime
-    â”‚           â””â”€â”€ RunClientFromLibrary again â€” ApplyStagedBinaryUpdate uses the
-    â”‚             requested runtime path (exe-dir for portable, writable root for installed)
-    â”‚             before LoadModule
+    â”‚     â””â”€â”€ If ResultKind == ReloadRequested: RelaunchForReload
+    â”‚           â””â”€â”€ ApplyStagedBinaryUpdate(requested path) then Platform::RelaunchSelfAndWait
+    â”‚             starts a FRESH host process (FO_CLIENT_RELOAD_PATH = requested path,
+    â”‚             exe-dir for portable / writable root for installed) and waits for it
     â”‚
     â””â”€â”€ If LoadModule failed (CASE 1: no DLL yet, packaged install):
           if !CanFallbackToEmbeddedClient(requested): return false
           RunEmbeddedClient(argc, argv, *)               # host-module RunClientRuntime
           (same single-Updater flow as the DLL; host module's App.reset() runs after
-           ReloadRequested so SDL state is gone before the next LoadModule)
-          if ResultKind == ReloadRequested â†’ RunReloadedRuntime
+           ReloadRequested so SDL state is gone before the relaunch)
+          if ResultKind == ReloadRequested â†’ RelaunchForReload (fresh process)
 ```
 
 A single `Updater` instance handles both gameplay-resources and native-binaries syncs.
@@ -424,7 +447,8 @@ instead of looping back to the game which would only reject the connection again
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
-| Reload loaded an unchanged module | client log `Runtime reload loaded an unchanged module (build hash '...'); aborting reload to avoid double initialization` — the OS handed back the still-resident previous module; the reload aborts cleanly and the next launch loads the already-swapped module fresh (replaces the historical opaque `StrongAssertionException: first_call`) |
+| Self-update does not enter the game (downloads, then the client closes) | A host built before the relaunch fix attempted an in-process same-path reload: the OS returned the still-resident previous module (build-hash guard aborted → clean exit) or, if a fresh module was forced, the second `InitApp` crashed in SDL window/audio re-init (`0xC0000005`, "window creation failed"). The current host relaunches a fresh process instead (`RelaunchForReload`); look for `relaunching fresh process for reload, generation N -> N+1` followed by the child's `reload generation N+1` + `client_entered_game`. Deployed frozen hosts predating the fix still need a one-time manual reinstall |
+| Self-update relaunches repeatedly then gives up | client log `reload generation N reached the limit 8, refusing to relaunch again` — the server kept reporting the relaunched client outdated (e.g. a forced compatibility override, or a server/client variant-name mismatch so the served runtime is never the one the client loads). Fix the compatibility/name mismatch; the cap (`MAX_RELOAD_GENERATIONS`) only bounds the loop |
 | Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), `dbghelp`/`backward-cpp` cannot find the PDB and frames in the runtime resolve to addresses only |
 | Stack trace shows raw addresses for **host** (`<host>.exe`) frames after a self-update, while runtime-DLL frames resolve | The on-disk `<host_name>.pdb` doesn't match the frozen exe (CodeView GUID differs) — typically a leftover from an old updater build that clobbered the matching host PDB with a newer server-build one. The current updater never overwrites a present host PDB and fetches one only when the local copy is missing, so the fix is to delete the mismatched `<host_name>.pdb`: an up-to-date host then re-downloads the matching one; otherwise restore the host PDB shipped with that exe build (matching CodeView GUID). A mis-walked stack through unsymbolized host frames can also surface bogus top frames (e.g. attributing the fault to an unrelated system DLL) |
 

@@ -117,19 +117,24 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot view a map for a player that is being destroyed", self->GetId());
+    }
     if (self->GetControlledCritter() != nullptr) {
         throw ScriptException("Player controls critter");
     }
+
+    ValidateEntityAccess(map);
+
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
 
-    self->SetViewMap(map, hex);
-    auto* ctx = self->GetEngine()->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto* loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
-    ctx->EnsureEntitySynced(loc);
+    ValidateEntityAccess(loc);
+
+    self->SetViewMap(map, hex);
     self->Send_LoadMap(map);
     self->GetEngine()->MapMngr.ViewMap(self, map);
     self->Send_ViewMap();
