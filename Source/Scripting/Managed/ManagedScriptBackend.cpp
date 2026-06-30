@@ -1705,7 +1705,7 @@ static auto BoxNativeCallValue(const ManagedScriptBackend* backend, const Comple
     throw ScriptSystemException("Unsupported Managed return type", type.BaseType.Name);
 }
 
-static void CopyManagedCallbackReturnValue(ManagedScriptBackend* backend, const ComplexTypeDesc& type, MonoObject* value, void* ret_data)
+static void CopyManagedCallbackReturnValue(ManagedScriptBackend* backend, const ComplexTypeDesc& type, MonoObject* value, void* ret_data, const DataAccessor* accessor)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1715,8 +1715,29 @@ static void CopyManagedCallbackReturnValue(ManagedScriptBackend* backend, const 
     if (ret_data == nullptr) {
         throw ScriptSystemException("Managed callback return storage is null");
     }
+
+    if (type.Kind == ComplexTypeKind::Array) {
+        // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read).
+        // Uses the accessor's ClearArray/AddArrayElement write API, so collection-returning [ScriptCallable] bridges
+        // (e.g. Purchases::SelectUningestedWebOrdersManaged -> hstring[]) work the same as an AngelScript array return.
+        FO_VERIFY_AND_THROW(accessor, "Managed callback array return requires a data accessor");
+
+        accessor->ClearArray(ret_data);
+
+        const size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
+
+        for (size_t i = 0; i < array_size; i++) {
+            MonoObject* element = GetManagedListItem(backend, value, i);
+            ManagedScalarValue element_storage;
+            void* element_value = ConvertManagedSimpleObjectToNative(backend, type.BaseType, element, element_storage);
+            accessor->AddArrayElement(ret_data, element_value);
+        }
+
+        return;
+    }
+
     if (type.Kind != ComplexTypeKind::Simple) {
-        throw ScriptSystemException("Managed callback collection returns are not supported yet");
+        throw ScriptSystemException("Managed callback dictionary returns are not supported yet");
     }
 
     const BaseTypeDesc& base_type = type.BaseType;
@@ -1796,7 +1817,7 @@ static void DispatchManagedCallback(ManagedScriptBackend* backend, uint32_t hand
     ThrowIfManagedException(exception, "Managed callback failed");
 
     if (ret) {
-        CopyManagedCallbackReturnValue(backend, ret, result, call.RetData);
+        CopyManagedCallbackReturnValue(backend, ret, result, call.RetData, call.Accessor.get());
     }
 }
 
@@ -3643,10 +3664,26 @@ static auto MakeManagedGlobalSimpleType(EngineMetadata* meta, string_view type_n
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Build a Simple ComplexTypeDesc from an engine base-type name (mirrors the simple-type branch of
+    // Build a ComplexTypeDesc from an engine type name (mirrors the simple-type and array branches of
     // AngelScript's resolve_type). Returns an empty (false) desc when the name is not a valid engine base type,
     // signalling the caller to skip the function (it could not match any FindFunc<...> signature anyway).
     ComplexTypeDesc type;
+
+    // Array element: "T[]" -> Array desc wrapping the element base type. The managed registration emits this for
+    // List<T> / T[] params and returns (see ScriptFuncRegistration.EngineTypeName), so collection-typed bridges
+    // (e.g. Barter::MakeBarterManaged, Purchases::SelectUningestedWebOrdersManaged) match the same FindFunc<...>
+    // signature an AngelScript array arg produces.
+    if (type_name.ends_with("[]")) {
+        const string_view elem_name = type_name.substr(0, type_name.size() - 2);
+
+        if (!meta->IsValidBaseType(elem_name)) {
+            return {};
+        }
+
+        type.Kind = ComplexTypeKind::Array;
+        type.BaseType = meta->GetBaseType(elem_name);
+        return type;
+    }
 
     if (!meta->IsValidBaseType(type_name)) {
         return {};

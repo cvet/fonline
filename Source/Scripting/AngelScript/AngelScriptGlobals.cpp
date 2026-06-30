@@ -35,6 +35,7 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptArray.h"
 #include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
@@ -267,6 +268,20 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 
     if (func_desc == nullptr) {
         throw ScriptException("Script function not found", func_name);
+    }
+
+    // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee
+    // fills it through the accessor's ClearArray/AddArrayElement, which need a live array. Allocate an empty one
+    // of the resolved element type so collection-returning funcs behave like a native array return. The created
+    // array's single ref is adopted by the caller's variable (the ?&out slot), so it frees on scope exit.
+    if (result_type.Kind == ComplexTypeKind::Array) {
+        void* result_addr = gen->GetArgAddress(1);
+
+        if (*cast_from_void<ScriptArray**>(result_addr) == nullptr) {
+            auto* array_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
+            FO_VERIFY_AND_THROW(array_type, "InvokeResult array result type is unavailable", func_name);
+            *cast_from_void<ScriptArray**>(result_addr) = ScriptArray::Create(array_type);
+        }
     }
 
     const bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));

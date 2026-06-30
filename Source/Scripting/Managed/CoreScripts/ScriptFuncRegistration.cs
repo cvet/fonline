@@ -171,6 +171,19 @@ namespace FOnline
                 return "any";
             }
 
+            // Collections map to the engine array type name "element[]" so the registered signature matches the
+            // FindFunc<...> an AngelScript array arg produces (the engine builds an Array ComplexTypeDesc for it).
+            // Covers List<T> (the managed idiom) and T[]; the engine marshals both ends as the same array.
+            if (type.IsArray)
+            {
+                return EngineTypeName(type.GetElementType()) + "[]";
+            }
+
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.List<>))
+            {
+                return EngineTypeName(type.GetGenericArguments()[0]) + "[]";
+            }
+
             return type.Name;
         }
     }
