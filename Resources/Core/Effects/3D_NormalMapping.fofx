@@ -1,3 +1,8 @@
+# 3D_NormalMapping — skinned 3D model shader with tangent-space normal mapping and a drop shadow.
+# Where: skinned 3D model with tangent-space normal mapping; alternate model effect assigned per-mesh via the model DrawEffect (the default model slot is 3D_Skinned).
+# How: skins position, normal, tangent and binormal per vertex and builds a tangent-space light vector from the constant light direction. Pass1 (shadow) projects the skinned position to the ground plane and writes a flat black, alpha-masked silhouette. Pass2 samples the normal map (ModelTex1, base UV remapped through the atlas offset), unpacks it to a tangent-space normal, applies a Lambert term (clamped to minimum light power) against the tangent-space light, and modulates MainTex; both passes discard near-zero alpha. Depth test LessEqual.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 Passes = 2
 ShadowPass = 1

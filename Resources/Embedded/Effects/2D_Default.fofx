@@ -1,3 +1,8 @@
+# 2D_Default — minimal 2D textured-sprite shader with egg (transparency-cutout) support.
+# Where: the EMBEDDED bootstrap copy of the 2D textured-sprite shader, compiled into the binary so the renderer can draw before external resource packs are mounted (a minimal sprite shader; the live Core/2D_Default.fofx is the full one).
+# How: samples MainTex, multiplies it by the per-vertex colour (RGB doubled, alpha multiplied), and where the egg flags are set fades alpha by a radial falloff computed from screen position against the egg ellipses in EggData; fragments below a tiny alpha cutoff are discarded.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthFunc = LessEqual
 

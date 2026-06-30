@@ -1,3 +1,8 @@
+# Primitive_Fog — fog/overlay primitive shader writing into the fog render target.
+# Where: engine default for the Fog primitive slot (renders fog/overlay geometry into the fog render target).
+# How: vertex transforms the 2D position (z forced to 0) and forwards the vertex colour; fragment branches on the colour alpha — below the threshold it emits a fog-border value (boosted by FogBordersPower, floored at FogBlackout) into the red channel, otherwise it passes the rgb as a generic overlay payload. Blended with One/One and the Max equation so overlapping geometry keeps the strongest contribution.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 BlendFunc = One One
 BlendEquation = Max
