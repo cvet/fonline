@@ -1205,79 +1205,111 @@ class Packager:
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
 
+	def resolve_game_version(self) -> str:
+		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
+		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
+		# `$FILE{...}` indirection here relative to the main config directory.
+		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
+		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
+		if file_match:
+			version_path = self.resolve_config_relative_path(file_match.group(1).strip())
+			assert os.path.isfile(version_path), 'Common.GameVersion $FILE not found: ' + version_path
+			with open(version_path, 'r', encoding='utf-8-sig') as version_file:
+				raw = version_file.read().strip()
+		return raw
+
+	def ensure_msi_toolset(self) -> None:
+		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
+		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
+		# (candle/light) on Windows, GNOME msitools (wixl) elsewhere — matching msicreator/createmsi.py.
+		if os.name == 'nt':
+			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+		else:
+			assert shutil.which('wixl') is not None, 'Wix pack requires the msitools "wixl" toolset on PATH (install the "msitools" package)'
+
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
 		# the deep-link URI scheme so site login works without the client editing the registry at
 		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
-		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). ADDITIVE and
-		# FAILURE-TOLERANT: any problem (non-Windows-client target, missing WiX/wixl toolset, generator
-		# error) logs a warning and leaves the Raw/Zip artifacts untouched — it never fails the package.
-		# Validated on the Windows build host by the owner (WiX/wixl is not present in headless CI).
-		if self.args.platform != 'Windows' or self.args.target != 'Client':
-			log('Wix: skipped (only the Windows client is packaged as an MSI)')
-			return
+		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). The MSI is a
+		# required artifact: a missing toolset or a generator/build error fails the package. All
+		# game-specific values come from the project config, so the engine packager stays game-agnostic.
+		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
 
+		self.ensure_msi_toolset()
+
+		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
+		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
+
+		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
+
+		upgrade_code = self.fomain.mainSection().getStr('Windows.MsiUpgradeCode', '').strip()
+		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Windows.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
+		upgrade_code = upgrade_code.upper()
+
+		version = self.resolve_game_version()
+		assert re.match(r'^\d+(\.\d+){1,3}$', version), 'Wix pack requires a numeric Common.GameVersion (x.y.z[.w]), got: ' + version
+
+		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.Icon', ''))
+		if icon_path:
+			assert os.path.isfile(icon_path), 'Windows.Icon file not found: ' + icon_path
+
+		exe_name = self.args.nicename + '.exe'
+		command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
+		registry_entries = [
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': 'URL:%s Protocol' % scheme, 'key_path': 'yes'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': 'URL Protocol', 'type': 'string', 'value': '', 'key_path': 'no'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
+		]
+
+		staged_dir = os.path.basename(self.target_output_path)
+		work_dir = os.path.dirname(self.target_output_path)
+		config: dict[str, object] = {
+			'product_name': game_name,
+			'manufacturer': game_name,
+			'name': game_name,
+			'name_base': self.args.nicename,
+			'version': version,
+			'comments': game_name + ' game client',
+			'installdir': self.args.nicename,
+			'license_file': '',
+			'upgrade_guid': upgrade_code,
+			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
+			'arch': 64,
+			'registry_entries': registry_entries,
+			'startmenu_shortcut': exe_name,
+			'desktop_shortcut': exe_name,
+			'parts': [{'id': 'MainProgram', 'title': game_name, 'description': 'Game client', 'staged_dir': staged_dir}],
+		}
+		if icon_path:
+			config['addremove_icon'] = icon_path
+
+		config_path = os.path.join(work_dir, self.args.nicename + '.wix.json')
+		with open(config_path, 'w', encoding='utf-8') as config_file:
+			json.dump(config, config_file)
+
+		# Drop the installed-build marker into the staged payload so the MSI-installed client uses
+		# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
+		# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
+		# portable artifacts (already finalized earlier in finalize_output) stay portable.
+		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
 		try:
-			scheme = 'lastfrontier'
-			exe_name = self.args.nicename + '.exe'
-			try:
-				version = (self.fomain.mainSection().getStr('Common.GameVersion') or '0.0.0').strip()
-			except Exception:
-				version = '0.0.0'
-			# WiX ProductVersion must be numeric x.y.z[.w]; fall back if the fomain value is non-numeric.
-			if not re.match(r'^\d+(\.\d+){1,3}$', version):
-				version = '0.0.0'
+			with open(marker_path, 'w', encoding='utf-8') as marker_file:
+				marker_file.write('installed\n')
 
-			command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
-			registry_entries = [
-				{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
-				 'name': '', 'type': 'string', 'value': 'URL:Last Frontier Protocol', 'key_path': 'yes'},
-				{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
-				 'name': 'URL Protocol', 'type': 'string', 'value': '', 'key_path': 'no'},
-				{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
-				 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
-			]
-
-			staged_dir = os.path.basename(self.target_output_path)
-			work_dir = os.path.dirname(self.target_output_path)
-			config = {
-				'product_name': 'Last Frontier',
-				'manufacturer': 'Last Frontier',
-				'name': 'Last Frontier',
-				'name_base': self.args.nicename,
-				'version': version,
-				'comments': 'Last Frontier game client',
-				'installdir': 'LastFrontier',
-				'license_file': '',
-				'upgrade_guid': 'B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D',
-				'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
-				'arch': 64,
-				'registry_entries': registry_entries,
-				'parts': [{'id': 'MainProgram', 'title': 'Last Frontier', 'description': 'Game client', 'staged_dir': staged_dir}],
-			}
-
-			config_path = os.path.join(work_dir, self.args.nicename + '.wix.json')
-			with open(config_path, 'w', encoding='utf-8') as config_file:
-				json.dump(config, config_file)
-
-			# Drop the installed-build marker into the staged payload so the MSI-installed client uses
-			# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
-			# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
-			# portable artifacts (already finalized earlier in finalize_output) stay portable.
-			marker_path = os.path.join(self.target_output_path, 'INSTALLED')
-			try:
-				with open(marker_path, 'w', encoding='utf-8') as marker_file:
-					marker_file.write('installed\n')
-
-				createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
-				log('Wix: building MSI installer', config_path)
-				subprocess.run([sys.executable, createmsi, config_path], cwd=work_dir, check=True)
-				log('Wix: MSI built (registers %s:// URI scheme, installs writable-data marker)' % scheme)
-			finally:
-				if os.path.exists(marker_path):
-					os.remove(marker_path)
-		except Exception as wix_error:  # noqa: BLE001 - additive step must never fail the package
-			log('Wix: MSI build skipped:', repr(wix_error))
+			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
+			log('Wix: building MSI installer', config_path)
+			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
+			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir.
+			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
+		finally:
+			if os.path.exists(marker_path):
+				os.remove(marker_path)
 
 	def run(self) -> None:
 		log(f'Make {self.args.target} ({self.args.config}) for {self.args.platform}')
