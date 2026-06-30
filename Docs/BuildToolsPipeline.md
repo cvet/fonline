@@ -109,7 +109,16 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` as an additive MSI step after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution and can register URI-scheme registry entries through the generated WiX config. This step is failure-tolerant by design when WiX/wixl is not available; Raw/Zip output remains the primary package artifact.
+`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+
+- product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
+- `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
+- deep-link URI scheme ← `Auth.UriScheme`
+- stable WiX `UpgradeCode` ← `Windows.MsiUpgradeCode` (required; must never change once an MSI has shipped)
+- Add/Remove Programs icon ← `Windows.Icon` (optional)
+- install directory and MSI base name ← the package nice name
+
+The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
 
 Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
 
