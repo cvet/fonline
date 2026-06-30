@@ -33,6 +33,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptArray.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
@@ -86,8 +87,8 @@ namespace
     static void RegisterArrayDummyRef(AngelScript::asIScriptEngine* engine)
     {
         REQUIRE(engine->RegisterObjectType("ArrayDummyRef", 0, AngelScript::asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_ADDREF, "void f()", AngelScript::asFunctionPtr(ArrayDummyRefAddRef), AngelScript::asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_RELEASE, "void f()", AngelScript::asFunctionPtr(ArrayDummyRefRelease), AngelScript::asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(ArrayDummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(ArrayDummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static auto BuildAngelScriptModule(AngelScript::asIScriptEngine* engine, string_view module_name, string_view source) -> int32_t

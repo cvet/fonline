@@ -38,6 +38,18 @@
 
 #include <stdlib.h>
 
+// (FOnline Patch) MemorySanitizer unpoison helper for the value-type list-buffer construction-detection
+// heuristic in DestroySubList (see usage below).
+#if defined(__has_feature)
+#  if __has_feature(memory_sanitizer)
+#    include <sanitizer/msan_interface.h>
+#    define AS_FONLINE_MSAN_UNPOISON(ptr, sz) __msan_unpoison((ptr), (sz))
+#  endif
+#endif
+#ifndef AS_FONLINE_MSAN_UNPOISON
+#  define AS_FONLINE_MSAN_UNPOISON(ptr, sz) ((void)0)
+#endif
+
 #include "as_config.h"
 #include "as_scriptengine.h"
 #include "as_builder.h"
@@ -6903,11 +6915,12 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 						asUINT size = ti->GetSize();
 						asCObjectType *ot = CastToObjectType(ti);
 
-						// (FOnline Patch) Inline value-type list-buffer elements stay 4-byte packed (stock layout),
-						// matching asCReader::GetListElementAlignment and the list-factory consumer. Aligning 8-byte
-						// value types here desynced destruction from the buffer and crashed value-type init-lists.
-						if( size >= 4 && (asPWORD(buffer) & 0x3) != 0 )
-							buffer += 4 - asUINT(asPWORD(buffer) & 0x3);
+						// (FOnline Patch) Align to the element's natural alignment (8 for 8-byte value types),
+						// matching the shared GetListElementAlignment policy used by the compiler layout, the
+						// bytecode writer/reader and the array/dict list factories.
+						const asUINT elemAlign = GetListElementAlignment(dt, size);
+						if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+							buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
 
 						if( ot && ot->beh.destruct )
 						{
@@ -6919,6 +6932,12 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 							//       thrown aborting the initialization. The engine
 							//       really should be keeping track of which objects has
 							//       been successfully initialized.
+
+							// (FOnline Patch) The scan deliberately reads the raw element bytes; a value type may
+							// legitimately hold uninitialized interior bytes (e.g. std::string's small-string
+							// buffer tail copied into the list buffer). These are our own buffer bytes, so mark
+							// them defined for MemorySanitizer before scanning.
+							AS_FONLINE_MSAN_UNPOISON(buffer, size);
 
 							for( asUINT n = 0; n < size; n++ )
 							{

@@ -3393,24 +3393,6 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 	CalculateStackNeeded(func);
 }
 
-// (FOnline Patch) Natural alignment (bytes) of a list-buffer element. Inline 8-byte value types (ident_t,
-// hstring, any_t, ...) and 8-byte primitives (double, int64) must sit on an aligned slot; the list buffer base
-// is allocated 16-aligned (asBC_AllocMem), so aligning the element offset here lands them aligned. Handles keep
-// the historical 4-byte packing (their size is pointer-size-dependent). Mirrors the value-alignment policy used
-// for the VM stack; see Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
-static asUINT GetListElementAlignment(const asCDataType &dt, asUINT size)
-{
-	if( dt.IsPrimitive() )
-		return size >= 8 ? 8u : 4u;
-
-	// Inline value-type list-buffer elements stay 4-byte packed (the stock AngelScript layout):
-	// the list factory copies each element out with AssignScriptObject into the array's own properly-aligned
-	// storage, so the staging buffer needs no natural alignment. Aligning 8-byte value types (e.g. string) here
-	// desynced the list-factory read offset from the buffer and crashed value-type init-lists. Only 8-byte
-	// primitives keep natural alignment (above).
-	return 4u;
-}
-
 asCReader::SListAdjuster::SListAdjuster(asCReader* rd, asDWORD* bc, asCObjectType* listType) :
 	reader(rd), allocMemBC(bc), maxOffset(0), patternType(listType), repeatCount(0), lastOffset(-1), nextOffset(0), patternNode(0), nextTypeId(-1)
 {
@@ -6076,15 +6058,19 @@ int asCWriter::SListAdjuster::AdjustOffset(int offset, asCObjectType *listPatter
 				else
 					size = dt.GetSizeInMemoryBytes();
 
+				// (FOnline Patch) Track byte positions with the element's natural alignment, matching the
+				// compiler's list layout and the reader's re-derivation, so skipped-value detection stays in
+				// sync for 8-byte value types.
+				const asUINT elemAlign = GetListElementAlignment(dt, size);
+
 				int count = 0;
 				while( nextOffset <= offset )
 				{
 					count++;
 					nextOffset += size;
 
-					// Align the offset on 4 byte boundaries
-					if( size >= 4 && (nextOffset & 0x3) )
-						nextOffset += 4 - (nextOffset & 0x3);
+					if( size >= 4 && (nextOffset % elemAlign) != 0 )
+						nextOffset += elemAlign - (nextOffset % elemAlign);
 				}
 
 				if( --count > 0 )

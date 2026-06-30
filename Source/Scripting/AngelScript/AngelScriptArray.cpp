@@ -196,11 +196,13 @@ ScriptArray::ScriptArray(AngelScript::asITypeInfo* ti, void* init_list) :
         CreateBuffer(length);
 
         const int32_t sub_size = ti->GetSubType()->GetSize();
+        const size_t elem_align = sub_size >= 8 ? 8u : 4u;
+        const size_t header = sub_size >= 4 ? ((sizeof(int32_t) + (elem_align - 1)) & ~(elem_align - 1)) : sizeof(int32_t);
+        const size_t stride = sub_size >= 4 ? ((numeric_cast<size_t>(sub_size) + (elem_align - 1)) & ~(elem_align - 1)) : numeric_cast<size_t>(sub_size);
 
         for (int32_t i = 0; i < length; i++) {
             void* obj = At(i);
-            auto* src_obj = cast_from_void<AngelScript::asBYTE*>(init_list);
-            src_obj += sizeof(int32_t) + numeric_cast<size_t>(i * sub_size);
+            auto* src_obj = cast_from_void<AngelScript::asBYTE*>(init_list) + header + numeric_cast<size_t>(i) * stride;
             engine->AssignScriptObject(obj, src_obj, ti->GetSubType());
         }
     }

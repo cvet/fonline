@@ -96,10 +96,11 @@ static auto ListElementAlignment(int32_t type_id, const AngelScript::asITypeInfo
     ignore_unused(type_info);
 
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
-        // Inline value-type list-buffer elements stay 4-byte packed (the stock AngelScript layout the compiler
-        // emits; see asCReader::GetListElementAlignment). Aligning 8-byte value types (e.g. string) here desynced
-        // the dict read from the buffer and crashed value-type dict init-lists during bake. Handles are 4-byte.
-        return 4;
+        if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
+            return 4;
+        }
+
+        return element_size >= 8 ? 8 : 4;
     }
 
     if (type_id == AngelScript::asTYPEID_VOID) {

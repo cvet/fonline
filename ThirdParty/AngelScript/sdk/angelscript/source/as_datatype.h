@@ -166,6 +166,13 @@ protected:
 	asCTypeInfo *typeInfo;
 };
 
+// (FOnline Patch) Single source of truth for the natural alignment (bytes) of an init-list buffer element of
+// the given data type and runtime size. Used by the compiler (layout), the bytecode writer/reader (offset
+// canonicalization / re-derivation), DestroySubList (cleanup walk) and the array/dict list factories so they
+// never disagree. 8-byte inline value types (ident_t/hstring/any_t/string, double/int64) land on 8-byte slots;
+// handles/ref keep the historical 4-byte packing (pointer-size-dependent, accessed unaligned).
+asUINT GetListElementAlignment(const asCDataType &dt, asUINT size);
+
 END_AS_NAMESPACE
 
 #endif

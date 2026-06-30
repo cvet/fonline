@@ -788,6 +788,28 @@ int  asCDataType::GetStackAlignmentDWords(bool isInlineValue) const
 	return 1;
 }
 
+// (FOnline Patch) See declaration in as_datatype.h. Single authority for init-list buffer element alignment.
+asUINT GetListElementAlignment(const asCDataType &dt, asUINT size)
+{
+	// 8-byte built-in primitives (int64/uint64/double) need 8-byte alignment; smaller ones 4-byte.
+	if( dt.IsPrimitive() )
+		return size >= 8 ? 8u : 4u;
+
+	// Handles / ref types keep the historical 4-byte packing in the list buffer: their size is pointer-size
+	// dependent and the factories read/write them through unaligned accessors, so the baked layout stays
+	// bitness-stable. (This differs from the VM stack, which aligns 64-bit handles.)
+	if( dt.IsObjectHandle() || (dt.GetTypeInfo() != 0 && (dt.GetTypeInfo()->flags & asOBJ_REF)) )
+		return 4u;
+
+	// Inline value types use their registered per-type alignment (8 for 8-byte value types such as
+	// ident_t/hstring/any_t/string), matching asCDataType::GetStackAlignmentDWords and RegisterObjectType.
+	asCObjectType *ot = CastToObjectType(dt.GetTypeInfo());
+	if( ot != 0 && ot->alignment > 4 )
+		return (asUINT)ot->alignment;
+
+	return 4u;
+}
+
 asSTypeBehaviour *asCDataType::GetBehaviour() const
 {
 	if (!typeInfo) return 0;

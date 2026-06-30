@@ -179,8 +179,8 @@ namespace
     static void RegisterDummyPlayerType(asIScriptEngine* engine)
     {
         REQUIRE(engine->RegisterObjectType("Player", 0, asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static void RegisterDummyCritterType(asIScriptEngine* engine)
@@ -190,15 +190,15 @@ namespace
         // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
         CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
         REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static void RegisterDummyRouteSnapshotType(asIScriptEngine* engine)
     {
         REQUIRE(engine->RegisterObjectType("RouteSnapshot", 0, asOBJ_REF) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", asFUNCTION(DummyRefAddRef), asCALL_CDECL_OBJFIRST) >= 0);
-        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_RELEASE, "void f()", asFUNCTION(DummyRefRelease), asCALL_CDECL_OBJFIRST) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
     static void DummyScheduler_StartTimeEvent(asIScriptGeneric* gen)
@@ -333,7 +333,7 @@ namespace
         REQUIRE(engine->RegisterEnumValue("EventResult", "StopChain", 1) >= 0);
         REQUIRE(engine->RegisterFuncdef("EventResult DummyEventFuncResult()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyEvent", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", asFUNCTION(GetDummyEvent), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyEvent@ GetDummyEvent()", FO_SCRIPT_FUNC(GetDummyEvent), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFunc@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Subscribe(DummyEventFuncResult@+ func, int priority = 0)", asFUNCTION(DummyEvent_Subscribe), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFunc@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
@@ -344,7 +344,7 @@ namespace
     {
         REQUIRE(engine->RegisterFuncdef("void TimeEventFunc()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyScheduler", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyScheduler@ GetDummyScheduler()", asFUNCTION(GetDummyScheduler), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyScheduler@ GetDummyScheduler()", FO_SCRIPT_FUNC(GetDummyScheduler), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StartTimeEvent(int delay, TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StartTimeEvent), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StartTimeEvent(int delay, int repeat, TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StartTimeEventRepeat), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void StopTimeEvent(TimeEventFunc@+ func)", asFUNCTION(DummyScheduler_StopTimeEvent), asCALL_GENERIC) >= 0);
@@ -358,7 +358,7 @@ namespace
         REQUIRE(engine->RegisterFuncdef("int PropertyGetterFunc(int entity)") >= 0);
         REQUIRE(engine->RegisterFuncdef("void PropertySetterFunc(int entity)") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyPropertyApi", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("DummyPropertyApi@ GetDummyPropertyApi()", asFUNCTION(GetDummyPropertyApi), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("DummyPropertyApi@ GetDummyPropertyApi()", FO_SCRIPT_FUNC(GetDummyPropertyApi), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void SetPropertyGetter(int prop, PropertyGetterFunc@+ func)", asFUNCTION(DummyProperty_SetPropertyGetter), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertySetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertySetter), asCALL_GENERIC) >= 0);
     }
@@ -367,7 +367,7 @@ namespace
     {
         RegisterDummyCritterType(engine);
         REQUIRE(engine->RegisterFuncdef("void AnimCallbackFunc(Critter@+ cr)") >= 0);
-        REQUIRE(engine->RegisterGlobalFunction("Critter@ GetDummyCritter()", asFUNCTION(GetDummyCritter), asCALL_CDECL) >= 0);
+        REQUIRE(engine->RegisterGlobalFunction("Critter@ GetDummyCritter()", FO_SCRIPT_FUNC(GetDummyCritter), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(engine->RegisterObjectMethod("Critter", "void AddAnimCallback(int stateAnim, int actionAnim, float normalizedTime, AnimCallbackFunc@+ func)", asFUNCTION(DummyCritter_AddAnimCallback), asCALL_GENERIC) >= 0);
     }
 

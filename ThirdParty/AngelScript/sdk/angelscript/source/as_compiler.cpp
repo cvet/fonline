@@ -4719,14 +4719,15 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 			else
 				size = AS_PTR_SIZE*4;
 
-			// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-			// (FOnline Patch) Inline value/primitive elements whose natural alignment exceeds 4 bytes (8-byte value
-			// types such as ident_t/hstring/any_t and 8-byte primitives such as double/int64) must land on an
-			// aligned slot in the list buffer. The authoritative runtime layout is recomputed by the bytecode
-			// loader's SListAdjuster (see asCReader::SListAdjuster::AdjustOffset), so the actual alignment padding
-			// lives there; here we only need the historical 32-bit alignment of the compile-time key offset.
-			if( size >= 4 && (bufferSize & 0x3) )
-				bufferSize += 4 - (bufferSize & 0x3);
+			// (FOnline Patch) Align the element on its natural alignment in the list buffer (8 bytes for 8-byte
+			// inline value types such as ident_t/hstring/any_t/string and 8-byte primitives, 4 bytes otherwise).
+			// Shared with the writer/reader serializer and the list factories via GetListElementAlignment so the
+			// compile-and-run layout matches the loaded layout. Smaller types stay 4-byte packed.
+			{
+				const asUINT listElemAlign = GetListElementAlignment(dt, size);
+				if( size >= 4 && (bufferSize % listElemAlign) != 0 )
+					bufferSize += listElemAlign - (bufferSize % listElemAlign);
+			}
 
 			// Compile the lvalue
 			lctx.bc.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
@@ -4851,9 +4852,11 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 					}
 					else if( func )
 					{
-						// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-						if( bufferSize & 0x3 )
-							bufferSize += 4 - (bufferSize & 0x3);
+						// (FOnline Patch) Align the default-constructed value-type element on its natural alignment
+						// (8 for 8-byte value types), matching GetListElementAlignment used everywhere else.
+						const asUINT listElemAlign = GetListElementAlignment(dt, (asUINT)dt.GetSizeInMemoryBytes());
+						if( (bufferSize % listElemAlign) != 0 )
+							bufferSize += listElemAlign - (bufferSize % listElemAlign);
 
 						// Call the constructor as a normal function
 						bcInit.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
