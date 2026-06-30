@@ -371,7 +371,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(zip_path, MakeStoredZip("nested\\entry.txt", "zip-data")));
 
-        const auto zip_pack = DataSource::MountPack(temp_dir, "Archive", false);
+        auto zip_pack = DataSource::MountPack(temp_dir, "Archive", false);
         REQUIRE(zip_pack);
 
         size_t size = 0;
@@ -402,6 +402,7 @@ TEST_CASE("DataSource")
         CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "zip-data");
         CHECK_FALSE(zip_pack->OpenFile("missing.txt", size, write_time));
 
+        zip_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -415,7 +416,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(bos_path, MakeStoredZip("entry.bin", "bos-data")));
 
-        const auto bos_pack = DataSource::MountPack(temp_dir, "BosPack", false);
+        auto bos_pack = DataSource::MountPack(temp_dir, "BosPack", false);
         REQUIRE(bos_pack);
 
         size_t size = 0;
@@ -427,6 +428,7 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "bos-data");
 
+        bos_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -440,7 +442,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(dat_path, MakeFallout2Dat("nested\\entry.txt", "dat-data")));
 
-        const auto dat_pack = DataSource::MountPack(temp_dir, "FalloutPack", false);
+        auto dat_pack = DataSource::MountPack(temp_dir, "FalloutPack", false);
         REQUIRE(dat_pack);
 
         size_t size = 0;
@@ -463,6 +465,7 @@ TEST_CASE("DataSource")
         CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "dat-data");
         CHECK_FALSE(dat_pack->OpenFile("missing.txt", size, write_time));
 
+        dat_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -476,8 +479,8 @@ TEST_CASE("DataSource")
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("TruncatedPlain.dat").str(), MakeFallout2DatEntry("plain.txt", "short", 0, 4096, 4096, 0)));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidPacked.dat").str(), MakeFallout2DatEntry("packed.txt", "not-deflated", 1, 32, 12, 0)));
 
-        const auto plain_pack = DataSource::MountPack(temp_dir, "TruncatedPlain", false);
-        const auto packed_pack = DataSource::MountPack(temp_dir, "InvalidPacked", false);
+        auto plain_pack = DataSource::MountPack(temp_dir, "TruncatedPlain", false);
+        auto packed_pack = DataSource::MountPack(temp_dir, "InvalidPacked", false);
         REQUIRE(plain_pack);
         REQUIRE(packed_pack);
 
@@ -489,6 +492,8 @@ TEST_CASE("DataSource")
         CHECK_THROWS_AS(plain_pack->OpenFile("plain.txt", size, write_time), DataSourceException);
         CHECK_THROWS_AS(packed_pack->OpenFile("packed.txt", size, write_time), DataSourceException);
 
+        plain_pack.reset();
+        packed_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -503,7 +508,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("BadNameSize.dat").str(), MakeFallout2DatWithInvalidNameSize()));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("Fallout1.dat").str(), MakeFallout1LikeDat()));
 
-        const auto empty_name_pack = DataSource::MountPack(temp_dir, "EmptyName", false);
+        auto empty_name_pack = DataSource::MountPack(temp_dir, "EmptyName", false);
         REQUIRE(empty_name_pack);
 
         size_t size = 0;
@@ -517,6 +522,7 @@ TEST_CASE("DataSource")
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BadNameSize", false), DataSourceException);
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "Fallout1", false), DataSourceException);
 
+        empty_name_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -531,7 +537,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(dat_path, MakeArcanumDat("deep\\packed.txt", content)));
 
-        const auto dat_pack = DataSource::MountPack(temp_dir, "ArcanumPack", false);
+        auto dat_pack = DataSource::MountPack(temp_dir, "ArcanumPack", false);
         REQUIRE(dat_pack);
 
         size_t size = 0;
@@ -550,6 +556,7 @@ TEST_CASE("DataSource")
         REQUIRE(buf);
         CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == content);
 
+        dat_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
@@ -571,7 +578,7 @@ TEST_CASE("DataSource")
 
     SECTION("EmbeddedPackAcceptsDefaultResourceArray")
     {
-        const auto embedded = DataSource::MountPack("", "Embedded", false);
+        auto embedded = DataSource::MountPack("", "Embedded", false);
         REQUIRE(embedded);
 
         size_t size = 0;
@@ -588,7 +595,7 @@ TEST_CASE("DataSource")
     SECTION("MaybeNotAvailableReturnsDummySources")
     {
         const auto maybe_dir = DataSource::MountDir("/tmp/lf_data_source_missing_dir", false, false, true);
-        const auto maybe_pack = DataSource::MountPack("/tmp/lf_data_source_missing_pack", "MissingPack", true);
+        auto maybe_pack = DataSource::MountPack("/tmp/lf_data_source_missing_pack", "MissingPack", true);
 
         REQUIRE(maybe_dir);
         REQUIRE(maybe_pack);
@@ -622,7 +629,7 @@ TEST_CASE("DataSource")
         REQUIRE(fs_write_file(nested_file, string_view {"nested-data"}));
         REQUIRE(fs_write_file(manifest_path, strex("{}\n{}\n", listed_file, nested_file).str()));
 
-        const auto files_list = DataSource::MountPack("ignored", "FilesList", false);
+        auto files_list = DataSource::MountPack("ignored", "FilesList", false);
         REQUIRE(files_list);
 
         size_t size = 0;
@@ -642,6 +649,7 @@ TEST_CASE("DataSource")
         CHECK(filtered[0] == nested_file);
 
         CHECK(fs_remove_file(manifest_path));
+        files_list.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 
