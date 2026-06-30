@@ -262,6 +262,16 @@ Local-map viewports recenter instantly on the chosen critter when their screen s
 - client effect selection/update code in `EffectManager`;
 - map/client draw sequencing in `MapView` or `SpriteManager`.
 
+### Minimal-profile base effects
+
+The engine ships a fixed set of base effects under `Resources/Core/Effects/` (loaded as the default for each draw slot by the `LOAD_DEFAULT_EFFECT` table in `Source/Client/EffectManager.cpp`) plus a few bootstrap effects under `Resources/Embedded/Effects/` (compiled into the binary so the renderer can draw before external resource packs are mounted). Each `.fofx` opens with a top-of-file `#` comment header stating what the effect does, which slot uses it, and how it works.
+
+These base shaders are deliberately written for the **lowest Direct3D feature level** (down to feature level 9_x): no `gl_FragCoord` / position-semantic reads, no screen-space derivatives (`dFdx`/`dFdy`/`fwidth`), and no dynamic array/vector indexing — only constructs that compile and run on the weakest supported hardware. The cross-compiler still emits HLSL Shader Model 4.0, GLSL 330, GLSL ES 300 and Metal for every effect (`Source/Tools/EffectBaker.cpp`), but the *source* must avoid features that fail on the lowest runtime profile. Keep an engine base effect minimal; that is what its header's `Profile: minimal` line records.
+
+Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults.
+
+An **embedding project that targets richer hardware** keeps its own advanced-profile copies in a resource pack that bakes *after* `Core`/`Embedded` under the same resource name, so the project copy shadows the engine base at runtime while the engine keeps the minimal fallback. The richer copy is free to use `gl_FragCoord`, derivatives, per-fragment lighting, and similar; the engine base is not.
+
 ## Per-effect depth state and the shared map depth buffer
 
 Effects carry per-pass depth state parsed from the `.fofx` `[Effect]` block:

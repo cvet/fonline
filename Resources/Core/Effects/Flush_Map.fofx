@@ -1,3 +1,8 @@
+# Flush_Map — blits the map render target straight to the frame.
+# Where: engine default for the FlushMap slot (plain blit of the map render target).
+# How: passes the projected vertex position through and writes the sampled MainTex colour unchanged at the output texel.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthWrite = False
 

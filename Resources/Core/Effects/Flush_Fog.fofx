@@ -1,3 +1,8 @@
+# Flush_Fog — composites the fog-of-war buffer into the frame as a darkening overlay.
+# Where: engine default for the FlushFog slot (composites the fog-of-war render target into the final frame).
+# How: samples the fog target where red is fog coverage and green/blue/alpha carry overlay colour; emits a black veil whose alpha is 1 minus the clamped fog (floored by FogBlackout), and where overlay coverage exists blends the overlay tint with its own softened alpha; fully transparent fragments are discarded.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthWrite = False
 

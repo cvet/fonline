@@ -1,3 +1,8 @@
+# Primitive_Default — flat vertex-coloured primitive shader.
+# Where: engine default for the Primitive draw slot (flat vertex-coloured lines/polygons).
+# How: vertex transforms the 2D position by the projection matrix (z forced to 0) and passes the vertex colour straight through; fragment outputs that colour unchanged — no texturing, no blending logic.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 
 [VertexShader]

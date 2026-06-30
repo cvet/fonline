@@ -1,3 +1,8 @@
+# Primitive_Light — per-hex light-fan shader with radial falloff, writing into the light render target.
+# Where: engine default for the Light primitive slot (renders per-hex light fans into the light render target with a radial falloff).
+# How: vertex transforms the 2D position (z forced to 0) and forwards the normalized radial distance (0 at the light centre, ~1 at the rim) and vertex colour; fragment smoothsteps the outer band of the radius to zero so brightness rises gently from the rim with no hard edge, scales intensity by ShinePower and ResultPower, and premultiplies the rgb by the clamped alpha. Blended with One/One and the Max equation so overlapping lights keep the brightest contribution.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 BlendFunc = One One
 BlendEquation = Max
