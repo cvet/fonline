@@ -4209,23 +4209,36 @@ auto ServerEngine::CritterMovingJob(Critter* cr) -> std::optional<timespan>
 
     auto* ctx = GetCurrentSyncContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->SyncEntity(cr);
 
-    auto map = cr->GetParent<Map>();
-    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    auto parent = cr->GetParentRaw();
 
-    if (map) {
-        ServerEntity* sync_entities[] = {map.get(), cr};
+    if (parent) {
+        ServerEntity* sync_entities[] = {parent.get(), cr};
         ctx->SyncEntities(span<ServerEntity*> {sync_entities});
+
+        if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {
+            return std::nullopt;
+        }
+    }
+    else {
+        ctx->SyncEntity(cr);
+
+        if (cr->IsDestroyed()) {
+            return std::nullopt;
+        }
     }
 
-    if (cr->IsDestroyed() || !cr->IsMoving()) {
+    if (!cr->IsMoving()) {
         return std::nullopt;
     }
 
+    auto* map = dynamic_cast<Map*>(parent.get());
+    FO_STRONG_ASSERT(!parent || !!map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    FO_STRONG_ASSERT(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+
     try {
-        if (map && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map.get());
+        if (map != nullptr && !cr->GetIsAttached()) {
+            ProcessCritterMovingBySteps(cr, map);
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;

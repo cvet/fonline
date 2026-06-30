@@ -117,6 +117,9 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot view a map for a player that is being destroyed", self->GetId());
+    }
     if (self->GetControlledCritter() != nullptr) {
         throw ScriptException("Player controls critter");
     }

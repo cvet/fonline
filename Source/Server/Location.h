@@ -56,24 +56,12 @@ public:
     auto operator=(Location&&) noexcept = delete;
     ~Location() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _proto->GetName();
-    }
-    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return static_cast<const ProtoLocation*>(_proto.get());
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
     [[nodiscard]] auto HasMaps() const -> bool;
     [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
-    [[nodiscard]] auto GetRawMaps() noexcept -> auto&
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _locMaps;
-    }
+    [[nodiscard]] auto GetRawMaps() noexcept -> vector<refcount_ptr<Map>>&;
     [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> Map*;
     [[nodiscard]] auto GetMapsCount() const -> size_t;
     [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;

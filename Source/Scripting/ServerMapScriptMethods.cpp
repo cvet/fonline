@@ -1086,6 +1086,9 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(Map* self, mpos hex, ProtoItem* 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot modify a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -1096,6 +1099,9 @@ FO_SCRIPT_API void Server_Map_BlockHex(Map* self, mpos hex, bool full)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_UnblockHex(Map* self, mpos hex)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot modify a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -1140,6 +1146,9 @@ FO_SCRIPT_API int32_t Server_Map_MoveHexByDir(Map* self, mpos& hex, mdir dir, in
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, mdir dir)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot modify a map that is being destroyed", self->GetId());
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }

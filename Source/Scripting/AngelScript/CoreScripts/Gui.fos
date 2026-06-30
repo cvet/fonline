@@ -4248,6 +4248,7 @@ bool IsModalScreenActive()
 // Engine callbacks
 //
 
+[[Async]]
 void EngineCallback_Start()
 {
     // Register custom screens

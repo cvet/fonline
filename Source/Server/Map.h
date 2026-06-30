@@ -83,31 +83,11 @@ public:
     auto operator=(Map&&) noexcept = delete;
     ~Map() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _proto->GetName();
-    }
-    [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _staticMap.get();
-    }
-    [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap*
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return static_cast<const ProtoMap*>(_proto.get());
-    }
-    [[nodiscard]] auto GetLocation() noexcept -> Location*
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _mapLocation.get();
-    }
-    [[nodiscard]] auto GetLocation() const noexcept -> const Location*
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _mapLocation.get();
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetStaticMap() const noexcept -> const StaticMap*;
+    [[nodiscard]] auto GetProtoMap() const noexcept -> const ProtoMap*;
+    [[nodiscard]] auto GetLocation() noexcept -> Location*;
+    [[nodiscard]] auto GetLocation() const noexcept -> const Location*;
     [[nodiscard]] auto IsHexMovable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexShootable(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto IsHexesMovable(mpos hex, int32_t radius) const -> bool;
@@ -116,21 +96,9 @@ public:
     [[nodiscard]] auto IsTriggerItemOnHex(mpos hex) const noexcept -> bool;
     [[nodiscard]] auto GetItem(ident_t item_id) noexcept -> Item*;
     [[nodiscard]] auto GetItemOnHex(mpos hex, hstring item_pid, Critter* picker) -> Item*;
-    [[nodiscard]] auto HasItems() const noexcept -> bool
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return !_items.empty();
-    }
-    [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _items;
-    }
-    [[nodiscard]] auto GetItems() const noexcept -> const_span<raw_ptr<Item>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _items;
-    }
+    [[nodiscard]] auto HasItems() const noexcept -> bool;
+    [[nodiscard]] auto GetItems() noexcept -> span<raw_ptr<Item>>;
+    [[nodiscard]] auto GetItems() const noexcept -> const_span<raw_ptr<Item>>;
     [[nodiscard]] auto GetItemsOnHex(mpos hex) noexcept -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetItemsInRadius(mpos hex, int32_t radius) -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetTriggerItemsOnHex(mpos hex) noexcept -> vector<Item*>;
@@ -140,77 +108,25 @@ public:
     [[nodiscard]] auto IsCritterOnHex(mpos hex, const Critter* cr) const -> bool;
     [[nodiscard]] auto GetCritter(ident_t cr_id) noexcept -> Critter*;
     [[nodiscard]] auto GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> Critter*;
-    [[nodiscard]] auto HasCritters() const noexcept -> bool
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return !_critters.empty();
-    }
-    [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _critters;
-    }
-    [[nodiscard]] auto GetCritters() const noexcept -> const_span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _critters;
-    }
+    [[nodiscard]] auto HasCritters() const noexcept -> bool;
+    [[nodiscard]] auto GetCritters() noexcept -> span<raw_ptr<Critter>>;
+    [[nodiscard]] auto GetCritters() const noexcept -> const_span<raw_ptr<Critter>>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const Critter*>;
     [[nodiscard]] auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<Critter*>;
-    [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _playerCritters;
-    }
-    [[nodiscard]] auto GetPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _playerCritters;
-    }
-    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _nonPlayerCritters;
-    }
-    [[nodiscard]] auto GetNonPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _nonPlayerCritters;
-    }
+    [[nodiscard]] auto GetPlayerCritters() noexcept -> span<raw_ptr<Critter>>;
+    [[nodiscard]] auto GetPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>>;
+    [[nodiscard]] auto GetNonPlayerCritters() noexcept -> span<raw_ptr<Critter>>;
+    [[nodiscard]] auto GetNonPlayerCritters() const noexcept -> const_span<raw_ptr<Critter>>;
     [[nodiscard]] auto IsTriggerStaticItemOnHex(mpos hex) const noexcept -> bool;
-    // The three getters below reach _spectatorPlayers under the map's entity cover (the cooperative scheme that
-    // also excludes Add/RemoveSpectatorPlayer); GetSpectatorPlayers leaks a span by design, so the _spectatorLock
-    // that guards _spectatorPlayers cannot be expressed here — hence FO_TSA_NO_ANALYSIS (leading return type per
-    // the TSA doc). The lock-free recipient resolution uses GetSpectatorPlayersForSend instead.
-    [[nodiscard]] bool HasSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return !_spectatorPlayers.empty();
-    }
-    [[nodiscard]] span<raw_ptr<Player>> GetSpectatorPlayers() noexcept FO_TSA_NO_ANALYSIS
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _spectatorPlayers;
-    }
-    [[nodiscard]] const_span<raw_ptr<Player>> GetSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _spectatorPlayers;
-    }
+    [[nodiscard]] bool HasSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] span<raw_ptr<Player>> GetSpectatorPlayers() noexcept FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] const_span<raw_ptr<Player>> GetSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
     [[nodiscard]] auto GetStaticItem(ident_t id) noexcept -> StaticItem*;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> StaticItem*;
-    [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _staticMap->StaticItems;
-    }
-    [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<raw_ptr<StaticItem>>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _staticMap->StaticItems;
-    }
+    [[nodiscard]] auto GetStaticItems() noexcept -> span<raw_ptr<StaticItem>>;
+    [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto GetStaticItems(hstring pid) -> vector<StaticItem*>;
     [[nodiscard]] auto GetStaticItemsOnHex(mpos hex) noexcept -> span<raw_ptr<StaticItem>>;
     [[nodiscard]] auto GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vector<StaticItem*>;

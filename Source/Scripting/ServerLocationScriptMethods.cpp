@@ -128,6 +128,10 @@ FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot regenerate a location that is being destroyed", self->GetId());
+    }
+
     for (auto* map : self->GetMaps()) {
         self->GetEngine()->MapMngr.RegenerateMap(map);
     }
