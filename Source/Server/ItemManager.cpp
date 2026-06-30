@@ -70,7 +70,6 @@ void ItemManager::RemoveItemHolder(Item* item, Entity* holder)
 
     FO_VERIFY_AND_THROW(item, "Missing item instance");
     FO_VERIFY_AND_THROW(holder, "Missing required holder");
-
     EnsureEntitySynced(dynamic_cast<ServerEntity*>(holder));
     EnsureEntitySynced(item);
 

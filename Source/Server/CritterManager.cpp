@@ -80,8 +80,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(cr->GetId());
 
-    PropagateEntityLock(item, cr->GetEntityLock());
-
     cr->SetItem(item);
 
     auto item_ids = cr->GetItemIds();

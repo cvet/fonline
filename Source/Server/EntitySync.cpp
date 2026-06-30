@@ -1632,22 +1632,6 @@ auto NextSyncTicket() noexcept -> uint64_t
     return TicketCounter.fetch_add(1, std::memory_order_relaxed);
 }
 
-void PropagateEntityLock(Item* item, EntityLock* parent_lock)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
-    FO_VERIFY_AND_THROW(parent_lock, "Missing required parent lock");
-
-    item->SetEntityLock(parent_lock);
-
-    if (item->_innerItems) {
-        for (auto& inner : *item->_innerItems) {
-            PropagateEntityLock(inner.get(), parent_lock);
-        }
-    }
-}
-
 void EnsureEntitySynced(ServerEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();

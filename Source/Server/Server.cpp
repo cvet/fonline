@@ -2256,7 +2256,6 @@ void ServerEngine::SwitchPlayerCritter(Player* player, Critter* cr)
 
     FO_VERIFY_AND_THROW(player, "Missing player instance");
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
-
     EnsureEntitySynced(player);
     EnsureEntitySynced(cr);
 

@@ -270,7 +270,6 @@ private:
     SyncContext _ctx {};
 };
 
-void PropagateEntityLock(class Item* item, EntityLock* parent_lock);
 // Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
 // thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
 // sync context (script/job execution) and throws if there is none.
