@@ -878,7 +878,8 @@ void AssignNullToNonNullable()
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
-            }), FO_SCRIPT_FUNC_CONV);
+            }),
+                FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
                 auto* self = static_cast<MsgCapture*>(param);
@@ -1005,7 +1006,8 @@ void AssignNullToNonNullable()
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
-            }), FO_SCRIPT_FUNC_CONV);
+            }),
+                FO_SCRIPT_FUNC_CONV);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             // Mimics `array[i]`: returns a (non-temporary) NON-const reference to
             // a handle cell of a non-nullable element type - enforced non-null,

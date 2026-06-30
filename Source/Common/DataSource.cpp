@@ -775,6 +775,8 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
             throw DataSourceException("Can't read file from fallout dat (3)", path);
         }
 
+        auto end_inflate = scope_exit([&stream]() noexcept { inflateEnd(&stream); });
+
         stream.next_in = nullptr;
         stream.avail_in = 0;
         stream.next_out = buf.get();
@@ -804,8 +806,6 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
                 break;
             }
         }
-
-        inflateEnd(&stream);
     }
 
     write_time = _writeTime;
@@ -872,6 +872,9 @@ ZipFile::ZipFile(string_view fname)
     if (!_zipHandle) {
         throw DataSourceException("Can't read zip file", _fileName);
     }
+
+    auto* zip_handle_for_cleanup = _zipHandle.get();
+    auto close_zip_on_fail = scope_fail([zip_handle_for_cleanup]() noexcept { (void)unzClose(zip_handle_for_cleanup); });
 
     unz_global_info gi;
 

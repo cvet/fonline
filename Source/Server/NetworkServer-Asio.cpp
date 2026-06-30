@@ -292,8 +292,9 @@ void NetworkServer_Asio::AcceptNext()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* socket = SafeAlloc::MakeRaw<asio::ip::tcp::socket>(_context);
-    _acceptor.async_accept(*socket, [this, socket](std::error_code error) FO_DEFERRED { AcceptConnection(error, unique_ptr<asio::ip::tcp::socket>(socket)); });
+    auto socket = SafeAlloc::MakeUnique<asio::ip::tcp::socket>(_context);
+    auto& socket_ref = *socket;
+    _acceptor.async_accept(socket_ref, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
 }
 
 void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket)
