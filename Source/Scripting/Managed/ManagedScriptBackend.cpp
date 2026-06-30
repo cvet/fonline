@@ -2653,7 +2653,7 @@ static auto GetSettingValueAsString(GlobalSettings* settings, const string& sett
 #define SETTING_GROUP_END()
 
     switch (const_hash(setting_name.c_str())) {
-#include "Settings-Include.h"
+#include "Settings.inc"
     default:
         return settings->GetCustomSetting(setting_name);
     }
