@@ -160,8 +160,6 @@ auto ServerEngine::WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return [body_ = std::move(body)]() FO_DEFERRED -> std::optional<timespan> {
         ScopedSyncContext sync_ctx;
 
@@ -276,8 +274,6 @@ auto ServerEngine::HealthFileWriteJob(const string& health_info) -> std::optiona
 auto ServerEngine::WriteHealthFile(string_view text) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     std::ofstream health_file {std::filesystem::path {fs_make_path(_healthFileName)}, std::ios::binary | std::ios::trunc};
 
@@ -938,6 +934,7 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
     if (_stats.LastCpuUsageSnapshot.has_value()) {
         ptr<const Platform::CpuUsageSnapshot> previous_snapshot = &*_stats.LastCpuUsageSnapshot;
         const size_t core_count = std::min(previous_snapshot->Cores.size(), current_snapshot.Cores.size());
+        const size_t logical_core_count = std::max<size_t>(numeric_cast<size_t>(current_snapshot.LogicalCoreCount), 1);
 
         _stats.CpuCoreLoads.clear();
         _stats.CpuCoreLoads.reserve(core_count);
@@ -968,10 +965,10 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
 
             if (sample_duration_ns > 0) {
                 const uint64_t process_delta_ns = current_snapshot.ProcessTimeNs - previous_snapshot->ProcessTimeNs;
-                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(std::max<size_t>(core_count, 1)) * 100.0);
+                const float64_t process_core_load = std::min(numeric_cast<float64_t>(process_delta_ns) * 100.0 / numeric_cast<float64_t>(sample_duration_ns), numeric_cast<float64_t>(logical_core_count) * 100.0);
 
                 _stats.CpuProcessCoreLoad = numeric_cast<float32_t>(process_core_load);
-                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(std::max<size_t>(core_count, 1)));
+                _stats.CpuProcessLoad = numeric_cast<float32_t>(process_core_load / numeric_cast<float64_t>(logical_core_count));
             }
         }
     }
@@ -1096,6 +1093,9 @@ void ServerEngine::Shutdown()
         }
 
         WriteLog("Shutdown stage: workerPool.reset");
+
+        scoped_lock sync_locker {_syncLocker};
+
         _workerPool.reset();
     }
 
@@ -1250,6 +1250,16 @@ void ServerEngine::SyncPoint()
     unique_lock locker {_syncLocker};
 
     if (_syncRequest > 0) {
+        // Make ServerEngine::Lock a true stop-the-world. The main worker is about to park here until
+        // every external lock holder releases, but worker-pool jobs would otherwise keep mutating
+        // entities in parallel — so an external reader holding only the engine lock would race them.
+        // Pause and drain the pool so the lock holder has exclusive, race-free access; resume once the
+        // last holder unlocks. `_workerPool` may already be gone during late shutdown; that reset is
+        // serialized on `_syncLocker`, so this null check under the lock is race-free.
+        if (_workerPool) {
+            _workerPool->Pause();
+        }
+
         _syncPointReady = true;
 
         locker.unlock();
@@ -1261,6 +1271,10 @@ void ServerEngine::SyncPoint()
         }
 
         _syncPointReady = false;
+
+        if (_workerPool) {
+            _workerPool->Resume();
+        }
     }
 }
 
@@ -2053,8 +2067,6 @@ void ServerEngine::ProcessConnection(ptr<ServerConnection> connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (connection->IsHardDisconnected()) {
         return;
     }
@@ -2248,7 +2260,6 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
         MapMngr.ProcessVisibleItems(cr);
     }
     if (!cr->IsDestroyed()) {
-        ValidateEntityAccess(cr);
         OnCritterLoad.Fire(cr);
     }
 
@@ -2866,7 +2877,6 @@ void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     vector<string> snapshot;
 
     {
@@ -2919,7 +2929,6 @@ void ServerEngine::Process_Ping(ptr<ServerConnection> connection)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     auto in_buf = connection->ReadBuf();
 
     const auto answer = in_buf->Read<bool>();
@@ -3898,7 +3907,6 @@ void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     auto nullable_player = entity.dyn_cast<Player>();
     FO_VERIFY_AND_THROW(nullable_player, "Missing player instance");
     auto player = nullable_player.as_ptr();
@@ -3909,8 +3917,6 @@ void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
 void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto nullable_cr = entity.dyn_cast<Critter>();
     FO_VERIFY_AND_THROW(nullable_cr, "Missing critter instance");
@@ -3927,8 +3933,6 @@ void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> pr
 void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto nullable_item = entity.dyn_cast<Item>();
     FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
@@ -3974,8 +3978,6 @@ void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (prop->IsPublicSync()) {
         auto nullable_map = entity.dyn_cast<Map>();
         FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
@@ -3988,8 +3990,6 @@ void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
 void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (prop->IsPublicSync()) {
         auto nullable_loc = entity.dyn_cast<Location>();
@@ -4037,7 +4037,6 @@ void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto nullable_item = entity.dyn_cast<Item>();
@@ -4057,7 +4056,6 @@ void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto nullable_item = entity.dyn_cast<Item>();
@@ -4088,7 +4086,6 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
@@ -4107,7 +4104,6 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
     ignore_unused(prop);
 
     auto nullable_item = entity.dyn_cast<Item>();
@@ -4529,8 +4525,6 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
     }
@@ -4566,32 +4560,35 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     auto complete_stats_job = scope_exit([this]() noexcept { CountServerStatsJob(); });
 
     auto ctx = RequireCurrentSyncContext();
-    ctx->SyncEntity(cr);
 
-    refcount_nptr<Map> map_holder {};
-    if (cr->GetMapId()) {
-        map_holder = require_refcount_ptr(cr->GetParent<Map>());
-    }
-    auto nullable_map = map_holder.as_nptr();
-    ident_t map_id {};
-    if (nullable_map) {
-        auto map = nullable_map.as_ptr();
-        map_id = map->GetId();
-    }
-    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!nullable_map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map_id);
+    auto parent = cr->GetParentRaw();
 
-    if (nullable_map) {
-        const array<nptr<ServerEntity>, 2> sync_entities {nullable_map, cr.as_nptr()};
+    if (parent) {
+        const array<nptr<ServerEntity>, 2> sync_entities {parent.as_nptr(), cr.as_nptr()};
         ctx->SyncEntities(sync_entities);
+
+        if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {
+            return std::nullopt;
+        }
+    }
+    else {
+        ctx->SyncEntity(cr);
+
+        if (cr->IsDestroyed()) {
+            return std::nullopt;
+        }
     }
 
-    if (cr->IsDestroyed() || !cr->IsMoving()) {
+    if (!cr->IsMoving()) {
         return std::nullopt;
     }
 
+    auto* map = dynamic_cast<Map*>(parent.get());
+    FO_STRONG_ASSERT(!parent || !!map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    FO_STRONG_ASSERT(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+
     try {
-        if (nullable_map && !cr->GetIsAttached()) {
-            auto map = nullable_map.as_ptr();
+        if (map != nullptr && !cr->GetIsAttached()) {
             ProcessCritterMovingBySteps(cr, map);
         }
         else {
@@ -4649,8 +4646,6 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
 void ServerEngine::ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!cr->IsMoving()) {
         return;

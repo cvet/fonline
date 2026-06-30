@@ -1098,6 +1098,23 @@ FO_SCRIPT_API void Client_Game_DrawSpritePattern(ptr<ClientEngine> client, uint3
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API bool Client_Game_DrawSpriteRegion(ptr<ClientEngine> client, uint32_t sprId, fpos32 uv0, fpos32 uv1, ipos32 pos, isize32 size, ucolor color = ucolor {})
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    auto nullable_sprite = client->AnimGetSpr(sprId);
+
+    if (!nullable_sprite) {
+        return false;
+    }
+    auto sprite = nullable_sprite.as_ptr();
+
+    return client->SprMngr.DrawSpriteRegion(sprite, uv0, uv1, fpos32(pos), fsize32(size), color != ucolor::clear ? color : Color::Neutral);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Client_Game_DrawText(ptr<ClientEngine> client, string_view text, ipos32 pos, isize32 size, ucolor color, TextFormat format)
 {
     if (!client->CanDrawInScripts) {

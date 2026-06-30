@@ -89,11 +89,12 @@ static auto ScriptArrayInitListBytesAt(ptr<void> init_list, size_t offset) noexc
     return bytes.get() + offset;
 }
 
-static auto ScriptArrayInitListPayload(ptr<void> init_list) noexcept -> ptr<void>
+static auto ScriptArrayInitListPayload(ptr<void> init_list, int32_t element_size) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto payload = ScriptArrayInitListBytesAt(init_list, sizeof(int32_t));
+    const size_t payload_offset = element_size >= 8 ? sizeof(int64_t) : sizeof(int32_t);
+    auto payload = ScriptArrayInitListBytesAt(init_list, payload_offset);
     return cast_to_void(payload.get());
 }
 
@@ -114,9 +115,12 @@ static auto ScriptArrayInitListObjectAt(ptr<void> init_list, int32_t index, ptr<
 
     FO_STRONG_ASSERT(index >= 0, "Init list element index is negative");
 
-    const size_t object_size = numeric_cast<size_t>(sub_type->GetSize());
-    const size_t object_offset = numeric_cast<size_t>(index) * object_size;
-    return ScriptArrayInitListBytesAt(init_list, sizeof(int32_t) + object_offset);
+    const int32_t sub_size = sub_type->GetSize();
+    const size_t elem_align = sub_size >= 8 ? 8u : 4u;
+    const size_t header = sub_size >= 4 ? ((sizeof(int32_t) + (elem_align - 1)) & ~(elem_align - 1)) : sizeof(int32_t);
+    const size_t stride = sub_size >= 4 ? ((numeric_cast<size_t>(sub_size) + (elem_align - 1)) & ~(elem_align - 1)) : numeric_cast<size_t>(sub_size);
+    const size_t object_offset = numeric_cast<size_t>(index) * stride;
+    return ScriptArrayInitListBytesAt(init_list, header + object_offset);
 }
 
 static void CleanupScriptArrayTypeData(ptr<ScriptArrayTypeData> cache) noexcept
@@ -326,7 +330,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         CreateBuffer(length);
 
         if (length != 0) {
-            auto init_payload = ScriptArrayInitListPayload(init_list);
+            auto init_payload = ScriptArrayInitListPayload(init_list, _elementSize);
             MemCopy(At(0).get(), init_payload.get(), numeric_cast<size_t>(length * _elementSize));
         }
     }
@@ -334,7 +338,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         CreateBuffer(length);
 
         if (length != 0) {
-            auto init_payload = ScriptArrayInitListPayload(init_list);
+            auto init_payload = ScriptArrayInitListBytesAt(init_list, sizeof(int32_t));
             MemCopy(At(0).get(), init_payload.get(), numeric_cast<size_t>(length * _elementSize));
             MemFill(init_payload.get(), 0, numeric_cast<size_t>(length * _elementSize));
         }

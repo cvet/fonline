@@ -162,7 +162,6 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     for (size_t i = 0; i < _invItems.size(); i++) {
         auto item = _invItems[i].as_ptr();
@@ -179,7 +178,6 @@ auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     for (size_t i = 0; i < _invItems.size(); i++) {
         auto item = _invItems[i].as_ptr();

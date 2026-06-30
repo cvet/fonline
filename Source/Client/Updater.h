@@ -125,6 +125,7 @@ private:
     bool _aborted {};
     bool _fileListReceived {};
     bool _hasMatchingEntries {};
+    bool _restartPrompt {};
     vector<UpdateFile> _filesToUpdate {};
     std::ofstream _tempFile {};
     vector<uint8_t> _updateFileBuf {};

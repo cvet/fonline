@@ -68,8 +68,8 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(item);
-    ValidateEntityAccess(holder);
+    EnsureEntitySynced(holder.dyn_cast<ServerEntity>().get());
+    EnsureEntitySynced(item);
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
@@ -119,10 +119,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto.as_ptr(), props);
-
-    auto ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item.get());
+    _engine->EntityMngr.RegisterItem(item.as_ptr());
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -137,8 +134,6 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
         item->SetContainerStack({});
         item->SetInnerItemIds({});
     }
-
-    _engine->EntityMngr.RegisterItem(item.as_ptr());
 
     if (count != 0 && item->GetStackable()) {
         item->SetCount(count);
@@ -213,7 +208,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
     auto item_holder = item.hold_ref();
     ignore_unused(item_holder);
 
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
 
     // Redundant calls
     if (item->IsDestroying() || item->IsDestroyed()) {
@@ -223,7 +218,6 @@ void ItemManager::DestroyItem(ptr<Item> item)
     item->MarkAsDestroying();
 
     // Finish events
-    ValidateEntityAccess(item);
     _engine->OnItemFinish.Fire(item);
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
@@ -237,9 +231,8 @@ void ItemManager::DestroyItem(ptr<Item> item)
             while (item->HasInnerItems()) {
                 ptr<Item> inner = item->GetAllInnerItems().front();
                 // Inner item has its own EntityLock; pull it into the current sync context so the
-                // recursive DestroyItem call's ValidateEntityAccess passes.
-                auto ctx = _engine->RequireCurrentSyncContext();
-                ctx->EnsureEntitySynced(inner);
+                // recursive DestroyItem call passes its sync checks.
+                EnsureEntitySynced(inner);
                 DestroyItem(inner);
             }
 
@@ -307,7 +300,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_cr);
     auto item_holder = item.hold_ref();
     auto to_cr_holder = to_cr.hold_ref();
@@ -356,7 +349,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos 
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_map);
     auto item_holder = item.hold_ref();
     auto to_map_holder = to_map.hold_ref();
@@ -426,7 +419,7 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, con
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(count >= 0, "Count is negative", count);
-    ValidateEntityAccess(item);
+    EnsureEntitySynced(item);
     ValidateEntityAccess(to_cont);
     auto item_holder = item.hold_ref();
     auto to_cont_holder = to_cont.hold_ref();

@@ -261,7 +261,10 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<C
         return;
     }
 
-    if (self->IsSameGlobalMapGroup(global_cr_ptr)) {
+    const auto& self_group = self->GetRawGlobalMapGroup();
+    const auto& target_group = global_cr_ptr->GetRawGlobalMapGroup();
+
+    if (self_group && target_group && self_group.get() == target_group.get()) {
         return;
     }
 
@@ -331,17 +334,25 @@ FO_SCRIPT_API nptr<Critter> Server_Critter_GetCritter(ptr<Critter> self, ident_t
 ///@ ExportMethod
 FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(ptr<Critter> self, CritterSeeType seeType, CritterFindType findType)
 {
-    vector<ptr<Critter>> critters = self->GetCritters(seeType, findType);
-
     if (self->GetMapId()) {
+        auto nullable_map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
+        auto map_holder = std::move(nullable_map).take_not_null();
+        auto map = map_holder.as_ptr();
+        ValidateEntityAccess(map);
+
+        vector<ptr<Critter>> critters = self->GetCritters(seeType, findType);
+
         std::ranges::stable_sort(critters, [hex = self->GetHex()](ptr<const Critter> cr1, ptr<const Critter> cr2) {
             const int32_t dist1 = GeometryHelper::GetDistance(hex, cr1->GetHex()) - cr1->GetMultihex();
             const int32_t dist2 = GeometryHelper::GetDistance(hex, cr2->GetHex()) - cr2->GetMultihex();
             return dist1 < dist2;
         });
+
+        return MakeScriptHandleVector<Critter>(critters);
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return MakeScriptHandleVector<Critter>(self->GetCritters(seeType, findType));
 }
 
 ///@ ExportMethod
@@ -749,9 +760,7 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(ptr<Critter> self, bool contr
         auto map = self->GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
 
-        auto sync_ctx = self->GetEngine()->GetCurrentSyncContext();
-        FO_VERIFY_AND_THROW(sync_ctx, "Missing script execution context");
-        sync_ctx->EnsureEntitySynced(map.get());
+        EnsureEntitySynced(map.get());
     }
 
     if (controllable) {

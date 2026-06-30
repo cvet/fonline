@@ -46,7 +46,7 @@
 #endif
 // ReSharper disable CppRedundantQualifier
 
-#include "WinApiUndef-Include.h" // Remove garbage from includes above
+#include "WinApiUndef.inc" // Remove garbage from includes above
 
 FO_BEGIN_NAMESPACE
 
@@ -205,9 +205,24 @@ void AngelScriptContextManager::CreateContext()
     }
 }
 
+static void EnsureAngelScriptThreadStorageReleasedOnExit() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    struct ThreadStorageGuard
+    {
+        ~ThreadStorageGuard() noexcept { AngelScript::asThreadCleanup(); }
+    };
+
+    static thread_local ThreadStorageGuard guard;
+    ignore_unused(guard);
+}
+
 auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptContext>
 {
     FO_STACK_TRACE_ENTRY();
+
+    EnsureAngelScriptThreadStorageReleasedOnExit();
 
     scoped_lock lock {_poolLocker};
 
@@ -511,8 +526,6 @@ void AngelScriptContextManager::SuspendScriptContext(ptr<AngelScript::asIScriptC
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (ctx->GetState() != AngelScript::asEXECUTION_SUSPENDED) {
         ctx->Suspend();
     }
@@ -609,6 +622,11 @@ static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_lay
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
+        // asGetActiveContext below lazily allocates AngelScript thread-local storage on first access, including
+        // on threads that only capture a stack trace (never run a script). Register the per-thread cleanup so
+        // that storage is released when the thread exits rather than leaked.
+        EnsureAngelScriptThreadStorageReleasedOnExit();
+
         nptr<AngelScript::asIScriptContext> nullable_ctx = AngelScript::asGetActiveContext();
 
         while (nullable_ctx) {

@@ -99,6 +99,60 @@ TEST_CASE("Settings")
         CHECK(args.empty());
     }
 
+    SECTION("ApplyCommandLineMasksSecretValuesInLog")
+    {
+        // Capture the "Set <name> to <value>" lines emitted by the logging pass.
+        string captured;
+        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
+
+        GlobalSettings settings {false};
+        // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
+        // Common.SecretSettingTokens list (default includes "token") is populated by then.
+        settings.ApplyDefaultSettings();
+
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Probe.AccessToken";
+        char arg2[] = "super-secret-value";
+        char arg3[] = "--Common.GameName";
+        char arg4[] = "RedactionProbe";
+        char* argv[] = {arg0, arg1, arg2, arg3, arg4};
+
+        const vector<CommandLineArg> args_holder = CommandLineArgs::Make(5, argv);
+        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+
+        // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
+        // the credential value itself must never reach the log.
+        CHECK(captured.find("Set Probe.AccessToken to ***") != string::npos);
+        CHECK(captured.find("super-secret-value") == string::npos);
+
+        // A non-secret name is logged verbatim, and both values are still applied.
+        CHECK(captured.find("Set Common.GameName to RedactionProbe") != string::npos);
+        CHECK(settings.GetCustomSetting("Probe.AccessToken") == "super-secret-value");
+        CHECK(settings.GameName == "RedactionProbe");
+    }
+
+    SECTION("ApplyCommandLineAppendAccumulatesPerCall")
+    {
+        // '+'-prefixed overrides append to the current value, so applying the same command line twice to
+        // one settings object doubles the result. LoadAppSettings() therefore applies the command line to
+        // the live settings exactly once — this test pins the hazard that the single-application flow
+        // must avoid (it was a real bug while the command line was applied in two passes).
+        GlobalSettings settings {false};
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Common.GameName";
+        char arg2[] = "+Tag";
+        char* argv[] = {arg0, arg1, arg2};
+
+        const vector<CommandLineArg> args_holder = CommandLineArgs::Make(3, argv);
+        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+        CHECK(settings.GameName == "Tag");
+
+        // A second pass over the same object appends again — what the two-pass flow used to do.
+        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+        CHECK(settings.GameName == "Tag Tag");
+    }
+
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         const string temp_dir = MakeTempSettingsDir("settings_config");

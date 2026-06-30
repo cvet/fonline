@@ -1078,6 +1078,8 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
 {
     FO_STACK_TRACE_ENTRY();
 
+    EnsureEntitySynced(player);
+
     if (id) {
         player->SetId(id);
     }
@@ -1106,6 +1108,8 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
 {
     FO_STACK_TRACE_ENTRY();
 
+    EnsureEntitySynced(loc);
+
     {
         scoped_lock lock {_registryLock};
 
@@ -1113,12 +1117,6 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
         const auto [it, inserted] = _allLocations.emplace(loc->GetId(), loc);
         FO_STRONG_ASSERT(inserted, "Location id is already registered", loc->GetId(), loc->GetProtoId());
     }
-
-    // Engine-wide invariant: Register* is reached only from a thread that already has a
-    // SyncContext active (worker-pool jobs, _starter / _mainWorker jobs wrapped via
-    // WrapJobWithSync, or the Shutdown setup ctx). Any caller without one is a bug.
-    auto ctx = _engine->RequireCurrentSyncContext();
-    ctx->EnsureEntitySynced(loc);
 }
 
 void EntityManager::UnregisterLocation(ptr<Location> loc)
@@ -1137,6 +1135,8 @@ void EntityManager::RegisterMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
+    EnsureEntitySynced(map);
+
     {
         scoped_lock lock {_registryLock};
 
@@ -1144,10 +1144,6 @@ void EntityManager::RegisterMap(ptr<Map> map)
         const auto [it, inserted] = _allMaps.emplace(map->GetId(), map);
         FO_STRONG_ASSERT(inserted, "Map id is already registered", map->GetId(), map->GetProtoId());
     }
-
-    // See RegisterLocation: SyncContext invariant.
-    auto ctx = _engine->RequireCurrentSyncContext();
-    ctx->EnsureEntitySynced(map);
 }
 
 void EntityManager::UnregisterMap(ptr<Map> map)
@@ -1166,6 +1162,8 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
+    EnsureEntitySynced(cr);
+
     {
         scoped_lock lock {_registryLock};
 
@@ -1173,10 +1171,6 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
         const auto [it, inserted] = _allCritters.emplace(cr->GetId(), cr);
         FO_STRONG_ASSERT(inserted, "Critter id is already registered", cr->GetId(), cr->GetProtoId());
     }
-
-    // See RegisterLocation: SyncContext invariant.
-    auto ctx = _engine->RequireCurrentSyncContext();
-    ctx->EnsureEntitySynced(cr);
 }
 
 void EntityManager::UnregisterCritter(ptr<Critter> cr)
@@ -1195,6 +1189,8 @@ void EntityManager::RegisterItem(ptr<Item> item)
 {
     FO_STACK_TRACE_ENTRY();
 
+    EnsureEntitySynced(item);
+
     {
         scoped_lock lock {_registryLock};
 
@@ -1202,10 +1198,6 @@ void EntityManager::RegisterItem(ptr<Item> item)
         const auto [it, inserted] = _allItems.emplace(item->GetId(), item);
         FO_STRONG_ASSERT(inserted, "Item id is already registered", item->GetId(), item->GetProtoId());
     }
-
-    // See RegisterLocation: SyncContext invariant.
-    auto ctx = _engine->RequireCurrentSyncContext();
-    ctx->EnsureEntitySynced(item);
 }
 
 void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
@@ -1223,6 +1215,8 @@ void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
 void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 {
     FO_STACK_TRACE_ENTRY();
+
+    EnsureEntitySynced(custom_entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1749,6 +1743,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     ignore_unused(entity_ref);
 
     ValidateEntityAccess(entity);
+    EnsureEntitySynced(entity);
 
     if (entity->IsDestroying() || entity->IsDestroyed()) {
         return;

@@ -118,7 +118,6 @@ private:
     mutable mutex _poolLocker {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts FO_TSA_GUARDED_BY(_poolLocker) {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts FO_TSA_GUARDED_BY(_poolLocker) {};
-    bool _nonConstHelper {};
     function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> _debuggerStopCallback {};
     function<void(ptr<AngelScript::asIScriptContext>, AngelScriptContextSetupReason)> _contextSetupCallback {};
     DelayedScheduler _delayedScheduler {};

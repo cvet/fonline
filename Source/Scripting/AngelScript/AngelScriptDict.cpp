@@ -117,7 +117,26 @@ static auto GetScriptDictInitListValueLayout(ptr<AngelScript::asIScriptEngine> e
     return {numeric_cast<size_t>(engine->GetSizeOfPrimitiveType(type_id)), false};
 }
 
-static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, size_t value_size) noexcept
+static auto ListElementAlignment(int32_t type_id, size_t element_size) noexcept -> AngelScript::asPWORD
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
+        if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
+            return 4;
+        }
+
+        return element_size >= 8 ? 8 : 4;
+    }
+
+    if (type_id == AngelScript::asTYPEID_VOID) {
+        return 4;
+    }
+
+    return element_size >= 8 ? 8 : 4;
+}
+
+static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, int32_t type_id, size_t value_size) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -125,11 +144,13 @@ static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, size
         return;
     }
 
+    // Align the buffer cursor to the element's natural alignment (matching the VM list-buffer layout)
+    const AngelScript::asPWORD element_align = ListElementAlignment(type_id, value_size);
     const AngelScript::asPWORD buffer_address = std::bit_cast<AngelScript::asPWORD>(buffer.get());
-    const size_t misalignment = numeric_cast<size_t>(buffer_address & 0x3);
+    const size_t misalignment = numeric_cast<size_t>(buffer_address & (element_align - 1));
 
     if (misalignment != 0) {
-        AdvanceScriptDictBuffer(buffer, 4 - misalignment);
+        AdvanceScriptDictBuffer(buffer, numeric_cast<size_t>(element_align) - misalignment);
     }
 }
 
@@ -139,7 +160,7 @@ static auto ReadScriptDictInitListEntry(ptr<AngelScript::asIScriptEngine> engine
 
     const ScriptDictInitListValueLayout layout = GetScriptDictInitListValueLayout(engine, type_id);
 
-    AlignScriptDictInitListBuffer(buffer, layout.Size);
+    AlignScriptDictInitListBuffer(buffer, type_id, layout.Size);
 
     auto value = ScriptDictBufferAsVoid(buffer);
     AdvanceScriptDictBuffer(buffer, layout.Size);

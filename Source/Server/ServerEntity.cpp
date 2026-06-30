@@ -43,14 +43,14 @@ ServerEntity::ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const Prope
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
 }
 
 ServerEntity::~ServerEntity()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
@@ -61,11 +61,91 @@ ServerEntity::~ServerEntity()
     }
 }
 
+void ServerEntity::SetInitCalled() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    _initCalled = true;
+}
+
+void ServerEntity::SetEntityLock(nptr<EntityLock> lock) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    _entityLock = lock;
+}
+
+auto ServerEntity::GetId() const noexcept -> ident_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _id;
+}
+
+auto ServerEntity::GetEngine() const noexcept -> ptr<const ServerEngine>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _engine;
+}
+
+auto ServerEntity::GetEngine() noexcept -> ptr<ServerEngine>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _engine;
+}
+
+auto ServerEntity::IsInitCalled() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    return _initCalled;
+}
+
+auto ServerEntity::IsPersistent() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _isPersistent;
+}
+
+auto ServerEntity::GetEntityLock() const noexcept -> nptr<EntityLock>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _entityLock;
+}
+
+auto ServerEntity::GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return nullptr;
+}
+
+auto ServerEntity::GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return nullptr;
+}
+
 void ServerEntity::SetId(ident_t id) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
     _id = id;
 }
 
@@ -73,7 +153,7 @@ void ServerEntity::SetPersistent(bool persistent) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     _isPersistent = persistent;
 }
 
@@ -81,7 +161,7 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     auto& props = const_cast<Properties&>(GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
 }
@@ -90,7 +170,7 @@ void ServerEntity::SetExplicitlyPersistent(bool explicitly_persistent)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EntityProperties(*GetPropertiesForEdit()).SetExplicitlyPersistent(explicitly_persistent);
 }
 
@@ -98,7 +178,7 @@ void ServerEntity::ValidateAccess() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
 
     ptr<const ServerEntity> entity = this;
 
@@ -111,7 +191,7 @@ auto ServerEntity::GetParent() -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -119,7 +199,7 @@ auto ServerEntity::GetParent() const -> refcount_nptr<const ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -127,7 +207,7 @@ auto ServerEntity::GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
     return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).try_hold_ref();
 }
 
@@ -135,7 +215,13 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_NO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(NONE);
+
+    if (_parent.load(std::memory_order_relaxed) != nullptr) {
+        const SyncContext* ctx = SyncContext::GetCurrentOnThisThread();
+        const EntityLock* lock = GetEntityLock().get();
+        FO_VERIFY_AND_CONTINUE(ctx == nullptr || ctx->IsEmpty() || (lock != nullptr && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
+    }
 
     if (parent) {
         parent->AddRef();
@@ -152,7 +238,7 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY_ACCESS();
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (callbacks.empty()) {
         return EventResult::ContinueChain;
@@ -191,6 +277,22 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
     }
 
     return had_exception ? EventResult::StopChain : EventResult::ContinueChain;
+}
+
+auto CustomEntity::GetName() const noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _propsRef->GetRegistrator()->GetTypeName();
+}
+
+auto CustomEntityWithProto::GetName() const noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+    return _proto->GetName();
 }
 
 FO_END_NAMESPACE

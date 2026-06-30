@@ -41,7 +41,11 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
-#include "WinApi-Include.h"
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -697,8 +701,6 @@ void Application::OpenLink(string_view link)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const string link_text = string(link);
     ptr<const char> link_ptr = link_text.c_str();
     SDL_OpenURL(link_ptr.get());
@@ -731,8 +733,6 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (size.width <= 0 || size.height <= 0) {
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
@@ -757,8 +757,6 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
 void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<AppWindow> main_window = &MainWindow;
 
@@ -796,8 +794,6 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (!window) {
         ptr<AppWindow> main_window = &MainWindow;
         _activeWindow = main_window;
@@ -810,8 +806,6 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
 void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
     ignore_unused(size);
@@ -900,8 +894,6 @@ void Application::SyncMainWindowBackbufferSize()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const isize32 backbuffer_size = GetMainWindowBackbufferSize();
 
     if (backbuffer_size.width > 0 && backbuffer_size.height > 0) {
@@ -935,8 +927,6 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(!_currentRenderingWindow, "Current rendering window must be unset before this operation");
 
     if (!window->_isVirtual) {
@@ -967,8 +957,6 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
 void Application::EndWindowRender()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!_currentRenderingWindow) {
         return;
@@ -1094,8 +1082,6 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
 auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_ctx->ActiveRendererType == RenderType::Null) {
         unique_ptr<HeadlessWindowStub> handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
@@ -1241,8 +1227,6 @@ auto Application::FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_touchPrimary.Active && _touchPrimary.FingerId == finger_id) {
         return &_touchPrimary;
     }
@@ -1257,8 +1241,6 @@ auto Application::FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_touchPrimary.Active && _touchPrimary.FingerId != finger_id) {
         return &_touchPrimary;
     }
@@ -1272,8 +1254,6 @@ auto Application::FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState
 auto Application::AcquireTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (nptr<TouchPointState> existing_touch = FindTouchPoint(finger_id); existing_touch) {
         return existing_touch;
@@ -1292,8 +1272,6 @@ void Application::ReleaseTouchPoint(int64_t finger_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_touchPrimary.FingerId == finger_id) {
         _touchPrimary = {};
     }
@@ -1305,8 +1283,6 @@ void Application::ReleaseTouchPoint(int64_t finger_id)
 void Application::ResetTouchGestures()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _touchPrimary = {};
     _touchSecondary = {};
@@ -1320,16 +1296,12 @@ void Application::QueueTouchDown(int64_t finger_id, ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _ctx->EventsQueue.emplace_back(InputEvent::TouchDownEvent {finger_id, pos.x, pos.y});
 }
 
 void Application::QueueTouchMove(int64_t finger_id, ipos32 pos, ipos32 delta)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _ctx->EventsQueue.emplace_back(InputEvent::TouchMoveEvent {finger_id, pos.x, pos.y, delta.x, delta.y});
 }
@@ -1338,16 +1310,12 @@ void Application::QueueTouchUp(int64_t finger_id, ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _ctx->EventsQueue.emplace_back(InputEvent::TouchUpEvent {finger_id, pos.x, pos.y});
 }
 
 void Application::QueueTouchTap(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _ctx->EventsQueue.emplace_back(InputEvent::TouchTapEvent {pos.x, pos.y});
 }
@@ -1356,16 +1324,12 @@ void Application::QueueTouchDoubleTap(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _ctx->EventsQueue.emplace_back(InputEvent::TouchDoubleTapEvent {pos.x, pos.y});
 }
 
 void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _ctx->EventsQueue.emplace_back(InputEvent::TouchScrollEvent {pos.x, pos.y, delta.x, delta.y});
 }
@@ -1374,16 +1338,12 @@ void Application::QueueTouchZoom(ipos32 pos, float32_t factor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _ctx->EventsQueue.emplace_back(InputEvent::TouchZoomEvent {pos.x, pos.y, factor});
 }
 
 void Application::FlushPendingTouchTap()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (!_pendingTouchTap.Active) {
         return;
@@ -1402,8 +1362,6 @@ void Application::FlushPendingTouchTap()
 void Application::UpdateNativeCursorVisibility(bool imguiOverlayWantsCursor)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_ctx->ActiveRendererType == RenderType::Null || _isTablet) {
         return;
@@ -1439,8 +1397,6 @@ void Application::CloseGamepad()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_gamepadHandle) {
         SDL_CloseGamepad(cast_from_void<SDL_Gamepad*>(_gamepadHandle.get()));
         _gamepadHandle = nullptr;
@@ -1453,8 +1409,6 @@ void Application::CloseGamepad()
 void Application::RefreshGamepadConnection()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_gamepadHandle || SDL_WasInit(SDL_INIT_GAMEPAD) == 0) {
         return;
@@ -1519,8 +1473,6 @@ void Application::UpdateGamepadAxis(int32_t axis, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const auto normalize_gamepad_stick_axis = [](int32_t axis_value) -> float32_t {
         FO_STACK_TRACE_ENTRY();
 
@@ -1574,8 +1526,6 @@ void Application::UpdateGamepadAxis(int32_t axis, int32_t value)
 void Application::UpdateGamepadButton(int32_t button, bool pressed)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     switch (static_cast<SDL_GamepadButton>(button)) {
     case SDL_GAMEPAD_BUTTON_SOUTH:
@@ -2427,6 +2377,13 @@ void Application::EndFrame()
 #endif
 }
 
+auto Application::IsHeadless() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return false;
+}
+
 void Application::RequestQuit(bool success) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -2475,8 +2432,6 @@ auto AppWindow::GetSize() const -> isize32
 void AppWindow::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         _virtualSize = size;
@@ -2546,8 +2501,6 @@ void AppWindow::SetPosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         _virtualPosition = pos;
         return;
@@ -2579,8 +2532,6 @@ auto AppWindow::IsFocused() const -> bool
 void AppWindow::Minimize()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         _app->MainWindow.Minimize();
@@ -2617,8 +2568,6 @@ auto AppWindow::IsFullscreen() const -> bool
 auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         return _app->MainWindow.ToggleFullscreen(enable);
@@ -2693,8 +2642,6 @@ void AppWindow::Blink()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         _app->MainWindow.Blink();
         return;
@@ -2710,8 +2657,6 @@ void AppWindow::Blink()
 void AppWindow::AlwaysOnTop(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         _app->MainWindow.AlwaysOnTop(enable);
@@ -2729,8 +2674,6 @@ void AppWindow::AlwaysOnTop(bool enable)
 void AppWindow::SetTitle(string_view title)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _title = string {title};
 
@@ -2797,8 +2740,6 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->CreateTexture(size, linear_filtered, with_depth);
 }
@@ -2806,8 +2747,6 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // While a virtual window is active, redirect the implicit "back buffer" target (nullptr)
     // to the window's offscreen texture so the existing render-target stack walks back into it.
@@ -2832,16 +2771,12 @@ auto AppRender::GetRenderTarget() -> nptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     return _app->_ctx->RenderTargetTex;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     active_renderer->ClearRenderTarget(color, depth, stencil);
@@ -2851,8 +2786,6 @@ void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     active_renderer->EnableScissor(rect);
 }
@@ -2860,8 +2793,6 @@ void AppRender::EnableScissor(irect32 rect)
 void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     active_renderer->DisableScissor();
@@ -2871,8 +2802,6 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->CreateDrawBuffer(is_static);
 }
@@ -2880,8 +2809,6 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     return active_renderer->CreateEffect(usage, name, loader);
@@ -2914,8 +2841,6 @@ auto AppRender::GetProjMatrix() const -> mat44
 void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
     active_renderer->SetOrthoDepthRange(nearp, farp);
@@ -2972,8 +2897,6 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (!IsMouseAvailable()) {
         return;
     }
@@ -3007,8 +2930,6 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (!_app->_ctx->EventsQueue.empty()) {
         ev = _app->_ctx->EventsQueue.front();
         _app->_ctx->EventsQueue.erase(_app->_ctx->EventsQueue.begin());
@@ -3021,16 +2942,12 @@ void AppInput::ClearEvents()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _app->_ctx->EventsQueue.clear();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (push_to_this_frame) {
         _app->_ctx->EventsQueue.emplace_back(ev);
@@ -3043,8 +2960,6 @@ void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 void AppInput::SetScreenKeyboardEnabled(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_app->_ctx->ActiveRendererType == RenderType::Null || !_app->MainWindow._windowHandle || !SDL_HasScreenKeyboardSupport()) {
         return;
@@ -3068,8 +2983,6 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
 void AppInput::SetClipboardText(string_view text)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     const string clipboard_text = string(text);
     ptr<const char> clipboard_text_ptr = clipboard_text.c_str();
@@ -3122,8 +3035,6 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     SDL_AudioSpec spec;
@@ -3172,8 +3083,6 @@ void AppAudio::MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t v
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
     FO_VERIFY_AND_THROW(output.size() == buf.size(), "Mix audio output and buffer sizes mismatch", output.size(), buf.size());
 
@@ -3185,8 +3094,6 @@ void AppAudio::LockDevice()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 
     auto audio_stream = _app->_ctx->AudioStream.as_ptr();
@@ -3196,8 +3103,6 @@ void AppAudio::LockDevice()
 void AppAudio::UnlockDevice()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 

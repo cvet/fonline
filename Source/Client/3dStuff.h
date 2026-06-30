@@ -226,7 +226,6 @@ private:
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
     uint32_t _linkId {};
-    bool _nonConstHelper {};
 };
 
 class ModelInstance final
@@ -377,7 +376,6 @@ private:
     vec3 _moveOffset {};
     bool _forceDraw {};
     bool _directSceneDraw {};
-    bool _nonConstHelper {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations

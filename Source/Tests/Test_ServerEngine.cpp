@@ -35,6 +35,7 @@
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
+#include "Logging.h"
 #include "Movement.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
@@ -1167,6 +1168,23 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(ctx.ValidateAccess(cr_a.get())); // cr_a's own lock is held
         CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
         CHECK(IsEntityAccessValid(cr_a.get()));
+
+        {
+            bool sync_diag_seen = false;
+            SetLogCallback("entity_access_valid_diagnose_test", [&sync_diag_seen](LogType, string_view message, nptr<const CatchedStackTraceData>) {
+                if (message.find("SyncDiag access-without-sync") != string_view::npos) {
+                    sync_diag_seen = true;
+                }
+            });
+            const auto clear_log_callback = scope_exit([]() noexcept { SetLogCallback("entity_access_valid_diagnose_test", {}); });
+
+            CHECK_FALSE(IsEntityAccessValid(cr_b.get(), false));
+            CHECK_FALSE(sync_diag_seen);
+
+            CHECK_FALSE(IsEntityAccessValid(cr_b.get()));
+            CHECK(sync_diag_seen);
+        }
+
         CHECK_FALSE(IsEntityAccessValid(cr_b.get())); // sibling: no lock in its chain is held
         CHECK_FALSE(IsEntityAccessValid(cr_c.get()));
         CHECK_FALSE(IsEntityAccessValid(map.get()));
@@ -1452,11 +1470,12 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
 {
-    // Load-bearing design invariant (mt-additional-test-coverage, Critical): covering a map (ancestor) and
-    // flat-locking a critter parented to it are not mutually exclusive in a way that can deadlock. Two
-    // threads — one repeatedly covering the map, the other repeatedly taking the descendant critter's own
-    // lock — must both make full progress. A model that wrongly serialized them into a lock cycle would
-    // hang here (the joins never return); completion is the deterministic deadlock-freedom proof.
+    // Load-bearing design invariant (mt-additional-test-coverage, Critical): under hierarchical exclusion a
+    // map (ancestor) lock and a critter (descendant) lock ARE mutually exclusive cross-thread, but that
+    // exclusion must never deadlock or starve. Two threads — one repeatedly taking the map, the other
+    // repeatedly taking the descendant critter — serialize against each other yet must both make full
+    // progress (FIFO queue + anti-starvation). A model that turned the exclusion into a lock cycle would
+    // hang here (the joins never return); completion is the deterministic deadlock/starvation-freedom proof.
     auto settings = MakeServerTestSettings();
     auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
@@ -1618,11 +1637,12 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
             try {
                 ctx.SyncEntities(req);
                 syncs_ok.fetch_add(1, std::memory_order_relaxed);
-                // Exercise the validator's own walk-and-verify under concurrent reparenting; the
-                // result legitimately races a SetParent that lands after Sync returns, so it is
-                // observed (to drive the code path) but not asserted.
-                (void)IsEntityAccessValid(req[0].get());
-                (void)IsEntityAccessValid(req[1].get());
+                // Drive the single-pass access validator under concurrent lock-free reparenting (now an
+                // out-of-contract adversary — production reparents hold the entity's cover) to confirm it
+                // never crashes or reads freed memory; the racing SetParent makes the boolean result
+                // nondeterministic, so it is observed to drive the code path, not asserted.
+                (void)IsEntityAccessValid(req[0]);
+                (void)IsEntityAccessValid(req[1]);
             }
             catch (const EntitySyncException&) {
                 sync_giveups.fetch_add(1, std::memory_order_relaxed);
@@ -1958,10 +1978,12 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     server->Unlock();
     locked = false;
 
-    SECTION("AncestorAndDescendantLocksHeldSimultaneously")
+    SECTION("AncestorExcludesDescendantCrossThread")
     {
-        // T1 holds the map (ancestor) lock and keeps holding it. While it does, T2 must be able to
-        // acquire cr_a's OWN lock - proving the ancestor cover does not exclude the descendant lock.
+        // Hierarchical exclusion: T1 holds the map (ancestor) lock and keeps holding it. While it does,
+        // T2's Sync(cr_a) — a descendant of that map — must BLOCK (Sync marks the critter's ancestors,
+        // and the mark on the map cannot be registered while T1 owns the map exclusively). T2 must only
+        // acquire cr_a once T1 releases the map. This is the core ancestor↔descendant mutual exclusion.
         std::atomic_bool t1_holds_map {false};
         std::atomic_bool t2_got_cr {false};
         std::atomic_bool t2_may_finish {false};
@@ -1970,7 +1992,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             SyncContext ctx;
             ctx.Activate();
             vector<nptr<ServerEntity>> req {map};
-            ctx.SyncEntities(req); // ancestor cover: the map's own lock
+            ctx.SyncEntities(req); // ancestor: the map's own lock, held exclusively
             t1_holds_map.store(true);
             while (!t2_may_finish.load(std::memory_order_acquire)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -1987,32 +2009,33 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             SyncContext ctx;
             ctx.Activate();
             vector<nptr<ServerEntity>> req {cr_a};
-            ctx.SyncEntities(req); // descendant own lock - must succeed while T1 holds the map lock
+            ctx.SyncEntities(req); // descendant — must block until T1 releases the ancestor map
             t2_got_cr.store(true);
             ctx.Release();
             ctx.Deactivate();
         });
 
-        // Wall-clock-bounded wait: a correct (flat) model lets T2 take cr_a's own lock immediately. A
-        // model that made the ancestor cover EXCLUDE the descendant lock leaves t2_got_cr false until
-        // the deadline. The deadline is generous so scheduler jitter on a loaded host cannot turn a
-        // slow-but-correct acquire into a false failure; a real exclusion never sets the flag at all.
-        const auto t2_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
-        while (!t2_got_cr.load(std::memory_order_acquire) && nanotime::now() < t2_deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // While T1 holds the map, T2 must be excluded: t2_got_cr stays false. A generous window rules
+        // out the descendant being acquired concurrently (the old flat model would set it almost
+        // immediately). A correct hierarchical model never sets it while the ancestor is held.
+        const auto exclusion_window = nanotime::now() + timespan {std::chrono::milliseconds {300}};
+        while (nanotime::now() < exclusion_window) {
+            CHECK_FALSE(t2_got_cr.load(std::memory_order_acquire));
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
-        CHECK(t2_got_cr.load());
 
-        // Release T1 regardless, so both threads finish cleanly even on failure (no hang).
+        // Release T1 — T2's blocked Sync must now complete.
         t2_may_finish.store(true, std::memory_order_release);
         t1.join();
         t2.join();
+        CHECK(t2_got_cr.load());
     }
 
     SECTION("ConcurrentAncestorAndSiblingLockLivenessLoop")
     {
-        // Both threads hammer their (independent) locks: one always covers via the map ancestor, the
-        // other always takes cr_a's own lock. Both must complete every iteration - no deadlock/starve.
+        // Both threads hammer locks that now mutually exclude under hierarchical exclusion: one always
+        // takes the map ancestor, the other always takes cr_a's descendant lock. They serialize against
+        // each other, but both must complete every iteration — no deadlock, no starvation.
         constexpr int32_t ITERS = 20000;
         std::atomic<int64_t> ancestor_done {0};
         std::atomic<int64_t> sibling_done {0};

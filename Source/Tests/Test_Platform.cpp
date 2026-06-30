@@ -110,6 +110,7 @@ TEST_CASE("Platform")
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
         REQUIRE_FALSE(snapshot.Cores.empty());
+        CHECK(snapshot.LogicalCoreCount > 0);
 
         for (const Platform::CpuUsageCoreSnapshot& core : snapshot.Cores) {
             CHECK(core.TotalTime >= core.IdleTime);

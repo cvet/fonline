@@ -36,7 +36,12 @@
 #include "Application.h"
 #include "Server.h"
 #include "Settings.h"
-#include "WinApi-Include.h"
+
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_USING_NAMESPACE();
 

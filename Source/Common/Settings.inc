@@ -49,6 +49,7 @@ FIXED_SETTING(string, Common, UnpackagedSubConfig); // Config applied in unpacka
 FIXED_SETTING(bool, Common, DebugBuild); // If true, debug build is used, otherwise release build (read only)
 FIXED_SETTING(bool, Common, Packaged); // If yes, then the packaging was done (read only)
 FIXED_SETTING(bool, Common, AsyncLogWrite, false); // If true, log messages are written to file and console from a dedicated background thread
+FIXED_SETTING(vector<string>, Common, SecretSettingTokens, "secret", "token", "password", "apikey"); // Case-insensitive substrings that mark a setting name as a credential whose value is masked as "***" in command-line override logs
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

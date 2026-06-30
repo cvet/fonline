@@ -156,6 +156,12 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
     std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
 
+    // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
+    // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
+    for (auto& pixel : data) {
+        std::swap(pixel.comp.r, pixel.comp.b);
+    }
+
     const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
         numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
         numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};

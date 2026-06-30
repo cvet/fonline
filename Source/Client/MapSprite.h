@@ -48,31 +48,36 @@ class MapSpriteList;
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
+    // Flat sprites pre-light
     Tile = 0,
     Tile1 = 1,
     Tile2 = 2,
     Tile3 = 3,
     Tile4 = 4,
-    HexGrid = 5,
-    FlatScenery = 8,
-    Ligth = 9,
-    DeadCritter = 10,
-    FlatItem = 13,
-    Track = 16,
-
-    NormalBegin = 20,
-    Scenery = 23,
-    Item = 26,
-    Critter = 29,
-    Particles = 30,
-    NormalEnd = 32,
-
+    FlatItemPreLight = 6,
+    HexGrid = 8,
+    // Light primitives
+    PreLight = 9,
+    Light = 10,
+    AfterLight = 11,
+    // Flat sprites post-light
+    DeadCritter = 13,
+    FlatItemAfterLight = 16,
+    FlatEnd = 18,
+    // Normal sprites
+    NormalBegin = 19,
+    Item = 22,
+    Critter = 25,
+    Particles = 28,
+    NormalEnd = 31,
+    // Roof sprites
     Roof = 33,
     Roof1 = 34,
     Roof2 = 35,
     Roof3 = 36,
     Roof4 = 37,
     RoofParticles = 38,
+    // Count: 40
     Last = 39,
 };
 
@@ -113,6 +118,7 @@ public:
     [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
     [[nodiscard]] auto GetPHexOffset() const noexcept -> nptr<const ipos32> { return _pHexOffset; }
     [[nodiscard]] auto GetPSprOffset() const noexcept -> nptr<const ipos32> { return _pSprOffset; }
+    [[nodiscard]] auto GetRootOffset() const noexcept -> ipos32 { return _pRootOffset ? *_pRootOffset.as_ptr() : ipos32 {}; }
     [[nodiscard]] auto GetAlpha() const noexcept -> nptr<const uint8_t> { return _alpha; }
     [[nodiscard]] auto GetLight() const noexcept -> nptr<const ucolor> { return _light; }
     [[nodiscard]] auto GetLightRight() const noexcept -> nptr<const ucolor> { return _lightRight; }
@@ -153,6 +159,10 @@ private:
     ipos32 _hexOffset {};
     nptr<const ipos32> _pHexOffset {};
     nptr<const ipos32> _pSprOffset {};
+    // Static logical-root offset (item proto Offset): the bottom-center→trunk vector. Kept separate from
+    // _pSprOffset (which still positions the bitmap) so the depth/sort anchor can use the logical root, not the
+    // bitmap bottom-center. Null for sprites without one (critters, particles).
+    nptr<const ipos32> _pRootOffset {};
     nptr<const uint8_t> _alpha {};
     nptr<const ucolor> _light {};
     nptr<const ucolor> _lightRight {};
@@ -184,7 +194,7 @@ public:
     [[nodiscard]] auto GetActiveSprites() const noexcept -> const_span<unique_ptr<MapSprite>> { return _activeSprites; }
     [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
 
@@ -221,7 +231,7 @@ public:
     ipos32 Offset {};
     bool IsFlat {};
     bool NoLight {};
-    DrawOrderType DrawOrder {};
+    DrawOrderType DrawOrder {DrawOrderType::Item};
     int32_t DrawOrderHyOffset {};
     CornerType Corner {};
     bool DisableEgg {};

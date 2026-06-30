@@ -30,7 +30,6 @@ DeclareValueOptions(
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
-	FO_UBSAN_IGNORELIST "Path to UndefinedBehaviorSanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/ubsan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
 
 DeclareBoolOptions(
@@ -211,6 +210,18 @@ AddCompileDefinitionsList(
 	$<$<NOT:${expr_DebugBuild}>:NDEBUG>
 	$<$<NOT:${expr_DebugBuild}>:FO_DEBUG=0>)
 
+# AngelScript's hand-written native calling-convention trampolines (as_callfunc_x64_gcc.cpp, ...) are
+# incompatible with sanitizer instrumentation: AddressSanitizer cannot unwind a C++ exception thrown by a
+# registered function back through the asm to AngelScript's catch (the call terminates instead of being
+# translated to a script exception), and MemorySanitizer cannot track initialization through the asm (it
+# reports false use-of-uninitialized). The engine already uses AngelScript's portable generic calling
+# convention where native support is absent (e.g. wasm), and 32-bit ARM disables exceptions for the same
+# trampoline reason. Force the portable path under ASan/MSan so the sanitizers exercise the same engine and
+# game logic over pure C++ marshalling. TSan keeps the native path (unaffected, and green there); UBSan keeps
+# it too (its value-type misalignment is stack-layout-driven, not calling-convention-driven).
+SetValue(expr_PortableScriptCallConfigs $<CONFIG:San_Address,San_Memory,San_MemoryWithOrigins,San_Address_Undefined>)
+AddCompileDefinitionsList($<${expr_PortableScriptCallConfigs}:AS_MAX_PORTABILITY>)
+
 if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	AddCompileOptionsList(
 		$<$<CONFIG:San_Address>:/fsanitize=address>
@@ -281,13 +292,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT MSVC AND CMAKE_SYSTEM_NAME MATC
 	endif()
 endif()
 
-# UBSan: scoped ignorelist for the inherent AngelScript value-type alignment sites (the [alignment] section keeps
-# every other UBSan check active). See BuildTools/sanitizers/ubsan-ignorelist.txt for the rationale and the
-# tracked plan to remove it. Applied on Clang for the Undefined-sanitizer configs only.
-SetValue(expr_UndefinedSanitizerConfigs $<CONFIG:San_Undefined,San_Address_Undefined>)
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND EXISTS "${FO_UBSAN_IGNORELIST}")
-	AddCompileOptionsList($<${expr_UndefinedSanitizerConfigs}:-fsanitize-ignorelist=${FO_UBSAN_IGNORELIST}>)
-endif()
+# UBSan: there is no file-based ignorelist. The AngelScript value-type alignment UB was fixed at the source, so the
+# ubsan-ignorelist.txt is gone entirely. The only UBSan suppressions left are the per-target vendored-third-party
+# excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for unqlite /
+# AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
 
 # Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
 # Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
@@ -302,32 +310,25 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	endif()
 endif()
 
-# Engine settings
+# Engine feature/backend toggles. These stay -D compiler defines because they gate whole files and headers
+# and are evaluated as the first preprocessor decision — often before any engine header is included (e.g.
+# test harnesses that lead with catch_amalgamated.hpp, or headers self-guarded with #if FO_ANGELSCRIPT_SCRIPTING
+# before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
 AddCompileDefinitionsList(
-	"FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
 	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>
-	FO_GEOMETRY=$<IF:$<STREQUAL:${FO_GEOMETRY},HEXAGONAL>,1,$<IF:$<STREQUAL:${FO_GEOMETRY},SQUARE>,2,0>>
-	FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}
-	FO_MAP_HEX_HEIGHT=${FO_MAP_HEX_HEIGHT}
-	FO_MAP_CAMERA_ANGLE=${FO_MAP_CAMERA_ANGLE}
-	FO_EFFECT_SCRIPT_VALUES=${FO_EFFECT_SCRIPT_VALUES}
-	FO_EFFECT_MAX_PASSES=${FO_EFFECT_MAX_PASSES}
-	FO_MODEL_LAYERS_COUNT=${FO_MODEL_LAYERS_COUNT}
-	FO_MODEL_MAX_TEXTURES=${FO_MODEL_MAX_TEXTURES}
-	FO_MODEL_MAX_BONES=${FO_MODEL_MAX_BONES}
-	FO_MODEL_BONES_PER_VERTEX=${FO_MODEL_BONES_PER_VERTEX}
-	FO_NO_EXTRA_ASSERTS=0
 	FO_STRICT_PTR_NONNULL=$<BOOL:${FO_STRICT_PTR_NONNULL}>
 	FO_STRICT_OWNING_NONNULL=$<BOOL:${FO_STRICT_OWNING_NONNULL}>
-	FO_STRICT_REFCOUNT_EXPLICIT=$<BOOL:${FO_STRICT_REFCOUNT_EXPLICIT}>
-	FO_USE_NAMESPACE=$<NOT:$<BOOL:${FO_DISABLE_NAMESPACE}>>)
-# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors.
-AddCompileDefinitionsList(FO_NO_TEXTURE_LOOKUP=0) # Todo: FO_NO_TEXTURE_LOOKUP need option for enable
-AddCompileDefinitionsList(FO_DIRECT_SPRITES_DRAW=0) # Todo: FO_DIRECT_SPRITES_DRAW need option for enable
-AddCompileDefinitionsList(FO_RENDER_32BIT_INDEX=0) # Todo: FO_RENDER_32BIT_INDEX need option for enable
+	FO_STRICT_REFCOUNT_EXPLICIT=$<BOOL:${FO_STRICT_REFCOUNT_EXPLICIT}>)
+
+# The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
+# FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits
+# them into EngineConfig.gen.h (pulled in at the top of BasicCore.h) to keep the compile command clean.
+# Per-config defines (FO_DEBUG above) also stay compiler-side.
+# Todo: FO_NO_EXTRA_ASSERTS=$<CONFIG:Release_Ext> after separating asserts from handled errors, which would
+# make it per-config and keep it a compiler define.
 
 # Basic includes
 AddIncludeDirectories(
@@ -608,6 +609,17 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Emscripten")
 		-legl.js
 		-lhtml5_webgl.js
 		-lidbfs.js)
+
+	if(FO_UNIT_TESTS)
+		# The wasm unit-test executable links server code (DataBase file-lock, raw NetSockets) and the
+		# mongo-c-driver, which reference POSIX functions/syscalls Emscripten does not implement (flock,
+		# getpwuid_r, setsockopt, uname, getuid/geteuid). The web-runnable tests (AngelScript / serializer /
+		# in-memory) never call those paths, so allow them as abort-if-called stubs purely so the test binary
+		# links and runs under node. The shipping web client keeps the strict defaults above.
+		AddLinkOptionsList(
+			-sERROR_ON_UNDEFINED_SYMBOLS=0
+			-sALLOW_UNIMPLEMENTED_SYSCALLS=1)
+	endif()
 
 else()
 	AbortMessage("Unknown OS")

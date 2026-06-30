@@ -289,6 +289,19 @@ void WorkerPool::Resume()
     _workSignal.notify_all();
 }
 
+void WorkerPool::Pause()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unique_lock locker {_mutex};
+
+    _paused = true;
+
+    while (_activeWorkers != 0) {
+        _idleSignal.wait(locker);
+    }
+}
+
 auto WorkerPool::GetPendingJobCount() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();

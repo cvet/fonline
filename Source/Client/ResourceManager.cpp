@@ -430,7 +430,6 @@ void ResourceManager::FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     if (!nullable_stay_frm_base) {
         return;
@@ -458,7 +457,6 @@ void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<c
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     if (!nullable_stay_frm_base) {
         return;

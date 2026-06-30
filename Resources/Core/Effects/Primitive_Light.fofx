@@ -5,6 +5,10 @@ BlendEquation = Max
 [ShaderCommon]
 const float ShinePower = 5.0;
 const float ResultPower = 0.5;
+// Outer fraction of the light radius over which brightness tapers smoothly to zero (rim is at 1.0).
+const float EdgeTaperStart = 0.75;
+// Amplitude of the per-pixel boundary jitter (in normalized-radius units).
+const float EdgeNoise = 0.08;
 
 [VertexShader]
 layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
@@ -15,21 +19,38 @@ layout(location = 2) in vec2 InTexCoord;
 layout(location = 3) in vec2 InTexEggCoord;
 
 layout(location = 0) out vec4 Color;
+layout(location = 1) out float Rim;
+layout(location = 2) out vec2 WorldAnchor;
 
 void main(void)
 {
     gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     Color = InColor;
+    Rim = InPosition.z;        // normalized radial distance: 0 at the light center, ~1 at the rim
+    // Constant on every light vertex (the screen-anchor hex's absolute world pixel) — the fragment adds
+    // gl_FragCoord to recover the scroll/zoom-stable absolute world pixel, so the edge noise never crawls.
+    WorldAnchor = InTexCoord;
 }
 
 [FragmentShader]
 layout(location = 0) in vec4 Color;
+layout(location = 1) in float Rim;
+layout(location = 2) in vec2 WorldAnchor;
 
 layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-    float a = Color.a * ShinePower;
+    // The per-hex light intensity (Color.a) falls off linearly to zero at the rim, which leaves a constant-slope
+    // kink at the boundary — a hard edge that is very visible while the light moves. Taper the outer band of the
+    // radius smoothly to zero (smoothstep → zero slope exactly at the rim) so brightness rises gently FROM zero,
+    // and jitter the boundary with a little world-stable noise so the edge is not a clean line.
+    vec2 worldPixel = gl_FragCoord.xy + WorldAnchor;
+    float noise = fract(sin(dot(worldPixel, vec2(12.9898, 78.233))) * 43758.5453);
+    float rim = clamp(Rim + (noise - 0.5) * EdgeNoise, 0.0, 1.0);
+    float edge = smoothstep(1.0, EdgeTaperStart, rim);
+
+    float a = Color.a * ShinePower * edge;
     float r = Color.r * min(a, 1.0);
     float g = Color.g * min(a, 1.0);
     float b = Color.b * min(a, 1.0);

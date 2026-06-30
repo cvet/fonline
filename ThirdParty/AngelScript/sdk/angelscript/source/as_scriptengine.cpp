@@ -38,6 +38,18 @@
 
 #include <stdlib.h>
 
+// (FOnline Patch) MemorySanitizer unpoison helper for the value-type list-buffer construction-detection
+// heuristic in DestroySubList (see usage below).
+#if defined(__has_feature)
+#  if __has_feature(memory_sanitizer)
+#    include <sanitizer/msan_interface.h>
+#    define AS_FONLINE_MSAN_UNPOISON(ptr, sz) __msan_unpoison((ptr), (sz))
+#  endif
+#endif
+#ifndef AS_FONLINE_MSAN_UNPOISON
+#  define AS_FONLINE_MSAN_UNPOISON(ptr, sz) ((void)0)
+#endif
+
 #include "as_config.h"
 #include "as_scriptengine.h"
 #include "as_builder.h"
@@ -1953,10 +1965,12 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 		type->name       = typeName;
 		type->nameSpace  = defaultNamespace;
 		type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-		// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+
+		// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+		// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+		// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+		type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
+
 		type->flags      = flags;
 		type->accessMask = defaultAccessMask;
 
@@ -2023,10 +2037,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 			type->name       = typeName;
 			type->nameSpace  = defaultNamespace;
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -2085,10 +2099,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asQWORD 
 					type->templateSubTypes[s].GetTypeInfo()->AddRefInternal();
 			}
 			type->size       = byteSize;
-#ifdef WIP_16BYTE_ALIGN
-			// TODO: Types smaller than 4 don't need to be aligned to 4 byte boundaries
-			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : 4;
-#endif
+			// (FOnline Patch) Per-type alignment for the alignment-aware VM-stack layout: 16-byte when
+			// asOBJ_APP_ALIGN16 is requested, else 8-byte for value types that are at least 8 bytes (so 8-byte
+			// members land aligned), else 4-byte. See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md
+			type->alignment  = (flags & asOBJ_APP_ALIGN16) ? 16 : (((flags & asOBJ_VALUE) && byteSize >= 8) ? 8 : 4);
 			type->flags      = flags;
 			type->accessMask = defaultAccessMask;
 
@@ -6899,12 +6913,15 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 					if( ti->flags & asOBJ_VALUE )
 					{
 						asUINT size = ti->GetSize();
-
-						// Align the offset to 4 bytes boundary
-						if( size >= 4 && (asPWORD(buffer) & 0x3) )
-							buffer += 4 - (asPWORD(buffer) & 0x3);
-
 						asCObjectType *ot = CastToObjectType(ti);
+
+						// (FOnline Patch) Align to the element's natural alignment (8 for 8-byte value types),
+						// matching the shared GetListElementAlignment policy used by the compiler layout, the
+						// bytecode writer/reader and the array/dict list factories.
+						const asUINT elemAlign = GetListElementAlignment(dt, size);
+						if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+							buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
+
 						if( ot && ot->beh.destruct )
 						{
 							// Only call the destructor if the object has been created
@@ -6915,6 +6932,12 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 							//       thrown aborting the initialization. The engine
 							//       really should be keeping track of which objects has
 							//       been successfully initialized.
+
+							// (FOnline Patch) The scan deliberately reads the raw element bytes; a value type may
+							// legitimately hold uninitialized interior bytes (e.g. std::string's small-string
+							// buffer tail copied into the list buffer). These are our own buffer bytes, so mark
+							// them defined for MemorySanitizer before scanning.
+							AS_FONLINE_MSAN_UNPOISON(buffer, size);
 
 							for( asUINT n = 0; n < size; n++ )
 							{
@@ -6947,9 +6970,10 @@ void asCScriptEngine::DestroySubList(asBYTE *&buffer, asSListPatternNode *&node)
 				{
 					asUINT size = dt.GetSizeInMemoryBytes();
 
-					// Align the offset to 4 bytes boundary
-					if( size >= 4 && (asPWORD(buffer) & 0x3) )
-						buffer += 4 - (asPWORD(buffer) & 0x3);
+					// (FOnline Patch) align the offset to the primitive's natural alignment (8 for 8-byte primitives)
+					asUINT elemAlign = size >= 8 ? 8u : 4u;
+					if( size >= 4 && (asPWORD(buffer) % elemAlign) != 0 )
+						buffer += elemAlign - asUINT(asPWORD(buffer) % elemAlign);
 
 					// Advance the buffer
 					buffer += size;

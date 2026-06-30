@@ -55,37 +55,13 @@ public:
     auto operator=(ServerEntity&&) noexcept = delete;
     ~ServerEntity() override;
 
-    [[nodiscard]] auto GetId() const noexcept -> ident_t override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _id;
-    }
-    [[nodiscard]] auto GetEngine() const noexcept -> ptr<const ServerEngine>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _engine;
-    }
-    [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _engine;
-    }
-    [[nodiscard]] auto IsInitCalled() const noexcept -> bool
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _initCalled;
-    }
-    [[nodiscard]] auto IsPersistent() const noexcept -> bool
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _isPersistent;
-    }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t override;
+    [[nodiscard]] auto GetEngine() const noexcept -> ptr<const ServerEngine>;
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine>;
+    [[nodiscard]] auto IsInitCalled() const noexcept -> bool;
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool;
     [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
-    [[nodiscard]] auto GetEntityLock() const noexcept -> nptr<EntityLock>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _entityLock;
-    }
+    [[nodiscard]] auto GetEntityLock() const noexcept -> nptr<EntityLock>;
 
     void ValidateAccess() const override;
 
@@ -95,13 +71,13 @@ public:
     template<typename T>
     [[nodiscard]] auto GetParent() -> refcount_nptr<T>
     {
-        FO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
         return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<T>().try_hold_ref();
     }
     template<typename T>
     [[nodiscard]] auto GetParent() const -> refcount_nptr<const T>
     {
-        FO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
         return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
     }
 
@@ -110,27 +86,11 @@ public:
 
     // Return the entity that should be auto-widened into the SyncContext alongside this one,
     // outside of the parent-chain.
-    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return nullptr;
-    }
-    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return nullptr;
-    }
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
+    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
 
-    void SetInitCalled() noexcept
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        _initCalled = true;
-    }
-    void SetEntityLock(nptr<EntityLock> lock) noexcept
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        _entityLock = lock;
-    }
+    void SetInitCalled() noexcept;
+    void SetEntityLock(nptr<EntityLock> lock) noexcept;
     void SetParent(nptr<ServerEntity> parent) noexcept;
 
 protected:
@@ -159,14 +119,10 @@ public:
         ServerEntity(engine, id, registrator, props, base_props),
         EntityProperties(*GetInitRef())
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _propsRef->GetRegistrator()->GetTypeName();
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
@@ -176,14 +132,10 @@ public:
         CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
         EntityWithProto(proto)
     {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _proto->GetName();
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 FO_END_NAMESPACE

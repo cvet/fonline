@@ -38,6 +38,7 @@
 
 #include "AngelScriptArray.h"
 #include "AngelScriptDict.h"
+#include "AngelScriptHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -292,23 +293,23 @@ namespace
         CHECK(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2) >= 0);
         CHECK(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
         CHECK(engine->SetMessageCallback(asFUNCTION(MessageCallback), nullptr, asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int AcquireResource()", asFUNCTION(AcquireResource), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void ReleaseResource(int)", asFUNCTION(ReleaseResource), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void ObserveResource(int)", asFUNCTION(ObserveResource), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int AcquireResource()", FO_SCRIPT_FUNC(AcquireResource), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void ReleaseResource(int)", FO_SCRIPT_FUNC(ReleaseResource), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void ObserveResource(int)", FO_SCRIPT_FUNC(ObserveResource), FO_SCRIPT_FUNC_CONV) >= 0);
 
         // Register pointer-sized value type (like hstring)
         // POD with APP_CLASS + APP_CLASS_ALLINTS: engine handles construct/destruct/copy automatically
         CHECK(engine->RegisterObjectType("PtrSizedVal", sizeof(PtrSizedVal), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
-        CHECK(engine->RegisterObjectMethod("PtrSizedVal", "bool opEquals(const PtrSizedVal &in) const", asFUNCTION(PtrSizedVal_OpEquals), asCALL_CDECL_OBJFIRST) >= 0);
-        CHECK(engine->RegisterGlobalFunction("PtrSizedVal CreatePtrSizedVal(int)", asFUNCTION(PtrSizedVal_CreateFromInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int GetPtrSizedValInt(const PtrSizedVal &in)", asFUNCTION(PtrSizedVal_GetInt), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterObjectMethod("PtrSizedVal", "bool opEquals(const PtrSizedVal &in) const", FO_SCRIPT_FUNC_THIS(PtrSizedVal_OpEquals), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("PtrSizedVal CreatePtrSizedVal(int)", FO_SCRIPT_FUNC(PtrSizedVal_CreateFromInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int GetPtrSizedValInt(const PtrSizedVal &in)", FO_SCRIPT_FUNC(PtrSizedVal_GetInt), FO_SCRIPT_FUNC_CONV) >= 0);
 
         // Register global variable (exercises PGA/LDG/PshG4/CpyGtoV4/CpyVtoG4/SetG4 instructions)
         GlobalInt = 0;
         CHECK(engine->RegisterGlobalProperty("int GlobalInt", &GlobalInt) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void SetGlobalInt(int)", asFUNCTION(SetGlobalInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int GetGlobalInt()", asFUNCTION(GetGlobalInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void IncrementGlobalCounter()", asFUNCTION(IncrementGlobalCounter), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void SetGlobalInt(int)", FO_SCRIPT_FUNC(SetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int GetGlobalInt()", FO_SCRIPT_FUNC(GetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void IncrementGlobalCounter()", FO_SCRIPT_FUNC(IncrementGlobalCounter), FO_SCRIPT_FUNC_CONV) >= 0);
     }
 
     static auto RunScenario(ptr<asIScriptModule> module, ResourceTrackerState& state) -> ScenarioMetrics
@@ -900,12 +901,12 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource MakeNonNull()", asFUNCTION(+[]() -> void* {
+            engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
             }),
-                asCALL_CDECL);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+                FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("RedundantNullableMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1010,16 +1011,16 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource MakeNonNull()", asFUNCTION(+[]() -> void* {
+            engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
             }),
-                asCALL_CDECL);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+                FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             // Mimics `array[i]`: returns a (non-temporary) NON-const reference to
             // a handle cell of a non-nullable element type - enforced non-null,
             // so widening it to `T?` is redundant.
-            engine->RegisterGlobalFunction("Resource@& GetByRef()", asFUNCTION(+[]() -> void* { return &g_resourceCell; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource@& GetByRef()", FO_SCRIPT_FUNC(+[]() -> void* { return &g_resourceCell; }), FO_SCRIPT_FUNC_CONV);
             // Real array+dict so the const-handle-reference shape can be tested
             // faithfully: `dict<K,V>` is registered `const T2& get(...)`, which
             // for a handle value type yields a const ref to a *mutable* handle -
@@ -1027,7 +1028,7 @@ void AssignNullToNonNullable()
             // decl (there `const T@` means handle-to-const, a different type).
             RegisterAngelScriptArray(engine.get());
             RegisterAngelScriptDict(engine.get());
-            engine->RegisterGlobalFunction("bool Cond()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1148,7 +1149,7 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("ReturnNullableMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1211,8 +1212,8 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("DerefNullableMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1312,10 +1313,10 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "bool IsReady()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL_OBJLAST);
-            engine->RegisterObjectMethod("Resource", "bool get_Ready() const property", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("bool Cond()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
+            engine->RegisterObjectMethod("Resource", "bool IsReady()", FO_SCRIPT_FUNC_THIS(+[](void*) -> bool { return true; }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterObjectMethod("Resource", "bool get_Ready() const property", FO_SCRIPT_FUNC_THIS(+[](void*) -> bool { return true; }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("AndOrNarrowMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -1534,11 +1535,11 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             // Non-nullable return type: the *static* type is non-nullable, but a
             // call result is a temporary (compile-only here, never invoked).
-            engine->RegisterGlobalFunction("Resource@ MakeSure()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource@ MakeSure()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             nptr<asIScriptModule> module = engine->GetModule("RedundantNullCmpMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
             module->AddScriptSection("redundant_null_cmp", source, std::strlen(source));
@@ -1653,10 +1654,10 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("void Fatal()", asFUNCTION(+[]() { }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("void NormalVoid()", asFUNCTION(+[]() { }), asCALL_CDECL);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("void Fatal()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("void NormalVoid()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
             // Mark Fatal() as no-return.
             for (asUINT i = 0, count = engine->GetGlobalFunctionCount(); i < count; i++) {
                 nptr<asIScriptFunction> func = engine->GetGlobalFunctionByIndex(i);
@@ -1749,8 +1750,8 @@ void AssignNullToNonNullable()
             REQUIRE(engine.as_nptr());
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("NegGuardMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
@@ -2161,7 +2162,7 @@ void NullAssignToNarrowedRefParam()
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("bool Flag()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("bool Flag()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("MixedMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);

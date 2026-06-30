@@ -569,6 +569,8 @@ namespace MapOpsTest
     {
         Location loc = CreateTestLocation();
         if (loc is null) {
+)"
+                                          R"(
             return;
         }
 

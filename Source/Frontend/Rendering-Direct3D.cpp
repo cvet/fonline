@@ -41,7 +41,7 @@
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
 
-#include "WinApiUndef-Include.h"
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 

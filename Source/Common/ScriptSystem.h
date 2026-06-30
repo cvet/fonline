@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "Properties.h"
+
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ScriptSystemException);
@@ -71,7 +73,6 @@ class FileSystem;
 class Property;
 class PropertyRawData;
 class PropertyRegistrator;
-class Properties;
 
 class EngineMetadata;
 class BaseEngine;

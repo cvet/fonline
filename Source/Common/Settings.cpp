@@ -35,7 +35,6 @@
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "ImGuiStuff.h"
-#include "WinApi-Include.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -260,7 +259,8 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
             const string value = next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg.get()).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
-                WriteLog(LogType::Info, "Set {} to {}", key, value);
+                const string shown = IsSecretSettingName(key) ? string("***") : value;
+                WriteLog(LogType::Info, "Set {} to {}", key, shown);
                 SetValue(key, value);
             }
         }
@@ -271,7 +271,7 @@ void GlobalSettings::ApplyInternalConfig()
 {
     FO_STACK_TRACE_ENTRY();
 
-#include "InternalConfig-Include.h"
+#include "InternalConfig.gen.inc"
 
     const auto config_str = strex().assignVolatile(INTERNAL_CONFIG, sizeof(INTERNAL_CONFIG)).str();
 
@@ -292,7 +292,7 @@ void GlobalSettings::ApplyDefaultSettings()
 #define SETTING_GROUP_END()
 #define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = {__VA_ARGS__}
 #define VARIABLE_SETTING(type, group, name, ...) name = {__VA_ARGS__}
-#include "Settings-Include.h"
+#include "Settings.inc"
     FO_DISABLE_WARNINGS_POP()
 }
 
@@ -335,13 +335,6 @@ void GlobalSettings::ApplyAutoSettings()
     *FixedSettingForEdit(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
     *FixedSettingForEdit(TabletBuild) = AndroidBuild || IOsBuild;
 
-#if FO_WINDOWS
-    if (::GetSystemMetrics(SM_TABLETPC) != 0) {
-        *FixedSettingForEdit(DesktopBuild) = false;
-        *FixedSettingForEdit(TabletBuild) = true;
-    }
-#endif
-
     *FixedSettingForEdit(MapHexagonal) = GameSettings::HEXAGONAL_GEOMETRY;
     *FixedSettingForEdit(MapSquare) = GameSettings::SQUARE_GEOMETRY;
     *FixedSettingForEdit(MapDirCount) = GameSettings::MAP_DIR_COUNT;
@@ -376,7 +369,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 #define SETTING_GROUP_END()
 #define FIXED_SETTING(type, group, name, ...) (*FixedSettingForEdit(name)) = other.name
 #define VARIABLE_SETTING(type, group, name, ...) name = other.name
-#include "Settings-Include.h"
+#include "Settings.inc"
 }
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
@@ -515,7 +508,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 #define SETTING_GROUP_END()
 
     switch (const_hash(setting_name.c_str())) {
-#include "Settings-Include.h"
+#include "Settings.inc"
     default:
         _customSettings[setting_name] = any_t(string(value));
         break;
@@ -667,7 +660,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 #define VARIABLE_SETTING(type, group, name, ...) add_setting(#group "." #name, name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#include "Settings-Include.h"
+#include "Settings.inc"
 
     return result;
 }
@@ -692,7 +685,7 @@ void GlobalSettings::Draw(bool editable)
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
-#include "Settings-Include.h"
+#include "Settings.inc"
 }
 
 auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
@@ -704,6 +697,21 @@ auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
     }
 
     return _resourcePacks;
+}
+
+bool GlobalSettings::IsSecretSettingName(string_view name) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string lower_name = strex(name).lower().str();
+
+    for (const auto& token : SecretSettingTokens) {
+        if (!token.empty() && lower_name.find(strex(token).lower().str()) != string::npos) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 FO_END_NAMESPACE

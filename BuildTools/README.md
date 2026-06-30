@@ -195,6 +195,71 @@ APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace ou
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
 
+## Packaging: post-build binary patching
+
+`package.py` injects a few values into the already-linked binaries instead of recompiling per package. Each
+target is a fixed-capacity placeholder reserved at compile time with `FO_KEEP_DATA_SYMBOL` (so the linker keeps
+the array), and `patch_data(file, marker, data, max_size)` overwrites it in place: it locates the marker, writes
+`data` followed by `#` padding up to `max_size`, and asserts the file size is unchanged. Nothing is relocated,
+compressed, encrypted, or generated — the file layout is identical before and after, only reserved data bytes
+change. Patched regions, all transparent identity/config **text** (never code):
+
+- `PACKAGED_BUILD_NAME` — marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
+  each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
+- `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
+  `FO_INTERNAL_CONFIG_CAPACITY` (40000). The baked internal config blob.
+- Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
+
+`package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
+
+> **Antivirus note:** "a large placeholder region overwritten after the build" superficially resembles a
+> packer/dropper stub, but here it is only transparent config/identity text written into reserved data arrays —
+> no code is produced, decrypted, or executed. This is documented so a release engineer or AV reviewer can
+> confirm it is benign; keep the capacities no larger than needed and whitelist the packaging step. See the
+> project's client-AV audit (`Docs/Plans/2026-06-27-client-av-heuristics-audit.md`, finding M2).
+
+## Packaging: Windows code signing
+
+Packaged Windows binaries can be code-signed at release time so antivirus/SmartScreen trust the client (the
+self-update flow downloads and executes a runtime DLL, so an unsigned client is the main heuristic trigger).
+Signing is **off by default** (current behavior: unsigned) and tool-agnostic:
+
+- Set `Windows.CodeSigningHook` in the project main config to an **executable script** on the packaging host.
+- During `finalize_output`, before any Zip/Tar/Wix/Raw step, `package.py` calls `<hook> <absolute-pe-path>`
+  once for **every `*.exe`/`*.dll`** staged under the package tree — launcher exes (incl. the OpenGL variant),
+  the runtime DLLs, and the client-runtime **update payloads** (the downloaded-and-executed DLL). Signing last
+  means the signature covers the final patched bytes; covering the whole tree means archives, the MSI, and the
+  updater payloads are all signed.
+- The hook must exit `0`; a non-zero exit **fails the package** so a release that asked to be signed never
+  ships unsigned. The hook must be directly executable on the host (shebang + `chmod +x` on Linux; a
+  `.cmd`/`.bat`/`.exe` on Windows).
+- The hook owns the tool, certificate, timestamp URL, and **secrets** — keep passwords/tokens in environment
+  variables, never in the repo or main config. Always **timestamp** (RFC-3161) so signatures outlive the cert.
+
+The certificate must come from a publicly-trusted CA, and since June 2023 its key lives on a hardware token or
+cloud HSM (no plain on-disk `.pfx` for public trust). Cheapest practical options and the matching hook body:
+
+```bash
+# 1) Azure Trusted Signing — cheapest ($ ~10/mo), cloud, instant SmartScreen reputation. Signs on a Windows
+#    host via signtool + the Trusted Signing dlib; Azure creds come from env (AZURE_* / managed identity).
+#    sign_windows.cmd  (args: %1 = file)
+#    signtool sign /v /fd SHA256 /tr http://timestamp.acs.microsoft.com /td SHA256 ^
+#      /dlib "%TRUSTED_SIGNING_DLIB%" /dmdf "%TRUSTED_SIGNING_METADATA_JSON%" "%~1"
+
+# 2) SSL.com eSigner CodeSignTool — cloud, runs on the Linux packaging host (Java). Creds/TOTP from env.
+#    sign_windows.sh  (args: $1 = file)
+#    CodeSignTool sign -username="$ESIGNER_USER" -password="$ESIGNER_PASS" \
+#      -totp_secret="$ESIGNER_TOTP" -input_file_path="$1" -override
+
+# 3) osslsigncode — on the Linux host with a PKCS#11 cloud-HSM cert (e.g. Certum) or a token.
+#    sign_windows.sh  (args: $1 = file)
+#    tmp="$(mktemp)"; osslsigncode sign -pkcs11module "$PKCS11_MODULE" -key "$PKCS11_KEY_ID" \
+#      -certs "$CERT_PEM" -h sha256 -n "Last Frontier" -i https://lastfrontier.ru \
+#      -ts http://timestamp.digicert.com -in "$1" -out "$tmp" && mv -f "$tmp" "$1"
+```
+
+For Android, signing stays in Gradle (see the Android workflow above); this hook is Windows-only.
+
 ## Source formatting
 
 `buildtools.py format-source` formats the engine `Source/` tree with `clang-format`. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. This keeps the command usable both from CI (clang-format-20 on `PATH`) and from an embedding project that supplies a bundled binary through `FO_CLANG_FORMAT`.

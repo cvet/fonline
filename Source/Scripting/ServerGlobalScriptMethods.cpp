@@ -41,7 +41,14 @@
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
-#include "WinApi-Include.h"
+
+// SystemCall spawns a subprocess (CreateProcessW). This file is server-only, so the process-spawning code is
+// never compiled into the client binary — keep it that way to avoid antivirus heuristics flagging the client.
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -1439,6 +1446,8 @@ FO_SCRIPT_API int32_t Server_Game_GetTextCount(ptr<ServerEngine> server, TextPac
     return numeric_cast<int32_t>(server->GetLangPack().GetTextCount(textKey));
 }
 
+// Server-only on purpose: the subprocess-spawning Win32 path (CreateProcessW with a hidden window + pipe
+// capture) must not land in the client binary, where antivirus heuristics would flag it.
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {
@@ -1657,21 +1666,21 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 {
     auto ctx = RequireCurrentSyncContext(server);
     ignore_unused(ctx);
-    return IsEntityAccessValid(entity);
+    return IsEntityAccessValid(entity, false);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 {
     auto ctx = RequireCurrentSyncContext(server);
-    ctx->LockSingleton(server->GetEntityLock());
+    ctx->LockSingleton(server->GetEntityLock().get());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
 {
     auto ctx = RequireCurrentSyncContext(server);
-    ctx->UnlockSingleton(server->GetEntityLock());
+    ctx->UnlockSingleton(server->GetEntityLock().get());
 }
 
 ///@ ExportMethod

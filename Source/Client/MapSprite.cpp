@@ -125,6 +125,9 @@ auto MapSprite::GetMapRootOffset() const noexcept -> ipos32
     if (_pSprOffset) {
         offset += *_pSprOffset;
     }
+    if (_pRootOffset) {
+        offset -= *_pRootOffset;
+    }
 
     return offset;
 }
@@ -301,7 +304,7 @@ void MapSpriteList::GrowPool() noexcept
     }
 }
 
-auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>
+auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -335,6 +338,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_spr = spr;
     mspr->_pSpr = pspr;
     mspr->_pSprOffset = spr_offset;
+    mspr->_pRootOffset = root_offset;
     mspr->_alpha = alpha;
     mspr->_light = nullptr;
     mspr->_lightRight = nullptr;

@@ -82,7 +82,7 @@ struct HostClientRuntimeResult
 
 static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool;
 static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime) -> optional<HostClientRuntimeResult>;
-static auto RunReloadedRuntime(CommandLineArgs args, const HostClientRuntimeResult& previous) -> optional<HostClientRuntimeResult>;
+static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool;
 static auto RunEmbeddedClient(CommandLineArgs args) -> HostClientRuntimeResult;
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult;
 static void MainEntry(void* data);
@@ -132,9 +132,8 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 
         if (loaded.has_value()) {
             if (loaded->Result.ResultKind == ClientRuntimeResultKind::ReloadRequested) {
-                WriteLog("Client runtime host: DLL build {} requested reload to {} with compatibility {}", loaded->LoadedBuildHash, loaded->RequestedRuntimePath, loaded->RequestedCompatibilityVersion);
-                const auto reloaded = RunReloadedRuntime(args, *loaded);
-                return reloaded.has_value() && reloaded->Result.Success;
+                WriteLog("Client runtime host: DLL build {} staged a self-update at {} with compatibility {}", loaded->LoadedBuildHash, loaded->RequestedRuntimePath, loaded->RequestedCompatibilityVersion);
+                return PromoteStagedReloadForRestart(loaded->RequestedRuntimePath);
             }
 
             WriteLog("Client runtime host: DLL build {} finished with {}, success {}", loaded->LoadedBuildHash, ClientRuntimeResultKindToString(loaded->Result.ResultKind), loaded->Result.Success ? "yes" : "no");
@@ -155,9 +154,8 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     const auto embedded = RunEmbeddedClient(args);
 
     if (embedded.Result.ResultKind == ClientRuntimeResultKind::ReloadRequested) {
-        WriteLog("Client runtime host: embedded build {} requested reload to {} with compatibility {}", embedded.LoadedBuildHash, embedded.RequestedRuntimePath, embedded.RequestedCompatibilityVersion);
-        const auto reloaded = RunReloadedRuntime(args, embedded);
-        return reloaded.has_value() && reloaded->Result.Success;
+        WriteLog("Client runtime host: embedded build {} staged a self-update at {} with compatibility {}", embedded.LoadedBuildHash, embedded.RequestedRuntimePath, embedded.RequestedCompatibilityVersion);
+        return PromoteStagedReloadForRestart(embedded.RequestedRuntimePath);
     }
 
     WriteLog("Client runtime host: embedded build {} finished with {}, success {}", embedded.LoadedBuildHash, ClientRuntimeResultKindToString(embedded.Result.ResultKind), embedded.Result.Success ? "yes" : "no");
@@ -234,22 +232,19 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     return runtime_result;
 }
 
-static auto RunReloadedRuntime(CommandLineArgs args, const HostClientRuntimeResult& previous) -> optional<HostClientRuntimeResult>
+static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!previous.RequestedRuntimePath.empty(), "Client runtime host received a reload result without a requested runtime path", previous.LoadedBuildHash, previous.RequestedCompatibilityVersion);
+    FO_VERIFY_AND_THROW(!runtime_path.empty(), "Client runtime host received a reload result without a requested runtime path");
 
-    WriteLog("Client runtime host: starting reload from build {} to {} with compatibility {}", previous.LoadedBuildHash, previous.RequestedRuntimePath, previous.RequestedCompatibilityVersion);
+    if (!ApplyStagedBinaryUpdate(runtime_path)) {
+        WriteLog("Client runtime host: failed to promote staged runtime at {}", runtime_path);
+        return false;
+    }
 
-    RequestedClientRuntime reloaded_runtime {};
-    reloaded_runtime.Path = previous.RequestedRuntimePath;
-    reloaded_runtime.CompatibilityVersion = previous.RequestedCompatibilityVersion;
-    reloaded_runtime.CheckCompatibilityVersion = !previous.RequestedCompatibilityVersion.empty();
-    reloaded_runtime.ExplicitPath = true;
-    reloaded_runtime.PreviousBuildHash = previous.LoadedBuildHash;
-
-    return RunClientFromLibrary(args, reloaded_runtime);
+    WriteLog("Client runtime host: staged self-update promoted at {}, exiting for user restart", runtime_path);
+    return true;
 }
 
 static auto RunEmbeddedClient(CommandLineArgs args) -> HostClientRuntimeResult

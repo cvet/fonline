@@ -52,9 +52,7 @@ asCObjectType::asCObjectType() : asCTypeInfo()
 	acceptValueSubType = true;
 	acceptRefSubType   = true;
 
-#ifdef WIP_16BYTE_ALIGN
-	alignment  = 4;
-#endif
+	alignment  = 4; // (FOnline Patch) default 4-byte; set to 8 for 8-byte value types in RegisterObjectType
 }
 
 asCObjectType::asCObjectType(asCScriptEngine *in_engine) : asCTypeInfo(in_engine)
@@ -64,9 +62,7 @@ asCObjectType::asCObjectType(asCScriptEngine *in_engine) : asCTypeInfo(in_engine
 	acceptValueSubType = true;
 	acceptRefSubType = true;
 
-#ifdef WIP_16BYTE_ALIGN
-	alignment  = 4;
-#endif
+	alignment  = 4; // (FOnline Patch) default 4-byte; set to 8 for 8-byte value types in RegisterObjectType
 }
 
 // interface

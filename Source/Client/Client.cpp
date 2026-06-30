@@ -2404,8 +2404,6 @@ void ClientEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
@@ -2421,8 +2419,6 @@ void ClientEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
 void ClientEngine::OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 
@@ -2448,8 +2444,6 @@ void ClientEngine::OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
@@ -2462,8 +2456,6 @@ void ClientEngine::OnSetCritterElevation(ptr<Entity> entity, ptr<const Property>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
@@ -2475,8 +2467,6 @@ void ClientEngine::OnSetCritterElevation(ptr<Entity> entity, ptr<const Property>
 void ClientEngine::OnSetItemFlags(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Colorize, ColorizeColor, ShootThru, LightThru, NoBlock
 
@@ -2519,8 +2509,6 @@ void ClientEngine::OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     // LightSource, LightIntensity, LightDistance, LightFlags, LightColor.
 
     ignore_unused(prop);
@@ -2535,8 +2523,6 @@ void ClientEngine::OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> pr
 void ClientEngine::OnSetCritterLight(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Re-apply the critter's light fan after a single bundled write to Critter.Light.
 
@@ -2553,8 +2539,6 @@ void ClientEngine::OnSetItemPicMap(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
@@ -2566,8 +2550,6 @@ void ClientEngine::OnSetItemPicMap(ptr<Entity> entity, ptr<const Property> prop)
 void ClientEngine::OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 
@@ -2583,8 +2565,6 @@ void ClientEngine::OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> p
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(prop);
 
     if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
@@ -2596,8 +2576,6 @@ void ClientEngine::OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> p
 void ClientEngine::OnSetItemElevation(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(prop);
 

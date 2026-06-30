@@ -135,8 +135,14 @@ TEST_CASE("CommonUtilities")
         input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
         REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
 
-        CHECK(stored_pixels[0] == pixels[0].rgba);
-        CHECK(stored_pixels[1] == pixels[1].rgba);
+        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
+        const auto to_bgra = [](ucolor c) -> uint32_t {
+            std::swap(c.comp.r, c.comp.b);
+            return c.rgba;
+        };
+
+        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
+        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
 
         input.close();
 

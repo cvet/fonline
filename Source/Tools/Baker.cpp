@@ -625,8 +625,6 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, spa
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     const auto output_path = MakeOutputPath(res_pack_name, path);
     const auto write_file_ok = fs_write_file(output_path, data);
     FO_VERIFY_AND_THROW(write_file_ok, "Unable to write the baked output file", output_path);

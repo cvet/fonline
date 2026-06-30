@@ -83,9 +83,8 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         auto proto = nullable_proto.as_ptr();
         color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
         is_flat = proto->GetDrawFlatten();
-        const bool is_item = proto->GetIsScenery() || proto->GetIsWall();
-        no_light = is_flat && !is_item;
-        draw_order = is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery);
+        no_light = is_flat && !(proto->GetIsScenery() || proto->GetIsWall());
+        draw_order = is_flat ? (proto->GetStatic() ? DrawOrderType::FlatItemPreLight : DrawOrderType::FlatItemAfterLight) : DrawOrderType::Item;
         draw_order_hy_offset = numeric_cast<int32_t>(proto->GetDrawOrderOffsetHexY());
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();

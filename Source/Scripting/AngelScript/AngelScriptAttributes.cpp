@@ -592,6 +592,8 @@ void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vecto
         return;
     }
 
+    func->GetEngine()->SetFunctionUserDataCleanupCallback(CleanupScriptFunctionAttributes, AS_FUNC_ATTRIBUTES_USER_DATA);
+
     auto user_data = SafeAlloc::MakeUnique<ScriptFunctionAttributeUserData>();
     user_data->Attributes = attributes;
 
@@ -979,7 +981,8 @@ auto ParseFunctionAttributeRecords(ptr<Preprocessor::Context> pp_ctx, Preprocess
     vector<string> namespace_stack;
     vector<string> type_stack;
     map<tuple<string, string, string>, uint32_t> overload_indexes;
-    nptr<const Preprocessor::LineNumberTranslator> lnt = Preprocessor::GetLineNumberTranslator(pp_ctx.get_no_const());
+    nptr<Preprocessor::LineNumberTranslator> lnt = Preprocessor::GetLineNumberTranslator(pp_ctx.get());
+    auto delete_lnt = scope_exit([lnt_raw = lnt.get()]() noexcept { Preprocessor::DeleteLineNumberTranslator(lnt_raw); });
     uint32_t line = 1;
 
     for (LexemIt it = lexems.cbegin(); it != lexems.cend();) {

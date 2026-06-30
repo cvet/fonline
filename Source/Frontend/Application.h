@@ -597,7 +597,6 @@ private:
     ptr<Application> _app;
     string _clipboardTextStorage {};
     ipos32 _lastMousePos {};
-    int32_t _nonConstHelper {};
     bool _shiftDown {};
     bool _ctrlDown {};
     bool _altDown {};
@@ -663,6 +662,7 @@ public:
 
     [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
     [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
+    [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> nptr<AppWindow> { return _activeWindow; }
     [[nodiscard]] auto GetChildWindowsCount() const noexcept -> size_t { return _childWindows.size(); }
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> nptr<AppWindow>

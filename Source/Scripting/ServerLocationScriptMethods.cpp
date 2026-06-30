@@ -139,6 +139,10 @@ FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(ptr<Location> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
 {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot regenerate a location that is being destroyed", self->GetId());
+    }
+
     vector<ptr<Map>> maps = self->GetMaps();
 
     for (ptr<Map> map : maps) {

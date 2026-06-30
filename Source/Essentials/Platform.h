@@ -53,6 +53,7 @@ struct Platform
     {
         vector<CpuUsageCoreSnapshot> Cores {};
         uint64_t ProcessTimeNs {};
+        uint32_t LogicalCoreCount {};
     };
 
     // Windows: OutputDebugStringW
@@ -99,11 +100,12 @@ struct Platform
     // Other: 0
     static auto GetProcessPrivateMemoryUsage() noexcept -> size_t;
 
-    // Cumulative CPU counters for the current process and each logical CPU core.
-    // Percent usage is calculated by comparing two snapshots.
-    // Windows: GetProcessTimes + NtQuerySystemInformation(SystemProcessorPerformanceInformation)
-    // Linux & Android: /proc/stat + /proc/self/stat
-    // Mac: host_processor_info(PROCESSOR_CPU_LOAD_INFO) + task_info(MACH_TASK_BASIC_INFO)
+    // Cumulative CPU counters for the current process, plus per-core counters where the OS exposes them
+    // through a documented API. Percent usage is calculated by comparing two snapshots. LogicalCoreCount is
+    // the logical-CPU count for normalization (always set, even when Cores holds only a system-wide aggregate).
+    // Windows: GetProcessTimes + GetSystemTimes (system-wide aggregate) + GetActiveProcessorCount
+    // Linux & Android: /proc/stat (per-core) + /proc/self/stat
+    // Mac: host_processor_info(PROCESSOR_CPU_LOAD_INFO) (per-core) + task_info(MACH_TASK_BASIC_INFO)
     // Other: empty snapshot
     static auto GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot;
 

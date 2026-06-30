@@ -67,48 +67,16 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _name;
-    }
-    [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _controlledCr.load(std::memory_order_acquire);
-    }
-    [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>
-    {
-        FO_NO_VALIDATE_ENTITY_ACCESS();
-        return _controlledCr.load(std::memory_order_acquire);
-    }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
+    [[nodiscard]] auto GetControlledCritter() noexcept -> nptr<Critter>;
+    [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
-    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSIS
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _connection.as_ptr();
-    }
-    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _connection.as_ptr();
-    }
-    [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _viewMap ? nptr<const ViewMapContext> {&*_viewMap} : nullptr;
-    }
-    [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _viewMapTarget;
-    }
-    [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>
-    {
-        FO_VALIDATE_ENTITY_ACCESS();
-        return _viewMapTarget;
-    }
+    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
+    [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
+    [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;
 
     void SetName(string_view name);
     void SetControlledCritter(nptr<Critter> cr);

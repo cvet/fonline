@@ -67,7 +67,6 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_mouseButtonsDown);
     ignore_unused(_imguiDrawBuf);
     ignore_unused(_imguiEffect);
-    ignore_unused(_nonConstHelper);
     ignore_unused(MainWindow._grabbed);
 
     _ctx->HeadlessRenderer.Init(Settings, nullptr);
@@ -110,8 +109,6 @@ void Application::OpenLink(string_view link)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(link);
 }
 
@@ -119,16 +116,12 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(resources);
 }
 
 auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppWindow>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (size.width <= 0 || size.height <= 0) {
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
@@ -154,7 +147,6 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     ptr<AppWindow> main_window = &MainWindow;
 
@@ -188,7 +180,6 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     if (!window) {
         ptr<AppWindow> main_window = &MainWindow;
@@ -203,7 +194,6 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
 
@@ -251,8 +241,6 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
 void Application::SyncMainWindowBackbufferSize()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 }
 
 auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
@@ -275,7 +263,6 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     if (!window->_isVirtual) {
         _currentRenderingWindow = window;
@@ -303,7 +290,6 @@ void Application::EndWindowRender()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     if (!_currentRenderingWindow) {
         return;
@@ -351,7 +337,6 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     unique_ptr<HeadlessWindowStub> handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
     handle->Size = size;
@@ -396,8 +381,6 @@ auto Application::FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(finger_id);
 
     return nullptr;
@@ -406,8 +389,6 @@ auto Application::FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 auto Application::FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(finger_id);
 
@@ -418,8 +399,6 @@ auto Application::AcquireTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(finger_id);
 
     return nullptr;
@@ -429,23 +408,17 @@ void Application::ReleaseTouchPoint(int64_t finger_id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(finger_id);
 }
 
 void Application::ResetTouchGestures()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 }
 
 void Application::QueueTouchTap(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(pos);
 }
@@ -454,16 +427,12 @@ void Application::QueueTouchDoubleTap(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(pos);
 }
 
 void Application::QueueTouchScroll(ipos32 pos, ipos32 delta)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(pos);
     ignore_unused(delta);
@@ -473,8 +442,6 @@ void Application::QueueTouchZoom(ipos32 pos, float32_t factor)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(pos);
     ignore_unused(factor);
 }
@@ -482,8 +449,6 @@ void Application::QueueTouchZoom(ipos32 pos, float32_t factor)
 void Application::FlushPendingTouchTap()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 }
 
 #if FO_IOS
@@ -513,6 +478,13 @@ void Application::EndFrame()
 #if FO_TRACY
     FrameMark;
 #endif
+}
+
+auto Application::IsHeadless() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return true;
 }
 
 void Application::RequestQuit(bool success) noexcept
@@ -556,8 +528,6 @@ void AppWindow::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         _virtualSize = size;
         _onWindowSizeChangedDispatcher();
@@ -582,8 +552,6 @@ auto AppWindow::GetScreenSize() const -> isize32
 void AppWindow::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         if (size != _virtualScreenSize) {
@@ -615,8 +583,6 @@ void AppWindow::SetPosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         _virtualPosition = pos;
         return;
@@ -640,8 +606,6 @@ void AppWindow::Minimize()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         return;
     }
@@ -664,8 +628,6 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     if (_isVirtual) {
         ignore_unused(enable);
         return false;
@@ -683,15 +645,11 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
 void AppWindow::Blink()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 }
 
 void AppWindow::AlwaysOnTop(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         return;
@@ -704,8 +662,6 @@ void AppWindow::SetTitle(string_view title)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     _title = string {title};
 }
 
@@ -713,16 +669,12 @@ void AppWindow::GrabInput(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(enable);
 }
 
 void AppWindow::Destroy()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     if (_isVirtual) {
         ptr<AppWindow> window = this;
@@ -762,7 +714,6 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->HeadlessRenderer.CreateTexture(size, linear_filtered, with_depth);
 }
@@ -770,8 +721,6 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     _app->_ctx->HeadlessRenderTarget = tex;
     _app->_ctx->HeadlessRenderer.SetRenderTarget(tex);
@@ -781,7 +730,6 @@ auto AppRender::GetRenderTarget() -> nptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->HeadlessRenderTarget;
 }
@@ -790,7 +738,6 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     _app->_ctx->HeadlessRenderer.ClearRenderTarget(color, depth, stencil);
 }
@@ -799,7 +746,6 @@ void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     _app->_ctx->HeadlessRenderer.EnableScissor(rect);
 }
@@ -808,7 +754,6 @@ void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     _app->_ctx->HeadlessRenderer.DisableScissor();
 }
@@ -817,7 +762,6 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
@@ -826,7 +770,6 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
 
     return _app->_ctx->HeadlessRenderer.CreateEffect(usage, name, loader);
 }
@@ -884,8 +827,6 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(pos);
     ignore_unused(relative_to);
 }
@@ -893,8 +834,6 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
 auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(ev);
 
@@ -904,15 +843,11 @@ auto AppInput::PollEvent(InputEvent& ev) -> bool
 void AppInput::ClearEvents()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 }
 
 void AppInput::PushEvent(const InputEvent& ev, bool push_to_this_frame)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(ev);
     ignore_unused(push_to_this_frame);
@@ -922,16 +857,12 @@ void AppInput::SetScreenKeyboardEnabled(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(enabled);
 }
 
 void AppInput::SetClipboardText(string_view text)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(text);
 }
@@ -954,8 +885,6 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     [[maybe_unused]] auto unused = std::move(stream_callback);
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
@@ -964,8 +893,6 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
 auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     ignore_unused(format);
     ignore_unused(channels);
@@ -981,8 +908,6 @@ void AppAudio::MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t v
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     ignore_unused(output);
     ignore_unused(buf);
     ignore_unused(volume);
@@ -994,16 +919,12 @@ void AppAudio::LockDevice()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
 void AppAudio::UnlockDevice()
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }

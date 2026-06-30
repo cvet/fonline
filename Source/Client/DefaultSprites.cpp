@@ -458,14 +458,16 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     const auto height = reader.GetLEUInt16();
                     const auto nx = reader.GetLEInt16();
                     const auto ny = reader.GetLEInt16();
-                    const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(width) * height * sizeof(ucolor));
-                    FO_VERIFY_AND_THROW(!data.empty(), "Sprite file frame contains no pixel data");
-                    ptr<const uint8_t> data_ptr = data.data();
+
+                    const auto pixel_count = numeric_cast<size_t>(width) * height;
+                    vector<ucolor> pixels(pixel_count);
+                    MemCopy(pixels.data(), reader.GetCurBuf().get(), pixel_count * sizeof(ucolor));
+                    reader.GoForward(pixel_count * sizeof(ucolor));
 
                     dir_anim->_sprOffset[j].x = nx;
                     dir_anim->_sprOffset[j].y = ny;
 
-                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, data_ptr.reinterpret_as<const ucolor>());
+                    auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
 
                     if (j == 0) {
                         dir_anim->_size.width = width;
@@ -473,8 +475,6 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
                     }
 
                     dir_anim->_spr[j] = std::move(spr);
-
-                    reader.GoForward(data.size());
                 }
                 else {
                     const auto index = reader.GetLEUInt16();
@@ -501,16 +501,16 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         const auto height = reader.GetLEUInt16();
         const auto nx = reader.GetLEInt16();
         const auto ny = reader.GetLEInt16();
-        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(width) * height * sizeof(ucolor));
-        FO_VERIFY_AND_THROW(!data.empty(), "Sprite file frame contains no pixel data");
-        ptr<const uint8_t> data_ptr = data.data();
 
         ignore_unused(nx);
         ignore_unused(ny);
 
-        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, data_ptr.reinterpret_as<const ucolor>());
+        const auto pixel_count = numeric_cast<size_t>(width) * height;
+        vector<ucolor> pixels(pixel_count);
+        MemCopy(pixels.data(), reader.GetCurBuf().get(), pixel_count * sizeof(ucolor));
+        reader.GoForward(pixel_count * sizeof(ucolor));
 
-        reader.GoForward(data.size());
+        auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
 
         const auto check_number2 = reader.GetUInt8();
         FO_VERIFY_AND_THROW(check_number2 == 42, "Sprite file frame magic is invalid", check_number2);

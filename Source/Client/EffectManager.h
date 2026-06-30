@@ -83,6 +83,8 @@ struct EffectCollection
     nptr<RenderEffect> TileDefault {};
     nptr<RenderEffect> Roof {};
     nptr<RenderEffect> RoofDefault {};
+    nptr<RenderEffect> Flat {};
+    nptr<RenderEffect> FlatDefault {};
     nptr<RenderEffect> Rain {};
     nptr<RenderEffect> RainDefault {};
     nptr<RenderEffect> Iface {};
