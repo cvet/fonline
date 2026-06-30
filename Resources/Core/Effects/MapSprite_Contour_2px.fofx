@@ -1,3 +1,8 @@
+# MapSprite_Contour_2px — entity selection-outline (contour) shader.
+# Where: the entity selection-outline (contour) effect — dilates a sprite's silhouette into a ~2px highlight rim.
+# How: fragment dilates the sprite's opaque silhouette by taking the max texture alpha across the centre plus eight ~2px-offset samples, each clamped to the sprite's own atlas rect (SpriteBorder) so the dilation never bleeds into a neighbouring atlas sprite; it then outputs a flat solid contour colour (read as .bgr to match the offscreen-sprite path) with the dilated alpha, discarding near-zero alpha. Drawn with padding so the sprite is re-drawn on top, leaving only the rim. Depth test Always.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthFunc = Always
 SpriteBorderBuf = 1

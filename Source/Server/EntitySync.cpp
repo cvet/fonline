@@ -505,9 +505,7 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> {
-        return e.try_hold_ref();
-    };
+    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
     const auto lock_state = [](nptr<const EntityLock> lock) -> string_view {
         if (lock == nullptr) {
@@ -559,9 +557,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
         return true;
     }
 
-    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> {
-        return e.try_hold_ref();
-    };
+    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
     const auto chain_covers = [&try_hold_entity](nptr<const ServerEntity> start) -> bool {
         for (auto current = try_hold_entity(start); current; current = current->GetParentRaw()) {

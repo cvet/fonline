@@ -123,7 +123,6 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
 {
     FO_STACK_TRACE_ENTRY();
 
-
     auto tex_size = size;
     tex_size.width = std::max(tex_size.width, 1);
     tex_size.height = std::max(tex_size.height, 1);

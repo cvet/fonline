@@ -4259,7 +4259,6 @@ void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-
     auto cur_map = GetCurMapPtr();
 
     if (!cur_map->GetSize().is_valid_pos(hex)) {

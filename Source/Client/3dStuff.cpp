@@ -1523,7 +1523,6 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
 {
     FO_STACK_TRACE_ENTRY();
 
-
     ptr<MeshData> mesh_data = mesh_instance->Mesh.get_no_const();
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;

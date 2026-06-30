@@ -1,3 +1,8 @@
+# 3D_Skinned — skinned 3D model shader with a drop shadow.
+# Where: engine default for the SkinnedModel slot (3D skinned models); two passes (drop-shadow + textured shading).
+# How: both passes skin the mesh by blending up to four bone matrices per vertex. Pass1 (shadow) projects the skinned position onto the ground plane using the fixed camera/shadow angle constants and writes a flat black, texture-alpha-masked silhouette. Pass2 shades with a simple Lambert term (clamped to a minimum light power) against a constant light direction and samples MainTex; both passes discard near-zero alpha. Depth test LessEqual.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 Passes = 2
 ShadowPass = 1

@@ -223,10 +223,10 @@ auto net_sockets::last_error_text() noexcept -> string
 
     auto ws = nullable_ws.as_ptr();
     auto ws_holder = unique_del_ptr<wchar_t> {ws.get_no_const(), [](ptr<wchar_t> text) {
-        FO_STACK_TRACE_ENTRY();
+                                                  FO_STACK_TRACE_ENTRY();
 
-        (void)::LocalFree(static_cast<HLOCAL>(text.get_no_const()));
-    }};
+                                                  (void)::LocalFree(static_cast<HLOCAL>(text.get_no_const()));
+                                              }};
     ptr<const wchar_t> ws_const = ws;
     const string error_str = strex().parse_wide_char(ws_const).trim();
 

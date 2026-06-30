@@ -147,7 +147,6 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 {
     FO_STACK_TRACE_ENTRY();
 
-
     ptr<AppWindow> main_window = &MainWindow;
 
     if (!nullable_window || nullable_window == main_window) {
@@ -180,7 +179,6 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-
     if (!window) {
         ptr<AppWindow> main_window = &MainWindow;
         _activeWindow = main_window;
@@ -193,7 +191,6 @@ void Application::SetActiveWindow(nptr<AppWindow> window)
 void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
-
 
     FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
 
@@ -263,7 +260,6 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-
     if (!window->_isVirtual) {
         _currentRenderingWindow = window;
         return;
@@ -289,7 +285,6 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
 void Application::EndWindowRender()
 {
     FO_STACK_TRACE_ENTRY();
-
 
     if (!_currentRenderingWindow) {
         return;
@@ -336,7 +331,6 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
 auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle>
 {
     FO_STACK_TRACE_ENTRY();
-
 
     unique_ptr<HeadlessWindowStub> handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
     handle->Size = size;
@@ -714,7 +708,6 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 {
     FO_STACK_TRACE_ENTRY();
 
-
     return _app->_ctx->HeadlessRenderer.CreateTexture(size, linear_filtered, with_depth);
 }
 
@@ -730,14 +723,12 @@ auto AppRender::GetRenderTarget() -> nptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-
     return _app->_ctx->HeadlessRenderTarget;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     FO_STACK_TRACE_ENTRY();
-
 
     _app->_ctx->HeadlessRenderer.ClearRenderTarget(color, depth, stencil);
 }
@@ -746,14 +737,12 @@ void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-
     _app->_ctx->HeadlessRenderer.EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
-
 
     _app->_ctx->HeadlessRenderer.DisableScissor();
 }
@@ -762,14 +751,12 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-
     return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
 
 auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
-
 
     return _app->_ctx->HeadlessRenderer.CreateEffect(usage, name, loader);
 }

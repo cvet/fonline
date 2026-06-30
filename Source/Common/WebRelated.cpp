@@ -352,12 +352,12 @@ extern "C"
         FO_NO_STACK_TRACE_ENTRY();
 
         FO_NAMESPACE unique_del_ptr<char> owned_text {text, [](FO_NAMESPACE nptr<char> owned) {
-            FO_NO_STACK_TRACE_ENTRY();
+                                                          FO_NO_STACK_TRACE_ENTRY();
 
-            if (owned) {
-                std::free(owned.get());
-            }
-        }};
+                                                          if (owned) {
+                                                              std::free(owned.get());
+                                                          }
+                                                      }};
         Emscripten_InjectPasteText(owned_text.get());
     }
 

@@ -299,7 +299,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    ptr<integer_t> task_info_data = ptr<decltype(info)>{&info}.reinterpret_as<integer_t>();
+    ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
     if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
     }
@@ -316,7 +316,7 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS_EX pmc {};
-    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)>{&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)> {&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
 
     if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
         return pmc.PrivateUsage;
@@ -540,7 +540,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};
         mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-        ptr<integer_t> task_info_data = ptr<decltype(info)>{&info}.reinterpret_as<integer_t>();
+        ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
 
         if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
             return 0;

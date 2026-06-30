@@ -1,3 +1,8 @@
+# 2D_Default — textured-sprite shader with the "egg" transparency reveal.
+# Where: engine default for the Font, Iface, Generic, Critter and Rain QuadSprite draw slots (the main textured-sprite shader); includes the "egg" transparency reveal that fades sprites occluding a focal point.
+# How: vertex transforms the sprite by the projection matrix and forwards colour, UV, egg flags and screen position; fragment samples MainTex, multiplies by vertex colour with a 2x brightness scale, and where the egg flag is set scales alpha by a radial falloff around the egg centre so occluding sprites fade out; near-zero alpha is discarded. Depth test LessEqual.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthFunc = LessEqual
 

@@ -1,3 +1,8 @@
+# 2D_NoDepth — depth-inert textured-sprite shader with the "egg" transparency reveal.
+# Where: engine default for the Roof, Tile and Flat QuadSprite slots (depth-inert background sprites); same as 2D_Default but with depth test/write disabled.
+# How: identical sprite path to 2D_Default — transform, sample MainTex, 2x colour multiply, radial egg-alpha falloff for occluding sprites, near-zero alpha discard — but with DepthWrite off and DepthFunc Always so background sprites never test or write depth.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 DepthWrite = False
 DepthFunc = Always

@@ -414,7 +414,6 @@ template<std::ranges::range T>
     }
 }
 
-
 template<typename T>
     requires(!std::is_void_v<T>)
 [[nodiscard]] FO_FORCE_INLINE auto make_span(T* data, size_t byte_size) noexcept -> span<std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>>

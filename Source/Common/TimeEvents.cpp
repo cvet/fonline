@@ -157,7 +157,6 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
 {
     FO_STACK_TRACE_ENTRY();
 
-
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     struct ResubmitInfo
@@ -217,7 +216,6 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
 void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id)
 {
     FO_STACK_TRACE_ENTRY();
-
 
     FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 

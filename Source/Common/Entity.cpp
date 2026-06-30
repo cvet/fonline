@@ -195,7 +195,6 @@ void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallb
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
 
-
     if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
         throw GenericException("Highest callback already added");
     }
@@ -215,7 +214,6 @@ void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallb
 void Entity::UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
-
 
     if (const auto it = std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks->end()) {
         callbacks->erase(it);

@@ -253,13 +253,13 @@ static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_p
     FO_NO_STACK_TRACE_ENTRY();
 
     return unique_del_ptr<SDL_Window> {window.get_no_const(), [](SDL_Window* raw_window) {
-        FO_NO_STACK_TRACE_ENTRY();
+                                           FO_NO_STACK_TRACE_ENTRY();
 
-        if (raw_window != nullptr) {
-            ptr<SDL_Window> window = raw_window;
-            SDL_DestroyWindow(window.get());
-        }
-    }};
+                                           if (raw_window != nullptr) {
+                                               ptr<SDL_Window> window = raw_window;
+                                               SDL_DestroyWindow(window.get());
+                                           }
+                                       }};
 }
 
 static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique_del_ptr<SDL_Renderer>
@@ -267,13 +267,13 @@ static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique
     FO_NO_STACK_TRACE_ENTRY();
 
     return unique_del_ptr<SDL_Renderer> {renderer.get_no_const(), [](SDL_Renderer* raw_renderer) {
-        FO_NO_STACK_TRACE_ENTRY();
+                                             FO_NO_STACK_TRACE_ENTRY();
 
-        if (raw_renderer != nullptr) {
-            ptr<SDL_Renderer> renderer = raw_renderer;
-            SDL_DestroyRenderer(renderer.get());
-        }
-    }};
+                                             if (raw_renderer != nullptr) {
+                                                 ptr<SDL_Renderer> renderer = raw_renderer;
+                                                 SDL_DestroyRenderer(renderer.get());
+                                             }
+                                         }};
 }
 
 struct TemporarySdlWindowRenderer
