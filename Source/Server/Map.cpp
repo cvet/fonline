@@ -1013,7 +1013,6 @@ void Map::RecacheHexFlags(Field& field)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    FO_NON_CONST_METHOD_HINT();
 
     field.HasCritter = !field.Critters.empty();
     field.HasTriggerItem = false;
