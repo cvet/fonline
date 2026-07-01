@@ -71,7 +71,40 @@ inline bool tryEnter() { return true; }
 #define ACQUIRESHARED(x)           x.AcquireShared()
 #define RELEASESHARED(x)           x.ReleaseShared()
 
-#ifdef AS_POSIX_THREADS
+#if defined(AS_MODERN_THREADS) // (FOnline Patch): standard C++ mutexes instead of pthread/WinAPI
+
+END_AS_NAMESPACE
+#include <mutex>
+#include <shared_mutex>
+BEGIN_AS_NAMESPACE
+
+class asCThreadCriticalSection
+{
+public:
+	void Enter() { cs.lock(); }
+	void Leave() { cs.unlock(); }
+	bool TryEnter() { return cs.try_lock(); }
+
+protected:
+	std::mutex cs;
+};
+
+class asCThreadReadWriteLock
+{
+public:
+	void AcquireExclusive() { lock.lock(); }
+	void ReleaseExclusive() { lock.unlock(); }
+	bool TryAcquireExclusive() { return lock.try_lock(); }
+
+	void AcquireShared() { lock.lock_shared(); }
+	void ReleaseShared() { lock.unlock_shared(); }
+	bool TryAcquireShared() { return lock.try_lock_shared(); }
+
+protected:
+	std::shared_mutex lock;
+};
+
+#elif defined(AS_POSIX_THREADS)
 
 END_AS_NAMESPACE
 #include <pthread.h>

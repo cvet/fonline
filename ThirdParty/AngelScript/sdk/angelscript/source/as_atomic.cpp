@@ -82,7 +82,23 @@ asDWORD asCAtomic::atomicDec()
 //
 // The following code implements the atomicInc and atomicDec on different platforms
 //
-#if defined(AS_NO_THREADS) || defined(AS_NO_ATOMIC)
+#if defined(AS_MODERN_THREADS) // (FOnline Patch): standard C++ atomics via std::atomic_ref
+
+END_AS_NAMESPACE
+#include <atomic>
+BEGIN_AS_NAMESPACE
+
+int asAtomicInc(int &value)
+{
+	return std::atomic_ref<int>(value).fetch_add(1, std::memory_order_acq_rel) + 1;
+}
+
+int asAtomicDec(int &value)
+{
+	return std::atomic_ref<int>(value).fetch_sub(1, std::memory_order_acq_rel) - 1;
+}
+
+#elif defined(AS_NO_THREADS) || defined(AS_NO_ATOMIC)
 
 int asAtomicInc(int &value)
 {
