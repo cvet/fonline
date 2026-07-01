@@ -8,8 +8,8 @@
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptBaker.h"
-#include "ConfigFile.h"
 #include "ConfigBaker.h"
+#include "ConfigFile.h"
 #include "EffectBaker.h"
 #include "ImageBaker.h"
 #include "MapBaker.h"
@@ -248,8 +248,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = {}
 )",
-            output_dir,
-            RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -342,8 +341,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = {}
 )",
-            output_dir,
-            RawCopyBaker::NAME)
+            output_dir, RawCopyBaker::NAME)
             .str());
 
     settings.ApplyConfigFile(config, temp_dir);
@@ -400,8 +398,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = {}
 )",
-                output_dir,
-                RawCopyBaker::NAME)
+                output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -444,8 +441,7 @@ InputDirs = input
 RecursiveInput = true
 Bakers = {}
 )",
-                output_dir,
-                RawCopyBaker::NAME)
+                output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -481,8 +477,7 @@ InputDirs = missing
 RecursiveInput = true
 Bakers = {}
 )",
-                output_dir,
-                RawCopyBaker::NAME)
+                output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -520,8 +515,7 @@ Name = Core
 InputFiles = PackedInput.zip
 Bakers = {}
 )",
-                output_dir,
-                RawCopyBaker::NAME)
+                output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);
@@ -558,8 +552,7 @@ Name = Core
 InputFiles = BrokenInput.zip
 Bakers = {}
 )",
-                output_dir,
-                RawCopyBaker::NAME)
+                output_dir, RawCopyBaker::NAME)
                 .str());
 
         settings.ApplyConfigFile(config, temp_dir);

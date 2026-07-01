@@ -28,9 +28,7 @@ TEST_CASE("ProtoBaker")
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
-    const auto add_server_metadata = [](TestRig& local_rig) {
-        local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
-    };
+    const auto add_server_metadata = [](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); };
     const auto add_client_mapper_metadata = [](TestRig& local_rig) {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
@@ -64,9 +62,7 @@ TEST_CASE("ProtoBaker")
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
     const auto server_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-server"); };
-    const auto client_mapper_bake = [](string_view path, uint64_t) {
-        return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper");
-    };
+    const auto client_mapper_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client") || path.ends_with(".fopro-bin-mapper"); };
 
     SECTION("IgnoresNonProtoSourceFiles")
     {
