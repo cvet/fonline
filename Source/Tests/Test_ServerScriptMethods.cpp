@@ -502,7 +502,8 @@ namespace ScriptMethodsTest
             loose.MoveToHex(mpos(1, 1), 0, 1, AllowCritterMove);
             Game.DestroyCritter(loose);
             Game.DestroyLocation(loc);
-            return -12;
+            return -12;)"
+                    R"(
         }
         catch {
         }
@@ -930,7 +931,8 @@ namespace ScriptMethodsTest
         }
 
         Critter? owner = childByPid.GetCritter();
-        if (owner is null || owner.Id != cr.Id) {
+        if (owner is null || owner.Id != cr.Id) {)"
+                    R"(
             Game.DestroyCritter(cr);
             return -9;
         }
@@ -1371,7 +1373,8 @@ namespace ScriptMethodsTest
         cr.MakePersistent(was_persistent);
         if (cr.IsPersistent() != was_persistent) return -3;
 
-        Game.DestroyCritter(cr);
+        Game.DestroyCritter(cr);)"
+                    R"(
         return 0;
     }
 
@@ -1895,7 +1898,8 @@ namespace ScriptMethodsTest
 
     void TestDatabaseUpdateEmptyStringKeyThrows()
     {
-        Game.DbInsertRecord("test_strings".hstr(), "empty-update-key-record", {{"Name", "Alpha"}});
+        Game.DbInsertRecord("test_strings".hstr(), "empty-update-key-record", {{"Name", "Alpha"}});)"
+                    R"(
         Game.DbUpdateRecordString("test_strings".hstr(), "empty-update-key-record", "", "Beta");
     }
 
@@ -2601,7 +2605,8 @@ namespace ScriptMethodsTest
         return 0;
     }
 
-    bool ContainsEntity(array<Entity> entities, Entity target)
+    bool ContainsEntity(array<Entity> entities, Entity target))"
+                    R"(
     {
         for (uint i = 0; i < entities.length(); i++) {
             Entity? entity = entities[i];

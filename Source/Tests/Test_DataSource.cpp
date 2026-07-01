@@ -548,7 +548,7 @@ TEST_CASE("DataSource")
         });
         REQUIRE(fs_write_file(zip_path, zip_content));
 
-        const auto zip_pack = DataSource::MountPack(temp_dir, "Multi", false);
+        auto zip_pack = DataSource::MountPack(temp_dir, "Multi", false);
         REQUIRE(zip_pack);
 
         size_t size = 0;
@@ -578,6 +578,7 @@ TEST_CASE("DataSource")
         CHECK(write_time != 0);
         CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "two");
 
+        zip_pack.reset();
         CHECK(fs_remove_dir_tree(temp_dir));
     }
 

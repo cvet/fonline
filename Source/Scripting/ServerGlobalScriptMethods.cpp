@@ -1393,6 +1393,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     string log;
 
+    bool process_done = false;
+
     while (true) {
         while (true) {
             DWORD bytes = 0;
@@ -1412,8 +1414,15 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
             }
         }
 
-        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+        // Drain once more AFTER the process has exited: a fast command (e.g. `echo`) can write its
+        // whole output and terminate between the last peek and this check, leaving it buffered in the
+        // pipe. Breaking immediately on exit would lose that final output.
+        if (process_done) {
             break;
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            process_done = true;
         }
     }
 
