@@ -368,42 +368,4 @@ auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
     return result;
 }
 
-auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ValidateEntityAccess(cr);
-
-    const auto* proto = _engine->GetProtoItem(item_pid);
-
-    if (proto == nullptr) {
-        throw CritterManagerException("Item proto not found", item_pid);
-    }
-
-    if (proto->GetStackable()) {
-        for (auto& item : cr->GetInvItems()) {
-            if (item->GetProtoId() == item_pid) {
-                return item.get();
-            }
-        }
-    }
-    else {
-        Item* another_slot = nullptr;
-
-        for (auto& item : cr->GetInvItems()) {
-            if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
-                }
-
-                another_slot = item.get();
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
-}
-
 FO_END_NAMESPACE

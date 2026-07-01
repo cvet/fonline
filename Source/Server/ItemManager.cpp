@@ -557,7 +557,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
         return;
     }
 
-    auto* item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+    auto* item = cr->GetItemByPidInvPriority(pid);
 
     if (item == nullptr) {
         return;
@@ -575,7 +575,7 @@ void ItemManager::SubItemCritter(Critter* cr, hstring pid, int32_t count)
         for (int32_t i = 0; i < count; ++i) {
             DestroyItem(item);
 
-            item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+            item = cr->GetItemByPidInvPriority(pid);
 
             if (item == nullptr) {
                 break;

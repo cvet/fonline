@@ -38,9 +38,9 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto GetItemMap(Item* self) -> refcount_ptr<Map>;
-static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>;
-static auto GetItemCritter(Item* self) -> refcount_ptr<Critter>;
+static auto ResolveItemMap(Item* self) -> refcount_ptr<Map>;
+static auto ResolveItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>;
+static auto ResolveItemCritter(Item* self) -> refcount_ptr<Critter>;
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
@@ -100,21 +100,21 @@ FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId = any
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
 {
-    auto map = GetItemMap(self);
+    auto map = ResolveItemMap(self);
     return map.release_ownership();
 }
 
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
 {
-    auto map = GetItemMapPosition(self, hex);
+    auto map = ResolveItemMapPosition(self, hex);
     return map.release_ownership();
 }
 
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
 {
-    auto cr = GetItemCritter(self);
+    auto cr = ResolveItemCritter(self);
     return cr.release_ownership();
 }
 
@@ -129,7 +129,7 @@ FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
     }
 }
 
-static auto GetItemMap(Item* self) -> refcount_ptr<Map>
+static auto ResolveItemMap(Item* self) -> refcount_ptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -171,7 +171,7 @@ static auto GetItemMap(Item* self) -> refcount_ptr<Map>
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = GetItemMap(cont.get());
+        map = ResolveItemMap(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");
@@ -180,7 +180,7 @@ static auto GetItemMap(Item* self) -> refcount_ptr<Map>
     return map;
 }
 
-static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>
+static auto ResolveItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -227,7 +227,7 @@ static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = GetItemMapPosition(cont.get(), hex);
+        map = ResolveItemMapPosition(cont.get(), hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
@@ -236,7 +236,7 @@ static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>
     return map;
 }
 
-static auto GetItemCritter(Item* self) -> refcount_ptr<Critter>
+static auto ResolveItemCritter(Item* self) -> refcount_ptr<Critter>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -264,7 +264,7 @@ static auto GetItemCritter(Item* self) -> refcount_ptr<Critter>
             throw ScriptException("Container ownership, container not found");
         }
 
-        cr = GetItemCritter(cont.get());
+        cr = ResolveItemCritter(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");

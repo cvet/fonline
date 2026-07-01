@@ -490,13 +490,13 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ident_t it
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 {
-    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
+    return self->GetItemByPidInvPriority(protoId);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Critter_GetItem(Critter* self, ProtoItem* proto)
 {
-    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
+    return self->GetItemByPidInvPriority(proto->GetProtoId());
 }
 
 ///@ ExportMethod

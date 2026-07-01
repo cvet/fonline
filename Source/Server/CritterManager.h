@@ -65,7 +65,6 @@ public:
 
     [[nodiscard]] auto GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>;
     [[nodiscard]] auto GetPlayerCritters() -> vector<refcount_ptr<Critter>>;
-    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
 
     auto CreateCritterOnMap(hstring proto_id, const Properties* props, Map* map, mpos hex, mdir dir) -> Critter*;
     void DestroyCritter(Critter* cr);

@@ -77,6 +77,7 @@ public:
     [[nodiscard]] auto GetInvItems() noexcept -> vector<raw_ptr<Item>>;
     [[nodiscard]] auto GetInvItems() const noexcept -> vector<raw_ptr<const Item>>;
     [[nodiscard]] auto GetInvItemByPid(hstring item_pid) noexcept -> Item*;
+    [[nodiscard]] auto GetItemByPidInvPriority(hstring item_pid) -> Item*;
     [[nodiscard]] auto GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*;
     [[nodiscard]] auto CountInvItemByPid(hstring item_pid) const noexcept -> int32_t;
     [[nodiscard]] auto GetVisibleItems() const noexcept -> const unordered_set<ident_t>&;

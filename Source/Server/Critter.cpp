@@ -1031,6 +1031,42 @@ auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> Item*
     return nullptr;
 }
 
+auto Critter::GetItemByPidInvPriority(hstring item_pid) -> Item*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    const auto* proto = _engine->GetProtoItem(item_pid);
+    FO_VERIFY_AND_THROW(proto, "Item proto not found", item_pid);
+
+    if (proto->GetStackable()) {
+        for (auto& item : _invItems) {
+            if (item->GetProtoId() == item_pid) {
+                return item.get();
+            }
+        }
+    }
+    else {
+        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere.
+        Item* another_slot = nullptr;
+
+        for (auto& item : _invItems) {
+            if (item->GetProtoId() == item_pid) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
+                    return item.get();
+                }
+
+                another_slot = item.get();
+            }
+        }
+
+        return another_slot;
+    }
+
+    return nullptr;
+}
+
 auto Critter::GetInvItemBySlot(CritterItemSlot slot) noexcept -> Item*
 {
     FO_STACK_TRACE_ENTRY();
