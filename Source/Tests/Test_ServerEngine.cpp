@@ -1190,18 +1190,20 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
     CHECK(ctx.IsEmpty());
 
-    // Two siblings sharing a map escalate to the SINGLE map lock: their own locks are dropped, the
-    // map's own lock is held, and the hierarchy walk grants access to every critter on the map.
+    // Two siblings are locked INDIVIDUALLY — there is deliberately no sibling-to-parent escalation, so
+    // `Sync({cr_a, cr_b})` holds exactly those two critters' own locks. The shared map is only
+    // descendant-MARKED (not exclusively held), so the map itself is not accessible and an unrequested
+    // third sibling on the same map is NOT covered.
     {
         vector<ServerEntity*> both {cr_a, cr_b};
         ctx.SyncEntities(both);
-        CHECK(ctx.ValidateAccess(map)); // escalated → the map's own lock is held
-        CHECK_FALSE(ctx.ValidateAccess(cr_a)); // the siblings' own locks were dropped
-        CHECK_FALSE(ctx.ValidateAccess(cr_b));
-        CHECK(IsEntityAccessValid(cr_a)); // accessible via the map ancestor lock
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map's own lock is NOT held (only marked)
+        CHECK(ctx.ValidateAccess(cr_a)); // each requested sibling's own lock is held
+        CHECK(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a)); // covered by its own held lock
         CHECK(IsEntityAccessValid(cr_b));
-        CHECK(IsEntityAccessValid(cr_c)); // unrequested sibling, also covered by the map lock
-        CHECK(IsEntityAccessValid(map));
+        CHECK_FALSE(IsEntityAccessValid(cr_c)); // unrequested sibling: not covered (map only marked, not held)
+        CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
 
@@ -1406,43 +1408,40 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Duplicate-lock sibling-escalation regression: an inventory item and its holder share the
-    // holder's propagated lock, but the holder must still be considered explicitly. Otherwise
-    // Sync(item, holder, same-map-recipient) keeps only the two critter locks instead of escalating
-    // to the shared map, so a map-level verifier can race a partial stack split.
+    // No propagation, no escalation: Sync({item, holder, recipient}) holds each one's OWN lock — the item
+    // keeps its own lock (it does not share the holder's), and the two critters are NOT collapsed onto
+    // their shared map. Widening still adds each critter's Player. The shared map is only marked, not held.
     {
         vector<ServerEntity*> item_holder_recipient {item_a, cr_a, cr_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
-        CHECK(ctx.ValidateAccess(map)); // holder + recipient escalated to their shared map
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
         CHECK(ctx.ValidateAccess(player_a)); // widened from the requested holder
         CHECK(ctx.ValidateAccess(player_b)); // widened from the requested recipient
-        CHECK_FALSE(ctx.ValidateAccess(item_a)); // item's propagated holder lock was dropped
-        CHECK_FALSE(ctx.ValidateAccess(cr_a));
-        CHECK_FALSE(ctx.ValidateAccess(cr_b));
-        CHECK(IsEntityAccessValid(item_a)); // still covered through item -> holder -> map
+        CHECK(ctx.ValidateAccess(item_a)); // item's own lock is held
+        CHECK(ctx.ValidateAccess(cr_a)); // holder's own lock is held
+        CHECK(ctx.ValidateAccess(cr_b)); // recipient's own lock is held
+        CHECK(IsEntityAccessValid(item_a));
         CHECK(IsEntityAccessValid(cr_a));
         CHECK(IsEntityAccessValid(cr_b));
     }
     ctx.Release();
 
-    // Ancestor-coverage regression (the engine fix): syncing BOTH players widens each to its critter;
-    // the two critters share the map and escalate to the single map lock (their own locks dropped), so
-    // each widen target is now covered only by its ANCESTOR (map) lock, not its own. The verify-after-
-    // acquire step must accept that ancestor coverage; otherwise it re-walks and burns the retry budget,
-    // throwing EntitySyncException. This is the exact path the engine fix (widen re-check walks the
-    // parent chain) repaired.
+    // Syncing BOTH players widens each to its controlled critter. With no escalation those critters keep
+    // their OWN locks (not collapsed onto the shared map), so each is covered by its own held lock and the
+    // widen verify-after-acquire is satisfied directly. The shared map is only marked, so the map itself
+    // is not accessible.
     {
         vector<ServerEntity*> players {player_a, player_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
         CHECK(ctx.ValidateAccess(player_a)); // players' own locks held
         CHECK(ctx.ValidateAccess(player_b));
-        CHECK(ctx.ValidateAccess(map)); // critters escalated → the map's own lock is held
-        CHECK_FALSE(ctx.ValidateAccess(cr_a)); // the critters' own locks were dropped by escalation
-        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(ctx.ValidateAccess(cr_a)); // widened critters' own locks held
+        CHECK(ctx.ValidateAccess(cr_b));
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
         CHECK(IsEntityAccessValid(player_a));
-        CHECK(IsEntityAccessValid(cr_a)); // accessible via the map ancestor lock — the fix
+        CHECK(IsEntityAccessValid(cr_a));
         CHECK(IsEntityAccessValid(cr_b));
-        CHECK(IsEntityAccessValid(map));
+        CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
 }

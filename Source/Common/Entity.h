@@ -222,6 +222,7 @@ public:
     void AddRef() const noexcept;
     auto TryAddRef() const noexcept -> bool;
     void Release() const noexcept;
+    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     virtual void ValidateAccess() const { }
 
@@ -242,7 +243,6 @@ protected:
     virtual ~Entity();
 
     auto GetInitRef() noexcept -> Properties& { return _props; }
-    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
 protected:
     virtual auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;

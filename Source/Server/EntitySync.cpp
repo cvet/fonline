@@ -778,97 +778,22 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             }
         }
 
-        // Try to escalate: for each explicitly requested / widened entity, check if its parent's
-        // lock covers another entity in the set. Keep the entity list separate from
-        // lock_to_entity: inventory items can share a propagated lock with their holder, but the
-        // holder still has to participate in sibling escalation (item + holder + recipient).
-        vector<ServerEntity*> escalation_entities;
-        escalation_entities.reserve(lock_to_entity.size() + entities.size());
-
-        const auto add_escalation_entity = [&escalation_entities](ServerEntity* entity) {
-            if (entity != nullptr && std::ranges::find(escalation_entities, entity) == escalation_entities.end()) {
-                escalation_entities.emplace_back(entity);
-            }
-        };
-
-        for (auto* entity : entities) {
-            add_escalation_entity(entity);
-        }
-        for (auto& [lock, entity] : lock_to_entity) {
-            ignore_unused(lock);
-            add_escalation_entity(entity);
-        }
-
-        bool changed = true;
-
-        while (changed) {
-            changed = false;
-
-            // Gather entity pointers that still have a lock representative in the current cover.
-            vector<ServerEntity*> entries;
-            entries.reserve(escalation_entities.size());
-
-            for (auto* entity : escalation_entities) {
-                if (entity == nullptr) {
-                    continue;
-                }
-
-                auto* lock = entity->GetEntityLock();
-
-                if (lock != nullptr && lock_to_entity.count(lock) != 0) {
-                    entries.emplace_back(entity);
-                }
-            }
-
-            for (size_t i = 0; i < entries.size(); i++) {
-                for (size_t j = i + 1; j < entries.size(); j++) {
-                    // GetParentRaw — escalation runs while computing which locks to acquire, the
-                    // entries are not yet covered by any held lock so the validating GetParent
-                    // would throw. Snapshot here may be stale; the verify step below catches it.
-                    auto parent_i = entries[i]->GetParentRaw();
-                    auto parent_j = entries[j]->GetParentRaw();
-
-                    if (parent_i && parent_j && parent_i == parent_j) {
-                        auto* parent_lock = parent_i->GetEntityLock();
-
-                        if (parent_lock != nullptr) {
-                            auto* lock_i = entries[i]->GetEntityLock();
-                            auto* lock_j = entries[j]->GetEntityLock();
-
-                            if (parent_lock == lock_i && parent_lock == lock_j) {
-                                continue;
-                            }
-
-                            // Both entities share the same parent — escalate to parent lock
-                            lock_to_entity.erase(lock_i);
-                            lock_to_entity.erase(lock_j);
-                            lock_to_entity.emplace(parent_lock, parent_i.get());
-                            add_escalation_entity(parent_i.get());
-                            changed = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (changed) {
-                    break;
-                }
-            }
-        }
-
-        // Parent-cover reduction removed. When the caller asked for `Sync::Lock(cr, map)` — i.e.
-        // an entity and its own parent — we hold BOTH locks. Reducing cr's lock "because the
-        // parent map is already in the set" is unsafe under reparenting: MapManager::Transfer
-        // severs cr→map mid-call (RemoveCritterFromMap sets cr.MapId = {}) and then re-validates
-        // cr inside AddCritterToMap. With only the parent's lock held, that walk goes cr → null
-        // and fails. Holding cr's own lock survives the reparenting.
+        // We lock EXACTLY the requested entities (plus each one's sync-widen partner added above), and
+        // NOTHING else. There is deliberately NO sibling-to-parent escalation: if the caller asks to
+        // Sync {cr1, cr2}, we hold cr1's and cr2's OWN locks — we do NOT collapse two siblings onto their
+        // shared parent (map/location). Escalation used to do that (`Sync(cr1, cr2)` → `{map}`), but it
+        // left each sibling only *covered*, not exclusively held: a concurrent worker could then transiently
+        // hold that sibling's own lock (racing an `EnsureEntitySynced` expansion into it), and a per-item
+        // operation ended up running under a coarse map lock the caller never requested — coupling
+        // unrelated work and manufacturing contention out of thin air. Locking precisely the requested set
+        // keeps each entity exclusively held and genuinely uncontended, and is still deadlock-free (the
+        // acquire below takes the whole set in ascending-address order via the two-stage `AcquireLocks`).
+        // Holding N sibling locks instead of one ancestor lock is the intended trade — honour the caller's
+        // request and keep exclusivity, over minimising lock count.
         //
-        // The earlier sibling-to-parent escalation (Sync::Lock(cr1, cr2) → {map}) stays in place:
-        // there's no explicit child request to preserve, the caller asked for a generic "cover
-        // these siblings" and the escalation IS that cover. Code paths that Transfer one of those
-        // siblings from inside that context must explicitly include the moving entity in their
-        // own Sync::Lock call so its own lock is kept (matches the "if you Transfer it, lock it"
-        // convention already used by MapTransfer.fos).
+        // (Parent-cover *reduction* was already removed for a related reason: `Sync::Lock(cr, map)` holds
+        // BOTH cr's and the map's own lock, because `MapManager::Transfer` severs cr→map mid-call and
+        // re-validates cr, which needs cr's own lock — not merely the parent map's.)
 
         vector<EntityLock*> new_locks;
         vector<refcount_ptr<ServerEntity>> new_owners;
@@ -1077,20 +1002,21 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
         return;
     }
 
-    // No-op only if the entity's OWN lock is already held. Ancestor coverage is deliberately NOT enough
-    // here: callers use EnsureEntitySynced specifically before reparenting/detaching the entity, and a
-    // parent-chain lock stops covering it the instant it detaches — so the entity needs its OWN lock to
-    // remain accessible across the sever. The contract is that the entity is already covered or locked: when
-    // the caller has `Game.Sync`'d the enclosing subtree (the ancestor map/location), that ancestor's
-    // exclusive lock EXCLUDES every other thread from this entity, so the own-lock acquire below is
-    // uncontended and lands on the non-blocking fast path. If it is neither covered nor locked, the acquire
-    // below throws — an entity must be brought into scope in advance, not block-acquired here.
+    // No-op if the entity's OWN lock is already held: EnsureEntitySynced is idempotent across a
+    // transfer/cascade that pulls the same entity in more than once.
     if (lock->IsLockedByCurrentThread()) {
         return;
     }
 
-    // Collect this entity's separate-lock ancestors that we don't already hold exclusively or mark —
-    // taking the entity's lock under the hierarchical model also requires marking each such ancestor.
+    // EnsureEntitySynced is a pure NON-BLOCKING lock EXPANSION — never a release-and-reacquire. It pulls
+    // an entity that is already covered by a lock this thread holds (a locked ancestor on its parent
+    // chain, or a locked widen-linked entity) — or a freshly created, still-parentless entity — into our
+    // own held set, so we may then reparent or mutate it while our exclusive hold keeps every other thread
+    // out. We take its own lock plus a descendant-mark on each separate-lock ancestor between it and the
+    // cover, all NON-BLOCKING (`TryAcquire` / `TryRegisterDescendantHold`) in ascending-address order, so
+    // no wait-for cycle forms even though the new lock may sit *below* locks we already hold. We never
+    // release what we already hold, so a covered entity stays covered the whole time and cannot be moved
+    // out from under us.
     vector<EntityLock*> add_marks;
     vector<refcount_ptr<ServerEntity>> add_mark_owners;
 
@@ -1098,7 +1024,7 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
         auto* parent_lock = parent->GetEntityLock();
 
         if (parent_lock == nullptr || parent_lock == lock) {
-            continue; // no lock, or shares `entity`'s lock via propagation — not a separate ancestor
+            continue; // no lock, or shares `entity`'s lock — not a separate ancestor
         }
         if (std::ranges::find(_heldLocks, parent_lock) != _heldLocks.end()) {
             continue; // already covered exclusively
@@ -1114,105 +1040,63 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
         add_mark_owners.emplace_back(parent);
     }
 
-    // Fast path: take the new lock + its new ancestor marks WITHOUT releasing the held set. The new ops
-    // are TRIED (never blocked) in ascending-address order, so even though the new lock may sit *below*
-    // locks we already hold, we never WAIT out of order — no wait-for cycle can form. On any contention
-    // roll the prefix back and fall to the ordered union re-acquire below. This keeps repeated
-    // EnsureEntitySynced during a transfer/reparent cheap: without it, each call would release and
-    // re-acquire (and re-mark) the whole growing cover — O(n) churn that, under load, blows latency.
-    {
-        vector<pair<EntityLock*, bool>> ops; // bool = is-exclusive
-        ops.reserve(add_marks.size() + 1);
-        ops.emplace_back(lock, true);
+    vector<pair<EntityLock*, bool>> ops; // bool = is-exclusive
+    ops.reserve(add_marks.size() + 1);
+    ops.emplace_back(lock, true);
 
-        for (auto* mark : add_marks) {
-            ops.emplace_back(mark, false);
-        }
-
-        std::ranges::sort(ops, {}, &pair<EntityLock*, bool>::first);
-
-        size_t acquired = 0;
-
-        for (; acquired < ops.size(); acquired++) {
-            auto& [op_lock, is_exclusive] = ops[acquired];
-            const bool ok = is_exclusive ? op_lock->TryAcquire() : op_lock->TryRegisterDescendantHold();
-
-            if (!ok) {
-                break;
-            }
-        }
-
-        if (acquired == ops.size()) {
-            // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a
-            // propagated lock `entity` is a child that can be reverted/reparented out mid-hold, which
-            // would free the owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
-            _heldLocks.emplace_back(lock);
-            _heldLockOwners.emplace_back(FindLockOwner(entity, lock));
-
-            for (size_t i = 0; i < add_marks.size(); i++) {
-                _heldDescendantHolds.emplace_back(add_marks[i]);
-                _heldDescendantHoldOwners.emplace_back(std::move(add_mark_owners[i]));
-            }
-
-            return;
-        }
-
-        for (size_t i = 0; i < acquired; i++) {
-            if (ops[i].second) {
-                ops[i].first->Release();
-            }
-            else {
-                ops[i].first->UnregisterDescendantHold();
-            }
-        }
+    for (auto* mark : add_marks) {
+        ops.emplace_back(mark, false);
     }
 
-    // Fast path failed: the entity (or one of its ancestors) is contended. The contract is that an entity
-    // must already be **covered** (a held exclusive ancestor) or directly locked before EnsureEntitySynced
-    // is called — the caller's `Game.Sync` establishes the scope in advance. So decide by coverage:
-    //
-    //  - Covered by a held exclusive ancestor → we already own the subtree; the contention is a transient
-    //    concurrent acquisition (another thread grabbed this descendant before it blocks registering the
-    //    ancestor mark we hold). Resolve it with the ordered-fair re-acquire below (release the union and
-    //    re-take it in one ascending-address pass, which lets the other thread's mark through). This is the
-    //    only blocking acquisition besides `Game.Sync`, and it is bounded.
-    //  - NOT covered → the entity is not in our synced scope at all (the caller did not Sync it, or another
-    //    thread owns an ancestor). That is a contract violation; throw rather than silently block-acquire a
-    //    foreign entity.
-    bool covered_by_ancestor = false;
+    std::ranges::sort(ops, {}, &pair<EntityLock*, bool>::first);
 
-    for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
-        const auto* parent_lock = parent->GetEntityLock();
+    // Single NON-BLOCKING attempt — no release, no block, no retry loop. Because `SyncEntities` locks
+    // exactly the requested set (there is no sibling-to-parent escalation), the entity is covered by an
+    // ancestor this thread holds EXCLUSIVELY, which excludes every other thread from the whole subtree —
+    // so the entity's own lock and each intermediate ancestor mark are ours to take uncontended, and this
+    // lands on the first try. A miss can only mean the entity is not actually covered (a contract
+    // violation — the caller must `Game.Sync` its subtree in advance) or the rare case that a sibling is
+    // momentarily mid-acquire on an intermediate lock; either way we roll our prefix back and surface a
+    // retryable `EntitySyncException` for the outer `Sync`/operation to re-run rather than block-acquire.
+    size_t acquired = 0;
 
-        if (parent_lock != nullptr && parent_lock->IsLockedByCurrentThread()) {
-            covered_by_ancestor = true;
+    for (; acquired < ops.size(); acquired++) {
+        auto& [op_lock, is_exclusive] = ops[acquired];
+
+        if (!(is_exclusive ? op_lock->TryAcquire() : op_lock->TryRegisterDescendantHold())) {
             break;
         }
     }
 
-    if (!covered_by_ancestor) {
+    if (acquired == ops.size()) {
+        // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a shared/
+        // propagated lock `entity` is a child that could be reparented out mid-hold, which would free the
+        // owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
+        _heldLocks.emplace_back(lock);
+        _heldLockOwners.emplace_back(FindLockOwner(entity, lock));
+
+        for (size_t i = 0; i < add_marks.size(); i++) {
+            _heldDescendantHolds.emplace_back(add_marks[i]);
+            _heldDescendantHoldOwners.emplace_back(std::move(add_mark_owners[i]));
+        }
+
+        return;
+    }
+
+    for (size_t i = 0; i < acquired; i++) {
+        if (ops[i].second) {
+            ops[i].first->Release();
+        }
+        else {
+            ops[i].first->UnregisterDescendantHold();
+        }
+    }
+
+    if (!IsEntityAccessValid(entity, true)) {
         throw EntitySyncException("EnsureEntitySynced: entity is neither locked nor covered — its scope must be Sync'd in advance", entity->GetName(), entity->GetId());
     }
 
-    // Covered → resolve the transient contention. Rebuild the whole union and route it through
-    // `AcquireLocks`, whose stage-2 ordered-fair re-acquires it in one ascending-address pass without a
-    // cycle. The add_mark_owners are intact (the fast path moved them only in its committing branch).
-    vector<EntityLock*> union_locks = _heldLocks;
-    vector<refcount_ptr<ServerEntity>> union_owners = _heldLockOwners;
-    union_locks.emplace_back(lock);
-    union_owners.emplace_back(FindLockOwner(entity, lock));
-
-    vector<EntityLock*> union_holds = _heldDescendantHolds;
-    vector<refcount_ptr<ServerEntity>> union_hold_owners = _heldDescendantHoldOwners;
-
-    for (size_t i = 0; i < add_marks.size(); i++) {
-        union_holds.emplace_back(add_marks[i]);
-        union_hold_owners.emplace_back(std::move(add_mark_owners[i]));
-    }
-
-    ReleaseLocks();
-
-    AcquireLocks(union_locks, std::move(union_owners), union_holds, std::move(union_hold_owners));
+    throw EntitySyncException("EnsureEntitySynced: covered entity is momentarily contended — outer Sync retry", entity->GetName(), entity->GetId());
 }
 
 void SyncContext::Release() noexcept
@@ -1578,19 +1462,40 @@ void SyncContext::ReleaseLocks() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Release the exclusive cover FIRST, then the ancestor intention marks. A mark ("this thread holds
-    // a descendant of you") must outlive the descendant's exclusive hold: dropping a mark lets a parked
-    // thread take that ancestor exclusively, which is only safe once we no longer hold any descendant
-    // under it. Reversing the order would briefly let another thread own an ancestor while we still
-    // hold its descendant — the exact ancestor/descendant overlap the model forbids.
-    for (auto it = _heldLocks.rbegin(); it != _heldLocks.rend(); ++it) {
-        (*it)->Release();
+    // Release the exclusive cover, dropping each lock's owner pin in the SAME step and BEFORE handing
+    // the lock back, so no other thread can acquire an entity between our release of its lock and its
+    // destruction. Dropping a pin may be the final reference; the entity must not be destroyed while
+    // another thread holds/acquires its lock (that would free a `_mutex` under a concurrent `TryAcquire`).
+    //
+    // Key invariant: while we still hold the entity's OWN exclusive lock, its refcount is STABLE — no
+    // other thread can acquire that lock, reach the entity to look it up, or remove it from its
+    // container, since each of those needs the very lock we hold. So if our pin is the sole reference
+    // (`GetRefCount() == 1`) the entity is provably unreachable: destroy it now, still under the lock,
+    // and do NOT `Release()` the now-freed lock storage. Otherwise the entity outlives us (its container
+    // or an outer scope holds a ref) — hand its lock back and drop our pin. Process in reverse (children
+    // before parents) so destroying a child never dangles a still-listed parent.
+    //
+    // Marks are released afterwards, still last: a mark ("this thread holds a descendant of you") must
+    // outlive the descendant's exclusive hold, else a parked thread could take the ancestor exclusively
+    // while we still hold a descendant under it — the ancestor/descendant overlap the model forbids.
+    FO_STRONG_ASSERT(_heldLocks.size() == _heldLockOwners.size(), "Held lock/owner arrays desynchronized", _heldLocks.size(), _heldLockOwners.size());
+
+    for (size_t i = _heldLocks.size(); i-- > 0;) {
+        EntityLock* lock = _heldLocks[i];
+        ServerEntity* owner = _heldLockOwners[i].get();
+
+        if (owner != nullptr && owner->GetEntityLock() == lock && owner->GetRefCount() == 1) {
+            // Sole reference to an unreachable entity we still hold exclusively: destroy it under the
+            // lock. Its `_ownedLock` storage dies with it, so it must not be Release()d afterwards.
+            _heldLockOwners[i] = nullptr;
+        }
+        else {
+            lock->Release();
+            _heldLockOwners[i] = nullptr;
+        }
     }
 
     _heldLocks.clear();
-    // Releasing the owner refs may delete the owning entities; their `_ownedLock` storage is
-    // gone after this point, but `_heldLocks` is already empty, so dangling pointers can't be
-    // re-released by a subsequent SyncEntities call.
     _heldLockOwners.clear();
 
     for (auto it = _heldDescendantHolds.rbegin(); it != _heldDescendantHolds.rend(); ++it) {

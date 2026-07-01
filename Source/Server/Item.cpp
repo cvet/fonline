@@ -240,6 +240,10 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
 
         if (item_already != nullptr) {
+            if (item_already == item) {
+                return item;
+            }
+
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);

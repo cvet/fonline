@@ -52,6 +52,11 @@ class ServerEntity;
 // (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there.
 [[nodiscard]] auto IsEntityAccessValid(const ServerEntity* entity, bool diagnose = true) noexcept -> bool;
 
+// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
+// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
+// sync context (script/job execution) and throws if there is none.
+void EnsureEntitySynced(ServerEntity* entity);
+
 class EntityLock final
 {
 public:
@@ -269,10 +274,5 @@ public:
 private:
     SyncContext _ctx {};
 };
-
-// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
-// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
-// sync context (script/job execution) and throws if there is none.
-void EnsureEntitySynced(ServerEntity* entity);
 
 FO_END_NAMESPACE

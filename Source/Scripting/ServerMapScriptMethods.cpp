@@ -885,6 +885,8 @@ FO_SCRIPT_API int32_t Server_Map_GetPathLength(Map* self, Critter* cr, mpos toHe
         throw ScriptException("Invalid to hex args");
     }
 
+    ValidateEntityAccess(cr);
+
     function<bool(const Item*)> gag_callback;
 
     if (gagCallabck) {
@@ -1152,6 +1154,8 @@ FO_SCRIPT_API void Server_Map_VerifyTrigger(Map* self, Critter* cr, mpos hex, md
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
+
+    ValidateEntityAccess(cr);
 
     auto from_hex = hex;
 
