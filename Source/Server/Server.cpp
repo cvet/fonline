@@ -2155,6 +2155,7 @@ void ServerEngine::UnloadCritter(Critter* cr)
 
     FO_VERIFY_AND_THROW(cr, "Missing critter instance");
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
+    EnsureEntitySynced(cr);
 
     WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
 
@@ -2167,7 +2168,6 @@ void ServerEngine::UnloadCritter(Critter* cr)
 
     cr->MarkAsDestroying();
 
-    ValidateEntityAccess(cr);
     OnCritterUnload.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
@@ -2244,6 +2244,7 @@ void ServerEngine::UnloadCritterInnerEntities(Critter* cr)
     };
 
     for (auto* item : copy_hold_ref(cr->GetInvItems())) {
+        EnsureEntitySynced(item);
         unload_item(item);
         cr->RemoveItem(item);
     }
