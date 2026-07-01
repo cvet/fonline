@@ -477,7 +477,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
             refcount_nptr<Map> map_lookup = LoadMap(map_id, is_error);
 
             if (map_lookup) {
-                refcount_ptr<Map> map = map_lookup.take_not_null();
+                auto map = map_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(map->GetLocId() == loc->GetId(), "Loaded map belongs to a different location");
 
                 const auto loc_map_index = map->GetLocMapIndex();
@@ -561,7 +561,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
             refcount_nptr<Critter> cr_lookup = LoadCritter(cr_id, is_error);
 
             if (cr_lookup) {
-                refcount_ptr<Critter> cr = cr_lookup.take_not_null();
+                auto cr = cr_lookup.take_not_null();
                 cr->SetMapId(map->GetId());
                 FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
@@ -589,7 +589,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
             refcount_nptr<Item> item_lookup = LoadItem(item_id, is_error);
 
             if (item_lookup) {
-                refcount_ptr<Item> item = item_lookup.take_not_null();
+                auto item = item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
                 FO_VERIFY_AND_THROW(item->GetMapId() == map->GetId(), "Item belongs to a different map");
 
@@ -669,7 +669,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
             refcount_nptr<Item> inv_item_lookup = LoadItem(item_id, is_error);
 
             if (inv_item_lookup) {
-                refcount_ptr<Item> inv_item = inv_item_lookup.take_not_null();
+                auto inv_item = inv_item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(inv_item->GetOwnership() == ItemOwnership::CritterInventory, "Loaded critter inventory item has a non-inventory ownership state", inv_item->GetId(), cr->GetId(), inv_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inv_item->GetCritterId() == cr->GetId(), "Loaded inventory item belongs to a different critter");
 
@@ -745,7 +745,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
             refcount_nptr<Item> inner_item_lookup = LoadItem(inner_item_id, is_error);
 
             if (inner_item_lookup) {
-                refcount_ptr<Item> inner_item = inner_item_lookup.take_not_null();
+                auto inner_item = inner_item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(inner_item->GetOwnership() == ItemOwnership::ItemContainer, "Loaded container item has a non-container ownership state", inner_item->GetId(), item->GetId(), inner_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inner_item->GetContainerId() == item->GetId(), "Loaded inner item belongs to a different container");
 
@@ -825,7 +825,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
             refcount_nptr<CustomEntity> custom_entity_lookup = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
             if (custom_entity_lookup) {
-                refcount_ptr<CustomEntity> custom_entity = custom_entity_lookup.take_not_null();
+                auto custom_entity = custom_entity_lookup.take_not_null();
 
                 FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
 

@@ -1215,7 +1215,7 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
-    ptr<SyncContext> external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
+    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Activate();
     return true;
 }
@@ -1225,7 +1225,7 @@ void ServerEngine::Unlock()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
-    ptr<SyncContext> external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
+    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Release();
     external_lock_sync_ctx->Deactivate();
     ExternalLockSyncCtx.reset();
@@ -2198,7 +2198,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     bool is_error = false;
     refcount_nptr<Critter> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
-    nptr<Critter> nullable_cr = cr_holder.as_nptr();
+    auto nullable_cr = cr_holder.as_nptr();
 
     if (is_error) {
         if (nullable_cr) {

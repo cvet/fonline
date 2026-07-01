@@ -125,7 +125,7 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
         }
     }
 
-    ptr<const th_setup_info> setup_info = impl->SetupInfo.as_ptr();
+    auto setup_info = impl->SetupInfo.as_ptr();
     nptr<th_dec_ctx> decoder_context = th_decode_alloc(&impl->VideoInfo.Value, setup_info.get());
     FO_VERIFY_AND_THROW(decoder_context, "Theora decoder context allocation failed");
     impl->DecoderContext = make_unique_del_ptr(decoder_context.as_ptr(), [](th_dec_ctx* raw_decoder_context) noexcept {
