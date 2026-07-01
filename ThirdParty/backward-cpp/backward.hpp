@@ -4262,10 +4262,34 @@ public:
         success = false;
     }
 
+    // (FOnline Patch) Route std::terminate (an exception escaping a noexcept function
+    // or a thread, a re-thrown exception with no handler, etc.) through the crash
+    // reporter so the exception type/message and a stack trace reach the log. The
+    // default POSIX terminate handler only writes to stderr, which is discarded for a
+    // headless server, so without this the log gets only the follow-up SIGABRT.
+    std::set_terminate(&terminator);
+
     _loaded = success;
   }
 
   bool loaded() const { return _loaded; }
+
+  // (FOnline Patch)
+  static void terminator() {
+    SetCrashTerminationInfo("std::terminate");
+    SetCrashStackTrace();
+
+    StackTrace st;
+    st.load_here(32);
+
+    Printer printer;
+    printer.address = true;
+    printer.print(st, GetCrashStream());
+
+    // Report is already written and flushed synchronously; exit without re-entering the
+    // SIGABRT handler that abort() would trigger (which would overwrite the crash reason).
+    std::_Exit(EXIT_FAILURE);
+  }
 
   static void handleSignal(int signo, siginfo_t *info, void *_ctx) {
     SetCrashSignalInfo(signo, info != nullptr ? info->si_code : 0,

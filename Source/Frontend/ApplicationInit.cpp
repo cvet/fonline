@@ -35,6 +35,7 @@
 
 #include "CacheStorage.h"
 #include "ConfigFile.h"
+#include "DiagnosticSelfTest.h"
 #include "FileSystem.h"
 #include "WebRelated.h"
 
@@ -110,6 +111,10 @@ void InitApp(int32_t argc, char** argv, AppInitFlags flags)
     if (settings.AsyncLogWrite) {
         SetAsyncLogWriting(true);
     }
+
+    // Diagnostic self-test: with logging, the exception callback and the async-log mode all live, verify
+    // that crash diagnostics reach the log for the crash class named by FO_SELFTEST_CRASH. Inert otherwise.
+    DiagnosticSelfTest::RunIfRequested();
 
     // Project-side early init (before App frontend, after settings + exception/log callbacks)
     ApplicationInitHook(flags, settings);

@@ -200,6 +200,8 @@ void WorkThread::ThreadEntry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    InstallCrashHandlerStackForThisThread();
+
     try {
         while (true) {
             Job job;
