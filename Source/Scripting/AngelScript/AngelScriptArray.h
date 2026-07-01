@@ -133,8 +133,8 @@ private:
     int32_t _elementSize {};
     raw_ptr<ScriptArrayTypeData> _subTypeData {};
     vector<uint8_t> _buffer {};
-    mutable int32_t _refCount {1};
-    mutable bool _gcFlag {};
+    mutable std::atomic<int32_t> _refCount {1};
+    mutable std::atomic<bool> _gcFlag {};
 };
 
 void RegisterAngelScriptArray(AngelScript::asIScriptEngine* as_engine);
