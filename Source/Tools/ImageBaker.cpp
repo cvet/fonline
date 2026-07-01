@@ -1279,6 +1279,8 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
     FrameCollection collection;
 
     for (const auto dir : iterate_range(GameSettings::MAP_DIR_COUNT)) {
+        reader.SetCurPos(0);
+
         auto dir_spr = dir;
 
         if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {

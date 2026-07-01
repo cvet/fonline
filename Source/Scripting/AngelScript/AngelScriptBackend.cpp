@@ -207,6 +207,7 @@ void AngelScriptBackend::RegisterMetadata(EngineMetadata* meta)
     RegisterAngelScriptEnums(as_engine);
     RegisterAngelScriptTypes(as_engine);
     RegisterAngelScriptEntity(as_engine);
+    RegisterAngelScriptTypeProperties(as_engine);
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
 

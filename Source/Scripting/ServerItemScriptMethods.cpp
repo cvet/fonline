@@ -38,6 +38,10 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto GetItemMap(Item* self) -> refcount_ptr<Map>;
+static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>;
+static auto GetItemCritter(Item* self) -> refcount_ptr<Critter>;
+
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(Item* self, ScriptFunc<void, Item*, bool> initFunc)
 {
@@ -96,6 +100,39 @@ FO_SCRIPT_API vector<Item*> Server_Item_GetItems(Item* self, any_t stackId = any
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
 {
+    auto map = GetItemMap(self);
+    return map.release_ownership();
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+{
+    auto map = GetItemMapPosition(self, hex);
+    return map.release_ownership();
+}
+
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
+{
+    auto cr = GetItemCritter(self);
+    return cr.release_ownership();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
+{
+    if (self->GetOwnership() == ItemOwnership::MapHex) {
+        auto map = self->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
+        map->ChangeViewItem(self);
+        map->RecacheHexFlags(self->GetHex());
+    }
+}
+
+static auto GetItemMap(Item* self) -> refcount_ptr<Map>
+{
+    FO_STACK_TRACE_ENTRY();
+
     refcount_ptr<Map> map;
 
     switch (self->GetOwnership()) {
@@ -134,18 +171,19 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMap(Item* self)
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = Server_Item_GetMap(cont.get());
+        map = GetItemMap(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map.release_ownership();
+    return map;
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
+static auto GetItemMapPosition(Item* self, mpos& hex) -> refcount_ptr<Map>
 {
+    FO_STACK_TRACE_ENTRY();
+
     refcount_ptr<Map> map;
 
     switch (self->GetOwnership()) {
@@ -189,18 +227,19 @@ FO_SCRIPT_API FO_NULLABLE Map* Server_Item_GetMapPosition(Item* self, mpos& hex)
             throw ScriptException("Container ownership, container not found");
         }
 
-        map = Server_Item_GetMapPosition(cont.get(), hex);
+        map = GetItemMapPosition(cont.get(), hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return map.release_ownership();
+    return map;
 }
 
-///@ ExportMethod PassOwnership
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
+static auto GetItemCritter(Item* self) -> refcount_ptr<Critter>
 {
+    FO_STACK_TRACE_ENTRY();
+
     refcount_ptr<Critter> cr;
 
     switch (self->GetOwnership()) {
@@ -225,24 +264,13 @@ FO_SCRIPT_API FO_NULLABLE Critter* Server_Item_GetCritter(Item* self)
             throw ScriptException("Container ownership, container not found");
         }
 
-        cr = Server_Item_GetCritter(cont.get());
+        cr = GetItemCritter(cont.get());
     } break;
     default:
         throw ScriptException("Invalid ownership");
     }
 
-    return cr.release_ownership();
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Item_RefreshVisibility(Item* self)
-{
-    if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto map = self->GetParent<Map>();
-        FO_VERIFY_AND_THROW(map, "Missing map instance");
-        map->ChangeViewItem(self);
-        map->RecacheHexFlags(self->GetHex());
-    }
+    return cr;
 }
 
 FO_END_NAMESPACE

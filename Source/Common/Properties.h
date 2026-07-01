@@ -534,7 +534,7 @@ auto Properties::GetValue(const Property* prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
+    const auto hash = MemReadUnaligned<hstring::hash_t>(raw_data.data());
     auto result = ResolveHash(hash);
     return result;
 }
@@ -623,7 +623,8 @@ auto Properties::GetValue(const Property* prop) const -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
+                const auto hash = MemReadUnaligned<hstring::hash_t>(data);
+                const auto hvalue = ResolveHash(hash);
                 result.emplace_back(hvalue);
                 data += sizeof(hstring::hash_t);
             }
@@ -671,7 +672,7 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t), "Property raw hash data size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), raw_data.size());
-    const auto hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
+    const auto hash = MemReadUnaligned<hstring::hash_t>(raw_data.data());
     auto result = ResolveHash(hash, nullptr);
     return result;
 }
@@ -740,7 +741,8 @@ auto Properties::GetValueFast(const Property* prop) const noexcept -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
-                const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data), nullptr);
+                const auto hash = MemReadUnaligned<hstring::hash_t>(data);
+                const auto hvalue = ResolveHash(hash, nullptr);
                 result.emplace_back(hvalue);
                 data += sizeof(hstring::hash_t);
             }
@@ -843,7 +845,7 @@ void Properties::SetValue(const Property* prop, T new_value)
         const auto new_value_hash = new_value.as_hash();
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match assigned hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-        const auto cur_value_hash = *reinterpret_cast<const hstring::hash_t*>(raw_data.data());
+        const auto cur_value_hash = MemReadUnaligned<hstring::hash_t>(raw_data.data());
 
         if (new_value_hash != cur_value_hash) {
             if (!prop->_setters.empty() && _entity) {
