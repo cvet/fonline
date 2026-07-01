@@ -380,8 +380,7 @@ namespace EntityLifecycle
         writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            ptr<const uint8_t> props_data_ptr = props_data.data();
-            writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+            writer.WriteBytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -536,7 +535,7 @@ TEST_CASE("EntityInitEvents")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -804,7 +803,7 @@ TEST_CASE("EntityManagerCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -882,7 +881,7 @@ TEST_CASE("EntityManagerCppApi")
         const auto item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
         REQUIRE(found);
-        CHECK(found.as_nptr() == item);
+        CHECK(nptr<Item> {found} == item);
 
         server->ItemMngr.DestroyItem(item);
     }
@@ -894,7 +893,7 @@ TEST_CASE("EntityManagerCppApi")
         const auto loc_id = loc->GetId();
         auto found = server->EntityMngr.GetLocation(loc_id);
         REQUIRE(found);
-        CHECK(found.as_nptr() == loc);
+        CHECK(nptr<Location> {found} == loc);
 
         server->MapMngr.DestroyLocation(loc);
     }
@@ -941,7 +940,7 @@ TEST_CASE("CritterCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1066,7 +1065,7 @@ TEST_CASE("ItemCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1157,7 +1156,7 @@ TEST_CASE("LocationCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1217,7 +1216,7 @@ TEST_CASE("ServerHealthInfo")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1250,7 +1249,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1265,13 +1264,13 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("LoginPlayerToNewRecordAllocatesNonZeroId")
     {
-        auto player = CreateLoggedPlayer(server.as_ptr(), "TestPlayer1");
+        auto player = CreateLoggedPlayer(server, "TestPlayer1");
         CHECK(player->GetId() != ident_t {});
     }
 
     SECTION("LoginPlayerToNewRecordRegistersPlayer")
     {
-        auto player = CreateLoggedPlayer(server.as_ptr(), "Player1");
+        auto player = CreateLoggedPlayer(server, "Player1");
         auto registered_player = server->EntityMngr.GetPlayer(player->GetId());
         REQUIRE(registered_player);
         CHECK(registered_player.as_ptr() == player);
@@ -1279,8 +1278,8 @@ TEST_CASE("PlayerRegistrationCppApi")
 
     SECTION("LoginPlayerToNewRecordProducesUniqueIds")
     {
-        auto player1 = CreateLoggedPlayer(server.as_ptr(), "Player1");
-        auto player2 = CreateLoggedPlayer(server.as_ptr(), "Player2");
+        auto player1 = CreateLoggedPlayer(server, "Player1");
+        auto player2 = CreateLoggedPlayer(server, "Player2");
         CHECK(player1->GetId() != player2->GetId());
     }
 
@@ -1310,7 +1309,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerDestroyedAfterLoginDisconnectCalls"), destroyed_after_disconnect_calls));
         CHECK(destroyed_after_disconnect_calls == 0);
 
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 
         CHECK(server->EntityMngr.GetPlayersCount() == initial_player_count);
 
@@ -1339,7 +1338,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         player->GetConnection()->HardDisconnect();
 
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, initial_player_count] { return server->EntityMngr.GetPlayersCount() == initial_player_count; }, std::chrono::milliseconds {2000}));
 
         CHECK(server->EntityMngr.GetPlayersCount() == initial_player_count);
 
@@ -1354,7 +1353,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        auto player = CreateLoggedPlayer(server.as_ptr(), "InitialInfoDetach");
+        auto player = CreateLoggedPlayer(server, "InitialInfoDetach");
 
         auto prev_cr = server->CreateCritter(fn("TestCritter"), true);
         auto next_cr = server->CreateCritter(fn("TestCritter"), true);
@@ -1396,7 +1395,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func.Call());
 
         shared_ptr<TestNetworkConnection> test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
-        auto player = CreateLoggedPlayer(server.as_ptr(), test_connection, "StopMoveDetach");
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
         auto destroy_loc = scope_exit([&server, &loc]() noexcept {
@@ -1429,10 +1428,10 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func.Call(4));
 
         auto test_connection_ptr = test_connection.as_ptr();
-        SendStopCritterMove(test_connection_ptr, server.as_ptr(), map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
+        SendStopCritterMove(test_connection_ptr, server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
 
         int32_t dir_calls = 0;
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
         CHECK_FALSE(static_cast<bool>(cr->GetPlayer()));
@@ -1462,7 +1461,7 @@ TEST_CASE("CritterManagerCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1525,7 +1524,7 @@ TEST_CASE("ProtoAccessCppApi")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
@@ -1584,7 +1583,7 @@ TEST_CASE("ScriptFunctionCalls")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));

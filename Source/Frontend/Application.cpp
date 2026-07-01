@@ -79,7 +79,7 @@ const int32_t AppAudio::AUDIO_FORMAT_S16 {SDL_AUDIO_S16};
 static constexpr float32_t GAMEPAD_STICK_DEADZONE = 0.2f;
 static constexpr float32_t GAMEPAD_TRIGGER_DEADZONE = 0.15f;
 
-static auto GetActiveRenderer(auto ctx)
+static auto GetActiveRenderer(auto&& ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -497,7 +497,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("No renderer selected");
     }
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
 
     // Determine main window size
 #if FO_IOS || FO_ANDROID
@@ -664,9 +664,7 @@ Application::~Application()
     CloseGamepad();
 
     for (size_t i = 0; i != _childWindows.size(); ++i) {
-        auto window = _childWindows[i].as_ptr();
-
-        window->_virtualRenderTex.reset();
+        _childWindows[i]->_virtualRenderTex.reset();
     }
 
     _childWindows.clear();
@@ -711,7 +709,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     FO_STACK_TRACE_ENTRY();
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
         _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
             const auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
@@ -768,14 +766,14 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 
     std::erase_if(_allWindows, [&](auto&& entry) { return entry == window; });
 
-    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.as_ptr() == window; });
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.get() == window.get(); });
 
     if (it == _childWindows.end()) {
         return;
     }
 
     if (_activeWindow == window) {
-        _activeWindow = !_childWindows.empty() && !(_childWindows.front().as_nptr() == window) ? _childWindows.front().as_nptr() : main_window.as_nptr();
+        _activeWindow = !_childWindows.empty() && !(nptr<AppWindow> {_childWindows.front()} == window) ? nptr<AppWindow> {_childWindows.front()} : main_window.as_nptr();
     }
 
     if (_currentRenderingWindow == window) {
@@ -824,7 +822,7 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
     }
 
     if (recreate_texture) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
         window->_virtualRenderTex = active_renderer->CreateTexture(desired, true, true);
         auto virtual_render_tex = window->_virtualRenderTex.as_ptr();
         virtual_render_tex->FlippedHeight = active_renderer->IsRenderTargetFlipped();
@@ -897,7 +895,7 @@ void Application::SyncMainWindowBackbufferSize()
     const isize32 backbuffer_size = GetMainWindowBackbufferSize();
 
     if (backbuffer_size.width > 0 && backbuffer_size.height > 0) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
         active_renderer->OnResizeWindow(backbuffer_size);
     }
 }
@@ -1198,7 +1196,7 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     }
 
     ptr<Application> app = const_cast<Application*>(this);
-    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx);
     return WindowPosToScreenPos(active_renderer, {Settings.ScreenWidth, Settings.ScreenHeight}, {window_x, window_y});
 }
 
@@ -1255,7 +1253,7 @@ auto Application::AcquireTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<TouchPointState> existing_touch = FindTouchPoint(finger_id); existing_touch) {
+    if (auto existing_touch = FindTouchPoint(finger_id)) {
         return existing_touch;
     }
     if (!_touchPrimary.Active) {
@@ -1580,7 +1578,7 @@ void Application::BeginFrame()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
     active_renderer->ClearRenderTarget(_ctx->ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -1746,7 +1744,7 @@ void Application::BeginFrame()
                     QueueTouchDown(finger_id, touch_pos);
                 }
 
-                if (nptr<TouchPointState> nullable_other_touch = FindOtherTouchPoint(finger_id); nullable_other_touch) {
+                if (auto nullable_other_touch = FindOtherTouchPoint(finger_id)) {
                     auto other_touch = nullable_other_touch.as_ptr();
                     _touchPinchActive = true;
                     _touchTapSuppressed = true;
@@ -1826,7 +1824,7 @@ void Application::BeginFrame()
                     _touchLastPinchDistance = 0.0f;
                     _pendingTouchTap = {};
 
-                    if (nptr<TouchPointState> nullable_remaining_touch = FindOtherTouchPoint(finger_id); nullable_remaining_touch) {
+                    if (auto nullable_remaining_touch = FindOtherTouchPoint(finger_id)) {
                         auto remaining_touch = nullable_remaining_touch.as_ptr();
                         const auto cur_time = SDL_GetPerformanceCounter();
                         remaining_touch->StartPos = remaining_touch->LastPos;
@@ -2250,7 +2248,7 @@ void Application::EndFrame()
     }
 
     FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
 
     // Skip unprocessed events
     _ctx->EventsQueue.clear();
@@ -2276,7 +2274,7 @@ void Application::EndFrame()
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
                     const const_span<ucolor> tex_pixels {tex_data.get(), tex_pixels_count};
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
-                    im_tex->SetTexID(cast_to_void(font_tex.as_ptr().get()));
+                    im_tex->SetTexID(cast_to_void(font_tex.get()));
                     im_tex->SetStatus(ImTextureStatus_OK);
                     _imguiTextures.emplace_back(std::move(font_tex));
                 }
@@ -2721,7 +2719,7 @@ void AppWindow::Destroy()
         if (_windowHandle && this != &_app->MainWindow) {
             auto window_handle = _windowHandle.as_ptr();
             ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
-            std::erase_if(_app->_ctx->NullWindowStubs, [window_stub](const auto& entry) { return entry.as_ptr() == window_stub; });
+            std::erase_if(_app->_ctx->NullWindowStubs, [window_stub](const auto& entry) { return entry.get() == window_stub.get(); });
             _windowHandle = nullptr;
         }
 
@@ -2740,7 +2738,7 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
@@ -2755,14 +2753,14 @@ void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
             auto virt = nullable_virt.as_ptr();
 
             if (virt->IsVirtual()) {
-                if (nptr<RenderTexture> virt_tex = virt->GetRenderTexture(); virt_tex) {
+                if (auto virt_tex = virt->GetRenderTexture()) {
                     tex = virt_tex;
                 }
             }
         }
     }
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->SetRenderTarget(tex);
     _app->_ctx->RenderTargetTex = tex;
 }
@@ -2778,7 +2776,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->ClearRenderTarget(color, depth, stencil);
 }
 
@@ -2786,7 +2784,7 @@ void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->EnableScissor(rect);
 }
 
@@ -2794,7 +2792,7 @@ void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->DisableScissor();
 }
 
@@ -2802,7 +2800,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateDrawBuffer(is_static);
 }
 
@@ -2810,7 +2808,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateEffect(usage, name, loader);
 }
 
@@ -2818,7 +2816,7 @@ auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bot
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
@@ -2826,7 +2824,7 @@ auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->IsRenderTargetFlipped();
 }
 
@@ -2834,7 +2832,7 @@ auto AppRender::GetProjMatrix() const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<const Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->GetProjMatrix();
 }
 
@@ -2842,7 +2840,7 @@ void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->SetOrthoDepthRange(nearp, farp);
 }
 
@@ -2888,7 +2886,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     }
 
     ptr<Application> app {_app.get_no_const()};
-    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx.as_ptr());
+    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx);
     const auto host_pos = WindowPosToScreenPos(active_renderer, {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
     return GetApp()->TranslateHostPosToActiveWindow(host_pos);
 }
@@ -2911,7 +2909,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         const auto host_pos = _app->TranslateActiveWindowPosToHost(pos);
 
         if (relative_to) {
-            ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx.as_ptr());
+            ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
             const auto window_pos = ScreenPosToWindowPos(active_renderer, {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, host_pos);
 
             if (nptr<WindowInternalHandle> handle = relative_to->GetWindowHandleForInput(); handle) {
@@ -3047,12 +3045,10 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     }
 
     if (spec.format != _app->_ctx->AudioSpec.format || spec.channels != _app->_ctx->AudioSpec.channels || spec.freq != _app->_ctx->AudioSpec.freq) {
-        ptr<uint8_t> source_data = buf.data();
-
         nptr<uint8_t> nullable_dst_data {};
         int32_t dst_len {};
 
-        if (!SDL_ConvertAudioSamples(&spec, source_data.get(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, nullable_dst_data.get_pp(), &dst_len)) {
+        if (!SDL_ConvertAudioSamples(&spec, buf.data(), numeric_cast<int32_t>(buf.size()), &_app->_ctx->AudioSpec, nullable_dst_data.get_pp(), &dst_len)) {
             return false;
         }
 
@@ -3071,8 +3067,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
 
         if (!buf.empty()) {
             auto converted_data_ptr = converted_data.as_ptr();
-            ptr<uint8_t> buf_data = buf.data();
-            MemCopy(buf_data.get(), converted_data_ptr.get(), buf.size());
+            MemCopy(buf.data(), converted_data_ptr.get(), buf.size());
         }
     }
 

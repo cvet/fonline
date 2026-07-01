@@ -370,8 +370,8 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
     _typeInfo {other._typeInfo},
     _keyTypeId {_typeInfo->GetSubTypeId(0)},
     _valueTypeId {_typeInfo->GetSubTypeId(1)},
-    _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(_typeInfo.as_ptr(), 0))},
-    _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(_typeInfo.as_ptr(), 1))},
+    _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(_typeInfo, 0))},
+    _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(_typeInfo, 1))},
     _data {ScriptDictComparator(ptr<ScriptDict> {this})}
 {
     FO_STACK_TRACE_ENTRY();
@@ -559,13 +559,13 @@ void ScriptDict::Set(ptr<void> key, ptr<void> value)
     const auto it = _data.find(key.get());
 
     if (it == _data.end()) {
-        auto key_copy = CopyObject(_typeInfo.as_ptr(), 0, key);
-        auto value_copy = CopyObject(_typeInfo.as_ptr(), 1, value);
+        auto key_copy = CopyObject(_typeInfo, 0, key);
+        auto value_copy = CopyObject(_typeInfo, 1, value);
         _data.emplace(key_copy.get(), value_copy.get());
     }
     else {
-        DestroyObject(_typeInfo.as_ptr(), 1, it->second);
-        auto value_copy = CopyObject(_typeInfo.as_ptr(), 1, value);
+        DestroyObject(_typeInfo, 1, it->second);
+        auto value_copy = CopyObject(_typeInfo, 1, value);
         it->second = value_copy.get();
     }
 }
@@ -577,8 +577,8 @@ void ScriptDict::SetIfNotExist(ptr<void> key, ptr<void> value)
     const auto it = _data.find(key.get());
 
     if (it == _data.end()) {
-        auto key_copy = CopyObject(_typeInfo.as_ptr(), 0, key);
-        auto value_copy = CopyObject(_typeInfo.as_ptr(), 1, value);
+        auto key_copy = CopyObject(_typeInfo, 0, key);
+        auto value_copy = CopyObject(_typeInfo, 1, value);
         _data.emplace(key_copy.get(), value_copy.get());
     }
 }
@@ -590,8 +590,8 @@ auto ScriptDict::Remove(ptr<void> key) -> bool
     const auto it = _data.find(key.get());
 
     if (it != _data.end()) {
-        DestroyObject(_typeInfo.as_ptr(), 0, it->first);
-        DestroyObject(_typeInfo.as_ptr(), 1, it->second);
+        DestroyObject(_typeInfo, 0, it->first);
+        DestroyObject(_typeInfo, 1, it->second);
         _data.erase(it);
         return true;
     }
@@ -607,8 +607,8 @@ auto ScriptDict::RemoveValues(ptr<void> value) -> int32_t
 
     for (auto it = _data.begin(); it != _data.end();) {
         if (Equals(_valueTypeId, _valueTypeData, _typeInfo->GetEngine(), it->second, value)) {
-            DestroyObject(_typeInfo.as_ptr(), 0, it->first);
-            DestroyObject(_typeInfo.as_ptr(), 1, it->second);
+            DestroyObject(_typeInfo, 0, it->first);
+            DestroyObject(_typeInfo, 1, it->second);
             it = _data.erase(it);
             result++;
         }
@@ -625,8 +625,8 @@ void ScriptDict::Clear()
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& kv : _data) {
-        DestroyObject(_typeInfo.as_ptr(), 0, kv.first);
-        DestroyObject(_typeInfo.as_ptr(), 1, kv.second);
+        DestroyObject(_typeInfo, 0, kv.first);
+        DestroyObject(_typeInfo, 1, kv.second);
     }
 
     _data.clear();
@@ -652,8 +652,8 @@ auto ScriptDict::GetOrCreate(ptr<void> key) -> ptr<void>
     const auto it = _data.find(key.get());
 
     if (it == _data.end()) {
-        auto key_copy = CopyObject(_typeInfo.as_ptr(), 0, key);
-        auto value = CreateObject(_typeInfo.as_ptr(), 1);
+        auto key_copy = CopyObject(_typeInfo, 0, key);
+        auto value = CreateObject(_typeInfo, 1);
         _data.emplace(key_copy.get(), value.get());
         return value;
     }
@@ -718,8 +718,7 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     nptr<AngelScript::asITypeInfo> arr_type = engine->GetTypeInfoByDecl(arr_type_name.c_str());
     FO_VERIFY_AND_THROW(!!arr_type, "Array type not found");
-    auto arr_holder = ScriptArray::Create(arr_type.as_ptr());
-    auto arr = arr_holder.as_ptr();
+    auto arr = ScriptArray::Create(arr_type.as_ptr());
 
     arr->Reserve(GetSize());
 
@@ -727,7 +726,7 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
         arr->InsertLast(key);
     }
 
-    return arr_holder;
+    return arr;
 }
 
 auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
@@ -740,8 +739,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     nptr<AngelScript::asITypeInfo> arr_type = engine->GetTypeInfoByDecl(arr_type_name.c_str());
     FO_VERIFY_AND_THROW(!!arr_type, "Array type not found");
-    auto arr_holder = ScriptArray::Create(arr_type.as_ptr());
-    auto arr = arr_holder.as_ptr();
+    auto arr = ScriptArray::Create(arr_type.as_ptr());
 
     arr->Reserve(GetSize());
 
@@ -749,7 +747,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
         arr->InsertLast(value);
     }
 
-    return arr_holder;
+    return arr;
 }
 
 auto ScriptDict::Exists(ptr<void> key) const -> bool
@@ -1241,10 +1239,9 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
         throw ScriptException("Dict arg is null");
     }
 
-    auto clone_holder = ScriptDict::Create(type_info.as_ptr());
-    auto clone = clone_holder.as_ptr();
+    auto clone = ScriptDict::Create(type_info.as_ptr());
     *clone = *other_ptr;
-    return ReleaseScriptOwnership(std::move(clone_holder));
+    return ReleaseScriptOwnership(std::move(clone));
 }
 
 static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
@@ -1252,10 +1249,9 @@ static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asITypeInfo> type_info = ScriptMutablePtr(dict.GetDictObjectType());
-    auto clone_holder = ScriptDict::Create(type_info);
-    auto clone = clone_holder.as_ptr();
+    auto clone = ScriptDict::Create(type_info);
     *clone = dict;
-    return ReleaseScriptOwnership(std::move(clone_holder));
+    return ReleaseScriptOwnership(std::move(clone));
 }
 
 [[nodiscard]] static auto RequireScriptDictValue(nptr<void> nullable_value) -> ptr<void>

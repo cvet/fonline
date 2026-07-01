@@ -169,7 +169,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _imgui.as_ptr();
+        return _imgui;
     }
     [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
 

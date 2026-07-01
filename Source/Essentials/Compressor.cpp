@@ -144,7 +144,7 @@ void StreamCompressor::Compress(const_span<uint8_t> buf, vector<uint8_t>& result
 
     impl->ZStream.next_in = cast_from_void<Bytef*>(cast_to_void(buf.data()));
     impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
-    ptr<uint8_t> output_begin = result.data();
+    nptr<uint8_t> output_begin = result.data();
     impl->ZStream.next_out = output_begin.get();
     impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
@@ -224,7 +224,7 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
 
     impl->ZStream.next_in = cast_from_void<Bytef*>(cast_to_void(buf.data()));
     impl->ZStream.avail_in = numeric_cast<uInt>(buf.size());
-    ptr<uint8_t> output_begin = result.data();
+    nptr<uint8_t> output_begin = result.data();
     impl->ZStream.next_out = output_begin.get();
     impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 

@@ -694,8 +694,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
             else if (arg_type->Kind == ComplexTypeKind::Array) {
                 const size_t arr_size = call.Accessor->GetArraySize(arg_data);
-                auto arr_holder = CreateScriptArray(as_engine, MakeScriptTypeName(*arg_type).c_str());
-                auto arr = arr_holder.as_ptr();
+                auto arr = CreateScriptArray(as_engine, MakeScriptTypeName(*arg_type).c_str());
                 arr->Reserve(numeric_cast<int32_t>(arr_size));
 
                 for (size_t j = 0; j < arr_size; j++) {
@@ -707,7 +706,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     mutable_data[i] = arr;
                     ptr<nptr<void>> mutable_arg_slot = &mutable_data[i];
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(mutable_arg_slot).get()));
-                    (void)ReleaseScriptOwnership(std::move(arr_holder));
+                    (void)ReleaseScriptOwnership(std::move(arr));
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, arr.get()));
@@ -715,8 +714,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
             else if (arg_type->Kind == ComplexTypeKind::Dict) {
                 const size_t dict_size = call.Accessor->GetDictSize(arg_data);
-                auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(*arg_type).c_str());
-                auto dict = dict_holder.as_ptr();
+                auto dict = CreateScriptDict(as_engine, MakeScriptTypeName(*arg_type).c_str());
 
                 for (size_t j = 0; j < dict_size; j++) {
                     const auto elem = call.Accessor->GetDictElement(arg_data, j);
@@ -727,7 +725,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     mutable_data[i] = dict;
                     ptr<nptr<void>> mutable_arg_slot = &mutable_data[i];
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(mutable_arg_slot).get()));
-                    (void)ReleaseScriptOwnership(std::move(dict_holder));
+                    (void)ReleaseScriptOwnership(std::move(dict));
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, dict.get()));

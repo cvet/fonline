@@ -224,14 +224,12 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        ptr<const uint8_t> send_data = buf.data();
-
         const auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
             ignore_unused(lifetime);
             AsyncWriteComplete(error, bytes);
         };
 
-        async_write(_socket, asio::buffer(send_data.get(), buf.size()), write_handler);
+        async_write(_socket, asio::buffer(buf.data(), buf.size()), write_handler);
     }
     else {
         _writePending = false;

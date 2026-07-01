@@ -574,7 +574,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
     SECTION("SaveLoadPreservesGeneratedScriptCopyBehavior")
     {
         auto build_engine = MakeScriptEngine();
-        REQUIRE(build_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
         auto build_module = BuildModule(build_engine.get(), "BuildModule");
@@ -588,7 +588,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         REQUIRE_FALSE(bytecode.empty());
 
         auto load_engine = MakeScriptEngine();
-        REQUIRE(load_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
         nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
@@ -619,7 +619,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         // stack layouts to handle this difference.
 
         auto build_engine = MakeScriptEngine();
-        REQUIRE(build_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
         auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", PortableFormatTestScript);
@@ -643,7 +643,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
         // Load in fresh engine
         auto load_engine = MakeScriptEngine();
-        REQUIRE(load_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
         nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
@@ -668,7 +668,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         // The compiler emits asBC_RefCpyChk for non-nullable destinations and the VM throws
         // a null pointer access exception when the source handle is null.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableScript = R"(
@@ -752,7 +752,7 @@ void AssignNullToNonNullable()
         // source to non-nullable.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -898,7 +898,7 @@ void AssignNullToNonNullable()
         // warning carries the would-be replacement type in the message.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
@@ -1008,7 +1008,7 @@ void AssignNullToNonNullable()
         static void* g_resourceCell = nullptr;
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
@@ -1146,7 +1146,7 @@ void AssignNullToNonNullable()
         // crashes at runtime with `asBC_RefCpyChk`.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
@@ -1209,7 +1209,7 @@ void AssignNullToNonNullable()
         // suppress it once an `if`-guard narrows the handle to `T`.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
@@ -1310,7 +1310,7 @@ void AssignNullToNonNullable()
         // warns.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "bool IsReady()", FO_SCRIPT_FUNC_THIS(+[](void*) -> bool { return true; }), FO_SCRIPT_FUNC_THIS_CONV);
@@ -1532,7 +1532,7 @@ void AssignNullToNonNullable()
         // a handle already narrowed to non-null SHOULD warn on a second check.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
@@ -1651,7 +1651,7 @@ void AssignNullToNonNullable()
         // guard) does not narrow, so the dereference still warns.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
@@ -1747,7 +1747,7 @@ void AssignNullToNonNullable()
         // keep narrowing.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
@@ -1830,7 +1830,7 @@ void AssignNullToNonNullable()
         // guarded region. The body would otherwise need an explicit cast or Assert
         // to dereference the variable; smart-cast lets it be used as `T`.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view SmartCastScript = R"(
@@ -1914,7 +1914,7 @@ void GuardedReadAfterEarlyReturn()
         // callers benefit from a named recovery action over a generic
         // Assert.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view CompoundSmartCastScript = R"(
@@ -1990,7 +1990,7 @@ void NarrowsCompoundOrAfterReturn()
         // (with `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE` on).
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -2068,7 +2068,7 @@ void NarrowsCompoundOrAfterReturn()
         // emitted asBC_RefCpyChk and threw "Null assignment to non-nullable handle"
         // on every execution of the branch.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
         // The `Resource? &` inout-parameter flavor needs unsafe references, same as the
         // game backend (AngelScriptBackend.cpp) which enables them for all scripts.
@@ -2158,7 +2158,7 @@ void NullAssignToNarrowedRefParam()
         // un-guarded read so the analyzer stays conservative.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
@@ -2200,7 +2200,7 @@ void NullAssignToNarrowedRefParam()
         // comparison (asBC_CmpPtr), identical in semantics to `is` / `!is`.
         // This lets the project drop `is` / `!is` from the style guide.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view IdentityScript = R"(
@@ -2263,7 +2263,7 @@ void DistinctHandles()
         // is what makes `Critter == Critter` an id-based comparison in
         // production code while `Gui::Screen == Gui::Screen` is identity.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view OpEqualsScript = R"(
@@ -2332,7 +2332,7 @@ void TagsDiffer()
         // runtime exception. Funcdef and array shapes are exercised by the
         // gameplay test suite where the array add-on is registered.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableShapesScript = R"(
@@ -2399,7 +2399,7 @@ void NullableParameter()
         // non-nullable slot to null at constructor time.
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
             auto engine = MakeScriptEngine();
-            REQUIRE(engine.as_nptr());
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
@@ -2438,7 +2438,7 @@ void NullableParameter()
         // avoid value-vs-handle-default-construct ambiguity in the test
         // harness).
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableFieldScript = R"(
@@ -2503,7 +2503,7 @@ void Run()
         //
         // Document the contract by exercising both shapes.
         auto engine = MakeScriptEngine();
-        REQUIRE(engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view ParamNullScript = R"(
@@ -2592,7 +2592,7 @@ void CallCalleeNullableWithNull()
         // The fix guards the REFCPY shortcut with offset == 1 (reader) / offset == AS_PTR_SIZE (writer).
 
         auto build_engine = MakeScriptEngine();
-        REQUIRE(build_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
         auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", GetRefOffsetTestScript);
@@ -2616,7 +2616,7 @@ void CallCalleeNullableWithNull()
         // Load in fresh engine (same platform, but exercises the full save/load path
         // including AdjustGetOffset normalization and denormalization)
         auto load_engine = MakeScriptEngine();
-        REQUIRE(load_engine.as_nptr());
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
         nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);

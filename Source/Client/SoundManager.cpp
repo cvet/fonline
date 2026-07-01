@@ -239,13 +239,13 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
 
     unique_ptr<Sound> sound = SafeAlloc::MakeUnique<Sound>();
 
-    if (ext == "wav" && !LoadWav(sound.as_ptr(), fixed_fname)) {
+    if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
         return false;
     }
-    if (ext == "acm" && !LoadAcm(sound.as_ptr(), fixed_fname, is_music)) {
+    if (ext == "acm" && !LoadAcm(sound, fixed_fname, is_music)) {
         return false;
     }
-    if (ext == "ogg" && !LoadOgg(sound.as_ptr(), fixed_fname)) {
+    if (ext == "ogg" && !LoadOgg(sound, fixed_fname)) {
         return false;
     }
 
@@ -398,7 +398,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
     FO_STRONG_ASSERT(!base_buf.empty(), "Sound data is empty");
     FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
-    ptr<uint8_t> base_buf_bytes = base_buf.data();
+    nptr<uint8_t> base_buf_bytes = base_buf.data();
     auto buf = base_buf_bytes.reinterpret_as<uint16_t>();
     const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
@@ -490,8 +490,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
     FileReader reader = file.GetReader();
     unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
-    auto file_context_ptr = file_context.as_ptr();
-    ptr<void> file_context_userdata = cast_to_void(file_context_ptr.get());
+    ptr<void> file_context_userdata = cast_to_void(file_context.get());
     const auto error = ov_open_callbacks(file_context_userdata.get(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {

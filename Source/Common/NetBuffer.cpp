@@ -370,8 +370,7 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
         }
 
         props_data[i].resize(data_size);
-        ptr<uint8_t> data = props_data[i].data();
-        Pop(data, data_size);
+        Pop(props_data[i].data(), data_size);
     }
 }
 

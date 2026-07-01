@@ -120,8 +120,7 @@ public:
         static_assert(std::is_trivially_copyable_v<T>);
 
         if (!out.empty()) {
-            ptr<T> out_ptr = out.data();
-            CopyData(make_span(out_ptr, out.size() * sizeof(T)));
+            CopyData(make_span(out.data(), out.size() * sizeof(T)));
         }
     }
     void SetCurPos(size_t pos);

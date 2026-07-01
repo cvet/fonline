@@ -69,7 +69,7 @@ int main(int argc, char** argv)
             vector<refcount_ptr<ClientEngine>> clients;
 
             if (GetApp()->Settings.AutoStartClientOnServer != 0) {
-                ServerWithClientsLoop(server.as_ptr(), client_settings, clients);
+                ServerWithClientsLoop(server, client_settings, clients);
             }
             else {
                 while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {

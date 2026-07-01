@@ -67,8 +67,7 @@ void CritterView::OnDestroySelf()
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i < _invItems.size(); i++) {
-        auto item = _invItems[i].as_ptr();
-        safe_call([&] { item->DestroySelf(); });
+        safe_call([&] { _invItems[i]->DestroySelf(); });
     }
 
     _invItems.clear();
@@ -107,8 +106,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    auto added_item = item.as_ptr();
-    return AddRawInvItem(added_item);
+    return AddRawInvItem(item);
 }
 
 auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
@@ -124,8 +122,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, Cri
     item->SetCritterId(GetId());
     item->SetCritterSlot(slot);
 
-    auto added_item = item.as_ptr();
-    return AddRawInvItem(added_item);
+    return AddRawInvItem(item);
 }
 
 auto CritterView::AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>
@@ -154,7 +151,7 @@ void CritterView::DeleteAllInvItems()
     FO_STACK_TRACE_ENTRY();
 
     while (!_invItems.empty()) {
-        DeleteInvItem(_invItems.front().as_ptr());
+        DeleteInvItem(_invItems.front());
     }
 }
 

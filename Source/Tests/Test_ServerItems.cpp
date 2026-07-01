@@ -205,7 +205,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -270,7 +270,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -339,7 +339,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -389,8 +389,8 @@ TEST_CASE("ServerCritterLifecycleOperations")
     CHECK(is_alive_func.GetResult() == true);
 
     // Player login allocates persistent ids through the entity manager
-    auto player1 = CreateLoggedPlayer(server.as_ptr(), "TestPlayer1");
-    auto player2 = CreateLoggedPlayer(server.as_ptr(), "TestPlayer2");
+    auto player1 = CreateLoggedPlayer(server, "TestPlayer1");
+    auto player2 = CreateLoggedPlayer(server, "TestPlayer2");
     CHECK(player1->GetId() != ident_t {});
     CHECK(player2->GetId() != ident_t {});
     CHECK(player1->GetId() != player2->GetId());
@@ -424,7 +424,7 @@ TEST_CASE("ServerEntityManagerQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

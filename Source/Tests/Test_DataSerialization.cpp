@@ -60,8 +60,7 @@ TEST_CASE("DataSerialization")
         writer.Write<int16_t>(static_cast<int16_t>(-1234));
 
         const array<uint8_t, 3> raw = {1, 2, 3};
-        ptr<const uint8_t> raw_data_ptr = raw.data();
-        writer.WriteBytes({raw_data_ptr.get(), raw.size()});
+        writer.WriteBytes({raw.data(), raw.size()});
 
         DataReader reader {span {buf}};
         CHECK(reader.Read<uint32_t>() == 0xAABBCCDDu);
@@ -151,8 +150,7 @@ TEST_CASE("DataSerialization")
         DataWriter writer {buf};
 
         const array<uint8_t, 4> source = {9, 8, 7, 6};
-        ptr<const uint8_t> source_ptr = source.data();
-        writer.WriteBytes({source_ptr.get(), source.size()});
+        writer.WriteBytes({source.data(), source.size()});
 
         DataReader reader {span {buf}};
         array<uint8_t, 4> target = {0, 0, 0, 0};
@@ -258,8 +256,7 @@ TEST_CASE("DataSerialization")
         source.back() = 2;
 
         writer.Write<uint8_t>(static_cast<uint8_t>(0x11));
-        ptr<const uint8_t> source_ptr = source.data();
-        writer.WriteBytes({source_ptr.get(), source.size()});
+        writer.WriteBytes({source.data(), source.size()});
 
         CHECK(buf.size() == source.size() + sizeof(uint8_t));
 

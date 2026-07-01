@@ -114,8 +114,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
             FO_VERIFY_AND_THROW(service_arg, "Service argument string is null");
             args_holder[i] = strex().parse_wide_char(service_arg.get());
 
-            ptr<char> parsed_arg = args_holder[i].data();
-            args[i] = parsed_arg;
+            args[i] = args_holder[i].data();
         }
 
         const CommandLineArgs service_args {args};

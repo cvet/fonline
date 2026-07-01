@@ -545,8 +545,7 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     buf.reserve(str.size());
 
     if (mode == FormatMode::Draw && !IsEnumSet(flags, FontFlag::NoColorize)) {
-        nptr<ucolor> text_color_data = fi.TextColor.data();
-        dots = text_color_data;
+        dots = fi.TextColor.data();
     }
 
     constexpr int32_t dots_history_len = 10;
@@ -1014,7 +1013,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
 
     if (auto it = _formatCache.find(key); it != _formatCache.end()) {
         it->second->LastUsedFrame = _frameIndex;
-        return it->second.as_ptr();
+        return it->second;
     }
 
     const auto str_len = str.length();

@@ -216,7 +216,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
         ptr<const char> shader_version_text = shader_version_str.c_str();
         ptr<const char> shader_defines_text = shader_defines.c_str();
-        ptr<const char> shader_defines_ex_text = shader_defines_ex.data();
+        nptr<const char> shader_defines_ex_text = shader_defines_ex.data();
         ptr<const char> shader_defines_ex2_text = shader_defines_ex2.c_str();
         ptr<const char> shader_common_text = shader_common_content.c_str();
         ptr<const char> vertex_pass_text = vertex_pass_content.c_str();
@@ -345,9 +345,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         vector<uint8_t> data(spirv.size() * sizeof(uint32_t));
 
         if (!data.empty()) {
-            ptr<uint8_t> data_ptr = data.data();
-            ptr<const uint32_t> spirv_ptr = spirv.data();
-            MemCopy(data_ptr.get(), spirv_ptr.get(), data.size());
+            MemCopy(data.data(), spirv.data(), data.size());
         }
 
         _context->WriteData(strex("{}-spv", fname_wo_ext), data);

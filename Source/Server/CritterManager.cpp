@@ -202,22 +202,22 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     // Create critter
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto.as_ptr(), props);
 
-    _engine->EntityMngr.RegisterCritter(cr.as_ptr());
+    _engine->EntityMngr.RegisterCritter(cr);
 
     auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
     const ident_t target_map_id = map->GetId();
 
-    _engine->MapMngr.AddCritterToMap(cr.as_ptr(), map, final_hex, dir, ident_t {});
+    _engine->MapMngr.AddCritterToMap(cr, map, final_hex, dir, ident_t {});
 
     if (!cr->IsDestroyed()) {
-        _engine->OnMapCritterIn.Fire(map, cr.as_ptr());
+        _engine->OnMapCritterIn.Fire(map, cr);
 
         if (!cr->IsDestroyed()) {
-            _engine->EntityMngr.CallInit(cr.as_ptr(), true);
-            _engine->MapMngr.ProcessVisibleCritters(cr.as_ptr());
-            _engine->MapMngr.ProcessVisibleItems(cr.as_ptr());
+            _engine->EntityMngr.CallInit(cr, true);
+            _engine->MapMngr.ProcessVisibleCritters(cr);
+            _engine->MapMngr.ProcessVisibleItems(cr);
         }
     }
 
@@ -227,14 +227,13 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     if (map->IsDestroyed()) {
         throw CritterManagerException("Critter map add event destroyed the target map", proto_id);
     }
-    auto committed_cr = cr.as_nptr();
     auto map_cr = map->GetCritter(cr->GetId());
 
-    if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || !(map_cr == committed_cr)) {
+    if (cr->GetMapId() != target_map_id || cr->GetHex() != final_hex || !(map_cr == cr)) {
         throw CritterManagerException("Critter map add event moved the committed critter", proto_id);
     }
 
-    return cr.as_ptr();
+    return cr;
 }
 
 void CritterManager::DestroyCritter(ptr<Critter> cr)

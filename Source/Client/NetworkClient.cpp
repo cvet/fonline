@@ -98,8 +98,7 @@ auto NetworkClientConnection::ReceiveData() -> const_span<uint8_t>
 
         FO_VERIFY_AND_THROW(recv_len <= _incomeBuf.size(), "Received byte count exceeds the income buffer size");
 
-        ptr<const uint8_t> income_buf = _incomeBuf.data();
-        return {income_buf.get(), recv_len};
+        return {_incomeBuf.data(), recv_len};
     }
     catch (...) {
         Disconnect();

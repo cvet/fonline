@@ -392,8 +392,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     string str;
     str.resize(numeric_cast<size_t>(size));
 
-    ptr<char> str_data = str.data();
-    r = unqlite_kv_fetch(db.get(), entry_name_data.get(), entry_name_len, str_data.get(), &size);
+    r = unqlite_kv_fetch(db.get(), entry_name_data.get(), entry_name_len, str.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -430,8 +429,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uint8_
     vector<uint8_t> data;
     data.resize(numeric_cast<size_t>(size));
 
-    ptr<uint8_t> data_ptr = data.data();
-    r = unqlite_kv_fetch(db.get(), entry_name_data.get(), entry_name_len, data_ptr.get(), &size);
+    r = unqlite_kv_fetch(db.get(), entry_name_data.get(), entry_name_len, data.data(), &size);
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't fetch cache entry '{}'", entry_name);
@@ -481,8 +479,7 @@ void UnqliteCacheStorage::SetData(string_view entry_name, const_span<uint8_t> da
     const string entry_name_text = string(entry_name);
     ptr<const char> entry_name_data = entry_name_text.c_str();
     const int32_t entry_name_len = numeric_cast<int32_t>(entry_name_text.length());
-    nptr<const uint8_t> data_ptr = data.data();
-    auto r = unqlite_kv_store(db.get(), entry_name_data.get(), entry_name_len, data_ptr.get(), numeric_cast<unqlite_int64>(data.size()));
+    auto r = unqlite_kv_store(db.get(), entry_name_data.get(), entry_name_len, data.data(), numeric_cast<unqlite_int64>(data.size()));
 
     if (r != UNQLITE_OK) {
         WriteLog(LogType::Warning, "Can't store cache entry '{}'", entry_name);

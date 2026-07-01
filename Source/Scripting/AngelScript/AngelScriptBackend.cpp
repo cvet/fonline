@@ -166,9 +166,7 @@ static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const str
         return;
     }
 
-    ptr<char> data_ptr = data.data();
-    ptr<const char> text_ptr = text.data();
-    MemCopy(data_ptr.get(), text_ptr.get(), text.size());
+    MemCopy(data.data(), text.data(), text.size());
 }
 
 static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
@@ -425,14 +423,12 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
     vector<AngelScript::asBYTE> buf(reader.Read<uint32_t>());
     FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode payload size is zero");
-    ptr<AngelScript::asBYTE> buf_data = buf.data();
-    reader.ReadObjectArray(span<AngelScript::asBYTE> {buf_data.get(), buf.size()});
+    reader.ReadObjectArray(span<AngelScript::asBYTE> {buf.data(), buf.size()});
 
     std::vector<uint8_t> lnt_data(reader.Read<uint32_t>());
     FO_VERIFY_AND_THROW(!buf.empty(), "AngelScript bytecode container has an empty script bytecode payload", script_bin_file.GetPath(), script_bin.size());
     FO_VERIFY_AND_THROW(!lnt_data.empty(), "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath(), script_bin.size(), buf.size());
-    ptr<uint8_t> lnt_data_ptr = lnt_data.data();
-    reader.ReadBytes({lnt_data_ptr.get(), lnt_data.size()});
+    reader.ReadBytes({lnt_data.data(), lnt_data.size()});
 
     nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
@@ -733,13 +729,11 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     writer.Write<uint8_t>(AS_BYTECODE_ENDIAN_TAG);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(buf.size()));
     if (!buf.empty()) {
-        ptr<const AngelScript::asBYTE> buf_data = buf.data();
-        writer.WriteObjectArray(const_span<AngelScript::asBYTE> {buf_data.get(), buf.size()});
+        writer.WriteObjectArray(const_span<AngelScript::asBYTE> {buf.data(), buf.size()});
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(lnt_data.size()));
     if (!lnt_data.empty()) {
-        ptr<const uint8_t> lnt_data_ptr = lnt_data.data();
-        writer.WriteBytes({lnt_data_ptr.get(), lnt_data.size()});
+        writer.WriteBytes({lnt_data.data(), lnt_data.size()});
     }
     SerializeFunctionAttributeRecords(writer, parsed_attributes);
     return data;
@@ -811,7 +805,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
             // Check for special module init functions
             if (func_desc->Call && func_desc->Args.empty() && func_desc->Ret.Kind == ComplexTypeKind::None) {
-                auto func_wrapper = ScriptFunc<void>(MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get())));
+                auto func_wrapper = ScriptFunc<void>(unique_del_nptr<ScriptFuncDesc>(MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()))));
 
                 if (const auto raw_init_attr = FindFunctionAttribute(func.get(), "ModuleInit"); !raw_init_attr.empty()) {
                     int32_t priority = 0;

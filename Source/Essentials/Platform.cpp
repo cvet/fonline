@@ -93,7 +93,9 @@ static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
 {
     FO_STACK_TRACE_ENTRY();
 
-    assert(module_handle);
+    if (!module_handle) {
+        return ::GetModuleHandleW(nullptr);
+    }
 
     return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get_no_const();
 }
@@ -151,7 +153,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #if FO_WINDOWS
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);
-    ptr<wchar_t> path_data = path.data();
+    nptr<wchar_t> path_data = path.data();
     auto size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
 
     if (size == 0) {
@@ -397,7 +399,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return false;
         }
 
-        ptr<const char> text_begin = text.data();
+        nptr<const char> text_begin = text.data();
         ptr<const char> text_end = text_begin.get() + text.size();
         const auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
         return parse_result.ec == std::errc {} && text_end == parse_result.ptr;

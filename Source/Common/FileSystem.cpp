@@ -175,9 +175,8 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        ptr<char> target = result.data();
         auto source = _fileBuf.as_ptr();
-        MemCopy(target.get(), source.get(), result.size());
+        MemCopy(result.data(), source.get(), result.size());
     }
 
     return result;
@@ -194,9 +193,8 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        ptr<uint8_t> target = result.data();
         auto source = _fileBuf.as_ptr();
-        MemCopy(target.get(), source.get(), result.size());
+        MemCopy(result.data(), source.get(), result.size());
     }
 
     return result;
@@ -250,9 +248,8 @@ auto FileReader::GetStr() const -> string
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        ptr<char> target = result.data();
         auto source = ptr<const uint8_t> {_buf.data()};
-        MemCopy(target.get(), source.get(), result.size());
+        MemCopy(result.data(), source.get(), result.size());
     }
 
     return result;
@@ -266,9 +263,8 @@ auto FileReader::GetData() const -> vector<uint8_t>
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        ptr<uint8_t> target = result.data();
         auto source = ptr<const uint8_t> {_buf.data()};
-        MemCopy(target.get(), source.get(), result.size());
+        MemCopy(result.data(), source.get(), result.size());
     }
 
     return result;
@@ -402,9 +398,8 @@ void FileReader::CopyData(span<uint8_t> buf)
         throw FileSystemExeption("Invalid read size");
     }
 
-    ptr<uint8_t> target = buf.data();
     auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
-    MemCopy(target.get(), source.get(), buf.size());
+    MemCopy(buf.data(), source.get(), buf.size());
     _curPos += buf.size();
 }
 
@@ -448,9 +443,8 @@ auto FileReader::GetStrNT() -> string
     str.resize(numeric_cast<size_t>(len));
 
     if (!str.empty()) {
-        ptr<char> target = str.data();
         auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
-        MemCopy(target.get(), source.get(), str.size());
+        MemCopy(str.data(), source.get(), str.size());
     }
 
     _curPos += len + 1;
@@ -690,9 +684,7 @@ auto FileSystem::IsFileExists(string_view path) const -> bool
     FO_VERIFY_AND_THROW(path[0] != '.' && path[0] != '/', "File existence check received a non-relative resource path", path);
 
     for (size_t i = 0; i != _dataSources.size(); ++i) {
-        auto ds = _dataSources[i].as_ptr();
-
-        if (ds->IsFileExists(path)) {
+        if (_dataSources[i]->IsFileExists(path)) {
             return true;
         }
     }

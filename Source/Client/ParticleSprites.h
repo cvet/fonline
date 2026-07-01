@@ -55,7 +55,7 @@ public:
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
     [[nodiscard]] auto IsDirectDraw() const -> bool override { return _drawInScene; }
-    [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle.as_ptr(); }
+    [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle; }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     void Prewarm() override;

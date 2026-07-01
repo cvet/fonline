@@ -271,26 +271,25 @@ void ClientEngine::Shutdown()
     _chosen.reset();
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         map->DestroySelf();
         _curMap.reset();
     }
 
     if (_curLocation) {
-        auto location = GetCurLocationPtr();
+        auto location = GetCurLocation().as_ptr();
         location->DestroySelf();
         _curLocation.reset();
     }
 
     if (_curPlayer) {
-        auto player = GetCurPlayerPtr();
+        auto player = GetCurPlayer().as_ptr();
         player->DestroySelf();
         _curPlayer.reset();
     }
 
     for (size_t i = 0; i < _globalMapCritters.size(); i++) {
-        auto cr = _globalMapCritters[i].as_ptr();
-        cr->DestroySelf();
+        _globalMapCritters[i]->DestroySelf();
     }
 
     _globalMapCritters.clear();
@@ -385,7 +384,7 @@ auto ClientEngine::GetChosen() noexcept -> nptr<CritterView>
         }
     }
 
-    return _chosen.as_nptr();
+    return _chosen;
 }
 
 auto ClientEngine::GetMapChosen() noexcept -> nptr<CritterHexView>
@@ -439,14 +438,14 @@ void ClientEngine::MainLoop()
     OnLoop.Fire();
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         map->Process();
     }
 
     bool manual_scrolling = false;
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         manual_scrolling = map->IsManualScrolling();
     }
 
@@ -606,7 +605,7 @@ void ClientEngine::Net_OnDisconnect()
     UnloadMap();
 
     if (_curPlayer) {
-        auto player = GetCurPlayerPtr();
+        auto player = GetCurPlayer().as_ptr();
         player->DestroySelf();
         _curPlayer.reset();
     }
@@ -650,7 +649,7 @@ void ClientEngine::Net_SendDir(ptr<CritterHexView> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "No current map");
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
 
     _conn.OutBuf->StartMsg(NetMessage::SendCritterDir);
     _conn.OutBuf->Write(map->GetId());
@@ -666,7 +665,7 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
     FO_VERIFY_AND_THROW(_curMap, "No current map");
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
     auto moving = nullable_moving.as_ptr();
@@ -699,7 +698,7 @@ void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "No current map");
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
 
     _conn.OutBuf->StartMsg(NetMessage::SendStopCritterMove);
     _conn.OutBuf->Write(map->GetId());
@@ -769,8 +768,7 @@ void ClientEngine::Net_OnInitData()
     vector<uint8_t> data;
     data.resize(data_size);
 
-    ptr<uint8_t> data_ptr = data.data();
-    _conn.InBuf->Pop(data_ptr, data_size);
+    _conn.InBuf->Pop(data.data(), data_size);
 
     _conn.InBuf->ReadPropsData(_globalsPropertiesData);
     const auto time = _conn.InBuf->Read<synctime>();
@@ -862,7 +860,7 @@ void ClientEngine::Net_OnLoginSuccess()
     RestoreData(_globalsPropertiesData);
 
     FO_VERIFY_AND_THROW(_curPlayer, "Current player is null");
-    auto player = GetCurPlayerPtr();
+    auto player = GetCurPlayer().as_ptr();
     FO_VERIFY_AND_THROW(!player->GetId(), "Current player already has an assigned id");
     player->SetId(player_id, true);
     player->RestoreData(_playerPropertiesData);
@@ -892,7 +890,7 @@ void ClientEngine::Net_OnAddCritter()
     nptr<CritterHexView> nullable_hex_cr;
     refcount_ptr<CritterView> cr = [&]() -> refcount_ptr<CritterView> {
         if (_curMap) {
-            auto map = GetCurMapPtr();
+            auto map = GetCurMap().as_ptr();
             auto added_cr = map->AddReceivedCritter(cr_id, pid, hex, dir, _tempPropertiesData, _mapLoaded);
             nullable_hex_cr = added_cr;
 
@@ -906,9 +904,7 @@ void ClientEngine::Net_OnAddCritter()
         size_t erase_index = _globalMapCritters.size();
 
         for (size_t i = 0; i < _globalMapCritters.size(); i++) {
-            auto cr2 = _globalMapCritters[i].as_ptr();
-
-            if (cr2->GetId() == cr_id) {
+            if (_globalMapCritters[i]->GetId() == cr_id) {
                 erase_index = i;
                 break;
             }
@@ -916,8 +912,7 @@ void ClientEngine::Net_OnAddCritter()
 
         if (erase_index != _globalMapCritters.size()) {
             BreakIntoDebugger();
-            auto cr2 = _globalMapCritters[erase_index].as_ptr();
-            cr2->MarkAsDestroyed();
+            _globalMapCritters[erase_index]->MarkAsDestroyed();
             _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
         }
 
@@ -929,7 +924,7 @@ void ClientEngine::Net_OnAddCritter()
         return global_cr;
     }();
 
-    ReceiveCustomEntities(cr.as_nptr());
+    ReceiveCustomEntities(cr);
 
     cr->SetHexOffset(hex_offset);
     cr->SetCondition(cond);
@@ -974,7 +969,7 @@ void ClientEngine::Net_OnAddCritter()
     cr->SetAttachedCritters(std::move(attached_critters));
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
 
         if (is_attached) {
             span<refcount_ptr<CritterHexView>> map_critters = map->GetCritters();
@@ -1013,7 +1008,7 @@ void ClientEngine::Net_OnAddCritter()
     if (nullable_hex_cr) {
         auto hex_cr = nullable_hex_cr.as_ptr();
         FO_VERIFY_AND_THROW(_curMap, "No current map");
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
 
 #if FO_ENABLE_3D
         if (hex_cr->IsModel()) {
@@ -1037,7 +1032,7 @@ void ClientEngine::Net_OnAddCritter()
         }
     }
 
-    OnCritterIn.Fire(cr.as_ptr());
+    OnCritterIn.Fire(cr);
 }
 
 void ClientEngine::Net_OnRemoveCritter()
@@ -1047,7 +1042,7 @@ void ClientEngine::Net_OnRemoveCritter()
     const auto cr_id = _conn.InBuf->Read<ident_t>();
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         auto nullable_cr = map->GetCritter(cr_id);
 
         if (!nullable_cr) {
@@ -1070,9 +1065,7 @@ void ClientEngine::Net_OnRemoveCritter()
         size_t erase_index = _globalMapCritters.size();
 
         for (size_t i = 0; i < _globalMapCritters.size(); i++) {
-            auto cr = _globalMapCritters[i].as_ptr();
-
-            if (cr->GetId() == cr_id) {
+            if (_globalMapCritters[i]->GetId() == cr_id) {
                 erase_index = i;
                 break;
             }
@@ -1085,10 +1078,10 @@ void ClientEngine::Net_OnRemoveCritter()
 
         refcount_ptr<CritterView> cr = copy(_globalMapCritters[erase_index]);
 
-        OnCritterOut.Fire(cr.as_ptr());
+        OnCritterOut.Fire(cr);
         _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
 
-        if (GetChosen() == cr.as_nptr()) {
+        if (GetChosen().as_ptr() == cr) {
             _chosen.reset();
         }
 
@@ -1104,7 +1097,7 @@ void ClientEngine::Net_OnCritterVisibilityMode()
     const auto mode = _conn.InBuf->Read<CritterVisibilityMode>();
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
 
         if (nptr<CritterHexView> nullable_cr = map->GetCritter(cr_id)) {
             auto cr = nullable_cr.as_ptr();
@@ -1139,7 +1132,7 @@ void ClientEngine::Net_OnCritterDir()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_cr = map->GetCritter(cr_id);
 
     if (nullable_cr) {
@@ -1162,7 +1155,7 @@ void ClientEngine::Net_OnCritterMove()
     nptr<CritterHexView> nullable_cr;
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         nullable_cr = map->GetCritter(cr_id);
     }
 
@@ -1186,7 +1179,7 @@ void ClientEngine::Net_OnCritterMoveSpeed()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_cr = map->GetCritter(cr_id);
 
     if (!nullable_cr) {
@@ -1243,7 +1236,7 @@ void ClientEngine::Net_OnCritterAction()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_cr = map->GetCritter(cr_id);
 
     if (!nullable_cr) {
@@ -1252,7 +1245,7 @@ void ClientEngine::Net_OnCritterAction()
     }
 
     auto cr = nullable_cr.as_ptr();
-    cr->Action(action, action_ext, nullable_context_item.as_nptr(), false);
+    cr->Action(action, action_ext, nullable_context_item, false);
 
     if (nullable_context_item) {
         auto context_item = nullable_context_item.as_ptr();
@@ -1292,7 +1285,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     nptr<CritterView> nullable_cr;
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         nullable_cr = map->GetCritter(cr_id);
     }
     else {
@@ -1343,7 +1336,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     if (nptr<CritterHexView> nullable_hex_cr = cr.dyn_cast<CritterHexView>()) {
         auto hex_cr = nullable_hex_cr.as_ptr();
         hex_cr->RefreshView();
-        hex_cr->Action(action, static_cast<int32_t>(prev_slot), nullable_moved_item.as_nptr(), false);
+        hex_cr->Action(action, static_cast<int32_t>(prev_slot), nullable_moved_item, false);
     }
 
     if (nullable_moved_item && cur_slot != prev_slot && cr->GetIsChosen()) {
@@ -1357,7 +1350,7 @@ void ClientEngine::Net_OnCritterMoveItem()
     }
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
 
         if (nptr<CritterHexView> nullable_hex_cr = cr.dyn_cast<CritterHexView>()) {
             auto hex_cr = nullable_hex_cr.as_ptr();
@@ -1378,7 +1371,7 @@ void ClientEngine::Net_OnCritterTeleport()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_cr = map->GetCritter(cr_id);
 
     if (!nullable_cr) {
@@ -1407,7 +1400,7 @@ void ClientEngine::Net_OnCritterPos()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Received critter movement target is outside the current client map bounds", cr_id, hex, map->GetId(), map->GetSize());
 
     auto nullable_cr = map->GetCritter(cr_id);
@@ -1459,7 +1452,7 @@ void ClientEngine::Net_OnCritterAttachments()
     }
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         auto nullable_cr = map->GetCritter(cr_id);
 
         if (!nullable_cr) {
@@ -1545,7 +1538,7 @@ void ClientEngine::Net_OnChosenAddItem()
     ReceiveCustomEntities(item);
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         map->RebuildFog();
 
         if (nptr<CritterHexView> nullable_hex_chosen = chosen.dyn_cast<CritterHexView>()) {
@@ -1584,10 +1577,10 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto item_clone = item->CreateRefClone();
     chosen->DeleteInvItem(item);
 
-    OnItemInvOut.Fire(item_clone.as_ptr());
+    OnItemInvOut.Fire(item_clone);
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
 
         if (nptr<CritterHexView> nullable_hex_chosen = chosen.dyn_cast<CritterHexView>()) {
             auto hex_chosen = nullable_hex_chosen.as_ptr();
@@ -1615,7 +1608,7 @@ void ClientEngine::Net_OnAddItemOnMap()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto item = map->AddReceivedItem(item_id, item_pid, hex, _tempPropertiesData, _mapLoaded);
 
     ReceiveCustomEntities(item);
@@ -1634,7 +1627,7 @@ void ClientEngine::Net_OnRemoveItemFromMap()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_item = map->GetItem(item_id);
 
     if (nullable_item) {
@@ -1659,7 +1652,7 @@ void ClientEngine::Net_OnPlaceToGameComplete()
     auto nullable_chosen = GetChosen();
 
     if (_curMap && nullable_chosen) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         auto chosen = nullable_chosen.as_ptr();
 
         map->InstantScrollTo(chosen->GetHex());
@@ -1725,7 +1718,7 @@ void ClientEngine::Net_OnProperty()
         break;
     case NetProperty::Critter:
         if (_curMap) {
-            auto map = GetCurMapPtr();
+            auto map = GetCurMap().as_ptr();
             nullable_entity = map->GetCritter(cr_id);
         }
         break;
@@ -1734,13 +1727,13 @@ void ClientEngine::Net_OnProperty()
         break;
     case NetProperty::MapItem:
         if (_curMap) {
-            auto map = GetCurMapPtr();
+            auto map = GetCurMap().as_ptr();
             nullable_entity = map->GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         if (_curMap) {
-            auto map = GetCurMapPtr();
+            auto map = GetCurMap().as_ptr();
 
             if (nptr<CritterHexView> nullable_cr = map->GetCritter(cr_id)) {
                 auto cr = nullable_cr.as_ptr();
@@ -1843,11 +1836,11 @@ void ClientEngine::Net_OnLoadMap()
 
         ptr<ClientEngine> engine = this;
         _curLocation = SafeAlloc::MakeRefCounted<LocationView>(engine, loc_id, loc_proto);
-        auto location = GetCurLocationPtr();
+        auto location = GetCurLocation().as_ptr();
         location->RestoreData(_tempPropertiesDataExt);
 
         _curMap = SafeAlloc::MakeRefCounted<MapView>(engine, map_id, map_proto, screen_size);
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         map->RestoreData(_tempPropertiesData);
         map->LoadStaticData();
 
@@ -1887,12 +1880,12 @@ void ClientEngine::Net_OnSomeItems()
         refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
-        ReceiveCustomEntities(item.as_nptr());
+        ReceiveCustomEntities(item);
 
         items.emplace_back(item);
     }
 
-    const auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item.as_ptr().get_no_const(); });
+    const auto items2 = vec_transform(items, [](auto&& item) -> ptr<ItemView> { return item; });
     OnReceiveItems.Fire(items2, context_param);
 }
 
@@ -1919,8 +1912,7 @@ void ClientEngine::Net_OnRemoteCall()
 
     _remoteCallData.resize(data_size);
 
-    ptr<uint8_t> remote_call_data = _remoteCallData.data();
-    _conn.InBuf->Pop(remote_call_data, data_size);
+    _conn.InBuf->Pop(_remoteCallData.data(), data_size);
 
     HandleInboundRemoteCall(remote_call_name, nullptr, _remoteCallData);
 }
@@ -2082,9 +2074,8 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
     }
 
     entity->SetCustomHolderEntry(entry);
-    auto custom_entity = entity.as_ptr();
-    holder->AddInnerEntity(entry, custom_entity);
-    return custom_entity;
+    holder->AddInnerEntity(entry, entity);
+    return entity;
 }
 
 void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> nullable_cr)
@@ -2124,7 +2115,7 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> nullable_cr)
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto cr = nullable_cr.as_ptr();
 
     cr->StopMoving();
@@ -2268,7 +2259,7 @@ void ClientEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
     }
 
     FO_VERIFY_AND_THROW(_curPlayer, "No current player");
-    auto player = GetCurPlayerPtr();
+    auto player = GetCurPlayer().as_ptr();
 
     if (!player->GetId()) {
         throw ScriptException("Can't modify player public/protected property on unlogined player");
@@ -2321,7 +2312,7 @@ void ClientEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
             nptr<const CritterView> nullable_cr;
 
             if (_curMap) {
-                auto map = GetCurMapPtr();
+                auto map = GetCurMap().as_ptr();
                 nullable_cr = map->GetCritter(item->GetCritterId());
             }
             else {
@@ -2369,7 +2360,7 @@ void ClientEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Map, prop, cur_map);
@@ -2390,7 +2381,7 @@ void ClientEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> p
         return;
     }
 
-    auto cur_location = GetCurLocationPtr();
+    auto cur_location = GetCurLocation().as_ptr();
 
     if (prop->IsModifiableByAnyClient()) {
         Net_SendProperty(NetProperty::Location, prop, cur_location);
@@ -2631,7 +2622,7 @@ void ClientEngine::UnloadMap()
     Settings->ScrollMouseUp = false;
 
     if (_curMap) {
-        auto map = GetCurMapPtr();
+        auto map = GetCurMap().as_ptr();
         map->DestroySelf();
         _curMap.reset();
 
@@ -2639,14 +2630,13 @@ void ClientEngine::UnloadMap()
     }
 
     if (_curLocation) {
-        auto location = GetCurLocationPtr();
+        auto location = GetCurLocation().as_ptr();
         location->DestroySelf();
         _curLocation.reset();
     }
 
     for (size_t i = 0; i < _globalMapCritters.size(); i++) {
-        auto cr = _globalMapCritters[i].as_ptr();
-        cr->DestroySelf();
+        _globalMapCritters[i]->DestroySelf();
     }
 
     _globalMapCritters.clear();
@@ -2667,7 +2657,7 @@ void ClientEngine::LmapPrepareMap()
         return;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_chosen = GetMapChosen();
 
     if (!nullable_chosen) {
@@ -2757,8 +2747,7 @@ void ClientEngine::DestroyInnerEntities()
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
-                auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
-                auto custom_entity = custom_entity_holder.as_ptr();
+                auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
                 custom_entity->DestroySelf();
             }
         }

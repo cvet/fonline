@@ -49,7 +49,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
     FO_STACK_TRACE_ENTRY();
 
     if (const auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
-        return it->second.as_nptr();
+        return it->second;
     }
 
     // Load new
@@ -147,7 +147,7 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
     FO_STACK_TRACE_ENTRY();
 
     for (auto& effect : _loadedEffects | std::views::values) {
-        PerFrameEffectUpdate(effect.as_ptr(), game_time);
+        PerFrameEffectUpdate(effect, game_time);
     }
 }
 

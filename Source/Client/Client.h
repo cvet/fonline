@@ -112,35 +112,10 @@ public:
     [[nodiscard]] auto GetCurLang() const noexcept -> const TextPack& { return _curLang; }
     [[nodiscard]] auto GetLangPack(string_view lang_name) -> const TextPack&;
     [[nodiscard]] auto IsVideoPlaying() const noexcept -> bool { return !!_video || !_videoQueue.empty(); }
-    [[nodiscard]] auto GetCurPlayer() noexcept -> nptr<PlayerView> { return _curPlayer.as_nptr(); }
-    [[nodiscard]] auto GetCurPlayerPtr() noexcept -> ptr<PlayerView>
-    {
-        FO_STRONG_ASSERT(_curPlayer, "No current player");
-
-        return _curPlayer.as_ptr();
-    }
-    [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation.as_nptr(); }
-    [[nodiscard]] auto GetCurLocationPtr() noexcept -> ptr<LocationView>
-    {
-        FO_STRONG_ASSERT(_curLocation, "No current location");
-
-        return _curLocation.as_ptr();
-    }
-    [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap.as_nptr(); }
-    [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap.as_nptr(); }
-
-    [[nodiscard]] auto GetCurMapPtr() noexcept -> ptr<MapView>
-    {
-        FO_STRONG_ASSERT(_curMap, "No current map");
-
-        return _curMap.as_ptr();
-    }
-    [[nodiscard]] auto GetCurMapPtr() const noexcept -> ptr<const MapView>
-    {
-        FO_STRONG_ASSERT(_curMap, "No current map");
-
-        return _curMap.as_ptr();
-    }
+    [[nodiscard]] auto GetCurPlayer() noexcept -> nptr<PlayerView> { return _curPlayer; }
+    [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
+    [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
+    [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
     void Shutdown() override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;

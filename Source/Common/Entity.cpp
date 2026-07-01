@@ -506,7 +506,7 @@ auto EntityEvent::CheckCallbacks() -> bool
         return !_callbacks->empty();
     }
 
-    if (nptr<vector<Entity::EventCallbackData>> callbacks = _entity->FindEventCallbacks(_callbackName); callbacks) {
+    if (auto callbacks = _entity->FindEventCallbacks(_callbackName)) {
         _callbacks = callbacks;
         return !_callbacks->empty();
     }

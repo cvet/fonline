@@ -71,7 +71,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
     auto cloned_item = self->CreateRefClone();
     cloned_item->AddRef();
-    return cloned_item.as_ptr().get_no_const();
+    return cloned_item;
 }
 
 ///@ ExportMethod
@@ -80,7 +80,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self, int32_t count)
     auto cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
     cloned_item->AddRef();
-    return cloned_item.as_ptr().get_no_const();
+    return cloned_item;
 }
 
 static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
@@ -139,7 +139,7 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 {
-    if (nptr<const ItemHexView> nullable_hex_item = self.dyn_cast<const ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<const ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         return hex_item->GetAnim()->IsPlaying();
     }
@@ -150,7 +150,7 @@ FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bool looped, bool reversed)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->PlayAnim(animName, looped, reversed);
     }
@@ -159,7 +159,7 @@ FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bo
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->StopAnim();
     }
@@ -168,7 +168,7 @@ FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetAnimTime(normalizedTime);
     }
@@ -177,7 +177,7 @@ FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normali
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetAnimDir(dir);
     }
@@ -186,7 +186,7 @@ FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 {
-    if (nptr<const ItemHexView> nullable_hex_item = self.dyn_cast<const ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<const ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         return hex_item->IsMoving();
     }
@@ -197,7 +197,7 @@ FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t speed)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->MoveToHex(hex, speed);
     }
@@ -212,8 +212,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ptr<ItemView> self)
     items.reserve(inner_items.size());
 
     for (size_t i = 0; i < inner_items.size(); i++) {
-        auto item = inner_items[i].as_ptr();
-        items.emplace_back(item);
+        items.emplace_back(inner_items[i]);
     }
 
     return MakeScriptHandleVector<ItemView>(items);
@@ -234,7 +233,7 @@ FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetTargetAlpha(alpha);
     }
@@ -243,7 +242,7 @@ FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Item_Finish(ptr<ItemView> self)
 {
-    if (nptr<ItemHexView> nullable_hex_item = self.dyn_cast<ItemHexView>(); nullable_hex_item) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
         auto hex_item = nullable_hex_item.as_ptr();
         if (!hex_item->IsFinishing()) {
             hex_item->Finish();

@@ -133,18 +133,12 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_constructible_v<ptr<PtrBase>, nptr<PtrDerived>>);
         STATIC_REQUIRE(!std::is_convertible_v<nptr<PtrDerived>, ptr<PtrBase>>);
 
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || std::is_default_constructible_v<ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !std::is_default_constructible_v<ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || std::is_constructible_v<ptr<PtrBase>, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !std::is_constructible_v<ptr<PtrBase>, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || std::is_assignable_v<ptr<PtrBase>&, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !std::is_assignable_v<ptr<PtrBase>&, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || explicitly_bool_testable<ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !explicitly_bool_testable<ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || has_mutable_get_pp<ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !has_mutable_get_pp<ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_PTR_NONNULL || has_default_reset<ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_PTR_NONNULL || !has_default_reset<ptr<PtrBase>>);
+        STATIC_REQUIRE(!std::is_default_constructible_v<ptr<PtrBase>>);
+        STATIC_REQUIRE(!std::is_constructible_v<ptr<PtrBase>, std::nullptr_t>);
+        STATIC_REQUIRE(!std::is_assignable_v<ptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!explicitly_bool_testable<ptr<PtrBase>>);
+        STATIC_REQUIRE(!has_mutable_get_pp<ptr<PtrBase>>);
+        STATIC_REQUIRE(!has_default_reset<ptr<PtrBase>>);
 
         STATIC_REQUIRE(std::is_default_constructible_v<nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<nptr<PtrBase>, std::nullptr_t>);
@@ -155,26 +149,16 @@ TEST_CASE("SmartPointers")
 
         STATIC_REQUIRE(std::is_constructible_v<unique_nptr<PtrBase>, unique_ptr<PtrDerived>&&>);
         STATIC_REQUIRE(!std::is_constructible_v<unique_ptr<PtrBase>, unique_nptr<PtrDerived>&&>);
-        STATIC_REQUIRE(!std::is_convertible_v<unique_ptr<PtrDerived>&, ptr<PtrBase>>);
-        STATIC_REQUIRE(!std::is_convertible_v<unique_nptr<PtrDerived>&, nptr<PtrBase>>);
+        STATIC_REQUIRE(std::is_convertible_v<unique_ptr<PtrDerived>&, ptr<PtrBase>>);
+        STATIC_REQUIRE(std::is_convertible_v<unique_nptr<PtrDerived>&, nptr<PtrBase>>);
 
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_default_constructible_v<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_default_constructible_v<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_constructible_v<unique_ptr<PtrBase>, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_constructible_v<unique_ptr<PtrBase>, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_assignable_v<unique_ptr<PtrBase>&, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_assignable_v<unique_ptr<PtrBase>&, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || explicitly_bool_testable<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !explicitly_bool_testable<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || has_default_reset<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !has_default_reset<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || has_lvalue_release<unique_ptr<PtrBase>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !has_lvalue_release<unique_ptr<PtrBase>>);
-#if FO_STRICT_OWNING_NONNULL
+        STATIC_REQUIRE(!std::is_default_constructible_v<unique_ptr<PtrBase>>);
+        STATIC_REQUIRE(!std::is_constructible_v<unique_ptr<PtrBase>, std::nullptr_t>);
+        STATIC_REQUIRE(!std::is_assignable_v<unique_ptr<PtrBase>&, std::nullptr_t>);
+        STATIC_REQUIRE(!explicitly_bool_testable<unique_ptr<PtrBase>>);
+        STATIC_REQUIRE(!has_default_reset<unique_ptr<PtrBase>>);
+        STATIC_REQUIRE(!has_lvalue_release<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_ptr<PtrBase>&&>().release()), ptr<PtrBase>>);
-#else
-        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_ptr<PtrBase>&>().release()), PtrBase*>);
-#endif
 
         STATIC_REQUIRE(std::is_default_constructible_v<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<unique_nptr<PtrBase>, std::nullptr_t>);
@@ -186,22 +170,16 @@ TEST_CASE("SmartPointers")
 
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, refcount_ptr<RefCountedValue>&&>);
         STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, refcount_nptr<RefCountedValue>&&>);
-        STATIC_REQUIRE(!std::is_convertible_v<refcount_ptr<RefCountedValue>&, ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!std::is_convertible_v<refcount_nptr<RefCountedValue>&, nptr<RefCountedValue>>);
+        STATIC_REQUIRE(std::is_convertible_v<refcount_ptr<RefCountedValue>&, ptr<RefCountedValue>>);
+        STATIC_REQUIRE(std::is_convertible_v<refcount_nptr<RefCountedValue>&, nptr<RefCountedValue>>);
 
         STATIC_REQUIRE(has_refcount_ptr_named_factories<RefCountedValue>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_default_constructible_v<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_default_constructible_v<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_constructible_v<refcount_ptr<RefCountedValue>, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_constructible_v<refcount_ptr<RefCountedValue>, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || std::is_assignable_v<refcount_ptr<RefCountedValue>&, std::nullptr_t>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !std::is_assignable_v<refcount_ptr<RefCountedValue>&, std::nullptr_t>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || has_default_reset<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !has_default_reset<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(FO_STRICT_OWNING_NONNULL || has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!FO_STRICT_OWNING_NONNULL || !has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(!std::is_default_constructible_v<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, std::nullptr_t>);
+        STATIC_REQUIRE(!std::is_assignable_v<refcount_ptr<RefCountedValue>&, std::nullptr_t>);
+        STATIC_REQUIRE(!explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(!has_default_reset<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(!has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
 
         STATIC_REQUIRE(std::is_default_constructible_v<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, std::nullptr_t>);
@@ -210,14 +188,10 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(has_default_reset<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(has_lvalue_release_ownership<refcount_nptr<RefCountedValue>>);
 
-        STATIC_REQUIRE(FO_STRICT_REFCOUNT_EXPLICIT || std::is_constructible_v<refcount_ptr<RefCountedValue>, RefCountedValue*>);
-        STATIC_REQUIRE(!FO_STRICT_REFCOUNT_EXPLICIT || !std::is_constructible_v<refcount_ptr<RefCountedValue>, RefCountedValue*>);
-        STATIC_REQUIRE(FO_STRICT_REFCOUNT_EXPLICIT || std::is_assignable_v<refcount_ptr<RefCountedValue>&, RefCountedValue*>);
-        STATIC_REQUIRE(!FO_STRICT_REFCOUNT_EXPLICIT || !std::is_assignable_v<refcount_ptr<RefCountedValue>&, RefCountedValue*>);
-        STATIC_REQUIRE(FO_STRICT_REFCOUNT_EXPLICIT || std::is_constructible_v<refcount_nptr<RefCountedValue>, RefCountedValue*>);
-        STATIC_REQUIRE(!FO_STRICT_REFCOUNT_EXPLICIT || !std::is_constructible_v<refcount_nptr<RefCountedValue>, RefCountedValue*>);
-        STATIC_REQUIRE(FO_STRICT_REFCOUNT_EXPLICIT || std::is_assignable_v<refcount_nptr<RefCountedValue>&, RefCountedValue*>);
-        STATIC_REQUIRE(!FO_STRICT_REFCOUNT_EXPLICIT || !std::is_assignable_v<refcount_nptr<RefCountedValue>&, RefCountedValue*>);
+        STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, RefCountedValue*>);
+        STATIC_REQUIRE(!std::is_assignable_v<refcount_ptr<RefCountedValue>&, RefCountedValue*>);
+        STATIC_REQUIRE(!std::is_constructible_v<refcount_nptr<RefCountedValue>, RefCountedValue*>);
+        STATIC_REQUIRE(!std::is_assignable_v<refcount_nptr<RefCountedValue>&, RefCountedValue*>);
     }
 
     SECTION("PtrVocabularySupportsMoveResetAndDynCast")

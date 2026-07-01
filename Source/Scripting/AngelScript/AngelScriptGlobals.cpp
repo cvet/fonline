@@ -559,8 +559,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     ptr<const vector<T>> vec = GetGenericAuxiliaryAs<const vector<T>>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
 
-    auto arr_holder = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
-    auto arr = arr_holder.as_ptr();
+    auto arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
     arr->Reserve(numeric_cast<int32_t>(vec->size()));
 
     // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
@@ -570,7 +569,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
         arr->InsertLast(value_ptr);
     }
 
-    ReturnGenericScriptArray(gen, std::move(arr_holder));
+    ReturnGenericScriptArray(gen, std::move(arr));
 }
 
 static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
@@ -825,10 +824,9 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_VERIFY_AND_THROW(!!registrator, "Missing property registrator for entity type");
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
-            auto enums_holder = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
-            auto enums_arr = enums_holder.as_ptr();
+            auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
             backend->AddCleanupCallback([enums_arr]() FO_DEFERRED { enums_arr->Release(); });
-            (void)ReleaseScriptOwnership(std::move(enums_holder));
+            (void)ReleaseScriptOwnership(std::move(enums_arr));
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {

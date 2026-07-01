@@ -121,8 +121,7 @@ static auto ScriptPropertyDataAt(const_span<uint8_t> buffer, size_t pos, size_t 
     FO_STRONG_ASSERT(pos <= buffer.size(), "Read position past property data buffer end");
     FO_STRONG_ASSERT(size <= buffer.size() - pos, "Read size exceeds remaining property data");
 
-    ptr<const uint8_t> begin = buffer.data();
-    return begin.get() + pos;
+    return buffer.data() + pos;
 }
 
 static auto ReadScriptPropertyBytes(const_span<uint8_t> buffer, size_t& pos, size_t size) noexcept -> ptr<const uint8_t>
@@ -227,8 +226,7 @@ static void WriteScriptPropertyStringBytes(span<uint8_t> buffer, size_t& pos, co
         return;
     }
 
-    ptr<const char> chars = value.data();
-    WriteScriptPropertyBytes(buffer, pos, cast_to_void(chars.get()), value.length());
+    WriteScriptPropertyBytes(buffer, pos, cast_to_void(value.data()), value.length());
 }
 
 template<typename T>
@@ -260,7 +258,7 @@ static void ReleaseTypedHandleSlot(ptr<void> slot) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (nptr<T> nullable_object = ReadTypedHandleSlot<T>(slot); nullable_object) {
+    if (auto nullable_object = ReadTypedHandleSlot<T>(slot)) {
         auto object = nullable_object.as_ptr();
         object->Release();
     }
@@ -903,8 +901,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     }
     else if (prop->IsArray()) {
         auto prop_type_info = LookupCachedTypeInfoForProperty(as_engine, prop);
-        auto arr_holder = ScriptArray::Create(prop_type_info);
-        auto arr = arr_holder.as_ptr();
+        auto arr = ScriptArray::Create(prop_type_info);
 
         if (prop->IsArrayOfString()) {
             if (data_size != 0) {
@@ -934,8 +931,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                     auto ref_data = ReadScriptPropertyBytes(data_span, data_pos, ref_data_size);
 
                     refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(ref_data, ref_data_size);
-                    auto ref_obj_handle = ref_obj.as_nptr();
-                    arr->SetValue(numeric_cast<int32_t>(i), ref_obj_handle.get_pp());
+                    arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
                 }
             }
         }
@@ -1014,12 +1010,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
 
         WriteTypedHandleSlot<ScriptArray>(construct_addr, arr);
-        (void)ReleaseScriptOwnership(std::move(arr_holder));
+        (void)ReleaseScriptOwnership(std::move(arr));
     }
     else if (prop->IsDict()) {
         auto prop_type_info = LookupCachedTypeInfoForProperty(as_engine, prop);
-        auto dict_holder = ScriptDict::Create(prop_type_info);
-        auto dict = dict_holder.as_ptr();
+        auto dict = ScriptDict::Create(prop_type_info);
 
         if (data_size != 0) {
             if (prop->IsDictOfArray()) {
@@ -1029,8 +1024,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 auto inner_array_type_info = LookupCachedTypeInfo(as_engine, inner_array_type_name.c_str());
 
                 const auto read_array = [&](uint32_t arr_size) -> refcount_ptr<ScriptArray> {
-                    auto arr_holder = ScriptArray::Create(inner_array_type_info);
-                    auto arr = arr_holder.as_ptr();
+                    auto arr = ScriptArray::Create(inner_array_type_info);
 
                     if (arr_size != 0) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -1049,8 +1043,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 const uint32_t ref_data_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
                                 auto ref_data = ReadScriptPropertyBytes(data_span, data_pos, ref_data_size);
                                 refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(ref_data, ref_data_size);
-                                auto ref_obj_handle = ref_obj.as_nptr();
-                                arr->SetValue(numeric_cast<int32_t>(i), ref_obj_handle.get_pp());
+                                arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
                             }
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
@@ -1107,7 +1100,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         }
                     }
 
-                    return arr_holder;
+                    return arr;
                 };
 
                 while (data_pos < data_span.size()) {
@@ -1115,29 +1108,25 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const uint32_t key_len = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
                         const string key_str = ReadScriptPropertyString(data_span, data_pos, key_len);
                         const uint32_t arr_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
-                        refcount_ptr<ScriptArray> arr_holder = read_array(arr_size);
-                        auto arr = arr_holder.as_ptr();
-                        nptr<ScriptArray> arr_handle = arr;
-                        dict->Set(cast_to_void(&key_str), static_cast<void*>(arr_handle.get_pp()));
+                        refcount_ptr<ScriptArray> arr = read_array(arr_size);
+                        dict->Set(cast_to_void(&key_str), static_cast<void*>(arr.get_pp()));
                         continue;
                     }
 
                     auto key = ReadScriptPropertyBytes(data_span, data_pos, prop->GetDictKeyTypeSize());
                     const uint32_t arr_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
-                    refcount_ptr<ScriptArray> arr_holder = read_array(arr_size);
-                    auto arr = arr_holder.as_ptr();
-                    nptr<ScriptArray> arr_handle = arr;
+                    refcount_ptr<ScriptArray> arr = read_array(arr_size);
 
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set(cast_to_void(&hkey), static_cast<void*>(arr_handle.get_pp()));
+                        dict->Set(cast_to_void(&hkey), static_cast<void*>(arr.get_pp()));
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const auto ekey = resolve_enum(key, prop->GetDictKeyTypeSize());
-                        dict->Set(cast_to_void(&ekey), static_cast<void*>(arr_handle.get_pp()));
+                        dict->Set(cast_to_void(&ekey), static_cast<void*>(arr.get_pp()));
                     }
                     else {
-                        dict->Set(cast_to_void(key.get()), static_cast<void*>(arr_handle.get_pp()));
+                        dict->Set(cast_to_void(key.get()), static_cast<void*>(arr.get_pp()));
                     }
                 }
             }
@@ -1198,8 +1187,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                         if (prop->IsBaseTypeRefType()) {
                             refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                            auto ref_obj_handle = ref_obj.as_nptr();
-                            dict->Set(cast_to_void(&key_str), static_cast<void*>(ref_obj_handle.get_pp()));
+                            dict->Set(cast_to_void(&key_str), static_cast<void*>(ref_obj.get_pp()));
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
                             nptr<Entity> fixed_type = read_fixed_type();
@@ -1222,8 +1210,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->IsBaseTypeRefType()) {
                                 refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                auto ref_obj_handle = ref_obj.as_nptr();
-                                dict->Set(cast_to_void(&hkey), static_cast<void*>(ref_obj_handle.get_pp()));
+                                dict->Set(cast_to_void(&hkey), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 nptr<Entity> fixed_type = read_fixed_type();
@@ -1243,8 +1230,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->IsBaseTypeRefType()) {
                                 refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                auto ref_obj_handle = ref_obj.as_nptr();
-                                dict->Set(cast_to_void(&ekey), static_cast<void*>(ref_obj_handle.get_pp()));
+                                dict->Set(cast_to_void(&ekey), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 nptr<Entity> fixed_type = read_fixed_type();
@@ -1262,8 +1248,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         else {
                             if (prop->IsBaseTypeRefType()) {
                                 refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                auto ref_obj_handle = ref_obj.as_nptr();
-                                dict->Set(cast_to_void(key.get()), static_cast<void*>(ref_obj_handle.get_pp()));
+                                dict->Set(cast_to_void(key.get()), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 nptr<Entity> fixed_type = read_fixed_type();
@@ -1284,7 +1269,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
 
         WriteTypedHandleSlot<ScriptDict>(construct_addr, dict);
-        (void)ReleaseScriptOwnership(std::move(dict_holder));
+        (void)ReleaseScriptOwnership(std::move(dict));
     }
     else {
         FO_UNREACHABLE_PLACE();

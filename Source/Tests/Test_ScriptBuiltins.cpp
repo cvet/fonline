@@ -1322,7 +1322,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1562,7 +1562,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1905,7 +1905,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1985,7 +1985,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

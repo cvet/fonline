@@ -282,8 +282,7 @@ auto ServerEngine::WriteHealthFile(string_view text) -> bool
     }
 
     if (!text.empty()) {
-        ptr<const char> text_data = text.data();
-        health_file.write(text_data.get(), static_cast<std::streamsize>(text.size()));
+        health_file.write(text.data(), static_cast<std::streamsize>(text.size()));
     }
 
     health_file.flush();
@@ -489,7 +488,7 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
                 continue;
             }
 
-            set_send_callbacks(type_desc.PropRegistrator.as_nptr(), wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
+            set_send_callbacks(type_desc.PropRegistrator, wrap_post_setter(&ServerEngine::OnSendCustomEntityValue));
         }
     }
 
@@ -706,7 +705,7 @@ void ServerEngine::OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t eve
 
     const auto key = WorkerJobKey {.Type = WorkerJobType::TimeEvent, .Id = static_cast<size_t>(event_id)};
 
-    _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> { return TimeEventJob(entity_hold.as_ptr(), event_id); });
+    _workerPool->Submit(key, delay, [this, entity_hold = std::move(entity), event_id]() mutable -> std::optional<timespan> { return TimeEventJob(entity_hold, event_id); });
 }
 
 auto ServerEngine::TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>
@@ -786,7 +785,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
         unlogined_player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
     }
 
-    _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_.as_ptr()); });
+    _workerPool->Submit(key, [this, unlogined_player_ = unlogined_player.hold_ref()]() mutable -> std::optional<timespan> { return UnloginedPlayerJob(unlogined_player_); });
 }
 
 auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>
@@ -845,7 +844,7 @@ void ServerEngine::OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_pl
 
     player->GetConnection()->SetDataArrivedCallback([this, key]() { _workerPool->Wake(key); });
 
-    _workerPool->Submit(key, [this, player_ = player.hold_ref()]() mutable -> std::optional<timespan> { return PlayerJob(player_.as_ptr()); });
+    _workerPool->Submit(key, [this, player_ = player.hold_ref()]() mutable -> std::optional<timespan> { return PlayerJob(player_); });
 }
 
 auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
@@ -1079,7 +1078,7 @@ void ServerEngine::Shutdown()
             size_t aborted_locks = 0;
 
             for (const auto& entity : entities) {
-                if (nptr<EntityLock> nullable_lock = entity->GetEntityLock(); nullable_lock) {
+                if (auto nullable_lock = entity->GetEntityLock()) {
                     auto lock = nullable_lock.as_ptr();
                     lock->AbortPendingWaiters();
                     aborted_locks++;
@@ -2136,54 +2135,53 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
     auto proto = nullable_proto.as_ptr();
     ptr<ServerEngine> engine = this;
     refcount_ptr<Critter> cr = SafeAlloc::MakeRefCounted<Critter>(engine, ident_t {}, proto, props);
-    auto cr_ptr = cr.as_ptr();
 
-    EntityMngr.RegisterCritter(cr_ptr);
+    EntityMngr.RegisterCritter(cr);
 
     if (for_player) {
-        cr_ptr->MarkIsForPlayer();
+        cr->MarkIsForPlayer();
     }
 
-    MapMngr.AddCritterToMap(cr_ptr, nullptr, {}, hdir {}, {});
+    MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
     bool release_empty_sync_context = false;
 
-    if (!cr_ptr->IsDestroyed()) {
+    if (!cr->IsDestroyed()) {
         auto ctx = RequireCurrentSyncContext();
 
         if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr.as_nptr());
+            ctx->SyncEntity(cr);
             release_empty_sync_context = true;
         }
         else {
-            ctx->EnsureEntitySynced(cr.as_nptr());
+            ctx->EnsureEntitySynced(cr);
         }
     }
 
     auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
         if (release_empty_sync_context) {
-            if (nptr<SyncContext> nullable_ctx = GetCurrentSyncContext(); nullable_ctx) {
+            if (auto nullable_ctx = GetCurrentSyncContext()) {
                 auto ctx = nullable_ctx.as_ptr();
                 ctx->Release();
             }
         }
     });
 
-    if (!cr_ptr->IsDestroyed()) {
-        ValidateEntityAccess(cr_ptr);
-        OnGlobalMapCritterIn.Fire(cr_ptr);
+    if (!cr->IsDestroyed()) {
+        ValidateEntityAccess(cr);
+        OnGlobalMapCritterIn.Fire(cr);
     }
-    if (!cr_ptr->IsDestroyed()) {
-        EntityMngr.CallInit(cr_ptr, true);
-        MapMngr.ProcessVisibleCritters(cr_ptr);
-        MapMngr.ProcessVisibleItems(cr_ptr);
+    if (!cr->IsDestroyed()) {
+        EntityMngr.CallInit(cr, true);
+        MapMngr.ProcessVisibleCritters(cr);
+        MapMngr.ProcessVisibleItems(cr);
     }
 
-    if (cr_ptr->IsDestroyed()) {
+    if (cr->IsDestroyed()) {
         throw GenericException("Critter destroyed during init");
     }
 
-    return cr_ptr;
+    return cr;
 }
 
 auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
@@ -2199,8 +2197,8 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
     }
 
     bool is_error = false;
-    optional<refcount_ptr<Critter>> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
-    nptr<Critter> nullable_cr = cr_holder ? cr_holder->as_nptr() : nullptr;
+    refcount_nptr<Critter> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
+    nptr<Critter> nullable_cr = cr_holder.as_nptr();
 
     if (is_error) {
         if (nullable_cr) {
@@ -2233,17 +2231,17 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
         auto ctx = RequireCurrentSyncContext();
 
         if (ctx->IsEmpty()) {
-            ctx->SyncEntity(nullable_cr);
+            ctx->SyncEntity(cr);
             release_empty_sync_context = true;
         }
         else {
-            ctx->EnsureEntitySynced(nullable_cr);
+            ctx->EnsureEntitySynced(cr);
         }
     }
 
     auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
         if (release_empty_sync_context) {
-            if (nptr<SyncContext> nullable_ctx = GetCurrentSyncContext(); nullable_ctx) {
+            if (auto nullable_ctx = GetCurrentSyncContext()) {
                 auto ctx = nullable_ctx.as_ptr();
                 ctx->Release();
             }
@@ -2295,11 +2293,10 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
     cr->Broadcast_Action(CritterAction::Disconnect, 0, nullptr);
 
-    refcount_nptr<Map> map_holder {};
+    refcount_nptr<Map> map {};
     if (cr->GetMapId()) {
-        map_holder = require_refcount_ptr(cr->GetParent<Map>());
+        map = require_refcount_ptr(cr->GetParent<Map>());
     }
-    auto map = map_holder.as_nptr();
 
     MapMngr.RemoveCritterFromMap(cr, map);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
@@ -2336,8 +2333,7 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
                     unload_inner_entities(entity_ptr);
                 }
 
-                auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
-                auto custom_entity_ptr = custom_entity_holder.as_ptr();
+                auto custom_entity_ptr = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
 
                 custom_entity_ptr->MarkAsDestroyed();
                 EntityMngr.UnregisterCustomEntity(custom_entity_ptr, false);
@@ -2358,8 +2354,7 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
             vector<refcount_ptr<Item>> inner_items = item->TakeAllInnerItems();
 
             for (size_t i = 0; i < inner_items.size(); i++) {
-                auto inner_item_ptr = inner_items[i].as_ptr();
-                unload_item(inner_item_ptr);
+                unload_item(inner_items[i]);
             }
         }
 
@@ -2504,11 +2499,10 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     ValidateEntityAccess(cr);
     ValidateEntityAccess(nullable_prev_cr);
 
-    refcount_nptr<Map> map_holder {};
+    refcount_nptr<Map> nullable_map {};
     if (cr->GetMapId()) {
-        map_holder = require_refcount_ptr(cr->GetParent<Map>());
+        nullable_map = require_refcount_ptr(cr->GetParent<Map>());
     }
-    auto nullable_map = map_holder.as_nptr();
     ident_t map_id {};
     if (nullable_map) {
         auto map = nullable_map.as_ptr();
@@ -3049,7 +3043,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     }};
 
     player_ref = EntityMngr.GetPlayer(player_id);
-    nullable_player = player_ref.as_nptr();
+    nullable_player = player_ref;
 
     if (!nullable_player) {
         nullable_player = unlogined_player;
@@ -3230,7 +3224,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     auto nullable_cr = cr_ref.as_nptr();
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), map.as_nptr(), nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
@@ -3405,7 +3399,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto nullable_cr = cr_ref.as_nptr();
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), map.as_nptr(), nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
@@ -3507,7 +3501,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     auto nullable_cr = cr_ref.as_nptr();
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), map.as_nptr(), nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
@@ -3635,7 +3629,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
             if (nullable_cr) {
                 entity_ref = std::move(nullable_cr).take_not_null();
-                nullable_entity = entity_ref.as_nptr();
+                nullable_entity = entity_ref;
             }
         }
         break;
@@ -3658,7 +3652,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
                 if (!item->GetHidden()) {
                     entity_ref = std::move(nullable_item).take_not_null();
-                    nullable_entity = entity_ref.as_nptr();
+                    nullable_entity = entity_ref;
                 }
             }
         }
@@ -3715,7 +3709,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                 if (nullable_map) {
                     auto map_holder = std::move(nullable_map).take_not_null();
                     entity_ref = std::move(map_holder);
-                    nullable_entity = entity_ref.as_nptr();
+                    nullable_entity = entity_ref;
                 }
             }
         }
@@ -3737,7 +3731,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
                         auto loc = nullable_loc.as_ptr();
                         auto loc_holder = require_refcount_ptr(EntityMngr.GetLocation(loc->GetId()));
                         entity_ref = std::move(loc_holder);
-                        nullable_entity = entity_ref.as_nptr();
+                        nullable_entity = entity_ref;
                     }
                 }
             }
@@ -3944,8 +3938,7 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
         } break;
         case ItemOwnership::CritterInventory: {
             if (prop->IsPublicSync() || prop->IsOwnerSync()) {
-                auto cr_holder = require_refcount_ptr(item->GetParent<Critter>());
-                auto cr_ptr = cr_holder.as_ptr();
+                auto cr_ptr = require_refcount_ptr(item->GetParent<Critter>());
 
                 if (item->CanSendItem(false)) {
                     cr_ptr->Send_Property(NetProperty::ChosenItem, prop, item);
@@ -3960,8 +3953,7 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
         } break;
         case ItemOwnership::MapHex: {
             if (prop->IsPublicSync()) {
-                auto map_holder = require_refcount_ptr(item->GetParent<Map>());
-                auto map_ptr = map_holder.as_ptr();
+                auto map_ptr = require_refcount_ptr(item->GetParent<Map>());
 
                 if (item->CanSendItem(true)) {
                     map_ptr->SendProperty(NetProperty::MapItem, prop, item);
@@ -4063,13 +4055,11 @@ void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
     auto item = nullable_item.as_ptr();
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto map_holder = require_refcount_ptr(item->GetParent<Map>());
-        auto map = map_holder.as_ptr();
+        auto map = require_refcount_ptr(item->GetParent<Map>());
         map->ChangeViewItem(item);
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto cr_holder = require_refcount_ptr(item->GetParent<Critter>());
-        auto cr = cr_holder.as_ptr();
+        auto cr = require_refcount_ptr(item->GetParent<Critter>());
 
         if (item->GetHidden()) {
             cr->Send_ChosenRemoveItem(item);
@@ -4094,8 +4084,7 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
     auto item = nullable_item.as_ptr();
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto map_holder = require_refcount_ptr(item->GetParent<Map>());
-        auto map = map_holder.as_ptr();
+        auto map = require_refcount_ptr(item->GetParent<Map>());
         map->RecacheHexFlags(item->GetHex());
     }
 }
@@ -4545,7 +4534,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     moving_context->ValidateRuntimeState();
     cr->SetMovingSpeed(moving_context->GetSpeed());
 
-    _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_.as_ptr()); });
+    _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
 
     cr->SendAndBroadcast(initiator, [cr](ptr<Player> p) { p->Send_Moving(cr); });
 
@@ -4564,7 +4553,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     auto parent = cr->GetParentRaw();
 
     if (parent) {
-        const array<nptr<ServerEntity>, 2> sync_entities {parent.as_nptr(), cr.as_nptr()};
+        const array<nptr<ServerEntity>, 2> sync_entities {nptr<ServerEntity> {parent}, cr.as_nptr()};
         ctx->SyncEntities(sync_entities);
 
         if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {
@@ -4612,11 +4601,10 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vec
     FO_STACK_TRACE_ENTRY();
 
     auto map = require_refcount_ptr(cr->GetParent<Map>());
-    auto map_ptr = map.as_ptr();
 
     const auto start_hex = cr->GetHex();
 
-    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+    StartCritterMoving(cr, SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
 void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, function<void()> customSend)
@@ -4691,8 +4679,7 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
     vector<uint8_t> remote_call_data;
     remote_call_data.resize(remote_call_data_size);
 
-    nptr<uint8_t> nullable_remote_call_data = remote_call_data.data();
-    in_buf->Pop(nullable_remote_call_data, remote_call_data_size);
+    in_buf->Pop(remote_call_data.data(), remote_call_data_size);
 
     in_buf.Unlock();
 

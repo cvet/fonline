@@ -96,7 +96,7 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
     rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     _rtAll.push_back(std::move(rt));
-    return _rtAll.back().as_ptr();
+    return _rtAll.back();
 }
 
 void RenderTargetManager::ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size)
@@ -131,7 +131,7 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
     texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
     auto prev_tex = _render->GetRenderTarget();
-    _render->SetRenderTarget(texture.as_nptr());
+    _render->SetRenderTarget(texture);
     _render->ClearRenderTarget(ucolor::clear, with_depth);
     _render->SetRenderTarget(prev_tex);
 
@@ -151,7 +151,7 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
     _rtStack.emplace_back(rt);
 
     if (!redundant) {
-        _render->SetRenderTarget(rt->_texture.as_nptr());
+        _render->SetRenderTarget(rt->_texture);
         rt->_lastPixelPicks.clear();
     }
 }
@@ -170,7 +170,7 @@ void RenderTargetManager::PopRenderTarget()
 
     if (!redundant) {
         if (!_rtStack.empty()) {
-            _render->SetRenderTarget(_rtStack.back()->_texture.as_nptr());
+            _render->SetRenderTarget(_rtStack.back()->_texture);
         }
         else {
             _render->SetRenderTarget(nullptr);
@@ -267,8 +267,7 @@ void RenderTargetManager::DumpTextures() const
     size_t num = 1;
 
     for (size_t i = 0; i < _rtAll.size(); i++) {
-        auto rt = _rtAll[i].as_ptr();
-        write_rt(strex("All_{}", num), rt);
+        write_rt(strex("All_{}", num), _rtAll[i]);
         num++;
     }
 }

@@ -49,9 +49,8 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
     const auto append_scalar = [&data](auto scalar) {
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
-        ptr<uint8_t> target = scalar_bytes.data();
         auto source = ptr<const decltype(scalar)> {&scalar}.reinterpret_as<const uint8_t>();
-        MemCopy(target.get(), source.get(), sizeof(scalar));
+        MemCopy(scalar_bytes.data(), source.get(), sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
     };
 

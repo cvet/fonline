@@ -1383,16 +1383,13 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     if (upload_vertices != 0) {
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            ptr<const Vertex3D> source = Vertices3D.data();
-            MemCopy(vertices_dst.get(), source.get(), upload_vertices * vert_size);
+            MemCopy(vertices_dst.get(), Vertices3D.data(), upload_vertices * vert_size);
         }
         else {
-            ptr<const Vertex2D> source = Vertices.data();
-            MemCopy(vertices_dst.get(), source.get(), upload_vertices * vert_size);
+            MemCopy(vertices_dst.get(), Vertices.data(), upload_vertices * vert_size);
         }
 #else
-        ptr<const Vertex2D> source = Vertices.data();
-        MemCopy(vertices_dst.get(), source.get(), upload_vertices * vert_size);
+        MemCopy(vertices_dst.get(), Vertices.data(), upload_vertices * vert_size);
 #endif
     }
 
@@ -1423,8 +1420,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
 
     if (upload_indices != 0) {
         auto indices_dst = GetMappedResourceData(indices_resource.pData);
-        ptr<const vindex_t> source = Indices.data();
-        MemCopy(indices_dst.get(), source.get(), upload_indices * sizeof(vindex_t));
+        MemCopy(indices_dst.get(), Indices.data(), upload_indices * sizeof(vindex_t));
     }
 
     _ctx->D3DDeviceContext->Unmap(IndexBuf.get(), 0);

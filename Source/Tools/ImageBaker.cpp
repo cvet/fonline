@@ -54,8 +54,7 @@ static auto ImageSpanBytesAt(span<const uint8_t> data, size_t pos) noexcept -> p
 
     FO_STRONG_ASSERT(pos < data.size(), "Image byte offset is out of range");
 
-    ptr<const uint8_t> data_ptr = data.data();
-    ptr<const uint8_t> data_pos = data_ptr.get() + pos;
+    ptr<const uint8_t> data_pos = data.data() + pos;
     return data_pos;
 }
 
@@ -66,8 +65,7 @@ static auto ImageVectorDataAt(vector<T>& data, size_t pos) noexcept -> ptr<T>
 
     FO_STRONG_ASSERT(pos < data.size(), "Image element index is out of range");
 
-    ptr<T> data_ptr = data.data();
-    ptr<T> data_pos = data_ptr.get() + pos;
+    ptr<T> data_pos = data.data() + pos;
     return data_pos;
 }
 
@@ -140,7 +138,7 @@ static auto BytesAsMutableSpan(span<uint8_t> data, size_t value_count) noexcept 
     }
 
     FO_STRONG_ASSERT(data.size() >= value_count * sizeof(T), "Byte span is too small to reinterpret as the requested value count");
-    ptr<uint8_t> bytes = data.data();
+    nptr<uint8_t> bytes = data.data();
     ptr<T> values = reinterpret_cast<T*>(bytes.get_no_const());
     return {values.get(), value_count};
 }
@@ -345,8 +343,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 writer.Write<int16_t>(shot.NextX);
                 writer.Write<int16_t>(shot.NextY);
                 if (!shot.Data.empty()) {
-                    ptr<const uint8_t> shot_data = shot.Data.data();
-                    writer.WriteBytes({shot_data.get(), shot.Data.size()});
+                    writer.WriteBytes({shot.Data.data(), shot.Data.size()});
                 }
                 FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
             }
@@ -1569,8 +1566,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
         vector<int32_t> bboxes;
         bboxes.resize(numeric_cast<size_t>(frame_cnt) * dir_cnt * 4);
         if (!bboxes.empty()) {
-            ptr<int32_t> bboxes_ptr = bboxes.data();
-            reader.ReadObjectArray(span<int32_t> {bboxes_ptr.get(), bboxes.size()});
+            reader.ReadObjectArray(span<int32_t> {bboxes.data(), bboxes.size()});
         }
 
         // Fix dir
@@ -1630,9 +1626,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
 
             if (!spr_data.empty()) {
-                ptr<uint8_t> data_ptr = data.data();
-                ptr<const uint8_t> spr_data_ptr = spr_data.data();
-                MemCopy(data_ptr.get(), spr_data_ptr.get(), spr_data.size());
+                MemCopy(data.data(), spr_data.data(), spr_data.size());
             }
         }
 

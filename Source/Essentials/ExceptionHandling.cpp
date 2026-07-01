@@ -183,6 +183,18 @@ extern void ReportExceptionAndExit(const std::exception& ex) noexcept
     ExitApp(false);
 }
 
+extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        throw StrongAssertationException(message, file, line);
+    }
+    catch (const StrongAssertationException& caught_ex) {
+        ReportExceptionAndExit(caught_ex);
+    }
+}
+
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();

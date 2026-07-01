@@ -100,7 +100,7 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Crit
 
     ident_t player_map_id {};
 
-    if (nptr<const Critter> nullable_controlled_cr = self->GetControlledCritter(); nullable_controlled_cr) {
+    if (auto nullable_controlled_cr = self->GetControlledCritter()) {
         auto controlled_cr = nullable_controlled_cr.as_ptr();
         player_map_id = controlled_cr->GetMapId();
     }
@@ -152,7 +152,7 @@ FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_UnloadMap(ptr<Player> self)
 {
-    if (nptr<const Critter> controlled_cr = self->GetControlledCritter(); controlled_cr) {
+    if (auto controlled_cr = self->GetControlledCritter()) {
         throw ScriptException("Player controls critter");
     }
 

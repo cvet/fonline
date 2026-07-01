@@ -193,8 +193,7 @@ private:
     {
         FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
 
-        ptr<const uint8_t> bytes_ptr = bytes.data();
-        return bytes_ptr;
+        return bytes.data();
     }
 
     static void CopyBytesTo(span<uint8_t> out, const_span<uint8_t> bytes)
@@ -212,8 +211,7 @@ private:
     {
         FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
 
-        ptr<uint8_t> bytes_ptr = bytes.data();
-        return bytes_ptr;
+        return bytes.data();
     }
 
     template<typename T>
@@ -223,8 +221,7 @@ private:
         static_assert(std::is_trivially_copyable_v<T>);
         FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");
 
-        ptr<T> data_ptr = data.data();
-        return data_ptr;
+        return data.data();
     }
 
     const_span<uint8_t> _dataBuf;
@@ -329,8 +326,7 @@ private:
     {
         FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
 
-        ptr<uint8_t> bytes_ptr = bytes.data();
-        return bytes_ptr;
+        return bytes.data();
     }
 
     static void CopyBytesTo(span<uint8_t> out, span<uint8_t> bytes)
@@ -351,8 +347,7 @@ private:
         static_assert(std::is_trivially_copyable_v<T>);
         FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");
 
-        ptr<T> data_ptr = data.data();
-        return data_ptr;
+        return data.data();
     }
 
     span<uint8_t> _dataBuf;
@@ -435,8 +430,7 @@ public:
     void WriteByteVector(const vector<uint8_t>& data)
     {
         if (!data.empty()) {
-            ptr<const uint8_t> data_bytes = data.data();
-            WriteBytes({data_bytes.get(), data.size()});
+            WriteBytes({data.data(), data.size()});
         }
     }
 
@@ -445,8 +439,7 @@ public:
     void WriteObjectVector(const vector<T>& values)
     {
         if (!values.empty()) {
-            ptr<const T> values_data = values.data();
-            WriteObjectArray(const_span<T> {values_data.get(), values.size()});
+            WriteObjectArray(const_span<T> {values.data(), values.size()});
         }
     }
 
@@ -485,16 +478,14 @@ private:
     {
         FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
 
-        ptr<uint8_t> bytes_ptr = bytes.data();
-        return bytes_ptr;
+        return bytes.data();
     }
 
     static auto SourceBytesPtr(const_span<uint8_t> bytes) -> ptr<const uint8_t>
     {
         FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
 
-        ptr<const uint8_t> bytes_ptr = bytes.data();
-        return bytes_ptr;
+        return bytes.data();
     }
 
     template<typename T>
@@ -504,8 +495,7 @@ private:
         static_assert(std::is_trivially_copyable_v<T>);
         FO_VERIFY_AND_THROW(!data.empty(), "Object span is empty");
 
-        ptr<const T> data_ptr = data.data();
-        return data_ptr;
+        return data.data();
     }
 
     void GrowBuf(size_t size)

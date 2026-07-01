@@ -64,7 +64,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _model.as_ptr();
+        return _model;
     }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 

@@ -180,7 +180,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     ptr<HashResolver> hash_resolver = &Hashes;
     ptr<NameResolver> name_resolver = this;
     unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
-    ptr<PropertyRegistrator> registrator = registrator_holder.as_ptr();
+    ptr<PropertyRegistrator> registrator = registrator_holder;
 
     EntityTypeDesc desc;
     desc.Exported = exported;
@@ -237,7 +237,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
     ptr<HashResolver> hash_resolver = &Hashes;
     ptr<NameResolver> name_resolver = this;
     unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
-    ptr<PropertyRegistrator> registrator = registrator_holder.as_ptr();
+    ptr<PropertyRegistrator> registrator = registrator_holder;
 
     EntityTypeDesc desc;
     desc.Exported = exported;
@@ -412,7 +412,7 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         fields_registrator->RegisterProperty(tokens);
     }
 
-    ref_type.FieldsRegistrator = fields_registrator.as_ptr();
+    ref_type.FieldsRegistrator = fields_registrator;
     ref_type.IsDynamicLayout = true;
     _dynamicRefTypeRegistrators.emplace(name, std::move(fields_registrator));
 }
@@ -682,11 +682,11 @@ auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept ->
     const auto it = _entityTypes.find(type_name);
 
     if (it != _entityTypes.end()) {
-        return it->second.PropRegistrator.as_nptr();
+        return it->second.PropRegistrator;
     }
 
     const auto it2 = _fixedTypes.find(type_name);
-    return it2 != _fixedTypes.end() ? it2->second.PropRegistrator.as_nptr() : nullptr;
+    return it2 != _fixedTypes.end() ? nptr<const PropertyRegistrator> {it2->second.PropRegistrator} : nullptr;
 }
 
 auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>

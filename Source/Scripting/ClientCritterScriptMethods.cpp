@@ -343,7 +343,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self)
     items.reserve(inv_items.size());
 
     for (size_t i = 0; i < inv_items.size(); i++) {
-        items.emplace_back(inv_items[i].as_ptr());
+        items.emplace_back(inv_items[i]);
     }
 
     return MakeScriptHandleVector<ItemView>(items);

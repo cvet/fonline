@@ -254,8 +254,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
             writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
             if (!raw_data.empty()) {
-                ptr<const uint8_t> raw_data_ptr = raw_data.data();
-                writer.WriteBytes({raw_data_ptr.get(), raw_data.size()});
+                writer.WriteBytes({raw_data.data(), raw_data.size()});
             }
         }
         else if (type.IsStruct) {
@@ -496,8 +495,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
                 const auto arr_size = reader.Read<int32_t>();
                 FO_VERIFY_AND_THROW(arr_size >= 0, "Arr size is negative", arr_size);
-                auto arr_holder = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg->Type.BaseType)).c_str());
-                auto arr = arr_holder.as_ptr();
+                auto arr = CreateScriptArray(as_engine, strex("array<{}>", MakeScriptTypeName(arg->Type.BaseType)).c_str());
 
                 for (int32_t l = 0; l < arr_size; l++) {
                     nptr<void> value = read_simple(arg->Type.BaseType);
@@ -572,7 +570,7 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
             continue;
         }
 
-        if (nptr<AngelScript::asIScriptFunction> nullable_func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call); nullable_func) {
+        if (auto nullable_func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call)) {
             if (backend->HasGameEngine()) {
                 ptr<BaseEngine> engine = backend->GetGameEngine();
                 auto func = nullable_func.as_ptr();
@@ -620,7 +618,7 @@ auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptMod
             continue;
         }
 
-        if (nptr<const AngelScript::asIScriptFunction> nullable_func = ResolveInboundRemoteCallImplementation(mod, meta, inbound_call); nullable_func) {
+        if (auto nullable_func = ResolveInboundRemoteCallImplementation(mod, meta, inbound_call)) {
             auto func = nullable_func.as_ptr();
 
             if (std::ranges::find(matched_funcs, func) == matched_funcs.end()) {

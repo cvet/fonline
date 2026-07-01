@@ -169,7 +169,7 @@ auto Critter::GetMoving() const noexcept -> nptr<const MovingContext>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving.as_nptr();
+    return _moving;
 }
 
 auto Critter::GetMoving() noexcept -> nptr<MovingContext>
@@ -177,7 +177,7 @@ auto Critter::GetMoving() noexcept -> nptr<MovingContext>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving.as_nptr();
+    return _moving;
 }
 
 auto Critter::GetMovingContext() const noexcept -> nptr<const MovingContext>
@@ -185,7 +185,7 @@ auto Critter::GetMovingContext() const noexcept -> nptr<const MovingContext>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving ? _moving.as_nptr() : _lastMoving.as_nptr();
+    return _moving ? nptr<const MovingContext> {_moving} : nptr<const MovingContext> {_lastMoving};
 }
 
 auto Critter::GetMovingContext() noexcept -> nptr<MovingContext>
@@ -193,7 +193,7 @@ auto Critter::GetMovingContext() noexcept -> nptr<MovingContext>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _moving ? _moving.as_nptr() : _lastMoving.as_nptr();
+    return _moving ? nptr<MovingContext> {_moving} : nptr<MovingContext> {_lastMoving};
 }
 
 auto Critter::GetMovingState() const noexcept -> MovingState
@@ -511,8 +511,7 @@ void Critter::DetachFromCritter()
     FO_VERIFY_AND_THROW(GetAttachMaster(), "Missing required attach master");
 
     auto nullable_cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
-    auto cr_holder = std::move(nullable_cr).take_not_null();
-    auto cr = cr_holder.as_ptr();
+    auto cr = std::move(nullable_cr).take_not_null();
 
     ptr<Critter> self = this;
     cr->RemoveAttachedCritter(self);
@@ -536,8 +535,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Sync position
-    auto map_holder = require_refcount_ptr(GetParent<Map>());
-    auto map = map_holder.as_ptr();
+    auto map = require_refcount_ptr(GetParent<Map>());
 
     vector<pair<refcount_ptr<Critter>, mpos>> moved_critters;
 
@@ -568,12 +566,10 @@ void Critter::MoveAttachedCritters()
     // Callbacks time
     ptr<Critter> self = this;
     auto this_ref_holder = self.hold_ref();
-    auto map_ref_holder = map.as_ptr().hold_ref();
+    auto map_ref_holder = map;
     const auto dir = GetDir();
 
-    for (auto& [cr_ref_holder, prev_hex] : moved_critters) {
-        auto cr = cr_ref_holder.as_ptr();
-
+    for (auto& [cr, prev_hex] : moved_critters) {
         const auto is_cr_valid = [cr, map] {
             if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return false;
@@ -947,8 +943,7 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
         return false;
     }
 
-    auto map_holder = require_refcount_ptr(GetParent<Map>());
-    auto map = map_holder.as_ptr();
+    auto map = require_refcount_ptr(GetParent<Map>());
 
     return CheckItemVisibilityHook(_engine.get(), map.get(), this, item.get());
 }
@@ -1183,7 +1178,7 @@ void Critter::SendAndBroadcast(nptr<const Player> ignore_player, const function<
     }
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients(ignore_player)) {
-        player_callback(player.as_ptr());
+        player_callback(player);
     }
 }
 

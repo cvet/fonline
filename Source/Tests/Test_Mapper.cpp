@@ -209,7 +209,7 @@ namespace MapperMergeTest
 
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == proto_id) {
-                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item.as_ptr()), item->GetCount()});
+                survivors.emplace_back(SurvivorDesc {item->GetId().underlying_value(), item->GetHex(), CollectMeshHexes(item), item->GetCount()});
             }
         }
 
@@ -249,7 +249,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         nptr<const ItemHexView> survivor;
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
-                survivor = item.as_nptr();
+                survivor = item;
             }
         }
         REQUIRE(survivor != nullptr);
@@ -280,7 +280,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         nptr<const ItemHexView> survivor;
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
-                survivor = item.as_nptr();
+                survivor = item;
             }
         }
         REQUIRE(survivor != nullptr);
@@ -314,7 +314,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         nptr<const ItemHexView> survivor;
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
-                survivor = item.as_nptr();
+                survivor = item;
             }
         }
         REQUIRE(survivor != nullptr);
@@ -393,7 +393,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         nptr<const ItemHexView> survivor;
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
-                survivor = item.as_nptr();
+                survivor = item;
             }
         }
         REQUIRE(survivor != nullptr);
@@ -421,7 +421,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
                 CHECK(item->IsNonEmptyMultihexMesh());
-                CHECK(CollectMeshHexes(item.as_ptr()).size() == 2);
+                CHECK(CollectMeshHexes(item).size() == 2);
                 mesh_items++;
             }
         }
@@ -548,7 +548,7 @@ TEST_CASE("MapperMultihexMeshMerge")
         nptr<const ItemHexView> survivor;
         for (const auto& item : map->GetItems()) {
             if (item->GetProtoId() == tile_a) {
-                survivor = item.as_nptr();
+                survivor = item;
             }
         }
         REQUIRE(survivor != nullptr);

@@ -846,7 +846,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
         while (stream.avail_out != 0) {
             if (stream.avail_in == 0 && left > 0) {
                 const auto len = std::min(left, numeric_cast<uint32_t>(_readBuf.size()));
-                ptr<uint8_t> read_buf = _readBuf.data();
+                nptr<uint8_t> read_buf = _readBuf.data();
                 stream.next_in = read_buf.get();
 
                 if (!stream_read_exact(_datFile, make_span(read_buf, len))) {
@@ -1118,10 +1118,9 @@ EmbeddedFile::EmbeddedFile()
         }
 
         uint32_t embedded_size = 0;
-        ptr<const uint8_t> embedded_size_source = embedded_size_bytes.data();
 
         auto embedded_size_target = ptr<uint32_t> {&embedded_size}.reinterpret_as<uint8_t>();
-        MemCopy(embedded_size_target.get(), embedded_size_source.get(), embedded_size_bytes.size());
+        MemCopy(embedded_size_target.get(), embedded_size_bytes.data(), embedded_size_bytes.size());
 
         ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
         ptr<void> stream = cast_to_void(mem_stream.get());

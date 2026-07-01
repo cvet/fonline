@@ -164,7 +164,7 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        ptr<const uint8_t> key_data = key.data();
+        nptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
@@ -204,7 +204,6 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         auto actual_doc = GetRecordUnlocked(collection_name, id);
 
@@ -226,7 +225,7 @@ protected:
             throw DataBaseException("DbUnQLite bson_get_data");
         }
 
-        const auto kv_store = unqlite_kv_store(db.get(), key_data.get(), key_size, bson_data.get(), bson.len);
+        const auto kv_store = unqlite_kv_store(db.get(), key.data(), key_size, bson_data.get(), bson.len);
 
         if (kv_store != UNQLITE_OK) {
             bson_destroy(&bson);
@@ -246,9 +245,8 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
-        const auto kv_delete = unqlite_kv_delete(db.get(), key_data.get(), key_size);
+        const auto kv_delete = unqlite_kv_delete(db.get(), key.data(), key_size);
 
         if (kv_delete != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite unqlite_kv_delete", kv_delete);
@@ -285,9 +283,8 @@ private:
 
             vector<uint8_t> result(sizeof(int64_t));
             const int64_t value = numeric_key->underlying_value();
-            ptr<uint8_t> result_data = result.data();
             ptr<const int64_t> value_data = &value;
-            MemCopy(result_data.get(), value_data.get(), sizeof(value));
+            MemCopy(result.data(), value_data.get(), sizeof(value));
             return result;
         }
 
@@ -304,8 +301,7 @@ private:
 
             int64_t value {};
             ptr<int64_t> value_data = &value;
-            ptr<const uint8_t> key_bytes = key_data.data();
-            MemCopy(value_data.get(), key_bytes.get(), sizeof(value));
+            MemCopy(value_data.get(), key_data.data(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbUnQLite invalid numeric key", value);
@@ -395,14 +391,13 @@ private:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        ptr<const uint8_t> key_data = key.data();
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
         ptr<AnyData::Document> document_result = &doc;
         ptr<void> document_user_data = cast_to_void(document_result.get());
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
-            db.get(), key_data.get(), key_size,
+            db.get(), key.data(), key_size,
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
                 nptr<const uint8_t> output_data = cast_from_void<const uint8_t*>(output);

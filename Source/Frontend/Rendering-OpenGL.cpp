@@ -761,7 +761,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                ptr<GLchar> log_buf = buf.data();
+                nptr<GLchar> log_buf = buf.data();
                 int32_t chars = 0;
                 glGetShaderInfoLog(shader, len, &chars, log_buf.get());
                 result.assign(log_buf.get(), numeric_cast<size_t>(len));
@@ -778,7 +778,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             if (len > 0) {
                 vector<GLchar> buf;
                 buf.resize(len);
-                ptr<GLchar> log_buf = buf.data();
+                nptr<GLchar> log_buf = buf.data();
                 int32_t chars = 0;
                 glGetProgramInfoLog(program, len, &chars, log_buf.get());
                 result.assign(log_buf.get(), numeric_cast<size_t>(len));
@@ -1108,10 +1108,8 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     GLint prev_fbo;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
-    ptr<ucolor> result_data = result.data();
-
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, result_data.get()));
+    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 

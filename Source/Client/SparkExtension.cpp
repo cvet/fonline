@@ -112,7 +112,7 @@ namespace SPK::FO
         }
 
         _renderBuf->Upload(EffectUsage::QuadSprite, vertices, vertices / 4 * 6);
-        effect->DrawBuffer(_renderBuf.as_ptr(), 0, vertices / 4 * 6);
+        effect->DrawBuffer(_renderBuf, 0, vertices / 4 * 6);
     }
 
     SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) :
@@ -554,8 +554,7 @@ namespace SPK::FO
 
         if (_drawWidth != 0 || _drawHeight != 0) {
             const std::vector tmpSize = {_drawWidth, _drawHeight};
-            ptr<const int32_t> size_data = tmpSize.data();
-            descriptor.getAttribute("draw size")->setValues(size_data.get(), 2);
+            descriptor.getAttribute("draw size")->setValues(tmpSize.data(), 2);
         }
 
         if (_drawInScene) {
@@ -567,12 +566,10 @@ namespace SPK::FO
         descriptor.getAttribute("texture")->setValue(std::string(_textureName));
 
         const std::vector tmpScale = {scaleX, scaleY};
-        ptr<const float> scale_data = tmpScale.data();
-        descriptor.getAttribute("scale")->setValues(scale_data.get(), 2);
+        descriptor.getAttribute("scale")->setValues(tmpScale.data(), 2);
 
         const std::vector tmpAtlasDimensions = {numeric_cast<uint32_t>(textureAtlasNbX), numeric_cast<uint32_t>(textureAtlasNbY)};
-        ptr<const uint32_t> atlas_dimensions_data = tmpAtlasDimensions.data();
-        descriptor.getAttribute("atlas dimensions")->setValues(atlas_dimensions_data.get(), 2);
+        descriptor.getAttribute("atlas dimensions")->setValues(tmpAtlasDimensions.data(), 2);
 
         if (lookOrientation == LOOK_CAMERA_PLANE) {
             descriptor.getAttribute("look orientation")->setValue(std::string("LOOK_CAMERA_PLANE"));

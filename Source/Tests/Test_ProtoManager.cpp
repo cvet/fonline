@@ -81,23 +81,23 @@ TEST_CASE("ProtoManager")
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(critter_type, critter_proto);
 
-        REQUIRE(IsSameProtoPtr(meta.GetProtoItem(knife_pid), item_proto.as_ptr()));
-        REQUIRE(IsSameProtoPtr(meta.GetProtoCritter(raider_pid), critter_proto.as_ptr()));
+        REQUIRE(IsSameProtoPtr(meta.GetProtoItem(knife_pid), item_proto.get()));
+        REQUIRE(IsSameProtoPtr(meta.GetProtoCritter(raider_pid), critter_proto.get()));
 
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, knife_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, knife_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(critter_type, raider_pid), critter_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_critter_type, raider_pid), critter_proto.as_ptr()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(critter_type, raider_pid), critter_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_critter_type, raider_pid), critter_proto.get()));
 
         const auto& item_protos = meta.GetProtoEntities(proto_item_type);
         const auto& critter_protos = meta.GetProtoEntities(proto_critter_type);
 
         REQUIRE(item_protos.size() == 1);
         REQUIRE(critter_protos.size() == 1);
-        CHECK(IsSameProtoPtr(item_protos.at(knife_pid).as_ptr(), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(critter_protos.at(raider_pid).as_ptr(), critter_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoItems().at(knife_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoCritters().at(raider_pid), critter_proto.as_ptr()));
+        CHECK(IsSameProtoPtr(item_protos.at(knife_pid).get(), item_proto.get()));
+        CHECK(IsSameProtoPtr(critter_protos.at(raider_pid).get(), critter_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoItems().at(knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoCritters().at(raider_pid), critter_proto.get()));
     }
 
     SECTION("MigrationRulesRedirectProtoLookups")
@@ -126,13 +126,13 @@ TEST_CASE("ProtoManager")
         meta.RegisterMigrationRule("Proto", "Map", "RestStop_Day", "RestStop_DayTime");
         meta.RegisterMigrationRule("Proto", "Location", "RestStop_Day", "RestStop_DayTime");
 
-        CHECK(IsSameProtoPtr(meta.GetProtoItem(legacy_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, legacy_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, legacy_pid), item_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(map_type, rest_stop_day_pid), map_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_map_type, rest_stop_day_pid), map_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(location_type, rest_stop_day_pid), location_proto.as_ptr()));
-        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid), location_proto.as_ptr()));
+        CHECK(IsSameProtoPtr(meta.GetProtoItem(legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(map_type, rest_stop_day_pid), map_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_map_type, rest_stop_day_pid), map_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(location_type, rest_stop_day_pid), location_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid), location_proto.get()));
     }
 
     SECTION("MigrationRuleRemoveResolvesToSentinel")

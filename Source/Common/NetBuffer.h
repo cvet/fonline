@@ -106,10 +106,9 @@ public:
     {
         const auto len = numeric_cast<uint32_t>(value.length());
         ptr<const uint32_t> len_ptr = &len;
-        nptr<const typename T::value_type> value_data = value.data();
 
         Push(len_ptr, sizeof(len));
-        Push(value_data, len);
+        Push(value.data(), len);
     }
 
     template<typename T>
@@ -183,8 +182,7 @@ public:
         }
 
         result.resize(len);
-        ptr<char> result_data = result.data();
-        Pop(result_data, len);
+        Pop(result.data(), len);
         return result;
     }
 

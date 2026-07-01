@@ -121,8 +121,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)
 
     auto nullable_map = self->GetParent<Map>();
     FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-    auto map_holder = std::move(nullable_map).take_not_null();
-    auto map = map_holder.as_ptr();
+    auto map = std::move(nullable_map).take_not_null();
 
     ValidateEntityAccess(map);
 
@@ -144,8 +143,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex, mdi
 
     auto nullable_map = self->GetParent<Map>();
     FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-    auto map_holder = std::move(nullable_map).take_not_null();
-    auto map = map_holder.as_ptr();
+    auto map = std::move(nullable_map).take_not_null();
 
     ValidateEntityAccess(map);
 
@@ -337,8 +335,7 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(ptr<Critter> self, Cri
     if (self->GetMapId()) {
         auto nullable_map = self->GetParent<Map>();
         FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-        auto map_holder = std::move(nullable_map).take_not_null();
-        auto map = map_holder.as_ptr();
+        auto map = std::move(nullable_map).take_not_null();
         ValidateEntityAccess(map);
 
         vector<ptr<Critter>> critters = self->GetCritters(seeType, findType);
@@ -786,8 +783,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     FO_STACK_TRACE_ENTRY();
 
     auto engine_ptr = self->GetEngine();
-    auto map_holder = RequireParent<Map>(self, "Critter is not on map");
-    auto map_ptr = map_holder.as_ptr();
+    auto map_ptr = RequireParent<Map>(self, "Critter is not on map");
 
     ValidateEntityAccess(map_ptr);
 

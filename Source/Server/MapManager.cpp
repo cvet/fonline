@@ -169,7 +169,6 @@ void MapManager::LoadFromResources()
                         auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine, ident_t {}, item_proto.as_ptr(), item_props_ptr);
                         item->SetEntityLock(nullptr);
                         static_map->ItemBillets.emplace_back(item_id, item);
-                        auto item_ptr = item.as_ptr();
 
                         // Checks
                         if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -204,10 +203,10 @@ void MapManager::LoadFromResources()
                         // Sort
                         if (item->GetStatic()) {
                             FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
-                            static_map->StaticItems.emplace_back(item_ptr);
-                            static_map->StaticItemsById.emplace(item_id, item_ptr);
+                            static_map->StaticItems.emplace_back(item);
+                            static_map->StaticItemsById.emplace(item_id, item);
 
-                            const auto add_item_to_field = [item_ = item_ptr](ptr<StaticMap::Field> static_field) {
+                            const auto add_item_to_field = [item_ = ptr<StaticItem> {item}](ptr<StaticMap::Field> static_field) {
                                 if (!vec_exists(static_field->StaticItems, item_)) {
                                     static_field->StaticItems.reserve(static_field->StaticItems.size() + 1);
                                     static_field->StaticItems.emplace_back(item_);
@@ -248,11 +247,11 @@ void MapManager::LoadFromResources()
                         }
                         else {
                             if (item->GetOwnership() == ItemOwnership::MapHex) {
-                                static_map->HexItemBillets.emplace_back(item_id, item_ptr);
+                                static_map->HexItemBillets.emplace_back(item_id, item);
                             }
                             else {
                                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::CritterInventory || item->GetOwnership() == ItemOwnership::ItemContainer, "Map item load produced item with unsupported ownership");
-                                static_map->ChildItemBillets.emplace_back(item_id, item_ptr);
+                                static_map->ChildItemBillets.emplace_back(item_id, item);
                             }
                         }
                     }
@@ -318,7 +317,7 @@ auto MapManager::GetStaticMap(ptr<const ProtoMap> proto) -> ptr<StaticMap>
 
     const auto it = _staticMaps.find(proto);
     FO_VERIFY_AND_THROW(it != _staticMaps.end(), "Lookup failed in static maps");
-    return it->second.as_ptr();
+    return it->second;
 }
 
 void MapManager::GenerateMapContent(ptr<Map> map)
@@ -450,7 +449,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto.as_ptr(), props);
 
-    _engine->EntityMngr.RegisterLocation(loc.as_ptr());
+    _engine->EntityMngr.RegisterLocation(loc);
 
     for (const auto map_pid : map_pids) {
         auto nullable_map_proto = _engine->GetProtoMap(map_pid);
@@ -461,10 +460,10 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 
         auto map_proto = nullable_map_proto.as_ptr();
         auto static_map = GetStaticMap(map_proto);
-        auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc.as_nptr(), static_map);
-        _engine->EntityMngr.RegisterMap(map.as_ptr());
-        loc->AddMap(map.as_ptr());
-        GenerateMapContent(map.as_ptr());
+        auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
+        _engine->EntityMngr.RegisterMap(map);
+        loc->AddMap(map);
+        GenerateMapContent(map);
     }
 
     for (ptr<Map> map : copy_hold_ref(loc->GetMaps())) {
@@ -472,14 +471,14 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
     }
 
     if (!loc->IsDestroyed()) {
-        _engine->EntityMngr.CallInit(loc.as_ptr(), true);
+        _engine->EntityMngr.CallInit(loc, true);
     }
 
     if (loc->IsDestroyed()) {
         throw GenericException("Location destroyed during init");
     }
 
-    return loc.as_ptr();
+    return loc;
 }
 
 auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
@@ -500,26 +499,26 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
     auto static_map = GetStaticMap(map_proto);
     refcount_ptr<Map> map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
 
-    _engine->EntityMngr.RegisterMap(map.as_ptr());
-    loc->AddMap(map.as_ptr());
+    _engine->EntityMngr.RegisterMap(map);
+    loc->AddMap(map);
 
-    GenerateMapContent(map.as_ptr());
+    GenerateMapContent(map);
 
     if (!map->IsDestroyed()) {
-        _engine->EntityMngr.CallInit(map.as_ptr(), true);
+        _engine->EntityMngr.CallInit(map, true);
     }
 
     if (!map->IsDestroyed()) {
         ValidateEntityAccess(loc);
-        ValidateEntityAccess(map.as_nptr());
-        loc->OnMapAdded.Fire(map.as_ptr());
+        ValidateEntityAccess(map);
+        loc->OnMapAdded.Fire(map);
     }
 
     if (map->IsDestroyed()) {
         throw GenericException("Map destroyed during init");
     }
 
-    return map.as_ptr();
+    return map;
 }
 
 void MapManager::RegenerateMap(ptr<Map> map)
@@ -546,9 +545,7 @@ auto MapManager::GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept 
     vector<refcount_ptr<Location>> locations = _engine->EntityMngr.GetLocations();
 
     for (size_t i = 0; i < locations.size(); i++) {
-        auto loc = locations[i].as_ptr();
-
-        if (loc->GetProtoId() == loc_pid) {
+        if (locations[i]->GetProtoId() == loc_pid) {
             if (skip_count <= 0) {
                 return std::move(locations[i]);
             }
@@ -567,9 +564,7 @@ auto MapManager::GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> re
     vector<refcount_ptr<Map>> maps = _engine->EntityMngr.GetMaps();
 
     for (size_t i = 0; i < maps.size(); i++) {
-        auto map = maps[i].as_ptr();
-
-        if (map->GetProtoId() == map_pid) {
+        if (maps[i]->GetProtoId() == map_pid) {
             if (skip_count <= 0) {
                 return std::move(maps[i]);
             }
@@ -666,12 +661,12 @@ void MapManager::DestroyMap(ptr<Map> map)
     auto nullable_loc = map->GetLocation();
     FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
     auto loc = nullable_loc.as_ptr().hold_ref();
-    ValidateEntityAccess(loc.as_nptr());
+    ValidateEntityAccess(loc);
     ValidateEntityAccess(map.as_nptr());
     loc->OnMapRemoved.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
-    FO_VERIFY_AND_THROW(map->GetLocation() == loc.as_nptr(), "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
+    FO_VERIFY_AND_THROW(map->GetLocation() == nptr<Location> {loc}, "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
 
     DestroyMapInternal(map);
 }
@@ -880,11 +875,10 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     const auto prev_map_id = cr->GetMapId();
     refcount_nptr<Map> prev_map_ref = prev_map_id ? cr->GetParent<Map>() : refcount_nptr<Map> {};
-    auto prev_map = prev_map_ref.as_nptr();
-    FO_VERIFY_AND_THROW(!prev_map_id || !!prev_map, "Previous map id is set but previous map was not found");
-    EnsureEntitySynced(prev_map);
+    FO_VERIFY_AND_THROW(!prev_map_id || !!prev_map_ref, "Previous map id is set but previous map was not found");
+    EnsureEntitySynced(prev_map_ref);
 
-    if (map != nullptr && map != prev_map) {
+    if (map != nullptr && map != prev_map_ref) {
         auto loc = map->GetLocation();
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
         EnsureEntitySynced(loc);
@@ -907,7 +901,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
         }
     }
 
-    if (prev_map == map) {
+    if (prev_map_ref == map) {
         // Between one map
         if (map != nullptr) {
             FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter intra-map transfer target hex is outside map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
@@ -961,7 +955,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
             }
         }
 
-        RemoveCritterFromMap(cr, prev_map);
+        RemoveCritterFromMap(cr, prev_map_ref);
 
         if (cr->IsDestroyed()) {
             return;
@@ -1089,8 +1083,8 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     // ValidateEntityAccess and event dispatch tolerate destroyed entity arguments.
     ValidateEntityAccess(cr);
-    ValidateEntityAccess(prev_map);
-    _engine->OnCritterTransfer.Fire(cr, prev_map);
+    ValidateEntityAccess(prev_map_ref);
+    _engine->OnCritterTransfer.Fire(cr, prev_map_ref);
 }
 
 void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, ident_t global_cr_id)
@@ -1141,13 +1135,12 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
             }
         }
 
-        auto global_cr = global_cr_ref.as_nptr();
-        ValidateEntityAccess(global_cr);
+        ValidateEntityAccess(global_cr_ref);
 
         cr->SetMapId({});
         cr->SetParent(nullptr);
 
-        if (!global_cr || global_cr->GetMapId()) {
+        if (!global_cr_ref || global_cr_ref->GetMapId()) {
             // Tight lambda so the property lock is released (even on a throw) exactly when the
             // trip-id read/advance finishes, without widening the locked region over the work below.
             const auto trip_id = [this]() {
@@ -1163,10 +1156,10 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
             cr_group = SafeAlloc::MakeShared<vector<ptr<Critter>>>();
         }
         else {
-            auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
+            auto& global_cr_group = global_cr_ref->GetRawGlobalMapGroup();
             FO_VERIFY_AND_THROW(global_cr_group, "Missing required global critter group");
 
-            cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
+            cr->SetGlobalMapTripId(global_cr_ref->GetGlobalMapTripId());
 
             for (ptr<Critter> group_cr : *global_cr_group) {
                 group_cr->Send_AddCritter(cr);

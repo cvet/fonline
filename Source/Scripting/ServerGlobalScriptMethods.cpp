@@ -842,7 +842,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<Pr
         result.reserve(maps.size());
 
         for (size_t i = 0; i != maps.size(); i++) {
-            result.emplace_back(maps[i].as_ptr());
+            result.emplace_back(maps[i]);
         }
 
         return MakeScriptHandleVector<Map>(result);
@@ -1499,8 +1499,7 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     PROCESS_INFORMATION pi = {};
 
     auto wcommand = strex(command).to_wide_char();
-    ptr<wchar_t> command_line = wcommand.data();
-    const auto result = ::CreateProcessW(nullptr, command_line.get(), nullptr, //
+    const auto result = ::CreateProcessW(nullptr, wcommand.data(), nullptr, //
         nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
 
     if (result == 0) {

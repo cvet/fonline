@@ -805,8 +805,7 @@ namespace LocEntity
         writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            ptr<const uint8_t> props_data_ptr = props_data.data();
-            writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+            writer.WriteBytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -883,7 +882,7 @@ namespace LocEntity
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.as_ptr()); \
+    const auto startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -1140,9 +1139,9 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
 
         bool is_error = false;
-        optional<refcount_ptr<Critter>> loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
-        REQUIRE(loaded_holder.has_value());
-        auto loaded = loaded_holder->as_ptr();
+        refcount_nptr<Critter> loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
 
         CHECK(is_error);
         CHECK(loaded->GetItemIds().empty());
@@ -1293,7 +1292,7 @@ TEST_CASE("ItemCppApiAdvanced")
         const auto item_id = item->GetId();
         auto found = server->EntityMngr.GetItem(item_id);
         REQUIRE(found);
-        CHECK(found.as_nptr() == item);
+        CHECK(nptr<Item> {found} == item);
 
         server->CrMngr.DestroyCritter(cr);
     }

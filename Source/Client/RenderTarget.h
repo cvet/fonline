@@ -53,13 +53,13 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _texture.as_ptr();
+        return _texture;
     }
     [[nodiscard]] auto GetTexture() noexcept -> ptr<RenderTexture>
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _texture.as_ptr();
+        return _texture;
     }
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
     [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> nptr<RenderEffect> { return _customDrawEffect; }

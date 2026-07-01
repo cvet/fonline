@@ -694,7 +694,7 @@ public:
             return nullptr;
         }
 
-        return it->second.as_ptr().template dyn_cast<T>();
+        return ptr<ScriptSystemBackend> {it->second}.template dyn_cast<T>();
     }
 
     template<typename T>
@@ -706,7 +706,7 @@ public:
             return nullptr;
         }
 
-        return it->second.as_ptr().template dyn_cast<T>();
+        return ptr<const ScriptSystemBackend> {it->second}.template dyn_cast<T>();
     }
 
     template<typename TRet, typename... Args>

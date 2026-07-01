@@ -39,8 +39,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     writer.WriteStringBytes(proto_name);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
     if (!props_data.empty()) {
-        ptr<const uint8_t> props_data_ptr = props_data.data();
-        writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+        writer.WriteBytes({props_data.data(), props_data.size()});
     }
 
     return protos_data;

@@ -360,14 +360,13 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
 
     if (!_orderBroken && _activeSprites.size() >= 2) {
         auto tail = _activeSprites.back().as_ptr();
-        auto prev = _activeSprites[_activeSprites.size() - 2].as_ptr();
 
-        if (tail->_drawOrderPos < prev->_drawOrderPos) {
+        if (tail->_drawOrderPos < _activeSprites[_activeSprites.size() - 2]->_drawOrderPos) {
             _orderBroken = true;
         }
     }
 
-    return _activeSprites.back().as_ptr();
+    return _activeSprites.back();
 }
 
 void MapSpriteList::InvalidateAll() noexcept
@@ -375,7 +374,7 @@ void MapSpriteList::InvalidateAll() noexcept
     FO_STACK_TRACE_ENTRY();
 
     while (!_activeSprites.empty()) {
-        Invalidate(_activeSprites.back().as_ptr());
+        Invalidate(_activeSprites.back());
     }
 
     _globalCounter = 0;

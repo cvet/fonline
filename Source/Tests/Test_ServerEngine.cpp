@@ -97,8 +97,7 @@ namespace
         writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            ptr<const uint8_t> props_data_ptr = props_data.data();
-            writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+            writer.WriteBytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -401,7 +400,7 @@ namespace ServerEngineTest
     {
         auto server = MakeServerEngine(settings);
 
-        const auto startup_error = WaitForServerStart(server.as_ptr());
+        const auto startup_error = WaitForServerStart(server);
         INFO(startup_error);
         CHECK_FALSE(startup_error.empty());
         CHECK(server->IsStartingError());
@@ -445,7 +444,7 @@ namespace ServerEngineTest
             });
         });
 
-        ctx.SyncEntity(player.as_ptr());
+        ctx.SyncEntity(player);
         player->SetName(name);
         return player;
     }
@@ -550,7 +549,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -574,7 +573,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > entity_count);
 
-    auto player = CreateLoggedPlayer(server.as_ptr(), "UnitTestPlayer");
+    auto player = CreateLoggedPlayer(server, "UnitTestPlayer");
 
     const auto player_id = player->GetId();
     CHECK(player_id != ident_t {});
@@ -644,7 +643,7 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
             });
         });
 
-        const auto startup_error = WaitForServerStart(server.as_ptr());
+        const auto startup_error = WaitForServerStart(server);
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
@@ -691,7 +690,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -740,7 +739,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -793,7 +792,7 @@ TEST_CASE("ServerEngineModuleInitAttributePriorityIsRespected")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -826,7 +825,7 @@ TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -861,7 +860,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -911,7 +910,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -961,7 +960,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1004,7 +1003,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1059,7 +1058,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server.as_ptr(), locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::HexBusy);
@@ -1095,7 +1094,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1284,7 +1283,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1318,8 +1317,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     setup_ctx->EnsureEntitySynced(cr_a);
     setup_ctx->EnsureEntitySynced(cr_b);
 
-    auto player_a_holder = CreateStandalonePlayer(server.as_ptr(), "SyncWidenPlayerA");
-    auto player_b_holder = CreateStandalonePlayer(server.as_ptr(), "SyncWidenPlayerB");
+    auto player_a_holder = CreateStandalonePlayer(server, "SyncWidenPlayerA");
+    auto player_b_holder = CreateStandalonePlayer(server, "SyncWidenPlayerB");
     auto player_a = player_a_holder.as_ptr();
     auto player_b = player_b_holder.as_ptr();
     setup_ctx->EnsureEntitySynced(player_a);
@@ -1564,7 +1563,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1947,7 +1946,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.as_ptr());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

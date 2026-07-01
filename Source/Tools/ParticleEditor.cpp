@@ -68,9 +68,9 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
 
         const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
         FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
-        ptr<const uint8_t> data_ptr = data.data();
 
         auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
+        nptr<const uint8_t> data_ptr = data.data();
         const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
@@ -300,7 +300,7 @@ void ParticleEditor::OnDraw()
     _impl->Particle.Setup(proj, world, pos_offest, _dirAngle, view_offset);
 
     auto prev_rt = GetApp()->Render.GetRenderTarget();
-    GetApp()->Render.SetRenderTarget(_impl->RenderTarget.as_nptr());
+    GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
     _impl->Particle.Draw();
     GetApp()->Render.SetRenderTarget(prev_rt);

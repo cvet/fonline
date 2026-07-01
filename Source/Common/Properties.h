@@ -520,8 +520,8 @@ static auto PropertiesObjectArrayAsBytes(span<const T> values) -> const_span<uin
         return {};
     }
 
-    ptr<const T> values_ptr = values.data();
-    ptr<const uint8_t> bytes = values_ptr.reinterpret_as<const uint8_t>();
+    nptr<const T> values_ptr = values.data();
+    nptr<const uint8_t> bytes = values_ptr.reinterpret_as<const uint8_t>();
     return {bytes.get(), values.size() * sizeof(T)};
 }
 
@@ -531,8 +531,7 @@ static auto PropertiesSpanDataAt(const_span<uint8_t> data, size_t pos) -> ptr<co
 
     FO_VERIFY_AND_THROW(pos < data.size(), "Position is out of range");
 
-    ptr<const uint8_t> data_ptr = data.data();
-    return data_ptr.get() + pos;
+    return data.data() + pos;
 }
 
 static auto PropertiesSpanDataAt(span<uint8_t> data, size_t pos, size_t size) -> ptr<uint8_t>
@@ -570,10 +569,8 @@ static void PropertiesCopyRawVectorData(vector<T>& target, const_span<uint8_t> s
 
     FO_VERIFY_AND_THROW(source.size() == target.size() * sizeof(T), "Source size does not match target vector byte size");
 
-    ptr<T> target_data = target.data();
-
     auto source_data = PropertiesSpanDataAt(source, 0);
-    MemCopy(target_data.get(), source_data.get(), source.size());
+    MemCopy(target.data(), source_data.get(), source.size());
 }
 
 template<typename T>

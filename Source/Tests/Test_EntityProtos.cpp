@@ -117,7 +117,7 @@ TEST_CASE("EntityProtos")
 
         {
             refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrator);
-            holder.emplace(proto.as_ptr());
+            holder.emplace(proto);
         }
 
         REQUIRE(holder.has_value());

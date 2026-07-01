@@ -89,9 +89,7 @@ Application::~Application()
     _ctx->HeadlessRenderTarget = nullptr;
 
     for (size_t i = 0; i != _childWindows.size(); ++i) {
-        auto window = _childWindows[i].as_ptr();
-
-        window->_virtualRenderTex.reset();
+        _childWindows[i]->_virtualRenderTex.reset();
     }
 
     _childWindows.clear();
@@ -157,7 +155,7 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 
     std::erase_if(_allWindows, [&](const auto& entry) { return entry == window; });
 
-    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.as_ptr() == window; });
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; });
 
     if (it == _childWindows.end()) {
         return;
@@ -682,7 +680,7 @@ void AppWindow::Destroy()
     if (_windowHandle && !(self == main_window)) {
         auto window_handle = _windowHandle.as_ptr();
         ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
-        std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return entry.as_ptr() == window_stub; });
+        std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return ptr<const HeadlessWindowStub> {entry} == window_stub; });
         _windowHandle = nullptr;
     }
 }

@@ -669,7 +669,7 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
     video->AddRef();
-    return video.as_ptr().get_no_const();
+    return video;
 }
 
 ///@ ExportMethod
@@ -798,8 +798,7 @@ FO_SCRIPT_API void Client_Game_SetEffectScriptValues(ptr<ClientEngine> client, E
     const_span<float32_t> values_span {};
 
     if (!values.empty()) {
-        ptr<const float32_t> values_data = values.data();
-        values_span = {values_data.get(), values.size()};
+        values_span = {values.data(), values.size()};
     }
 
     client->SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values_span, valuesOffset, valuesCount);
@@ -1496,8 +1495,7 @@ FO_SCRIPT_API void Client_Game_SaveText(ptr<ClientEngine> client, string_view fi
     }
 
     if (!text.empty()) {
-        ptr<const char> text_data = text.data();
-        file.write(text_data.get(), static_cast<std::streamsize>(text.size()));
+        file.write(text.data(), static_cast<std::streamsize>(text.size()));
     }
 
     if (!file) {

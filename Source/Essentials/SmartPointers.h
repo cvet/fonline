@@ -78,6 +78,33 @@ template<typename T>
 inline constexpr bool is_borrow_pointer_wrapper_v<refcount_nptr<T>> = true;
 
 template<typename T>
+class unique_ptr;
+
+template<typename T>
+class unique_nptr;
+
+template<typename T>
+class unique_del_ptr;
+
+// Owning smart pointers (refcount_ptr/unique_ptr/unique_del_ptr and their nullable variants) that
+// implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below.
+template<typename>
+inline constexpr bool is_nonnull_owning_pointer_v = false;
+template<typename T>
+inline constexpr bool is_nonnull_owning_pointer_v<refcount_ptr<T>> = true;
+template<typename T>
+inline constexpr bool is_nonnull_owning_pointer_v<unique_ptr<T>> = true;
+template<typename T>
+inline constexpr bool is_nonnull_owning_pointer_v<unique_del_ptr<T>> = true;
+
+template<typename T>
+inline constexpr bool is_owning_pointer_v = is_nonnull_owning_pointer_v<T>;
+template<typename T>
+inline constexpr bool is_owning_pointer_v<refcount_nptr<T>> = true;
+template<typename T>
+inline constexpr bool is_owning_pointer_v<unique_nptr<T>> = true;
+
+template<typename T>
 class ptr
 {
     template<typename U>
@@ -88,39 +115,18 @@ class ptr
 public:
     using element_type = T;
 
-#if !FO_STRICT_PTR_NONNULL
-    FO_FORCE_INLINE constexpr ptr() noexcept :
-        _ptr(nullptr)
-    {
-    }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr ptr(std::nullptr_t) noexcept :
-        _ptr(nullptr)
-    {
-    }
-    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> ptr&
-    {
-        _ptr = nullptr;
-        return *this;
-    }
-#else
     FO_FORCE_INLINE constexpr ptr() noexcept = delete;
     FO_FORCE_INLINE constexpr ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> ptr& = delete;
-#endif
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr ptr(T* other) noexcept :
         _ptr(other)
     {
-#if FO_STRICT_PTR_NONNULL
-        assert(_ptr != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
     }
     FO_FORCE_INLINE auto operator=(T* other) noexcept -> ptr&
     {
-#if FO_STRICT_PTR_NONNULL
-        assert(other != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(other != nullptr);
         _ptr = other;
         return *this;
     }
@@ -179,6 +185,16 @@ public:
         return *this;
     }
 
+    // Implicit borrow from a non-null owning pointer (refcount_ptr/unique_ptr/unique_del_ptr): reads out the raw
+    // pointer without taking ownership. Const-propagating through the owner's get(): a const owner yields ptr<const T>.
+    template<typename Owner>
+        requires(is_nonnull_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE ptr(Owner&& owner) noexcept :
+        _ptr(owner.get())
+    {
+    }
+
 #if 0
     // ReSharper disable once CppNonExplicitConversionOperator
     FO_FORCE_INLINE operator T*() noexcept { return _ptr; }
@@ -188,19 +204,13 @@ public:
 
     FO_FORCE_INLINE ~ptr() noexcept = default;
 
-#if !FO_STRICT_PTR_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
-#else
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
-#if FO_STRICT_PTR_NONNULL
     [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE constexpr auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE constexpr auto operator->() const noexcept -> const T* { return _ptr; }
     template<typename U = T>
@@ -224,13 +234,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
-#if !FO_STRICT_PTR_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
-#else
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** = delete;
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* = delete;
-#endif
     template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> U&
@@ -249,16 +254,12 @@ public:
     {
         return ptr<T> {_ptr + count};
     }
-#if !FO_STRICT_PTR_NONNULL
-    FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { _ptr = p; }
-#else
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
-        assert(p != nullptr);
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
         _ptr = p;
     }
     FO_FORCE_INLINE void reset(std::nullptr_t) noexcept = delete;
-#endif
 
     template<typename U>
         requires(dynamically_castable_to<T, U>)
@@ -311,12 +312,9 @@ private:
 };
 static_assert(sizeof(ptr<int32_t>) == sizeof(int32_t*));
 static_assert(std::is_standard_layout_v<ptr<int32_t>>);
-static_assert(FO_STRICT_PTR_NONNULL || std::is_default_constructible_v<ptr<int32_t>>);
-static_assert(!FO_STRICT_PTR_NONNULL || !std::is_default_constructible_v<ptr<int32_t>>);
-static_assert(FO_STRICT_PTR_NONNULL || std::is_constructible_v<ptr<int32_t>, std::nullptr_t>);
-static_assert(!FO_STRICT_PTR_NONNULL || !std::is_constructible_v<ptr<int32_t>, std::nullptr_t>);
-static_assert(FO_STRICT_PTR_NONNULL || std::is_assignable_v<ptr<int32_t>&, std::nullptr_t>);
-static_assert(!FO_STRICT_PTR_NONNULL || !std::is_assignable_v<ptr<int32_t>&, std::nullptr_t>);
+static_assert(!std::is_default_constructible_v<ptr<int32_t>>);
+static_assert(!std::is_constructible_v<ptr<int32_t>, std::nullptr_t>);
+static_assert(!std::is_assignable_v<ptr<int32_t>&, std::nullptr_t>);
 
 template<typename T>
 class nptr
@@ -439,6 +437,16 @@ public:
         return *this;
     }
 
+    // Implicit nullable borrow from any owning pointer (including the nullable refcount_nptr/unique_nptr): reads
+    // out the raw pointer without taking ownership. Const-propagating through the owner's get().
+    template<typename Owner>
+        requires(is_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    FO_FORCE_INLINE nptr(Owner&& owner) noexcept :
+        _ptr(owner.get())
+    {
+    }
+
     FO_FORCE_INLINE ~nptr() noexcept = default;
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
@@ -467,12 +475,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<const T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
@@ -609,34 +617,14 @@ class unique_ptr
 public:
     using element_type = T;
 
-#if !FO_STRICT_OWNING_NONNULL
-    FO_FORCE_INLINE constexpr unique_ptr() noexcept :
-        _ptr(nullptr)
-    {
-    }
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr unique_ptr(std::nullptr_t) noexcept :
-        _ptr(nullptr)
-    {
-    }
-    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> unique_ptr&
-    {
-        reset();
-        _ptr = nullptr;
-        return *this;
-    }
-#else
     FO_FORCE_INLINE constexpr unique_ptr() noexcept = delete;
     FO_FORCE_INLINE constexpr unique_ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> unique_ptr& = delete;
-#endif
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE constexpr unique_ptr(T* p) noexcept :
         _ptr(p)
     {
-#if FO_STRICT_OWNING_NONNULL
-        assert(_ptr != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
     }
     FO_FORCE_INLINE unique_ptr(unique_ptr&& p) noexcept
     {
@@ -680,19 +668,13 @@ public:
 
     FO_FORCE_INLINE ~unique_ptr() noexcept { delete_current(); }
 
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
-#else
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
-#if FO_STRICT_OWNING_NONNULL
     [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
@@ -708,23 +690,15 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_ptr, nullptr); }
-#else
     [[nodiscard]] FO_FORCE_INLINE auto release() & noexcept -> ptr<T> = delete;
     [[nodiscard]] FO_FORCE_INLINE auto release() && noexcept -> ptr<T> { return ptr<T> {std::exchange(_ptr, nullptr)}; }
-#endif
 
-#if !FO_STRICT_OWNING_NONNULL
-    FO_FORCE_INLINE void reset(T* p = nullptr) noexcept { delete std::exchange(_ptr, p); }
-#else
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
-        assert(p != nullptr);
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
         delete std::exchange(_ptr, p);
     }
     FO_FORCE_INLINE void reset(std::nullptr_t) noexcept = delete;
-#endif
 
 private:
     FO_FORCE_INLINE void delete_current() noexcept { delete std::exchange(_ptr, nullptr); }
@@ -733,12 +707,9 @@ private:
 };
 static_assert(sizeof(unique_ptr<int32_t>) == sizeof(int32_t*));
 static_assert(std::is_standard_layout_v<unique_ptr<int32_t>>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_default_constructible_v<unique_ptr<int32_t>>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_default_constructible_v<unique_ptr<int32_t>>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_constructible_v<unique_ptr<int32_t>, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_constructible_v<unique_ptr<int32_t>, std::nullptr_t>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_assignable_v<unique_ptr<int32_t>&, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_assignable_v<unique_ptr<int32_t>&, std::nullptr_t>);
+static_assert(!std::is_default_constructible_v<unique_ptr<int32_t>>);
+static_assert(!std::is_constructible_v<unique_ptr<int32_t>, std::nullptr_t>);
+static_assert(!std::is_assignable_v<unique_ptr<int32_t>&, std::nullptr_t>);
 
 template<typename T>
 class unique_nptr
@@ -789,11 +760,7 @@ public:
     // ReSharper disable once CppNonExplicitConvertingConstructor
     FO_FORCE_INLINE unique_nptr(unique_ptr<U>&& p) noexcept // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-#if FO_STRICT_OWNING_NONNULL
         _ptr = std::move(p).release().get();
-#else
-        _ptr = std::move(p).release();
-#endif
     }
     FO_FORCE_INLINE auto operator=(unique_nptr&& p) noexcept -> unique_nptr&
     {
@@ -816,11 +783,7 @@ public:
     FO_FORCE_INLINE auto operator=(unique_ptr<U>&& p) noexcept -> unique_nptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
         reset();
-#if FO_STRICT_OWNING_NONNULL
         _ptr = std::move(p).release().get();
-#else
-        _ptr = std::move(p).release();
-#endif
         return *this;
     }
 
@@ -852,12 +815,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<const T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
@@ -867,7 +830,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> nptr<T> { return nptr<T> {std::exchange(_ptr, nullptr)}; }
     [[nodiscard]] FO_FORCE_INLINE auto take_not_null() noexcept -> unique_ptr<T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         nptr<T> released = release();
         auto released_ptr = released.as_ptr();
         return unique_ptr<T>(released_ptr.get());
@@ -909,70 +872,24 @@ class refcount_ptr final
 public:
     using element_type = T;
 
-#if !FO_STRICT_REFCOUNT_EXPLICIT
-    struct adopt_tag
-    {
-    } static constexpr adopt {};
-#else
 private:
     struct adopt_tag
     {
     } static constexpr adopt {};
-#endif
 
-#if FO_STRICT_OWNING_NONNULL
 private:
-#else
-public:
-#endif
     FO_FORCE_INLINE constexpr refcount_ptr() noexcept :
         _ptr(nullptr)
     {
     }
 
-#if FO_STRICT_OWNING_NONNULL
 public:
     FO_FORCE_INLINE constexpr refcount_ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr& = delete;
-#else
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE constexpr refcount_ptr(std::nullptr_t) noexcept :
-        _ptr(nullptr)
-    {
-    }
-    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr&
-    {
-        dec_ref();
-        _ptr = nullptr;
-        return *this;
-    }
-#endif
-
-#if !FO_STRICT_REFCOUNT_EXPLICIT
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE refcount_ptr(T* p) noexcept
-    {
-#if FO_STRICT_OWNING_NONNULL
-        assert(p != nullptr);
-#endif
-        _ptr = p;
-        add_ref();
-    }
-
-    FO_FORCE_INLINE explicit refcount_ptr(adopt_tag /*tag*/, T* p) noexcept
-    {
-#if FO_STRICT_OWNING_NONNULL
-        assert(p != nullptr);
-#endif
-        _ptr = p;
-    }
-#endif
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_ptr
     {
-#if FO_STRICT_OWNING_NONNULL
-        assert(p != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
         refcount_ptr result;
         result._ptr = p;
         result.add_ref();
@@ -983,9 +900,7 @@ public:
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_adopted_ref(T* p) noexcept -> refcount_ptr
     {
-#if FO_STRICT_OWNING_NONNULL
-        assert(p != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
         refcount_ptr result;
         result._ptr = p;
         return result;
@@ -1018,13 +933,6 @@ public:
         other._ptr = nullptr;
     }
 
-#if !FO_STRICT_REFCOUNT_EXPLICIT
-    FO_FORCE_INLINE auto operator=(T* p) noexcept -> refcount_ptr&
-    {
-        reset(p);
-        return *this;
-    }
-#endif
     FO_FORCE_INLINE auto operator=(const refcount_ptr& other) noexcept -> refcount_ptr&
     {
         if (this != &other) {
@@ -1060,19 +968,13 @@ public:
 
     FO_FORCE_INLINE ~refcount_ptr() { dec_ref(); }
 
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
-#else
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const refcount_ptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
-#if FO_STRICT_OWNING_NONNULL
     [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> T& { return *_ptr; }
@@ -1090,30 +992,17 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
-#else
     [[nodiscard]] FO_FORCE_INLINE auto release_ownership() & noexcept -> T* = delete;
     [[nodiscard]] FO_FORCE_INLINE auto release_ownership() && noexcept -> T* { return std::exchange(_ptr, nullptr); }
-#endif
 
-#if !FO_STRICT_OWNING_NONNULL
-    FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
-    {
-        dec_ref();
-        _ptr = p;
-        add_ref();
-    }
-#else
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
-        assert(p != nullptr);
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
         dec_ref();
         _ptr = p;
         add_ref();
     }
     FO_FORCE_INLINE void reset(std::nullptr_t) noexcept = delete;
-#endif
 
     template<typename U>
         requires(dynamically_castable_to<T, U>)
@@ -1140,12 +1029,9 @@ private:
     T* _ptr {};
 };
 static_assert(std::is_standard_layout_v<refcount_ptr<int32_t>>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_default_constructible_v<refcount_ptr<int32_t>>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_default_constructible_v<refcount_ptr<int32_t>>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_constructible_v<refcount_ptr<int32_t>, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_constructible_v<refcount_ptr<int32_t>, std::nullptr_t>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_assignable_v<refcount_ptr<int32_t>&, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_assignable_v<refcount_ptr<int32_t>&, std::nullptr_t>);
+static_assert(!std::is_default_constructible_v<refcount_ptr<int32_t>>);
+static_assert(!std::is_constructible_v<refcount_ptr<int32_t>, std::nullptr_t>);
+static_assert(!std::is_assignable_v<refcount_ptr<int32_t>&, std::nullptr_t>);
 
 template<typename T>
 class refcount_nptr final
@@ -1174,15 +1060,6 @@ public:
         _ptr = nullptr;
         return *this;
     }
-
-#if !FO_STRICT_REFCOUNT_EXPLICIT
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE refcount_nptr(T* p) noexcept
-    {
-        _ptr = p;
-        add_ref();
-    }
-#endif
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_nptr
     {
@@ -1262,13 +1139,6 @@ public:
         other._ptr = nullptr;
     }
 
-#if !FO_STRICT_REFCOUNT_EXPLICIT
-    FO_FORCE_INLINE auto operator=(T* p) noexcept -> refcount_nptr&
-    {
-        reset(p);
-        return *this;
-    }
-#endif
     FO_FORCE_INLINE auto operator=(const refcount_nptr& other) noexcept -> refcount_nptr&
     {
         if (this != &other) {
@@ -1336,12 +1206,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return ptr<const T>(_ptr);
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
@@ -1353,7 +1223,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
     [[nodiscard]] FO_FORCE_INLINE auto take_not_null() noexcept -> refcount_ptr<T>
     {
-        assert(_ptr != nullptr);
+        FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
         return refcount_ptr<T>::from_adopted_ref(release_ownership());
     }
 
@@ -1604,12 +1474,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const element_type* { return get_raw(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<element_type>
     {
-        assert(get_raw() != nullptr);
+        FO_BASIC_STRONG_ASSERT(get_raw() != nullptr);
         return ptr<element_type>(get_raw());
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const element_type>
     {
-        assert(get_raw() != nullptr);
+        FO_BASIC_STRONG_ASSERT(get_raw() != nullptr);
         return ptr<const element_type>(get_raw());
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<element_type> { return nptr<element_type>(get_raw()); }
@@ -1666,29 +1536,13 @@ class unique_del_ptr
 public:
     using element_type = T;
 
-#if !FO_STRICT_OWNING_NONNULL
-    FO_FORCE_INLINE unique_del_ptr() noexcept = default;
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    FO_FORCE_INLINE unique_del_ptr(std::nullptr_t) noexcept :
-        _owner(nullptr)
-    {
-    }
-    FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> unique_del_ptr&
-    {
-        _owner = nullptr;
-        return *this;
-    }
-#else
     FO_FORCE_INLINE unique_del_ptr() noexcept = delete;
     FO_FORCE_INLINE unique_del_ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> unique_del_ptr& = delete;
-#endif
     FO_FORCE_INLINE unique_del_ptr(T* p, function<void(T*)>&& deleter) noexcept :
         _owner(p, std::move(deleter))
     {
-#if FO_STRICT_OWNING_NONNULL
-        assert(p != nullptr);
-#endif
+        FO_BASIC_STRONG_ASSERT(p != nullptr);
     }
 
     FO_FORCE_INLINE unique_del_ptr(unique_del_ptr&& p) noexcept :
@@ -1706,19 +1560,13 @@ public:
 
     FO_FORCE_INLINE ~unique_del_ptr() noexcept = default;
 
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return !!_owner; }
-#else
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_del_ptr& other) const noexcept -> bool { return _owner == other._owner; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_del_ptr& other) const noexcept -> bool { return _owner < other._owner; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _owner == other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _owner < other; }
-#if FO_STRICT_OWNING_NONNULL
     [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
-#endif
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _owner.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _owner.get(); }
     template<typename U = T>
@@ -1740,23 +1588,16 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return _owner.as_ptr(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return _owner.as_nptr(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return _owner.as_nptr(); }
-#if !FO_STRICT_OWNING_NONNULL
-    [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return _owner.release(); }
-#else
     [[nodiscard]] FO_FORCE_INLINE auto release() & noexcept -> ptr<T> = delete;
     [[nodiscard]] FO_FORCE_INLINE auto release() && noexcept -> ptr<T> { return ptr<T> {_owner.release()}; }
-#endif
     [[nodiscard]] FO_FORCE_INLINE operator unique_del_nptr<T>() && noexcept { return unique_del_nptr<T> {std::move(_owner)}; }
 
 private:
     unique_del_nptr<T> _owner;
 };
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_default_constructible_v<unique_del_ptr<int32_t>>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_default_constructible_v<unique_del_ptr<int32_t>>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_constructible_v<unique_del_ptr<int32_t>, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_constructible_v<unique_del_ptr<int32_t>, std::nullptr_t>);
-static_assert(FO_STRICT_OWNING_NONNULL || std::is_assignable_v<unique_del_ptr<int32_t>&, std::nullptr_t>);
-static_assert(!FO_STRICT_OWNING_NONNULL || !std::is_assignable_v<unique_del_ptr<int32_t>&, std::nullptr_t>);
+static_assert(!std::is_default_constructible_v<unique_del_ptr<int32_t>>);
+static_assert(!std::is_constructible_v<unique_del_ptr<int32_t>, std::nullptr_t>);
+static_assert(!std::is_assignable_v<unique_del_ptr<int32_t>&, std::nullptr_t>);
 static_assert(!std::is_copy_constructible_v<unique_del_ptr<int32_t>>);
 
 template<typename T>
@@ -1780,7 +1621,7 @@ template<typename T, typename Deleter>
 template<typename T>
 [[nodiscard]] FO_FORCE_INLINE auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
 {
-    assert(value);
+    FO_BASIC_STRONG_ASSERT(value);
     auto value_ptr = value.as_ptr();
     auto deleter = std::move(value.get_underlying().get_deleter());
     nptr<T> released = value.release();

@@ -64,7 +64,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 template<typename T, typename U>
 [[nodiscard]] inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
 {
-    auto casted = p->as_nptr().template dyn_cast<T>();
+    auto casted = (nptr<U> {*p}).template dyn_cast<T>();
 
     if (casted) {
         auto casted_owner = casted.as_ptr();

@@ -145,8 +145,7 @@ FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {
     if (self->GetOwnership() == ItemOwnership::MapHex) {
-        auto map_holder = RequireParent<Map>(self, "Missing map instance");
-        auto map = map_holder.as_ptr();
+        auto map = RequireParent<Map>(self, "Missing map instance");
         map->ChangeViewItem(self);
         map->RecacheHexFlags(self->GetHex());
     }
@@ -181,7 +180,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        return ResolveItemMap(cont.as_ptr());
+        return ResolveItemMap(cont);
     } break;
     default:
         throw ScriptException("Invalid ownership");
@@ -222,7 +221,7 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        return ResolveItemMapPosition(cont.as_ptr(), hex);
+        return ResolveItemMapPosition(cont, hex);
     } break;
     default:
         throw ScriptException("Invalid ownership");
@@ -250,7 +249,7 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
 
-        return ResolveItemCritter(cont.as_ptr());
+        return ResolveItemCritter(cont);
     } break;
     default:
         throw ScriptException("Invalid ownership");

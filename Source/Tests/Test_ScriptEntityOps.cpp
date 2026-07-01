@@ -1067,7 +1067,7 @@ namespace EntityOps
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.as_ptr()); \
+    const auto startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \

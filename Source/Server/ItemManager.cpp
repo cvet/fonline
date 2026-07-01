@@ -73,7 +73,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (nptr<Critter> nullable_cr = holder.dyn_cast<Critter>(); nullable_cr) {
+        if (auto nullable_cr = holder.dyn_cast<Critter>()) {
             auto cr = nullable_cr.as_ptr();
             _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
@@ -82,7 +82,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (nptr<Map> nullable_map = holder.dyn_cast<Map>(); nullable_map) {
+        if (auto nullable_map = holder.dyn_cast<Map>()) {
             auto map = nullable_map.as_ptr();
             map->RemoveItem(item->GetId());
         }
@@ -91,7 +91,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (nptr<Item> nullable_cont = holder.dyn_cast<Item>(); nullable_cont) {
+        if (auto nullable_cont = holder.dyn_cast<Item>()) {
             auto cont = nullable_cont.as_ptr();
             cont->RemoveItemFromContainer(item);
         }
@@ -119,7 +119,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto.as_ptr(), props);
-    _engine->EntityMngr.RegisterItem(item.as_ptr());
+    _engine->EntityMngr.RegisterItem(item);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::Nowhere);
@@ -142,7 +142,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
         item->SetCount(1);
     }
 
-    _engine->EntityMngr.CallInit(item.as_ptr(), true);
+    _engine->EntityMngr.CallInit(item, true);
 
     if (item->IsDestroyed()) {
         throw ItemManagerException("Item destroyed during init", pid);
@@ -150,7 +150,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
 
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::Nowhere, "Item is already owned by another holder");
 
-    return item.as_ptr();
+    return item;
 }
 
 auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t count, nptr<const Properties> props) -> ptr<Item>

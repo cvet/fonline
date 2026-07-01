@@ -74,9 +74,8 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
     FO_STACK_TRACE_ENTRY();
 
     auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
-    auto proto_ptr = proto.as_ptr();
 
-    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto_ptr, &GetProperties());
+    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto, &GetProperties());
 
     ref_item->SetId(GetId(), false);
 
@@ -94,8 +93,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
     item->SetContainerId(GetId());
     item->SetContainerStack(stack_id);
 
-    auto added_item = item.as_ptr();
-    return AddRawInnerItem(added_item);
+    return AddRawInnerItem(item);
 }
 
 auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
@@ -107,8 +105,7 @@ auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, cons
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);
 
-    auto added_item = item.as_ptr();
-    return AddRawInnerItem(added_item);
+    return AddRawInnerItem(item);
 }
 
 auto ItemView::AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>

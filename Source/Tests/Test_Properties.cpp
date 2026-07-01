@@ -423,7 +423,7 @@ namespace
 
             const auto proto_it = type_it->second.find(proto_id.as_hash());
             if (proto_it != type_it->second.end()) {
-                return proto_it->second.as_nptr();
+                return proto_it->second;
             }
 
             return nullptr;

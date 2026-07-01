@@ -251,7 +251,7 @@ void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& ext : factory->GetExtensions()) {
-        _spriteFactoryMap.insert_or_assign(ext, factory.as_ptr());
+        _spriteFactoryMap.insert_or_assign(ext, factory);
     }
 
     _spriteFactories.emplace_back(std::move(factory));
@@ -286,9 +286,7 @@ void SpriteManager::BeginScene()
     }
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
-        auto spr_factory = _spriteFactories[i].as_ptr();
-
-        spr_factory->Update();
+        _spriteFactories[i]->Update();
     }
 
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
@@ -445,7 +443,7 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
     _flushDrawBuf->Upload(effect->GetUsage());
-    effect->DrawBuffer(_flushDrawBuf.as_ptr());
+    effect->DrawBuffer(_flushDrawBuf);
 }
 
 void SpriteManager::DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from, nptr<const irect32> region_to)
@@ -590,9 +588,7 @@ void SpriteManager::CleanupSpriteCache()
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
-        auto spr_factory = _spriteFactories[i].as_ptr();
-
-        spr_factory->ClenupCache();
+        _spriteFactories[i]->ClenupCache();
     }
 
     for (auto it = _copyableSpriteCache.begin(); it != _copyableSpriteCache.end();) {
@@ -638,7 +634,7 @@ void SpriteManager::Flush()
             egg_buf->EggData[8] = std::clamp(_settings->EggTransparencyTransitionFactor, 0.0f, 0.9999f);
         }
 
-        dip.SourceEffect->DrawBuffer(_spritesDrawBuf.as_ptr(), ipos, dip.IndicesCount, dip.MainTexture);
+        dip.SourceEffect->DrawBuffer(_spritesDrawBuf, ipos, dip.IndicesCount, dip.MainTexture);
 
         ipos += dip.IndicesCount;
     }
@@ -661,7 +657,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.as_ptr(), frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf, frect32(fpos32(pos), fsize32(spr->GetSize())), {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -723,7 +719,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
 
     color = ApplyColorBrightness(color);
 
-    const auto ind_count = spr->FillData(_spritesDrawBuf.as_ptr(), {xf, yf, wf, hf}, {color, color});
+    const auto ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color, color});
 
     if (ind_count != 0) {
         if (_dipQueue.empty() || _dipQueue.back().MainTexture != spr->GetBatchTexture() || _dipQueue.back().SourceEffect != effect) {
@@ -1211,7 +1207,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
         const float32_t hf = numeric_cast<float32_t>(spr->GetSize().height);
         const size_t start_vpos = _spritesDrawBuf->VertCount;
-        const size_t ind_count = spr->FillData(_spritesDrawBuf.as_ptr(), {xf, yf, wf, hf}, {color_l, color_r});
+        const size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
 
         auto& vbuf = _spritesDrawBuf->Vertices;
         const DrawOrderType draw_order = mspr->GetDrawOrder();
@@ -1414,7 +1410,7 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
     _primitiveDrawBuf->Upload(effect->GetUsage(), count, count);
 
     EnableScissor();
-    effect->DrawBuffer(_primitiveDrawBuf.as_ptr(), 0, count);
+    effect->DrawBuffer(_primitiveDrawBuf, 0, count);
     DisableScissor();
 }
 
@@ -1499,7 +1495,7 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
     }
 
     _spriteEffectDrawBuf->Upload(effect->GetUsage());
-    effect->DrawBuffer(_spriteEffectDrawBuf.as_ptr(), 0, std::nullopt, texture);
+    effect->DrawBuffer(_spriteEffectDrawBuf, 0, std::nullopt, texture);
 }
 
 auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor

@@ -158,8 +158,7 @@ auto fs_read_file(string_view path) -> optional<string>
     content.resize(static_cast<size_t>(file_size));
 
     if (!content.empty()) {
-        ptr<char> content_data = content.data();
-        file.read(content_data.get(), static_cast<std::streamsize>(content.size()));
+        file.read(content.data(), static_cast<std::streamsize>(content.size()));
 
         if (!file || file.gcount() != static_cast<std::streamsize>(content.size())) {
             return std::nullopt;
@@ -316,14 +315,14 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     uint64_t hash = offset;
 
     while (stream) {
-        ptr<char> read_buf = buf.data();
+        nptr<char> read_buf = buf.data();
         stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
 
         const auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
-            ptr<const uint8_t> hash_bytes = read_buf.reinterpret_as<const uint8_t>();
-            hash = step(hash, hash_bytes, read_size);
+            nptr<const uint8_t> hash_bytes = read_buf.reinterpret_as<const uint8_t>();
+            hash = step(hash, hash_bytes.as_ptr(), read_size);
         }
 
         if (stream.bad()) {
@@ -353,8 +352,7 @@ auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
         return offset;
     }
 
-    ptr<const uint8_t> bytes = data.data();
-    return step(offset, bytes, data.size());
+    return step(offset, data.data(), data.size());
 }
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)

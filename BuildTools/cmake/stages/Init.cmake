@@ -51,10 +51,7 @@ DeclareBoolOptions(
 	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
-	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF
-	FO_STRICT_PTR_NONNULL "Enforce non-null API for ptr<T>" ON
-	FO_STRICT_OWNING_NONNULL "Enforce non-null API for unique_ptr<T> and refcount_ptr<T>" ON
-	FO_STRICT_REFCOUNT_EXPLICIT "Require explicit raw/refcount bridge APIs" ON)
+	FO_CODE_COVERAGE "Build only binaries for Code Coverage reports" OFF)
 
 # Quiet all non-error messages instead ourself
 if(FO_VERBOSE_BUILD)
@@ -318,10 +315,7 @@ AddCompileDefinitionsList(
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>
-	FO_STRICT_PTR_NONNULL=$<BOOL:${FO_STRICT_PTR_NONNULL}>
-	FO_STRICT_OWNING_NONNULL=$<BOOL:${FO_STRICT_OWNING_NONNULL}>
-	FO_STRICT_REFCOUNT_EXPLICIT=$<BOOL:${FO_STRICT_REFCOUNT_EXPLICIT}>)
+	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
 
 # The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
 # FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits

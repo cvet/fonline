@@ -1389,7 +1389,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
     const string_view key_data = escaped_key;
     const auto key_len = numeric_cast<int32_t>(escaped_key.length());
-    ptr<const char> key_data_ptr = key_data.data();
+    nptr<const char> key_data_ptr = key_data.data();
 
     if (value.Type() == AnyData::ValueType::Int64) {
         if (!bson_append_int64(bson.get(), key_data_ptr.get(), key_len, value.AsInt64())) {
@@ -1408,9 +1408,8 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     }
     else if (value.Type() == AnyData::ValueType::String) {
         const string_view value_str = value.AsString();
-        ptr<const char> value_data_ptr = value_str.data();
 
-        if (!bson_append_utf8(bson.get(), key_data_ptr.get(), key_len, value_data_ptr.get(), numeric_cast<int32_t>(value_str.length()))) {
+        if (!bson_append_utf8(bson.get(), key_data_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }

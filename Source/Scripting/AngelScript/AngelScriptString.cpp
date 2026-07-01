@@ -821,8 +821,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
     nptr<AngelScript::asIScriptContext> ctx = AngelScript::asGetActiveContext();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    auto array_holder = CreateScriptArray(as_engine, "array<string>");
-    auto array = array_holder.as_ptr();
+    auto array = CreateScriptArray(as_engine, "array<string>");
 
     size_t pos = 0;
     size_t prev = 0;
@@ -849,7 +848,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
         entry->assign(entry_begin.get());
     }
 
-    return array_holder;
+    return array;
 }
 
 static auto ScriptString_Split(const string& str, const string& delim) -> ScriptArray*

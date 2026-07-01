@@ -111,10 +111,10 @@ public:
     }
 
     void LoadEntities();
-    auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> optional<refcount_ptr<Location>>;
-    auto LoadMap(ident_t map_id, bool& is_error) noexcept -> optional<refcount_ptr<Map>>;
-    auto LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optional<refcount_ptr<Critter>>;
-    auto LoadItem(ident_t item_id, bool& is_error) noexcept -> optional<refcount_ptr<Item>>;
+    auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
+    auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
+    auto LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refcount_nptr<Critter>;
+    auto LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>;
 
     void CallInit(ptr<Location> loc, bool first_time);
     void CallInit(ptr<Map> map, bool first_time);
@@ -137,7 +137,7 @@ public:
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> ptr<CustomEntity>;
     auto CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>;
-    auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> optional<refcount_ptr<CustomEntity>>;
+    auto LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
     auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<CustomEntity>;
     void DestroyCustomEntity(ptr<CustomEntity> entity);
     void ForEachCustomEntityView(ptr<CustomEntity> entity, const function<void(ptr<Player> player, bool owner)>& callback);

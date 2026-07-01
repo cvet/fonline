@@ -87,9 +87,9 @@ void strex::own_storage() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<const char> view_begin = _sv.data();
-    ptr<const char> storage_begin = _s.data();
-    ptr<const char> storage_end = storage_begin.get() + _s.size();
+    nptr<const char> view_begin = _sv.data();
+    nptr<const char> storage_begin = _s.data();
+    nptr<const char> storage_end = storage_begin.get() + _s.size();
 
     if (view_begin < storage_begin || !(view_begin < storage_end)) {
         _s = _sv;
@@ -150,15 +150,12 @@ auto strvex::compare_ignore_case_utf8(string_view other) const noexcept -> bool
         return true;
     }
 
-    ptr<const char> text_begin = _sv.data();
-    ptr<const char> other_begin = other.data();
-
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
-        ptr<const char> text_pos = text_begin.get() + i;
+        ptr<const char> text_pos = _sv.data() + i;
         const auto ucs = utf8::Decode(text_pos, length);
         size_t other_length = other.length() - i;
-        ptr<const char> other_pos = other_begin.get() + i;
+        ptr<const char> other_pos = other.data() + i;
         const auto other_ucs = utf8::Decode(other_pos, other_length);
 
         if (!utf8::IsValid(ucs) || !utf8::IsValid(other_ucs)) {
@@ -213,11 +210,9 @@ auto strvex::is_valid_utf8() const noexcept -> bool
         return true;
     }
 
-    ptr<const char> text_begin = _sv.data();
-
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
-        ptr<const char> text_pos = text_begin.get() + i;
+        ptr<const char> text_pos = _sv.data() + i;
         const auto ucs = utf8::Decode(text_pos, length);
 
         if (!utf8::IsValid(ucs)) {
@@ -470,7 +465,7 @@ auto strex::replace(char from, char to) -> strex&
     if (pos != string::npos) {
         own_storage();
 
-        ptr<char> text_begin = _s.data();
+        nptr<char> text_begin = _s.data();
         ptr<char> range_begin = text_begin.get() + pos;
         ptr<char> range_end = text_begin.get() + _s.length();
         auto range = std::ranges::subrange(range_begin.get(), range_end.get());
@@ -826,7 +821,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         }
 
         std::make_unsigned_t<T> uvalue;
-        ptr<const char> parse_begin = parse_sv.data();
+        nptr<const char> parse_begin = parse_sv.data();
         ptr<const char> parse_end = parse_begin.get() + parse_sv.size();
         const auto result = std::from_chars(parse_begin.get(), parse_end.get(), uvalue, base);
         const bool success = result.ec == std::errc() && result.ptr == parse_end.get();
@@ -895,7 +890,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            ptr<const char> parse_begin = parse_sv.data();
+            nptr<const char> parse_begin = parse_sv.data();
             ptr<const char> parse_end = parse_begin.get() + parse_sv.size();
             const auto result = std::from_chars(parse_begin.get(), parse_end.get(), value);
             return result.ec == std::errc() && parse_end == result.ptr;
@@ -1274,7 +1269,7 @@ auto strex::to_wide_char() const noexcept -> wstring
         return {};
     }
 
-    ptr<const char> source = _sv.data();
+    nptr<const char> source = _sv.data();
     const int32_t input_len = static_cast<int32_t>(_sv.length());
     const int32_t wide_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, nullptr, 0);
 
@@ -1285,8 +1280,7 @@ auto strex::to_wide_char() const noexcept -> wstring
     wstring result;
     result.resize(static_cast<size_t>(wide_len));
 
-    ptr<wchar_t> output = result.data();
-    const int32_t written_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, output.get(), wide_len);
+    const int32_t written_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, result.data(), wide_len);
 
     if (written_len <= 0) {
         return {};

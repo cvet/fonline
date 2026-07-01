@@ -113,7 +113,7 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 
     for (auto& item : *_innerItems) {
         if (item->GetId() == item_id) {
-            return item.as_nptr();
+            return item;
         }
     }
 
@@ -132,7 +132,7 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> npt
 
     for (auto& item : *_innerItems) {
         if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
-            return item.as_nptr();
+            return item;
         }
     }
 
@@ -154,7 +154,7 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 
     for (auto& item : *_innerItems) {
         if (stack_id.empty() || item->GetContainerStack() == stack_id) {
-            result.emplace_back(item.as_ptr());
+            result.emplace_back(item);
         }
     }
 
@@ -180,7 +180,7 @@ auto Item::GetAllInnerItems() -> vector<ptr<Item>>
     result.reserve(_innerItems->size());
 
     for (auto& item : *_innerItems) {
-        result.emplace_back(item.as_ptr());
+        result.emplace_back(item);
     }
 
     return result;
@@ -197,7 +197,7 @@ auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
     result.reserve(_innerItems->size());
 
     for (const auto& item : *_innerItems) {
-        result.emplace_back(item.as_ptr());
+        result.emplace_back(item);
     }
 
     return result;

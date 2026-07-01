@@ -588,14 +588,14 @@ auto ScriptArray::GetArrayObjectType() -> ptr<AngelScript::asITypeInfo>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _typeInfo.as_ptr();
+    return _typeInfo;
 }
 
 auto ScriptArray::GetArrayObjectType() const -> ptr<const AngelScript::asITypeInfo>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _typeInfo.as_ptr();
+    return _typeInfo;
 }
 
 auto ScriptArray::GetArrayTypeId() const -> int32_t
@@ -1675,10 +1675,9 @@ static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray*
         throw ScriptException("Array arg is null");
     }
 
-    auto clone_holder = ScriptArray::Create(type_info.as_ptr());
-    auto clone = clone_holder.as_ptr();
+    auto clone = ScriptArray::Create(type_info.as_ptr());
     *clone = *other_ptr;
-    return ReleaseScriptOwnership(std::move(clone_holder));
+    return ReleaseScriptOwnership(std::move(clone));
 }
 
 static auto ScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
@@ -1686,10 +1685,9 @@ static auto ScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asITypeInfo> type_info = ScriptMutablePtr(arr.GetArrayObjectType());
-    auto clone_holder = ScriptArray::Create(type_info);
-    auto clone = clone_holder.as_ptr();
+    auto clone = ScriptArray::Create(type_info);
     *clone = arr;
-    return ReleaseScriptOwnership(std::move(clone_holder));
+    return ReleaseScriptOwnership(std::move(clone));
 }
 
 static void ScriptArray_EnumReferences(ScriptArray& arr, AngelScript::asIScriptEngine* engine)

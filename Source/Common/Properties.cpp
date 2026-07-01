@@ -626,8 +626,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
                 auto overlay_data = nullable_overlay_data.as_ptr();
                 auto target = overlay_data.offset(data_offset);
-                ptr<const uint8_t> source = other_raw_data.data();
-                MemCopy(target.get(), source.get(), entry.DataSize);
+                MemCopy(target.get(), other_raw_data.data(), entry.DataSize);
                 data_offset += entry.DataSize;
             }
 
@@ -1032,8 +1031,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             vector<uint16_t> complex_indicies(complex_data_count);
             FO_VERIFY_AND_THROW(full_data[1], "Complex index table payload is null");
             auto complex_indices_data = full_data[1].as_ptr();
-            ptr<uint16_t> complex_indicies_data = complex_indicies.data();
-            MemCopy(complex_indicies_data.get(), complex_indices_data.get(), full_sizes[1]);
+            MemCopy(complex_indicies.data(), complex_indices_data.get(), full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
                 FO_VERIFY_AND_THROW(complex_indicies[i] > 0, "Serialized complex property index table references the reserved zero property index", _registrator->GetTypeName(), i, complex_indicies.size());
@@ -1388,7 +1386,7 @@ auto Properties::GetRawData(ptr<const Property> prop) const noexcept -> span<con
     FO_STRONG_ASSERT(_registrator == prop->_registrator, "Invalid property for raw data", _registrator->GetTypeName(), string_view {prop->GetName()}, prop->_registrator->GetTypeName());
 
     if (_baseProps) {
-        if (nptr<const OverlayEntry> nullable_entry = FindOverlayEntry(prop); nullable_entry) {
+        if (auto nullable_entry = FindOverlayEntry(prop)) {
             auto entry = nullable_entry.as_ptr();
 
             if (entry->DataSize == 0) {
@@ -1425,7 +1423,7 @@ auto Properties::GetRawDataSize(ptr<const Property> prop) const noexcept -> size
     FO_STRONG_ASSERT(_registrator == prop->_registrator, "Invalid property for raw data size", _registrator->GetTypeName(), string_view {prop->GetName()}, prop->_registrator->GetTypeName());
 
     if (_baseProps) {
-        if (nptr<const OverlayEntry> nullable_entry = FindOverlayEntry(prop); nullable_entry) {
+        if (auto nullable_entry = FindOverlayEntry(prop)) {
             auto entry = nullable_entry.as_ptr();
             return entry->DataSize;
         }
@@ -1453,7 +1451,7 @@ void Properties::CopyRawData(const Property* prop, PropertyRawData& prop_data) c
     shared_lock locker {*_dataLocker};
 
     if (_baseProps) {
-        if (nptr<const OverlayEntry> nullable_entry = FindOverlayEntry(prop); nullable_entry) {
+        if (auto nullable_entry = FindOverlayEntry(prop)) {
             auto entry = nullable_entry.as_ptr();
             const auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             prop_data.Set(raw_data.data(), raw_data.size());
@@ -1475,7 +1473,7 @@ auto Properties::IsRawDataEqual(const Property* prop, span<const uint8_t> raw_da
     shared_lock locker {*_dataLocker};
 
     if (_baseProps) {
-        if (nptr<const OverlayEntry> nullable_entry = FindOverlayEntry(prop); nullable_entry) {
+        if (auto nullable_entry = FindOverlayEntry(prop)) {
             auto entry = nullable_entry.as_ptr();
             const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             return RawDataEqual(raw_data, current_overlay_data);
@@ -1528,11 +1526,10 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
             auto overlay_data = nullable_overlay_data.as_ptr();
             auto target = overlay_data.offset(data_offset);
-            ptr<const uint8_t> source = data.data();
-            MemCopy(target.get(), source.get(), data.size());
+            MemCopy(target.get(), data.data(), data.size());
         };
 
-        if (nptr<OverlayEntry> nullable_entry = FindOverlayEntry(prop); nullable_entry) {
+        if (auto nullable_entry = FindOverlayEntry(prop)) {
             auto entry = nullable_entry.as_ptr();
             const auto current_overlay_data = get_overlay_raw_data(*entry);
 
@@ -1593,8 +1590,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
                 auto pod_data = nullable_pod_data.as_ptr();
                 auto target = pod_data.offset(*prop->_podDataOffset);
-                ptr<const uint8_t> source = raw_data.data();
-                MemCopy(target.get(), source.get(), raw_data.size());
+                MemCopy(target.get(), raw_data.data(), raw_data.size());
             }
         }
         else {
@@ -1618,8 +1614,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
                 FO_STRONG_ASSERT(nullable_complex_data_bytes, "Complex data buffer is null");
 
                 auto complex_data_bytes = nullable_complex_data_bytes.as_ptr();
-                ptr<const uint8_t> source = raw_data.data();
-                MemCopy(complex_data_bytes.get(), source.get(), raw_data.size());
+                MemCopy(complex_data_bytes.get(), raw_data.data(), raw_data.size());
             }
         }
 
@@ -2315,14 +2310,14 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             }
 
             if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
-                it->second.emplace_back(pair {prop.as_ptr(), priority});
+                it->second.emplace_back(pair {ptr<const Property> {prop}, priority});
 
                 std::ranges::stable_sort(it->second, [](auto&& a, auto&& b) -> bool {
                     return a.second < b.second; // Sort by priority
                 });
             }
             else {
-                _propertyGroups.emplace(group, vector<pair<ptr<const Property>, int32_t>> {pair {prop.as_ptr(), priority}});
+                _propertyGroups.emplace(group, vector<pair<ptr<const Property>, int32_t>> {pair {ptr<const Property> {prop}, priority}});
             }
 
             i += 2;
@@ -2416,7 +2411,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         FO_VERIFY_AND_THROW(prop->_componentName.empty(), "Component marker property must not itself be component-qualified", _typeName, prop->GetName(), prop->_componentName);
         FO_VERIFY_AND_THROW(prop->IsBaseTypeBool(), "Component marker property must be backed by bool", _typeName, prop->GetName(), prop->_viewTypeName);
         FO_VERIFY_AND_THROW(prop->IsPlainData(), "Component marker property must be plain data", _typeName, prop->GetName(), prop->_viewTypeName);
-        _registeredComponents.emplace(prop->_propName, prop.as_ptr());
+        _registeredComponents.emplace(prop->_propName, ptr<const Property> {prop});
     }
 
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon, "Synchronized property is not marked as common");
@@ -2501,7 +2496,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     if (!prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
         complex_data_index = _complexProperties.size();
-        _complexProperties.emplace_back(prop.as_ptr());
+        _complexProperties.emplace_back(ptr<Property> {prop});
 
         if (prop->IsPublicSync()) {
             _publicComplexDataProps.emplace_back(reg_index);
@@ -2523,7 +2518,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     prop->_isDisabled = disabled;
 
     FO_VERIFY_AND_THROW(_registeredPropertiesLookup.count(prop->_propName) == 0, "Property name is already registered for this registrator", _typeName, prop->_propName, prop->_regIndex);
-    _registeredPropertiesLookup.emplace(prop->_propName, prop.as_ptr());
+    _registeredPropertiesLookup.emplace(prop->_propName, ptr<const Property> {prop});
 
     // Fix plain data data offsets
     if (prop->_podDataOffset.has_value()) {
@@ -2542,7 +2537,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
         auto other_prop = nullable_other_prop.as_ptr();
 
-        if (!other_prop->_podDataOffset.has_value() || other_prop == prop.as_ptr()) {
+        if (!other_prop->_podDataOffset.has_value() || other_prop == prop.get()) {
             continue;
         }
 
@@ -2567,20 +2562,20 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         if (!prop->IsVirtual()) {
             if (prop->IsPlainData()) {
                 FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while finalizing registrator", prop->GetName(), _typeName);
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.as_ptr(), .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_podDataOffset), .DataSize = numeric_cast<uint16_t>(prop->GetBaseSize()), .IsPlain = true});
             }
             else {
                 FO_STRONG_ASSERT(prop->_complexDataIndex.has_value(), "Complex property has no complex data index while finalizing registrator", prop->GetName(), _typeName);
-                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop.as_ptr(), .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
+                _dataProperties.emplace_back(DataPropertyEntry {.Prop = prop, .DataIndex = numeric_cast<uint32_t>(*prop->_complexDataIndex), .DataSize = 0, .IsPlain = false});
             }
 
             if (!prop->IsTemporary()) {
-                _textProperties.emplace_back(prop.as_ptr());
+                _textProperties.emplace_back(ptr<Property> {prop});
             }
         }
 
         if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference() || prop->IsDictKeyHash()) {
-            _hashProperties.emplace_back(prop.as_ptr());
+            _hashProperties.emplace_back(ptr<Property> {prop});
         }
     }
 

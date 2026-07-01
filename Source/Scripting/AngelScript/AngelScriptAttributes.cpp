@@ -957,7 +957,7 @@ auto FindFunctionAttribute(ptr<const AngelScript::asIScriptFunction> func, strin
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<const string> raw_attr = FindAttribute(GetFunctionAttributesUserData(func), attribute); raw_attr) {
+    if (auto raw_attr = FindAttribute(GetFunctionAttributesUserData(func), attribute)) {
         return *raw_attr;
     }
 
@@ -1756,7 +1756,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
 
             auto pending_target = pending.Target.as_ptr();
 
-            if (nptr<const CallbackAttributeRule> nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target); nullable_restricted_rule) {
+            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
                 auto restricted_rule = nullable_restricted_rule.as_ptr();
                 append_error(MakeRestrictedCallbackUsageError(caller, pending_target, pending.Location, *restricted_rule, lnt));
             }
@@ -1803,7 +1803,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
                         auto usage_rule = nullable_usage_rule.as_ptr();
 
                         if (usage_rule->AttributeName == "Event") {
-                            if (nptr<const CallbackAttributeRule> nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target); nullable_restricted_rule) {
+                            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
                                 auto restricted_rule = nullable_restricted_rule.as_ptr();
                                 if (restricted_rule->AttributeName == usage_rule->AttributeName) {
                                     clear_pending();
@@ -1819,7 +1819,7 @@ auto ValidateEventSubscriptions(ptr<AngelScript::asIScriptModule> mod, nptr<cons
                             }
                         }
                         else {
-                            if (nptr<const CallbackAttributeRule> nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target); nullable_restricted_rule) {
+                            if (auto nullable_restricted_rule = FindCallbackAttributeRuleByAttribute(pending_target)) {
                                 auto restricted_rule = nullable_restricted_rule.as_ptr();
                                 if (restricted_rule->AttributeName == usage_rule->AttributeName) {
                                     clear_pending();

@@ -244,8 +244,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        ptr<const uint8_t> send_data = buf.data();
-        const auto error = _connection->send(send_data.get(), buf.size(), websocketpp::frame::opcode::binary);
+        const auto error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
 
         if (!error) {
             DispatchImpl();

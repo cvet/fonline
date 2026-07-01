@@ -495,7 +495,7 @@ inline void ImGuiTextUnformatted(string_view text)
         return;
     }
 
-    ptr<const char> text_begin = text.data();
+    nptr<const char> text_begin = text.data();
     ptr<const char> text_end = text_begin.get() + text.size();
     ImGui::TextUnformatted(text_begin.get(), text_end.get());
 }

@@ -301,6 +301,16 @@ struct fixed_string
 // Generic helpers
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
+// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
+// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
+// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
+[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
+
+#define FO_BASIC_STRONG_ASSERT(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 

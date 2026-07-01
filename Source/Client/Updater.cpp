@@ -439,8 +439,7 @@ void Updater::Net_OnInitData()
     vector<uint8_t> data;
     data.resize(data_size);
 
-    ptr<uint8_t> data_ptr = data.data();
-    _conn.InBuf->Pop(data_ptr, data_size);
+    _conn.InBuf->Pop(data.data(), data_size);
 
     vector<vector<uint8_t>> globals_properties_data;
     _conn.InBuf->ReadPropsData(globals_properties_data);
@@ -639,8 +638,7 @@ void Updater::Net_OnUpdateFileData()
 
     _updateFileBuf.resize(data_size);
 
-    ptr<uint8_t> update_file_data = _updateFileBuf.data();
-    _conn.InBuf->Pop(update_file_data, data_size);
+    _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
         Abort(StrFilesystemError);
@@ -709,8 +707,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
             ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
-            ptr<const uint8_t> source = data.data();
-            MemCopy(target.get(), source.get(), sizeof(cached));
+            MemCopy(target.get(), data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;

@@ -94,8 +94,7 @@ void ClientEntity::DestroySelf()
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
-                auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
-                auto custom_entity = custom_entity_holder.as_ptr();
+                auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntityView>());
                 custom_entity->DestroySelf();
             }
         }

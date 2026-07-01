@@ -231,7 +231,7 @@ int main(int argc, char** argv) // Handled by SDL
                 const auto half_w = iround<int32_t>(host_w * 0.5f);
                 main_rect = {0, iround<int32_t>(content_top), half_w, iround<int32_t>(content_h)};
 
-                if (nptr<AppWindow> nullable_child = GetApp()->GetChildWindow(0); nullable_child) {
+                if (auto nullable_child = GetApp()->GetChildWindow(0)) {
                     auto child = nullable_child.as_ptr();
                     child->SetDisplayRect({half_w, iround<int32_t>(content_top), iround<int32_t>(host_w) - half_w, iround<int32_t>(content_h)});
                 }
@@ -252,7 +252,7 @@ int main(int argc, char** argv) // Handled by SDL
                     const int32_t row = idx / cols;
                     const int32_t col = idx % cols;
 
-                    if (nptr<AppWindow> nullable_child = GetApp()->GetChildWindow(i); nullable_child) {
+                    if (auto nullable_child = GetApp()->GetChildWindow(i)) {
                         auto child = nullable_child.as_ptr();
                         child->SetDisplayRect({
                             iround<int32_t>(numeric_cast<float32_t>(col) * cell_w),
@@ -272,7 +272,7 @@ int main(int argc, char** argv) // Handled by SDL
                 auto shown = GetApp()->GetActiveWindow();
 
                 for (size_t i = 0; i < child_count; i++) {
-                    if (nptr<AppWindow> nullable_child = GetApp()->GetChildWindow(i); nullable_child) {
+                    if (auto nullable_child = GetApp()->GetChildWindow(i)) {
                         auto child = nullable_child.as_ptr();
                         child->SetDisplayRect(nullable_child == shown ? area : irect32 {});
                     }
@@ -493,8 +493,7 @@ int main(int argc, char** argv) // Handled by SDL
                                 std::ofstream log_file {std::filesystem::path {fs_make_path(log_name)}, std::ios::binary | std::ios::trunc};
 
                                 if (log_file && !log_lines.empty()) {
-                                    ptr<const char> log_data = log_lines.data();
-                                    log_file.write(log_data.get(), static_cast<std::streamsize>(log_lines.size()));
+                                    log_file.write(log_lines.data(), static_cast<std::streamsize>(log_lines.size()));
                                 }
                             }
 
@@ -600,7 +599,7 @@ int main(int argc, char** argv) // Handled by SDL
                     draw_tab(server_window, string {"Server"});
 
                     for (size_t i = 0; i < child_count; i++) {
-                        if (nptr<AppWindow> nullable_child = GetApp()->GetChildWindow(i); nullable_child) {
+                        if (auto nullable_child = GetApp()->GetChildWindow(i)) {
                             auto child = nullable_child.as_ptr();
                             const string label = child->GetTitle().empty() ? strex("Client {}", i + 1).str() : string {child->GetTitle()};
                             draw_tab(child, label);

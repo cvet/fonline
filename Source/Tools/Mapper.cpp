@@ -789,7 +789,7 @@ void MapperEngine::MapperMainLoop()
     BeginMapperFrameInput();
 
     if (_curMap) {
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
         cur_map->Process();
         ProcessRightMouseInertia();
     }
@@ -873,7 +873,7 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
     }
     else if (ev_type == InputEvent::EventType::MouseWheelEvent) {
         if (!IsImGuiMouseCaptured() && ev.MouseWheel.Delta != 0 && _curMap) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             const float32_t cur_zoom = cur_map->GetSpritesZoomTarget();
             ChangeZoom(ScaleZoomValue(cur_zoom, ev.MouseWheel.Delta > 0 ? 1.2f : 0.8f));
         }
@@ -912,7 +912,7 @@ void MapperEngine::ProcessMapperInputEvent(const InputEvent& ev)
     }
     else if (ev_type == InputEvent::EventType::MouseMoveEvent) {
         if (_curMap && MouseHoldMode == INT_PAN) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             const float32_t zoom = cur_map->GetSpritesZoom();
             const fpos32 pan_delta {-numeric_cast<float32_t>(ev.MouseMove.DeltaX) / zoom, -numeric_cast<float32_t>(ev.MouseMove.DeltaY) / zoom};
             const fpos32 screen_pan_delta {-numeric_cast<float32_t>(ev.MouseMove.DeltaX), -numeric_cast<float32_t>(ev.MouseMove.DeltaY)};
@@ -949,7 +949,7 @@ void MapperEngine::DrawMapperFrame()
         SprMngr.BeginScene();
 
         if (_curMap) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             cur_map->DrawMap();
         }
 
@@ -979,7 +979,7 @@ void MapperEngine::ProcessRightMouseInertia()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     const float32_t dt_ms = std::max(GameTime.GetFrameDeltaTime().to_ms<float32_t>(), 1.0f);
     const float32_t dt_sec = dt_ms / 1000.0f;
     const float32_t zoom = std::max(cur_map->GetSpritesZoom(), 0.001f);
@@ -1267,7 +1267,7 @@ void MapperEngine::HandleCtrlMapperHotkeys(KeyCode dikdw, bool block_hotkeys)
         break;
     case KeyCode::D:
         if (_curMap) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             cur_map->SetScrollCheck(!cur_map->IsScrollCheck());
         }
         break;
@@ -1343,7 +1343,7 @@ void MapperEngine::ChangeZoom(float32_t new_zoom)
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     const fpos32 mouse_pos = fpos32(GetApp()->Input.GetMousePosition());
     const fsize32 screen_size = fsize32(cur_map->GetScreenSize());
     const float32_t mouse_x_factor = std::clamp(mouse_pos.x / screen_size.width, 0.0f, 1.0f);
@@ -1532,7 +1532,7 @@ auto MapperEngine::CanUndo() const -> bool
         return false;
     }
 
-    if (nptr<const UndoContext> nullable_ctx = GetUndoContext(GetCurMap(), false); nullable_ctx) {
+    if (auto nullable_ctx = GetUndoContext(GetCurMap(), false)) {
         auto ctx = nullable_ctx.as_ptr();
         return !ctx->UndoStack.empty();
     }
@@ -1548,7 +1548,7 @@ auto MapperEngine::CanRedo() const -> bool
         return false;
     }
 
-    if (nptr<const UndoContext> nullable_ctx = GetUndoContext(GetCurMap(), false); nullable_ctx) {
+    if (auto nullable_ctx = GetUndoContext(GetCurMap(), false)) {
         auto ctx = nullable_ctx.as_ptr();
         return !ctx->RedoStack.empty();
     }
@@ -1560,7 +1560,7 @@ auto MapperEngine::GetUndoLabel() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<const UndoContext> nullable_ctx = GetUndoContext(GetCurMap(), false); nullable_ctx) {
+    if (auto nullable_ctx = GetUndoContext(GetCurMap(), false)) {
         auto ctx = nullable_ctx.as_ptr();
 
         if (!ctx->UndoStack.empty()) {
@@ -1575,7 +1575,7 @@ auto MapperEngine::GetRedoLabel() const -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<const UndoContext> nullable_ctx = GetUndoContext(GetCurMap(), false); nullable_ctx) {
+    if (auto nullable_ctx = GetUndoContext(GetCurMap(), false)) {
         auto ctx = nullable_ctx.as_ptr();
 
         if (!ctx->RedoStack.empty()) {
@@ -1594,7 +1594,7 @@ auto MapperEngine::ExecuteUndo() -> bool
         return false;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_ctx = GetUndoContext(map, false);
     if (!nullable_ctx) {
         return false;
@@ -1634,7 +1634,7 @@ auto MapperEngine::ExecuteRedo() -> bool
         return false;
     }
 
-    auto map = GetCurMapPtr();
+    auto map = GetCurMap().as_ptr();
     auto nullable_ctx = GetUndoContext(map, false);
     if (!nullable_ctx) {
         return false;
@@ -1714,9 +1714,8 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
     vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
     for (size_t i = 0; i < children.size(); i++) {
-        auto child = children[i].as_ptr();
         unique_ptr<EntityBuf> child_buf = SafeAlloc::MakeUnique<EntityBuf>();
-        CaptureEntityBuf(*child_buf, child);
+        CaptureEntityBuf(*child_buf, children[i]);
         entity_buf.Children.emplace_back(std::move(child_buf));
     }
 }
@@ -1736,7 +1735,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!owner) {
         if (entity_buf.IsCritter) {
@@ -1810,8 +1809,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
     span<refcount_ptr<CritterHexView>> critters = map->GetCritters();
 
     for (size_t cr_index = 0; cr_index < critters.size(); cr_index++) {
-        auto cr = critters[cr_index].as_ptr();
-        span<refcount_ptr<ItemView>> inv_items = cr->GetInvItems();
+        span<refcount_ptr<ItemView>> inv_items = critters[cr_index]->GetInvItems();
 
         for (size_t item_index = 0; item_index < inv_items.size(); item_index++) {
             auto inv_item = inv_items[item_index].as_ptr();
@@ -1828,9 +1826,7 @@ auto MapperEngine::FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEn
     span<refcount_ptr<ItemHexView>> map_items = map->GetItems();
 
     for (size_t i = 0; i < map_items.size(); i++) {
-        auto map_item = map_items[i].as_ptr();
-
-        if (nptr<ClientEntity> found = find_inner_item(map_item)) {
+        if (nptr<ClientEntity> found = find_inner_item(map_items[i])) {
             return found;
         }
     }
@@ -1868,7 +1864,7 @@ auto MapperEngine::ApplyEntityPropertyText(ptr<Entity> entity, ptr<const Propert
         if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
             auto item = nullable_item.as_ptr();
             if (item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
 
                 for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
                     if (mpos hex = item->GetHex(); GeometryHelper::MoveHexByDir(hex, hdir(i), cur_map->GetSize())) {
@@ -2020,7 +2016,7 @@ void MapperEngine::DrawMainPanelImGui()
             run_menu_action_with_message(
                 ImGui::MenuItem("Rebuild map", nullptr, false, static_cast<bool>(_curMap)),
                 [&] {
-                    auto cur_map = GetCurMapPtr();
+                    auto cur_map = GetCurMap().as_ptr();
                     cur_map->RebuildMap();
                 },
                 "Map rebuilt");
@@ -2031,12 +2027,12 @@ void MapperEngine::DrawMainPanelImGui()
 
             ImGui::Separator();
             if (ImGui::MenuItem("Merge multihex items", nullptr, false, static_cast<bool>(_curMap))) {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
                 const auto merged = MergeItemsToMultihexMeshes(cur_map);
                 AddMess(strex("Merged items: {}", merged));
             }
             if (ImGui::MenuItem("Break multihex items", nullptr, false, static_cast<bool>(_curMap))) {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
                 const auto broken = BreakItemsMultihexMeshes(cur_map);
                 AddMess(strex("Broken items: {}", broken));
             }
@@ -2160,7 +2156,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
     ImGui::PopStyleVar();
 
     if (visibility_changed && _curMap) {
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
         cur_map->RebuildMap();
     }
 
@@ -2214,7 +2210,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         ImGui::Text("SubTabs");
         ImGui::Separator();
         if (ImGui::BeginChild("##WorkspaceSubTabs", {0.0f, 0.0f}, false)) {
-            if (nptr<const SubTab> active_subtab = GetActiveSubTab(); active_subtab) {
+            if (auto active_subtab = GetActiveSubTab()) {
                 for (auto& [name, subtab] : Tabs[ActivePanelMode]) {
                     const auto selected = active_subtab == &subtab;
                     if (ImGui::Selectable(name.c_str(), selected)) {
@@ -2253,10 +2249,10 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                     const ImVec2 preview_max {cursor.x + 64.0f, cursor.y + 64.0f};
                     draw_list->AddRectFilled(preview_min, preview_max, ImGui::ColorConvertFloat4ToU32({0.12f, 0.12f, 0.12f, 1.0f}), 4.0f);
 
-                    if (nptr<const AtlasSprite> nullable_atlas_sprite = ResolveAtlasSprite(sprite); nullable_atlas_sprite) {
+                    if (auto nullable_atlas_sprite = ResolveAtlasSprite(sprite)) {
                         auto atlas_sprite = nullable_atlas_sprite.as_ptr();
 
-                        if (nptr<const RenderTexture> nullable_texture = atlas_sprite->GetBatchTexture(); nullable_texture) {
+                        if (auto nullable_texture = atlas_sprite->GetBatchTexture()) {
                             auto texture = nullable_texture.as_ptr();
                             const auto uv = atlas_sprite->GetAtlasRect();
                             const auto sprite_size = sprite->GetSize();
@@ -2277,10 +2273,10 @@ void MapperEngine::DrawWorkspaceWindowImGui()
 
                     if (ImGui::IsItemHovered() && sprite) {
                         if (ImGui::BeginTooltip()) {
-                            if (nptr<const AtlasSprite> nullable_atlas_sprite = ResolveAtlasSprite(sprite); nullable_atlas_sprite) {
+                            if (auto nullable_atlas_sprite = ResolveAtlasSprite(sprite)) {
                                 auto atlas_sprite = nullable_atlas_sprite.as_ptr();
 
-                                if (nptr<const RenderTexture> nullable_texture = atlas_sprite->GetBatchTexture(); nullable_texture) {
+                                if (auto nullable_texture = atlas_sprite->GetBatchTexture()) {
                                     auto texture = nullable_texture.as_ptr();
                                     const auto uv = atlas_sprite->GetAtlasRect();
                                     const auto sprite_size = sprite->GetSize();
@@ -2341,7 +2337,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                         stab.ItemProtos.emplace_back(proto);
                                     }
 
-                                    auto cur_map = GetCurMapPtr();
+                                    auto cur_map = GetCurMap().as_ptr();
                                     cur_map->SwitchIgnorePid(pid);
                                     cur_map->RebuildMap();
                                 }
@@ -2349,12 +2345,10 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                     auto add = true;
 
                                     if (proto->GetStackable()) {
-                                        vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(SelectedEntities.front().as_ptr());
+                                        vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(SelectedEntities.front());
 
                                         for (size_t child_index = 0; child_index < children.size(); child_index++) {
-                                            auto child = children[child_index].as_ptr();
-
-                                            if (proto->GetProtoId() == child->GetProtoId()) {
+                                            if (proto->GetProtoId() == children[child_index]->GetProtoId()) {
                                                 add = false;
                                                 break;
                                             }
@@ -2362,7 +2356,7 @@ void MapperEngine::DrawWorkspaceWindowImGui()
                                     }
 
                                     if (add) {
-                                        CreateItem(proto->GetProtoId(), {}, SelectedEntities.front().as_ptr());
+                                        CreateItem(proto->GetProtoId(), {}, SelectedEntities.front());
                                     }
                                 }
                                 else {
@@ -2459,7 +2453,7 @@ void MapperEngine::DrawContentWindowImGui()
 
     if (ActivePanelMode == INT_MODE_INCONT) {
         if (!SelectedEntities.empty()) {
-            vector<refcount_ptr<ItemView>> inner_items = GetEntityInnerItems(SelectedEntities.front().as_ptr());
+            vector<refcount_ptr<ItemView>> inner_items = GetEntityInnerItems(SelectedEntities.front());
 
             ImGui::Text("Container items: %d", numeric_cast<int32_t>(inner_items.size()));
 
@@ -2483,7 +2477,7 @@ void MapperEngine::DrawContentWindowImGui()
 
                 if (in_cont_item->GetOwnership() == ItemOwnership::CritterInventory) {
                     if (_curMap) {
-                        auto cur_map = GetCurMapPtr();
+                        auto cur_map = GetCurMap().as_ptr();
 
                         if (nptr<CritterHexView> nullable_owner = cur_map->GetCritter(in_cont_item->GetCritterId())) {
                             auto owner = nullable_owner.as_ptr();
@@ -2493,7 +2487,7 @@ void MapperEngine::DrawContentWindowImGui()
                 }
                 else if (in_cont_item->GetOwnership() == ItemOwnership::ItemContainer) {
                     if (_curMap) {
-                        auto cur_map = GetCurMapPtr();
+                        auto cur_map = GetCurMap().as_ptr();
 
                         if (nptr<ItemHexView> nullable_owner = cur_map->GetItem(in_cont_item->GetContainerId())) {
                             auto owner = nullable_owner.as_ptr();
@@ -2504,7 +2498,7 @@ void MapperEngine::DrawContentWindowImGui()
 
                 InContItem.reset();
 
-                auto nullable_next_entity = SelectedEntities.empty() ? nullptr : SelectedEntities.front().as_nptr();
+                nptr<ClientEntity> nullable_next_entity = SelectedEntities.empty() ? nptr<ClientEntity> {} : nptr<ClientEntity> {SelectedEntities.front()};
                 if (nullable_next_entity) {
                     SelectClear();
                     auto next_entity = nullable_next_entity.as_ptr();
@@ -2549,7 +2543,7 @@ void MapperEngine::DrawContentWindowImGui()
     }
     else if (ActivePanelMode == INT_MODE_LIST) {
         if (_curMap && (resize_w <= 0 || resize_h <= 0)) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             const msize map_size = cur_map->GetSize();
             resize_w = map_size.width;
             resize_h = map_size.height;
@@ -2574,7 +2568,7 @@ void MapperEngine::DrawContentWindowImGui()
                 }
 
                 if (ImGui::Selectable(label.c_str(), is_current) && !is_current) {
-                    ShowMap(map.as_ptr());
+                    ShowMap(map);
                 }
             }
         }
@@ -2592,7 +2586,7 @@ void MapperEngine::DrawContentWindowImGui()
         if (ImGui::Button("Load")) {
             const auto map_name = get_map_name_input();
             if (!map_name.empty()) {
-                if (nptr<MapView> nullable_map = LoadMap(map_name); nullable_map) {
+                if (auto nullable_map = LoadMap(map_name)) {
                     auto map = nullable_map.as_ptr();
                     ShowMap(map);
                     AddMess("Load map success");
@@ -2606,7 +2600,7 @@ void MapperEngine::DrawContentWindowImGui()
         run_button_action_with_message(
             ImGui::Button("Save current") && _curMap,
             [&] {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
                 SaveMap(cur_map, "");
             },
             "Save map success");
@@ -2614,7 +2608,7 @@ void MapperEngine::DrawContentWindowImGui()
         if (ImGui::Button("Save As") && _curMap) {
             const auto map_name = get_map_name_input();
             if (!map_name.empty()) {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
                 SaveMap(cur_map, map_name);
                 AddMess("Save map success");
             }
@@ -2624,7 +2618,7 @@ void MapperEngine::DrawContentWindowImGui()
         ImGui::InputInt("Resize height", &resize_h);
 
         if (ImGui::Button("Resize current") && _curMap) {
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             ResizeMap(cur_map, resize_w, resize_h);
             AddMess(strex("Resize map to {}x{}", resize_w, resize_h));
         }
@@ -2802,7 +2796,7 @@ void MapperEngine::DrawMapListWindowImGui()
         for (const auto& map_name : map_names) {
             const auto loaded_it = std::ranges::find_if(LoadedMaps, [&](const auto& map) { return string(map->GetName()) == map_name; });
             const auto is_loaded = loaded_it != LoadedMaps.end();
-            const nptr<MapView> loaded_map = is_loaded ? loaded_it->as_nptr() : nullptr;
+            const nptr<MapView> loaded_map = is_loaded ? nptr<MapView> {*loaded_it} : nptr<MapView> {};
             const auto is_current = is_loaded && GetCurMap() == loaded_map;
 
             auto label = map_name;
@@ -2815,7 +2809,7 @@ void MapperEngine::DrawMapListWindowImGui()
 
             if (ImGui::Selectable(label.c_str(), is_current)) {
                 if (is_loaded) {
-                    ShowMap(loaded_it->as_ptr());
+                    ShowMap(*loaded_it);
                 }
                 else if (nptr<MapView> nullable_map = LoadMap(map_name); nullable_map) {
                     auto map = nullable_map.as_ptr();
@@ -2854,16 +2848,14 @@ void MapperEngine::DrawMapWindowImGui()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     mpos hex;
     cur_map->GetHexAtScreen(MousePos, hex, nullptr);
     const int32_t day_time = GetGlobalDayTime();
     const string map_name = string(cur_map->GetName());
     const auto rotate_selected_critters = [&] {
         for (size_t i = 0; i < SelectedEntities.size(); i++) {
-            auto entity = SelectedEntities[i].as_ptr();
-
-            if (nptr<CritterHexView> cr = entity.dyn_cast<CritterHexView>()) {
+            if (nptr<CritterHexView> cr = SelectedEntities[i].as_ptr().dyn_cast<CritterHexView>()) {
                 AdvanceCritterDir(cr.as_ptr());
             }
         }
@@ -3061,9 +3053,7 @@ void MapperEngine::DrawInspectorImGui()
 
     if (SelectedEntities.size() > 1 && is_inspector_front_entity()) {
         for (size_t i = 0; i < SelectedEntities.size(); i++) {
-            auto selected_entity = SelectedEntities[i].as_ptr();
-
-            if (is_same_inspector_entity_type(selected_entity)) {
+            if (is_same_inspector_entity_type(SelectedEntities[i])) {
                 compatible_candidates++;
             }
         }
@@ -3733,7 +3723,7 @@ void MapperEngine::SelectInspectorPropertyLine(int32_t line)
     InspectorSelectedLine = std::max(InspectorSelectedLine, 0);
     InspectorSelectedLineInitialValue = InspectorSelectedLineValue = "";
 
-    if (nptr<const ClientEntity> entity = GetInspectorEntity(); entity) {
+    if (auto entity = GetInspectorEntity()) {
         if (InspectorSelectedLine - start_line >= numeric_cast<int32_t>(ShowProps.size())) {
             InspectorSelectedLine = numeric_cast<int32_t>(ShowProps.size()) + start_line - 1;
         }
@@ -3782,10 +3772,10 @@ auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
     nptr<ClientEntity> entity = nullptr;
 
     if (ActivePanelMode == INT_MODE_INCONT && InContItem) {
-        entity = InContItem.as_nptr();
+        entity = InContItem;
     }
     else if (!SelectedEntities.empty()) {
-        entity = SelectedEntities.front().as_nptr();
+        entity = SelectedEntities.front();
     }
 
     if (entity == InspectorEntity) {
@@ -3829,7 +3819,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
         return true;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!cur_map->GetHexAtScreen(MousePos, SelectHex1, nullptr)) {
         return true;
@@ -3854,9 +3844,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
 
     if (GetApp()->Input.IsShiftDown()) {
         for (size_t i = 0; i < SelectedEntities.size(); i++) {
-            auto selected_entity = SelectedEntities[i].as_ptr();
-
-            if (nptr<CritterHexView> nullable_cr = selected_entity.dyn_cast<CritterHexView>()) {
+            if (nptr<CritterHexView> nullable_cr = SelectedEntities[i].as_ptr().dyn_cast<CritterHexView>()) {
                 auto cr = nullable_cr.as_ptr();
                 auto hex = cr->GetHex();
 
@@ -3889,7 +3877,7 @@ void MapperEngine::HandleLeftMouseUp()
     FO_STACK_TRACE_ENTRY();
 
     if (CurMode == CUR_MODE_PLACE_OBJECT) {
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
 
         if (cur_map->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (IsItemMode() && ActiveItemProtos && !ActiveItemProtos->empty()) {
@@ -3914,7 +3902,7 @@ void MapperEngine::HandleLeftMouseUp()
     }
 
     if (MouseHoldMode == INT_SELECT) {
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
 
         if (cur_map->GetHexAtScreen(MousePos, SelectHex2, nullptr)) {
             if (SelectHex1 != SelectHex2) {
@@ -3996,7 +3984,7 @@ void MapperEngine::HandleLeftMouseUp()
                 }
             }
 
-            if (!SelectedEntities.empty() && !GetEntityInnerItems(SelectedEntities.front().as_ptr()).empty()) {
+            if (!SelectedEntities.empty() && !GetEntityInnerItems(SelectedEntities.front()).empty()) {
                 SetActivePanelMode(INT_MODE_INCONT);
             }
 
@@ -4016,7 +4004,7 @@ void MapperEngine::HandleSelectionMouseDrag()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     const bool had_track_overlay = !MapperTrackOverlayHexes.empty();
     ClearMapperTrackOverlay();
@@ -4175,7 +4163,7 @@ auto MapperEngine::GetActiveProtoIndex() const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<const SubTab> nullable_active_subtab = GetActiveSubTab(); nullable_active_subtab) {
+    if (auto nullable_active_subtab = GetActiveSubTab()) {
         auto active_subtab = nullable_active_subtab.as_ptr();
         return active_subtab->Index;
     }
@@ -4191,7 +4179,7 @@ void MapperEngine::SetActiveProtoIndex(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<SubTab> nullable_active_subtab = GetActiveSubTab(); nullable_active_subtab) {
+    if (auto nullable_active_subtab = GetActiveSubTab()) {
         auto active_subtab = nullable_active_subtab.as_ptr();
         active_subtab->Index = index;
     }
@@ -4211,7 +4199,7 @@ void MapperEngine::RefreshActiveProtoLists()
     ActiveCritterProtos = nullptr;
     InContItem.reset();
 
-    if (nptr<SubTab> nullable_stab = GetActiveSubTab(); nullable_stab) {
+    if (auto nullable_stab = GetActiveSubTab()) {
         auto stab = nullable_stab.as_ptr();
 
         if (!stab->CritterProtos.empty()) {
@@ -4225,7 +4213,7 @@ void MapperEngine::RefreshActiveProtoLists()
     }
 
     if (_curMap) {
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
 
         // Update fast pids
         cur_map->ClearFastPids();
@@ -4259,7 +4247,7 @@ void MapperEngine::MoveEntity(ptr<ClientEntity> entity, mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!cur_map->GetSize().is_valid_pos(hex)) {
         return;
@@ -4419,7 +4407,7 @@ void MapperEngine::SelectAdd(ptr<ClientEntity> entity, optional<mpos> hex, bool 
     }
 
     ptr<ClientEntity> corrected_entity = entity;
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     // Break from merged mesh
     if (!SelectEntireEntity && hex.has_value()) {
@@ -4457,7 +4445,7 @@ void MapperEngine::SelectAll()
 
     SelectClear();
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     span<refcount_ptr<ItemHexView>> items = cur_map->GetItems();
 
     for (size_t i = 0; i < items.size(); i++) {
@@ -4480,8 +4468,7 @@ void MapperEngine::SelectAll()
         span<refcount_ptr<CritterHexView>> critters = cur_map->GetCritters();
 
         for (size_t i = 0; i < critters.size(); i++) {
-            auto cr = critters[i].as_ptr();
-            SelectAdd(cr);
+            SelectAdd(critters[i]);
         }
     }
 
@@ -4499,7 +4486,7 @@ void MapperEngine::SelectRemove(ptr<ClientEntity> entity, bool skip_refresh)
     auto entity_holder = entity.hold_ref();
     vec_remove_unique_value(SelectedEntities, entity_holder);
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     // Delete intersected tiles
     if (!SelectEntireEntity && !entity->IsDestroyed()) {
@@ -4560,7 +4547,7 @@ void MapperEngine::SelectClear()
     FO_STACK_TRACE_ENTRY();
 
     while (!SelectedEntities.empty()) {
-        SelectRemove(SelectedEntities.back().as_ptr(), true);
+        SelectRemove(SelectedEntities.back(), true);
     }
 
     InContItem.reset();
@@ -4573,7 +4560,7 @@ void MapperEngine::SelectClear()
     InspectorEditBuf.clear();
     ResetInspectorPropertyEditState();
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     cur_map->DefferedRefreshItems();
 }
 
@@ -4592,8 +4579,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
     bool have_tiles = false;
 
     for (size_t i = 0; i != SelectedEntities.size(); i++) {
-        auto entity = SelectedEntities[i].as_ptr();
-        auto nullable_item = entity.dyn_cast<ItemHexView>();
+        auto nullable_item = SelectedEntities[i].as_ptr().dyn_cast<ItemHexView>();
         if (!nullable_item) {
             continue;
         }
@@ -4645,7 +4631,7 @@ auto MapperEngine::SelectMove(bool hex_move, int32_t& offs_hx, int32_t& offs_hy,
         }
     };
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!hex_move) {
         float32_t& small_ox = SelectionSmallOffsetX;
@@ -4838,7 +4824,7 @@ void MapperEngine::SelectDelete()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!UndoRedoInProgress && SelectedEntities.size() > 1) {
         struct DeleteCommandEntry
@@ -4929,7 +4915,7 @@ auto MapperEngine::CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (!cur_map->GetSize().is_valid_pos(hex)) {
         throw GenericException("Invalid hex for critter spawn", pid, hex.x, hex.y);
@@ -4974,7 +4960,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     auto nullable_proto = GetProtoItem(pid);
 
@@ -5078,7 +5064,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_curMap, "Mapper has no current map");
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
         auto cr = nullable_cr.as_ptr();
@@ -5672,7 +5658,7 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHe
     };
 
     // At same hex
-    if (nptr<ItemHexView> nullable_mergable_item = find_mergable_item_on_hex(hex); nullable_mergable_item) {
+    if (auto nullable_mergable_item = find_mergable_item_on_hex(hex)) {
         auto mergable_item = nullable_mergable_item.as_ptr();
         result.emplace(mergable_item);
     }
@@ -5680,7 +5666,7 @@ void MapperEngine::FindMultihexMeshForItemAroundHex(ptr<MapView> map, ptr<ItemHe
     // Neighbor hexes
     for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
         if (mpos hex2 = hex; GeometryHelper::MoveHexByDir(hex2, hdir(i), map->GetSize())) {
-            if (nptr<ItemHexView> nullable_mergable_item = find_mergable_item_on_hex(hex2); nullable_mergable_item) {
+            if (auto nullable_mergable_item = find_mergable_item_on_hex(hex2)) {
                 auto mergable_item = nullable_mergable_item.as_ptr();
                 result.emplace(mergable_item);
             }
@@ -5809,7 +5795,7 @@ void MapperEngine::BufferCopy()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     BufferRawHex = cur_map->GetScreenRawHex();
     EntitiesBuffer.clear();
 
@@ -5839,17 +5825,15 @@ void MapperEngine::BufferCopy()
         vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
         for (size_t i = 0; i < children.size(); i++) {
-            auto child = children[i].as_ptr();
             unique_ptr<EntityBuf> child_buf = SafeAlloc::MakeUnique<EntityBuf>();
-            add_entity(*child_buf, child);
+            add_entity(*child_buf, children[i]);
             entity_buf.Children.emplace_back(std::move(child_buf));
         }
     };
 
     for (size_t i = 0; i < SelectedEntities.size(); i++) {
-        auto entity = SelectedEntities[i].as_ptr();
         EntitiesBuffer.emplace_back();
-        add_entity(EntitiesBuffer.back(), entity);
+        add_entity(EntitiesBuffer.back(), SelectedEntities[i]);
     }
 }
 
@@ -5873,7 +5857,7 @@ void MapperEngine::BufferPaste()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     vector<EntityBuf> pasted_entities;
 
     const ipos32 screen_raw_hex = cur_map->GetScreenRawHex();
@@ -6099,7 +6083,7 @@ void MapperEngine::CurDraw()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
 
     if (IsItemMode() && ActiveItemProtos && !ActiveItemProtos->empty()) {
         const auto& proto = (*ActiveItemProtos)[GetActiveProtoIndex()];
@@ -6272,9 +6256,7 @@ void MapperEngine::CurMMouseDown()
     }
     else {
         for (size_t i = 0; i < SelectedEntities.size(); i++) {
-            auto entity = SelectedEntities[i].as_ptr();
-
-            if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+            if (nptr<CritterHexView> nullable_cr = SelectedEntities[i].as_ptr().dyn_cast<CritterHexView>()) {
                 auto cr = nullable_cr.as_ptr();
                 AdvanceCritterDir(cr);
             }
@@ -6290,9 +6272,7 @@ void MapperEngine::SetCurMode(int cur_mode)
 
     // Restore alpha
     for (size_t i = 0; i < SelectedEntities.size(); i++) {
-        auto entity = SelectedEntities[i].as_ptr();
-
-        if (nptr<HexView> nullable_hex_view = entity.dyn_cast<HexView>()) {
+        if (nptr<HexView> nullable_hex_view = SelectedEntities[i].as_ptr().dyn_cast<HexView>()) {
             auto hex_view = nullable_hex_view.as_ptr();
             if (CurMode == CUR_MODE_MOVE_SELECTION) {
                 hex_view->RestoreAlpha();
@@ -6335,7 +6315,7 @@ auto MapperEngine::GetCurHex(mpos& hex, bool ignore_interface) -> bool
         return false;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     return cur_map->GetHexAtScreen(MousePos, hex, nullptr);
 }
 
@@ -6478,7 +6458,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        if (nptr<MapView> nullable_map = LoadMap(map_name); nullable_map) {
+        if (auto nullable_map = LoadMap(map_name)) {
             AddMess("Load map success");
             auto map = nullable_map.as_ptr();
             ShowMap(map);
@@ -6501,7 +6481,7 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
         SaveMap(cur_map, map_name);
 
         AddMess("Save map success");
@@ -6535,7 +6515,7 @@ void MapperEngine::ParseCommand(string_view command)
         if (!before_snapshot.empty()) {
             const auto after_snapshot = CaptureMapSnapshot(GetCurMap());
             if (before_snapshot != after_snapshot) {
-                auto cur_map = GetCurMapPtr();
+                auto cur_map = GetCurMap().as_ptr();
                 const string map_name = string(cur_map->GetName());
                 PushUndoOp(GetCurMap(), UndoOp {strex("Script {}", func_name), [map_name, before_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, before_snapshot); }, [map_name, after_snapshot](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) { return mapper->RestoreMapSnapshot(active_map, map_name, after_snapshot); }, true});
             }
@@ -6558,13 +6538,11 @@ void MapperEngine::ParseCommand(string_view command)
             return;
         }
 
-        auto cur_map = GetCurMapPtr();
+        auto cur_map = GetCurMap().as_ptr();
 
         if (!SelectedEntities.empty()) {
             for (size_t i = 0; i < SelectedEntities.size(); i++) {
-                auto entity = SelectedEntities[i].as_ptr();
-
-                if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
+                if (nptr<CritterHexView> nullable_cr = SelectedEntities[i].as_ptr().dyn_cast<CritterHexView>()) {
                     auto cr = nullable_cr.as_ptr();
                     cr->StopAnim();
 
@@ -6607,24 +6585,24 @@ void MapperEngine::ParseCommand(string_view command)
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             ptr<ClientEngine> engine = this;
-            auto map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap.as_ptr(), GetApp()->MainWindow.GetSize());
+            auto map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
             map->EnableMapperMode();
             map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
 
             LoadedMaps.emplace_back(std::move(map));
-            ShowMap(LoadedMaps.back().as_ptr());
-            SetMapDirty(LoadedMaps.back().as_ptr());
+            ShowMap(LoadedMaps.back());
+            SetMapDirty(LoadedMaps.back());
             AddMess("Create map success");
         }
         else if (command_ext == "unload" && _curMap) {
             AddMess("Unload map");
 
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             UnloadMap(cur_map);
 
             if (!LoadedMaps.empty()) {
-                ShowMap(LoadedMaps.front().as_ptr());
+                ShowMap(LoadedMaps.front());
             }
         }
         else if (command_ext == "size" && _curMap) {
@@ -6638,7 +6616,7 @@ void MapperEngine::ParseCommand(string_view command)
                 return;
             }
 
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             ResizeMap(cur_map, maxhx, maxhy);
         }
         else if (command_ext == "resave") {
@@ -6649,7 +6627,7 @@ void MapperEngine::ParseCommand(string_view command)
             for (const auto& map_file_header : map_files) {
                 const auto map_name = map_file_header.GetNameNoExt();
 
-                if (nptr<MapView> nullable_map = LoadMap(map_name); nullable_map) {
+                if (auto nullable_map = LoadMap(map_name)) {
                     auto map = nullable_map.as_ptr();
                     SaveMap(map, map_name);
                     AddMess(strex("Resave map: {}", map_name));
@@ -6661,7 +6639,7 @@ void MapperEngine::ParseCommand(string_view command)
         }
         else if (command_ext == "reverse-light" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
 
             span<refcount_ptr<ItemHexView>> items = cur_map->GetItems();
 
@@ -6685,7 +6663,7 @@ void MapperEngine::ParseCommand(string_view command)
         }
         else if (command_ext == "merge-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             MergeItemsToMultihexMeshes(cur_map);
             const auto merge_items_repeat_count = MergeItemsToMultihexMeshes(cur_map);
             FO_VERIFY_AND_THROW(merge_items_repeat_count == 0, "Mapper merge-items command is not idempotent for current map", cur_map->GetName(), merge_items_repeat_count);
@@ -6701,7 +6679,7 @@ void MapperEngine::ParseCommand(string_view command)
         }
         else if (command_ext == "break-items" && _curMap) {
             const auto before_snapshot = !UndoRedoInProgress ? CaptureMapSnapshot(GetCurMap()) : string {};
-            auto cur_map = GetCurMapPtr();
+            auto cur_map = GetCurMap().as_ptr();
             BreakItemsMultihexMeshes(cur_map);
             const auto break_items_repeat_count = BreakItemsMultihexMeshes(cur_map);
             FO_VERIFY_AND_THROW(break_items_repeat_count == 0, "Mapper break-items command is not idempotent for current map", cur_map->GetName(), break_items_repeat_count);
@@ -6748,7 +6726,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
 
     ptr<ClientEngine> engine = this;
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap.as_ptr(), GetApp()->MainWindow.GetSize());
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
     new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
     new_map->EnableMapperMode();
     new_map->SetScrollCheck(false);
@@ -6761,13 +6739,12 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
         return nullptr;
     }
 
-    auto new_map_ptr = new_map.as_ptr();
-    MergeItemsToMultihexMeshes(new_map_ptr);
-    const auto load_merge_repeat_count = MergeItemsToMultihexMeshes(new_map_ptr);
+    MergeItemsToMultihexMeshes(new_map);
+    const auto load_merge_repeat_count = MergeItemsToMultihexMeshes(new_map);
     FO_VERIFY_AND_THROW(load_merge_repeat_count == 0, "Loaded map merge-items normalization is not idempotent", map_name, load_merge_repeat_count);
 
     new_map->InstantScrollTo(new_map->GetWorkHex());
-    OnEditMapLoad.Fire(new_map.as_ptr());
+    OnEditMapLoad.Fire(new_map);
     LoadedMaps.emplace_back(std::move(new_map));
     auto loaded_map = LoadedMaps.back().as_nptr();
 
@@ -6871,7 +6848,7 @@ void MapperEngine::SaveCurrentMap()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     SaveMap(cur_map, "");
     AddMess(strex("Saved map: {}", cur_map->GetName()));
 }
@@ -6884,12 +6861,12 @@ void MapperEngine::ResetCurrentMapChanges()
         return;
     }
 
-    auto cur_map = GetCurMapPtr();
+    auto cur_map = GetCurMap().as_ptr();
     const string map_name = string(cur_map->GetName());
     ClearUndoContext(cur_map);
     UnloadMap(cur_map);
 
-    if (nptr<MapView> nullable_map = LoadMap(map_name); nullable_map) {
+    if (auto nullable_map = LoadMap(map_name)) {
         auto map = nullable_map.as_ptr();
         ShowMap(map);
         AddMess(strex("Reset changes: {}", map_name));
@@ -6947,8 +6924,7 @@ void MapperEngine::SaveMap(ptr<MapView> map, string_view custom_name)
     std::ofstream fomap_file {std::filesystem::path {fs_make_path(fomap_path)}, std::ios::binary | std::ios::trunc};
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to open .fomap file for writing", fomap_path, fomap_name, fomap_content.size());
     if (!fomap_content.empty()) {
-        ptr<const char> fomap_data = fomap_content.data();
-        fomap_file.write(fomap_data.get(), static_cast<std::streamsize>(fomap_content.size()));
+        fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
     }
     FO_VERIFY_AND_THROW(fomap_file, "Mapper failed to write .fomap content", fomap_path, fomap_name, fomap_content.size());
 
@@ -7006,8 +6982,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     FO_VERIFY_AND_THROW(fomap_file, "Unable to open the fomap file for writing", fomap_path);
 
     if (!fomap_content.empty()) {
-        ptr<const char> fomap_data = fomap_content.data();
-        fomap_file.write(fomap_data.get(), static_cast<std::streamsize>(fomap_content.size()));
+        fomap_file.write(fomap_content.data(), static_cast<std::streamsize>(fomap_content.size()));
     }
 
     FO_VERIFY_AND_THROW(fomap_file, "Unable to write the fomap file", fomap_path);

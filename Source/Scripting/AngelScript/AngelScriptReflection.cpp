@@ -358,8 +358,7 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
     FO_VERIFY_AND_THROW(!!array_type, "Missing string array type info");
-    auto result_holder = ScriptArray::Create(array_type.as_ptr());
-    auto result = result_holder.as_ptr();
+    auto result = ScriptArray::Create(array_type.as_ptr());
 
     if (nullable_enum_type) {
         auto enum_type = nullable_enum_type.as_ptr();
@@ -371,7 +370,7 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
         }
     }
 
-    return result_holder;
+    return result;
 }
 
 auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
@@ -385,8 +384,7 @@ auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("int[]");
     FO_VERIFY_AND_THROW(!!array_type, "Missing int array type info");
-    auto result_holder = ScriptArray::Create(array_type.as_ptr());
-    auto result = result_holder.as_ptr();
+    auto result = ScriptArray::Create(array_type.as_ptr());
 
     if (nullable_enum_type) {
         auto enum_type = nullable_enum_type.as_ptr();
@@ -397,7 +395,7 @@ auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
         }
     }
 
-    return result_holder;
+    return result;
 }
 
 void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
@@ -557,8 +555,7 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
     FO_VERIFY_AND_THROW(!!array_type, "Missing string array type info");
-    auto modules_holder = ScriptArray::Create(array_type.as_ptr());
-    auto modules = modules_holder.as_ptr();
+    auto modules = ScriptArray::Create(array_type.as_ptr());
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(engine->GetModuleCount()); i++) {
         nptr<AngelScript::asIScriptModule> nullable_module = engine->GetModuleByIndex(i);
@@ -569,7 +566,7 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
         modules->InsertLast(value);
     }
 
-    return modules_holder;
+    return modules;
 }
 
 static auto GetAngelScriptLoadedModules() -> ScriptArray*
@@ -620,8 +617,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("reflection::type[]");
     FO_VERIFY_AND_THROW(!!array_type, "Missing reflection type array type info");
-    auto enums_holder = ScriptArray::Create(array_type.as_ptr());
-    auto enums = enums_holder.as_ptr();
+    auto enums = ScriptArray::Create(array_type.as_ptr());
 
     if (global) {
         const auto count = engine->GetEnumCount();
@@ -632,8 +628,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
 
             auto enum_type = nullable_enum_type.as_ptr();
             auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
-            auto type_handle = type.as_nptr();
-            ptr<void> value = static_cast<void*>(type_handle.get_pp());
+            ptr<void> value = static_cast<void*>(type.get_pp());
             enums->InsertLast(value);
         }
     }
@@ -641,7 +636,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
         auto nullable_module = GetAngelScriptModule(module_name);
 
         if (!nullable_module) {
-            return enums_holder;
+            return enums;
         }
 
         auto module = nullable_module.as_ptr();
@@ -653,13 +648,12 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
 
             auto enum_type = nullable_enum_type.as_ptr();
             auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
-            auto type_handle = type.as_nptr();
-            ptr<void> value = static_cast<void*>(type_handle.get_pp());
+            ptr<void> value = static_cast<void*>(type.get_pp());
             enums->InsertLast(value);
         }
     }
 
-    return enums_holder;
+    return enums;
 }
 
 static auto GetGlobalEnums() -> ScriptArray*

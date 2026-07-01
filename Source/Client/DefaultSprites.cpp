@@ -251,9 +251,7 @@ auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
         dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
     }
 
-    auto spr = dir_sheet->_spr[_curIndex].as_ptr();
-
-    return spr->FillData(dbuf, pos, colors);
+    return dir_sheet->_spr[_curIndex]->FillData(dbuf, pos, colors);
 }
 
 void SpriteSheet::Prewarm()
@@ -552,8 +550,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        ptr<ucolor> border_data = _borderBuf.data();
-        const_span<ucolor> border_pixels = {border_data.get(), numeric_cast<size_t>(size.height + 2)};
+        const_span<ucolor> border_pixels = {_borderBuf.data(), numeric_cast<size_t>(size.height + 2)};
         tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, border_pixels);
 
         // Right

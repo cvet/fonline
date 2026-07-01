@@ -1667,7 +1667,7 @@ TEST_CASE("ServerCritterInventoryOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1723,7 +1723,7 @@ TEST_CASE("ServerCritterStateOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1779,7 +1779,7 @@ TEST_CASE("ServerGameCritterQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1827,7 +1827,7 @@ TEST_CASE("ServerGameItemOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1899,7 +1899,7 @@ TEST_CASE("ServerEntityLifecycle")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1995,7 +1995,7 @@ TEST_CASE("ServerMiscScriptOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.as_ptr());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

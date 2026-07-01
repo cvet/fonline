@@ -120,9 +120,7 @@ struct BakerBone
         }
 
         for (size_t i = 0; i != Children.size(); ++i) {
-            auto child = Children[i].as_ptr();
-
-            if (nptr<BakerBone> bone = child->Find(name); bone) {
+            if (auto bone = Children[i]->Find(name)) {
                 return bone;
             }
         }
@@ -352,7 +350,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
-    ConvertFbxMeshes(root_bone.as_ptr(), root_bone.as_ptr(), fbx_scene->root_node);
+    ConvertFbxMeshes(root_bone, root_bone, fbx_scene->root_node);
     const auto animations = ConvertFbxAnimations(fbx_scene, fname);
 
     // Write data
@@ -446,7 +444,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
             for (const uint32_t& face_index : fbx_mesh_part.face_indices) {
                 const ufbx_face fbx_face = fbx_mesh->faces[face_index];
                 FO_VERIFY_AND_THROW(!triangle_indices.empty(), "Triangulation buffer is empty");
-                ptr<uint32_t> triangle_indices_data = triangle_indices.data();
+                nptr<uint32_t> triangle_indices_data = triangle_indices.data();
                 const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices_data.get_no_const(), triangle_indices.size(), fbx_mesh.get(), fbx_face);
 
                 mesh_triangles_count += triangles_count;
@@ -524,11 +522,9 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         ufbx_error fbx_generate_indices_error;
         FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Baked mesh has no vertices");
         FO_VERIFY_AND_THROW(!indices.empty(), "Baked mesh has no indices");
-        ptr<const Vertex3D> mesh_vertices_data = mesh->Vertices.data();
-        ptr<uint32_t> indices_data = indices.data();
-        ptr<void> mesh_vertices_raw_data = cast_to_void(mesh_vertices_data.get());
+        ptr<void> mesh_vertices_raw_data = cast_to_void(mesh->Vertices.data());
         const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_raw_data.get(), mesh->Vertices.size(), sizeof(Vertex3D)}};
-        const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices_data.get(), indices.size(), nullptr, &fbx_generate_indices_error);
+        const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
 
         if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
             throw ModelMeshBakerException(strex("FBX index generation failed for mesh '{}': {}", fbx_node->name.data, fbx_generate_indices_error.description.data));
@@ -597,7 +593,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
     }
 
     for (size_t i = 0; i < fbx_node->children.count; i++) {
-        ConvertFbxMeshes(root_bone, bone->Children[i].as_ptr(), fbx_node->children[i]);
+        ConvertFbxMeshes(root_bone, bone->Children[i], fbx_node->children[i]);
     }
 }
 

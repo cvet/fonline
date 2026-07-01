@@ -249,8 +249,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                 cr->SetHex(_mapSize.clamp_pos(hex));
             }
 
-            auto added_cr = cr.as_ptr();
-            AddCritterInternal(added_cr);
+            AddCritterInternal(cr);
         },
         [this, &max_id, map_name](ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv) {
             FO_VERIFY_AND_THROW(id, "Item id is empty");
@@ -270,8 +269,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     item->SetHex(_mapSize.clamp_pos(hex));
                 }
 
-                auto map_item = item.as_ptr();
-                AddItemInternal(map_item);
+                AddItemInternal(item);
             }
             else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
                 auto cr = GetCritter(item->GetCritterId());
@@ -280,8 +278,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     throw GenericException("Critter not found", item->GetCritterId());
                 }
 
-                auto inv_item = item.as_ptr();
-                cr->AddRawInvItem(inv_item);
+                cr->AddRawInvItem(item);
             }
             else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
                 auto cont = GetItem(item->GetContainerId());
@@ -290,8 +287,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
                     throw GenericException("Container not found", item->GetContainerId());
                 }
 
-                auto inner_item = item.as_ptr();
-                cont->AddRawInnerItem(inner_item);
+                cont->AddRawInnerItem(item);
             }
             else {
                 FO_UNREACHABLE_PLACE();
@@ -362,8 +358,7 @@ void MapView::LoadStaticData()
             nptr<const Properties> item_props_ptr = &item_props;
             auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(map, static_id, item_proto.as_ptr(), item_props_ptr);
             static_item->SetStatic(true);
-            auto added_item = static_item.as_ptr();
-            AddItemInternal(added_item);
+            AddItemInternal(static_item);
         }
     }
 
@@ -702,8 +697,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
 
     const bool was_present = !!GetItem(id);
 
-    auto added_item = item.as_ptr();
-    auto added = AddItemInternal(added_item);
+    auto added = AddItemInternal(item);
 
     if (fade_in && !was_present) {
         added->FadeUp();
@@ -727,8 +721,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
 
     item->SetHex(hex);
 
-    auto added_item = item.as_ptr();
-    return AddItemInternal(added_item);
+    return AddItemInternal(item);
 }
 
 auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ptr<ItemHexView>
@@ -749,8 +742,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     item->SetIsRoofTile(is_roof);
     item->SetTileLayer(layer);
 
-    auto added_item = item.as_ptr();
-    return AddItemInternal(added_item);
+    return AddItemInternal(item);
 }
 
 auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
@@ -768,8 +760,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
     item->SetStatic(false);
     item->SetHex(hex);
 
-    auto added_item = item.as_ptr();
-    return AddItemInternal(added_item);
+    return AddItemInternal(item);
 }
 
 auto MapView::AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>
@@ -833,7 +824,7 @@ void MapView::DefferedRefreshItems()
 
     for (auto& item : to_vector(_deferredRefreshItems)) {
         if (!item->IsDestroyed()) {
-            RefreshItem(item.as_ptr(), false);
+            RefreshItem(item, false);
         }
     }
 
@@ -1060,7 +1051,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
     }
 
     _spritePatterns.emplace_back(pattern);
-    return pattern.as_nptr();
+    return pattern;
 }
 
 void MapView::RebuildMapNow()
@@ -1152,8 +1143,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
 
     // Critters text rect
     for (size_t i = 0; i < _critters.size(); i++) {
-        auto cr = _critters[i].as_ptr();
-        cr->RefreshOffs();
+        _critters[i]->RefreshOffs();
     }
 
     _needRebuildLightPrimitives = true;
@@ -1518,7 +1508,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
     const auto it = _lightSources.find(id);
 
     if (it == _lightSources.end()) {
-        auto ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second.as_ptr();
+        ptr<LightSource> ls = _lightSources.emplace(id, SafeAlloc::MakeUnique<LightSource>(id, hex, color, distance, flags, intensity, offset)).first->second;
 
         apply_updated_light_source(ls);
     }
@@ -2797,7 +2787,7 @@ auto MapView::DrawEntitySprite(ptr<ClientEntity> entity, ptr<RenderEffect> effec
 
     nptr<const MapSprite> mspr;
 
-    if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>(); nullable_cr) {
+    if (auto nullable_cr = entity.dyn_cast<CritterHexView>()) {
         auto cr = nullable_cr.as_ptr();
 
         if (cr->GetMap() != this || !cr->IsMapSpriteValid()) {
@@ -3356,8 +3346,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
     // alpha in AddCritterInternal, so we must skip the FadeUp() reset to keep the transition smooth.
     const bool was_present = !!GetCritter(id);
 
-    auto added_cr = cr.as_ptr();
-    auto added = AddCritterInternal(added_cr);
+    auto added = AddCritterInternal(cr);
 
     if (fade_in && !was_present) {
         added->FadeUp();
@@ -3382,8 +3371,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Prope
     cr->SetHex(hex);
     cr->ChangeDir(dir);
 
-    auto added_cr = cr.as_ptr();
-    return AddCritterInternal(added_cr);
+    return AddCritterInternal(cr);
 }
 
 auto MapView::AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>
@@ -4000,7 +3988,7 @@ auto MapView::AddFog(nptr<CritterView> cr, DrawOrderType draw_order, nptr<Render
     fog->CustomFlushEffect = custom_flush_effect;
 
     _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
-    return fog.as_ptr();
+    return fog;
 }
 
 auto MapView::AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> custom_flush_effect) -> ptr<FogLayer>
@@ -4014,7 +4002,7 @@ auto MapView::AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> cust
     fog->CustomFlushEffect = custom_flush_effect;
 
     _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
-    return fog.as_ptr();
+    return fog;
 }
 
 auto MapView::AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>
@@ -4243,8 +4231,7 @@ auto MapView::SaveToText() const -> string
         const_span<refcount_ptr<ItemView>> inv_items = cr->GetInvItems();
 
         for (size_t j = 0; j < inv_items.size(); j++) {
-            auto inv_item = inv_items[j].as_ptr();
-            fill_item(inv_item);
+            fill_item(inv_items[j]);
         }
     }
 
@@ -4256,8 +4243,7 @@ auto MapView::SaveToText() const -> string
         const_span<refcount_ptr<ItemView>> inner_items = item->GetInnerItems();
 
         for (size_t j = 0; j < inner_items.size(); j++) {
-            auto inner_item = inner_items[j].as_ptr();
-            fill_item(inner_item);
+            fill_item(inner_items[j]);
         }
     }
 

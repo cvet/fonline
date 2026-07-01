@@ -78,13 +78,13 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _typeInfo.as_ptr();
+        return _typeInfo;
     }
     auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo>
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _typeInfo.as_ptr();
+        return _typeInfo;
     }
     auto GetDictTypeId() const -> int32_t;
     auto GetMap() const -> ptr<const map<void*, void*, ScriptDictComparator>> { return &_data; }

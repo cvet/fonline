@@ -169,7 +169,7 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
     file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
 
     if (!data.empty()) {
-        ptr<const ucolor> pixels = data.data();
+        nptr<const ucolor> pixels = data.data();
         file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
     }
 

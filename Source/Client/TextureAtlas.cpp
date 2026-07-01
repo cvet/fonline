@@ -63,9 +63,7 @@ auto TextureAtlas::SpaceNode::IsBusyRecursively() const noexcept -> bool
     }
 
     for (size_t i = 0; i < Children.size(); i++) {
-        auto child = Children[i].as_ptr();
-
-        if (child->IsBusyRecursively()) {
+        if (Children[i]->IsBusyRecursively()) {
             return true;
         }
     }
@@ -78,9 +76,7 @@ auto TextureAtlas::SpaceNode::FindPosition(isize32 size) -> nptr<SpaceNode>
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i != Children.size(); ++i) {
-        auto child = Children[i].as_ptr();
-
-        if (nptr<SpaceNode> child_node = child->FindPosition(size); child_node) {
+        if (auto child_node = Children[i]->FindPosition(size)) {
             return child_node;
         }
     }
@@ -122,9 +118,7 @@ void TextureAtlas::SpaceNode::Free() noexcept
         bool all_children_free = true;
 
         for (size_t i = 0; i < Children.size(); i++) {
-            auto child = Children[i].as_ptr();
-
-            if (child->IsBusyRecursively()) {
+            if (Children[i]->IsBusyRecursively()) {
                 all_children_free = false;
                 break;
             }
@@ -205,7 +199,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     unique_ptr<TextureAtlas> created_atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
 
     _allAtlases.push_back(std::move(created_atlas));
-    return _allAtlases.back().as_ptr();
+    return _allAtlases.back();
 }
 
 auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, ptr<TextureAtlas::SpaceNode>, ipos32>
@@ -226,7 +220,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
             auto node = check_atlas->GetLayout()->FindPosition(size_with_padding);
 
             if (node) {
-                atlas = check_atlas.as_ptr();
+                atlas = check_atlas;
                 atlas_node = node;
                 break;
             }
@@ -255,9 +249,7 @@ void TextureAtlasManager::DumpAtlases() const
     size_t atlases_memory_size = 0;
 
     for (size_t i = 0; i < _allAtlases.size(); i++) {
-        auto atlas = _allAtlases[i].as_ptr();
-
-        atlases_memory_size += atlas->GetSize().square() * 4;
+        atlases_memory_size += _allAtlases[i]->GetSize().square() * 4;
     }
 
     const auto time = nanotime::now().desc(true);

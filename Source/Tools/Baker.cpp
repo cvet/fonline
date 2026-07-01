@@ -231,19 +231,19 @@ void MasterBaker::BakeAllInternal()
         unique_ptr<PackBakeContext> nullable_pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
         auto pack_bake_context = nullable_pack_bake_context.as_ptr();
 
-        pack_bake_context->PackName = res_pack.Name;
-        pack_bake_context->OutputDir = output_dir;
+        nullable_pack_bake_context->PackName = res_pack.Name;
+        nullable_pack_bake_context->OutputDir = output_dir;
 
         for (const auto& input_dir : res_pack.InputDirs) {
-            pack_bake_context->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
+            nullable_pack_bake_context->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
         }
         for (const auto& input_file : res_pack.InputFiles) {
             const auto dir = strex(input_file).extract_dir().str();
             const auto pack = strex(input_file).extract_file_name().erase_file_extension().str();
-            pack_bake_context->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
+            nullable_pack_bake_context->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
-        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
+        nullable_pack_bake_context->FilteredFiles = nullable_pack_bake_context->InputFiles.GetAllFiles();
 
         const auto bake_checker = [context = pack_bake_context, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
@@ -278,9 +278,9 @@ void MasterBaker::BakeAllInternal()
         };
 
         ptr<const FileSystem> baked_files = &baking_output_;
-        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, baked_files);
+        nullable_pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, baked_files);
 
-        pack_bake_context->BakingTime.Pause();
+        nullable_pack_bake_context->BakingTime.Pause();
         return nullable_pack_bake_context;
     };
 
@@ -591,9 +591,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, baked_files);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
-            auto baker = bakers[j].as_ptr();
-
-            baker->BakeFiles(res_entry.InputFiles);
+            bakers[j]->BakeFiles(res_entry.InputFiles);
         }
     }
 }

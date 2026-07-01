@@ -69,7 +69,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return _proto.as_ptr();
+        return _proto;
     }
 
 protected:

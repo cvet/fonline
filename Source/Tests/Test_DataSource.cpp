@@ -337,7 +337,7 @@ TEST_CASE("DataSource")
 
         const auto mounted = DataSource::MountDir(temp_dir, false, false, false);
 
-        const DataSourceRef ds_ref {mounted.as_ptr()};
+        const DataSourceRef ds_ref {mounted};
         size_t size = 0;
         uint64_t write_time = 0;
 

@@ -96,8 +96,7 @@ static auto MapperColorDataAt(vector<ucolor>& data, size_t offset) noexcept -> p
 
     FO_STRONG_ASSERT(offset < data.size(), "Color offset out of bounds");
 
-    ptr<ucolor> data_lookup = data.data();
-
+    nptr<ucolor> data_lookup = data.data();
     auto data_begin = data_lookup.as_ptr();
     return data_begin.get() + offset;
 }
@@ -268,8 +267,7 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(ptr<MapperEn
     entities.reserve(mapper->SelectedEntities.size());
 
     for (size_t i = 0; i < mapper->SelectedEntities.size(); i++) {
-        auto entity = mapper->SelectedEntities[i].as_ptr();
-        entities.emplace_back(entity);
+        entities.emplace_back(mapper->SelectedEntities[i]);
     }
 
     return MakeScriptHandleVector<ClientEntity>(entities);
@@ -395,9 +393,7 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mappe
     auto cur_map = mapper->GetCurMap();
 
     for (int32_t i = 0, j = numeric_cast<int32_t>(mapper->LoadedMaps.size()); i < j; i++) {
-        auto map = mapper->LoadedMaps[i].as_ptr();
-
-        if (cur_map && map == cur_map.as_ptr()) {
+        if (cur_map && mapper->LoadedMaps[i] == cur_map.as_ptr()) {
             index = i;
         }
     }
@@ -406,8 +402,7 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mappe
     result.reserve(mapper->LoadedMaps.size());
 
     for (size_t i = 0; i < mapper->LoadedMaps.size(); i++) {
-        auto map = mapper->LoadedMaps[i].as_ptr();
-        result.emplace_back(map);
+        result.emplace_back(mapper->LoadedMaps[i]);
     }
 
     return MakeScriptHandleVector<MapView>(result);

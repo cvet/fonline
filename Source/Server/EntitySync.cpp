@@ -1223,7 +1223,7 @@ auto SyncContext::GetHeldEntities() -> vector<ptr<ServerEntity>>
 
     for (auto& owner : _heldLockOwners) {
         if (owner.get() != nullptr && owner->GetId()) {
-            entities.emplace_back(owner.as_ptr());
+            entities.emplace_back(owner);
         }
     }
 
@@ -1626,7 +1626,7 @@ void PropagateEntityLock(ptr<Item> item, ptr<EntityLock> parent_lock)
 
     if (item->_innerItems) {
         for (auto& inner : *item->_innerItems) {
-            PropagateEntityLock(inner.as_ptr(), parent_lock);
+            PropagateEntityLock(inner, parent_lock);
         }
     }
 }
@@ -1641,7 +1641,7 @@ void RevertEntityLock(ptr<Item> item)
 
     if (item->_innerItems) {
         for (auto& inner : *item->_innerItems) {
-            PropagateEntityLock(inner.as_ptr(), owned_lock);
+            PropagateEntityLock(inner, owned_lock);
         }
     }
 }

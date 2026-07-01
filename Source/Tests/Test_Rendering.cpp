@@ -76,7 +76,7 @@ TEST_CASE("NullRenderer")
         CHECK(tex->GetTexturePixel({0, 0}) == row_data[0]);
         CHECK(tex->GetTexturePixel({3, 0}) == row_data[3]);
 
-        renderer.SetRenderTarget(tex.as_nptr());
+        renderer.SetRenderTarget(tex);
         renderer.ClearRenderTarget(ucolor {20, 30, 40, 50});
 
         CHECK(tex->GetTexturePixel({1, 1}) == ucolor {20, 30, 40, 50});
@@ -96,7 +96,7 @@ TEST_CASE("NullRenderer")
         REQUIRE_NOTHROW(dbuf->Upload(EffectUsage::QuadSprite));
 
         effect->MainTex = tex.get();
-        REQUIRE_NOTHROW(effect->DrawBuffer(dbuf.as_ptr()));
+        REQUIRE_NOTHROW(effect->DrawBuffer(dbuf));
         CHECK(effect->MainTexBuf.has_value());
         CHECK(effect->ProjBuf.has_value());
     }

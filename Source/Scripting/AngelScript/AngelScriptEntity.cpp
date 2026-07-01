@@ -521,8 +521,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     const auto& protos = engine_ptr->GetProtoEntities(entity_type);
     const bool is_fixed_type = engine_ptr->IsFixedType(entity_type);
 
-    auto result_holder = CreateScriptArray(as_engine, is_fixed_type ? strex("array<{}>", entity_type).c_str() : strex("array<Proto{}>", entity_type).c_str());
-    auto result = result_holder.as_ptr();
+    auto result = CreateScriptArray(as_engine, is_fixed_type ? strex("array<{}>", entity_type).c_str() : strex("array<Proto{}>", entity_type).c_str());
     result->Reserve(numeric_cast<int32_t>(protos.size()));
 
     for (auto proto_it = protos.cbegin(); proto_it != protos.cend(); ++proto_it) {
@@ -532,7 +531,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
         result->InsertLast(value);
     }
 
-    ReturnGenericScriptArray(gen, std::move(result_holder));
+    ReturnGenericScriptArray(gen, std::move(result));
 }
 
 static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric* gen)
@@ -562,8 +561,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     auto prop = nullable_prop.as_ptr();
     const auto& protos = engine_ptr->GetProtoEntities(entity_type);
 
-    auto result_holder = CreateScriptArray(as_engine, strex("array<{}>", entity_type).c_str());
-    auto result = result_holder.as_ptr();
+    auto result = CreateScriptArray(as_engine, strex("array<{}>", entity_type).c_str());
 
     for (auto proto_it = protos.cbegin(); proto_it != protos.cend(); ++proto_it) {
         auto proto = proto_it->second.as_ptr();
@@ -576,7 +574,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
         }
     }
 
-    ReturnGenericScriptArray(gen, std::move(result_holder));
+    ReturnGenericScriptArray(gen, std::move(result));
 }
 
 static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
@@ -689,8 +687,7 @@ static void CustomEntity_GetOne(AngelScript::asIScriptGeneric* gen)
         }
 
         if (entity_index != entities->size()) {
-            auto entity = (*entities)[entity_index].as_ptr();
-            ReturnGenericEntity(gen, entity);
+            ReturnGenericEntity(gen, (*entities)[entity_index]);
         }
         else {
             ReturnGenericEntity(gen, nullptr);
@@ -725,8 +722,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
             result_entities.emplace_back(entity);
         }
 
-        auto arr_holder = CreateScriptArray(as_engine, strex("array<{}>", holder_entry->TargetType).c_str());
-        auto arr = arr_holder.as_ptr();
+        auto arr = CreateScriptArray(as_engine, strex("array<{}>", holder_entry->TargetType).c_str());
         arr->Reserve(numeric_cast<int32_t>(result_entities.size()));
 
         for (ptr<Entity> result_entity : result_entities) {
@@ -735,7 +731,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
             arr->InsertLast(value);
         }
 
-        ReturnGenericScriptArray(gen, std::move(arr_holder));
+        ReturnGenericScriptArray(gen, std::move(arr));
     }
     else {
         auto arr = CreateScriptArray(as_engine, strex("array<{}>", holder_entry->TargetType).c_str());
@@ -1120,7 +1116,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
         const bool event_has_result = func_->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
         Entity::EventResult event_result = Entity::EventResult::ContinueChain;
         call.RetData = event_has_result ? cast_to_void(&event_result) : nullptr;
-        ScriptFuncCall(func_.as_ptr(), call);
+        ScriptFuncCall(func_, call);
         return event_has_result ? event_result : Entity::EventResult::ContinueChain;
     };
 

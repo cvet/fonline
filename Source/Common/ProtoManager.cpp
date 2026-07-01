@@ -55,7 +55,7 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 
     auto proto_borrow = proto.as_nptr();
 
-    if (nptr<ProtoLocation> nullable_loc = proto_borrow.dyn_cast<ProtoLocation>(); nullable_loc) {
+    if (auto nullable_loc = proto_borrow.dyn_cast<ProtoLocation>()) {
         auto loc = nullable_loc.as_ptr();
         _locProtos.insert_or_assign(proto->GetProtoId(), loc);
     }
@@ -105,7 +105,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
 
     refcount_ptr<ProtoEntity> proto = create_proto();
     AddProto(type_name, proto);
-    return proto.as_ptr();
+    return proto;
 }
 
 void ProtoManager::LoadFromResources(const FileSystem& resources)
@@ -249,7 +249,7 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noe
     }
 
     if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
-        return it->second.as_nptr();
+        return it->second;
     }
 
     return nullptr;

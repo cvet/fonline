@@ -336,7 +336,7 @@ namespace
     static auto ParseScript(string_view path, string_view script, std::initializer_list<string_view> defines = {}) -> ParsedScript
     {
         auto pp_ctx = MakePreprocessorContext();
-        REQUIRE(pp_ctx.as_nptr());
+        REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
         ptr<Preprocessor::Context> pp_ctx_ptr = pp_ctx.get();
 
         for (const auto define : defines) {
@@ -1537,7 +1537,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         const float32_t float_value = 1.5f;
         const float64_t double_value = 2.25;
 
-        CHECK(GetScriptObjectInfo(nptr<const void>(nullptr).as_ptr(), asTYPEID_VOID) == "void");
+        CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_VOID) == "void");
         CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_BOOL) == "bool: true");
         CHECK(GetScriptObjectInfo(&int8_value, asTYPEID_INT8) == "int8: -8");
         CHECK(GetScriptObjectInfo(&int16_value, asTYPEID_INT16) == "int16: -1600");

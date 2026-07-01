@@ -61,8 +61,8 @@ public:
     ~CritterHexView() override = default;
 
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return !!_moving; }
-    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving.as_nptr(); }
-    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving.as_nptr(); }
+    [[nodiscard]] auto GetMoving() noexcept -> nptr<MovingContext> { return _moving; }
+    [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext> { return _moving; }
     [[nodiscard]] auto IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool;
     [[nodiscard]] auto IsAnimPlaying() const noexcept -> bool { return _curAnim.has_value(); }
     [[nodiscard]] auto GetViewRect() const -> irect32;
@@ -96,7 +96,7 @@ public:
 private:
     struct CritterAnim
     {
-        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem.as_nptr(); }
+        [[nodiscard]] auto GetContextItem() noexcept -> nptr<Entity> { return ContextItem; }
 
         CritterStateAnim StateAnim {};
         CritterActionAnim ActionAnim {};

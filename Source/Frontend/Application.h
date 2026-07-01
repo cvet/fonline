@@ -488,7 +488,7 @@ public:
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override;
     [[nodiscard]] auto IsVirtual() const noexcept -> bool override { return _isVirtual; }
     [[nodiscard]] auto GetTitle() const noexcept -> string_view { return _title; }
-    [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture> { return _virtualRenderTex.as_nptr(); }
+    [[nodiscard]] auto GetRenderTexture() noexcept -> nptr<RenderTexture> { return _virtualRenderTex; }
     [[nodiscard]] auto GetDisplayRect() const noexcept -> irect32 { return _displayRect; }
 
     void GrabInput(bool enable) override;
@@ -668,7 +668,7 @@ public:
     [[nodiscard]] auto GetChildWindow(size_t index) noexcept -> nptr<AppWindow>
     {
         if (index < _childWindows.size()) {
-            return _childWindows[index].as_nptr();
+            return _childWindows[index];
         }
 
         return nullptr;

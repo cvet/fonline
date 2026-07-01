@@ -129,9 +129,7 @@ void ModelBone::FixAfterLoad(ptr<ModelBone> root_bone)
     }
 
     for (size_t i = 0; i != Children.size(); ++i) {
-        auto child = Children[i].as_ptr();
-
-        child->FixAfterLoad(root_bone);
+        Children[i]->FixAfterLoad(root_bone);
     }
 }
 
@@ -144,8 +142,7 @@ auto ModelBone::Find(hstring bone_name) const noexcept -> nptr<const ModelBone>
     }
 
     for (size_t i = 0; i < Children.size(); i++) {
-        auto child = Children[i].as_ptr();
-        const auto bone = child->Find(bone_name);
+        const auto bone = Children[i]->Find(bone_name);
 
         if (bone) {
             return bone;
@@ -164,8 +161,7 @@ auto ModelBone::Find(hstring bone_name) noexcept -> nptr<ModelBone>
     }
 
     for (size_t i = 0; i != Children.size(); ++i) {
-        auto child = Children[i].as_ptr();
-        auto bone = child->Find(bone_name);
+        auto bone = Children[i]->Find(bone_name);
 
         if (bone) {
             return bone;
@@ -246,7 +242,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     auto reader = DataReader(file.GetDataSpan());
 
     root_bone->Load(reader, *_hashResolver);
-    root_bone->FixAfterLoad(root_bone.as_ptr());
+    root_bone->FixAfterLoad(root_bone);
 
     // Load animations
     const auto anim_count = reader.Read<uint32_t>();
@@ -262,7 +258,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     // Add to collection
     root_bone->Name = name_hashed;
     _loadedModels.emplace_back(std::move(root_bone));
-    return _loadedModels.back().as_nptr();
+    return _loadedModels.back();
 }
 
 auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>
@@ -338,10 +334,9 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
         auto mesh = model_info->_hierarchy->_allDrawBones[i]->GetAttachedMesh().as_ptr();
         unique_ptr<MeshInstance> new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
-        auto mesh_instance = new_mesh_instance.as_ptr();
         const string_view tex_name = mesh->DiffuseTexture;
-        mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
-        mesh_instance->CurEffect = mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
+        new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
+        new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
         model->_allMeshes.emplace_back(std::move(new_mesh_instance));
     }
 
@@ -380,7 +375,7 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
     }
 
     _allModelInfos.push_back(std::move(model_info));
-    return _allModelInfos.back().as_nptr();
+    return _allModelInfos.back();
 }
 
 auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
@@ -408,7 +403,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
-    return _hierarchyFiles.back().as_nptr();
+    return _hierarchyFiles.back();
 }
 
 ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info) :
@@ -611,9 +606,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         // Mark animations as unused
         for (size_t i = 0; i != _children.size(); ++i) {
-            auto child = _children[i].as_ptr();
-
-            child->_childChecker = false;
+            _children[i]->_childChecker = false;
         }
 
         // Get unused layers and meshes
@@ -861,9 +854,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
     // Set animation for children
     for (size_t i = 0; i != _children.size(); ++i) {
-        auto child = _children[i].as_ptr();
-
-        if (child->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
+        if (_children[i]->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
             mesh_changed = true;
         }
     }
@@ -1453,14 +1444,12 @@ void ModelInstance::FillCombinedMeshes(ptr<const ModelInstance> cur)
 
     // Combine meshes
     for (size_t i = 0; i < cur->_allMeshes.size(); i++) {
-        auto mesh = cur->_allMeshes[i].as_ptr();
-        CombineMesh(mesh, cur->_parentBone ? cur->_animLink.Layer : 0);
+        CombineMesh(cur->_allMeshes[i], cur->_parentBone ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
     for (size_t i = 0; i < cur->_children.size(); i++) {
-        auto child = cur->_children[i].as_ptr();
-        FillCombinedMeshes(child);
+        FillCombinedMeshes(cur->_children[i]);
     }
 }
 
@@ -1486,8 +1475,8 @@ void ModelInstance::CombineMesh(ptr<const MeshInstance> mesh_instance, int32_t a
 
     // Try to encapsulate mesh instance to current combined mesh
     for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-        if (CanBatchCombinedMesh(_combinedMeshes[i].as_ptr(), mesh_instance)) {
-            BatchCombinedMesh(_combinedMeshes[i].as_ptr(), mesh_instance, anim_layer);
+        if (CanBatchCombinedMesh(_combinedMeshes[i], mesh_instance)) {
+            BatchCombinedMesh(_combinedMeshes[i], mesh_instance, anim_layer);
             return;
         }
     }
@@ -1497,7 +1486,7 @@ void ModelInstance::CombineMesh(ptr<const MeshInstance> mesh_instance, int32_t a
         _combinedMeshes.emplace_back(CreateCombinedMesh());
     }
 
-    BatchCombinedMesh(_combinedMeshes[_actualCombinedMeshesCount].as_ptr(), mesh_instance, anim_layer);
+    BatchCombinedMesh(_combinedMeshes[_actualCombinedMeshesCount], mesh_instance, anim_layer);
     _actualCombinedMeshesCount++;
 }
 
@@ -1605,7 +1594,7 @@ void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
     if (!cur->_allCuts.empty()) {
         for (ptr<const ModelCutData> cut : cur->_allCuts) {
             for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-                CutCombinedMesh(_combinedMeshes[i].as_ptr(), cut);
+                CutCombinedMesh(_combinedMeshes[i], cut);
             }
         }
 
@@ -1614,8 +1603,7 @@ void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
 
     // Fill child
     for (size_t i = 0; i < cur->_children.size(); i++) {
-        auto child = cur->_children[i].as_ptr();
-        CutCombinedMeshes(child);
+        CutCombinedMeshes(cur->_children[i]);
     }
 }
 
@@ -1972,7 +1960,7 @@ void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_sc
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-            DrawCombinedMesh(_combinedMeshes[i].as_ptr(), _shadowDisabled || _modelInfo->_shadowDisabled);
+            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
         }
     }
 
@@ -2082,9 +2070,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Move child animations
     for (size_t i = 0; i != _children.size(); ++i) {
-        auto child = _children[i].as_ptr();
-
-        child->ProcessAnimation(elapsed, pos, 1.0f);
+        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     // Animation callbacks
@@ -2120,7 +2106,7 @@ void ModelInstance::UpdateBoneMatrices(ptr<ModelBone> bone, ptr<const mat44> par
 
     // Update child
     for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it) {
-        UpdateBoneMatrices(it->as_ptr(), &bone->CombinedTransformationMatrix);
+        UpdateBoneMatrices(*it, &bone->CombinedTransformationMatrix);
     }
 }
 
@@ -2197,7 +2183,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
-    effect->DrawBuffer(combined_mesh->MeshBuf.as_ptr());
+    effect->DrawBuffer(combined_mesh->MeshBuf);
 }
 
 void ModelInstance::DrawAllParticles()
@@ -2209,9 +2195,7 @@ void ModelInstance::DrawAllParticles()
     }
 
     for (size_t i = 0; i != _children.size(); ++i) {
-        auto child = _children[i].as_ptr();
-
-        child->DrawAllParticles();
+        _children[i]->DrawAllParticles();
     }
 }
 
@@ -2223,8 +2207,7 @@ auto ModelInstance::FindBone(hstring bone_name) const noexcept -> nptr<const Mod
 
     if (!bone) {
         for (size_t i = 0; i < _children.size(); i++) {
-            auto child = _children[i].as_ptr();
-            bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
+            bone = _children[i]->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
 
             if (bone) {
                 break;
@@ -2294,7 +2277,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<const ModelBone> to_bone = FindBone(bone_name); to_bone) {
+    if (auto to_bone = FindBone(bone_name)) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
             _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone.as_ptr(), move, _lookDirAngle});
         }
@@ -2573,7 +2556,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
                     if (!child) {
                         unique_ptr<ModelBone> new_child = SafeAlloc::MakeUnique<ModelBone>();
-                        child = new_child.as_nptr();
+                        child = new_child;
                         new_child->Name = bone_hierarchy[b];
                         bone->Children.emplace_back(std::move(new_child));
                     }
@@ -2857,8 +2840,7 @@ static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, ptr<ModelBo
     bones.emplace(depth, bone);
 
     for (size_t i = 0; i != bone->Children.size(); ++i) {
-        auto child = bone->Children[i].as_ptr();
-        SetupBonesExt(bones, child, depth + 1);
+        SetupBonesExt(bones, bone->Children[i], depth + 1);
     }
 }
 
@@ -2885,8 +2867,7 @@ static void SetupAnimationOutputExt(ptr<ModelAnimationController> anim_controlle
     anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 
     for (size_t i = 0; i != bone->Children.size(); ++i) {
-        auto child = bone->Children[i].as_ptr();
-        SetupAnimationOutputExt(anim_controller, child);
+        SetupAnimationOutputExt(anim_controller, bone->Children[i]);
     }
 }
 

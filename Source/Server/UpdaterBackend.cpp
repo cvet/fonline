@@ -252,8 +252,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t
             out_buf->Push(update_data, update_portion_size);
         }
         else {
-            ptr<const uint8_t> disk_data = disk_update_data.data();
-            out_buf->Push(disk_data, update_portion_size);
+            out_buf->Push(disk_update_data.data(), update_portion_size);
         }
     }
 }

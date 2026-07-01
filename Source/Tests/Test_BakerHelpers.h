@@ -174,8 +174,7 @@ namespace BakerTests
         writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            ptr<const uint8_t> props_data_ptr = props_data.data();
-            writer.WriteBytes({props_data_ptr.get(), props_data.size()});
+            writer.WriteBytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -309,8 +308,7 @@ namespace BakerTests
 
             if (size != 0u) {
                 ptr<uint8_t> buf_ptr = buf.get();
-                ptr<const uint8_t> data_ptr = it->second.Data.data();
-                MemCopy(buf_ptr.get(), data_ptr.get(), size);
+                MemCopy(buf_ptr.get(), it->second.Data.data(), size);
             }
 
             return MakeMemoryDataSourceFileBufferHolder(std::move(buf));

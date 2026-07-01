@@ -98,7 +98,7 @@ auto Player::GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSI
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _connection.as_ptr();
+    return _connection;
 }
 
 auto Player::GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS
@@ -106,7 +106,7 @@ auto Player::GetConnection() const noexcept -> ptr<const ServerConnection> FO_TS
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _connection.as_ptr();
+    return _connection;
 }
 
 auto Player::GetViewMap() const noexcept -> nptr<const ViewMapContext>
@@ -908,13 +908,12 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
 
         for (const auto& entity : entities) {
             auto custom_entity = require_refcount_ptr(entity.dyn_cast<CustomEntity>());
-            auto custom_entity_ptr = custom_entity.as_ptr();
 
-            const auto data = custom_entity_ptr->StoreData(owned);
+            const auto data = custom_entity->StoreData(owned);
 
-            out_buf.Write(custom_entity_ptr->GetId());
+            out_buf.Write(custom_entity->GetId());
 
-            const auto nullable_custom_entity_with_proto = custom_entity.as_nptr().dyn_cast<CustomEntityWithProto>();
+            const auto nullable_custom_entity_with_proto = (nptr<const CustomEntity> {custom_entity}).dyn_cast<CustomEntityWithProto>();
             if (nullable_custom_entity_with_proto) {
                 auto custom_entity_with_proto = nullable_custom_entity_with_proto.as_ptr();
                 out_buf.Write(custom_entity_with_proto->GetProtoId());
@@ -925,7 +924,7 @@ void Player::SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, 
 
             out_buf.WritePropsData(*data.Data, *data.Sizes);
 
-            SendInnerEntities(out_buf, entity.as_ptr(), owned);
+            SendInnerEntities(out_buf, entity, owned);
         }
     }
 }

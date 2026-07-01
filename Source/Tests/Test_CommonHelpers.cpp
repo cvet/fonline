@@ -85,13 +85,13 @@ TEST_CASE("CommonHelpers")
         unique_nptr<TestDerived> derived = dynamic_ptr_cast<TestDerived>(base_ptr);
         REQUIRE(derived);
         CHECK(derived->Value == 42);
-        CHECK_FALSE(base.as_nptr());
+        CHECK_FALSE(nptr<TestBase> {base});
 
         unique_ptr<TestBase> other_base = SafeAlloc::MakeUnique<TestBase>();
         ptr<unique_ptr<TestBase>> other_base_ptr = &other_base;
         unique_nptr<TestDerived> missing = dynamic_ptr_cast<TestDerived>(other_base_ptr);
         CHECK_FALSE(missing);
-        CHECK(other_base.as_nptr());
+        CHECK(nptr<TestBase> {other_base});
     }
 
     SECTION("DynamicPtrCastShared")

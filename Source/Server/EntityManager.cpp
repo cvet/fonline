@@ -432,14 +432,14 @@ void EntityManager::FlushExactEntityId()
     _engine->SetLastEntityId(ident_t {numeric_cast<int64_t>(_lastEntityId)});
 }
 
-auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> optional<refcount_ptr<Location>>
+auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
     if (!loc_pid) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto loc_proto = _engine->GetProtoLocation(loc_pid);
@@ -447,7 +447,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> opt
     if (!loc_proto) {
         WriteLog(LogType::Warning, "Location {} proto {} not found", loc_id, loc_pid);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto.as_ptr());
@@ -455,18 +455,18 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> opt
     if (!PropertiesSerializator::LoadFromDocument(loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
-        RegisterLocation(loc.as_ptr());
+        RegisterLocation(loc);
         loc->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed to register location {} {}", loc_pid, loc_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
@@ -474,10 +474,10 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> opt
         bool map_ids_changed = false;
 
         for (const auto& map_id : map_ids) {
-            optional<refcount_ptr<Map>> map_lookup = LoadMap(map_id, is_error);
+            refcount_nptr<Map> map_lookup = LoadMap(map_id, is_error);
 
             if (map_lookup) {
-                refcount_ptr<Map> map = std::move(*map_lookup);
+                refcount_ptr<Map> map = map_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(map->GetLocId() == loc->GetId(), "Loaded map belongs to a different location");
 
                 const auto loc_map_index = map->GetLocMapIndex();
@@ -488,7 +488,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> opt
                     map->SetLocMapIndex(expected_loc_map_index);
                 }
 
-                loc->RestoreMap(map.as_ptr());
+                loc->RestoreMap(map);
             }
             else {
                 map_ids_changed = true;
@@ -513,14 +513,14 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> opt
     return std::move(loc);
 }
 
-auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional<refcount_ptr<Map>>
+auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
     if (!map_pid) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto nullable_map_proto = _engine->GetProtoMap(map_pid);
@@ -528,7 +528,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
     if (!nullable_map_proto) {
         WriteLog(LogType::Warning, "Map {} proto {} not found", map_id, map_pid);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     auto map_proto = nullable_map_proto.as_ptr();
@@ -538,18 +538,18 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
     if (!PropertiesSerializator::LoadFromDocument(map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore map {} {} properties", map_pid, map_id);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
-        RegisterMap(map.as_ptr());
+        RegisterMap(map);
         map->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed to register map {} {}", map_pid, map_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
@@ -558,10 +558,10 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
-            optional<refcount_ptr<Critter>> cr_lookup = LoadCritter(cr_id, is_error);
+            refcount_nptr<Critter> cr_lookup = LoadCritter(cr_id, is_error);
 
             if (cr_lookup) {
-                refcount_ptr<Critter> cr = std::move(*cr_lookup);
+                refcount_ptr<Critter> cr = cr_lookup.take_not_null();
                 cr->SetMapId(map->GetId());
                 FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
@@ -569,8 +569,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
                     cr->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
-                auto cr_ptr = cr.as_ptr();
-                map->AddCritter(cr_ptr);
+                map->AddCritter(cr);
             }
             else {
                 cr_ids_changed = true;
@@ -587,10 +586,10 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
-            optional<refcount_ptr<Item>> item_lookup = LoadItem(item_id, is_error);
+            refcount_nptr<Item> item_lookup = LoadItem(item_id, is_error);
 
             if (item_lookup) {
-                refcount_ptr<Item> item = std::move(*item_lookup);
+                refcount_ptr<Item> item = item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
                 FO_VERIFY_AND_THROW(item->GetMapId() == map->GetId(), "Item belongs to a different map");
 
@@ -598,8 +597,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
                     item->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
-                auto item_ptr = item.as_ptr();
-                map->SetItem(item_ptr);
+                map->SetItem(item);
             }
             else {
                 item_ids_changed = true;
@@ -624,14 +622,14 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> optional
     return std::move(map);
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optional<refcount_ptr<Critter>>
+auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refcount_nptr<Critter>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
     if (!cr_pid) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto proto = _engine->GetProtoCritter(cr_pid);
@@ -639,7 +637,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optio
     if (!proto) {
         WriteLog(LogType::Warning, "Critter {} proto {} not found", cr_id, cr_pid);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto.as_ptr());
@@ -647,19 +645,19 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optio
     if (!PropertiesSerializator::LoadFromDocument(cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
         cr->SetMapId({});
-        RegisterCritter(cr.as_ptr());
+        RegisterCritter(cr);
         cr->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed to register critter {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
@@ -668,15 +666,14 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optio
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
-            optional<refcount_ptr<Item>> inv_item_lookup = LoadItem(item_id, is_error);
+            refcount_nptr<Item> inv_item_lookup = LoadItem(item_id, is_error);
 
             if (inv_item_lookup) {
-                refcount_ptr<Item> inv_item = std::move(*inv_item_lookup);
+                refcount_ptr<Item> inv_item = inv_item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(inv_item->GetOwnership() == ItemOwnership::CritterInventory, "Loaded critter inventory item has a non-inventory ownership state", inv_item->GetId(), cr->GetId(), inv_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inv_item->GetCritterId() == cr->GetId(), "Loaded inventory item belongs to a different critter");
 
-                auto inv_item_ptr = inv_item.as_ptr();
-                cr->SetItem(inv_item_ptr);
+                cr->SetItem(inv_item);
             }
             else {
                 item_ids_changed = true;
@@ -701,14 +698,14 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> optio
     return std::move(cr);
 }
 
-auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> optional<refcount_ptr<Item>>
+auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto&& [item_doc, item_pid] = LoadEntityDoc(_itemTypeName, _itemCollectionName, item_id, true, is_error);
 
     if (!item_pid) {
-        return std::nullopt;
+        return nullptr;
     }
 
     auto proto = _engine->GetProtoItem(item_pid);
@@ -716,7 +713,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> option
     if (!proto) {
         WriteLog(LogType::Warning, "Item {} proto {} not found", item_id, item_pid);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto.as_ptr());
@@ -724,19 +721,19 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> option
     if (!PropertiesSerializator::LoadFromDocument(item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore item {} {} properties", item_pid, item_id);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
         item->SetStatic(false);
-        RegisterItem(item.as_ptr());
+        RegisterItem(item);
         item->SetPersistent(true);
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed to register item {} {}", item_pid, item_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 
     try {
@@ -745,15 +742,14 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> option
         bool inner_item_ids_changed = false;
 
         for (const auto& inner_item_id : inner_item_ids) {
-            optional<refcount_ptr<Item>> inner_item_lookup = LoadItem(inner_item_id, is_error);
+            refcount_nptr<Item> inner_item_lookup = LoadItem(inner_item_id, is_error);
 
             if (inner_item_lookup) {
-                refcount_ptr<Item> inner_item = std::move(*inner_item_lookup);
+                refcount_ptr<Item> inner_item = inner_item_lookup.take_not_null();
                 FO_VERIFY_AND_THROW(inner_item->GetOwnership() == ItemOwnership::ItemContainer, "Loaded container item has a non-container ownership state", inner_item->GetId(), item->GetId(), inner_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inner_item->GetContainerId() == item->GetId(), "Loaded inner item belongs to a different container");
 
-                auto inner_item_ptr = inner_item.as_ptr();
-                item->SetItemToContainer(inner_item_ptr);
+                item->SetItemToContainer(inner_item);
             }
             else {
                 inner_item_ids_changed = true;
@@ -817,7 +813,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         bool inner_entity_ids_changed = false;
         ident_t holder_id = {};
 
-        if (nptr<ServerEntity> nullable_holder_with_id = holder.dyn_cast<ServerEntity>(); nullable_holder_with_id) {
+        if (auto nullable_holder_with_id = holder.dyn_cast<ServerEntity>()) {
             auto holder_with_id = nullable_holder_with_id.as_ptr();
             holder_id = holder_with_id->GetId();
         }
@@ -826,37 +822,36 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         const auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
-            optional<refcount_ptr<CustomEntity>> custom_entity_lookup = LoadCustomEntity(inner_entity_type_name, id, is_error);
+            refcount_nptr<CustomEntity> custom_entity_lookup = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
             if (custom_entity_lookup) {
-                refcount_ptr<CustomEntity> custom_entity = std::move(*custom_entity_lookup);
-                auto custom_entity_ptr = custom_entity.as_ptr();
+                refcount_ptr<CustomEntity> custom_entity = custom_entity_lookup.take_not_null();
 
-                FO_VERIFY_AND_THROW(custom_entity_ptr->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
+                FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
 
-                if (nptr<ServerEntity> nullable_holder_entity = holder.dyn_cast<ServerEntity>(); nullable_holder_entity) {
+                if (auto nullable_holder_entity = holder.dyn_cast<ServerEntity>()) {
                     auto holder_entity = nullable_holder_entity.as_ptr();
-                    custom_entity_ptr->SetParent(holder_entity);
+                    custom_entity->SetParent(holder_entity);
                 }
 
-                holder->AddInnerEntity(custom_entity_ptr->GetCustomHolderEntry(), custom_entity_ptr);
+                holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
 
                 // Propagate holder's lock to loaded custom entity. ServerEntity holders supply
                 // their own lock; engine-as-holder supplies the engine's singleton lock.
-                if (nptr<ServerEntity> nullable_holder_entity = holder.dyn_cast<ServerEntity>(); nullable_holder_entity) {
+                if (auto nullable_holder_entity = holder.dyn_cast<ServerEntity>()) {
                     auto holder_entity = nullable_holder_entity.as_ptr();
                     auto holder_lock = holder_entity->GetEntityLock();
                     FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
-                    custom_entity_ptr->SetEntityLock(holder_lock);
+                    custom_entity->SetEntityLock(holder_lock);
                 }
                 else {
                     nptr<const Entity> engine_holder = _engine;
                     FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
-                    custom_entity_ptr->SetEntityLock(_engine->GetEntityLock());
+                    custom_entity->SetEntityLock(_engine->GetEntityLock());
                 }
 
                 // Inner entities
-                ptr<Entity> custom_entity_holder = custom_entity_ptr;
+                ptr<Entity> custom_entity_holder = custom_entity;
                 LoadInnerEntities(custom_entity_holder, is_error);
             }
             else {
@@ -870,8 +865,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
 
             if (inner_entities) {
                 actual_inner_entity_ids = vec_transform(*inner_entities, [](auto&& entity) -> ident_t {
-                    auto custom_entity_holder = require_refcount_ptr(entity.dyn_cast<const CustomEntity>());
-                    auto custom_entity = custom_entity_holder.as_ptr();
+                    auto custom_entity = require_refcount_ptr(entity.dyn_cast<const CustomEntity>());
                     return custom_entity->GetId();
                 });
             }
@@ -1245,7 +1239,7 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
 
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
-    if (nptr<const Player> nullable_player = entity.dyn_cast<Player>(); nullable_player) {
+    if (auto nullable_player = entity.dyn_cast<Player>()) {
         auto player = nullable_player.as_ptr();
         throw EntityManagerException("Can't change persistence of player", player->GetId());
     }
@@ -1321,7 +1315,7 @@ void EntityManager::EnsureCascadeNodeSynced(ptr<ServerEntity> entity)
     // MakePersistent(false) on the now-orphaned item), which severs the ancestor cover the caller
     // relied on and would otherwise trip ForEachPersistentChildEntity's access validation. This
     // mirrors the inner-item EnsureEntitySynced already used in ItemManager::DestroyItem.
-    if (nptr<SyncContext> nullable_ctx = _engine->GetCurrentSyncContext(); nullable_ctx) {
+    if (auto nullable_ctx = _engine->GetCurrentSyncContext()) {
         auto ctx = nullable_ctx.as_ptr();
         ctx->EnsureEntitySynced(entity);
     }
@@ -1333,7 +1327,7 @@ void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const
 
     ValidateEntityAccess(entity);
 
-    if (nptr<Location> nullable_loc = entity.dyn_cast<Location>(); nullable_loc) {
+    if (auto nullable_loc = entity.dyn_cast<Location>()) {
         auto loc = nullable_loc.as_ptr();
 
         for (ptr<Map> map : copy_hold_ref(loc->GetMaps())) {
@@ -1381,8 +1375,7 @@ void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const
 
             for (auto& inner_entity : inner_entities) {
                 auto server_entity = require_refcount_ptr(inner_entity.dyn_cast<ServerEntity>());
-                auto server_entity_ptr = server_entity.as_ptr();
-                callback(server_entity_ptr);
+                callback(server_entity);
             }
         }
     }
@@ -1392,7 +1385,7 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (nptr<EntityWithProto> nullable_entity_with_proto = entity.dyn_cast<EntityWithProto>(); nullable_entity_with_proto) {
+    if (auto nullable_entity_with_proto = entity.dyn_cast<EntityWithProto>()) {
         auto entity_with_proto = nullable_entity_with_proto.as_ptr();
         auto proto = entity_with_proto->GetProto();
         auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), _engine->Hashes, *_engine);
@@ -1460,7 +1453,7 @@ void EntityManager::DestroyEntity(ptr<Entity> entity)
     auto entity_ref = entity.hold_ref();
     ignore_unused(entity_ref);
 
-    if (nptr<Location> nullable_loc = entity.dyn_cast<Location>(); nullable_loc) {
+    if (auto nullable_loc = entity.dyn_cast<Location>()) {
         auto loc = nullable_loc.as_ptr();
         _engine->MapMngr.DestroyLocation(loc);
     }
@@ -1499,7 +1492,7 @@ void EntityManager::DestroyInnerEntities(ptr<Entity> holder)
 
         for (auto&& [entry, entities] : copy(*inner_entities)) {
             for (auto& entity : entities) {
-                DestroyEntity(entity.as_ptr());
+                DestroyEntity(entity);
             }
         }
 
@@ -1551,7 +1544,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     auto entity = CreateCustomEntity(type_name, pid);
 
-    if (nptr<ServerEntity> nullable_holder_with_id = holder.dyn_cast<ServerEntity>(); nullable_holder_with_id) {
+    if (auto nullable_holder_with_id = holder.dyn_cast<ServerEntity>()) {
         auto holder_with_id = nullable_holder_with_id.as_ptr();
         FO_VERIFY_AND_THROW(holder_with_id->GetId(), "Entity holder has no assigned id");
         entity->SetCustomHolderId(holder_with_id->GetId());
@@ -1576,7 +1569,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
     vec_add_unique_value(inner_entity_ids, entity->GetId());
     holder_props->SetValue(holder_prop, inner_entity_ids);
 
-    if (nptr<const ServerEntity> nullable_holder_with_id = holder.dyn_cast<ServerEntity>(); nullable_holder_with_id) {
+    if (auto nullable_holder_with_id = holder.dyn_cast<ServerEntity>()) {
         auto holder_with_id = nullable_holder_with_id.as_ptr();
         const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
 
@@ -1587,7 +1580,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
     // Propagate holder's lock to custom entity. ServerEntity holders supply their own lock;
     // engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes).
-    if (nptr<const ServerEntity> nullable_holder_entity = holder.dyn_cast<ServerEntity>(); nullable_holder_entity) {
+    if (auto nullable_holder_entity = holder.dyn_cast<ServerEntity>()) {
         auto holder_entity = nullable_holder_entity.as_ptr();
         auto holder_lock = holder_entity->GetEntityLock();
         FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
@@ -1633,12 +1626,11 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
         return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator.as_ptr(), nullptr);
     }();
 
-    auto registered_entity = entity.as_ptr();
-    RegisterCustomEntity(registered_entity);
-    return registered_entity;
+    RegisterCustomEntity(entity);
+    return entity;
 }
 
-auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> optional<refcount_ptr<CustomEntity>>
+auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1648,7 +1640,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         if (!_engine->IsValidEntityType(type_name)) {
             WriteLog(LogType::Warning, "Custom entity {} type {} not valid", id, type_name);
             is_error = true;
-            return std::nullopt;
+            return nullptr;
         }
 
         {
@@ -1664,7 +1656,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         if (doc.Empty()) {
             WriteLog(LogType::Warning, "Custom entity {} with type {} invalid document", id, type_name);
             is_error = true;
-            return std::nullopt;
+            return nullptr;
         }
 
         const bool has_protos = _engine->GetEntityType(type_name).HasProtos;
@@ -1681,7 +1673,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
             if (!proto) {
                 WriteLog(LogType::Warning, "Proto {} for custom entity {} with type {} not found", pid, id, type_name);
                 is_error = true;
-                return std::nullopt;
+                return nullptr;
             }
         }
 
@@ -1698,11 +1690,10 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         if (!PropertiesSerializator::LoadFromDocument(entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
             WriteLog(LogType::Warning, "Failed to load properties for custom entity {} with type {}", id, type_name);
             is_error = true;
-            return std::nullopt;
+            return nullptr;
         }
 
-        auto entity_ptr = entity.as_ptr();
-        RegisterCustomEntity(entity_ptr);
+        RegisterCustomEntity(entity);
         entity->SetPersistent(true);
         return std::move(entity);
     }
@@ -1710,7 +1701,7 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         WriteLog(LogType::Warning, "Failed during load custom entity {}", id);
         ReportExceptionAndContinue(ex);
         is_error = true;
-        return std::nullopt;
+        return nullptr;
     }
 }
 
@@ -1782,7 +1773,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     const auto entry = entity->GetCustomHolderEntry();
     holder->RemoveInnerEntity(entry, entity);
 
-    auto holder_prop = _engine->GetEntityHolderIdsProp(holder.as_ptr(), entry);
+    auto holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
     auto holder_props = holder->GetPropertiesForEdit();
     auto inner_entity_ids = holder_props->GetValueFast<vector<ident_t>>(holder_prop);
     vec_remove_unique_value(inner_entity_ids, entity->GetId());
@@ -1812,7 +1803,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
     function<void(ptr<Entity>, EntityHolderEntrySync)> find_players_recursively;
 
     find_players_recursively = [this, &find_players_recursively, &view_callback](ptr<Entity> holder, EntityHolderEntrySync derived_sync) {
-        if (nptr<CustomEntity> nullable_custom_entity = holder.dyn_cast<CustomEntity>(); nullable_custom_entity) {
+        if (auto nullable_custom_entity = holder.dyn_cast<CustomEntity>()) {
             auto custom_entity = nullable_custom_entity.as_ptr();
             auto nullable_custom_entity_holder = custom_entity->GetParent();
 
@@ -1850,8 +1841,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
             vector<refcount_ptr<Player>> game_players = GetPlayers();
 
             for (size_t i = 0; i < game_players.size(); i++) {
-                auto game_player = game_players[i].as_ptr();
-                view_callback(game_player, false);
+                view_callback(game_players[i], false);
             }
         }
         else if (nptr<Location> nullable_loc = holder.dyn_cast<Location>(); nullable_loc) {
@@ -1875,16 +1865,14 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
             switch (item->GetOwnership()) {
             case ItemOwnership::CritterInventory: {
                 auto item_cr_ref = require_refcount_ptr(item->GetParent<Critter>());
-                auto item_cr = item_cr_ref.as_ptr();
-                FO_VERIFY_AND_THROW(item_cr->GetId() == item->GetCritterId(), "Inventory item critter owner id mismatch");
-                ValidateEntityAccess(item_cr);
-                ptr<Entity> item_cr_holder = item_cr;
+                FO_VERIFY_AND_THROW(item_cr_ref->GetId() == item->GetCritterId(), "Inventory item critter owner id mismatch");
+                ValidateEntityAccess(item_cr_ref);
+                ptr<Entity> item_cr_holder = item_cr_ref;
                 find_players_recursively(item_cr_holder, derived_sync);
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_sync == EntityHolderEntrySync::PublicSync) {
-                    auto item_map_holder = require_refcount_ptr(item->GetParent<Map>());
-                    auto item_map = item_map_holder.as_ptr();
+                    auto item_map = require_refcount_ptr(item->GetParent<Map>());
                     FO_VERIFY_AND_THROW(item_map->GetId() == item->GetMapId(), "Map item owner id mismatch");
                     ValidateEntityAccess(item_map);
 
@@ -1897,10 +1885,9 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
             } break;
             case ItemOwnership::ItemContainer: {
                 auto item_cont_ref = require_refcount_ptr(item->GetParent<Item>());
-                auto item_cont = item_cont_ref.as_ptr();
-                FO_VERIFY_AND_THROW(item_cont->GetId() == item->GetContainerId(), "Container item owner id mismatch");
-                ValidateEntityAccess(item_cont);
-                ptr<Entity> item_cont_holder = item_cont;
+                FO_VERIFY_AND_THROW(item_cont_ref->GetId() == item->GetContainerId(), "Container item owner id mismatch");
+                ValidateEntityAccess(item_cont_ref);
+                ptr<Entity> item_cont_holder = item_cont_ref;
                 find_players_recursively(item_cont_holder, derived_sync);
             } break;
             default:

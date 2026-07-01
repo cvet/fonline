@@ -88,7 +88,7 @@ Helpers that can fail a type cast or lookup while transferring unique ownership 
 
 Use `refcount_nptr<T>::as_ptr()` after a local null check when a nullable intrusive owner is explicitly narrowed to a required borrowed `ptr<T>` without changing ownership. Use `refcount_nptr<T>::take_not_null()` when a nullable intrusive owner has been checked or otherwise proved present and ownership must move into a `refcount_ptr<T>`. The ownership-narrowing method asserts the non-null invariant and adopts the already-held reference without adding another one.
 
-Do not wrap ordinary nullable intrusive ownership in `optional<refcount_ptr<T>>`; keep normal absence in `refcount_nptr<T>`. Reserve `optional<refcount_ptr<T>>` for APIs that intentionally encode a second state beyond pointer absence, such as load-result contracts with a separate error flag. Handle those optional contracts at their owning boundary instead of using them as generic nullable-owner adapters, including script-ownership release helpers. The same rule applies to other wrappers: avoid `optional<ptr<T>>`, `optional<nptr<T>>`, `optional<unique_ptr<T>>`, `optional<unique_nptr<T>>`, and `optional<refcount_nptr<T>>`; use the direct wrapper vocabulary or a named domain result type.
+Do not wrap ordinary nullable intrusive ownership in `optional<refcount_ptr<T>>`; keep normal absence in `refcount_nptr<T>`. A load-result contract that must distinguish "absent" from "error" returns `refcount_nptr<T>` **plus a separate error flag** (e.g. a `bool& is_error` out-parameter), not `optional<refcount_ptr<T>>`. The same rule applies to other wrappers: avoid `optional<ptr<T>>`, `optional<nptr<T>>`, `optional<unique_ptr<T>>`, `optional<unique_nptr<T>>`, and `optional<refcount_nptr<T>>`; use the direct wrapper vocabulary or a named domain result type.
 
 `shared_ptr<T>` and `weak_ptr<T>` are `propagate_const` aliases around the standard shared ownership types. They can export explicit local borrows through `as_ptr()` after a guard/assert or `as_nptr()` when absence remains part of the current path. These methods do not change shared ownership; keep a shared owner alive for the full borrowed use.
 
@@ -99,6 +99,14 @@ Process/runtime command-line arguments enter through platform or DLL ABI `argc` 
 When a reviewed raw cleanup boundary must adopt object storage, route it through a named helper instead of constructing owners directly from `.get()`. Use `adopt_unique_ptr(ptr<T>)` for scalar object cleanup and `make_unique_del_ptr(ptr<T>, deleter)` / `make_unique_del_ptr(nptr<T>, deleter)` for custom-deleter holders; the `ptr<T>` overload returns `unique_del_ptr<T>`, and the `nptr<T>` overload returns `unique_del_nptr<T>`. Domain-specific helpers may wrap these primitives, but call sites should not spell `unique_ptr<T> {value.get()}` or `unique_del_ptr<T> {value.get(), deleter}` directly.
 
 For a low-level byte/ABI reinterpret of the pointee type (`ucolor` <-> `uint8_t`, `void` -> `T`, etc.), use `ptr<T>::reinterpret_as<U>()` / `nptr<T>::reinterpret_as<U>()` rather than the raw `cast_from_void<U*>(cast_to_void(p.get()))` roundtrip. It returns `ptr<U>` / `nptr<U>`, propagates the source pointee's `const` (so it can never silently strip `const`), and accepts a `ptr<void>` source (as `GetPtrAs<U>()` does). Reserve the bare `cast_from_void` / `cast_to_void` helpers for what the method cannot express — a deliberate const-stripping reinterpret (off a `get_no_const()`), or a non-wrapper raw operand.
+
+### Always-on non-null enforcement
+
+The non-null invariant is enforced by an **always-on** runtime check, in every build configuration — not a debug-only `assert` that release strips. Constructing a `ptr<T>` from a null raw pointer (the `ptr(T*)` ctor), and every nullable→non-null narrowing (`nptr<T>::as_ptr()`, `refcount_nptr<T>::as_ptr()` / `take_not_null()`, `unique_nptr<T>::take_not_null()`, `shared_ptr<T>::as_ptr()`, …), assert the invariant and, on violation, produce the same `StrongAssertationException` report and process exit as `FO_STRONG_ASSERT`.
+
+The check is spelled `FO_BASIC_STRONG_ASSERT(expr)`, declared in `Essentials/BasicCore.h` (next to `ExitApp`) and implemented in `Essentials/ExceptionHandling.cpp`. It exists because `SmartPointers.h` sits **above** `ExceptionHandling.h` in the `Essentials.h` include order and therefore cannot use `FO_STRONG_ASSERT` directly; the primitive is a forward-declared `[[noreturn]] ReportStrongAssertAndExit(message, file, line)` (dependency inversion — declared low, implemented high, no include-layer violation). It is a `noexcept` function, so it is safe to call from the `noexcept` smart-pointer members (the throw/catch that builds the report is fully contained inside it). Any Essentials module above `ExceptionHandling` that needs an always-on assertion uses `FO_BASIC_STRONG_ASSERT`.
+
+Consequence: a null wrapped in `ptr<T>` fails fast at the construction site even in release. The two common sources are (1) an empty container's `.data()` — `std::vector` (MSVC) / `std::string_view` / `std::span` return null when empty (`std::string` / `std::array` never do), and (2) a raw API that returns null on "not found" (`GetProcAddress`, `dlsym`, `GetModuleHandle(nullptr)` for the main module, …). Keep genuinely-nullable values in `nptr<T>`, or — for a transient buffer pointer used once — pass `X.data()` straight into a consumer that takes `nptr`/raw instead of building an intermediate `ptr<T>`.
 
 ## Refcount bridges
 
@@ -120,17 +128,17 @@ refcount_nptr<Entity> maybe_held_from_raw = refcount_ptr<Entity>::try_from_add_r
 refcount_ptr<Entity> adopted = refcount_ptr<Entity>::from_adopted_ref(raw_entity_with_existing_ref);
 ```
 
-Direct `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` construction are disabled by default through `FO_STRICT_REFCOUNT_EXPLICIT`. Temporary compatibility builds may override the flag to `0`, but engine/project code should use the named methods so raw/refcount transitions are visually reviewable.
+Direct `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` construction are unavailable; engine/project code uses the named methods so raw/refcount transitions are visually reviewable.
 
-## Strict Flags
+## Non-null and explicit-bridge contract
 
-The strict migration flags are mandatorily defined by the build system (`FO_STRICT_*` CMake options in `BuildTools/cmake/stages/Init.cmake`, default `ON`), never through a header fallback; `SmartPointers.h` only gates on them with `#if FO_STRICT_*`. They are enabled by default and can be overridden explicitly when a temporary compatibility build is needed:
+These rules are the unconditional behavior of the smart-pointer types. (They were previously gated by the `FO_STRICT_*` migration flags; once the migration completed the flags were removed and the strict behavior became the only behavior — there is no permissive mode.)
 
-- `FO_STRICT_REFCOUNT_EXPLICIT` disables direct raw `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` construction. Use the named factories above.
-- `FO_STRICT_PTR_NONNULL` disables `ptr<T>` default/null construction, `nullptr` assignment/comparison, `operator bool`, `get_pp()`, and `reset()` without a replacement pointer.
-- `FO_STRICT_OWNING_NONNULL` disables `unique_ptr<T>` / `refcount_ptr<T>` default/null construction, `nullptr` assignment/comparison, `operator bool`, default-null `reset()`, and lvalue `release()` / `release_ownership()`; rvalue `unique_ptr<T>::release()` returns `ptr<T>` under the strict contract.
+- Direct raw `refcount_ptr<T>(T*)`, `operator=(T*)`, and public `adopt_tag` construction are unavailable. Use the named factories above.
+- `ptr<T>` has no default/null construction, `nullptr` assignment/comparison, `operator bool`, `get_pp()`, or `reset()` without a replacement pointer.
+- `unique_ptr<T>` / `refcount_ptr<T>` have no default/null construction, `nullptr` assignment/comparison, `operator bool`, default-null `reset()`, or lvalue `release()` / `release_ownership()`; rvalue `unique_ptr<T>::release()` returns `ptr<T>`.
 
-The embedding project CI should keep a unit-test build that exercises the default strict configuration. Temporary compatibility builds may set strict options to `OFF` only for focused migration or bisect work; new code must be valid under the strict defaults.
+New code must be valid under this contract; the nullable siblings (`nptr<T>`, `unique_nptr<T>`, `refcount_nptr<T>`) exist for the genuinely-optional cases.
 
 ## Raw pointer allowlist
 

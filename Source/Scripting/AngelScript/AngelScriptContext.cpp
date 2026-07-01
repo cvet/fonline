@@ -162,12 +162,11 @@ AngelScriptContextManager::~AngelScriptContextManager()
     };
 
     for (size_t i = 0; i < _busyContexts.size(); i++) {
-        auto ctx = _busyContexts[i].as_ptr();
+        ptr<AngelScript::asIScriptContext> ctx = _busyContexts[i];
         cleanup_context(ctx);
     }
     for (size_t i = 0; i < _freeContexts.size(); i++) {
-        auto ctx = _freeContexts[i].as_ptr();
-        cleanup_context(ctx);
+        cleanup_context(_freeContexts[i]);
     }
 }
 
@@ -231,7 +230,7 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
     }
 
     auto ctx = _freeContexts.back();
-    auto nullable_ctx_ext = AngelScriptContextExtendedData::Get(ctx.as_ptr());
+    auto nullable_ctx_ext = AngelScriptContextExtendedData::Get(ptr<AngelScript::asIScriptContext> {ctx});
     FO_VERIFY_AND_THROW(nullable_ctx_ext, "Missing extended script execution context");
     auto ctx_ext = nullable_ctx_ext.as_ptr();
 
@@ -264,10 +263,10 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
     CaptureNativeStackFrames(ctx_ext->BirthNativeFrames, ctx_ext->BirthNativeFrameCount, ctx_ext->BirthNativeTruncated, 1);
 
     if (_contextSetupCallback) {
-        _contextSetupCallback(ctx.as_ptr(), AngelScriptContextSetupReason::Request);
+        _contextSetupCallback(ctx, AngelScriptContextSetupReason::Request);
     }
 
-    return ctx.as_ptr();
+    return ctx;
 }
 
 void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept
@@ -277,7 +276,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
     try {
         scoped_lock lock {_poolLocker};
 
-        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy.as_ptr(), ctx); });
+        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
 
         if (it == _busyContexts.end()) {
             return;
@@ -306,7 +305,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         refcount_ptr<AngelScript::asIScriptContext> ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_add_ref(ctx.get_no_const());
 
         if (_contextSetupCallback) {
-            _contextSetupCallback(ctx_holder.as_ptr(), AngelScriptContextSetupReason::Return);
+            _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);
         }
 
         ctx_ext->Parent = nullptr;
@@ -316,11 +315,11 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         ctx_ext->BirthNativeTruncated = false;
 
         for (auto& other : _busyContexts) {
-            if (IsSameScriptContext(other.as_ptr(), ctx)) {
+            if (IsSameScriptContext(other, ctx)) {
                 continue;
             }
 
-            auto other_ext = AngelScriptContextExtendedData::Get(other.as_ptr());
+            auto other_ext = AngelScriptContextExtendedData::Get(ptr<AngelScript::asIScriptContext> {other});
             FO_VERIFY_AND_THROW(other_ext, "Context extended data is null");
 
             if (other_ext->Parent == ctx.get()) {
@@ -545,7 +544,7 @@ void AngelScriptContextManager::ResumeSpecificContext(ptr<AngelScript::asIScript
     {
         scoped_lock lock {_poolLocker};
 
-        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy.as_ptr(), ctx); });
+        const auto it = std::ranges::find_if(_busyContexts, [ctx](const auto& busy) { return IsSameScriptContext(busy, ctx); });
 
         if (it == _busyContexts.end()) {
             return;
@@ -757,13 +756,7 @@ static void AngelScriptBeginCall(AngelScript::asIScriptContext* raw_ctx, AngelSc
 
         const auto safe_copy = [](auto& to, size_t& len, string_view from) {
             len = std::min(from.length(), to.size() - 1);
-            if (len != 0) {
-                ptr<char> target = to.data();
-
-                ptr<const char> source = from.data();
-
-                MemCopy(target.get(), source.get(), len);
-            }
+            MemCopy(to.data(), from.data(), len);
             to[len] = 0;
         };
 

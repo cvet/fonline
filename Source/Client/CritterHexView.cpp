@@ -291,7 +291,7 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
     refcount_nptr<Entity> resolved_context_item {};
 
     if (context_item) {
-        if (nptr<ItemView> nullable_item = context_item.dyn_cast<ItemView>(); nullable_item) {
+        if (auto nullable_item = context_item.dyn_cast<ItemView>()) {
             auto item = nullable_item.as_ptr();
             resolved_context_item = item->CreateRefClone();
         }
@@ -445,8 +445,8 @@ auto CritterHexView::GetModelLayersData() const -> ptr<const int32_t>
 
     const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
     FO_VERIFY_AND_THROW(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT, "Model layer property raw data size does not match layer count", prop_raw_data.size(), MODEL_LAYERS_COUNT, sizeof(int32_t));
-    ptr<const uint8_t> data = prop_raw_data.data();
-    return data.reinterpret_as<int32_t>();
+    nptr<const uint8_t> data = prop_raw_data.data();
+    return data.reinterpret_as<int32_t>().as_ptr();
 }
 
 void CritterHexView::RefreshModel()

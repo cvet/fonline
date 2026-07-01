@@ -93,7 +93,7 @@ auto Location::GetMaps() const -> vector<ptr<const Map>>
     result.reserve(_locMaps.size());
 
     for (const auto& map : _locMaps) {
-        result.emplace_back(map.as_ptr());
+        result.emplace_back(map);
     }
 
     return result;
@@ -108,7 +108,7 @@ auto Location::GetMaps() -> vector<ptr<Map>>
     result.reserve(_locMaps.size());
 
     for (auto& map : _locMaps) {
-        result.emplace_back(map.as_ptr());
+        result.emplace_back(map);
     }
 
     return result;
@@ -140,7 +140,7 @@ auto Location::GetMapByIndex(int32_t index) noexcept -> nptr<Map>
         return nullptr;
     }
 
-    return _locMaps[index].as_nptr();
+    return _locMaps[index];
 }
 
 auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
@@ -151,7 +151,7 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 
     for (auto& map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
-            return map.as_nptr();
+            return map;
         }
     }
 
