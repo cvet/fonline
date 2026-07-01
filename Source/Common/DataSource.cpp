@@ -197,6 +197,7 @@ private:
     string _fileName {};
     mutable mutex _zipHandleLocker {};
     mutable raw_ptr<void> _zipHandle FO_TSA_GUARDED_BY(_zipHandleLocker) {};
+    unique_ptr<std::ifstream> _fileStream {};
     uint64_t _writeTime {};
 };
 
@@ -822,9 +823,9 @@ ZipFile::ZipFile(string_view fname)
 
     zlib_filefunc_def ffunc;
 
-    auto p_file = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
+    _fileStream = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
 
-    if (!*p_file) {
+    if (!*_fileStream) {
         throw DataSourceException("Can't open zip file", _fileName);
     }
 
@@ -853,9 +854,9 @@ ZipFile::ZipFile(string_view fname)
             return -1;
         }
     };
-    ffunc.zclose_file = [](voidpf, voidpf stream) -> int32_t {
-        const auto* file = cast_from_void<std::ifstream*>(stream);
-        delete file;
+    ffunc.zclose_file = [](voidpf, voidpf) -> int32_t {
+        // The ifstream is owned by the ZipFile object (_fileStream), not by zlib, so closing the zip must
+        // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip.
         return 0;
     };
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {
@@ -865,7 +866,7 @@ ZipFile::ZipFile(string_view fname)
         return 0;
     };
 
-    ffunc.opaque = cast_to_void(p_file.release());
+    ffunc.opaque = cast_to_void(_fileStream.get());
 
     _zipHandle = unzOpen2(string(_fileName).c_str(), &ffunc);
 
