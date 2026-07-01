@@ -222,6 +222,46 @@ extern auto GetExceptionCallback() noexcept -> ExceptionCallback
     return ExceptionHandling->Callback;
 }
 
+extern void InstallCrashHandlerStackForThisThread() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if HAS_NATIVE_TRACE && !FO_WINDOWS
+    if (IsRunInDebugger()) {
+        return; // backward-cpp does not install its signal handlers under a debugger
+    }
+
+    // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
+    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults.
+    constexpr size_t stack_size = size_t {2} * 1024 * 1024;
+
+    // Per-thread backing buffer kept alive for the thread's lifetime; sigaltstack retains a pointer to it
+    // and the registration is torn down automatically when the thread exits. std::unique_ptr (not the
+    // engine alias) is used because it supports array storage; new[] leaves the bytes uninitialized so
+    // the reservation stays lazily committed.
+    static thread_local std::unique_ptr<uint8_t[]> alt_stack_buffer;
+
+    if (alt_stack_buffer) {
+        return; // already installed on this thread
+    }
+
+    alt_stack_buffer = std::unique_ptr<uint8_t[]> {new (std::nothrow) uint8_t[stack_size]};
+
+    if (!alt_stack_buffer) {
+        return;
+    }
+
+    stack_t ss {};
+    ss.ss_sp = alt_stack_buffer.get();
+    ss.ss_size = stack_size;
+    ss.ss_flags = 0;
+
+    if (sigaltstack(&ss, nullptr) != 0) {
+        alt_stack_buffer.reset();
+    }
+#endif
+}
+
 static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedStackTraceData
 {
     FO_NO_STACK_TRACE_ENTRY();

@@ -200,6 +200,8 @@ void WorkThread::ThreadEntry() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
+    InstallCrashHandlerStackForThisThread();
+
     try {
         while (true) {
             Job job;
@@ -214,11 +216,9 @@ void WorkThread::ThreadEntry() noexcept
                     _clearJobs = false;
                 }
 
-                if (_jobs.empty()) {
-                    locker.unlock();
-                    _doneSignal.notify_all();
-                    locker.lock();
-                }
+                locker.unlock();
+                _doneSignal.notify_all();
+                locker.lock();
 
                 while (_paused && !_finish) {
                     _workSignal.wait(locker);

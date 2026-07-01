@@ -33,11 +33,15 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "AngelScriptBackend.h"
+#include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
+
+#include <angelscript.h>
 
 FO_BEGIN_NAMESPACE
 
@@ -750,6 +754,20 @@ namespace CommonMethods
         if (snapshot.Child is null) return -15;
         if (snapshot.Child.Text != "child-note") return -16;
 
+        ProtoCritter targetProto = Game.GetProtoCritter("TestCritter".hstr());
+        if (targetProto is null) return -19;
+        snapshot.TargetProto = targetProto;
+        if (snapshot.TargetProto is null) return -20;
+        if (snapshot.TargetProto.ProtoId != "TestCritter".hstr()) return -21;
+
+        snapshot.OptionalItemProto = null;
+        if (snapshot.OptionalItemProto !is null) return -22;
+        ProtoItem optionalProto = Game.GetProtoItem("TestItem".hstr());
+        if (optionalProto is null) return -23;
+        snapshot.OptionalItemProto = optionalProto;
+        if (snapshot.OptionalItemProto is null) return -24;
+        if (snapshot.OptionalItemProto.ProtoId != "TestItem".hstr()) return -25;
+
         RouteSnapshotMarkerComponent marker = snapshot.Marker;
         if (marker is null) return -3;
 
@@ -1445,6 +1463,86 @@ namespace CommonMethods
         Game.DestroyCritter(cr);
         return 0;
     }
+
+    int TestEntityTimeEventRepeatingOverloads()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        any initData = 11;
+        array<any> arrayData = {21, 22};
+
+        uint32 plainId = cr.StartTimeEvent(timespan(60, 3), timespan(5, 3),
+            OnCritterTimeEvent);
+        uint32 dataId = cr.StartTimeEvent(timespan(60, 3), timespan(6, 3),
+            OnCritterTimeEventWithData, initData);
+        uint32 arrayId = cr.StartTimeEvent(timespan(60, 3), timespan(7, 3),
+            OnCritterTimerWithArrayData, arrayData);
+        if (plainId == 0 || dataId == 0 || arrayId == 0) return -2;
+
+        if (cr.CountTimeEvent(plainId) != 1) return -3;
+        if (cr.CountTimeEvent(OnCritterTimeEventWithData) != 1) return -4;
+        if (cr.CountTimeEvent(OnCritterTimerWithArrayData) != 1) return -5;
+
+        cr.RepeatTimeEvent(OnCritterTimeEventWithData, timespan(8, 3));
+        cr.RepeatTimeEvent(OnCritterTimerWithArrayData, timespan(9, 3));
+
+        cr.StopTimeEvent(OnCritterTimeEventWithData);
+        if (cr.CountTimeEvent(dataId) != 0) return -6;
+
+        cr.StopTimeEvent(OnCritterTimerWithArrayData);
+        if (cr.CountTimeEvent(arrayId) != 0) return -7;
+
+        cr.StopTimeEvent(plainId);
+        if (cr.CountTimeEvent(plainId) != 0) return -8;
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    [[TimeEvent]]
+    void OnCritterContextTimer(Critter cr, TimeEventContext event)
+    {
+        // No-op
+    }
+
+    int TestEntityTimeEventContextOverloads()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        any initData = 31;
+        array<any> arrayData = {41, 42};
+
+        uint32 plainId = cr.StartTimeEvent(timespan(60, 3), OnCritterContextTimer);
+        uint32 dataId = cr.StartTimeEvent(timespan(60, 3), OnCritterContextTimer, initData);
+        uint32 arrayId = cr.StartTimeEvent(timespan(60, 3), OnCritterContextTimer, arrayData);
+        uint32 repeatingPlainId = cr.StartTimeEvent(timespan(60, 3), timespan(5, 3),
+            OnCritterContextTimer);
+        uint32 repeatingDataId = cr.StartTimeEvent(timespan(60, 3), timespan(6, 3),
+            OnCritterContextTimer, initData);
+        uint32 repeatingArrayId = cr.StartTimeEvent(timespan(60, 3), timespan(7, 3),
+            OnCritterContextTimer, arrayData);
+
+        if (plainId == 0 || dataId == 0 || arrayId == 0 ||
+            repeatingPlainId == 0 || repeatingDataId == 0 || repeatingArrayId == 0) return -2;
+        if (cr.CountTimeEvent(OnCritterContextTimer) != 6) return -3;
+        if (cr.CountTimeEvent(repeatingArrayId) != 1) return -4;
+
+        cr.RepeatTimeEvent(OnCritterContextTimer, timespan(8, 3));
+
+        any newData = 51;
+        cr.SetTimeEventData(OnCritterContextTimer, newData);
+
+        array<any> newArrayData = {61, 62, 63};
+        cr.SetTimeEventData(OnCritterContextTimer, newArrayData);
+
+        cr.StopTimeEvent(OnCritterContextTimer);
+        if (cr.CountTimeEvent(OnCritterContextTimer) != 0) return -5;
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
 }
 
  )";
@@ -1475,7 +1573,7 @@ namespace CommonMethods
             {"FloatSnapshot", "Value", "float32"},
         };
         const vector<vector<string_view>> ref_types = {
-            {"RouteSnapshot", "Value", "int32", "0", "Steps", "int32[]", "0", "Counters", "string=>int32", "0", "Child", "RouteNote", "0", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"},
+            {"RouteSnapshot", "Value", "int32", "0", "Steps", "int32[]", "0", "Counters", "string=>int32", "0", "Child", "RouteNote", "0", "TargetProto", "ProtoCritter", "0", "OptionalItemProto", "ProtoItem", "1", "Nullable", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"},
             {"RouteNote", "Text", "string", "0"},
         };
 
@@ -1559,6 +1657,39 @@ namespace CommonMethods
         }
 
         return "ServerEngine startup timed out";
+    }
+
+    static void CheckHstringStringConvBinding(ServerEngine* server)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto* backend = GetScriptBackend(server);
+        REQUIRE(backend != nullptr);
+
+        auto* context_mngr = backend->GetContextMngr();
+        REQUIRE(context_mngr != nullptr);
+
+        auto* ctx = context_mngr->RequestContext();
+        const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
+        auto return_context = scope_exit([context_mngr, ctx, context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+
+        auto* as_engine = ctx->GetEngine();
+        REQUIRE(as_engine != nullptr);
+
+        auto* hstring_type = as_engine->GetTypeInfoByDecl("hstring");
+        REQUIRE(hstring_type != nullptr);
+
+        auto* conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
+        REQUIRE(conv_method != nullptr);
+
+        hstring key = server->Hashes.ToHashedString("AlphaKey");
+        REQUIRE(ctx->Prepare(conv_method) >= 0);
+        REQUIRE(ctx->SetObject(&key) >= 0);
+        REQUIRE(context_mngr->RunContext(ctx, false));
+
+        const auto* result = static_cast<const string*>(ctx->GetReturnObject());
+        REQUIRE(result != nullptr);
+        CHECK(*result == "AlphaKey");
     }
 }
 
@@ -1698,6 +1829,11 @@ TEST_CASE("ScriptTypeConversionOps")
     SECTION("ValueTypeAndAnyConversions")
     {
         RUN_CM_FUNC("TestScriptTypeConversions");
+    }
+
+    SECTION("HstringStringConvBinding")
+    {
+        CheckHstringStringConvBinding(server.get());
     }
 
     SECTION("MetadataValueTypeConversions")
@@ -1864,6 +2000,16 @@ TEST_CASE("EntityTimeEventOperations")
     SECTION("CritterWithArrayData")
     {
         RUN_CM_FUNC("TestEntityTimeEventWithArrayData");
+    }
+
+    SECTION("CritterRepeatingOverloads")
+    {
+        RUN_CM_FUNC("TestEntityTimeEventRepeatingOverloads");
+    }
+
+    SECTION("CritterContextOverloads")
+    {
+        RUN_CM_FUNC("TestEntityTimeEventContextOverloads");
     }
 }
 

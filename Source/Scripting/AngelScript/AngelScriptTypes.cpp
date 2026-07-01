@@ -142,7 +142,7 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
 
     const auto& type = *cast_from_void<const BaseTypeDesc*>(gen->GetAuxiliary());
     auto* obj = gen->GetObject();
-    const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
+    const auto* other = MemReadUnaligned<void*>(gen->GetAddressOfArg(0));
 
     MemCopy(obj, other, type.Size);
 }
@@ -245,7 +245,7 @@ static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
 
     const auto& type = *cast_from_void<const BaseTypeDesc*>(gen->GetAuxiliary());
     const auto* obj = gen->GetObject();
-    const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
+    const auto* other = MemReadUnaligned<void*>(gen->GetAddressOfArg(0));
 
     int32_t cmp = 0;
 
@@ -265,7 +265,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
 
     const auto& type = *cast_from_void<const BaseTypeDesc*>(gen->GetAuxiliary());
     const auto* obj = gen->GetObject();
-    const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
+    const auto* other = MemReadUnaligned<void*>(gen->GetAddressOfArg(0));
 
     const auto equals = MemCompare(obj, other, type.Size);
     new (gen->GetAddressOfReturnLocation()) bool(equals);
@@ -348,7 +348,7 @@ static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, boo
 
     const auto* meta = GetEngineMetadata(gen->GetEngine());
     auto* self = static_cast<TextPackKey*>(gen->GetObject());
-    const auto& collection = **static_cast<const TextPackName**>(gen->GetAddressOfArg(0));
+    const auto& collection = *MemReadUnaligned<const TextPackName*>(gen->GetAddressOfArg(0));
     const auto arg_count = gen->GetArgCount();
 
     string_view key1;
@@ -356,17 +356,17 @@ static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, boo
     string_view key3;
 
     if (hstring_key1) {
-        key1 = (*static_cast<const hstring**>(gen->GetAddressOfArg(1)))->as_str();
+        key1 = MemReadUnaligned<const hstring*>(gen->GetAddressOfArg(1))->as_str();
     }
     else {
-        key1 = **static_cast<const string**>(gen->GetAddressOfArg(1));
+        key1 = *MemReadUnaligned<const string*>(gen->GetAddressOfArg(1));
     }
 
     if (arg_count >= 3) {
-        key2 = **static_cast<const string**>(gen->GetAddressOfArg(2));
+        key2 = *MemReadUnaligned<const string*>(gen->GetAddressOfArg(2));
     }
     if (arg_count >= 4) {
-        key3 = **static_cast<const string**>(gen->GetAddressOfArg(3));
+        key3 = *MemReadUnaligned<const string*>(gen->GetAddressOfArg(3));
     }
 
     new (self) TextPackKey(TextPackKey::FromPack(meta->Hashes, collection.underlying_value(), key1, key2, key3));
@@ -991,7 +991,7 @@ static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     const auto* obj = gen->GetObject();
-    const auto* other = *static_cast<void**>(gen->GetAddressOfArg(0));
+    const auto* other = MemReadUnaligned<void*>(gen->GetAddressOfArg(0));
 
     new (gen->GetAddressOfReturnLocation()) bool(obj == other);
 }
@@ -1058,6 +1058,37 @@ static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 
     auto prop_data = ConvertScriptToPropsObject(prop, gen->GetAddressOfArg(0));
     self->SetValue(prop, prop_data);
+}
+
+static void RegisterDynamicRefTypeProperties(AngelScript::asIScriptEngine* as_engine, const BaseTypeDesc& type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t as_result = 0;
+    const char* name = type.Name.c_str();
+    const auto& ref_type = *type.RefType;
+
+    if (!ref_type.FieldsRegistrator) {
+        return;
+    }
+
+    for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
+        const auto* prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+
+        if (prop->IsComponentItself()) {
+            continue;
+        }
+
+        const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
+        const auto* set_handle_str = handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
+        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
+        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+
+        const auto host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
+
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
+    }
 }
 
 template<typename T>
@@ -1433,24 +1464,6 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(name, strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(component_prop.get())));
             }
-
-            for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
-                const auto* prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-
-                if (prop->IsComponentItself()) {
-                    continue;
-                }
-
-                const auto* handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? "@" : (prop->IsBaseTypeProtoReference() ? "@+" : "");
-                const auto* set_handle_str = handle_str[0] == '@' ? (prop->IsNullable() ? "@?+" : "@+") : handle_str;
-                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
-
-                const auto host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
-
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop)));
-            }
         }
 
         for (const auto& method : ref_type.Methods) {
@@ -1479,6 +1492,20 @@ void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine)
     for (const auto& type : meta->GetBaseTypes() | std::views::values) {
         if (type.IsRefType) {
             register_ref_type_body(type);
+        }
+    }
+}
+
+void RegisterAngelScriptTypeProperties(AngelScript::asIScriptEngine* as_engine)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* backend = GetScriptBackend(as_engine);
+    const auto* meta = backend->GetMetadata();
+
+    for (const auto& type : meta->GetBaseTypes() | std::views::values) {
+        if (type.IsRefType) {
+            RegisterDynamicRefTypeProperties(as_engine, type);
         }
     }
 }

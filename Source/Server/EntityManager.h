@@ -140,7 +140,6 @@ public:
 private:
     void MakePersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
     void MakeNonPersistentRecursive(ServerEntity* entity, unordered_set<ServerEntity*>& processed);
-    void EnsureCascadeNodeSynced(ServerEntity* entity);
     void ForEachPersistentChildEntity(ServerEntity* entity, const function<void(ServerEntity* child)>& callback) const;
 
     void LoadInnerEntities(Entity* holder, bool& is_error) noexcept;

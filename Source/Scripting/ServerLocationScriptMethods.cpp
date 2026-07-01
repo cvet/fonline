@@ -38,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Map*, bool> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Location*, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");

@@ -66,6 +66,10 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
         auto* item_already = cr->GetInvItemByPid(item->GetProtoId());
 
         if (item_already != nullptr) {
+            if (item_already == item) {
+                return item;
+            }
+
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
@@ -79,8 +83,6 @@ auto CritterManager::AddItemToCritter(Critter* cr, Item* item, bool send) -> Ite
 
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(cr->GetId());
-
-    PropagateEntityLock(item, cr->GetEntityLock());
 
     cr->SetItem(item);
 

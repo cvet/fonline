@@ -153,6 +153,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     }
 
     ValidateEntityAccess(map);
+    ValidateEntityAccess(self->GetParentRaw().get());
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());
@@ -169,6 +170,7 @@ FO_SCRIPT_API void Server_Critter_TransferToMap(Critter* self, Map* map, mpos he
     }
 
     ValidateEntityAccess(map);
+    ValidateEntityAccess(self->GetParentRaw().get());
 
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid target hex arg", hex, map->GetSize());
@@ -193,6 +195,8 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobal(Critter* self)
         return;
     }
 
+    ValidateEntityAccess(self->GetParentRaw().get());
+
     self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 }
 
@@ -203,10 +207,14 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(Critter* self, reado
         throw ScriptException("Transfers locked");
     }
 
+    ValidateEntityAccess(self->GetParentRaw().get());
+
     self->GetEngine()->MapMngr.TransferToGlobal(self, {});
 
     for (auto* cr : group) {
         if (cr != nullptr && !cr->IsDestroyed() && !self->IsDestroyed() && !self->GetMapId()) {
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(cr->GetParentRaw().get());
             self->GetEngine()->MapMngr.TransferToGlobal(cr, self->GetId());
         }
     }
@@ -218,6 +226,9 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
+
+    ValidateEntityAccess(globalCr);
+
     if (globalCr->GetMapId()) {
         throw ScriptException("Global critter is not on global map");
     }
@@ -228,6 +239,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     auto& map_mngr = self->GetEngine()->MapMngr;
 
     if (self->GetMapId()) {
+        ValidateEntityAccess(self->GetParentRaw().get());
         map_mngr.TransferToGlobal(self, globalCr->GetId());
         return;
     }
@@ -238,6 +250,8 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(Critter* self, Critter* 
     if (self_group && target_group && self_group.get() == target_group.get()) {
         return;
     }
+
+    ValidateEntityAccess(self->GetParentRaw().get());
 
     map_mngr.RemoveCritterFromMap(self, nullptr);
 
@@ -330,6 +344,8 @@ FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Critter* cr)
         return true;
     }
 
+    ValidateEntityAccess(cr);
+
     return self->IsSeeCritter(cr->GetId());
 }
 
@@ -339,6 +355,8 @@ FO_SCRIPT_API bool Server_Critter_IsSeenBy(Critter* self, Critter* cr)
     if (self == cr) {
         return true;
     }
+
+    ValidateEntityAccess(cr);
 
     return cr->IsSeeCritter(self->GetId());
 }
@@ -350,12 +368,16 @@ FO_SCRIPT_API CritterVisibilityMode Server_Critter_GetVisibilityMode(Critter* se
         return CritterVisibilityMode::Full;
     }
 
+    ValidateEntityAccess(cr);
+
     return self->GetVisibleCritterMode(cr->GetId());
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Critter_IsSee(Critter* self, Item* item)
 {
+    ValidateEntityAccess(item);
+
     return self->CheckVisibleItem(item->GetId());
 }
 
@@ -625,6 +647,8 @@ FO_SCRIPT_API void Server_Critter_ChangeItemSlot(Critter* self, ident_t itemId, 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition cond, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem)
 {
+    ValidateEntityAccess(contextItem);
+
     const auto prev_cond = self->GetCondition();
 
     if (prev_cond == cond) {
@@ -667,12 +691,18 @@ FO_SCRIPT_API void Server_Critter_SetCondition(Critter* self, CritterCondition c
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_Action(Critter* self, CritterAction action, int32_t actionData, FO_NULLABLE AbstractItem* contextItem)
 {
+    ValidateEntityAccess(contextItem);
+
     self->SendAndBroadcast_Action(action, actionData, dynamic_cast<Item*>(contextItem));
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SendItems(Critter* self, readonly_vector<Item*> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
 {
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+    }
+
     self->Send_SomeItems(items, owned, withInnerEntities, contextParam);
 }
 
@@ -851,6 +881,9 @@ FO_SCRIPT_API void Server_Critter_AttachToCritter(Critter* self, Critter* cr)
     if (cr->IsDestroying()) {
         throw ScriptException("Cannot attach to a critter that is being destroyed", cr->GetId());
     }
+
+    ValidateEntityAccess(cr);
+
     if (cr == self) {
         throw ScriptException("Critter can't attach to itself");
     }

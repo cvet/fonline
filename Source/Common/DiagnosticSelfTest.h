@@ -35,18 +35,19 @@
 
 #include "Common.h"
 
-#if FO_ANGELSCRIPT_SCRIPTING
-
-namespace AngelScript
-{
-    class asIScriptEngine;
-}
-
 FO_BEGIN_NAMESPACE
 
-void RegisterAngelScriptTypes(AngelScript::asIScriptEngine* as_engine);
-void RegisterAngelScriptTypeProperties(AngelScript::asIScriptEngine* as_engine);
+// Diagnostic self-test that deliberately crashes the process to verify the crash
+// diagnostics reliably reach the log file. Driven by the FO_SELFTEST_CRASH
+// environment variable so it is inert in production and invisible to the config
+// and script settings surface. Intended for the crash-to-log pipeline tests; it
+// must never be wired into normal runtime paths.
+namespace DiagnosticSelfTest
+{
+    // Reads FO_SELFTEST_CRASH and induces the requested crash. Does nothing when
+    // the variable is unset, empty or names an unknown mode (the process keeps
+    // running). Most modes never return.
+    extern void RunIfRequested();
+}
 
 FO_END_NAMESPACE
-
-#endif

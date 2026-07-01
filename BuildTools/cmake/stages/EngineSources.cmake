@@ -78,6 +78,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.h"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
+    "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.h"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"

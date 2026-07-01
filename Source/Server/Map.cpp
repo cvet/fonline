@@ -499,8 +499,6 @@ void Map::AddItem(Item* item, mpos hex, Critter* dropper)
     item->SetMapId(GetId());
     item->SetHex(hex);
 
-    PropagateEntityLock(item, GetEntityLock());
-
     SetItem(item);
 
     auto item_ids = GetItemIds();

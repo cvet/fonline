@@ -222,6 +222,115 @@ TEST_CASE("WorkThread")
         // stats reflect every body run rather than the number of distinct submissions.
         CHECK(worker.GetDiagnostics().CompletedJobs == 3);
     }
+
+    // Regression for a Pause() deadlock: the worker only signalled _doneSignal when its queue drained, so
+    // a Pause() waiting on _jobActive was never woken while jobs were still queued behind the in-flight
+    // one — hanging the pauser forever. Pause() must return as soon as the active job finishes, regardless
+    // of how many jobs remain queued.
+    SECTION("PauseReturnsWhileJobsRemainQueued")
+    {
+        WorkThread worker {"PauseDrainWorker"};
+        std::atomic_bool gate {false};
+        std::atomic_bool a_started {false};
+
+        worker.AddJob([&]() -> optional<timespan> {
+            a_started.store(true);
+            while (!gate.load()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds {1});
+            }
+            return std::nullopt;
+        });
+        worker.AddJob([&]() -> optional<timespan> { return std::nullopt; }); // stays queued behind the gated job
+
+        while (!a_started.load()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {1});
+        }
+
+        // Pause from a helper thread while the first job is in flight and the second is still queued.
+        thread pauser = run_thread("Pauser", [&]() { worker.Pause(); });
+        gate.store(true); // let the in-flight job finish
+
+        pauser.join(); // pre-fix: deadlocks here (the in-flight job cleared _jobActive but never signalled)
+        CHECK_FALSE(worker.GetDiagnostics().JobActive);
+
+        worker.Resume();
+        worker.Wait();
+        CHECK(worker.GetJobsCount() == 0);
+    }
+
+    // Faithful to production cross-thread use (e.g. `_healthWriter.AddJob` is called from the
+    // `_mainWorker` thread while the control thread also drives the worker): several producer threads
+    // hammer AddJob concurrently while a controller churns Pause/Resume/Clear and the worker runs the
+    // bodies. The `_dataLocker`-guarded state machine must stay race-free (TSan), never use freed job
+    // state (ASan), never deadlock, and remain functional afterwards. Bodies don't self-reschedule, so
+    // Pause (which waits for the active job) can never block forever.
+    SECTION("ConcurrentProducersHammerAddJobClearPauseResume")
+    {
+        WorkThread worker {"ChaosWorker"};
+        std::atomic_int64_t body_runs {0};
+        std::atomic_bool stop {false};
+
+        constexpr int producer_count = 5;
+        constexpr int jobs_per_producer = 3000;
+
+        vector<thread> producers;
+        producers.reserve(producer_count);
+
+        for (int p = 0; p < producer_count; p++) {
+            producers.emplace_back(run_thread("ChaosProducer", [&]() {
+                for (int i = 0; i < jobs_per_producer; i++) {
+                    worker.AddJob([&body_runs]() -> optional<timespan> {
+                        body_runs.fetch_add(1, std::memory_order_relaxed);
+                        return std::nullopt;
+                    });
+                }
+            }));
+        }
+
+        thread controller = run_thread("ChaosController", [&]() {
+            uint32_t rng = 0xC0FFEEU;
+            const auto next = [&rng]() {
+                rng = rng * 1664525U + 1013904223U;
+                return rng;
+            };
+
+            while (!stop.load(std::memory_order_acquire)) {
+                switch (next() % 3) {
+                case 0:
+                    worker.Pause();
+                    worker.Resume();
+                    break;
+                case 1:
+                    worker.Clear();
+                    break;
+                default:
+                    std::this_thread::sleep_for(std::chrono::microseconds {50});
+                    break;
+                }
+            }
+        });
+
+        for (auto& t : producers) {
+            t.join();
+        }
+
+        stop.store(true, std::memory_order_release);
+        controller.join();
+
+        // Ensure the worker is not left paused, then drain whatever survived the Clear churn.
+        worker.Resume();
+        worker.Wait();
+        CHECK(worker.GetJobsCount() == 0);
+
+        // The worker must still be fully functional after the chaos — a fresh job runs to completion.
+        std::atomic_bool final_ran {false};
+        worker.AddJob([&final_ran]() -> optional<timespan> {
+            final_ran.store(true);
+            return std::nullopt;
+        });
+        worker.Wait();
+        CHECK(final_ran.load());
+    }
 }
 
 FO_END_NAMESPACE

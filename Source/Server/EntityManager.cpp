@@ -1255,7 +1255,7 @@ void EntityManager::MakePersistentRecursive(ServerEntity* entity, unordered_set<
 
     processed.emplace(entity);
 
-    EnsureCascadeNodeSynced(entity);
+    EnsureEntitySynced(entity);
 
     if (!entity->IsPersistent()) {
         WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
@@ -1278,7 +1278,7 @@ void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_s
 
     processed.emplace(entity);
 
-    EnsureCascadeNodeSynced(entity);
+    EnsureEntitySynced(entity);
 
     ForEachPersistentChildEntity(entity, [this, &processed](ServerEntity* child) { MakeNonPersistentRecursive(child, processed); });
 
@@ -1286,24 +1286,6 @@ void EntityManager::MakeNonPersistentRecursive(ServerEntity* entity, unordered_s
         WriteLog("Remove entity {} {} from database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
-    }
-}
-
-void EntityManager::EnsureCascadeNodeSynced(ServerEntity* entity)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
-
-    // The (de)persist cascade walks an owned subtree (every node is reachable from a root the caller
-    // already covers), so pulling each node's own lock into the current sync context is safe — and
-    // necessary during a destroy cascade. There, a node is detached from its parent BEFORE being
-    // de-persisted (e.g. CritterManager::RemoveItemFromCritter clears the critter id, then calls
-    // MakePersistent(false) on the now-orphaned item), which severs the ancestor cover the caller
-    // relied on and would otherwise trip ForEachPersistentChildEntity's access validation. This
-    // mirrors the inner-item EnsureEntitySynced already used in ItemManager::DestroyItem.
-    if (auto* ctx = _engine->GetCurrentSyncContext(); ctx != nullptr) {
-        ctx->EnsureEntitySynced(entity);
     }
 }
 
@@ -1690,7 +1672,6 @@ void EntityManager::DestroyCustomEntity(CustomEntity* entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(entity);
     EnsureEntitySynced(entity);
 
     if (entity->IsDestroying() || entity->IsDestroyed()) {

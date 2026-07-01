@@ -103,6 +103,9 @@ FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crI
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_UnloadCritter(ServerEngine* server, Critter* cr)
 {
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(cr->GetParentRaw().get());
+
     server->UnloadCritter(cr);
 }
 
@@ -116,6 +119,9 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ServerEngine* server, iden
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr1);
+    ValidateEntityAccess(cr2);
 
     if (cr1->GetMapId() != cr2->GetMapId()) {
         throw ScriptException("Critters different maps");
@@ -134,6 +140,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1,
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item1);
+    ValidateEntityAccess(item2);
+
     if (item1->GetMapId() != item2->GetMapId()) {
         throw ScriptException("Items different maps");
     }
@@ -149,6 +158,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1,
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(item);
 
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Critter/Item different maps");
@@ -167,6 +179,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(cr);
+
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Item/Critter different maps");
     }
@@ -184,6 +199,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(cr);
+
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
     }
@@ -197,6 +214,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
 
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
@@ -212,6 +231,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item);
+
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
@@ -224,6 +245,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item);
 
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
@@ -247,12 +270,20 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_GetItem(ServerEngine* server, ident_
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critter* toCr)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toCr);
+
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toCr);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -263,6 +294,10 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* toMap, mpos toHex)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toMap);
+
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -277,6 +312,10 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
         throw ScriptException("Invalid hexex args");
     }
 
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toMap);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -287,12 +326,20 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toCont);
+
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw().get());
+    ValidateEntityAccess(toCont);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -303,6 +350,13 @@ FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item*
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Critter* toCr)
 {
+    ValidateEntityAccess(toCr);
+
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw().get());
+    }
+
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
             continue;
@@ -315,6 +369,13 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Map* toMap, mpos toHex)
 {
+    ValidateEntityAccess(toMap);
+
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw().get());
+    }
+
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -331,6 +392,13 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(toCont);
+
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw().get());
+    }
+
     for (auto* item : items) {
         if (item == nullptr || item->IsDestroyed()) {
             continue;
@@ -343,7 +411,12 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ident_t id)
 {
-    if (auto entity = server->EntityMngr.GetEntity(id)) {
+    auto entity = server->EntityMngr.GetEntity(id);
+
+    if (entity) {
+        ValidateEntityAccess(entity.get());
+        ValidateEntityAccess(entity->GetParentRaw().get());
+
         server->EntityMngr.DestroyEntity(entity.get());
     }
 }
@@ -352,6 +425,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ident_t id)
 FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, FO_NULLABLE ServerEntity* entity)
 {
     if (entity != nullptr) {
+        ValidateEntityAccess(entity);
+        ValidateEntityAccess(entity->GetParentRaw().get());
+
         server->EntityMngr.DestroyEntity(entity);
     }
 }
@@ -360,7 +436,12 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, FO_NULLABLE S
 FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_vector<ident_t> ids)
 {
     for (const auto id : ids) {
-        if (auto entity = server->EntityMngr.GetEntity(id)) {
+        auto entity = server->EntityMngr.GetEntity(id);
+
+        if (entity) {
+            ValidateEntityAccess(entity.get());
+            ValidateEntityAccess(entity->GetParentRaw().get());
+
             server->EntityMngr.DestroyEntity(entity.get());
         }
     }
@@ -371,6 +452,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_ve
 {
     for (auto* entity : entities) {
         if (entity != nullptr) {
+            ValidateEntityAccess(entity);
+            ValidateEntityAccess(entity->GetParentRaw().get());
+
             server->EntityMngr.DestroyEntity(entity);
         }
     }
@@ -380,6 +464,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_ve
 FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, FO_NULLABLE Item* item)
 {
     if (item != nullptr) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw().get());
+
         server->ItemMngr.DestroyItem(item);
     }
 }
@@ -388,6 +475,9 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, FO_NULLABLE Ite
 FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32_t count)
 {
     if (item != nullptr && count > 0) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw().get());
+
         const auto cur_count = item->GetCount();
 
         if (count >= cur_count) {
@@ -404,7 +494,10 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId)
 {
     auto item = server->EntityMngr.GetItem(itemId);
 
-    if (item != nullptr) {
+    if (item) {
+        ValidateEntityAccess(item.get());
+        ValidateEntityAccess(item->GetParentRaw().get());
+
         server->ItemMngr.DestroyItem(item.get());
     }
 }
@@ -414,7 +507,10 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId,
 {
     auto item = server->EntityMngr.GetItem(itemId);
 
-    if (item != nullptr && count > 0) {
+    if (item && count > 0) {
+        ValidateEntityAccess(item.get());
+        ValidateEntityAccess(item->GetParentRaw().get());
+
         const auto cur_count = item->GetCount();
 
         if (count >= cur_count) {
@@ -431,6 +527,9 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vecto
 {
     for (auto* item : items) {
         if (item != nullptr) {
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(item->GetParentRaw().get());
+
             server->ItemMngr.DestroyItem(item);
         }
     }
@@ -443,7 +542,10 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vecto
         if (item_id) {
             auto item = server->EntityMngr.GetItem(item_id);
 
-            if (item != nullptr) {
+            if (item) {
+                ValidateEntityAccess(item.get());
+                ValidateEntityAccess(item->GetParentRaw().get());
+
                 server->ItemMngr.DestroyItem(item.get());
             }
         }
@@ -454,6 +556,9 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vecto
 FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, Critter* cr)
 {
     if (cr != nullptr && !cr->GetControlledByPlayer()) {
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(cr->GetParentRaw().get());
+
         server->CrMngr.DestroyCritter(cr);
     }
 }
@@ -462,7 +567,12 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, Critter* cr)
 FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, ident_t crId)
 {
     if (crId) {
-        if (auto cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetControlledByPlayer()) {
+        auto cr = server->EntityMngr.GetCritter(crId);
+
+        if (cr && !cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(cr.get());
+            ValidateEntityAccess(cr->GetParentRaw().get());
+
             server->CrMngr.DestroyCritter(cr.get());
         }
     }
@@ -473,6 +583,9 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_ve
 {
     for (auto* cr : critters) {
         if (cr != nullptr && !cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(cr->GetParentRaw().get());
+
             server->CrMngr.DestroyCritter(cr);
         }
     }
@@ -483,7 +596,12 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_ve
 {
     for (const auto id : critterIds) {
         if (id) {
-            if (auto cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetControlledByPlayer()) {
+            auto cr = server->EntityMngr.GetCritter(id);
+
+            if (cr && !cr->GetControlledByPlayer()) {
+                ValidateEntityAccess(cr.get());
+                ValidateEntityAccess(cr->GetParentRaw().get());
+
                 server->CrMngr.DestroyCritter(cr.get());
             }
         }
@@ -572,6 +690,9 @@ FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring
 FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, FO_NULLABLE Location* loc)
 {
     if (loc != nullptr) {
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(loc->GetParentRaw().get());
+
         server->MapMngr.DestroyLocation(loc);
     }
 }
@@ -581,7 +702,10 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, ident_t loc
 {
     auto loc = server->EntityMngr.GetLocation(locId);
 
-    if (loc != nullptr) {
+    if (loc) {
+        ValidateEntityAccess(loc.get());
+        ValidateEntityAccess(loc->GetParentRaw().get());
+
         server->MapMngr.DestroyLocation(loc.get());
     }
 }
@@ -590,6 +714,9 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, ident_t loc
 FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, FO_NULLABLE Map* map)
 {
     if (map != nullptr) {
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(map->GetParentRaw().get());
+
         server->MapMngr.DestroyMap(map);
     }
 }
@@ -599,7 +726,10 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, ident_t mapId)
 {
     auto map = server->EntityMngr.GetMap(mapId);
 
-    if (map != nullptr) {
+    if (map) {
+        ValidateEntityAccess(map.get());
+        ValidateEntityAccess(map->GetParentRaw().get());
+
         server->MapMngr.DestroyMap(map.get());
     }
 }
@@ -652,6 +782,8 @@ FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, Player* unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -662,6 +794,8 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, P
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server, Player* unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -672,6 +806,8 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server,
 ///@ ExportMethod
 FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -949,6 +1085,8 @@ FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
 {
+    ValidateEntityAccess(entity);
+
     return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
 }
 
@@ -1284,6 +1422,9 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ServerEngine* server, FO_N
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(usedItem);
+
     if (!staticItem->StaticScriptFunc) {
         return false;
     }
@@ -1393,6 +1534,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     string log;
 
+    bool process_done = false;
+
     while (true) {
         while (true) {
             DWORD bytes = 0;
@@ -1412,8 +1555,15 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
             }
         }
 
-        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+        // Drain once more AFTER the process has exited: a fast command (e.g. `echo`) can write its
+        // whole output and terminate between the last peek and this check, leaving it buffered in the
+        // pipe. Breaking immediately on exit would lose that final output.
+        if (process_done) {
             break;
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            process_done = true;
         }
     }
 

@@ -218,6 +218,7 @@ void Item::SetItemToContainer(Item* item)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
+    EnsureEntitySynced(item);
 
     make_if_not_exists(_innerItems);
     vec_add_unique_value(*_innerItems, item);
@@ -225,8 +226,6 @@ void Item::SetItemToContainer(Item* item)
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetParent(this);
-
-    PropagateEntityLock(item, GetEntityLock());
 }
 
 auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
@@ -235,11 +234,16 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(item, "Missing item instance");
+    EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
         auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
 
         if (item_already != nullptr) {
+            if (item_already == item) {
+                return item;
+            }
+
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             item_already->SetCount(item_already->GetCount() + count);
@@ -270,7 +274,6 @@ void Item::RemoveItemFromContainer(Item* item)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
     FO_VERIFY_AND_THROW(item, "Missing item instance");
-
     EnsureEntitySynced(item);
 
     item->SetParent(nullptr);

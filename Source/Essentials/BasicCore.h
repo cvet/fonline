@@ -184,6 +184,15 @@
 #define FO_FORCE_INLINE inline
 #endif
 
+// Prevent inline helper
+#if defined(__GNUC__)
+#define FO_NO_INLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define FO_NO_INLINE __declspec(noinline)
+#else
+#define FO_NO_INLINE
+#endif
+
 // Export symbol
 #if defined(__GNUC__)
 #define FO_EXPORT_FUNC extern "C" __attribute__((visibility("default"), used))
