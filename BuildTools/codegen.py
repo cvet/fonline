@@ -1851,10 +1851,10 @@ def generate_generic_code() -> None:
         global_lines.append('void ApplicationShutdownHook() { /* Stub */ }')
     if not is_engine_hook_enabled('ServerInitHook'):
         global_lines.append('class ServerEngine;')
-        global_lines.append('void ServerInitHook(ServerEngine*) { /* Stub */ }')
+        global_lines.append('void ServerInitHook(ptr<ServerEngine>) { /* Stub */ }')
     if not is_engine_hook_enabled('ClientInitHook'):
         global_lines.append('class ClientEngine;')
-        global_lines.append('void ClientInitHook(ClientEngine*) { /* Stub */ }')
+        global_lines.append('void ClientInitHook(ptr<ClientEngine>) { /* Stub */ }')
     if not is_engine_hook_enabled('ClientStartupSettingsHook'):
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
@@ -1870,13 +1870,13 @@ def generate_generic_code() -> None:
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
-        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return CritterVisibilityMode::Full; }')
+        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
     if not is_engine_hook_enabled('CheckItemVisibilityHook'):
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
         global_lines.append('class Item;')
-        global_lines.append('bool CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) { return true; }')
+        global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
     global_lines.append('')
     
     # Engine properties

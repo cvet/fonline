@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void ClientInitHook(ClientEngine*);
+extern void ClientInitHook(ptr<ClientEngine>);
 
 auto GetClientResources(GlobalSettings& settings) -> FileSystem
 {
@@ -110,7 +110,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     // Modules initialization
     ptr<ClientEngine> client = this;
-    ClientInitHook(client.get());
+    ClientInitHook(client);
 
     InitModules();
 

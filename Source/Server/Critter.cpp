@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern auto CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) -> bool;
+extern auto CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) -> bool;
 
 Critter::Critter(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) noexcept :
     ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
@@ -945,7 +945,7 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
 
     auto map = require_refcount_ptr(GetParent<Map>());
 
-    return CheckItemVisibilityHook(_engine.get(), map.get(), this, item.get());
+    return CheckItemVisibilityHook(_engine, map.as_ptr(), this, item);
 }
 
 void Critter::ChangeDir(mdir dir)

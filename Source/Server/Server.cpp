@@ -44,7 +44,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern void ServerInitHook(ServerEngine*);
+extern void ServerInitHook(ptr<ServerEngine>);
 
 // Per-thread SyncContext bound to the lifetime of an external `ServerEngine::Lock` call. Tests
 // (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
@@ -609,7 +609,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         WriteLog("Init script modules");
 
         ptr<ServerEngine> server = this;
-        ServerInitHook(server.get());
+        ServerInitHook(server);
         InitModules();
 
         if (OnInit.Fire() == EventResult::StopChain) {

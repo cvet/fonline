@@ -43,7 +43,7 @@
 
 FO_BEGIN_NAMESPACE
 
-extern CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*);
+extern CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
 
 MapManager::MapManager(ptr<ServerEngine> engine) :
     _engine {engine}
@@ -1488,7 +1488,7 @@ auto MapManager::IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     FO_VERIFY_AND_THROW(!target->IsDestroyed(), "Map transfer target is already destroyed");
 
-    return CheckCritterVisibilityHook(_engine.get(), map.get(), cr.get(), target.get());
+    return CheckCritterVisibilityHook(_engine, map, cr, target);
 }
 
 void MapManager::ProcessVisibleItems(ptr<Critter> cr)
