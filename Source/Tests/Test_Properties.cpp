@@ -1909,6 +1909,40 @@ TEST_CASE("PropertiesRestoreDataRejectsMalformedPayloads")
     }
 }
 
+TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
+{
+    // RestoreAllData's full-data POD records carry (start_pos, len) offsets straight from the blob. A
+    // corrupted or hostile snapshot whose layout-size header still matches the registrator must not be
+    // able to drive an out-of-bounds MemCopy into _podData — the offsets have to be validated against the
+    // POD layout. (The sibling RestoreData(ptrs, sizes) path already size-checks its single POD block;
+    // this is the matching guard for the sparse start_pos/len record format.)
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OobPodRestoreEntity", EngineSideKind::ServerSide, hashes, resolver);
+    registrator.RegisterProperty({"Common", "int32", "A", "Mutable", "Persistent", "PublicSync"});
+    registrator.RegisterProperty({"Common", "int32", "B", "Mutable", "Persistent", "PublicSync"});
+
+    const auto whole = numeric_cast<uint32_t>(registrator.GetWholeDataSize());
+
+    vector<uint8_t> blob;
+    const auto append_u32 = [&blob](uint32_t value) {
+        const auto* bytes = reinterpret_cast<const uint8_t*>(&value);
+        blob.insert(blob.end(), bytes, bytes + sizeof(value));
+    };
+
+    append_u32(whole); // layout-size header — matches the registrator, so the top-level guard passes
+    blob.push_back(uint8_t {0}); // bool: full-data (no overlay) storage mode
+    append_u32(whole); // start_pos: exactly at the end of _podData — out of bounds
+    append_u32(32U); // len: 32 bytes copied from the buffer end, well past the allocation
+    blob.insert(blob.end(), 32, uint8_t {0}); // the matching in-bounds source payload
+    append_u32(0U); // POD record list terminator (start_pos, len) == (0, 0)
+    append_u32(0U);
+    append_u32(0U); // complex property count (this registrator has none)
+
+    Properties restored(&registrator);
+    CHECK_THROWS(restored.RestoreAllData(blob));
+}
+
 TEST_CASE("PropertiesCompareData")
 {
     HashStorage hashes {};

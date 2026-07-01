@@ -214,11 +214,9 @@ void WorkThread::ThreadEntry() noexcept
                     _clearJobs = false;
                 }
 
-                if (_jobs.empty()) {
-                    locker.unlock();
-                    _doneSignal.notify_all();
-                    locker.lock();
-                }
+                locker.unlock();
+                _doneSignal.notify_all();
+                locker.lock();
 
                 while (_paused && !_finish) {
                     _workSignal.wait(locker);

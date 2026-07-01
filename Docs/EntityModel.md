@@ -171,6 +171,8 @@ Entity state is serialized through property data, not by hand-copying entity fie
 
 When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
 
+The binary restore paths (`RestoreData`, `RestoreAllData`) likewise validate the snapshot against the registrator layout before copying: property indices outside the registrator table, oversized blocks, and out-of-bounds POD `(start_pos, len)` sections are rejected with a throw rather than written, so a corrupted or hostile snapshot fails closed instead of overflowing the property storage.
+
 Persistence backends store `AnyData::Document` records. For database commit/recovery details, see [Persistence.md](Persistence.md).
 
 ## Tests to inspect

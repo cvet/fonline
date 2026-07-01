@@ -771,6 +771,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
                 break;
             }
 
+            FO_VERIFY_AND_THROW(start_pos <= _registrator->_wholePodDataSize && len <= _registrator->_wholePodDataSize - start_pos, "Serialized POD data section is outside the property layout bounds", _registrator->GetTypeName(), start_pos, len, _registrator->_wholePodDataSize);
             MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8_t>(len), len);
         }
 
