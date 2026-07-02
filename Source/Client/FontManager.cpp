@@ -388,7 +388,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     {
         image_name = strex(font_path).extract_dir().combine_path(image_name);
 
-        font_data.ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageNormal = _sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type).dyn_cast<AtlasSprite>();
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -399,7 +399,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     // Create bordered instance
     if (!not_bordered) {
-        font_data.ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageBordered = _sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type).dyn_cast<AtlasSprite>();
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);
@@ -502,7 +502,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Load image
     {
-        font_data.ImageNormal = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageNormal = _sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type).dyn_cast<AtlasSprite>();
 
         if (!font_data.ImageNormal) {
             throw FontManagerException("Font image file not found", font_path, image_name);
@@ -513,7 +513,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     // Create bordered instance
     {
-        font_data.ImageBordered = dynamic_ptr_cast<AtlasSprite>(_sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type));
+        font_data.ImageBordered = _sprMngr->LoadSprite(_sprMngr->_hashResolver->ToHashedString(image_name), atlas_type).dyn_cast<AtlasSprite>();
 
         if (!font_data.ImageBordered) {
             throw FontManagerException("Can't load font image twice", font_path, image_name);

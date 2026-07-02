@@ -179,7 +179,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
 
     if (const auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
         auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+        auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;

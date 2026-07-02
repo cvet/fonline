@@ -66,7 +66,7 @@ enum class TransparentEggSlot : uint8_t
     Secondary = 1,
 };
 
-class Sprite : public std::enable_shared_from_this<Sprite>
+class Sprite : public enable_shared_from_this<Sprite>
 {
 public:
     explicit Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset);

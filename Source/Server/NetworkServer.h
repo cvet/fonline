@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
-class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
+class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>
 {
 public:
     using AsyncSendCallback = function<const_span<uint8_t>()>;

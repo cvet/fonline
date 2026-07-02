@@ -95,7 +95,7 @@ auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return std::const_pointer_cast<Sprite>(shared_from_this());
+    return shared_from_this().cast_no_const();
 }
 
 auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
@@ -234,7 +234,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 
     for (int32_t i = 0; i < _dirCount - 1; i++) {
         if (_dirs[i]) {
-            copy->_dirs[i] = dynamic_ptr_cast<SpriteSheet>(_dirs[i]->MakeCopy());
+            copy->_dirs[i] = _dirs[i]->MakeCopy().dyn_cast<SpriteSheet>();
         }
     }
 

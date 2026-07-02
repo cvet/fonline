@@ -104,7 +104,7 @@ void ResourceManager::IndexFiles()
         any_spr = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
     }
 
-    auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+    auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
     _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
@@ -204,7 +204,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
                 if (_animNameResolver->ResolveCritterAnimationFrames(model_name, state_anim, action_anim, pass, flags, ox, oy, anim_name)) {
                     if (!anim_name.empty()) {
-                        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr->LoadSprite(anim_name, AtlasType::MapSprites, true));
+                        anim = _sprMngr->LoadSprite(anim_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
 
                         // Fix by dirs
                         const auto frame_flag = static_cast<AnimFrameFlag>(flags);
@@ -531,13 +531,13 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
     // Try load from fofrm
     {
         const string spr_name = strex("{}{}{}.fofrm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
-        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true));
+        anim = _sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
     }
 
     // Try load fallout frames
     if (!anim) {
         const string spr_name = strex("{}{}{}.frm", shorten_model_name, FRM_IND[state_anim], FRM_IND[action_anim]);
-        anim = dynamic_ptr_cast<SpriteSheet>(_sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true));
+        anim = _sprMngr->LoadSprite(spr_name, AtlasType::MapSprites, true).dyn_cast<SpriteSheet>();
     }
 
     auto nullable_anim = _critterFrames.emplace(FalloutAnimMapId(model_name, state_anim, action_anim), std::move(anim)).first->second.as_nptr();
@@ -670,7 +670,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
     }
 
     shared_ptr<Sprite> loaded_spr = _sprMngr->LoadSprite(model_name, AtlasType::MapSprites);
-    auto model_spr = dynamic_ptr_cast<ModelSprite>(std::move(loaded_spr));
+    auto model_spr = loaded_spr.dyn_cast<ModelSprite>();
 
     if (!model_spr) {
         return nullptr;

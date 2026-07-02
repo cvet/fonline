@@ -170,25 +170,23 @@ public:
         requires(!refcountable<T>)
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        try {
-            return std::make_shared<T>(std::forward<Args>(args)...);
-        }
-        catch (const std::bad_alloc&) {
+        nptr<shared_ptr_storage_block<T>> block = new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...);
+
+        if (!block) {
             ReportBadAlloc("Make shared ptr failed", typeid(T).name(), 1, sizeof(T));
 
-            while (true) {
-                if (!FreeBackupMemoryChunk()) {
-                    ReportAndExit("Failed to allocate shared ptr from backup pool");
-                }
+            while (!block && FreeBackupMemoryChunk()) {
+                block = new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...);
+            }
 
-                try {
-                    return std::make_shared<T>(std::forward<Args>(args)...);
-                }
-                catch (const std::bad_alloc&) { // NOLINT(bugprone-empty-catch)
-                    // Release next block and try again
-                }
+            if (!block) {
+                ReportAndExit("Failed to allocate shared ptr from backup pool");
             }
         }
+
+        nptr<T> obj = block->stored_object();
+        init_shared_from_this_weak(block.get_no_const(), obj.get_no_const());
+        return shared_ptr<T>(block.get_no_const(), obj.get_no_const());
     }
 
     template<typename T>

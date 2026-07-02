@@ -1196,7 +1196,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
     shared_ptr<ModelSprite>& nullable_model_spr = client->DrawCritterModel[instance_index];
 
     if (!nullable_model_spr || client->DrawCritterModelCrType[instance_index] != modelName) {
-        nullable_model_spr = dynamic_ptr_cast<ModelSprite>(client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites));
+        nullable_model_spr = client->SprMngr.LoadSprite(modelName, AtlasType::IfaceSprites).dyn_cast<ModelSprite>();
 
         client->DrawCritterModelCrType[instance_index] = modelName;
         client->DrawCritterModelFailedToLoad[instance_index] = false;

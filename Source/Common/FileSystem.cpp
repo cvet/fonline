@@ -135,7 +135,7 @@ static auto TakeFileBuffer(auto&& buf) -> unique_del_ptr<const uint8_t>
 
     FO_VERIFY_AND_THROW(buf, "File buffer holder is empty");
 
-    function<void(const uint8_t*)> deleter = std::move(buf.get_underlying().get_deleter());
+    function<void(const uint8_t*)> deleter = std::move(buf.get_deleter());
     nptr<const uint8_t> nullable_file_buf = buf.release();
     FO_VERIFY_AND_THROW(nullable_file_buf, "Released file buffer pointer is null");
 

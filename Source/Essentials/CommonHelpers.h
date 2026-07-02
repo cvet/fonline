@@ -76,12 +76,6 @@ template<typename T, typename U>
     return nullptr;
 }
 
-template<typename T, typename U>
-[[nodiscard]] inline auto dynamic_ptr_cast(shared_ptr<U> p) noexcept -> shared_ptr<T>
-{
-    return std::dynamic_pointer_cast<T>(p.get_underlying());
-}
-
 template<typename T>
 [[nodiscard]] inline auto require_refcount_ptr(refcount_nptr<T> value) -> refcount_ptr<T>
 {

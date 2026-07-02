@@ -480,7 +480,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("SharedAndWeakAliasesPropagateConstCorrectly")
     {
-        shared_ptr<PtrDerived> shared {std::make_shared<PtrDerived>(91)};
+        auto shared = SafeAlloc::MakeShared<PtrDerived>(91);
         weak_ptr<PtrDerived> weak = shared;
 
         REQUIRE(shared);
@@ -503,6 +503,101 @@ TEST_CASE("SmartPointers")
 
         CHECK_FALSE(shared);
         CHECK_FALSE(shared.as_nptr());
+        CHECK(weak.use_count() == 0);
+        CHECK_FALSE(weak.lock());
+    }
+
+    SECTION("SharedAndWeakOwnershipIsThreadSafe")
+    {
+        constexpr size_t THREADS_COUNT = 8;
+        constexpr size_t ITERATIONS_COUNT = 20000;
+
+        auto shared = SafeAlloc::MakeShared<PtrDerived>(7);
+        weak_ptr<PtrDerived> weak = shared;
+        std::atomic<size_t> locked_count = 0;
+
+        {
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS_COUNT);
+
+            for (size_t i = 0; i < THREADS_COUNT; i++) {
+                workers.emplace_back([&shared, &weak, &locked_count] {
+                    for (size_t j = 0; j < ITERATIONS_COUNT; j++) {
+                        shared_ptr<PtrDerived> copy = shared;
+                        weak_ptr<PtrDerived> local_weak = copy;
+
+                        if (auto locked = local_weak.lock()) {
+                            locked_count.fetch_add(1, std::memory_order_relaxed);
+                        }
+
+                        ignore_unused(weak.use_count());
+                    }
+                });
+            }
+
+            for (auto& worker : workers) {
+                worker.join();
+            }
+        }
+
+        CHECK(locked_count == THREADS_COUNT * ITERATIONS_COUNT);
+        CHECK(shared.use_count() == 1);
+        CHECK(weak.use_count() == 1);
+
+        shared.reset();
+
+        CHECK(weak.use_count() == 0);
+        CHECK_FALSE(weak.lock());
+    }
+
+    SECTION("SharedOwnershipReleaseRaceDestroysExactlyOnce")
+    {
+        constexpr size_t THREADS_COUNT = 8;
+        constexpr size_t ITERATIONS_COUNT = 5000;
+
+        std::atomic<size_t> destroyed_count = 0;
+
+        struct RaceValue
+        {
+            explicit RaceValue(std::atomic<size_t>& counter) :
+                Counter {&counter}
+            {
+            }
+            ~RaceValue() { Counter->fetch_add(1, std::memory_order_relaxed); }
+            RaceValue(const RaceValue&) = delete;
+            RaceValue(RaceValue&&) noexcept = delete;
+            auto operator=(const RaceValue&) = delete;
+            auto operator=(RaceValue&&) noexcept = delete;
+
+            ptr<std::atomic<size_t>> Counter;
+        };
+
+        auto shared = SafeAlloc::MakeShared<RaceValue>(destroyed_count);
+        weak_ptr<RaceValue> weak = shared;
+
+        {
+            std::vector<std::thread> workers;
+            workers.reserve(THREADS_COUNT);
+
+            for (size_t i = 0; i < THREADS_COUNT; i++) {
+                workers.emplace_back([&weak] {
+                    for (size_t j = 0; j < ITERATIONS_COUNT; j++) {
+                        if (auto locked = weak.lock()) {
+                            shared_ptr<RaceValue> copy = locked;
+                            ignore_unused(copy);
+                        }
+                    }
+                });
+            }
+
+            shared.reset(); // drop the owning reference while workers race lock()
+
+            for (auto& worker : workers) {
+                worker.join();
+            }
+        }
+
+        CHECK(destroyed_count == 1);
         CHECK(weak.use_count() == 0);
         CHECK_FALSE(weak.lock());
     }

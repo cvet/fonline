@@ -99,7 +99,7 @@ TEST_CASE("CommonHelpers")
         auto derived = SafeAlloc::MakeShared<TestDerived>(77);
         shared_ptr<TestBase> base = derived;
 
-        auto casted = dynamic_ptr_cast<TestDerived>(base);
+        auto casted = base.dyn_cast<TestDerived>();
         REQUIRE(casted);
         CHECK(casted->Value == 77);
     }
