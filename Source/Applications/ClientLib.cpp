@@ -68,8 +68,7 @@ static void RunClientRuntimeAbi(int32_t argc, char** argv, ClientRuntimeResult* 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<CommandLineArg> args_holder = CommandLineArgs::Make(argc, argv);
-    const CommandLineArgs args {args_holder};
+    const CommandLineArgs args {argc, argv};
     RunClientRuntime(args, runtime_result);
 }
 

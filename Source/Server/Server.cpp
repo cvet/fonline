@@ -4559,13 +4559,13 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
         return std::nullopt;
     }
 
-    auto* map = dynamic_cast<Map*>(parent.get());
+    auto map = parent.dyn_cast<Map>();
     FO_STRONG_ASSERT(!parent || !!map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
     FO_STRONG_ASSERT(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
 
     try {
-        if (map != nullptr && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map);
+        if (map && !cr->GetIsAttached()) {
+            ProcessCritterMovingBySteps(cr, map.as_ptr());
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;

@@ -739,11 +739,11 @@ private:
 
     auto CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle>;
     void EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size);
-    [[nodiscard]] auto IsMainWindowActuallyFullscreen() const -> bool;
-    [[nodiscard]] auto IsMainWindowDisplayModeSize(isize32 size) const -> bool;
-    [[nodiscard]] auto GetMainWindowBackbufferSize() const -> isize32;
+    auto IsMainWindowActuallyFullscreen() const -> bool;
+    auto IsMainWindowDisplayModeSize(isize32 size) const -> bool;
+    auto GetMainWindowBackbufferSize() const -> isize32;
     void SyncMainWindowBackbufferSize();
-    [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
+    auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
     auto ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32;
     auto GetTouchElapsedMs(uint64_t start_time, uint64_t end_time) const -> uint32_t;
     auto GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t;

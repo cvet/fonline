@@ -238,7 +238,9 @@ static auto MakeErrorStackTrace(const std::exception& ex) noexcept -> CatchedSta
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (nptr<const BaseEngineException> nullable_base_engine_ex = dynamic_cast<const BaseEngineException*>(&ex); nullable_base_engine_ex) {
+    nptr<const std::exception> ex_ptr = &ex;
+
+    if (auto nullable_base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
         auto base_engine_ex = nullable_base_engine_ex.as_ptr();
         return CatchedStackTraceData {base_engine_ex->stack_trace(), GetStackTrace()};
     }

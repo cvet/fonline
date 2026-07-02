@@ -48,8 +48,7 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const vector<CommandLineArg> args_holder = CommandLineArgs::Make(numeric_cast<int32_t>(argc), argv);
-    const CommandLineArgs args {args_holder};
+    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {

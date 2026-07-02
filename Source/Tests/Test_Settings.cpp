@@ -94,7 +94,7 @@ TEST_CASE("Settings")
 
     SECTION("CommandLineArgsMakeAcceptsEmptyNativeArgv")
     {
-        const vector<CommandLineArg> args = CommandLineArgs::Make(0, nullptr);
+        const CommandLineArgs args {0, nullptr};
 
         CHECK(args.empty());
     }
@@ -118,8 +118,7 @@ TEST_CASE("Settings")
         char arg4[] = "RedactionProbe";
         char* argv[] = {arg0, arg1, arg2, arg3, arg4};
 
-        const vector<CommandLineArg> args_holder = CommandLineArgs::Make(5, argv);
-        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+        settings.ApplyCommandLine(CommandLineArgs {5, argv});
 
         // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
         // the credential value itself must never reach the log.
@@ -144,12 +143,11 @@ TEST_CASE("Settings")
         char arg2[] = "+Tag";
         char* argv[] = {arg0, arg1, arg2};
 
-        const vector<CommandLineArg> args_holder = CommandLineArgs::Make(3, argv);
-        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag");
 
         // A second pass over the same object appends again — what the two-pass flow used to do.
-        settings.ApplyCommandLine(CommandLineArgs {args_holder});
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag Tag");
     }
 

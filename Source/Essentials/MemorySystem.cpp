@@ -99,7 +99,6 @@ extern void* CRTDECL operator new(std::size_t size) noexcept(false)
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
@@ -107,7 +106,7 @@ extern void* CRTDECL operator new(std::size_t size) noexcept(false)
 #else
     p = rpmalloc(size);
 #endif
-    if (!p) {
+    if (p == nullptr) {
         throw std::bad_alloc();
     }
     return p;
@@ -118,7 +117,6 @@ extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
@@ -126,7 +124,7 @@ extern void* CRTDECL operator new[](std::size_t size) noexcept(false)
 #else
     p = rpmalloc(size);
 #endif
-    if (!p) {
+    if (p == nullptr) {
         throw std::bad_alloc();
     }
     return p;
@@ -137,7 +135,6 @@ extern void* CRTDECL operator new(std::size_t size, const std::nothrow_t& /*tag*
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
@@ -153,7 +150,6 @@ extern void* CRTDECL operator new[](std::size_t size, const std::nothrow_t& /*ta
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpmalloc(size);
@@ -241,7 +237,6 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noex
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -249,7 +244,7 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align) noex
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
-    if (!p) {
+    if (p == nullptr) {
         throw std::bad_alloc();
     }
     return p;
@@ -260,7 +255,6 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) no
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -268,7 +262,7 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align) no
 #else
     p = rpaligned_alloc(static_cast<size_t>(align), size);
 #endif
-    if (!p) {
+    if (p == nullptr) {
         throw std::bad_alloc();
     }
     return p;
@@ -279,7 +273,6 @@ extern void* CRTDECL operator new(std::size_t size, std::align_val_t align, cons
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -295,7 +288,6 @@ extern void* CRTDECL operator new[](std::size_t size, std::align_val_t align, co
     FO_NO_STACK_TRACE_ENTRY();
 
     void* p = nullptr;
-
 #if FO_TRACY
     tracy::InitRpmalloc();
     p = tracy::rpaligned_alloc(static_cast<size_t>(align), size);
@@ -411,9 +403,7 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto make_backup_array = []<typename T>(size_t count) -> unique_arr_ptr<T> {
-        FO_STACK_TRACE_ENTRY();
-
+    const auto make_backup_array = []<typename T>(size_t count) -> unique_arr_ptr<T> { //
         return unique_arr_ptr<T> {new T[count]()};
     };
 

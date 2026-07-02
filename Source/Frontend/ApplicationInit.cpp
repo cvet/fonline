@@ -221,21 +221,21 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         for (size_t i = 0; i < args.size(); i++) {
             auto arg = args.Get(i);
 
-            if (!arg) {
+            if (arg.empty()) {
                 continue;
             }
 
-            const string_view arg_view = strex(arg.get()).trim().strv();
+            const string_view arg_view = strex(arg).trim().strv();
 
             if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
                 auto next_arg = args.Get(i + 1);
 
-                if (!next_arg || CommandLineArgs::IsOption(next_arg)) {
+                if (next_arg.empty() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
-                config_to_apply = strex(next_arg.get()).trim().extract_file_name();
-                config_to_apply_dir = strex(next_arg.get()).trim().extract_dir();
+                config_to_apply = strex(next_arg).trim().extract_file_name();
+                config_to_apply_dir = strex(next_arg).trim().extract_dir();
             }
         }
 
@@ -271,20 +271,20 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         for (size_t i = 0; i < args.size(); i++) {
             auto arg = args.Get(i);
 
-            if (!arg) {
+            if (arg.empty()) {
                 continue;
             }
 
-            const string_view arg_view = strex(arg.get()).trim().strv();
+            const string_view arg_view = strex(arg).trim().strv();
 
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
                 auto next_arg = args.Get(i + 1);
 
-                if (!next_arg || CommandLineArgs::IsOption(next_arg)) {
+                if (next_arg.empty() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 
-                sub_configs_to_apply.emplace_back(strex(next_arg.get()).trim());
+                sub_configs_to_apply.emplace_back(strex(next_arg).trim());
             }
         }
 

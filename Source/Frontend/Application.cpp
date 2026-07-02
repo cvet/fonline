@@ -495,7 +495,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         throw AppInitException("No renderer selected");
     }
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+    auto active_renderer = GetActiveRenderer(_ctx);
 
     // Determine main window size
 #if FO_IOS || FO_ANDROID
@@ -567,7 +567,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         }
     }
 
-    nptr<WindowInternalHandle> main_window_handle = MainWindow._windowHandle;
+    auto main_window_handle = MainWindow._windowHandle;
     active_renderer->Init(Settings, main_window_handle);
 
     if (_ctx->ActiveRendererType != RenderType::Null && MainWindow.IsFullscreen()) {
@@ -707,7 +707,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     FO_STACK_TRACE_ENTRY();
 
     if (!_imguiEffect && resources.IsFileExists(Settings.ImGuiDefaultEffect)) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+        auto active_renderer = GetActiveRenderer(_ctx);
         _imguiEffect = active_renderer->CreateEffect(EffectUsage::ImGui, Settings.ImGuiDefaultEffect, [&](string_view path) -> string {
             const auto file = resources.ReadFile(path);
             FO_VERIFY_AND_THROW(file, "ImGui_Default effect not found");
@@ -819,7 +819,7 @@ void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size
     }
 
     if (recreate_texture) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+        auto active_renderer = GetActiveRenderer(_ctx);
         window->_virtualRenderTex = active_renderer->CreateTexture(desired, true, true);
         auto virtual_render_tex = window->_virtualRenderTex.as_ptr();
         virtual_render_tex->FlippedHeight = active_renderer->IsRenderTargetFlipped();
@@ -892,7 +892,7 @@ void Application::SyncMainWindowBackbufferSize()
     const isize32 backbuffer_size = GetMainWindowBackbufferSize();
 
     if (backbuffer_size.width > 0 && backbuffer_size.height > 0) {
-        ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+        auto active_renderer = GetActiveRenderer(_ctx);
         active_renderer->OnResizeWindow(backbuffer_size);
     }
 }
@@ -958,7 +958,7 @@ void Application::EndWindowRender()
     }
 
     const bool was_virtual = _currentRenderingWindow->_isVirtual;
-    nptr<RenderTexture> prev = _previousRenderTarget;
+    auto prev = _previousRenderTarget;
 
     _previousRenderTarget = nullptr;
     _currentRenderingWindow = nullptr;
@@ -979,7 +979,7 @@ auto Application::TranslateHostPosToActiveWindow(ipos32 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AppWindow> window = _currentRenderingWindow;
+    auto window = _currentRenderingWindow;
 
     if (!window) {
         window = _activeWindow;
@@ -1014,7 +1014,7 @@ auto Application::TranslateActiveWindowPosToHost(ipos32 pos) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AppWindow> window = _currentRenderingWindow;
+    auto window = _currentRenderingWindow;
 
     if (!window) {
         window = _activeWindow;
@@ -1193,7 +1193,7 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
     }
 
     ptr<Application> app = const_cast<Application*>(this);
-    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx);
+    auto active_renderer = GetActiveRenderer(GetApp()->_ctx);
     return WindowPosToScreenPos(active_renderer, {Settings.ScreenWidth, Settings.ScreenHeight}, {window_x, window_y});
 }
 
@@ -1575,7 +1575,7 @@ void Application::BeginFrame()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+    auto active_renderer = GetActiveRenderer(_ctx);
     active_renderer->ClearRenderTarget(_ctx->ClearColor);
 
     ImGuiIO& io = ImGui::GetIO();
@@ -1583,7 +1583,7 @@ void Application::BeginFrame()
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
     const auto host_pos_inside_active_virtual = [&](ipos32 host_pos) -> bool {
-        nptr<AppWindow> aw = _activeWindow;
+        auto aw = _activeWindow;
 
         if (!aw || !aw->_isVirtual) {
             return false;
@@ -2244,7 +2244,7 @@ void Application::EndFrame()
     }
 
     FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
-    ptr<Renderer> active_renderer = GetActiveRenderer(_ctx);
+    auto active_renderer = GetActiveRenderer(_ctx);
 
     // Skip unprocessed events
     _ctx->EventsQueue.clear();
@@ -2733,7 +2733,7 @@ auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_dept
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateTexture(size, linear_filtered, with_depth);
 }
 
@@ -2755,7 +2755,7 @@ void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
         }
     }
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->SetRenderTarget(tex);
     _app->_ctx->RenderTargetTex = tex;
 }
@@ -2771,7 +2771,7 @@ void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stenc
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->ClearRenderTarget(color, depth, stencil);
 }
 
@@ -2779,7 +2779,7 @@ void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->EnableScissor(rect);
 }
 
@@ -2787,7 +2787,7 @@ void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->DisableScissor();
 }
 
@@ -2795,7 +2795,7 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateDrawBuffer(is_static);
 }
 
@@ -2803,7 +2803,7 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEf
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     return active_renderer->CreateEffect(usage, name, loader);
 }
 
@@ -2835,7 +2835,7 @@ void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+    auto active_renderer = GetActiveRenderer(_app->_ctx);
     active_renderer->SetOrthoDepthRange(nearp, farp);
 }
 
@@ -2881,7 +2881,7 @@ auto AppInput::GetMousePosition() const -> ipos32
     }
 
     ptr<Application> app {_app.get_no_const()};
-    ptr<Renderer> active_renderer = GetActiveRenderer(GetApp()->_ctx);
+    auto active_renderer = GetActiveRenderer(GetApp()->_ctx);
     const auto host_pos = WindowPosToScreenPos(active_renderer, {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight}, {iround<int32_t>(x), iround<int32_t>(y)});
     return GetApp()->TranslateHostPosToActiveWindow(host_pos);
 }
@@ -2904,7 +2904,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         const auto host_pos = _app->TranslateActiveWindowPosToHost(pos);
 
         if (relative_to) {
-            ptr<Renderer> active_renderer = GetActiveRenderer(_app->_ctx);
+            auto active_renderer = GetActiveRenderer(_app->_ctx);
             const auto window_pos = ScreenPosToWindowPos(active_renderer, {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight}, host_pos);
 
             if (nptr<WindowInternalHandle> handle = relative_to->GetWindowHandleForInput(); handle) {

@@ -107,46 +107,32 @@ class CommandLineArgs
 {
 public:
     CommandLineArgs() = default;
-    // ReSharper disable once CppNonExplicitConvertingConstructor
-    CommandLineArgs(const_span<CommandLineArg> args) noexcept :
-        _args {args}
+    explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
     {
-    }
-
-    [[nodiscard]] static auto Make(int32_t argc, nptr<char*> argv) -> vector<CommandLineArg>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
         const size_t arg_count = numeric_cast<size_t>(argc);
         FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
 
-        vector<CommandLineArg> args(arg_count);
+        _args.resize(arg_count);
 
         for (size_t i = 0; i < arg_count; ++i) {
-            args[i] = argv[i];
+            _args[i] = argv[i];
         }
-
-        return args;
     }
-
-    [[nodiscard]] static auto IsOption(nptr<const char> nullable_arg) noexcept -> bool
+    explicit CommandLineArgs(const_span<CommandLineArg> args) noexcept :
+        _args(args.begin(), args.end())
     {
-        if (!nullable_arg) {
-            return false;
-        }
-
-        auto arg = nullable_arg.as_ptr();
-        return *arg == '-';
     }
 
-    [[nodiscard]] auto Get(size_t index) const noexcept -> nptr<const char> { return index < _args.size() ? _args[index] : nullptr; }
+    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
+    [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
     [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
     [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
     [[nodiscard]] auto end() const noexcept { return _args.end(); }
 
 private:
-    const_span<CommandLineArg> _args {};
+    vector<CommandLineArg> _args {};
 };
 
 // Custom any as string
