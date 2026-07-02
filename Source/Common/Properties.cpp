@@ -1436,7 +1436,7 @@ auto Properties::GetRawDataSize(ptr<const Property> prop) const noexcept -> size
     }
 }
 
-void Properties::CopyRawData(const Property* prop, PropertyRawData& prop_data) const noexcept
+void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1458,7 +1458,7 @@ void Properties::CopyRawData(const Property* prop, PropertyRawData& prop_data) c
     prop_data.Set(raw_data.data(), raw_data.size());
 }
 
-auto Properties::IsRawDataEqual(const Property* prop, span<const uint8_t> raw_data) const noexcept -> bool
+auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1488,7 +1488,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
     if (_baseProps) {
         PropertyRawData base_prop_data;
-        _baseProps->CopyRawData(prop.get(), base_prop_data);
+        _baseProps->CopyRawData(prop, base_prop_data);
         const auto base_raw_data = span<const uint8_t>(base_prop_data.GetPtrAs<uint8_t>().get(), base_prop_data.GetSize());
 
         if (RawDataEqual(raw_data, base_raw_data)) {
@@ -2121,7 +2121,7 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     }
 
     if (!prop->IsVirtual()) {
-        if (IsRawDataEqual(prop.get(), {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()})) {
+        if (IsRawDataEqual(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()})) {
             return;
         }
     }

@@ -1250,7 +1250,7 @@ TEST_CASE("PropertiesRawDataCopy")
         props.SetValue<string>(name_prop, first_value);
 
         PropertyRawData copied_data;
-        props.CopyRawData(name_prop.get(), copied_data);
+        props.CopyRawData(name_prop, copied_data);
 
         props.SetValue<string>(name_prop, second_value);
 
@@ -1327,7 +1327,7 @@ TEST_CASE("PropertiesRawDataCopy")
         PropertyRawData overlay_name_copy;
         derived.CopyRawData(name_prop, overlay_name_copy);
         REQUIRE(overlay_name_copy.GetSize() == overlay_name.size());
-        CHECK(string_view(overlay_name_copy.GetPtrAs<char>(), overlay_name_copy.GetSize()) == overlay_name);
+        CHECK(string_view(overlay_name_copy.GetPtrAs<char>().get(), overlay_name_copy.GetSize()) == overlay_name);
 
         derived.SetRawData(name_prop, string_bytes(overlay_name));
         CHECK(derived.GetValue<string>(name_prop) == overlay_name);
@@ -1354,7 +1354,7 @@ TEST_CASE("PropertiesRawDataCopy")
 
         while (!writer_done.load(std::memory_order_acquire)) {
             PropertyRawData copied_data;
-            props.CopyRawData(name_prop.get(), copied_data);
+            props.CopyRawData(name_prop, copied_data);
 
             const size_t size = copied_data.GetSize();
             const bool first_size = size == first_value.size();
@@ -2028,7 +2028,7 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
     // this is the matching guard for the sparse start_pos/len record format.)
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("OobPodRestoreEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("OobPodRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
     registrator.RegisterProperty({"Common", "int32", "A", "Mutable", "Persistent", "PublicSync"});
     registrator.RegisterProperty({"Common", "int32", "B", "Mutable", "Persistent", "PublicSync"});
 
@@ -2279,9 +2279,9 @@ TEST_CASE("PropertiesOverlayIndexMaintenance")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("OverlayIndexEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("OverlayIndexEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    vector<const Property*> props;
+    vector<ptr<const Property>> props;
     props.reserve(20);
 
     for (int32_t i = 0; i < 20; i++) {
@@ -2320,11 +2320,11 @@ TEST_CASE("PropertiesOverlayDataAllowsUnalignedPackedEntries")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("OverlayPackedEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("OverlayPackedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
-    const auto* hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
-    const auto* wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+    const auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    const auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
 
     const hstring base_hash = hashes.ToHashedString("base-hash");
     const hstring overlay_hash = hashes.ToHashedString("overlay-hash");
@@ -2378,10 +2378,10 @@ TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("FullRestoreEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("FullRestoreEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    const auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    const auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
     Properties empty_complex(&registrator);
 
@@ -2443,13 +2443,13 @@ TEST_CASE("PropertiesApplyFromTextErrorsAndSkips")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("ApplyTextEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("ApplyTextEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-    const auto* client_only_prop = registrator.RegisterProperty({"Client", "int32", "ClientOnlyValue", "Mutable"});
+    const auto value_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+    const auto client_only_prop = registrator.RegisterProperty({"Client", "int32", "ClientOnlyValue", "Mutable"});
     (void)client_only_prop;
-    const auto* virtual_prop = registrator.RegisterProperty({"Common", "int32", "VirtualValue", "Mutable", "Virtual"});
-    const auto* temp_prop = registrator.RegisterProperty({"Common", "int32", "TempValue", "Mutable", "NoSync"});
+    const auto virtual_prop = registrator.RegisterProperty({"Common", "int32", "VirtualValue", "Mutable", "Virtual"});
+    const auto temp_prop = registrator.RegisterProperty({"Common", "int32", "TempValue", "Mutable", "NoSync"});
 
     Properties props(&registrator);
 
@@ -3070,15 +3070,15 @@ TEST_CASE("PropertyRegistratorMetadataBranches")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("MetadataEntity", EngineSideKind::ServerSide, hashes, resolver);
+    PropertyRegistrator registrator("MetadataEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
-    const auto* high_group_prop = registrator.RegisterProperty({"Common", "int32", "HighPriority", "Mutable", "Persistent", "PublicSync", "Group", "=", "Main", "^", "10"});
-    const auto* low_group_prop = registrator.RegisterProperty({"Common", "int32", "LowPriority", "Mutable", "Persistent", "PublicSync", "Group", "=", "Main", "^", "-5", "Max", "=", "100", "Min", "=", "-100", "Quest", "=", "QuestA"});
-    const auto* component_prop = registrator.RegisterProperty({"Common", "bool", "Marker", "Component"});
-    const auto* component_value_prop = registrator.RegisterProperty({"Common", "int32", "Marker.Step", "Mutable", "Persistent", "PublicSync"});
-    const auto* core_prop = registrator.RegisterProperty({"Common", "int32", "CoreValue", "CoreProperty", "Persistent", "SharedProperty"});
-    const auto* resource_prop = registrator.RegisterProperty({"Common", "hstring", "ResourceHash", "Mutable", "Persistent", "PublicSync", "ModifiableByClient", "ModifiableByAnyClient", "Historical", "Resource", "ScriptFuncType", "=", "ResourceCallback"});
-    const auto* virtual_proto_prop = registrator.RegisterProperty({"Common", "ProtoItem", "VirtualProto", "Mutable", "Virtual", "NullGetterForProto", "Nullable"});
+    const auto high_group_prop = registrator.RegisterProperty({"Common", "int32", "HighPriority", "Mutable", "Persistent", "PublicSync", "Group", "=", "Main", "^", "10"});
+    const auto low_group_prop = registrator.RegisterProperty({"Common", "int32", "LowPriority", "Mutable", "Persistent", "PublicSync", "Group", "=", "Main", "^", "-5", "Max", "=", "100", "Min", "=", "-100", "Quest", "=", "QuestA"});
+    const auto component_prop = registrator.RegisterProperty({"Common", "bool", "Marker", "Component"});
+    const auto component_value_prop = registrator.RegisterProperty({"Common", "int32", "Marker.Step", "Mutable", "Persistent", "PublicSync"});
+    const auto core_prop = registrator.RegisterProperty({"Common", "int32", "CoreValue", "CoreProperty", "Persistent", "SharedProperty"});
+    const auto resource_prop = registrator.RegisterProperty({"Common", "hstring", "ResourceHash", "Mutable", "Persistent", "PublicSync", "ModifiableByClient", "ModifiableByAnyClient", "Historical", "Resource", "ScriptFuncType", "=", "ResourceCallback"});
+    const auto virtual_proto_prop = registrator.RegisterProperty({"Common", "ProtoItem", "VirtualProto", "Mutable", "Virtual", "NullGetterForProto", "Nullable"});
 
     const auto groups = registrator.GetPropertyGroups();
     REQUIRE(groups.contains("Main"));

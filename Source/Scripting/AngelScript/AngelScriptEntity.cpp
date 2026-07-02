@@ -323,10 +323,8 @@ static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
     }
     else {
         const auto& props = entity_ptr->GetProperties();
-
         props.ValidateForRawData(prop);
-
-        props.CopyRawData(prop.get(), prop_data);
+        props.CopyRawData(prop, prop_data);
     }
 
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();

@@ -310,11 +310,11 @@ TEST_CASE("NetBufferAdversarial")
         const vector<uint8_t> a {1, 2, 3, 4};
         const vector<uint8_t> b {};
         const vector<uint8_t> c {9, 9, 9};
-        vector<const uint8_t*> ptrs {a.data(), b.data(), c.data()};
+        vector<nptr<const uint8_t>> ptrs {a.data(), b.data(), c.data()};
         vector<uint32_t> sizes {static_cast<uint32_t>(a.size()), static_cast<uint32_t>(b.size()), static_cast<uint32_t>(c.size())};
 
         NetOutBuffer out {16};
-        out.WritePropsData(&ptrs, &sizes);
+        out.WritePropsData(ptrs, sizes);
 
         NetInBuffer in {16};
         in.AddData(out.GetData());

@@ -324,10 +324,10 @@ public:
     void ApplyPropertyFromText(ptr<const Property> prop, string_view text);
     void StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashes) const;
     void RestoreAllData(const vector<uint8_t>& all_data);
-    [[nodiscard]] auto StoreData(bool with_protected) const -> StoredData;
+    auto StoreData(bool with_protected) const -> StoredData;
     void RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes);
     void RestoreData(const vector<vector<uint8_t>>& all_data);
-    void CopyRawData(const Property* prop, PropertyRawData& prop_data) const noexcept;
+    void CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept;
     void SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept;
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value);
@@ -404,7 +404,7 @@ public:
 private:
     auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
     void ReleaseOverlayEntryIndex() noexcept;
-    [[nodiscard]] auto IsRawDataEqual(const Property* prop, span<const uint8_t> raw_data) const noexcept -> bool;
+    auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
 
     ptr<const PropertyRegistrator> _registrator;
     nptr<const Properties> _baseProps {};
