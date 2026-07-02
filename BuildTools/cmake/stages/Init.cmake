@@ -28,8 +28,6 @@ DeclareValueOptions(
 	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
 	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
-	FO_MANAGED_MSBUILD "Path to MSBuild executable for Managed script assemblies" ""
-	FO_MANAGED_TARGET_FRAMEWORK "Target framework for Managed script assemblies" "net10.0"
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")

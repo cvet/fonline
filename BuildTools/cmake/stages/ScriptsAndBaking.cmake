@@ -22,14 +22,6 @@ if(TARGET ${FO_DEV_NAME}_Baker)
     SetValue(foBakerDependency ${FO_DEV_NAME}_Baker)
 endif()
 
-# Managed scripting environment shared by the managed script baker and resource baking
-if(FO_MANAGED_SCRIPTING AND NOT FO_MANAGED_ASSEMBLIES)
-    AppendList(FO_MANAGED_ASSEMBLIES FOnline)
-endif()
-string(REPLACE ";" "~" foManagedAssembliesEnv "${FO_MANAGED_ASSEMBLIES}")
-string(REPLACE ";" "~" foManagedReferencesEnv "${FO_MANAGED_REFERENCES}")
-string(REPLACE ";" "~" foManagedSourceEnv "${FO_MANAGED_SOURCE}")
-SetValue(foManagedProjectDir "${FO_OUTPUT_PATH}/Scripts/Managed")
 SetValue(foManagedScriptBakerCommand "${FO_DEV_NAME}_ManagedScriptBaker")
 SetValue(foManagedScriptBakerDependency "")
 
@@ -37,16 +29,6 @@ if(TARGET ${FO_DEV_NAME}_ManagedScriptBaker)
     SetValue(foManagedScriptBakerCommand "$<TARGET_FILE:${FO_DEV_NAME}_ManagedScriptBaker>")
     SetValue(foManagedScriptBakerDependency ${FO_DEV_NAME}_ManagedScriptBaker)
 endif()
-
-SetValue(foManagedBakingEnv
-    ${CMAKE_COMMAND} -E env
-    "FO_MANAGED_ASSEMBLIES=${foManagedAssembliesEnv}"
-    "FO_MANAGED_REFERENCES=${foManagedReferencesEnv}"
-    "FO_MANAGED_SOURCE=${foManagedSourceEnv}"
-    "FO_MANAGED_MSBUILD=${FO_MANAGED_MSBUILD}"
-    "FO_MANAGED_TARGET_FRAMEWORK=${FO_MANAGED_TARGET_FRAMEWORK}"
-    "FO_MANAGED_PROJECT_NAME=${FO_NICE_NAME}"
-    "FO_MANAGED_PROJECT_DIR=${foManagedProjectDir}")
 
 if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MANAGED_SCRIPTING)
     # Compile AngelScript scripts
@@ -64,23 +46,18 @@ if(FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MANAGED_SCRIPTING)
     # Runs the standalone ManagedScriptBaker app, so the managed project environment can be
     # regenerated without a full resource bake (usable as a pre-build / manual task step).
     if(FO_MANAGED_SCRIPTING)
-        SetValue(compileManagedScripts ${foManagedBakingEnv} ${foManagedScriptBakerCommand} ${foMainConfigArgs})
+        SetValue(compileManagedScripts ${foManagedScriptBakerCommand} ${foMainConfigArgs})
 
         AddCommandTarget(CompileManagedScripts
             COMMAND_ARGS COMMAND ${compileManagedScripts}
             DEPENDS ForceCodeGeneration ${foManagedScriptBakerDependency}
-            SOURCES ${FO_MANAGED_SOURCE_FILES}
             WORKING_DIRECTORY ${FO_OUTPUT_PATH}
             COMMENT "Generate and bake Managed scripts")
     endif()
 endif()
 
 # Baking
-if(FO_MANAGED_SCRIPTING)
-    SetValue(bakeResources ${foManagedBakingEnv} ${foBakerCommand} ${foMainConfigArgs})
-else()
-    SetValue(bakeResources ${foBakerCommand} ${foMainConfigArgs})
-endif()
+SetValue(bakeResources ${foBakerCommand} ${foMainConfigArgs})
 SetValue(resourceBuildHashCommand
     ${CMAKE_COMMAND}
     -DHASH_FILE="${FO_OUTPUT_PATH}/Baking/Resources.build-hash"

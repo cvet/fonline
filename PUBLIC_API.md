@@ -108,9 +108,6 @@ CMake contributions included to main CMakeLists.txt scope.
 * AddResources packName dir(s)
 * AddRawResources dir(s)
 * AddNativeSource pathPattern(s)
-* AddManagedAssembly assembly
-* AddManagedReference assembly target ref(s)
-* AddManagedSource assembly target pathPattern(s)
 * CreatePackage package config debug
 * AddToPackage package binary platform arch packType [customConfig]
 
