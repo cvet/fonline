@@ -130,8 +130,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring prot
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
         }
 
-        ptr<const Properties> props_ptr = &props_;
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, props_ptr);
+        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, protoId, count, &props_);
         return item.get_no_const();
     }
 
@@ -159,8 +158,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoIte
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
         }
 
-        ptr<const Properties> props_ptr = &props_;
-        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, props_ptr);
+        auto item = self->GetEngine()->ItemMngr.CreateItemOnHex(self, hex, proto->GetProtoId(), count, &props_);
         return item.get_no_const();
     }
 
@@ -941,8 +939,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    ptr<const Properties> props_ptr = &props_;
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, props_ptr, self, hex, dir);
+    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
     return cr.get_no_const();
 }
 
@@ -962,8 +959,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
     }
 
-    ptr<const Properties> props_ptr = &props_;
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), props_ptr, self, hex, dir);
+    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
     return cr.get_no_const();
 }
 
@@ -990,8 +986,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    ptr<const Properties> props_ptr = &props_;
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, props_ptr, self, hex, dir);
+    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(protoId, &props_, self, hex, dir);
     return cr.get_no_const();
 }
 
@@ -1011,8 +1006,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    ptr<const Properties> props_ptr = &props_;
-    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), props_ptr, self, hex, dir);
+    auto cr = self->GetEngine()->CrMngr.CreateCritterOnMap(proto->GetProtoId(), &props_, self, hex, dir);
     return cr.get_no_const();
 }
 

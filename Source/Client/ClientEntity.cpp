@@ -46,8 +46,7 @@ ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const Prope
     _name = GetTypeName();
 
     if (_id) {
-        ptr<ClientEntity> entity = this;
-        _engine->RegisterEntity(entity);
+        _engine->RegisterEntity(this);
         _registered = true;
     }
 }
@@ -62,8 +61,7 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
     _id = id;
 
     if (register_entity) {
-        ptr<ClientEntity> entity = this;
-        _engine->RegisterEntity(entity);
+        _engine->RegisterEntity(this);
         _registered = true;
     }
 }
@@ -84,8 +82,7 @@ void ClientEntity::DestroySelf()
     OnDestroySelf();
 
     if (_registered) {
-        ptr<ClientEntity> entity = this;
-        _engine->UnregisterEntity(entity);
+        _engine->UnregisterEntity(this);
         _registered = false;
     }
 

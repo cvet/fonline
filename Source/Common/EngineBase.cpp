@@ -177,10 +177,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    ptr<NameResolver> name_resolver = this;
-    unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
-    ptr<PropertyRegistrator> registrator = registrator_holder;
+    auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc;
     desc.Exported = exported;
@@ -188,7 +185,6 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     desc.HasProtos = has_protos;
     desc.HasStatics = has_statics;
     desc.HasAbstract = has_abstract;
-    desc.PropRegistrator = std::move(registrator_holder);
 
     const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -221,7 +217,9 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         type->IsSingleton = true;
     }
 
-    return registrator;
+    entry.first->second.PropRegistrator = std::move(registrator);
+
+    return entry.first->second.PropRegistrator.as_ptr();
 }
 
 auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrator>
@@ -234,15 +232,12 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    ptr<NameResolver> name_resolver = this;
-    unique_ptr<PropertyRegistrator> registrator_holder = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, hash_resolver, name_resolver);
-    ptr<PropertyRegistrator> registrator = registrator_holder;
+    auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc;
     desc.Exported = exported;
     desc.HasProtos = true;
-    desc.PropRegistrator = std::move(registrator_holder);
+    desc.PropRegistrator = std::move(registrator);
 
     const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -253,7 +248,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     RegisterBaseType(name);
 
-    return registrator;
+    return entry.first->second.PropRegistrator.as_ptr();
 }
 
 void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
@@ -395,9 +390,7 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
     FO_VERIFY_AND_THROW(ref_type.FieldsRegistrator == nullptr, "RefType layout registration found an existing fields registrator", name);
     FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrators.count(string(name)) == 0, "Dynamic RefType registrator is already registered", name);
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    ptr<NameResolver> name_resolver = this;
-    unique_ptr<PropertyRegistrator> fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, hash_resolver, name_resolver);
+    auto fields_registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(strex("{}RefType", name), _side, &Hashes, this);
 
     for (const auto& field_tokens : layout) {
         FO_VERIFY_AND_THROW(field_tokens.size() >= 2, "RefType field needs at least name and type tokens", name);
@@ -883,7 +876,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
         }
 
         tokens_len += 2;
-        shared_ptr<vector<ComplexTypeDesc>> args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        auto args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
 
         while (true) {
             const bool is_first_arg = tokens_len == 2; // First argument is return type

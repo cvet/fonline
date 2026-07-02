@@ -59,7 +59,7 @@ int main(int argc, char** argv)
 
         {
             ptr<GlobalSettings> settings = &GetApp()->Settings;
-            refcount_ptr<ServerEngine> server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {10});

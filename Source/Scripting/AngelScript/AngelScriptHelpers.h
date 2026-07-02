@@ -284,8 +284,7 @@ namespace aswrap
             return std::bit_cast<void*>(std::addressof(value));
         }
         else {
-            ptr<void> return_address = cast_to_void(std::addressof(value));
-            return ReturnGenericAddress(return_address);
+            return ReturnGenericAddress(cast_to_void(std::addressof(value)));
         }
     }
 

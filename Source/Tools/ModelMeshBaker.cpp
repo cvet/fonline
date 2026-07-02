@@ -406,7 +406,7 @@ static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<Bak
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_ptr<BakerBone> bone = SafeAlloc::MakeUnique<BakerBone>();
+    auto bone = SafeAlloc::MakeUnique<BakerBone>();
 
     bone->Name = fbx_node->name.data;
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->node_to_parent);
@@ -614,7 +614,7 @@ static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fn
         auto fbx_baked_anim = nullable_fbx_baked_anim.as_ptr();
         auto fbx_baked_anim_holder = MakeUfbxBakedAnimHolder(fbx_baked_anim);
 
-        unique_ptr<BakerAnimSet> anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
+        auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;
         anim_set->AnimName = fbx_anim_stack->name.data;
         anim_set->Duration = numeric_cast<float32_t>(fbx_baked_anim->playback_duration);

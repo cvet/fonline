@@ -154,7 +154,7 @@ namespace ClientEngineTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
+        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
         FileSystem compiler_resources;
@@ -165,7 +165,7 @@ namespace ClientEngineTest
         const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestClientCritter");
         const auto script_blob = MakeClientScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
@@ -177,9 +177,7 @@ namespace ClientEngineTest
 
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        ptr<IAppWindow> main_window = &GetApp()->MainWindow;
-        return SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, MakeClientTestResources(), main_window);
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
     }
 }
 

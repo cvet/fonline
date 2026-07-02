@@ -410,8 +410,7 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
     }
 
     ptr<ScriptFuncDesc> released_func_desc = std::move(func_desc).release();
-    ptr<void> func_user_data = cast_to_void(released_func_desc.get());
-    func->SetUserData(func_user_data.get());
+    func->SetUserData(cast_to_void(released_func_desc.get()));
     nptr<ScriptFuncDesc> nullable_func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
     FO_VERIFY_AND_THROW(!!nullable_func_desc, "Script function descriptor was not stored");
     return nullable_func_desc.as_ptr();
@@ -432,8 +431,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
     if (add_obj) {
         auto this_obj = GetGenericObject(gen);
         this_obj_storage[0] = this_obj;
-        ptr<nptr<void>> this_obj_slot_ref = &this_obj_storage[0];
-        auto this_obj_slot = GetNullableHandleSlotAddress(this_obj_slot_ref);
+        auto this_obj_slot = GetNullableHandleSlotAddress(&this_obj_storage[0]);
 
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
             args_data.emplace_back(index == 0 ? this_obj_slot : GetGenericAddressArg(gen, index - 1));
@@ -704,8 +702,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 
                 if (arg_type->IsMutable) {
                     mutable_data[i] = arr;
-                    ptr<nptr<void>> mutable_arg_slot = &mutable_data[i];
-                    FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(mutable_arg_slot).get()));
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
                     (void)ReleaseScriptOwnership(std::move(arr));
                 }
                 else {
@@ -723,8 +720,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 
                 if (arg_type->IsMutable) {
                     mutable_data[i] = dict;
-                    ptr<nptr<void>> mutable_arg_slot = &mutable_data[i];
-                    FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(mutable_arg_slot).get()));
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
                     (void)ReleaseScriptOwnership(std::move(dict));
                 }
                 else {

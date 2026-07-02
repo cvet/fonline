@@ -207,7 +207,7 @@ namespace ClientServerIntegrationClient
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
+        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerCompilerResources");
         compiler_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -218,7 +218,7 @@ namespace ClientServerIntegrationClient
         const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
         const auto script_blob = MakeServerScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerServerRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-server", proto_blob);
         runtime_source->AddFile("ClientServerIntegration.fos-bin-server", script_blob);
@@ -232,7 +232,7 @@ namespace ClientServerIntegrationClient
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
+        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
         FileSystem compiler_resources;
@@ -243,7 +243,7 @@ namespace ClientServerIntegrationClient
         const auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestSharedCritter");
         const auto script_blob = MakeClientScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientServerClientRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientServerIntegration.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientServerIntegration.fos-bin-client", script_blob);
@@ -255,15 +255,12 @@ namespace ClientServerIntegrationClient
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeServerTestResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
     }
 
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        ptr<IAppWindow> main_window = &GetApp()->MainWindow;
-        return SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, MakeClientTestResources(), main_window);
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
     }
 
     static auto WaitForServerStart(ptr<ServerEngine> server) -> string

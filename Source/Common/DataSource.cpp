@@ -423,7 +423,7 @@ auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time
     }
 
     size = stream_get_size(file);
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {
@@ -518,7 +518,7 @@ auto CachedDir::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     size = fe.FileSize;
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {
@@ -809,7 +809,7 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     }
 
     size = real_size;
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (type == 0) {
@@ -904,7 +904,7 @@ ZipFile::ZipFile(string_view fname)
 
     zlib_filefunc_def ffunc;
 
-    unique_ptr<std::ifstream> p_file = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
+    auto p_file = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
 
     if (!*p_file) {
         throw DataSourceException("Can't open zip file", _fileName);
@@ -1076,7 +1076,7 @@ auto ZipFile::OpenFile(string_view path, size_t& size, uint64_t& write_time) con
         throw DataSourceException("Can't read file from zip (unzOpenCurrentFile)", path);
     }
 
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
@@ -1304,7 +1304,7 @@ auto EmbeddedFile::OpenFile(string_view path, size_t& size, uint64_t& write_time
         throw DataSourceException("Can't read embedded file (unzOpenCurrentFile)", path);
     }
 
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(numeric_cast<size_t>(info.UncompressedSize));
     const auto read = unzReadCurrentFile(_zipHandle.get(), buf.get(), info.UncompressedSize);
 
     if (unzCloseCurrentFile(_zipHandle.get()) != UNZ_OK || read != info.UncompressedSize) {
@@ -1401,7 +1401,7 @@ auto FilesList::OpenFile(string_view path, size_t& size, uint64_t& write_time) c
     }
 
     size = fe.FileSize;
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
     ptr<uint8_t> buf_data = buf.get();
 
     if (!stream_read_exact(file, make_span(buf_data, size))) {

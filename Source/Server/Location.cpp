@@ -189,8 +189,7 @@ void Location::RestoreMap(ptr<Map> map)
     const size_t maps_count = _locMaps.size();
     vec_add_unique_value(_locMaps, map.hold_ref());
     FO_VERIFY_AND_THROW(_locMaps.size() == maps_count + 1, "Restored map was not added to the location map list");
-    ptr<Location> loc = this;
-    map->SetLocation(loc);
+    map->SetLocation(this);
 }
 
 void Location::AddMap(ptr<Map> map)
@@ -205,8 +204,7 @@ void Location::AddMap(ptr<Map> map)
 
     map->SetLocId(GetId());
     map->SetLocMapIndex(numeric_cast<int32_t>(_locMaps.size()) - 1);
-    ptr<Location> loc = this;
-    map->SetLocation(loc);
+    map->SetLocation(this);
 
     if (IsPersistent()) {
         _engine->EntityMngr.MakePersistent(map, true);

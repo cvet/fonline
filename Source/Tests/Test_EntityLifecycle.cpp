@@ -390,7 +390,7 @@ namespace EntityLifecycle
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -408,7 +408,7 @@ namespace EntityLifecycle
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityLifecycleRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityLifecycleCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityLifecycleItem.fopro-bin-server", item_blob);
@@ -441,8 +441,7 @@ namespace EntityLifecycle
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>;
@@ -1043,7 +1042,7 @@ TEST_CASE("CritterCppApi")
     {
         // Hold a ref so the critter object survives DestroyCritter (which drops the manager's last
         // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
-        refcount_ptr<Critter> cr = server->CreateCritter(fn("TestCritter"), false).hold_ref();
+        auto cr = server->CreateCritter(fn("TestCritter"), false).hold_ref();
 
         CHECK_FALSE(cr->IsDestroyed());
         server->CrMngr.DestroyCritter(cr.get());
@@ -1077,7 +1076,7 @@ TEST_CASE("ItemCppApi")
     {
         // Hold a ref so the item survives DestroyItem (which drops the manager's last reference and
         // frees it) and the post-destroy IsDestroyed() check reads a valid object.
-        refcount_ptr<Item> item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
+        auto item = server->ItemMngr.CreateItem(fn("TestItem"), 1, nullptr).hold_ref();
 
         CHECK(item->GetId() != ident_t {});
         CHECK(item->GetProtoId() == fn("TestItem"));
@@ -1168,7 +1167,7 @@ TEST_CASE("LocationCppApi")
     {
         // Hold a ref so the location survives DestroyLocation (which drops the manager's last
         // reference and frees it) and the post-destroy IsDestroyed() check reads a valid object.
-        refcount_ptr<Location> loc = server->MapMngr.CreateLocation(fn("TestLocation")).hold_ref();
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation")).hold_ref();
 
         CHECK(loc->GetId() != ident_t {});
         CHECK(loc->GetProtoId() == fn("TestLocation"));
@@ -1394,7 +1393,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(reset_func);
         REQUIRE(reset_func.Call());
 
-        shared_ptr<TestNetworkConnection> test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
         auto player = CreateLoggedPlayer(server, test_connection, "StopMoveDetach");
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});

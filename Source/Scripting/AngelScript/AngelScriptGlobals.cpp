@@ -411,8 +411,7 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
         const auto& enum_type = meta->GetBaseType(*enum_name);
         auto result_arg = GetGenericArgAddress(gen, 1);
         MemFill(result_arg.get(), 0, enum_type.Size);
-        ptr<const int32_t> enum_value_ptr = &enum_value;
-        MemCopy(result_arg.get(), enum_value_ptr.get(), enum_type.Size);
+        MemCopy(result_arg.get(), &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -428,8 +427,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    ptr<int32_t> enum_index_ptr = &enum_index;
-    MemCopy(enum_index_ptr.get(), enum_arg.get(), enum_type.Size);
+    MemCopy(&enum_index, enum_arg.get(), enum_type.Size);
     const bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;
@@ -565,8 +563,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
     for (size_t i = 0; i < vec->size(); i++) {
         T value = (*vec)[i];
-        ptr<void> value_ptr = cast_to_void(&value);
-        arr->InsertLast(value_ptr);
+        arr->InsertLast(cast_to_void(&value));
     }
 
     ReturnGenericScriptArray(gen, std::move(arr));
@@ -831,8 +828,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
             for (const auto& prop : properties) {
                 const int32_t e = prop->GetRegIndex();
-                ptr<void> value = cast_to_void(&e);
-                enums_arr->InsertLast(value);
+                enums_arr->InsertLast(cast_to_void(&e));
             }
 
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));

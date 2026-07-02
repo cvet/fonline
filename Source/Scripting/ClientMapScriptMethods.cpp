@@ -392,8 +392,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(ptr<MapView> sel
     }
 
     vector<ptr<CritterHexView>> critters;
-    ptr<vector<ptr<CritterHexView>>> critters_ptr = &critters;
-    self->TraceBullet(fromHex, toHex, dist, angle, critters_ptr, findType, nullptr, nullptr, nullptr, true);
+    self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
     return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
 }
 
@@ -408,10 +407,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(ptr<Map
     }
 
     vector<ptr<CritterHexView>> critters;
-    ptr<vector<ptr<CritterHexView>>> critters_ptr = &critters;
-    ptr<mpos> pre_block_hex = &preBlockHex;
-    ptr<mpos> block_hex = &blockHex;
-    self->TraceBullet(fromHex, toHex, dist, angle, critters_ptr, findType, pre_block_hex, block_hex, nullptr, true);
+    self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
     return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
 }
 
@@ -426,8 +422,7 @@ FO_SCRIPT_API void Client_Map_GetHexInPath(ptr<MapView> self, mpos fromHex, mpos
     }
 
     mpos pre_block;
-    ptr<mpos> pre_block_ptr = &pre_block;
-    self->TraceBullet(fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, pre_block_ptr, nullptr, nullptr, true);
+    self->TraceBullet(fromHex, toHex, dist, angle, nullptr, CritterFindType::Any, &pre_block, nullptr, nullptr, true);
     toHex = pre_block;
 }
 
@@ -706,8 +701,7 @@ FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(ptr<MapView> self, ipos32 pos, m
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(ptr<MapView> self, ipos32 pos, mpos& hex, ipos32& hexOffset)
 {
-    ptr<ipos32> hex_offset = &hexOffset;
-    return self->GetHexAtScreen(pos, hex, hex_offset);
+    return self->GetHexAtScreen(pos, hex, &hexOffset);
 }
 
 ///@ ExportMethod

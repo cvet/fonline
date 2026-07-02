@@ -328,11 +328,11 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
     // `packaged_task` would silently store the exception into the future where a `.join()`
     // caller never observes it. The promise is set unconditionally inside a `try`/`catch`
     // around the body so a body exception both gets reported AND wakes any `.join()`.
-    shared_ptr<std::promise<void>> promise = SafeAlloc::MakeShared<std::promise<void>>();
+    auto promise = SafeAlloc::MakeShared<std::promise<void>>();
     // Shared with the lambda below so the pool body and the returned handle's `get_id()` read
     // from the same slot. The body stores the worker thread id at entry and clears it at exit;
     // readers see a valid id only while the body is actually executing.
-    shared_ptr<std::atomic<std::thread::id>> running_thread_id = SafeAlloc::MakeShared<std::atomic<std::thread::id>>();
+    auto running_thread_id = SafeAlloc::MakeShared<std::atomic<std::thread::id>>();
     auto handle = thread {promise->get_future(), running_thread_id};
 
     submit_run_thread(task_name, [body = std::move(task), promise = std::move(promise), running_thread_id = std::move(running_thread_id)]() mutable {

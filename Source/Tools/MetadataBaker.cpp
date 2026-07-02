@@ -232,17 +232,16 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
         }
     }
 
-    ptr<EngineMetadata> meta = &ctx.Meta;
     nptr<const FileSystem> resources = nullptr;
 
     if (target == "Server") {
-        RegisterServerStubMetadata(meta, resources);
+        RegisterServerStubMetadata(&ctx.Meta, resources);
     }
     else if (target == "Client") {
-        RegisterClientStubMetadata(meta, resources);
+        RegisterClientStubMetadata(&ctx.Meta, resources);
     }
     else if (target == "Mapper") {
-        RegisterMapperStubMetadata(meta, resources);
+        RegisterMapperStubMetadata(&ctx.Meta, resources);
     }
     else {
         FO_UNREACHABLE_PLACE();

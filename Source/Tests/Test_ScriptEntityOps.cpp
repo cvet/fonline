@@ -1007,7 +1007,7 @@ namespace EntityOps
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -1021,7 +1021,7 @@ namespace EntityOps
         const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("EntityOpsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("EntityOpsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("EntityOpsItem.fopro-bin-server", item_blob);
@@ -1052,8 +1052,7 @@ namespace EntityOps
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 }
 

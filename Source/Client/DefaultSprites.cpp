@@ -223,7 +223,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
-    shared_ptr<SpriteSheet> copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
+    auto copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
 
     for (size_t i = 0; i < _spr.size(); i++) {
         copy->_spr[i] = _spr[i]->MakeCopy();
@@ -435,7 +435,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     FO_VERIFY_AND_THROW(dirs != 0, "Sprite file direction count is zero", dirs);
 
     if (frames_count > 1 || dirs > 1) {
-        shared_ptr<SpriteSheet> anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
+        auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, ticks, dirs);
 
         for (uint8_t i = 0; i < dirs; i++) {
             const mdir dir = hdir(i);

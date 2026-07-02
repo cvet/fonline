@@ -404,9 +404,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                 }
             };
 
-            ptr<Application> audio_app = this;
-            ptr<void> audio_userdata = cast_to_void(audio_app.get());
-            nptr<SDL_AudioStream> nullable_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, audio_userdata.get());
+            nptr<SDL_AudioStream> nullable_audio_stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, cast_to_void(this));
 
             if (nullable_audio_stream) {
                 auto audio_stream = make_unique_del_ptr(nullable_audio_stream.as_ptr(), [](SDL_AudioStream* raw_audio_stream) {
@@ -735,8 +733,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    ptr<Application> app = this;
-    unique_ptr<AppWindow> window = SafeAlloc::MakeUnique<AppWindow>(app);
+    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -1082,7 +1079,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
     FO_STACK_TRACE_ENTRY();
 
     if (_ctx->ActiveRendererType == RenderType::Null) {
-        unique_ptr<HeadlessWindowStub> handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+        auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
         handle->Size = size;
 
         auto headless_window = handle.as_ptr();
@@ -2190,8 +2187,7 @@ void Application::BeginFrame()
             }
             else {
                 if (io.WantSetMousePos) {
-                    ptr<AppWindow> main_window = &MainWindow;
-                    Input.SetMousePosition({iround<int32_t>(io.MousePos.x), iround<int32_t>(io.MousePos.y)}, main_window);
+                    Input.SetMousePosition({iround<int32_t>(io.MousePos.x), iround<int32_t>(io.MousePos.y)}, &MainWindow);
                 }
 
                 if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
@@ -2710,8 +2706,7 @@ void AppWindow::Destroy()
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        ptr<AppWindow> window = this;
-        _app->DestroyChildWindow(window);
+        _app->DestroyChildWindow(this);
         return;
     }
 

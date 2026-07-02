@@ -150,14 +150,14 @@ int main(int argc, char** argv) // Handled by SDL
                 auto window = GetApp()->CreateChildWindow(client_size, title);
 
                 const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
-                unique_ptr<GlobalSettings> settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+                auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
                 settings->CopyFrom(GetApp()->Settings);
                 ClientStartupSettingsHook(*settings, client_index, true);
                 settings->ScreenWidth = client_size.width;
                 settings->ScreenHeight = client_size.height;
 
                 ptr<GlobalSettings> settings_ptr = settings.get();
-                refcount_ptr<ClientEngine> client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);
+                auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), window);
                 client_settings.emplace_back(std::move(settings));
                 clients.emplace_back(std::move(client));
                 client_windows.emplace_back(window);
@@ -425,8 +425,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                 if (ImGui::Begin("Server", nullptr, server_flags)) {
                     if (has_virtual_windows && ImGui::IsWindowHovered()) {
-                        ptr<AppWindow> hovered_server_window = &GetApp()->MainWindow;
-                        GetApp()->SetActiveWindow(hovered_server_window);
+                        GetApp()->SetActiveWindow(&GetApp()->MainWindow);
                     }
 
                     if (hide_controls) {
@@ -595,8 +594,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SameLine();
                     };
 
-                    ptr<AppWindow> server_window = &GetApp()->MainWindow;
-                    draw_tab(server_window, string {"Server"});
+                    draw_tab(&GetApp()->MainWindow, string {"Server"});
 
                     for (size_t i = 0; i < child_count; i++) {
                         if (auto nullable_child = GetApp()->GetChildWindow(i)) {
@@ -652,8 +650,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
 
                         if (ImGui::Button(strex("Exceptions: {}", exception_count).c_str())) {
-                            ptr<AppWindow> exception_server_window = &GetApp()->MainWindow;
-                            GetApp()->SetActiveWindow(exception_server_window);
+                            GetApp()->SetActiveWindow(&GetApp()->MainWindow);
                         }
 
                         ImGui::PopStyleColor(4);

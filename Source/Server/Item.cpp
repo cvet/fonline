@@ -230,8 +230,7 @@ void Item::SetItemToContainer(ptr<Item> item)
 
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
-    ptr<Item> cont = this;
-    item->SetParent(cont);
+    item->SetParent(this);
 
     auto nullable_entity_lock = GetEntityLock();
     FO_VERIFY_AND_THROW(nullable_entity_lock, "Container item has no entity lock");

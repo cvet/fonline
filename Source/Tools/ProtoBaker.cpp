@@ -84,13 +84,11 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time)) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Server", [&]() FO_DEFERRED {
             auto engine = BakerServerEngine(*_context->BakedFiles);
-            ptr<EngineMetadata> engine_meta = &engine;
-            ptr<const ScriptSystem> engine_script_system = &engine;
-            engine.MapScriptTypes(engine_meta);
+            engine.MapScriptTypes(&engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-            InitAngelScriptScripting(engine_meta, *_context->Settings, *_context->BakedFiles);
+            InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
 #endif
-            auto data = BakeProtoFiles(engine_meta, engine_script_system, filtered_files);
+            auto data = BakeProtoFiles(&engine, &engine, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-server", data);
         }));
     }
@@ -98,8 +96,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Client", [&]() FO_DEFERRED {
             auto engine = BakerClientEngine(*_context->BakedFiles);
-            ptr<EngineMetadata> engine_meta = &engine;
-            auto data = BakeProtoFiles(engine_meta, nullptr, filtered_files);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
         }));
     }
@@ -107,8 +104,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Mapper", [&]() FO_DEFERRED {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
-            ptr<EngineMetadata> engine_meta = &engine;
-            auto data = BakeProtoFiles(engine_meta, nullptr, filtered_files);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
         }));
     }

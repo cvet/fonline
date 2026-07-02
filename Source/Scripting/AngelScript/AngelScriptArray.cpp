@@ -1417,8 +1417,7 @@ void ScriptArray::PrecacheSubTypeData()
     }
 
     auto sub_type_data = _subTypeData.as_ptr();
-    ptr<void> sub_type_user_data = cast_to_void(sub_type_data.get());
-    _typeInfo->SetUserData(sub_type_user_data.get(), AS_TYPE_ARRAY_CACHE);
+    _typeInfo->SetUserData(cast_to_void(sub_type_data.get()), AS_TYPE_ARRAY_CACHE);
 }
 
 void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)

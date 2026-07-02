@@ -160,11 +160,9 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     server_engine.FinalizeRegistration();
     client_engine.FinalizeRegistration();
 
-    ptr<EngineMetadata> server_meta = &server_engine;
-    ptr<const ScriptSystem> server_script_system = &server_engine;
-    server_engine.MapScriptTypes(server_meta);
+    server_engine.MapScriptTypes(&server_engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(server_meta, *_context->Settings, *_context->BakedFiles);
+    InitAngelScriptScripting(&server_engine, *_context->Settings, *_context->BakedFiles);
 #endif
 
     // Bake maps
@@ -194,7 +192,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(*kv);
 
-                errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), server_script_system);
+                errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_cr_count++;
                 map_cr_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
@@ -208,7 +206,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 auto props = proto->GetProperties().Copy();
                 props.ApplyFromText(*kv);
 
-                errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), server_script_system);
+                errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
 
                 map_item_count++;
                 map_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());

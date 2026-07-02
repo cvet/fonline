@@ -294,7 +294,7 @@ void NetworkServer_Asio::AcceptNext()
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_ptr<asio::ip::tcp::socket> socket = SafeAlloc::MakeUnique<asio::ip::tcp::socket>(_context);
+    auto socket = SafeAlloc::MakeUnique<asio::ip::tcp::socket>(_context);
     auto socket_ptr = socket.as_ptr();
     _acceptor.async_accept(*socket_ptr, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
 }
@@ -311,7 +311,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 
     if (!error) {
         try {
-            shared_ptr<NetworkServerConnection_Asio> connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
+            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
             _connectionCallback(std::move(connection));
         }

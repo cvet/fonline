@@ -104,7 +104,7 @@ void ResourceManager::IndexFiles()
         any_spr = MakeBuiltInDummyAtlasSprite(_sprMngr, AtlasType::MapSprites);
     }
 
-    shared_ptr<AtlasSprite> atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+    auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
     FO_VERIFY_AND_THROW(atlas_spr, "Missing required atlas sprite");
     _critterDummyAnimFrames = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, 1, 100, 1);
     _critterDummyAnimFrames->_spr[0] = std::move(atlas_spr);
@@ -145,8 +145,7 @@ static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterAc
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
-    ptr<const hstring::hash_t> parts_data = parts;
-    return HashStorage::DefaultHash(make_span(parts_data, sizeof(parts)));
+    return HashStorage::DefaultHash(make_span(parts, sizeof(parts)));
 }
 
 static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> hstring::hash_t
@@ -154,8 +153,7 @@ static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t a
     FO_STACK_TRACE_ENTRY();
 
     const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
-    ptr<const hstring::hash_t> parts_data = parts;
-    return HashStorage::DefaultHash(make_span(parts_data, sizeof(parts)));
+    return HashStorage::DefaultHash(make_span(parts, sizeof(parts)));
 }
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>
@@ -349,7 +347,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
             auto animex = nullable_animex.as_ptr();
 
             const auto frames_count = anim->GetFramesCount() + animex->GetFramesCount();
-            shared_ptr<SpriteSheet> anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
+            auto anim_merge_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks() + animex->GetWholeTicks(), anim->GetDirCount());
 
             for (int32_t d = 0; d < anim->_dirCount; d++) {
                 auto nullable_anim_merge = anim_merge_base->GetDir(hdir(d));
@@ -390,7 +388,7 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
         const auto frame_flag = static_cast<AnimFrameFlag>(flags);
         const auto first_or_last_mask = CombineEnum(AnimFrameFlag::FirstFrame, AnimFrameFlag::LastFrame);
         const auto frames_count = !IsEnumSet(frame_flag, first_or_last_mask) ? anim->GetFramesCount() : 1;
-        shared_ptr<SpriteSheet> anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
+        auto anim_clone_base = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames_count, anim->GetWholeTicks(), anim->GetDirCount());
 
         for (int32_t d = 0; d < anim->_dirCount; d++) {
             auto nullable_anim_clone = anim_clone_base->GetDir(hdir(d));
@@ -672,7 +670,7 @@ auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterState
     }
 
     shared_ptr<Sprite> loaded_spr = _sprMngr->LoadSprite(model_name, AtlasType::MapSprites);
-    shared_ptr<ModelSprite> model_spr = dynamic_ptr_cast<ModelSprite>(std::move(loaded_spr));
+    auto model_spr = dynamic_ptr_cast<ModelSprite>(std::move(loaded_spr));
 
     if (!model_spr) {
         return nullptr;

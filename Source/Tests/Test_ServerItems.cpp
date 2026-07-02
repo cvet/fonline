@@ -131,7 +131,7 @@ namespace ServerItemsTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -144,7 +144,7 @@ namespace ServerItemsTest
         const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerItemsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ServerItemsItem.fopro-bin-server", item_blob);
@@ -187,8 +187,7 @@ namespace ServerItemsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 }
 

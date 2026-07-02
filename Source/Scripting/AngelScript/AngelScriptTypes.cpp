@@ -253,8 +253,7 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 
     VisitBaseTypePrimitive(obj.get(), *type, [&index, &gen](auto&& v) {
         auto arg = GetGenericAddressArgAs<const void>(gen, index);
-        ptr<std::decay_t<decltype(v)>> value_ptr = &v;
-        MemCopy(value_ptr.get(), arg.get(), sizeof(v));
+        MemCopy(&v, arg.get(), sizeof(v));
         index++;
     });
 }

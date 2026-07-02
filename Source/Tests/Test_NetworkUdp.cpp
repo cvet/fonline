@@ -73,8 +73,7 @@ namespace
             return {};
         }
 
-        ptr<const uint8_t> tail_ptr = &data[offset];
-        return {tail_ptr.get(), size};
+        return {&data[offset], size};
     }
 
     auto FeedAll(const vector<vector<uint8_t>>& wire, UdpOrderedChannel& receiver) -> int32_t

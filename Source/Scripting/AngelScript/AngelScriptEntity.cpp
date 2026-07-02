@@ -492,8 +492,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     auto casted_proto = proto.dyn_cast<const ProtoCustomEntity>();
     FO_VERIFY_AND_THROW(casted_proto, "Prototype is not a custom entity prototype");
     ptr<ProtoCustomEntity> mutable_proto = ScriptMutablePtr(casted_proto);
-    ptr<Entity> entity_ptr = mutable_proto;
-    ReturnGenericEntity(gen, entity_ptr);
+    ReturnGenericEntity(gen, mutable_proto);
 }
 
 static void Game_CheckProtoCustomEntity(AngelScript::asIScriptGeneric* gen)

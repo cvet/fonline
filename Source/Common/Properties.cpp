@@ -2228,8 +2228,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
     FO_VERIFY_AND_THROW(tokens.size() >= 3, "Property declaration is missing scope, type or name tokens", _typeName, tokens.size());
 
-    ptr<const PropertyRegistrator> registrator = this;
-    unique_ptr<Property> prop = SafeAlloc::MakeUnique<Property>(registrator);
+    auto prop = SafeAlloc::MakeUnique<Property>(this);
 
     prop->_isCommon = tokens[0] == "Common";
     prop->_isServerOnly = tokens[0] == "Server";

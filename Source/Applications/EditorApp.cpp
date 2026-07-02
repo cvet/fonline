@@ -60,8 +60,7 @@ int main(int argc, char** argv) // Handled by SDL
         InitApp(args, AppInitFlags::ShowMessageOnException);
 
         {
-            ptr<GlobalSettings> settings = &GetApp()->Settings;
-            unique_ptr<FOEditor> editor = SafeAlloc::MakeUnique<FOEditor>(settings);
+            auto editor = SafeAlloc::MakeUnique<FOEditor>(&GetApp()->Settings);
 
             while (!GetApp()->IsQuitRequested()) {
                 GetApp()->BeginFrame();

@@ -928,8 +928,7 @@ static void ValidateModelDescriptionAttachment(const FileCollection& source_file
     }
 
     const BakedModelMeshInfo& child_info = GetBakedModelMeshInfo(baked_files, mesh_cache, link.ChildName);
-    ptr<const BakedModelMeshInfo> main_info_ptr = &main_info;
-    ValidateModelDescriptionLinkData(baked_files, mesh_cache, child_info, main_info_ptr, link, fname);
+    ValidateModelDescriptionLinkData(baked_files, mesh_cache, child_info, &main_info, link, fname);
 }
 
 static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)

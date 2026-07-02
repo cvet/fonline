@@ -102,8 +102,7 @@ protected:
 
         while (unqlite_kv_cursor_valid_entry(cursor.get()) != 0) {
             vector<uint8_t> key_data;
-            ptr<vector<uint8_t>> key_data_result = &key_data;
-            ptr<void> key_data_user_data = cast_to_void(key_data_result.get());
+            ptr<void> key_data_user_data = cast_to_void(&key_data);
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor.get(),
@@ -283,8 +282,7 @@ private:
 
             vector<uint8_t> result(sizeof(int64_t));
             const int64_t value = numeric_key->underlying_value();
-            ptr<const int64_t> value_data = &value;
-            MemCopy(result.data(), value_data.get(), sizeof(value));
+            MemCopy(result.data(), &value, sizeof(value));
             return result;
         }
 
@@ -300,8 +298,7 @@ private:
             }
 
             int64_t value {};
-            ptr<int64_t> value_data = &value;
-            MemCopy(value_data.get(), key_data.data(), sizeof(value));
+            MemCopy(&value, key_data.data(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbUnQLite invalid numeric key", value);
@@ -349,9 +346,8 @@ private:
         auto ping_db = nullable_ping_db.as_ptr();
 
         constexpr uint32_t ping = 42u;
-        ptr<const uint32_t> ping_data = &ping;
 
-        if (unqlite_kv_store(ping_db.get(), ping_data.get(), sizeof(ping), ping_data.get(), sizeof(ping)) != UNQLITE_OK) {
+        if (unqlite_kv_store(ping_db.get(), &ping, sizeof(ping), &ping, sizeof(ping)) != UNQLITE_OK) {
             unqlite_close(ping_db.get());
             throw DataBaseException("DbUnQLite Can't write to db", ping_db_path);
         }
@@ -393,8 +389,7 @@ private:
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
-        ptr<AnyData::Document> document_result = &doc;
-        ptr<void> document_user_data = cast_to_void(document_result.get());
+        ptr<void> document_user_data = cast_to_void(&doc);
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db.get(), key.data(), key_size,

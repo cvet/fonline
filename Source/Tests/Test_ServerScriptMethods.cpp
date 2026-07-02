@@ -1596,7 +1596,7 @@ namespace ScriptMethodsTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -1615,7 +1615,7 @@ namespace ScriptMethodsTest
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptMethodsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptMethodsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ScriptMethodsItem.fopro-bin-server", item_blob);
@@ -1649,8 +1649,7 @@ namespace ScriptMethodsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 }
 

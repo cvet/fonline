@@ -815,7 +815,7 @@ namespace LocEntity
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -834,7 +834,7 @@ namespace LocEntity
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("LocEntityCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("LocEntityItem.fopro-bin-server", item_blob);
@@ -867,8 +867,7 @@ namespace LocEntity
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 }
 

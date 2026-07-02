@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 
         {
             ptr<GlobalSettings> server_settings = &GetApp()->Settings;
-            refcount_ptr<ServerEngine> server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
+            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;
 
@@ -116,13 +116,12 @@ static void ServerWithClientsLoop(ptr<ServerEngine> server, vector<unique_ptr<Gl
 
         while (server->IsStarted() && clients.size() < numeric_cast<size_t>(target_client_count)) {
             const int32_t client_index = numeric_cast<int32_t>(clients.size()) + 1;
-            unique_ptr<GlobalSettings> settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
+            auto settings = SafeAlloc::MakeUnique<GlobalSettings>(false);
             settings->CopyFrom(GetApp()->Settings);
             ClientStartupSettingsHook(*settings, client_index, true);
 
-            ptr<IAppWindow> main_window = &GetApp()->MainWindow;
             ptr<GlobalSettings> settings_ptr = settings.get();
-            refcount_ptr<ClientEngine> client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), main_window);
+            auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings_ptr, GetClientResources(*settings), &GetApp()->MainWindow);
             client->Connect();
             client_settings.emplace_back(std::move(settings));
             clients.emplace_back(std::move(client));

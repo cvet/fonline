@@ -110,8 +110,7 @@ public:
         static_assert(std::is_standard_layout_v<T>);
         static_assert(std::is_trivially_copyable_v<T>);
 
-        ptr<T> out_ptr = &out;
-        CopyData(make_span(out_ptr, sizeof(T)));
+        CopyData(make_span(&out, sizeof(T)));
     }
     template<typename T>
     void ReadObjectArray(span<T> out)

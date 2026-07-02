@@ -143,8 +143,7 @@ void CritterHexView::StopMoving()
             const auto snapped_hex = map_size.from_raw_pos(raw_hex);
 
             if (snapped_hex != GetHex()) {
-                ptr<CritterHexView> self = this;
-                _map->MoveCritter(self, snapped_hex, false);
+                _map->MoveCritter(this, snapped_hex, false);
             }
 
             SetHexOffset(ipos16 {numeric_cast<int16_t>(residual.x), numeric_cast<int16_t>(residual.y)});
@@ -695,8 +694,7 @@ void CritterHexView::Process()
 
     // Reset critter view
     if (_needReset && _engine->GameTime.GetFrameTime() >= _resetTime) {
-        ptr<CritterHexView> self = this;
-        _map->ReapplyCritterView(self);
+        _map->ReapplyCritterView(this);
         _needReset = false;
     }
 }
@@ -722,8 +720,7 @@ void CritterHexView::NormalizeHexOffset()
     }
 
     if (GetHex() != hex) {
-        ptr<CritterHexView> self = this;
-        GetMap()->MoveCritter(self, hex, false);
+        GetMap()->MoveCritter(this, hex, false);
     }
 
     if (GetHexOffset() != hex_offset) {
@@ -745,8 +742,7 @@ void CritterHexView::ProcessMoving()
     const auto progress = moving->EvaluateProgress();
     const auto prev_hex = GetHex();
 
-    ptr<CritterHexView> self = this;
-    _map->MoveCritter(self, progress.Hex, false);
+    _map->MoveCritter(this, progress.Hex, false);
 
     const auto cur_hex = GetHex();
     const auto moved = cur_hex != prev_hex;

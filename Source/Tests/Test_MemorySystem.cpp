@@ -57,14 +57,14 @@ TEST_CASE("MemorySystem")
             int32_t Value {};
         };
 
-        const unique_ptr<TestValue> unique_value = SafeAlloc::MakeUnique<TestValue>(123);
+        const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
         CHECK(unique_value->Value == 123);
 
-        const shared_ptr<TestValue> shared_value = SafeAlloc::MakeShared<TestValue>(321);
+        const auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
         REQUIRE(shared_value);
         CHECK(shared_value->Value == 321);
 
-        const unique_arr_ptr<uint32_t> zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
+        const auto zero_array = SafeAlloc::MakeUniqueArr<uint32_t>(4);
         REQUIRE(zero_array);
         CHECK(zero_array[0] == 0);
         CHECK(zero_array[1] == 0);
@@ -89,10 +89,9 @@ TEST_CASE("MemorySystem")
         };
 
         int32_t destroyed = 0;
-        ptr<int32_t> destroyed_ptr = &destroyed;
 
         {
-            refcount_ptr<TestRefCounted> ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, destroyed_ptr);
+            auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);
             CHECK(ptr->Value == 42);
 
             {

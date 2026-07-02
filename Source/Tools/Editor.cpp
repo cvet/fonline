@@ -149,8 +149,7 @@ FOEditor::FOEditor(ptr<GlobalSettings> settings) :
 
     GetApp()->LoadImGuiEffect(BakedResources);
 
-    ptr<FOEditor> editor = this;
-    _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(editor));
+    _newViews.emplace_back(SafeAlloc::MakeUnique<AssetExplorer>(this));
 }
 
 auto FOEditor::GetAssetViews() -> vector<ptr<EditorAssetView>>
@@ -189,8 +188,7 @@ void FOEditor::OpenAsset(string_view path)
     const string ext = strex(path).get_file_extension();
 
     if (ext == "fopts") {
-        ptr<FOEditor> editor = this;
-        _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, editor));
+        _newViews.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(path, this));
     }
 }
 

@@ -75,8 +75,7 @@ static void MapperEntry([[maybe_unused]] void* data)
         if (!Data->Mapper) {
             try {
                 ptr<GlobalSettings> settings = &GetApp()->Settings;
-                ptr<IAppWindow> main_window = &GetApp()->MainWindow;
-                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), main_window);
+                Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
                 auto mapper = GetMapper();
                 mapper->SetInputLocked(GetApp()->Settings.HeadlessWindow);
             }
@@ -170,8 +169,7 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
     }
     else {
         FileSystem resources;
-        ptr<BakingSettings> settings_ptr = &settings;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(settings_ptr));
+        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
         return resources;
     }
 }

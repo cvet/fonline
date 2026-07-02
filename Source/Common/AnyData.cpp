@@ -316,9 +316,8 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
     }
 
     const auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        ptr<const char> chars = &str[char_pos];
-        char_len = utf8::DecodeStrNtLen(chars.get());
-        utf8::Decode(chars.get(), char_len);
+        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
+        utf8::Decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;
@@ -399,9 +398,8 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
         }
     }
 
-    ptr<const char> token_begin = &str[begin];
     ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
-    result.assign(token_begin.get(), pos - begin);
+    result.assign(&str[begin], pos - begin);
     return next_token;
 }
 

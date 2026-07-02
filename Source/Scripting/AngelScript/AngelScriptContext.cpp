@@ -185,8 +185,7 @@ void AngelScriptContextManager::CreateContext()
     ctx_ext->TracyZones.reserve(128);
 #endif
     ptr<AngelScriptContextExtendedData> released_ctx_ext = std::move(ctx_ext).release();
-    ptr<void> ctx_user_data = cast_to_void(released_ctx_ext.get());
-    ctx_ptr->SetUserData(ctx_user_data.get());
+    ctx_ptr->SetUserData(cast_to_void(released_ctx_ext.get()));
 
 #if FO_TRACY
     auto nullable_ctx_impl = ctx_ptr.dyn_cast<AngelScript::asCContext>();

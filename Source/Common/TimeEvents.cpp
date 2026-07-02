@@ -93,7 +93,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     const auto event_id = ++_timeEventCounter;
     const auto effective_delay = std::max(delay, MIN_REPEAT_TIME);
 
-    shared_ptr<Entity::TimeEventData> te = SafeAlloc::MakeShared<Entity::TimeEventData>();
+    auto te = SafeAlloc::MakeShared<Entity::TimeEventData>();
     te->Id = event_id;
     te->FuncName = std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func);
     te->Func = std::move(func);
@@ -524,7 +524,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
         return {};
     }
 
-    refcount_ptr<TimeEventContext> context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
+    auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
     bool call_result = false;
 
     if (nptr<ScriptFunc<void>> nullable_func1 = std::get_if<ScriptFunc<void>>(&te->Func); nullable_func1) {

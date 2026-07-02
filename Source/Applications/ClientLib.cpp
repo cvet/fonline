@@ -227,9 +227,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
                     if (!Data->ResourceUpdater) {
                         WriteLog("Client runtime DLL: creating updater");
-                        ptr<GlobalSettings> settings = &GetApp()->Settings;
-                        ptr<IAppWindow> window = &GetApp()->MainWindow;
-                        Data->ResourceUpdater.emplace(settings, window);
+                        Data->ResourceUpdater.emplace(&GetApp()->Settings, &GetApp()->MainWindow);
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
@@ -259,8 +257,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 ptr<GlobalSettings> settings = &GetApp()->Settings;
-                ptr<IAppWindow> main_window = &GetApp()->MainWindow;
-                Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetClientResources(*settings), main_window);
+                Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
                 auto client = GetClient();
                 client->Connect();

@@ -255,8 +255,7 @@ protected:
         bson_t filter;
         bson_init(&filter);
 
-        ptr<bson_t> filter_ptr = &filter;
-        AppendMongoDbKey(filter_ptr, id, collection_name);
+        AppendMongoDbKey(&filter, id, collection_name);
 
         bson_t opts;
         bson_init(&opts);
@@ -303,8 +302,7 @@ protected:
         bson_t insert;
         bson_init(&insert);
 
-        ptr<bson_t> insert_ptr = &insert;
-        AppendMongoDbKey(insert_ptr, id, collection_name);
+        AppendMongoDbKey(&insert, id, collection_name);
 
         DocumentToBson(doc, &insert, _escapeDot);
 
@@ -330,8 +328,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        ptr<bson_t> selector_ptr = &selector;
-        AppendMongoDbKey(selector_ptr, id, collection_name);
+        AppendMongoDbKey(&selector, id, collection_name);
 
         bson_t update;
         bson_init(&update);
@@ -369,8 +366,7 @@ protected:
         bson_t selector;
         bson_init(&selector);
 
-        ptr<bson_t> selector_ptr = &selector;
-        AppendMongoDbKey(selector_ptr, id, collection_name);
+        AppendMongoDbKey(&selector, id, collection_name);
 
         bson_error_t error;
 

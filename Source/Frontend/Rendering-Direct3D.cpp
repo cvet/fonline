@@ -701,7 +701,7 @@ auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool w
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<Direct3D_Texture> d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth, ctx);
+    auto d3d_tex = SafeAlloc::MakeUnique<Direct3D_Texture>(size, linear_filtered, with_depth, ctx);
 
     D3D11_TEXTURE2D_DESC tex_desc = {};
     tex_desc.Width = size.width;
@@ -764,7 +764,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<Direct3D_DrawBuffer> d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static, ctx);
+    auto d3d_dbuf = SafeAlloc::MakeUnique<Direct3D_DrawBuffer>(is_static, ctx);
 
     return std::move(d3d_dbuf);
 }
@@ -774,7 +774,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<Direct3D_Effect> d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader, ctx);
+    auto d3d_effect = SafeAlloc::MakeUnique<Direct3D_Effect>(usage, name, loader, ctx);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
@@ -1282,8 +1282,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
     for (int32_t i = 0; i < size.height; i++) {
         auto src = OffsetMappedBytes(mapped_bytes, numeric_cast<size_t>(tex_resource.RowPitch) * i);
-        ptr<ucolor> dst = &result[numeric_cast<size_t>(i) * size.width];
-        MemCopy(dst.get(), src.get(), numeric_cast<size_t>(size.width) * 4);
+        MemCopy(&result[numeric_cast<size_t>(i) * size.width], src.get(), numeric_cast<size_t>(size.width) * 4);
     }
 
     d3d_device_context->Unmap(staging_tex.get(), 0);
@@ -1516,19 +1515,17 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
         auto cbuffer_dst = GetMappedResourceData(cbuffer_resource.pData);
         using BufferType = std::remove_cvref_t<decltype(buf)>;
-        ptr<const BufferType> buf_ptr = &buf;
 
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
             const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32_t) * 16;
-            MemCopy(cbuffer_dst.get(), buf_ptr.get(), bind_size);
+            MemCopy(cbuffer_dst.get(), &buf, bind_size);
         }
         else
 #endif
         {
-            ptr<Direct3D_Effect> effect = this;
-            ignore_unused(effect);
-            MemCopy(cbuffer_dst.get(), buf_ptr.get(), sizeof(buf));
+            ignore_unused(this);
+            MemCopy(cbuffer_dst.get(), &buf, sizeof(buf));
         }
 
         _ctx->D3DDeviceContext->Unmap(buf_handle.get(), 0);

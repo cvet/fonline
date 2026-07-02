@@ -249,9 +249,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     FO_VERIFY_AND_THROW(nullable_as_engine, "Missing AngelScript engine");
     auto as_engine = nullable_as_engine.as_ptr();
 
-    ptr<AngelScriptBackend> backend = this;
-    ptr<void> backend_user_data = cast_to_void(backend.get());
-    as_engine->SetUserData(backend_user_data.get());
+    as_engine->SetUserData(cast_to_void(this));
 
     _meta = meta;
     _engine = meta.dyn_cast<BaseEngine>();
@@ -260,8 +258,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     _asEngine = as_engine;
 
     int32_t as_result;
-    ptr<void> as_engine_user_data = cast_to_void(as_engine.get());
-    FO_AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(AngelScriptMessage), as_engine_user_data.get(), AngelScript::asCALL_CDECL));
+    FO_AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(AngelScriptMessage), cast_to_void(as_engine.get()), AngelScript::asCALL_CDECL));
 
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_USE_CHARACTER_LITERALS, true));
@@ -297,8 +294,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     if (_engine && _settings->DebuggerEnabled) {
         if (!_debuggerEndpointServer) {
             try {
-                ptr<const AngelScriptBackend> backend_ptr = this;
-                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(backend_ptr);
+                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
             }
             catch (...) {
                 WriteLog("Can't start AngelScript debugger endpoint server");
@@ -441,8 +437,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     FO_VERIFY_AND_THROW(!!nullable_lnt, "Failed to restore line-number translator");
     auto lnt = nullable_lnt.as_ptr();
     CleanupLineNumberTranslator(_asEngine.get());
-    ptr<void> lnt_user_data = cast_to_void(lnt.get());
-    _asEngine->SetUserData(lnt_user_data.get(), AS_PREPROCESSOR_LNT_USER_DATA);
+    _asEngine->SetUserData(cast_to_void(lnt.get()), AS_PREPROCESSOR_LNT_USER_DATA);
 
     BinaryStream binary {&buf};
     int32_t as_result = mod->LoadByteCode(&binary);
@@ -670,8 +665,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     FO_VERIFY_AND_THROW(!!nullable_lnt, "Missing line-number translator");
     auto lnt = nullable_lnt.as_ptr();
     CleanupLineNumberTranslator(_asEngine.get());
-    ptr<void> lnt_user_data = cast_to_void(lnt.get());
-    _asEngine->SetUserData(lnt_user_data.get(), AS_PREPROCESSOR_LNT_USER_DATA);
+    _asEngine->SetUserData(cast_to_void(lnt.get()), AS_PREPROCESSOR_LNT_USER_DATA);
 
     nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 

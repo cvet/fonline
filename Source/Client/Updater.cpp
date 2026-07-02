@@ -76,8 +76,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _effectMngr.LoadMinimalEffects();
 
-    ptr<SpriteManager> spr_mngr = &_sprMngr;
-    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(spr_mngr));
+    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&_sprMngr));
 
     // Wait screen
     if (!_settings->DefaultSplash.empty()) {

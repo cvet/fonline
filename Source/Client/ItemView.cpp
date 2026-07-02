@@ -86,7 +86,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
 
     item->SetStatic(false);
     item->SetOwnership(ItemOwnership::ItemContainer);
@@ -100,7 +100,7 @@ auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, cons
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
 
     item->RestoreData(props_data);
     item->SetContainerStack(stack_id);

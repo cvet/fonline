@@ -79,8 +79,8 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        refcount_ptr<ProtoCritter> critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrator(meta, "Critter"));
-        refcount_ptr<ProtoItem> item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrator(meta, "Critter"));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrator(meta, "Item"));
         meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
         meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
 

@@ -306,9 +306,7 @@ void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContex
 
     if (reason == AngelScriptContextSetupReason::Create) {
         int32_t as_result = 0;
-        ptr<DebuggerEndpointServer::Impl> debugger = this;
-        ptr<void> debugger_user_data = cast_to_void(debugger.get());
-        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), debugger_user_data.get(), AngelScript::asCALL_CDECL));
+        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), cast_to_void(this), AngelScript::asCALL_CDECL));
         ctx_ext->StepState = SafeAlloc::MakeShared<DebuggerStepState>();
     }
     else if (reason == AngelScriptContextSetupReason::Request) {

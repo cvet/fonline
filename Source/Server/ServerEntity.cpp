@@ -180,9 +180,7 @@ void ServerEntity::ValidateAccess() const
 
     FO_VALIDATE_ENTITY(NONE);
 
-    ptr<const ServerEntity> entity = this;
-
-    if (!IsEntityAccessValid(entity)) {
+    if (!IsEntityAccessValid(this)) {
         throw ScriptException("Entity access without sync", GetName());
     }
 }

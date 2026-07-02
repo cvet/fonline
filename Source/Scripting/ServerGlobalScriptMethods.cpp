@@ -262,8 +262,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
-    ptr<Critter> to_cr_ptr = toCr;
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_cr_ptr);
+    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
     return moved_item.get_no_const();
 }
 
@@ -274,8 +273,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         return nullptr;
     }
 
-    ptr<Critter> to_cr_ptr = toCr;
-    auto moved_item = server->ItemMngr.MoveItem(item, count, to_cr_ptr);
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toCr);
     return moved_item.get_no_const();
 }
 
@@ -312,8 +310,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Item> toCont, any_t stackId = any_t {})
 {
-    ptr<Item> to_cont_ptr = toCont;
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_cont_ptr, stackId);
+    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
     return moved_item.get_no_const();
 }
 
@@ -324,16 +321,13 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         return nullptr;
     }
 
-    ptr<Item> to_cont_ptr = toCont;
-    auto moved_item = server->ItemMngr.MoveItem(item, count, to_cont_ptr, stackId);
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toCont, stackId);
     return moved_item.get_no_const();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Critter> toCr)
 {
-    ptr<Critter> to_cr_ptr = toCr;
-
     for (nptr<Item> nullable_item : items) {
         if (!nullable_item) {
             continue;
@@ -344,7 +338,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), to_cr_ptr);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
     }
 }
 
@@ -374,8 +368,6 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Item> toCont, any_t stackId = any_t {})
 {
-    ptr<Item> to_cont_ptr = toCont;
-
     for (nptr<Item> nullable_item : items) {
         if (!nullable_item) {
             continue;
@@ -386,7 +378,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), to_cont_ptr, stackId);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
     }
 }
 

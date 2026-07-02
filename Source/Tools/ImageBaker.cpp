@@ -2578,8 +2578,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
     if (type == 2) {
         if (read_size != 0) {
             auto read_data_begin = ImageVectorDataAt(read_data, 0);
-            ptr<void> read_data_output = cast_to_void(read_data_begin.get());
-            read_tga(read_data_output, numeric_cast<size_t>(read_size));
+            read_tga(cast_to_void(read_data_begin.get()), numeric_cast<size_t>(read_size));
         }
     }
     else {
@@ -2616,8 +2615,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
 
                 if (to_read != 0) {
                     auto read_data_pos = ImageVectorDataAt(read_data, numeric_cast<size_t>(bytes_read));
-                    ptr<void> read_data_output = cast_to_void(read_data_pos.get());
-                    read_tga(read_data_output, numeric_cast<size_t>(to_read));
+                    read_tga(cast_to_void(read_data_pos.get()), numeric_cast<size_t>(to_read));
                 }
                 bytes_read += run_len;
 

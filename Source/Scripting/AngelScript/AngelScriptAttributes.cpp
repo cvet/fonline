@@ -114,9 +114,8 @@ static auto ReadInstructionValue(ptr<const AngelScript::asDWORD> instruction, si
     static_assert(std::is_trivially_copyable_v<T>);
 
     T value {};
-    ptr<T> value_ptr = &value;
     auto instruction_word = InstructionWordAt(instruction, word_offset);
-    MemCopy(value_ptr.get(), instruction_word.get(), sizeof(value));
+    MemCopy(&value, instruction_word.get(), sizeof(value));
     return value;
 }
 
@@ -598,8 +597,7 @@ void SetFunctionAttributes(ptr<AngelScript::asIScriptFunction> func, const vecto
     user_data->Attributes = attributes;
 
     ptr<ScriptFunctionAttributeUserData> released_user_data = std::move(user_data).release();
-    ptr<void> user_data_slot = cast_to_void(released_user_data.get());
-    nptr<const ScriptFunctionAttributeUserData> old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->SetUserData(user_data_slot.get(), AS_FUNC_ATTRIBUTES_USER_DATA));
+    nptr<const ScriptFunctionAttributeUserData> old_user_data = cast_from_void<ScriptFunctionAttributeUserData*>(func->SetUserData(cast_to_void(released_user_data.get()), AS_FUNC_ATTRIBUTES_USER_DATA));
     FO_VERIFY_AND_THROW(!old_user_data, "Old user data is already set");
 }
 

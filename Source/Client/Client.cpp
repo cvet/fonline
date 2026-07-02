@@ -53,12 +53,7 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
 }
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
-    BaseEngine(settings, std::move(resources),
-        [&] {
-            ptr<EngineMetadata> meta = this;
-            ptr<const FileSystem> resources_ptr = &resources;
-            RegisterClientMetadata(meta, resources_ptr);
-        }),
+    BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
     EffectMngr(Settings, ptr<FileSystem> {&Resources}, window->GetRender()),
     SprMngr(Settings, window, ptr<FileSystem> {&Resources}, ptr<GameTimer> {&GameTime}, ptr<EffectManager> {&EffectMngr}, ptr<HashResolver> {&Hashes}),
     FontMngr(ptr<SpriteManager> {&SprMngr}),
@@ -74,17 +69,11 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
-    ptr<SpriteManager> spr_mngr = &SprMngr;
-    ptr<EffectManager> effect_mngr = &EffectMngr;
-    ptr<GameTimer> game_time = &GameTime;
-    ptr<HashResolver> hash_resolver = &Hashes;
 
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(spr_mngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    ptr<NameResolver> name_resolver = this;
-    ptr<AnimationResolver> anim_name_resolver = this;
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes, this, this));
 #endif
 
     ResMngr.IndexFiles();
@@ -105,12 +94,11 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
 
-    _curLang = TextPack {hash_resolver};
+    _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
 
     // Modules initialization
-    ptr<ClientEngine> client = this;
-    ClientInitHook(client);
+    ClientInitHook(this);
 
     InitModules();
 
@@ -583,8 +571,7 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
 
     if (result == ClientConnection::ConnectResult::Success) {
         FO_VERIFY_AND_THROW(!_curPlayer, "Cur player is already set");
-        ptr<ClientEngine> engine = this;
-        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(engine, ident_t {});
+        _curPlayer = SafeAlloc::MakeRefCounted<PlayerView>(this, ident_t {});
         OnConnected.Fire();
     }
     else if (result == ClientConnection::ConnectResult::CompatibilityOutdated) {
@@ -866,8 +853,7 @@ void ClientEngine::Net_OnLoginSuccess()
     player->RestoreData(_playerPropertiesData);
 
     FO_VERIFY_AND_THROW(!HasInnerEntities(), "Has inner entities is already set");
-    ptr<Entity> holder = this;
-    ReceiveCustomEntities(holder);
+    ReceiveCustomEntities(this);
 
     OnLoginSuccess.Fire();
 }
@@ -916,8 +902,7 @@ void ClientEngine::Net_OnAddCritter()
             _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
         }
 
-        ptr<ClientEngine> engine = this;
-        refcount_ptr<CritterView> global_cr = SafeAlloc::MakeRefCounted<CritterView>(engine, cr_id, proto);
+        auto global_cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto);
         global_cr->RestoreData(_tempPropertiesData);
         _globalMapCritters.emplace_back(global_cr);
 
@@ -1224,8 +1209,7 @@ void ClientEngine::Net_OnCritterAction()
         FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
         auto proto = nullable_proto.as_ptr();
 
-        ptr<ClientEngine> engine = this;
-        nullable_context_item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
+        nullable_context_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         auto context_item = nullable_context_item.as_ptr();
         context_item->RestoreData(_tempPropertiesData);
 
@@ -1274,8 +1258,7 @@ void ClientEngine::Net_OnCritterMoveItem()
         FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
         auto proto = nullable_proto.as_ptr();
 
-        ptr<ClientEngine> engine = this;
-        nullable_moved_item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
+        nullable_moved_item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         auto moved_item = nullable_moved_item.as_ptr();
         moved_item->RestoreData(_tempPropertiesData);
 
@@ -1876,8 +1859,7 @@ void ClientEngine::Net_OnSomeItems()
         FO_VERIFY_AND_THROW(nullable_proto, "Missing prototype instance");
         auto proto = nullable_proto.as_ptr();
 
-        ptr<ClientEngine> engine = this;
-        refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(engine, item_id, proto);
+        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(item);
@@ -1983,9 +1965,8 @@ void ClientEngine::Net_OnRemoveCustomEntity()
 
     if (nullable_holder) {
         auto holder = nullable_holder.as_ptr();
-        ptr<Entity> custom_entity_entity = custom_entity;
 
-        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity_entity);
+        holder->RemoveInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
     }
     else {
         BreakIntoDebugger();
@@ -2189,7 +2170,7 @@ auto ClientEngine::AnimLoad(hstring name, AtlasType atlas_type) -> uint32_t
 
     anim->PlayDefault();
 
-    unique_ptr<IfaceAnim> iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
+    auto iface_anim = SafeAlloc::MakeUnique<IfaceAnim>();
 
     iface_anim->Name = name;
     iface_anim->Anim = anim;
@@ -2239,8 +2220,7 @@ void ClientEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> pro
     }
 
     if (prop->IsModifiableByAnyClient()) {
-        ptr<const Entity> global_entity = this;
-        Net_SendProperty(NetProperty::Game, prop, global_entity);
+        Net_SendProperty(NetProperty::Game, prop, this);
     }
     else {
         throw GenericException("Unable to send global modifiable property", prop->GetName());
@@ -2582,8 +2562,7 @@ void ClientEngine::ChangeLanguage(string_view lang_name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    auto lang_pack = TextPack {hash_resolver};
+    auto lang_pack = TextPack {&Hashes};
     lang_pack.LoadFromResources(Resources, lang_name);
 
     _curLang = std::move(lang_pack);
@@ -2604,8 +2583,7 @@ auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
         }
     }
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {hash_resolver});
+    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {&Hashes});
     cached_pack.LoadFromResources(Resources, lang_name);
     return cached_pack;
 }

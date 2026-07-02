@@ -383,8 +383,7 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
     bool is_error = false;
 
-    ptr<Entity> engine_holder = _engine;
-    LoadInnerEntities(engine_holder, is_error);
+    LoadInnerEntities(_engine, is_error);
 
     const auto loc_ids = _engine->DbStorage.GetAllIntIds(_locationCollectionName);
 
@@ -533,7 +532,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
 
     auto map_proto = nullable_map_proto.as_ptr();
     auto static_map = _engine->MapMngr.GetStaticMap(map_proto);
-    refcount_ptr<Map> map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, map_id, map_proto, nullptr, static_map);
 
     if (!PropertiesSerializator::LoadFromDocument(map->GetPropertiesForEdit(), map_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore map {} {} properties", map_pid, map_id);
@@ -851,8 +850,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
                 }
 
                 // Inner entities
-                ptr<Entity> custom_entity_holder = custom_entity;
-                LoadInnerEntities(custom_entity_holder, is_error);
+                LoadInnerEntities(custom_entity, is_error);
             }
             else {
                 inner_entity_ids_changed = true;
@@ -1743,8 +1741,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
     entity->MarkAsDestroying();
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); entity->HasInnerEntities();) {
-        ptr<Entity> inner_holder = entity;
-        DestroyInnerEntities(inner_holder);
+        DestroyInnerEntities(entity);
 
         // Each pass must strictly reduce the entity's remaining inner entities; non-convergence is corruption.
         const size_t remaining_deps = entity->GetInnerEntitiesCount();
@@ -1848,8 +1845,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
             auto loc = nullable_loc.as_ptr();
 
             for (ptr<Map> loc_map : loc->GetMaps()) {
-                ptr<Entity> loc_map_holder = loc_map;
-                find_players_recursively(loc_map_holder, derived_sync);
+                find_players_recursively(loc_map, derived_sync);
             }
         }
         else if (nptr<Map> nullable_map = holder.dyn_cast<Map>(); nullable_map) {
@@ -1867,8 +1863,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
                 auto item_cr_ref = require_refcount_ptr(item->GetParent<Critter>());
                 FO_VERIFY_AND_THROW(item_cr_ref->GetId() == item->GetCritterId(), "Inventory item critter owner id mismatch");
                 ValidateEntityAccess(item_cr_ref);
-                ptr<Entity> item_cr_holder = item_cr_ref;
-                find_players_recursively(item_cr_holder, derived_sync);
+                find_players_recursively(item_cr_ref, derived_sync);
             } break;
             case ItemOwnership::MapHex: {
                 if (derived_sync == EntityHolderEntrySync::PublicSync) {
@@ -1887,8 +1882,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
                 auto item_cont_ref = require_refcount_ptr(item->GetParent<Item>());
                 FO_VERIFY_AND_THROW(item_cont_ref->GetId() == item->GetContainerId(), "Container item owner id mismatch");
                 ValidateEntityAccess(item_cont_ref);
-                ptr<Entity> item_cont_holder = item_cont_ref;
-                find_players_recursively(item_cont_holder, derived_sync);
+                find_players_recursively(item_cont_ref, derived_sync);
             } break;
             default:
                 break;
@@ -1896,8 +1890,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
         }
     };
 
-    ptr<Entity> holder = entity;
-    find_players_recursively(holder, EntityHolderEntrySync::PublicSync);
+    find_players_recursively(entity, EntityHolderEntrySync::PublicSync);
 }
 
 FO_END_NAMESPACE

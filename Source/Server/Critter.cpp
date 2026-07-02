@@ -349,8 +349,7 @@ void Critter::MarkIsForPlayer()
     _playerDetachTime = _engine->GameTime.GetFrameTime();
 
     if (map) {
-        ptr<Critter> self = this;
-        map->RefreshCritterPlayerState(self);
+        map->RefreshCritterPlayerState(this);
     }
 }
 
@@ -373,8 +372,7 @@ void Critter::UnmarkIsForPlayer()
     SetControlledByPlayer(false);
 
     if (map) {
-        ptr<Critter> self = this;
-        map->RefreshCritterPlayerState(self);
+        map->RefreshCritterPlayerState(this);
     }
 }
 
@@ -395,8 +393,7 @@ void Critter::AttachPlayer(ptr<Player> player)
 
     player->SetControlledCritterId(GetId());
     player->SetLastControlledCritterId(GetId());
-    ptr<Critter> self = this;
-    player->SetControlledCritter(self);
+    player->SetControlledCritter(this);
 }
 
 void Critter::DetachPlayer()
@@ -493,8 +490,7 @@ void Critter::AttachToCritter(ptr<Critter> cr)
         StopMoving(MovingState::Stopped);
     }
 
-    ptr<Critter> self = this;
-    cr->AddAttachedCritter(self);
+    cr->AddAttachedCritter(this);
     SetIsAttached(true);
     SetAttachMaster(cr->GetId());
 
@@ -513,8 +509,7 @@ void Critter::DetachFromCritter()
     auto nullable_cr = _engine->EntityMngr.GetCritter(GetAttachMaster());
     auto cr = std::move(nullable_cr).take_not_null();
 
-    ptr<Critter> self = this;
-    cr->RemoveAttachedCritter(self);
+    cr->RemoveAttachedCritter(this);
     SetIsAttached(false);
     SetAttachMaster({});
 
@@ -611,13 +606,11 @@ void Critter::ClearVisibleEnitites()
         ptr<Critter> cr = _visibleCrWhoSeeMe.front();
         const auto del_ok = RemoveVisibleCritter(cr);
         FO_STRONG_ASSERT(del_ok, "Failed to remove visible critter");
-        ptr<const Critter> self = this;
-        cr->Send_RemoveCritter(self);
+        cr->Send_RemoveCritter(this);
     }
     while (!_visibleCr.empty()) {
         ptr<Critter> cr = _visibleCr.front();
-        ptr<Critter> self = this;
-        const auto del_ok2 = cr->RemoveVisibleCritter(self);
+        const auto del_ok2 = cr->RemoveVisibleCritter(this);
         FO_STRONG_ASSERT(del_ok2, "Failed to remove self from visible critter");
     }
 
@@ -701,8 +694,7 @@ auto Critter::GetCritters(CritterSeeType see_type, CritterFindType find_type) ->
     if (!GetMapId()) {
         FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
         vector<ptr<Critter>> critters = copy(*_globalMapGroup);
-        ptr<Critter> self = this;
-        vec_remove_unique_value(critters, self);
+        vec_remove_unique_value(critters, this);
         return critters;
     }
 
@@ -844,8 +836,7 @@ auto Critter::RemoveVisibleCritter(ptr<Critter> cr) -> bool
     FO_STRONG_ASSERT(it != _visibleCrWhoSeeMe.end(), "Lookup failed in visible cr who see me");
     _visibleCrWhoSeeMe.erase(it);
 
-    ptr<Critter> self = this;
-    const auto it2 = std::ranges::find(cr->_visibleCr, self);
+    const auto it2 = std::ranges::find(cr->_visibleCr, this);
     FO_STRONG_ASSERT(it2 != cr->_visibleCr.end(), "Lookup failed in critter visible cr");
     cr->_visibleCr.erase(it2);
 
@@ -967,8 +958,7 @@ void Critter::SetItem(ptr<Item> item)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     vec_add_unique_value(_invItems, item);
-    ptr<Critter> cr = this;
-    item->SetParent(cr);
+    item->SetParent(this);
 }
 
 void Critter::RemoveItem(ptr<Item> item)
@@ -1134,10 +1124,8 @@ void Critter::Broadcast_Action(CritterAction action, int32_t action_data, nptr<c
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    ptr<const Critter> self = this;
-
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Action(self, action, action_data, item);
+        player->Send_Action(this, action, action_data, item);
     }
 }
 
@@ -1147,10 +1135,8 @@ void Critter::Broadcast_Dir()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    ptr<const Critter> self = this;
-
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Dir(self);
+        player->Send_Dir(this);
     }
 }
 
@@ -1160,10 +1146,8 @@ void Critter::Broadcast_Teleport(mpos to_hex)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    ptr<const Critter> self = this;
-
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Teleport(self, to_hex);
+        player->Send_Teleport(this, to_hex);
     }
 }
 

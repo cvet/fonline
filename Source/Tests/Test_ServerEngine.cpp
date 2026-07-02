@@ -339,7 +339,7 @@ namespace ServerEngineTest
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        unique_ptr<BakerTests::MemoryDataSource> compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
+        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
@@ -358,7 +358,7 @@ namespace ServerEngineTest
         const auto fomap_blob = MakeEmptyMapBlob();
         const auto script_blob = MakeScriptBinary(compiler_resources);
 
-        unique_ptr<BakerTests::MemoryDataSource> runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
+        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
@@ -392,8 +392,7 @@ namespace ServerEngineTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        ptr<GlobalSettings> settings_ptr = &settings;
-        return SafeAlloc::MakeRefCounted<ServerEngine>(settings_ptr, MakeServerTestResources());
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
     }
 
     static void CheckServerStartupFailsSafely(GlobalSettings& settings)
@@ -432,8 +431,8 @@ namespace ServerEngineTest
     static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        unique_ptr<ServerConnection> connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
-        refcount_ptr<Player> player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
 
         SyncContext ctx;
         ctx.Activate();

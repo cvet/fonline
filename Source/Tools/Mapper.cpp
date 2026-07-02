@@ -265,9 +265,8 @@ static auto ReadInspectorToken(nptr<const char> str, string& result) -> nptr<con
     }
 
     const auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        ptr<const char> chars = &str[char_pos];
-        char_len = utf8::DecodeStrNtLen(chars.get());
-        utf8::Decode(chars.get(), char_len);
+        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
+        utf8::Decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;
@@ -330,9 +329,8 @@ static auto ReadInspectorToken(nptr<const char> str, string& result) -> nptr<con
         }
     }
 
-    ptr<const char> token_begin = &str[begin];
     ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
-    result.assign(token_begin.get(), pos - begin);
+    result.assign(&str[begin], pos - begin);
     return next_token;
 }
 
@@ -523,11 +521,7 @@ static void UpdateLocalConfigValue(CacheStorage& cache, string_view key, string_
 }
 
 MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
-    ClientEngine(settings, std::move(resources), window, [&] {
-        ptr<EngineMetadata> meta = this;
-        ptr<const FileSystem> resources_ptr = &resources;
-        RegisterMapperMetadata(meta, resources_ptr);
-    })
+    ClientEngine(settings, std::move(resources), window, [&] { RegisterMapperMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -543,17 +537,10 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     EffectMngr.LoadDefaultEffects();
 
-    ptr<SpriteManager> spr_mngr = &SprMngr;
-    ptr<EffectManager> effect_mngr = &EffectMngr;
-    ptr<GameTimer> game_time = &GameTime;
-    ptr<HashResolver> hash_resolver = &Hashes;
-
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(spr_mngr));
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&SprMngr));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ParticleSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes));
 #if FO_ENABLE_3D
-    ptr<NameResolver> name_resolver = this;
-    ptr<AnimationResolver> anim_name_resolver = this;
-    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(spr_mngr, Settings, effect_mngr, game_time, hash_resolver, name_resolver, anim_name_resolver));
+    SprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<ModelSpriteFactory>(&SprMngr, Settings, &EffectMngr, &GameTime, &Hashes, this, this));
 #endif
 
     ResMngr.IndexFiles();
@@ -572,7 +559,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     InitAngelScriptScripting(meta, *Settings, Resources);
 #endif
 
-    _curLang = TextPack {hash_resolver};
+    _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
 
     // Fonts
@@ -1610,8 +1597,7 @@ auto MapperEngine::ExecuteUndo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
-    ptr<MapperEngine> mapper = this;
-    const auto ok = op.Undo(mapper, &active_map);
+    const auto ok = op.Undo(this, &active_map);
     UndoRedoInProgress = false;
 
     if (!ok) {
@@ -1650,8 +1636,7 @@ auto MapperEngine::ExecuteRedo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
-    ptr<MapperEngine> mapper = this;
-    const auto ok = op.Redo(mapper, &active_map);
+    const auto ok = op.Redo(this, &active_map);
     UndoRedoInProgress = false;
 
     if (!ok) {
@@ -1714,7 +1699,7 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
     vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
     for (size_t i = 0; i < children.size(); i++) {
-        unique_ptr<EntityBuf> child_buf = SafeAlloc::MakeUnique<EntityBuf>();
+        auto child_buf = SafeAlloc::MakeUnique<EntityBuf>();
         CaptureEntityBuf(*child_buf, children[i]);
         entity_buf.Children.emplace_back(std::move(child_buf));
     }
@@ -5825,7 +5810,7 @@ void MapperEngine::BufferCopy()
         vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
         for (size_t i = 0; i < children.size(); i++) {
-            unique_ptr<EntityBuf> child_buf = SafeAlloc::MakeUnique<EntityBuf>();
+            auto child_buf = SafeAlloc::MakeUnique<EntityBuf>();
             add_entity(*child_buf, children[i]);
             entity_buf.Children.emplace_back(std::move(child_buf));
         }
@@ -6581,11 +6566,10 @@ void MapperEngine::ParseCommand(string_view command)
             FO_VERIFY_AND_THROW(nullable_registrator, "Map property registrator is not available");
             auto registrator = nullable_registrator.as_ptr();
 
-            refcount_ptr<ProtoMap> pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrator);
+            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrator);
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
-            ptr<ClientEngine> engine = this;
-            auto map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
+            auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
             map->EnableMapperMode();
             map->SetScrollCheck(false);
             map->InstantScrollTo({GameSettings::DEFAULT_MAP_SIZE / 2, GameSettings::DEFAULT_MAP_SIZE / 2});
@@ -6722,11 +6706,10 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     FO_VERIFY_AND_THROW(nullable_registrator, "Map property registrator is not available");
     auto registrator = nullable_registrator.as_ptr();
 
-    refcount_ptr<ProtoMap> pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
     pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
 
-    ptr<ClientEngine> engine = this;
-    auto new_map = SafeAlloc::MakeRefCounted<MapView>(engine, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
+    auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
     new_map->SetHeaderExtraFields(std::move(proto_map_header_extra_fields));
     new_map->EnableMapperMode();
     new_map->SetScrollCheck(false);

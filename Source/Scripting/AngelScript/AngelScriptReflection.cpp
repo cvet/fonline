@@ -365,8 +365,7 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
 
         for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
             const string name = enum_type->enumValues[i]->name.AddressOf();
-            ptr<void> value = cast_to_void(&name);
-            result->InsertLast(value);
+            result->InsertLast(cast_to_void(&name));
         }
     }
 
@@ -390,8 +389,7 @@ auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
         auto enum_type = nullable_enum_type.as_ptr();
 
         for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
-            ptr<void> value = cast_to_void(&enum_type->enumValues[i]->value);
-            result->InsertLast(value);
+            result->InsertLast(cast_to_void(&enum_type->enumValues[i]->value));
         }
     }
 
@@ -562,8 +560,7 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
         FO_VERIFY_AND_THROW(nullable_module, "Missing script module at index");
         auto module = nullable_module.as_ptr();
         const string name = module->GetName();
-        ptr<void> value = cast_to_void(&name);
-        modules->InsertLast(value);
+        modules->InsertLast(cast_to_void(&name));
     }
 
     return modules;
@@ -699,18 +696,14 @@ static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray
         if (nullable_func) {
             auto func = nullable_func.as_ptr();
             const string name = func->GetModuleName();
-            ptr<void> module_name = cast_to_void(&name);
-            modules->InsertLast(module_name);
+            modules->InsertLast(cast_to_void(&name));
 
             const bool include_ns = include_namespace && func->GetNamespace()[0] != 0;
             const string decl = func->GetDeclaration(include_object_name, include_ns, include_param_names);
-            ptr<void> function_decl = cast_to_void(&decl);
-            names->InsertLast(function_decl);
+            names->InsertLast(cast_to_void(&decl));
 
-            ptr<void> line_value = cast_to_void(&line);
-            lines->InsertLast(line_value);
-            ptr<void> column_value = cast_to_void(&column);
-            columns->InsertLast(column_value);
+            lines->InsertLast(cast_to_void(&line));
+            columns->InsertLast(cast_to_void(&column));
 
             count++;
         }

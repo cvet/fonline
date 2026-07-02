@@ -168,7 +168,6 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     // Process data
     unordered_map<hstring, unordered_map<hstring, map<string, TextPack>>> all_proto_texts;
-    ptr<HashResolver> hash_resolver = &engine.Hashes;
 
     const auto insert_map_values = [](const map<string, string>& from_kv, map<string, string>& to_kv) {
         for (auto&& [key, value] : from_kv) {
@@ -249,7 +248,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 const auto text_key = TextPackKey::FromPack(engine.Hashes, text_pack_name, pid.as_str(), key2, key3);
 
                 auto& lang_packs_map = all_proto_texts[type_name][pid];
-                lang_packs_map.try_emplace(lang, hash_resolver);
+                lang_packs_map.try_emplace(lang, &engine.Hashes);
                 lang_packs_map.at(lang).AddStr(text_key, StringEscaping::DecodeString(value));
             }
         }
@@ -261,11 +260,11 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& lang : _context->Settings->BakeLanguages) {
         auto empty_lang_pack = map<string, TextPack>();
-        empty_lang_pack.try_emplace("Items", hash_resolver);
-        empty_lang_pack.try_emplace("Critters", hash_resolver);
-        empty_lang_pack.try_emplace("Maps", hash_resolver);
-        empty_lang_pack.try_emplace("Locations", hash_resolver);
-        empty_lang_pack.try_emplace("Protos", hash_resolver);
+        empty_lang_pack.try_emplace("Items", &engine.Hashes);
+        empty_lang_pack.try_emplace("Critters", &engine.Hashes);
+        empty_lang_pack.try_emplace("Maps", &engine.Hashes);
+        empty_lang_pack.try_emplace("Locations", &engine.Hashes);
+        empty_lang_pack.try_emplace("Protos", &engine.Hashes);
         lang_packs.emplace_back(lang, std::move(empty_lang_pack));
     }
 

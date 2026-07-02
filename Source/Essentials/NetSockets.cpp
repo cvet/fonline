@@ -107,12 +107,11 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
     timeval timeout_tv {};
     timeout_tv.tv_sec = numeric_cast<decltype(timeout_tv.tv_sec)>(timeout_ms / 1000);
     timeout_tv.tv_usec = numeric_cast<decltype(timeout_tv.tv_usec)>((timeout_ms % 1000) * 1000);
-    ptr<timeval> timeout_ptr = &timeout_tv;
 
 #if FO_WINDOWS
-    const auto select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, timeout_ptr.get());
+    const auto select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #else
-    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, timeout_ptr.get());
+    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #endif
 
     if (select_result <= 0) {
@@ -169,9 +168,8 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return std::nullopt;
     }
 
-    ptr<uint32_t> target = &addr;
     auto resolved_addr = nullable_resolved_addr.as_ptr();
-    MemCopy(target.get(), resolved_addr.get(), sizeof(addr));
+    MemCopy(&addr, resolved_addr.get(), sizeof(addr));
     return addr;
 }
 
@@ -227,8 +225,7 @@ auto net_sockets::last_error_text() noexcept -> string
 
                                                   (void)::LocalFree(static_cast<HLOCAL>(text.get_no_const()));
                                               }};
-    ptr<const wchar_t> ws_const = ws;
-    const string error_str = strex().parse_wide_char(ws_const).trim();
+    const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);
 #else
@@ -309,9 +306,8 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS.
 #if FO_WINDOWS
     u_long mode = 1;
-    ptr<u_long> mode_ptr = &mode;
 
-    if (::ioctlsocket(sock, FIONBIO, mode_ptr.get()) != 0) {
+    if (::ioctlsocket(sock, FIONBIO, &mode) != 0) {
         CloseSocket(sock);
         return false;
     }
@@ -507,11 +503,10 @@ auto tcp_server::accept() noexcept -> tcp_socket
     ptr<int32_t> addr_len_ptr = &addr_len;
 #else
     socklen_t addr_len = sizeof(addr);
-    ptr<socklen_t> addr_len_ptr = &addr_len;
 #endif
     auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
     auto listen_sock = _listenSock.as_ptr();
-    const socket_t client_sock = ::accept(*listen_sock, addr_ptr.get(), addr_len_ptr.get());
+    const socket_t client_sock = ::accept(*listen_sock, addr_ptr.get(), &addr_len);
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -661,11 +656,10 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
     ptr<int32_t> addr_len_ptr = &addr_len;
 #else
     socklen_t addr_len = sizeof(addr);
-    ptr<socklen_t> addr_len_ptr = &addr_len;
 #endif
     auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
     auto sock = _sock.as_ptr();
-    const int32_t result = ::recvfrom(*sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), addr_len_ptr.get());
+    const int32_t result = ::recvfrom(*sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
 
     if (result <= 0) {
         return result;

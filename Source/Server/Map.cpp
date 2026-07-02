@@ -360,8 +360,7 @@ void Map::AddCritter(ptr<Critter> cr)
         vec_add_unique_value(_nonPlayerCritters, cr);
     }
 
-    ptr<Map> map = this;
-    cr->SetParent(map);
+    cr->SetParent(this);
 
     AddCritterToField(cr);
 
@@ -557,8 +556,7 @@ void Map::SetItem(ptr<Item> item)
 
     _itemsMap.emplace(item->GetId(), item);
     vec_add_unique_value(_items, item);
-    ptr<Map> map = this;
-    item->SetParent(map);
+    item->SetParent(this);
 
     const auto hex = item->GetHex();
     ptr<Field> field = _hexField->GetCellForWriting(hex);

@@ -241,9 +241,8 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(*kv);
 
-            ptr<MapView> map = this;
             nptr<const Properties> props_ptr = &props;
-            refcount_ptr<CritterHexView> cr = SafeAlloc::MakeRefCounted<CritterHexView>(map, id, proto, props_ptr);
+            auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto, props_ptr);
 
             if (const auto hex = cr->GetHex(); !_mapSize.is_valid_pos(hex)) {
                 cr->SetHex(_mapSize.clamp_pos(hex));
@@ -260,9 +259,8 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
             auto props = proto->GetProperties().Copy();
             props.ApplyFromText(*kv);
 
-            ptr<MapView> map = this;
             nptr<const Properties> props_ptr = &props;
-            refcount_ptr<ItemHexView> item = SafeAlloc::MakeRefCounted<ItemHexView>(map, id, proto, props_ptr);
+            auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto, props_ptr);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
                 if (const auto hex = item->GetHex(); !_mapSize.is_valid_pos(hex)) {
@@ -354,9 +352,8 @@ void MapView::LoadStaticData()
             reader.ReadBytes(props_data_span);
             item_props.RestoreAllData(props_data);
 
-            ptr<MapView> map = this;
             nptr<const Properties> item_props_ptr = &item_props;
-            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(map, static_id, item_proto.as_ptr(), item_props_ptr);
+            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto.as_ptr(), item_props_ptr);
             static_item->SetStatic(true);
             AddItemInternal(static_item);
         }
@@ -684,8 +681,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    ptr<MapView> map = this;
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(map, id, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto.as_ptr());
 
     item->RestoreData(data);
     item->SetStatic(false);
@@ -716,8 +712,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    ptr<MapView> map = this;
-    refcount_ptr<ItemHexView> item = SafeAlloc::MakeRefCounted<ItemHexView>(map, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
 
     item->SetHex(hex);
 
@@ -734,8 +729,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    ptr<MapView> map = this;
-    refcount_ptr<ItemHexView> item = SafeAlloc::MakeRefCounted<ItemHexView>(map, GenTempEntityId(), proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto.as_ptr());
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -754,8 +748,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    ptr<MapView> map = this;
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(map, ident_t {}, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto.as_ptr());
 
     item->SetStatic(false);
     item->SetHex(hex);
@@ -1037,7 +1030,7 @@ auto MapView::RunSpritePattern(string_view name, size_t count) -> nptr<SpritePat
     spr->Prewarm();
     spr->PlayDefault();
 
-    refcount_ptr<SpritePattern> pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
+    auto pattern = SafeAlloc::MakeRefCounted<SpritePattern>();
 
     pattern->Sprites.emplace_back(std::move(spr));
 
@@ -1071,8 +1064,7 @@ void MapView::RebuildMapNow()
     _engine->SprMngr.InvalidateEgg();
     _needRebuildLightPrimitives = true;
     _needReapplyLights = true;
-    ptr<MapView> map = this;
-    _engine->OnRenderMap_Rebuild.Fire(map);
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
@@ -1147,8 +1139,7 @@ void MapView::RebuildMapOffset(ipos32 axial_hex_offset)
     }
 
     _needRebuildLightPrimitives = true;
-    ptr<MapView> map = this;
-    _engine->OnRenderMap_Rebuild.Fire(map);
+    _engine->OnRenderMap_Rebuild.Fire(this);
 }
 
 void MapView::ShowHexLines(int ox, int oy)
@@ -2863,8 +2854,7 @@ void MapView::PrepareFogToDraw()
     input.FrameTime = _engine->GameTime.GetFrameTime();
     input.TraceBulletToBlock = [this](mpos start_hex, mpos target_hex, int32_t dist, bool check_shoot_blocks) {
         mpos block_hex;
-        ptr<mpos> block_hex_ptr = &block_hex;
-        TraceBullet(start_hex, target_hex, dist, 0.0f, nullptr, CritterFindType::Any, nullptr, block_hex_ptr, nullptr, check_shoot_blocks);
+        TraceBullet(start_hex, target_hex, dist, 0.0f, nullptr, CritterFindType::Any, nullptr, &block_hex, nullptr, check_shoot_blocks);
         return block_hex;
     };
 
@@ -3335,8 +3325,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
 
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Critter prototype is missing");
-    ptr<MapView> map = this;
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(map, id, proto.as_ptr());
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto.as_ptr());
 
     cr->RestoreData(data);
     cr->SetHex(hex);
@@ -3365,8 +3354,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Prope
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    ptr<MapView> map = this;
-    refcount_ptr<CritterHexView> cr = SafeAlloc::MakeRefCounted<CritterHexView>(map, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
 
     cr->SetHex(hex);
     cr->ChangeDir(dir);
@@ -3981,7 +3969,7 @@ auto MapView::AddFog(nptr<CritterView> cr, DrawOrderType draw_order, nptr<Render
         throw ScriptException("Fog critter is not a hex critter on this map");
     }
 
-    refcount_ptr<FogLayer> fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
     fog->DrawOrder = draw_order;
     fog->FollowCritter = true;
     fog->OriginCritterId = hex_cr->GetId();
@@ -3995,7 +3983,7 @@ auto MapView::AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> cust
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<FogLayer> fog = SafeAlloc::MakeRefCounted<FogLayer>();
+    auto fog = SafeAlloc::MakeRefCounted<FogLayer>();
     fog->DrawOrder = draw_order;
     fog->FollowCritter = false;
     fog->OriginHex = hex;

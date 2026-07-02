@@ -196,7 +196,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     FO_VERIFY_AND_THROW(result_size.height >= request_size.height, "Texture atlas height cannot satisfy requested image height", atlas_type, result_size.height, request_size.height);
 
     auto rt = _rtMngr->CreateRenderTarget(false, result_size, _settings->AtlasLinearFiltration);
-    unique_ptr<TextureAtlas> created_atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
+    auto created_atlas = SafeAlloc::MakeUnique<TextureAtlas>(atlas_type, rt);
 
     _allAtlases.push_back(std::move(created_atlas));
     return _allAtlases.back();

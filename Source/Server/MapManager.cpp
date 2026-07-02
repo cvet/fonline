@@ -75,7 +75,7 @@ void MapManager::LoadFromResources()
             auto reader = DataReader(map_file.GetDataSpan());
 
             const auto map_size = map_proto->GetSize();
-            unique_ptr<StaticMap> static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
+            auto static_map = SafeAlloc::MakeUnique<StaticMap>(map_size, _engine->Settings->ProtoMapStaticGrid);
 
             // Read hashes
             {
@@ -497,7 +497,7 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
 
     auto map_proto = nullable_map_proto.as_ptr();
     auto static_map = GetStaticMap(map_proto);
-    refcount_ptr<Map> map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
 
     _engine->EntityMngr.RegisterMap(map);
     loc->AddMap(map);
@@ -691,8 +691,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
             }
 
             if (map->HasInnerEntities()) {
-                ptr<Entity> holder = map;
-                _engine->EntityMngr.DestroyInnerEntities(holder);
+                _engine->EntityMngr.DestroyInnerEntities(map);
             }
         }
         catch (const std::exception& ex) {

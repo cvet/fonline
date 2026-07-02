@@ -62,12 +62,7 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
 }
 
 ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources) :
-    BaseEngine(settings, std::move(resources),
-        [&] {
-            ptr<EngineMetadata> meta = this;
-            ptr<const FileSystem> resources_ptr = &resources;
-            RegisterServerMetadata(meta, resources_ptr);
-        }),
+    BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
     EntityMngr(ptr<ServerEngine> {this}),
     MapMngr(ptr<ServerEngine> {this}),
     CrMngr(ptr<ServerEngine> {this}),
@@ -536,8 +531,7 @@ auto ServerEngine::InitLanguageJob() -> std::optional<timespan>
 
     WriteLog("Load language data");
 
-    ptr<HashResolver> hash_resolver = &Hashes;
-    _defaultLang = TextPack {hash_resolver};
+    _defaultLang = TextPack {&Hashes};
     _defaultLang.LoadFromResources(Resources, Settings->Language);
 
     return std::nullopt;
@@ -608,8 +602,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         // Scripting
         WriteLog("Init script modules");
 
-        ptr<ServerEngine> server = this;
-        ServerInitHook(server);
+        ServerInitHook(this);
         InitModules();
 
         if (OnInit.Fire() == EventResult::StopChain) {
@@ -1132,8 +1125,7 @@ void ServerEngine::Shutdown()
     TimeEventMngr.ClearTimeEvents();
 
     WriteLog("Shutdown stage: DestroyInnerEntities");
-    ptr<ServerEngine> self = this;
-    EntityMngr.DestroyInnerEntities(self);
+    EntityMngr.DestroyInnerEntities(this);
     WriteLog("Shutdown stage: DestroyAllEntities (count={})", EntityMngr.GetEntitiesCount());
     EntityMngr.DestroyAllEntities();
     WriteLog("Shutdown stage: ShutdownBackends");
@@ -1873,9 +1865,8 @@ auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net
     ptr<Player> unlogined_player = [&]() -> ptr<Player> {
         scoped_lock locker {_unloginedPlayersLocker};
 
-        unique_ptr<ServerConnection> connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
-        ptr<ServerEngine> engine = this;
-        refcount_ptr<Player> new_player = SafeAlloc::MakeRefCounted<Player>(engine, ident_t {}, std::move(connection));
+        auto connection = SafeAlloc::MakeUnique<ServerConnection>(Settings, std::move(net_connection));
+        auto new_player = SafeAlloc::MakeRefCounted<Player>(this, ident_t {}, std::move(connection));
         auto result = new_player.as_ptr();
         _unloginedPlayers.emplace_back(std::move(new_player));
         return result;
@@ -2133,8 +2124,7 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
     }
 
     auto proto = nullable_proto.as_ptr();
-    ptr<ServerEngine> engine = this;
-    refcount_ptr<Critter> cr = SafeAlloc::MakeRefCounted<Critter>(engine, ident_t {}, proto, props);
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto, props);
 
     EntityMngr.RegisterCritter(cr);
 
@@ -3887,12 +3877,9 @@ void ServerEngine::OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> pro
 
     ignore_unused(entity);
 
-    ptr<ServerEngine> self = this;
-    ptr<const Entity> game_entity = self;
-
     if (prop->IsPublicSync()) {
         for (ptr<Player> player : copy_hold_ref(EntityMngr.GetPlayers())) {
-            player->Send_Property(NetProperty::Game, prop, game_entity);
+            player->Send_Property(NetProperty::Game, prop, this);
         }
     }
 }

@@ -57,8 +57,7 @@ int main(int argc, char** argv)
         bool baking_result;
 
         {
-            ptr<BakingSettings> settings = &GetApp()->Settings;
-            auto baker = MasterBaker(settings);
+            auto baker = MasterBaker(&GetApp()->Settings);
             baking_result = baker.BakeAll();
         }
 

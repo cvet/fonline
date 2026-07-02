@@ -171,7 +171,7 @@ TEST_CASE("ProtoManager")
         EngineMetadata meta {[] { }};
         InitProtoTestMetadata(meta);
 
-        unique_ptr<BakerTests::MemoryDataSource> source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoTestPack");
+        auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ProtoTestPack");
         source->AddFile("test.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(meta, meta.Hashes.ToHashedString("Item"), "LoadedKnife"));
 
         FileSystem resources;

@@ -96,8 +96,7 @@ public:
         requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
     void Write(T value)
     {
-        ptr<const T> value_ptr = &value;
-        Push(value_ptr, sizeof(T));
+        Push(&value, sizeof(T));
     }
 
     template<typename T>
@@ -105,9 +104,8 @@ public:
     void Write(const T& value)
     {
         const auto len = numeric_cast<uint32_t>(value.length());
-        ptr<const uint32_t> len_ptr = &len;
 
-        Push(len_ptr, sizeof(len));
+        Push(&len, sizeof(len));
         Push(value.data(), len);
     }
 
@@ -159,8 +157,7 @@ public:
     [[nodiscard]] auto Read() -> T
     {
         T result = {};
-        ptr<T> result_ptr = &result;
-        Pop(result_ptr, sizeof(T));
+        Pop(&result, sizeof(T));
         return result;
     }
 
@@ -170,8 +167,7 @@ public:
     {
         string result;
         uint32_t len = 0;
-        ptr<uint32_t> len_ptr = &len;
-        Pop(len_ptr, sizeof(len));
+        Pop(&len, sizeof(len));
 
         // A declared string can never be longer than the bytes still buffered; reject before allocating
         const auto unread = GetUnreadSize();

@@ -98,7 +98,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, props);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->SetStatic(false);
@@ -113,7 +113,7 @@ auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, Cri
 {
     FO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ItemView> item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
+    auto item = SafeAlloc::MakeRefCounted<ItemView>(_engine, id, proto, nullptr);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
 
     item->RestoreData(props_data);

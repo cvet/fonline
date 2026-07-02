@@ -89,8 +89,7 @@ public:
     void SetAs(T value)
     {
         auto target = Alloc(sizeof(T));
-        ptr<const T> source = &value;
-        MemCopy(target.get(), source.get(), sizeof(T));
+        MemCopy(target.get(), &value, sizeof(T));
     }
 
     void Pass(span<const uint8_t> value);
@@ -581,9 +580,8 @@ static auto PropertiesReadObject(const_span<uint8_t> data) -> T
     FO_VERIFY_AND_THROW(data.size() == sizeof(T), "Data size does not match object size");
 
     T result;
-    ptr<T> target = &result;
     auto source = PropertiesSpanDataAt(data, 0);
-    MemCopy(target.get(), source.get(), sizeof(result));
+    MemCopy(&result, source.get(), sizeof(result));
     return result;
 }
 
@@ -595,9 +593,8 @@ static auto PropertiesReadObjectAt(const_span<uint8_t> data, size_t pos) -> T
     FO_VERIFY_AND_THROW(pos + sizeof(T) <= data.size(), "Object read range exceeds available data");
 
     T result;
-    ptr<T> target = &result;
     auto source = PropertiesSpanDataAt(data, pos);
-    MemCopy(target.get(), source.get(), sizeof(result));
+    MemCopy(&result, source.get(), sizeof(result));
     return result;
 }
 

@@ -101,8 +101,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
                 auto&& group = base_system->getGroup(i);
 
                 if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
-                    ptr<ParticleManager> particle_mngr = this;
-                    renderer->Setup(name, particle_mngr);
+                    renderer->Setup(name, this);
                 }
             }
         }

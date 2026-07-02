@@ -143,7 +143,7 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
     }
 
     InterthreadListeners.emplace(_virtualPort, [settings, callback_ = std::move(callback)](InterthreadDataCallback client_send) -> InterthreadDataCallback FO_DEFERRED {
-        shared_ptr<NetworkServerConnection_Interthread> conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
+        auto conn = SafeAlloc::MakeShared<NetworkServerConnection_Interthread>(settings, std::move(client_send));
         callback_(conn);
         return [conn_ = conn](const_span<uint8_t> buf) mutable FO_DEFERRED { conn_->Receive(buf); };
     });

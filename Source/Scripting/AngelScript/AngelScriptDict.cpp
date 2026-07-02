@@ -533,8 +533,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
     }
 
     auto sub_type_data = nullable_sub_type_data.as_ptr();
-    ptr<void> sub_type_user_data = cast_to_void(sub_type_data.get());
-    type_info->SetUserData(sub_type_user_data.get(), AS_TYPE_DICT_CACHE);
+    type_info->SetUserData(cast_to_void(sub_type_data.get()), AS_TYPE_DICT_CACHE);
     return nullable_sub_type_data;
 }
 

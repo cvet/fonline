@@ -284,7 +284,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniquePtrReleaseTransfersOwnership")
     {
-        unique_ptr<PtrDerived> unique_value = SafeAlloc::MakeUnique<PtrDerived>(77);
+        auto unique_value = SafeAlloc::MakeUnique<PtrDerived>(77);
 
         REQUIRE(unique_value.get() != nullptr);
         CHECK(unique_value->Value == 77);
@@ -300,7 +300,7 @@ TEST_CASE("SmartPointers")
 
     SECTION("UniqueOwningPointersUseExplicitBridgeMethods")
     {
-        unique_ptr<PtrDerived> owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(81);
+        auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(81);
 
         auto borrowed = owned_ptr.as_ptr();
         auto maybe_borrowed = owned_ptr.as_nptr();
@@ -329,7 +329,7 @@ TEST_CASE("SmartPointers")
         unique_nptr<PtrBase> empty_ptr;
         CHECK_FALSE(empty_ptr);
 
-        unique_ptr<PtrDerived> owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(88);
+        auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(88);
         unique_nptr<PtrBase> ptr {std::move(owned_ptr)};
 
         CHECK(owned_ptr.get() == nullptr);

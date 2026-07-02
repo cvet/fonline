@@ -93,7 +93,7 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     vector<unique_ptr<BaseBaker>> bakers;
 
     ptr<const BakingSettings> settings_ptr = &settings;
-    shared_ptr<BakingContext> ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
+    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
@@ -228,7 +228,7 @@ void MasterBaker::BakeAllInternal()
             &baking_output_ = std::as_const(baking_output),
             &force_baking // clang-format on
     ](const ResourcePackInfo& res_pack, const string& output_dir) -> unique_ptr<PackBakeContext> {
-        unique_ptr<PackBakeContext> nullable_pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
+        auto nullable_pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
         auto pack_bake_context = nullable_pack_bake_context.as_ptr();
 
         nullable_pack_bake_context->PackName = res_pack.Name;
@@ -277,8 +277,7 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        ptr<const FileSystem> baked_files = &baking_output_;
-        nullable_pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, baked_files);
+        nullable_pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_);
 
         nullable_pack_bake_context->BakingTime.Pause();
         return nullable_pack_bake_context;
@@ -544,8 +543,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const DataSource> data_source = this;
-    _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(data_source));
+    _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
     // Prepare input resources
     const auto res_packs = _settings->GetResourcePacks();
@@ -556,8 +554,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         res_entry.Name = res_pack.Name;
         const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
         const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) { WriteData(res_pack_name, path, data); };
-        ptr<const FileSystem> baked_files = &_outputResources;
-        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, baked_files);
+        res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
         for (const auto& dir : res_pack.InputDirs) {
             res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
@@ -587,8 +584,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
     for (size_t i = 0; i < _inputResources.size(); i++) {
         const auto& res_pack = res_packs[res_packs.size() - 1 - i];
         const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
-        ptr<const FileSystem> baked_files = &_outputResources;
-        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, baked_files);
+        auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
             bakers[j]->BakeFiles(res_entry.InputFiles);
@@ -741,7 +737,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
     FO_VERIFY_AND_THROW(output_data, "Unable to read the baked output file", *output_path);
 
     size = output_data->size();
-    unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+    auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
     if (size != 0u) {
         MemCopy(buf.get(), output_data->data(), size);
@@ -790,11 +786,7 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
 }
 
 BakerServerEngine::BakerServerEngine(const FileSystem& resources) :
-    EngineMetadata([&] {
-        ptr<EngineMetadata> meta = this;
-        ptr<const FileSystem> resources_ptr = &resources;
-        RegisterServerStubMetadata(meta, resources_ptr);
-    })
+    EngineMetadata([&] { RegisterServerStubMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -806,21 +798,13 @@ BakerServerEngine::BakerServerEngine(const FileSystem& resources) :
 }
 
 BakerClientEngine::BakerClientEngine(const FileSystem& resources) :
-    EngineMetadata([&] {
-        ptr<EngineMetadata> meta = this;
-        ptr<const FileSystem> resources_ptr = &resources;
-        RegisterClientStubMetadata(meta, resources_ptr);
-    })
+    EngineMetadata([&] { RegisterClientStubMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 }
 
 BakerMapperEngine::BakerMapperEngine(const FileSystem& resources) :
-    EngineMetadata([&] {
-        ptr<EngineMetadata> meta = this;
-        ptr<const FileSystem> resources_ptr = &resources;
-        RegisterMapperStubMetadata(meta, resources_ptr);
-    })
+    EngineMetadata([&] { RegisterMapperStubMetadata(this, &resources); })
 {
     FO_STACK_TRACE_ENTRY();
 }

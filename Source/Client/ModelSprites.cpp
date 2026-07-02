@@ -156,8 +156,7 @@ void ModelSprite::DrawToAtlas()
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<ModelSprite> model_spr = this;
-    _factory->DrawModelToAtlas(model_spr);
+    _factory->DrawModelToAtlas(this);
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
@@ -197,7 +196,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     const auto draw_size = model->GetDrawSize();
     auto model_owner = nullable_model.take_not_null();
 
-    shared_ptr<ModelSprite> model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
+    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
     model_spr->SetSize(draw_size);
 
     return model_spr;
@@ -211,7 +210,7 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
 
     if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
         shared_ptr<Sprite> any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        shared_ptr<AtlasSprite> atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;

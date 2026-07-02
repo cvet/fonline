@@ -89,8 +89,7 @@ void InitAngelScriptScripting(ptr<EngineMetadata> meta, const ScriptSettings& se
 
     PrepareAngelScriptRuntime();
 
-    ptr<const ScriptSettings> settings_ptr = &settings;
-    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings_ptr);
+    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
     auto as_backend = nullable_as_backend.as_ptr();
 
     if (nptr<ScriptSystem> nullable_script_sys = meta.dyn_cast<ScriptSystem>()) {
@@ -109,8 +108,7 @@ auto CompileAngelScript(ptr<EngineMetadata> meta, const ScriptSettings& settings
 
     PrepareAngelScriptRuntime();
 
-    ptr<const ScriptSettings> settings_ptr = &settings;
-    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(settings_ptr);
+    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
     auto as_backend = nullable_as_backend.as_ptr();
 
     if (nptr<ScriptSystem> nullable_script_sys = meta.dyn_cast<ScriptSystem>()) {

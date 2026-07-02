@@ -664,7 +664,7 @@ FO_SCRIPT_API ptr<VideoPlayback> Client_Game_CreateVideoPlayback(ptr<ClientEngin
 
     clip.SetLooped(looped);
 
-    refcount_ptr<VideoPlayback> video = SafeAlloc::MakeRefCounted<VideoPlayback>();
+    auto video = SafeAlloc::MakeRefCounted<VideoPlayback>();
 
     video->PlaybackResources.emplace(std::move(clip), std::move(tex));
 
@@ -1267,7 +1267,6 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
     }
 
 #else
-    ptr<ClientEngine> client = client;
     ignore_unused(client);
     ignore_unused(instance);
     ignore_unused(modelName);

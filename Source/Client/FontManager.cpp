@@ -602,9 +602,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
     cury = r.y;
 
     for (int32_t i = 0, i_advance = 1; i < numeric_cast<int32_t>(str.size()); i += i_advance) {
-        ptr<const char> letter_text = &str[numeric_cast<size_t>(i)];
-        size_t letter_len = utf8::DecodeStrNtLen(letter_text.get());
-        uint32_t letter = utf8::Decode(letter_text.get(), letter_len);
+        size_t letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -855,9 +854,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
             break;
         }
 
-        ptr<const char> letter_text = &str[numeric_cast<size_t>(i)];
-        auto letter_len = utf8::DecodeStrNtLen(letter_text.get());
-        auto letter = utf8::Decode(letter_text.get(), letter_len);
+        auto letter_len = utf8::DecodeStrNtLen(&str[numeric_cast<size_t>(i)]);
+        auto letter = utf8::Decode(&str[numeric_cast<size_t>(i)], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 
@@ -1020,7 +1018,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     const auto max_chars = std::max<size_t>(str_len * 2 + 1, 1);
     const auto max_lines = std::max<size_t>(str_len + 1, 1);
 
-    unique_ptr<FontFormatInfo> fi = SafeAlloc::MakeUnique<FontFormatInfo>();
+    auto fi = SafeAlloc::MakeUnique<FontFormatInfo>();
     FO_VERIFY_AND_THROW(_allFonts[static_cast<size_t>(font)], "Requested font is not loaded");
     fi->CurFont = &*_allFonts[static_cast<size_t>(font)];
     fi->Format = format;
@@ -1104,9 +1102,8 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
             }
         }
 
-        ptr<const char> letter_text = &format_str[numeric_cast<size_t>(i)];
-        size_t letter_len = utf8::DecodeStrNtLen(letter_text.get());
-        uint32_t letter = utf8::Decode(letter_text.get(), letter_len);
+        size_t letter_len = utf8::DecodeStrNtLen(&format_str[numeric_cast<size_t>(i)]);
+        uint32_t letter = utf8::Decode(&format_str[numeric_cast<size_t>(i)], letter_len);
         letter = utf8::IsValid(letter) ? letter : 0;
         i_advance = numeric_cast<int32_t>(letter_len);
 

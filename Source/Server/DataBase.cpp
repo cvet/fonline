@@ -607,7 +607,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     {
         scoped_lock locker {_stateLocker};
 
-        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -627,7 +627,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     {
         scoped_lock locker {_stateLocker};
 
-        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -647,7 +647,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     {
         scoped_lock locker {_stateLocker};
 
-        shared_ptr<CommitOperationData> op = SafeAlloc::MakeShared<CommitOperationData>();
+        auto op = SafeAlloc::MakeShared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -1415,9 +1415,8 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
-        ptr<bson_t> bson_arr_ptr = &bson_arr;
 
-        if (!bson_append_array_unsafe_begin(bson.get(), key_data_ptr.get(), key_len, bson_arr_ptr.get())) {
+        if (!bson_append_array_unsafe_begin(bson.get(), key_data_ptr.get(), key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
@@ -1426,28 +1425,27 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
 
         for (const auto& arr_entry : arr) {
             string arr_key = strex("{}", arr_index++);
-            ValueToBson(arr_key, arr_entry, bson_arr_ptr, escape_dot);
+            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
         }
 
-        if (!bson_append_array_end(bson.get(), bson_arr_ptr.get())) {
+        if (!bson_append_array_end(bson.get(), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_end");
         }
     }
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
-        ptr<bson_t> bson_doc_ptr = &bson_doc;
 
-        if (!bson_append_document_begin(bson.get(), key_data_ptr.get(), key_len, bson_doc_ptr.get())) {
+        if (!bson_append_document_begin(bson.get(), key_data_ptr.get(), key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
         const auto& dict = value.AsDict();
 
         for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, bson_doc_ptr, escape_dot);
+            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
         }
 
-        if (!bson_append_document_end(bson.get(), bson_doc_ptr.get())) {
+        if (!bson_append_document_end(bson.get(), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_document_end");
         }
     }

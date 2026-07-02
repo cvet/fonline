@@ -238,10 +238,8 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         glslang::TProgram program;
-        ptr<glslang::TShader> vertex_shader = &vert;
-        ptr<glslang::TShader> fragment_shader = &frag;
-        program.addShader(vertex_shader.get());
-        program.addShader(fragment_shader.get());
+        program.addShader(&vert);
+        program.addShader(&frag);
 
         if (!program.link(EShMsgDefault)) {
             throw EffectBakerException("Failed to link shader program", fname, program.getInfoLog());
@@ -336,9 +334,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     spv_options.validate = true;
 
     spv::SpvBuildLogger logger;
-    ptr<spv::SpvBuildLogger> logger_ptr = &logger;
-    ptr<glslang::SpvOptions> spv_options_ptr = &spv_options;
-    GlslangToSpv(intermediate, spirv, logger_ptr.get(), spv_options_ptr.get());
+    GlslangToSpv(intermediate, spirv, &logger, &spv_options);
 
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {

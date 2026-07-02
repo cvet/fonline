@@ -125,8 +125,7 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    ptr<Application> app = this;
-    unique_ptr<AppWindow> window = SafeAlloc::MakeUnique<AppWindow>(app);
+    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -330,7 +329,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_ptr<HeadlessWindowStub> handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+    auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
     handle->Size = size;
 
     auto headless_window = handle.as_ptr();
@@ -669,8 +668,7 @@ void AppWindow::Destroy()
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        ptr<AppWindow> window = this;
-        _app->DestroyChildWindow(window);
+        _app->DestroyChildWindow(this);
         return;
     }
 

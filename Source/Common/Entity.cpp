@@ -40,8 +40,7 @@ Entity::Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<Entity> entity = this;
-    _props.SetEntity(entity);
+    _props.SetEntity(this);
 
     if (init_props) {
         _props.CopyFrom(*init_props);
@@ -143,8 +142,7 @@ void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
-            ptr<vector<EventCallbackData>> callbacks = &it->second;
-            UnsubscribeEvent(callbacks, subscription_ptr);
+            UnsubscribeEvent(&it->second, subscription_ptr);
         }
     }
 }

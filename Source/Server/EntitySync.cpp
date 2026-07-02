@@ -640,7 +640,7 @@ static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexc
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ServerEntity> owner = entity.hold_ref();
+    auto owner = entity.hold_ref();
 
     for (auto parent = entity->GetParentRaw(); parent && parent->GetEntityLock() == lock; parent = parent->GetParentRaw()) {
         owner = parent.as_ptr().hold_ref();

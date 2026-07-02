@@ -669,7 +669,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<OpenGL_Texture> opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, ctx);
+    auto opengl_tex = SafeAlloc::MakeUnique<OpenGL_Texture>(size, linear_filtered, with_depth, ctx);
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
@@ -712,7 +712,7 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<OpenGL_DrawBuffer> opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, ctx);
+    auto opengl_dbuf = SafeAlloc::MakeUnique<OpenGL_DrawBuffer>(is_static, ctx);
 
     return std::move(opengl_dbuf);
 }
@@ -722,7 +722,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    unique_ptr<OpenGL_Effect> opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, ctx);
+    auto opengl_effect = SafeAlloc::MakeUnique<OpenGL_Effect>(usage, name, loader, ctx);
 
     for (size_t pass = 0; pass < opengl_effect->_passCount; pass++) {
         string ext = "glsl";
@@ -1081,10 +1081,8 @@ auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     auto prev_fbo = 0;
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
 
-    ptr<ucolor> result_data = &result;
-
     GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, result_data.get()));
+    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
 
     GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
@@ -1495,10 +1493,9 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             }
 
             const auto& buf_value = buf.value();
-            ptr<const std::remove_cvref_t<decltype(buf_value)>> buf_data = &buf_value;
 
             GL(glBindBuffer(GL_UNIFORM_BUFFER, ubo));
-            GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(buf_value), buf_data.get(), GL_DYNAMIC_DRAW));
+            GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(buf_value), &buf_value, GL_DYNAMIC_DRAW));
             GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
 
             if (reset_buf) {

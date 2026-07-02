@@ -304,7 +304,7 @@ namespace BakerTests
             size = it->second.Data.size();
             write_time = it->second.WriteTime;
 
-            unique_arr_ptr<uint8_t> buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+            auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
             if (size != 0u) {
                 ptr<uint8_t> buf_ptr = buf.get();
@@ -355,7 +355,7 @@ namespace BakerTests
     public:
         explicit MemoryFileSet(string pack_name)
         {
-            unique_ptr<MemoryDataSource> ds = SafeAlloc::MakeUnique<MemoryDataSource>(std::move(pack_name));
+            auto ds = SafeAlloc::MakeUnique<MemoryDataSource>(std::move(pack_name));
             _dataSource = ds.get();
             _fileSystem.AddCustomSource(std::move(ds));
         }
@@ -420,11 +420,11 @@ namespace BakerTests
             // re-overriding the field on its TestRig instance before compiling.
             OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
-            unique_ptr<MemoryDataSource> source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
+            auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();
             SourceFiles.AddCustomSource(std::move(source_ds));
 
-            unique_ptr<MemoryDataSource> baked_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Baked");
+            auto baked_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Baked");
             _bakedData = baked_ds.get();
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
@@ -479,8 +479,7 @@ namespace BakerTests
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
-        ptr<const FileSystem> baked_files = &rig.BakedFiles;
-        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) {}, baked_files);
+        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) {}, &rig.BakedFiles);
     }
 }
 

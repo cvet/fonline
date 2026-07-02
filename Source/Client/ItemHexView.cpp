@@ -118,8 +118,7 @@ void ItemHexView::Process()
             _moveCurOffset.y -= numeric_cast<float32_t>(y);
             RefreshOffs();
 
-            ptr<ItemHexView> self = this;
-            _map->MoveItem(self, step_hex);
+            _map->MoveItem(this, step_hex);
         }
     }
 }
@@ -140,8 +139,7 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 
     _moveSteps.clear();
     _moveSteps.emplace_back(cur_hex);
-    ptr<vector<mpos>> move_steps = &_moveSteps;
-    _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, move_steps, false);
+    _map->TraceBullet(cur_hex, hex, 0, 0.0f, nullptr, CritterFindType::Any, nullptr, nullptr, &_moveSteps, false);
 
     auto pos_offset = GeometryHelper::GetHexOffset(cur_hex, hex);
     pos_offset.y += _engine->Random(5, 25); // Center of body

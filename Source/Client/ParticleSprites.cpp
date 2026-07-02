@@ -110,8 +110,7 @@ void ParticleSprite::DrawToAtlas()
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<ParticleSprite> particle_spr = this;
-    _factory->DrawParticleToAtlas(particle_spr);
+    _factory->DrawParticleToAtlas(this);
 }
 
 void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
@@ -168,7 +167,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
     const ipos32 offset = ipos32(0, draw_size.height / 4);
     const bool draw_in_scene = particle->GetDrawInScene();
-    unique_ptr<ParticleSystem> particle_value = SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle));
+    auto particle_value = SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle));
     return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, draw_size, offset, atlas, atlas_node, atlas_rect, this, std::move(particle_value), draw_in_scene);
 }
 
@@ -179,8 +178,8 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (const auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        shared_ptr<Sprite> any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        shared_ptr<AtlasSprite> atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+        auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
+        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
 
         if (atlas_spr) {
             _loadedParticleTextures[path] = atlas_spr;

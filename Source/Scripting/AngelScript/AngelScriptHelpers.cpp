@@ -141,9 +141,8 @@ static auto ReadScriptPropertyObject(const_span<uint8_t> buffer, size_t& pos) no
     static_assert(std::is_trivially_copyable_v<T>);
 
     T value {};
-    ptr<T> value_ptr = &value;
     auto source = ReadScriptPropertyBytes(buffer, pos, sizeof(T));
-    MemCopy(value_ptr.get(), source.get(), sizeof(T));
+    MemCopy(&value, source.get(), sizeof(T));
     return value;
 }
 
@@ -201,8 +200,7 @@ static void WriteScriptPropertyObject(span<uint8_t> buffer, size_t& pos, const T
 
     static_assert(std::is_trivially_copyable_v<T>);
 
-    ptr<const T> source = &value;
-    WriteScriptPropertyBytes(buffer, pos, cast_to_void(source.get()), sizeof(T));
+    WriteScriptPropertyBytes(buffer, pos, cast_to_void(&value), sizeof(T));
 }
 
 template<typename T>
@@ -214,8 +212,7 @@ static void WriteScriptPropertyObjectBytes(span<uint8_t> buffer, size_t& pos, co
 
     FO_STRONG_ASSERT(size <= sizeof(T), "Write size exceeds value type size");
 
-    ptr<const T> source = &value;
-    WriteScriptPropertyBytes(buffer, pos, cast_to_void(source.get()), size);
+    WriteScriptPropertyBytes(buffer, pos, cast_to_void(&value), size);
 }
 
 static void WriteScriptPropertyStringBytes(span<uint8_t> buffer, size_t& pos, const string& value) noexcept
@@ -674,8 +671,7 @@ static auto GetTypeInfoCache(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr
     if (!nullable_cache) {
         auto cache_owner = SafeAlloc::MakeUnique<ScriptTypeInfoCache>();
         ptr<ScriptTypeInfoCache> cache_ptr = std::move(cache_owner).release();
-        ptr<void> cache_user_data = cast_to_void(cache_ptr.get());
-        as_engine->SetUserData(cache_user_data.get(), AS_TYPE_INFO_CACHE_USER_DATA);
+        as_engine->SetUserData(cast_to_void(cache_ptr.get()), AS_TYPE_INFO_CACHE_USER_DATA);
         as_engine->SetEngineUserDataCleanupCallback(CleanupTypeInfoCache, AS_TYPE_INFO_CACHE_USER_DATA);
         nullable_cache = cache_ptr;
     }
@@ -842,8 +838,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
     const auto resolve_enum = [](ptr<const uint8_t> eptr, size_t elen) -> int32_t {
         int32_t result = 0;
-        ptr<int32_t> result_ptr = &result;
-        MemCopy(result_ptr.get(), eptr.get(), elen);
+        MemCopy(&result, eptr.get(), elen);
         return result;
     };
     const auto create_ref_obj = [prop](ptr<const uint8_t> ref_data, size_t ref_data_size) -> refcount_ptr<DynamicRefTypeInstance> {

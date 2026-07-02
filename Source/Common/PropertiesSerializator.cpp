@@ -161,9 +161,8 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
     }
 
     const auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        ptr<const char> chars = &str[char_pos];
-        char_len = utf8::DecodeStrNtLen(chars.get());
-        utf8::Decode(chars.get(), char_len);
+        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
+        utf8::Decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;
@@ -228,9 +227,8 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
         }
     }
 
-    ptr<const char> token_begin = &str[begin];
     ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
-    result = string_view {token_begin.get(), pos - begin};
+    result = string_view {&str[begin], pos - begin};
     return next_token;
 }
 
@@ -2027,7 +2025,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 data_size += sizeof(uint32_t) + str.length();
             }
 
-            unique_arr_ptr<uint8_t> data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
 
@@ -2055,7 +2053,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 ref_entries.emplace_back(std::move(ref_data));
             }
 
-            unique_arr_ptr<uint8_t> data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
             const auto arr_size = numeric_cast<uint32_t>(arr.Size());
@@ -2075,7 +2073,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
         }
         else {
             const size_t data_size = arr.Size() * base_type->Size;
-            unique_arr_ptr<uint8_t> data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
 
@@ -2152,7 +2150,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
         }
 
         // Write data
-        unique_arr_ptr<uint8_t> data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+        auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
         ptr<uint8_t> data_ptr = data.get();
         size_t data_pos = 0;
         const auto write_data = [&](nptr<const void> source, size_t size) { WriteRawBytes(data_ptr, data_pos, source, size); };

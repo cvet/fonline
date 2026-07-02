@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             };
 
             nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
-            shared_ptr<BakingContext> baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
 
             nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
             nptr<const FileSystem> metadata_files_ptr = &metadata_files;
-            shared_ptr<BakingContext> baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
 
             try {

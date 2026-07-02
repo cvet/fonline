@@ -237,7 +237,7 @@ auto SoundManager::Load(string_view fname, bool is_music, timespan repeat_time) 
         fixed_fname += "." + ext;
     }
 
-    unique_ptr<Sound> sound = SafeAlloc::MakeUnique<Sound>();
+    auto sound = SafeAlloc::MakeUnique<Sound>();
 
     if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
         return false;
@@ -386,7 +386,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     auto samples = 0;
     nptr<uint8_t> acm_data_ptr = acm_data.data();
     FO_VERIFY_AND_THROW(acm_data.empty() || !!acm_data_ptr, "Non-empty ACM data has a null pointer");
-    unique_ptr<CACMUnpacker> acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
+    auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -479,7 +479,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
-    unique_ptr<OggVorbis_File> ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
+    auto ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
     ptr<OggVorbis_File> released_ogg_stream = std::move(ogg_stream_owner).release();
     sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
         ptr<OggVorbis_File> vf = raw_vf;
@@ -489,9 +489,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     auto ogg_stream = sound->OggStream.as_ptr();
 
     FileReader reader = file.GetReader();
-    unique_ptr<OggFileContext> file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
-    ptr<void> file_context_userdata = cast_to_void(file_context.get());
-    const auto error = ov_open_callbacks(file_context_userdata.get(), ogg_stream.get(), nullptr, 0, callbacks);
+    auto file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
+    const auto error = ov_open_callbacks(cast_to_void(file_context.get()), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);

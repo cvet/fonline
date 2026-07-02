@@ -91,8 +91,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     GlobalTransformationMatrix = reader.Read<mat44>();
 
     if (reader.Read<uint8_t>() != 0) {
-        ptr<ModelBone> owner = this;
-        AttachedMesh.emplace(owner);
+        AttachedMesh.emplace(this);
         AttachedMesh->Load(reader, hash_resolver);
     }
     else {
@@ -102,7 +101,7 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     len = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < len; i++) {
-        unique_ptr<ModelBone> child = SafeAlloc::MakeUnique<ModelBone>();
+        auto child = SafeAlloc::MakeUnique<ModelBone>();
         child->Load(reader, hash_resolver);
         Children.emplace_back(std::move(child));
     }
@@ -238,7 +237,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    unique_ptr<ModelBone> root_bone = SafeAlloc::MakeUnique<ModelBone>();
+    auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
     auto reader = DataReader(file.GetDataSpan());
 
     root_bone->Load(reader, *_hashResolver);
@@ -248,7 +247,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     const auto anim_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < anim_count; i++) {
-        unique_ptr<ModelAnimation> anim = SafeAlloc::MakeUnique<ModelAnimation>();
+        auto anim = SafeAlloc::MakeUnique<ModelAnimation>();
         anim->Load(reader, *_hashResolver);
         _loadedAnims.push_back(std::move(anim));
     }
@@ -333,7 +332,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
         auto mesh = model_info->_hierarchy->_allDrawBones[i]->GetAttachedMesh().as_ptr();
-        unique_ptr<MeshInstance> new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
+        auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
         const string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
@@ -367,8 +366,7 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
     }
 
     // Create new instance
-    ptr<ModelManager> model_mngr = this;
-    unique_ptr<ModelInformation> model_info = SafeAlloc::MakeUnique<ModelInformation>(model_mngr);
+    auto model_info = SafeAlloc::MakeUnique<ModelInformation>(this);
 
     if (!model_info->Load(name)) {
         return nullptr;
@@ -398,8 +396,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
         return nullptr;
     }
 
-    ptr<ModelManager> model_mngr = this;
-    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(model_mngr, string {name}, root_bone.as_ptr());
+    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone.as_ptr());
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
@@ -2158,9 +2155,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
                 const size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
-                ptr<float32_t> texture_atlas_offset = &custom_tex_buf->TexAtlasOffset[texture_uniform_offset];
-                ptr<const frect32> texture_atlas_offset_data = &combined_mesh->Textures[i]->AtlasOffsetData;
-                MemCopy(texture_atlas_offset.get(), texture_atlas_offset_data.get(), 4 * sizeof(float32_t));
+                MemCopy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
 
                 ptr<float32_t> texture_size = &custom_tex_buf->TexSize[texture_uniform_offset];
                 ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
@@ -2555,7 +2550,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                     auto child = bone->Find(bone_hierarchy[b]);
 
                     if (!child) {
-                        unique_ptr<ModelBone> new_child = SafeAlloc::MakeUnique<ModelBone>();
+                        auto new_child = SafeAlloc::MakeUnique<ModelBone>();
                         child = new_child;
                         new_child->Name = bone_hierarchy[b];
                         bone->Children.emplace_back(std::move(new_child));
@@ -2751,8 +2746,7 @@ auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
     FO_VERIFY_AND_THROW(_drawSize.width > 0 && _drawSize.height > 0, "Model has invalid draw size", _fileName, _drawSize);
     FO_VERIFY_AND_THROW(_viewSize.width > 0 && _viewSize.height > 0, "Model has invalid view size", _fileName, _viewSize);
 
-    ptr<ModelInformation> model_info = this;
-    unique_ptr<ModelInstance> model = SafeAlloc::MakeUnique<ModelInstance>(_modelMngr, model_info);
+    auto model = SafeAlloc::MakeUnique<ModelInstance>(_modelMngr, this);
 
     if (_animController) {
         model->_bodyAnimController.emplace(_animController->Copy());

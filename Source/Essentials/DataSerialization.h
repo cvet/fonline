@@ -59,8 +59,7 @@ public:
         T data;
         const_span<uint8_t> bytes = TakeBytes(sizeof(data));
         auto source = ReadBytesPtr(bytes);
-        ptr<T> target = &data;
-        MemCopy(target.get(), source.get(), sizeof(data));
+        MemCopy(&data, source.get(), sizeof(data));
         return data;
     }
 
@@ -245,8 +244,7 @@ public:
         T data;
         span<uint8_t> bytes = TakeBytes(sizeof(data));
         auto source = ReadBytesPtr(bytes);
-        ptr<T> target = &data;
-        MemCopy(target.get(), source.get(), sizeof(data));
+        MemCopy(&data, source.get(), sizeof(data));
         return data;
     }
 
@@ -376,8 +374,7 @@ public:
     {
         span<uint8_t> bytes = AppendBytes(sizeof(T));
         auto target = WriteBytesPtr(bytes);
-        ptr<const U> source = &data;
-        MemCopy(target.get(), source.get(), bytes.size());
+        MemCopy(target.get(), &data, bytes.size());
     }
 
     void WriteBytes(const_span<uint8_t> data)

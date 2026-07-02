@@ -234,9 +234,8 @@ void Player::ResetViewMap() noexcept
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (_viewMapTarget) {
-        ptr<Player> self = this;
         auto view_map_target = _viewMapTarget.as_ptr();
-        view_map_target->RemoveSpectatorPlayer(self);
+        view_map_target->RemoveSpectatorPlayer(this);
         _viewMapTarget = nullptr;
     }
 
@@ -266,8 +265,7 @@ void Player::Send_LoginSuccess()
     }
 
     out_buf->WritePropsData(*player_data.Data, *player_data.Sizes);
-    ptr<const Entity> engine_entity = _engine;
-    SendInnerEntities(*out_buf, engine_entity, false);
+    SendInnerEntities(*out_buf, _engine, false);
 }
 
 void Player::Send_AddCritter(ptr<const Critter> cr)
@@ -308,8 +306,7 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
     out_buf->Write(is_chosen);
     out_buf->WritePropsData(*cr_data.Data, *cr_data.Sizes);
 
-    ptr<const Entity> cr_entity = cr;
-    SendInnerEntities(*out_buf, cr_entity, is_chosen);
+    SendInnerEntities(*out_buf, cr, is_chosen);
 
     out_buf->Write(numeric_cast<uint32_t>(send_items.size()));
 
@@ -422,10 +419,8 @@ void Player::Send_LoadMap(nptr<const Map> nullable_map)
         const auto loc_data = loc->StoreData(false);
         out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);
         out_buf->WritePropsData(*loc_data.Data, *loc_data.Sizes);
-        ptr<const Entity> loc_entity = loc;
-        ptr<const Entity> map_entity = map;
-        SendInnerEntities(*out_buf, loc_entity, false);
-        SendInnerEntities(*out_buf, map_entity, false);
+        SendInnerEntities(*out_buf, loc, false);
+        SendInnerEntities(*out_buf, map, false);
     }
 }
 

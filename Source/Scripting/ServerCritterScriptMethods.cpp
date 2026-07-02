@@ -797,7 +797,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     self->StopMoving();
 
     if (speed == 0) {
-        refcount_ptr<MovingContext> failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
         return failed_moving;
     }
@@ -811,8 +811,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
     const int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
     const ipos16 clamped_offset = {clamped_ox, clamped_oy};
-    ptr<const Map> map_const = map_ptr;
-    const auto find_path = engine_ptr->MapMngr.FindPath(map_const, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
+    const auto find_path = engine_ptr->MapMngr.FindPath(map_ptr, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -837,7 +836,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
             break;
         }
 
-        refcount_ptr<MovingContext> failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
 
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
@@ -847,7 +846,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
         return failed_moving;
     }
 
-    refcount_ptr<MovingContext> moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine_ptr->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine_ptr->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
     engine_ptr->StartCritterMoving(self, moving, nullptr);
     return moving;
 }
