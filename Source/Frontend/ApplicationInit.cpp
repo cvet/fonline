@@ -230,7 +230,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             if (arg_view == "-ApplyConfig" || arg_view == "--ApplyConfig") {
                 auto next_arg = args.Get(i + 1);
 
-                if (next_arg.empty() || CommandLineArgs::IsOption(next_arg)) {
+                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Config name not provided");
                 }
 
@@ -280,7 +280,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
             if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
                 auto next_arg = args.Get(i + 1);
 
-                if (next_arg.empty() || CommandLineArgs::IsOption(next_arg)) {
+                if (i + 1 >= args.size() || CommandLineArgs::IsOption(next_arg)) {
                     throw AppInitException("Sub config name not provided");
                 }
 

@@ -601,6 +601,71 @@ TEST_CASE("SmartPointers")
         CHECK(weak.use_count() == 0);
         CHECK_FALSE(weak.lock());
     }
+
+    SECTION("SharedAssignFromSourceInsideOwnPointeeIsSafe")
+    {
+        struct ChainNode
+        {
+            shared_ptr<ChainNode> Next {};
+            int32_t Value {};
+        };
+
+        auto head = SafeAlloc::MakeShared<ChainNode>();
+        head->Value = 1;
+        head->Next = SafeAlloc::MakeShared<ChainNode>();
+        head->Next->Value = 2;
+        head->Next->Next = SafeAlloc::MakeShared<ChainNode>();
+        head->Next->Next->Value = 3;
+
+        head = head->Next; // copy-assign from a member of the pointee released by the assignment
+
+        CHECK(head->Value == 2);
+
+        head = std::move(head->Next); // move-assign from a member of the pointee released by the assignment
+
+        CHECK(head->Value == 3);
+        CHECK_FALSE(head->Next);
+    }
+
+    SECTION("UniqueDelAssignFromSourceInsideOwnPointeeIsSafe")
+    {
+        struct DelNode
+        {
+            unique_del_nptr<DelNode> Next {};
+            int32_t Value {};
+        };
+
+        size_t deleted_count = 0;
+
+        const auto make_node = [&deleted_count](int32_t value) -> unique_del_nptr<DelNode> {
+            auto owner = SafeAlloc::MakeUnique<DelNode>();
+            ptr<DelNode> released = std::move(owner).release();
+            released->Value = value;
+            return make_unique_del_ptr(released, [&deleted_count](ptr<DelNode> node) noexcept {
+                deleted_count++;
+                auto owned_node = adopt_unique_ptr(node);
+                ignore_unused(owned_node);
+            });
+        };
+
+        auto head = make_node(1);
+        head->Next = make_node(2);
+        head->Next->Next = make_node(3);
+
+        head = std::move(head->Next); // move-assign from a member of the pointee destroyed by the assignment
+
+        CHECK(head->Value == 2);
+        CHECK(deleted_count == 1);
+
+        head = std::move(head->Next);
+
+        CHECK(head->Value == 3);
+        CHECK(deleted_count == 2);
+
+        head = nullptr;
+
+        CHECK(deleted_count == 3);
+    }
 }
 
 FO_END_NAMESPACE

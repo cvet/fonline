@@ -580,20 +580,21 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
             continue;
         }
 
+        const bool has_next_arg = index + 1 < args.size();
         auto next_arg = args.Get(index + 1);
 
-        if (arg == "--ClientLibPath" && !next_arg.empty()) {
+        if (arg == "--ClientLibPath" && has_next_arg) {
             requested_runtime.ExplicitPath = true;
             requested_runtime.Path = next_arg;
         }
 
-        if (arg == "--ClientLibCompatibilityVersion" && !next_arg.empty()) {
+        if (arg == "--ClientLibCompatibilityVersion" && has_next_arg) {
             requested_runtime.CompatibilityVersion = next_arg;
             requested_runtime.CheckCompatibilityVersion = true;
         }
 
         if (arg == "--ForceEmbeddedRuntime" || arg == "-ForceEmbeddedRuntime") {
-            const string_view value = !next_arg.empty() && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
+            const string_view value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? next_arg : string_view("1");
             requested_runtime.ForceEmbedded = value != "0" && value != "false" && value != "False";
         }
     }

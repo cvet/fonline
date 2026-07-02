@@ -54,7 +54,7 @@ FO_SCRIPT_API ptr<CritterView> Client_Game_Chosen(ptr<ClientEngine> client)
         throw ScriptException("No chosen critter (check HasChosen first)");
     }
 
-    return chosen.get_no_const();
+    return chosen.as_ptr();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -72,7 +72,7 @@ FO_SCRIPT_API ptr<PlayerView> Client_Game_CurPlayer(ptr<ClientEngine> client)
         throw ScriptException("No current player (check HasCurPlayer first)");
     }
 
-    return cur_player.get_no_const();
+    return cur_player.as_ptr();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -90,7 +90,7 @@ FO_SCRIPT_API ptr<LocationView> Client_Game_CurLocation(ptr<ClientEngine> client
         throw ScriptException("No current location (check HasCurLocation first)");
     }
 
-    return cur_location.get_no_const();
+    return cur_location.as_ptr();
 }
 
 ///@ ExportMethod GlobalGetter
@@ -108,7 +108,7 @@ FO_SCRIPT_API ptr<MapView> Client_Game_CurMap(ptr<ClientEngine> client)
         throw ScriptException("No current map (check HasCurMap first)");
     }
 
-    return cur_map.get_no_const();
+    return cur_map.as_ptr();
 }
 
 ///@ ExportMethod Getter
@@ -424,7 +424,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Game_GetItem(ptr<ClientEngine> client, ident
         return nullptr;
     }
 
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -446,11 +446,11 @@ FO_SCRIPT_API nptr<CritterView> Client_Game_GetCritter(ptr<ClientEngine> client,
             return nullptr;
         }
 
-        return cr.get_no_const();
+        return cr;
     }
     else {
         auto cr = client->GetGlobalMapCritter(crId);
-        return cr.get_no_const();
+        return cr;
     }
 }
 

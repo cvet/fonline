@@ -51,36 +51,6 @@ struct ScriptArrayTypeData
     int32_t EqFuncReturnCode {};
 };
 
-static auto GetHandleSlot(ptr<void> slot) noexcept -> ptr<void*>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return NativeDataProvider::GetHandleSlot(slot);
-}
-
-static auto ReadHandleSlot(ptr<void> slot) noexcept -> nptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return NativeDataProvider::ReadHandleSlot(slot);
-}
-
-static void SetScriptObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ptr<void> slot)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    int32_t as_result = 0;
-    FO_AS_VERIFY(ctx->SetObject(ReadHandleSlot(slot).get()));
-}
-
-static void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, AngelScript::asUINT arg_index, ptr<void> slot)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    int32_t as_result = 0;
-    FO_AS_VERIFY(ctx->SetArgObject(arg_index, ReadHandleSlot(slot).get()));
-}
-
 static auto ScriptArrayInitListBytesAt(ptr<void> init_list, size_t offset) noexcept -> ptr<AngelScript::asBYTE>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -690,7 +660,7 @@ auto ScriptArray::At(int32_t index) const -> ptr<void>
     }
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        auto nullable_object = ReadHandleSlot(GetArrayItemPointer(index));
+        auto nullable_object = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
         FO_VERIFY_AND_THROW(nullable_object, "Array element object is null");
         return nullable_object.as_ptr();
     }
@@ -740,7 +710,7 @@ void ScriptArray::Construct(int32_t start, int32_t end)
         FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
 
         for (int32_t index = start; index < end; index++) {
-            auto slot = GetHandleSlot(GetArrayItemPointer(index));
+            auto slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
             const nptr<void> new_obj = engine->CreateScriptObject(sub_type.get());
             *slot = new_obj.get_no_const();
 
@@ -761,7 +731,7 @@ void ScriptArray::Destruct(int32_t start, int32_t end)
         FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
 
         for (int32_t index = start; index < end; index++) {
-            const auto obj = ReadHandleSlot(GetArrayItemPointer(index));
+            const auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
 
             if (obj) {
                 engine->ReleaseScriptObject(obj.get_no_const(), sub_type.get());
@@ -817,7 +787,7 @@ auto ScriptArray::Equals(ptr<void> a, ptr<void> b, nptr<AngelScript::asIScriptCo
         auto script_ctx = nullable_ctx.as_ptr();
 
         if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-            if (ReadHandleSlot(a) == ReadHandleSlot(b)) {
+            if (NativeDataProvider::ReadHandleSlot(a) == NativeDataProvider::ReadHandleSlot(b)) {
                 return true;
             }
         }
@@ -917,8 +887,8 @@ auto ScriptArray::Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asI
         nptr<void> rhs_obj {};
 
         if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-            lhs_obj = ReadHandleSlot(a);
-            rhs_obj = ReadHandleSlot(b);
+            lhs_obj = NativeDataProvider::ReadHandleSlot(a);
+            rhs_obj = NativeDataProvider::ReadHandleSlot(b);
 
             if (!lhs_obj) {
                 return true;
@@ -1044,10 +1014,10 @@ auto ScriptArray::FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t
     const auto size = GetSize();
 
     if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
-        const auto handle = ReadHandleSlot(ref);
+        const auto handle = NativeDataProvider::ReadHandleSlot(ref);
 
         for (int32_t i = start_at; i < size; i++) {
-            if (ReadHandleSlot(At(i)) == handle) {
+            if (NativeDataProvider::ReadHandleSlot(At(i)) == handle) {
                 return i;
             }
         }
@@ -1156,7 +1126,7 @@ auto ScriptArray::GetDataPointer(ptr<void> buf) const -> ptr<void>
     FO_STACK_TRACE_ENTRY();
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (_subTypeId & AngelScript::asTYPEID_OBJHANDLE) == 0) {
-        auto nullable_object = ReadHandleSlot(buf);
+        auto nullable_object = NativeDataProvider::ReadHandleSlot(buf);
         FO_VERIFY_AND_THROW(nullable_object, "Array element object is null");
         return nullable_object.as_ptr();
     }
@@ -1276,8 +1246,8 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                auto dst_slot = GetHandleSlot(GetArrayItemPointer(index));
-                auto src_slot = GetHandleSlot(src.GetArrayItemPointer(index));
+                auto dst_slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
+                auto src_slot = NativeDataProvider::GetHandleSlot(src.GetArrayItemPointer(index));
                 const nptr<void> old_obj = *dst_slot;
                 const nptr<void> new_obj = *src_slot;
                 *dst_slot = new_obj.get_no_const();
@@ -1298,8 +1268,8 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                auto dst_slot = GetHandleSlot(GetArrayItemPointer(index));
-                auto src_slot = GetHandleSlot(src.GetArrayItemPointer(index));
+                auto dst_slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
+                auto src_slot = NativeDataProvider::GetHandleSlot(src.GetArrayItemPointer(index));
                 engine->AssignScriptObject(*dst_slot, *src_slot, sub_type.get());
             }
         }
@@ -1426,7 +1396,7 @@ void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         for (int32_t i = 0; i < GetSize(); i++) {
-            const auto obj = ReadHandleSlot(GetArrayItemPointer(i));
+            const auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
 
             if (obj) {
                 engine->GCEnumCallback(obj.get_no_const());

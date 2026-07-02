@@ -46,48 +46,11 @@
 
 FO_BEGIN_NAMESPACE
 
-template<size_t... I>
-[[noreturn]] static void ThrowWithArgs(string_view message, const vector<string>& obj_infos, std::index_sequence<I...> /*unused*/)
-{
-    throw ScriptException(message, obj_infos[I]...);
-}
-
 static auto LookupScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) noexcept -> nptr<AngelScriptBackend>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
-}
-
-static auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetArgAddress(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Missing generic call argument address");
-    return nullable_arg_address.as_ptr();
-}
-
-template<typename T>
-static auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<void> arg_address = gen->GetAddressOfArg(arg_index);
-    if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get_no_const());
-    }
-    else {
-        return cast_from_void<T*>(arg_address.get_no_const());
-    }
-}
-
-template<typename T>
-static auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cast_from_void<T*>(gen->GetAuxiliary());
 }
 
 template<typename T>
@@ -106,40 +69,12 @@ static auto ReadGenericAddressArgHandle(ptr<AngelScript::asIScriptGeneric> gen, 
     return NativeDataProvider::ReadHandleSlot(arg_slot);
 }
 
-static void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, ptr<Entity> entity) noexcept
+template<size_t... I>
+[[noreturn]] static void ThrowWithArgs(string_view message, const vector<string>& obj_infos, std::index_sequence<I...> /*unused*/)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get());
-}
-
-static void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr.get());
-}
-
-static void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) ScriptArray*(ReleaseScriptOwnership(std::move(arr)));
-}
-
-static void ReturnGenericObject(ptr<AngelScript::asIScriptGeneric> gen, ptr<void> obj) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) void*(obj.get());
-}
-
-template<typename T>
-static auto FixedSettingForScriptRegistration(const T& value) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return const_cast<T*>(&value);
+    throw ScriptException(message, obj_infos[I]...);
 }
 
 template<size_t ArgsCount>
@@ -707,7 +642,7 @@ static void Setting_GetGroup(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     ptr<void> obj = gen->GetObject();
-    ReturnGenericObject(gen, obj);
+    new (gen->GetAddressOfReturnLocation()) void*(obj.get());
 }
 
 static auto SplitSettingPath(string_view setting_name) -> vector<string>
@@ -899,7 +834,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     static GlobalSettings dummy_settings(false);
     ptr<GlobalSettings> settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : ptr<GlobalSettings> {&dummy_settings};
 
-#define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, *FixedSettingForScriptRegistration(settings->name), false)
+#define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, const_cast<type&>(settings->name), false)
 #define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, settings->name, true)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()

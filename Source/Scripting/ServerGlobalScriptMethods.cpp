@@ -66,14 +66,14 @@ static auto RequireCurrentSyncContext(ptr<ServerEngine> server) -> ptr<SyncConte
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
 {
     auto cr = server->CreateCritter(protoId, forPlayer);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer)
 {
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -94,7 +94,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, h
 
     nptr<const Properties> props_ptr = &props_;
     auto cr = server->CreateCritter(protoId, forPlayer, props_ptr);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -108,14 +108,14 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, p
 
     nptr<const Properties> props_ptr = &props_;
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer, props_ptr);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)
 {
     auto cr = server->LoadCritter(crId, forPlayer);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -263,7 +263,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
     auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
-    return moved_item.get_no_const();
+    return moved_item;
 }
 
 ///@ ExportMethod
@@ -274,28 +274,24 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     }
 
     auto moved_item = server->ItemMngr.MoveItem(item, count, toCr);
-    return moved_item.get_no_const();
+    return moved_item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Map> toMap, mpos toHex)
 {
-    ptr<Map> to_map_ptr = toMap;
-
-    if (!to_map_ptr->GetSize().is_valid_pos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), to_map_ptr, toHex);
-    return moved_item.get_no_const();
+    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
+    return moved_item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Map> toMap, mpos toHex)
 {
-    ptr<Map> to_map_ptr = toMap;
-
-    if (!to_map_ptr->GetSize().is_valid_pos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -303,15 +299,15 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         return nullptr;
     }
 
-    auto moved_item = server->ItemMngr.MoveItem(item, count, to_map_ptr, toHex);
-    return moved_item.get_no_const();
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toMap, toHex);
+    return moved_item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Item> toCont, any_t stackId = any_t {})
 {
     auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
-    return moved_item.get_no_const();
+    return moved_item;
 }
 
 ///@ ExportMethod
@@ -322,7 +318,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
     }
 
     auto moved_item = server->ItemMngr.MoveItem(item, count, toCont, stackId);
-    return moved_item.get_no_const();
+    return moved_item;
 }
 
 ///@ ExportMethod
@@ -345,9 +341,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Map> toMap, mpos toHex)
 {
-    ptr<Map> to_map_ptr = toMap;
-
-    if (!to_map_ptr->GetSize().is_valid_pos(toHex)) {
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
@@ -361,7 +355,7 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
             continue;
         }
 
-        server->ItemMngr.MoveItem(item, item->GetCount(), to_map_ptr, toHex);
+        server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
     }
 }
 
@@ -565,21 +559,21 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId)
 {
     auto loc = server->MapMngr.CreateLocation(protoId);
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto)
 {
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId());
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids)
 {
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids);
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
@@ -600,7 +594,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(protoId, {}, props_ptr);
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
@@ -614,7 +608,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, props_ptr);
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
@@ -635,7 +629,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 
     nptr<const Properties> props_ptr = &props_;
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids, props_ptr);
-    return loc.get_no_const();
+    return loc;
 }
 
 ///@ ExportMethod
@@ -717,49 +711,43 @@ FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> se
 {
     shared_ptr<NetworkServerConnection> dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
     auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
-    return player.get_no_const();
+    return player;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
-    ptr<Player> unlogined_player = unloginedPlayer;
-
-    if (unlogined_player->GetLogined()) {
+    if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    auto player = server->LoginPlayerToNewRecord(unlogined_player);
-    return player.get_no_const();
+    auto player = server->LoginPlayerToNewRecord(unloginedPlayer);
+    return player.as_ptr();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
-    ptr<Player> unlogined_player = unloginedPlayer;
-
-    if (unlogined_player->GetLogined()) {
+    if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    auto player = server->LoginPlayerToTempSession(unlogined_player);
-    return player.get_no_const();
+    auto player = server->LoginPlayerToTempSession(unloginedPlayer);
+    return player.as_ptr();
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
 {
-    ptr<Player> unlogined_player = unloginedPlayer;
-
-    if (unlogined_player->GetLogined()) {
+    if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
     if (!playerId) {
         throw ScriptException("Player id arg is zero");
     }
 
-    auto player = server->LoginPlayerToExistentRecord(unlogined_player, playerId);
-    return player.get_no_const();
+    auto player = server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+    return player.as_ptr();
 }
 
 ///@ ExportMethod PassOwnership
@@ -1392,14 +1380,13 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
 {
     ignore_unused(server);
 
-    ptr<StaticItem> static_item = staticItem;
     nptr<Item> used_item = usedItem;
 
-    if (!static_item->StaticScriptFunc) {
+    if (!staticItem->StaticScriptFunc) {
         return false;
     }
 
-    return static_item->StaticScriptFunc.Call(cr.get(), static_item.get(), used_item.get(), param) && static_item->StaticScriptFunc.GetResult();
+    return staticItem->StaticScriptFunc.Call(cr.get(), staticItem.get(), used_item.get(), param) && staticItem->StaticScriptFunc.GetResult();
 }
 
 ///@ ExportMethod

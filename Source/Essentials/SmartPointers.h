@@ -195,13 +195,6 @@ public:
     {
     }
 
-#if 0
-    // ReSharper disable once CppNonExplicitConversionOperator
-    FO_FORCE_INLINE operator T*() noexcept { return _ptr; }
-    // ReSharper disable once CppNonExplicitConversionOperator
-    FO_FORCE_INLINE operator const T*() const noexcept { return _ptr; }
-#endif
-
     FO_FORCE_INLINE ~ptr() noexcept = default;
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
@@ -1424,11 +1417,13 @@ private:
 class SafeAlloc;
 
 template<typename T>
+class shared_ptr;
+template<typename T>
 class weak_ptr;
 template<typename T>
 class enable_shared_from_this;
-template<typename X>
-FO_FORCE_INLINE void init_shared_from_this_weak(shared_ptr_control_block* block, enable_shared_from_this<X>* base) noexcept;
+template<typename T, typename X>
+FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, enable_shared_from_this<X>* base) noexcept;
 
 template<typename T>
 class shared_ptr
@@ -1491,19 +1486,24 @@ public:
         _obj(aliased_obj)
     {
         other._obj = nullptr;
+        FO_BASIC_STRONG_ASSERT(_block != nullptr || _obj == nullptr);
     }
     FO_FORCE_INLINE auto operator=(const shared_ptr& other) noexcept -> shared_ptr&
     {
         if (this != &other) {
-            if (other._block != nullptr) {
-                other._block->add_strong_ref();
+            // Read the source before releasing our reference: the source may live inside our pointee
+            shared_ptr_control_block* other_block = other._block;
+            T* other_obj = other._obj;
+
+            if (other_block != nullptr) {
+                other_block->add_strong_ref();
             }
             if (_block != nullptr) {
                 _block->release_strong_ref();
             }
 
-            _block = other._block;
-            _obj = other._obj;
+            _block = other_block;
+            _obj = other_obj;
         }
 
         return *this;
@@ -1511,12 +1511,16 @@ public:
     FO_FORCE_INLINE auto operator=(shared_ptr&& other) noexcept -> shared_ptr&
     {
         if (this != &other) {
+            // Steal the source before releasing our reference: the source may live inside our pointee
+            shared_ptr_control_block* other_block = std::exchange(other._block, nullptr);
+            T* other_obj = std::exchange(other._obj, nullptr);
+
             if (_block != nullptr) {
                 _block->release_strong_ref();
             }
 
-            _block = std::exchange(other._block, nullptr);
-            _obj = std::exchange(other._obj, nullptr);
+            _block = other_block;
+            _obj = other_obj;
         }
 
         return *this;
@@ -1616,8 +1620,6 @@ class weak_ptr
 {
     template<typename U>
     friend class weak_ptr;
-    template<typename X>
-    friend void init_shared_from_this_weak(shared_ptr_control_block* block, enable_shared_from_this<X>* base) noexcept;
 
 public:
     using element_type = T;
@@ -1664,15 +1666,19 @@ public:
     FO_FORCE_INLINE auto operator=(const weak_ptr& other) noexcept -> weak_ptr&
     {
         if (this != &other) {
-            if (other._block != nullptr) {
-                other._block->add_weak_ref();
+            // Read the source before releasing our reference: the source may live inside owned storage
+            shared_ptr_control_block* other_block = other._block;
+            T* other_obj = other._obj;
+
+            if (other_block != nullptr) {
+                other_block->add_weak_ref();
             }
             if (_block != nullptr) {
                 _block->release_weak_ref();
             }
 
-            _block = other._block;
-            _obj = other._obj;
+            _block = other_block;
+            _obj = other_obj;
         }
 
         return *this;
@@ -1680,12 +1686,16 @@ public:
     FO_FORCE_INLINE auto operator=(weak_ptr&& other) noexcept -> weak_ptr&
     {
         if (this != &other) {
+            // Steal the source before releasing our reference: the source may live inside owned storage
+            shared_ptr_control_block* other_block = std::exchange(other._block, nullptr);
+            T* other_obj = std::exchange(other._obj, nullptr);
+
             if (_block != nullptr) {
                 _block->release_weak_ref();
             }
 
-            _block = std::exchange(other._block, nullptr);
-            _obj = std::exchange(other._obj, nullptr);
+            _block = other_block;
+            _obj = other_obj;
         }
 
         return *this;
@@ -1694,15 +1704,19 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(const shared_ptr<U>& owner) noexcept -> weak_ptr&
     {
-        if (owner._block != nullptr) {
-            owner._block->add_weak_ref();
+        // Read the source before releasing our reference: the source may live inside owned storage
+        shared_ptr_control_block* owner_block = owner._block;
+        T* owner_obj = owner._obj;
+
+        if (owner_block != nullptr) {
+            owner_block->add_weak_ref();
         }
         if (_block != nullptr) {
             _block->release_weak_ref();
         }
 
-        _block = owner._block;
-        _obj = owner._obj;
+        _block = owner_block;
+        _obj = owner_obj;
 
         return *this;
     }
@@ -1724,26 +1738,8 @@ public:
     }
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] FO_FORCE_INLINE auto use_count() const noexcept -> size_t { return _block != nullptr ? _block->strong_ref_count() : 0; }
-    FO_FORCE_INLINE void reset() noexcept
-    {
-        if (_block != nullptr) {
-            _block->release_weak_ref();
-        }
-
-        _block = nullptr;
-        _obj = nullptr;
-    }
 
 private:
-    FO_FORCE_INLINE weak_ptr(shared_ptr_control_block* block, T* obj) noexcept :
-        _block(block),
-        _obj(obj)
-    {
-        if (_block != nullptr) {
-            _block->add_weak_ref();
-        }
-    }
-
     shared_ptr_control_block* _block {};
     T* _obj {};
 };
@@ -1751,8 +1747,8 @@ private:
 template<typename T>
 class enable_shared_from_this
 {
-    template<typename X>
-    friend void init_shared_from_this_weak(shared_ptr_control_block* block, enable_shared_from_this<X>* base) noexcept;
+    template<typename U, typename X>
+    friend void init_shared_from_this_weak(const shared_ptr<U>& owner, enable_shared_from_this<X>* base) noexcept;
 
 public:
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() -> shared_ptr<T>
@@ -1784,17 +1780,19 @@ private:
     weak_ptr<T> _weakThis {};
 };
 
-// SafeAlloc::MakeShared wires the embedded weak reference right after construction; the non-template
-// overload is the no-op fallback for types that do not derive from enable_shared_from_this
-template<typename X>
-FO_FORCE_INLINE void init_shared_from_this_weak(shared_ptr_control_block* block, enable_shared_from_this<X>* base) noexcept
+// SafeAlloc::MakeShared wires the embedded weak reference right after construction through the public
+// weak-from-shared assignment; the second overload is the no-op fallback for types that do not derive
+// from enable_shared_from_this
+template<typename T, typename X>
+FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, enable_shared_from_this<X>* base) noexcept
 {
-    base->_weakThis = weak_ptr<X>(block, static_cast<X*>(base));
+    base->_weakThis = owner;
 }
 
-FO_FORCE_INLINE void init_shared_from_this_weak(shared_ptr_control_block* block, const volatile void* base) noexcept
+template<typename T>
+FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, const volatile void* base) noexcept
 {
-    ignore_unused(block, base);
+    ignore_unused(owner, base);
 }
 
 template<typename T>
@@ -1881,10 +1879,14 @@ public:
     FO_FORCE_INLINE auto operator=(unique_del_nptr&& other) noexcept -> unique_del_nptr&
     {
         if (this != &other) {
+            // Steal the source before destroying our pointee: the source may live inside it
+            T* other_ptr = std::exchange(other._ptr, nullptr);
+            function<void(T*)> other_deleter = std::move(other._deleter);
+
             destroy();
 
-            _ptr = std::exchange(other._ptr, nullptr);
-            _deleter = std::move(other._deleter);
+            _ptr = other_ptr;
+            _deleter = std::move(other_deleter);
         }
 
         return *this;
@@ -2075,6 +2077,12 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE unique_del_nptr<T>>
 {
     using is_avalanching = void;
     auto operator()(const FO_NAMESPACE unique_del_nptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
+};
+template<typename T>
+struct FO_NAMESPACE hashing::hash<FO_NAMESPACE unique_del_ptr<T>>
+{
+    using is_avalanching = void;
+    auto operator()(const FO_NAMESPACE unique_del_ptr<T>& v) const noexcept -> size_t { return ptr_hash(v.get()); }
 };
 FO_BEGIN_NAMESPACE
 

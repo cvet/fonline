@@ -310,34 +310,11 @@ namespace
         string Errors {};
     };
 
-    static void ReleasePreprocessorContext(nptr<Preprocessor::Context> ctx) noexcept
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        if (ctx) {
-            Preprocessor::DeleteContext(ctx.get());
-        }
-    }
-
-    static void CleanupPreprocessorContext(ptr<Preprocessor::Context> ctx) FO_DEFERRED
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ReleasePreprocessorContext(ctx);
-    }
-
-    static auto MakePreprocessorContext() -> unique_del_ptr<Preprocessor::Context>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return unique_del_ptr<Preprocessor::Context> {Preprocessor::CreateContext(), CleanupPreprocessorContext};
-    }
-
     static auto ParseScript(string_view path, string_view script, std::initializer_list<string_view> defines = {}) -> ParsedScript
     {
-        auto pp_ctx = MakePreprocessorContext();
+        auto pp_ctx = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
         REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
-        ptr<Preprocessor::Context> pp_ctx_ptr = pp_ctx.get();
+        auto pp_ctx_ptr = pp_ctx.as_ptr();
 
         for (const auto define : defines) {
             Preprocessor::Define(pp_ctx_ptr.get(), std::string(define));

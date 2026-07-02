@@ -185,6 +185,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     desc.HasProtos = has_protos;
     desc.HasStatics = has_statics;
     desc.HasAbstract = has_abstract;
+    desc.PropRegistrator = std::move(registrator);
 
     const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -207,8 +208,9 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     if (!exported) {
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
 
-        registrator->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
-        registrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
+        auto prop_registrator = entry.first->second.PropRegistrator.as_ptr();
+        prop_registrator->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
+        prop_registrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
     auto type = RegisterBaseType(name);
@@ -216,8 +218,6 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     if (is_global) {
         type->IsSingleton = true;
     }
-
-    entry.first->second.PropRegistrator = std::move(registrator);
 
     return entry.first->second.PropRegistrator.as_ptr();
 }

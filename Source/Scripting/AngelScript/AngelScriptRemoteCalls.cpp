@@ -138,35 +138,6 @@ static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const R
     return strex("void {}::{}({})", ns, inbound_call.Name, MakeScriptArgsName(inbound_call.Args));
 }
 
-template<typename T>
-static auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<T> nullable_object = cast_from_void<T*>(gen->GetObject());
-    FO_STRONG_ASSERT(nullable_object, "Generic call object is null");
-    return nullable_object.as_ptr();
-}
-
-template<typename T>
-static auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<T> nullable_auxiliary = cast_from_void<T*>(gen->GetAuxiliary());
-    FO_STRONG_ASSERT(nullable_auxiliary, "Generic call auxiliary is null");
-    return nullable_auxiliary.as_ptr();
-}
-
-static auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
-    return nullable_arg_address.as_ptr();
-}
-
 static auto RemoteCallConstObjectBytes(nptr<const void> obj) noexcept -> ptr<const uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();

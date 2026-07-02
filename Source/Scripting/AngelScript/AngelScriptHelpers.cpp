@@ -56,13 +56,6 @@ struct ScriptTypeInfoCache
     unordered_map<ptr<const Property>, ptr<AngelScript::asITypeInfo>> ByProperty {};
 };
 
-static auto ReadHandleSlot(ptr<void> slot) noexcept -> nptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return NativeDataProvider::ReadHandleSlot(slot);
-}
-
 template<typename T>
 static auto ScriptObjectAs(ptr<void> obj) noexcept -> ptr<T>
 {
@@ -227,14 +220,6 @@ static void WriteScriptPropertyStringBytes(span<uint8_t> buffer, size_t& pos, co
 }
 
 template<typename T>
-static auto ReadTypedHandleSlot(ptr<void> slot) noexcept -> nptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return NativeDataProvider::ReadTypedHandleSlot<T>(slot);
-}
-
-template<typename T>
 static auto ReadScriptDictConstHandleSlot(void* value) noexcept -> nptr<const T>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -243,19 +228,11 @@ static auto ReadScriptDictConstHandleSlot(void* value) noexcept -> nptr<const T>
 }
 
 template<typename T>
-static void WriteTypedHandleSlot(ptr<void> slot, nptr<T> value) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    NativeDataProvider::WriteTypedHandleSlot<T>(slot, value);
-}
-
-template<typename T>
 static void ReleaseTypedHandleSlot(ptr<void> slot) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (auto nullable_object = ReadTypedHandleSlot<T>(slot)) {
+    if (auto nullable_object = NativeDataProvider::ReadTypedHandleSlot<T>(slot)) {
         auto object = nullable_object.as_ptr();
         object->Release();
     }
@@ -265,7 +242,7 @@ static auto ConvertRefTypeScriptObjectSlotToProperty(ptr<const Property> prop, p
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ConvertRefTypeScriptObjectToProperty(prop, ReadHandleSlot(slot));
+    return ConvertRefTypeScriptObjectToProperty(prop, NativeDataProvider::ReadHandleSlot(slot));
 }
 
 static auto ScriptFastCompareFuncToUserData(ScriptFastCompareFunc func) noexcept -> nptr<void>
@@ -789,7 +766,7 @@ void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
         }
     }
     else if (prop->IsBaseTypeRefType()) {
-        auto ref_obj = ReadHandleSlot(construct_addr);
+        auto ref_obj = NativeDataProvider::ReadHandleSlot(construct_addr);
 
         if (ref_obj) {
             cast_from_void<DynamicRefTypeInstance*>(ref_obj.get())->Release();
@@ -887,7 +864,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
         refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(data, data_size);
         nptr<DynamicRefTypeInstance> released_ref_obj = ReleaseScriptOwnership(std::move(ref_obj));
-        WriteTypedHandleSlot<DynamicRefTypeInstance>(construct_addr, released_ref_obj);
+        NativeDataProvider::WriteTypedHandleSlot<DynamicRefTypeInstance>(construct_addr, released_ref_obj);
     }
     else if (prop->IsString()) {
         const_span<uint8_t> data_span = ScriptPropertyDataSpan(data, data_size);
@@ -1004,7 +981,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
             FO_UNREACHABLE_PLACE();
         }
 
-        WriteTypedHandleSlot<ScriptArray>(construct_addr, arr);
+        NativeDataProvider::WriteTypedHandleSlot<ScriptArray>(construct_addr, arr);
         (void)ReleaseScriptOwnership(std::move(arr));
     }
     else if (prop->IsDict()) {
@@ -1263,7 +1240,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
             }
         }
 
-        WriteTypedHandleSlot<ScriptDict>(construct_addr, dict);
+        NativeDataProvider::WriteTypedHandleSlot<ScriptDict>(construct_addr, dict);
         (void)ReleaseScriptOwnership(std::move(dict));
     }
     else {
@@ -1291,7 +1268,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeProtoReference()) {
-            auto entity = ReadTypedHandleSlot<Entity>(as_obj);
+            auto entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(as_obj);
             const auto pid = resolve_proto_hash(entity);
             FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(pid), "Property base size does not match proto id storage size", prop->GetBaseSize(), sizeof(pid));
             prop_data.SetAs<hstring::hash_t>(pid);
@@ -1306,7 +1283,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
         }
     }
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
-        const auto ref_obj = ReadHandleSlot(as_obj);
+        const auto ref_obj = NativeDataProvider::ReadHandleSlot(as_obj);
 
         if (ref_obj) {
             prop_data = ConvertRefTypeScriptObjectToProperty(prop, ref_obj);
@@ -1317,7 +1294,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
         prop_data.Pass(str->data(), str->length());
     }
     else if (prop->IsArray()) {
-        auto nullable_arr = ReadTypedHandleSlot<ScriptArray>(as_obj);
+        auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(as_obj);
 
         if (prop->IsArrayOfString()) {
             uint32_t arr_size = 0;
@@ -1413,7 +1390,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                     size_t data_pos = 0;
 
                     for (uint32_t i = 0; i < arr_size; i++) {
-                        auto entity = ReadTypedHandleSlot<Entity>(arr->At(numeric_cast<int32_t>(i)));
+                        auto entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(arr->At(numeric_cast<int32_t>(i)));
                         const auto pid = resolve_proto_hash(entity);
                         FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(pid), "Property base size does not match proto id storage size");
                         WriteScriptPropertyObject(buf_span, data_pos, pid);
@@ -1471,7 +1448,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
         }
     }
     else if (prop->IsDict()) {
-        auto dict = ReadTypedHandleSlot<ScriptDict>(as_obj);
+        auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(as_obj);
 
         if (prop->IsDictOfArray()) {
             if (dict && dict->GetSize() != 0) {
@@ -1584,7 +1561,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
                             for (uint32_t i = 0; i < arr_size; i++) {
-                                auto entity = ReadTypedHandleSlot<Entity>(arr->At(numeric_cast<int32_t>(i)));
+                                auto entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(arr->At(numeric_cast<int32_t>(i)));
                                 const auto pid = resolve_proto_hash(entity);
                                 FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(pid), "Property base size does not match proto id storage size");
                                 WriteScriptPropertyObject(buf_span, data_pos, pid);
@@ -2085,6 +2062,79 @@ auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> a
     }
 
     return prop_data;
+}
+
+auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_object = gen->GetObject();
+    FO_STRONG_ASSERT(nullable_object, "Generic call object is null");
+    return nullable_object.as_ptr();
+}
+
+auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_auxiliary = gen->GetAuxiliary();
+    FO_STRONG_ASSERT(nullable_auxiliary, "Generic call auxiliary is null");
+    return nullable_auxiliary.as_ptr();
+}
+
+auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_arg_address = gen->GetArgAddress(arg_index);
+    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
+    return nullable_arg_address.as_ptr();
+}
+
+auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_arg_address = gen->GetAddressOfArg(arg_index);
+    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
+    return nullable_arg_address.as_ptr();
+}
+
+void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get_no_const());
+}
+
+void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr.get());
+}
+
+void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(ReleaseScriptOwnership(std::move(arr)));
+}
+
+void SetScriptObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ptr<void> slot)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    int32_t as_result = 0;
+    FO_AS_VERIFY(ctx->SetObject(NativeDataProvider::ReadHandleSlot(slot).get()));
+}
+
+void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index, ptr<void> slot)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    int32_t as_result = 0;
+    FO_AS_VERIFY(ctx->SetArgObject(arg_index, NativeDataProvider::ReadHandleSlot(slot).get()));
 }
 
 FO_END_NAMESPACE

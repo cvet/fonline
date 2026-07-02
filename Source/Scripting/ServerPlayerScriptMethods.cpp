@@ -87,8 +87,7 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> c
 FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
     auto controlled_cr = self->GetControlledCritter();
-
-    return controlled_cr.get_no_const();
+    return controlled_cr;
 }
 
 ///@ ExportMethod

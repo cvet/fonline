@@ -78,7 +78,7 @@ Use `take_not_null(unique_del_nptr<T>&)` for the matching custom-deleter case wh
 
 In strict builds, `unique_ptr<T>::release()` is rvalue-only and returns `ptr<T>` instead of raw `T*`. `unique_nptr<T>::release()` returns `nptr<T>`. Unwrap with `.get()` only at an explicit ABI, allocator, or adoption boundary.
 
-Helpers that can fail a type cast or lookup while transferring unique ownership must return `unique_nptr<T>`. For example, `dynamic_ptr_cast<T>(unique_ptr<U>&&)` returns `unique_nptr<T>` because a failed cast is normal absence, not a valid `unique_ptr<T>` state.
+Helpers that can fail a type cast or lookup while transferring unique ownership must return `unique_nptr<T>`, because a failed cast is normal absence, not a valid `unique_ptr<T>` state.
 
 `unique_del_ptr<T>` / `unique_del_nptr<T>` are custom-deleter owners used at external cleanup boundaries. Use `unique_del_ptr<T>` only after a `ptr<T>` or equivalent assertion proves the custom-owned object is present; it is a strict move-only non-null owner and rejects default/null construction in strict builds. Use the `unique_del_nptr<T>` spelling for stored state that can be empty, lazily initialized, moved-from, or reset.
 

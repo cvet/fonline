@@ -473,10 +473,10 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         bool map_ids_changed = false;
 
         for (const auto& map_id : map_ids) {
-            refcount_nptr<Map> map_lookup = LoadMap(map_id, is_error);
+            refcount_nptr<Map> nullable_map = LoadMap(map_id, is_error);
 
-            if (map_lookup) {
-                auto map = map_lookup.take_not_null();
+            if (nullable_map) {
+                auto map = nullable_map.take_not_null();
                 FO_VERIFY_AND_THROW(map->GetLocId() == loc->GetId(), "Loaded map belongs to a different location");
 
                 const auto loc_map_index = map->GetLocMapIndex();
@@ -557,10 +557,10 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
-            refcount_nptr<Critter> cr_lookup = LoadCritter(cr_id, is_error);
+            refcount_nptr<Critter> nullable_cr = LoadCritter(cr_id, is_error);
 
-            if (cr_lookup) {
-                auto cr = cr_lookup.take_not_null();
+            if (nullable_cr) {
+                auto cr = nullable_cr.take_not_null();
                 cr->SetMapId(map->GetId());
                 FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
 
@@ -585,10 +585,10 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
-            refcount_nptr<Item> item_lookup = LoadItem(item_id, is_error);
+            refcount_nptr<Item> nullable_item = LoadItem(item_id, is_error);
 
-            if (item_lookup) {
-                auto item = item_lookup.take_not_null();
+            if (nullable_item) {
+                auto item = nullable_item.take_not_null();
                 FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
                 FO_VERIFY_AND_THROW(item->GetMapId() == map->GetId(), "Item belongs to a different map");
 
@@ -665,10 +665,10 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
         bool item_ids_changed = false;
 
         for (const auto& item_id : item_ids) {
-            refcount_nptr<Item> inv_item_lookup = LoadItem(item_id, is_error);
+            refcount_nptr<Item> nullable_inv_item = LoadItem(item_id, is_error);
 
-            if (inv_item_lookup) {
-                auto inv_item = inv_item_lookup.take_not_null();
+            if (nullable_inv_item) {
+                auto inv_item = nullable_inv_item.take_not_null();
                 FO_VERIFY_AND_THROW(inv_item->GetOwnership() == ItemOwnership::CritterInventory, "Loaded critter inventory item has a non-inventory ownership state", inv_item->GetId(), cr->GetId(), inv_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inv_item->GetCritterId() == cr->GetId(), "Loaded inventory item belongs to a different critter");
 
@@ -741,10 +741,10 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
         bool inner_item_ids_changed = false;
 
         for (const auto& inner_item_id : inner_item_ids) {
-            refcount_nptr<Item> inner_item_lookup = LoadItem(inner_item_id, is_error);
+            refcount_nptr<Item> nullable_inner_item = LoadItem(inner_item_id, is_error);
 
-            if (inner_item_lookup) {
-                auto inner_item = inner_item_lookup.take_not_null();
+            if (nullable_inner_item) {
+                auto inner_item = nullable_inner_item.take_not_null();
                 FO_VERIFY_AND_THROW(inner_item->GetOwnership() == ItemOwnership::ItemContainer, "Loaded container item has a non-container ownership state", inner_item->GetId(), item->GetId(), inner_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inner_item->GetContainerId() == item->GetId(), "Loaded inner item belongs to a different container");
 
@@ -821,10 +821,10 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
         const auto inner_entity_type_name = holder_type.HolderEntries.at(entry).TargetType;
 
         for (const auto& id : inner_entity_ids) {
-            refcount_nptr<CustomEntity> custom_entity_lookup = LoadCustomEntity(inner_entity_type_name, id, is_error);
+            refcount_nptr<CustomEntity> nullable_custom_entity = LoadCustomEntity(inner_entity_type_name, id, is_error);
 
-            if (custom_entity_lookup) {
-                auto custom_entity = custom_entity_lookup.take_not_null();
+            if (nullable_custom_entity) {
+                auto custom_entity = nullable_custom_entity.take_not_null();
 
                 FO_VERIFY_AND_THROW(custom_entity->GetCustomHolderId() == holder_id, "Custom entity belongs to a different holder");
 
@@ -1567,24 +1567,21 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
     vec_add_unique_value(inner_entity_ids, entity->GetId());
     holder_props->SetValue(holder_prop, inner_entity_ids);
 
-    if (auto nullable_holder_with_id = holder.dyn_cast<ServerEntity>()) {
-        auto holder_with_id = nullable_holder_with_id.as_ptr();
-        const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
-
-        if (holder_type.HolderEntries.at(entry).Persistent && holder_with_id->IsPersistent()) {
-            MakePersistent(entity, true);
-        }
-    }
-
-    // Propagate holder's lock to custom entity. ServerEntity holders supply their own lock;
-    // engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes).
     if (auto nullable_holder_entity = holder.dyn_cast<ServerEntity>()) {
         auto holder_entity = nullable_holder_entity.as_ptr();
+        const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
+
+        if (holder_type.HolderEntries.at(entry).Persistent && holder_entity->IsPersistent()) {
+            MakePersistent(entity, true);
+        }
+
+        // Propagate holder's lock to custom entity: ServerEntity holders supply their own lock
         auto holder_lock = holder_entity->GetEntityLock();
         FO_VERIFY_AND_THROW(holder_lock, "Missing required holder lock");
         entity->SetEntityLock(holder_lock);
     }
     else {
+        // Engine-as-holder supplies the engine's singleton lock (same one Game.Lock() takes)
         nptr<const Entity> engine_holder = _engine;
         FO_VERIFY_AND_THROW(engine_holder == holder, "Entity holder is not the engine singleton");
         entity->SetEntityLock(_engine->GetEntityLock());

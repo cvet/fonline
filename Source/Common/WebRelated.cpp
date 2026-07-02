@@ -318,24 +318,18 @@ extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_NAMESPACE ptr<const char> clipboard_text = FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
         return clipboard_text.get_no_const();
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         const FO_NAMESPACE nptr<const char> text = text;
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(text ? std::string_view {text.get()} : std::string_view {});
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         using FO_NAMESPACE InputEvent;
         using FO_NAMESPACE KeyCode;
 
@@ -349,11 +343,7 @@ extern "C"
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_NAMESPACE unique_del_ptr<char> owned_text {text, [](FO_NAMESPACE nptr<char> owned) {
-                                                          FO_NO_STACK_TRACE_ENTRY();
-
                                                           if (owned) {
                                                               std::free(owned.get());
                                                           }
@@ -422,8 +412,6 @@ namespace WebRelated
 
     void ApplyApplicationHints() noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
         ptr<const char> canvas_selector = CanvasSelector.c_str();

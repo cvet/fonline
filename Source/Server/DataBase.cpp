@@ -1389,34 +1389,34 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
     const string_view key_data = escaped_key;
     const auto key_len = numeric_cast<int32_t>(escaped_key.length());
-    nptr<const char> key_data_ptr = key_data.data();
+    nptr<const char> nullable_key_data = key_data.data();
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson.get(), key_data_ptr.get(), key_len, value.AsInt64())) {
+        if (!bson_append_int64(bson.get(), nullable_key_data.get(), key_len, value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if (!bson_append_double(bson.get(), key_data_ptr.get(), key_len, value.AsDouble())) {
+        if (!bson_append_double(bson.get(), nullable_key_data.get(), key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson.get(), key_data_ptr.get(), key_len, value.AsBool())) {
+        if (!bson_append_bool(bson.get(), nullable_key_data.get(), key_len, value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
         const string_view value_str = value.AsString();
 
-        if (!bson_append_utf8(bson.get(), key_data_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
+        if (!bson_append_utf8(bson.get(), nullable_key_data.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_unsafe_begin(bson.get(), key_data_ptr.get(), key_len, &bson_arr)) {
+        if (!bson_append_array_unsafe_begin(bson.get(), nullable_key_data.get(), key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
@@ -1435,7 +1435,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson.get(), key_data_ptr.get(), key_len, &bson_doc)) {
+        if (!bson_append_document_begin(bson.get(), nullable_key_data.get(), key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 

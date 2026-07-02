@@ -141,15 +141,6 @@ static void ReturnGenericDynamicRefType(ptr<AngelScript::asIScriptGeneric> gen, 
     new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(ref_instance.get());
 }
 
-static auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Missing generic call argument address");
-    return nullable_arg_address.as_ptr();
-}
-
 static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -163,43 +154,6 @@ static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, A
     FO_NO_STACK_TRACE_ENTRY();
 
     return cast_from_void<T*>(GetGenericAddressArgObject(gen, arg_index).get());
-}
-
-template<typename T>
-static auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto arg_address = GetGenericAddressArg(gen, arg_index);
-    if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get_no_const());
-    }
-    else {
-        return cast_from_void<T*>(arg_address.get_no_const());
-    }
-}
-
-template<typename T>
-static auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(gen->GetObject());
-    }
-    else {
-        return cast_from_void<T*>(gen->GetObject());
-    }
-}
-
-template<typename T>
-static auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<T> nullable_auxiliary = cast_from_void<T*>(gen->GetAuxiliary());
-    FO_STRONG_ASSERT(nullable_auxiliary, "Missing generic call auxiliary data");
-    return nullable_auxiliary.as_ptr();
 }
 
 static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
@@ -227,7 +181,7 @@ static void GenericType_Construct(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<void>(gen);
+    auto obj = GetGenericObjectAs<void>(gen);
 
     DefaultInitStructFields(obj, *type);
 }
@@ -237,7 +191,7 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<void>(gen);
+    auto obj = GetGenericObjectAs<void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
     MemCopy(obj.get(), other.get(), type->Size);
@@ -248,7 +202,7 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<void>(gen);
+    auto obj = GetGenericObjectAs<void>(gen);
     AngelScript::asUINT index = 0;
 
     VisitBaseTypePrimitive(obj.get(), *type, [&index, &gen](auto&& v) {
@@ -263,7 +217,7 @@ static void GenericType_GetStr(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<const void>(gen);
+    auto obj = GetGenericObjectAs<const void>(gen);
 
     string str;
     VisitBaseTypePrimitive(obj.get(), *type, [&str](auto&& v) {
@@ -282,7 +236,7 @@ static void GenericType_AnyConv(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<const void>(gen);
+    auto obj = GetGenericObjectAs<const void>(gen);
 
     any_t str;
     VisitBaseTypePrimitive(obj.get(), *type, [&str](auto&& v) {
@@ -301,7 +255,7 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<const any_t>(gen);
+    auto obj = GetGenericObjectAs<const any_t>(gen);
     const auto tokens = strvex(*obj).split(' ');
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
@@ -342,7 +296,7 @@ static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<const void>(gen);
+    auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
     int32_t cmp = 0;
@@ -362,7 +316,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
     FO_NO_STACK_TRACE_ENTRY();
 
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
-    auto obj = GetGenericObject<const void>(gen);
+    auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
     const auto equals = MemCompare(obj.get(), other.get(), type->Size);
@@ -435,7 +389,7 @@ static void HstringWrapper_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto self = GetGenericObject<const any_t>(gen);
+    auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     new (gen->GetAddressOfReturnLocation()) T(meta->Hashes.ToHashedString(*self));
@@ -447,7 +401,7 @@ static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, boo
 
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
-    auto self = GetGenericObject<TextPackKey>(gen);
+    auto self = GetGenericObjectAs<TextPackKey>(gen);
     auto collection = GetGenericAddressArgObject<const TextPackName>(gen, 0);
     const auto arg_count = gen->GetArgCount();
 
@@ -557,7 +511,7 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto str = GetGenericObject<const string>(gen);
+    auto str = GetGenericObjectAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     const auto hstr = meta->Hashes.ToHashedString(*str);
@@ -631,7 +585,7 @@ static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
     auto enum_value_ptr = GetGenericAddressArgAs<const void>(gen, 0);
     const auto enum_value = ReadEnumValueAsInt32(enum_value_ptr, meta->GetBaseType(*enum_name));
-    auto self = GetGenericObject<any_t>(gen);
+    auto self = GetGenericObjectAs<any_t>(gen);
 
     new (self.get()) any_t(Any_MakeEnumValue(meta, *enum_name, enum_value));
 }
@@ -672,7 +626,7 @@ static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
-    auto self = GetGenericObject<const any_t>(gen);
+    auto self = GetGenericObjectAs<const any_t>(gen);
     const auto enum_value = Any_ResolveEnumValue(*self, meta, *enum_name);
 
     ptr<void> return_value = gen->GetAddressOfReturnLocation();
@@ -715,7 +669,7 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto self = GetGenericObject<const any_t>(gen);
+    auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
 
@@ -1100,7 +1054,7 @@ static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto obj = GetGenericObject<const void>(gen);
+    auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
     new (gen->GetAddressOfReturnLocation()) bool(obj == other);
@@ -1138,7 +1092,7 @@ static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto self = GetGenericObject<DynamicRefTypeInstance>(gen);
+    auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
 
     PropertyRawData prop_data;
@@ -1151,7 +1105,7 @@ static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto self = GetGenericObject<DynamicRefTypeInstance>(gen);
+    auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
 
     ReturnGenericDynamicRefType(gen, self);
 }
@@ -1160,7 +1114,7 @@ static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto self = GetGenericObject<DynamicRefTypeInstance>(gen);
+    auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
 
     auto prop_data = ConvertScriptToPropsObject(prop, GetGenericAddressArg(gen, 0));

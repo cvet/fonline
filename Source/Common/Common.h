@@ -115,12 +115,16 @@ public:
         _args.resize(arg_count);
 
         for (size_t i = 0; i < arg_count; ++i) {
+            FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
             _args[i] = argv[i];
         }
     }
-    explicit CommandLineArgs(const_span<CommandLineArg> args) noexcept :
+    explicit CommandLineArgs(const_span<CommandLineArg> args) :
         _args(args.begin(), args.end())
     {
+        for (const CommandLineArg arg : _args) {
+            FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
+        }
     }
 
     [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }

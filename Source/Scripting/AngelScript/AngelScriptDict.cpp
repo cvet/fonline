@@ -66,18 +66,11 @@ static auto ScriptDictBufferAsVoid(ptr<AngelScript::asBYTE> buffer) noexcept -> 
     return cast_to_void(buffer.get());
 }
 
-static auto ScriptDictBufferAt(ptr<AngelScript::asBYTE> buffer, size_t offset) noexcept -> ptr<AngelScript::asBYTE>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return buffer.get() + offset;
-}
-
 static void AdvanceScriptDictBuffer(ptr<AngelScript::asBYTE>& buffer, size_t offset) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    buffer = ScriptDictBufferAt(buffer, offset);
+    buffer = buffer.get() + offset;
 }
 
 template<typename T>

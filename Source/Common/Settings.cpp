@@ -253,10 +253,11 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
         }
 
         if (CommandLineArgs::IsOption(arg)) {
+            const bool has_next_arg = i + 1 < args.size();
             auto next_arg = args.Get(i + 1);
             const string arg_text = strex("{}", arg).trim().str();
             const string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
-            const string value = !next_arg.empty() && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
+            const string value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
 
             if (key != "ApplyConfig" && key != "ApplySubConfig") {
                 const string shown = IsSecretSettingName(key) ? string("***") : value;

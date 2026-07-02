@@ -47,11 +47,7 @@ HashStorage::HashStorage(HashFunc hash_func) :
 
 auto HashStorage::DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
-    if (data.empty()) {
-        return hashing_ex::hash(nullptr, 0);
-    }
+    FO_NO_STACK_TRACE_ENTRY();
 
     return hashing_ex::hash(data.data(), data.size());
 }

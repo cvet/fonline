@@ -64,29 +64,6 @@ static constexpr uint8_t AS_BYTECODE_POINTER_SIZE = sizeof(void*);
 static constexpr uint8_t AS_BYTECODE_ENDIAN_TAG = std::endian::native == std::endian::little ? 1 : 2;
 static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
 
-static void ReleasePreprocessorContext(nptr<Preprocessor::Context> ctx) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (ctx) {
-        Preprocessor::DeleteContext(ctx.get());
-    }
-}
-
-static void CleanupPreprocessorContext(ptr<Preprocessor::Context> ctx) FO_DEFERRED
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ReleasePreprocessorContext(ctx);
-}
-
-static auto MakePreprocessorContext() -> unique_del_ptr<Preprocessor::Context>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return unique_del_ptr<Preprocessor::Context> {Preprocessor::CreateContext(), CleanupPreprocessorContext};
-}
-
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
 {
     FO_STACK_TRACE_ENTRY();
@@ -613,8 +590,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         root_script.append("\"\n");
     }
 
-    auto nullable_preprocessor_context = MakePreprocessorContext();
-    auto preprocessor_context = nullable_preprocessor_context.as_ptr();
+    auto preprocessor_context = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
 
     Preprocessor::UndefAll(preprocessor_context.get());
 

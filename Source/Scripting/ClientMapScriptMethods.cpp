@@ -53,7 +53,7 @@ FO_SCRIPT_API void Client_Map_DrawMap(ptr<MapView> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHolder> mapSpr)
 {
-    auto engine_ptr = self->GetEngine();
+    auto engine = self->GetEngine();
 
     if (!self->GetSize().is_valid_pos(mapSpr->Hex)) {
         return;
@@ -62,13 +62,13 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         return;
     }
 
-    auto anim = engine_ptr->AnimGetSpr(mapSpr->SprId);
+    auto nullable_anim = engine->AnimGetSpr(mapSpr->SprId);
 
-    if (!anim) {
+    if (!nullable_anim) {
         return;
     }
-    auto sprite = anim.as_ptr();
 
+    auto anim = nullable_anim.as_ptr();
     ucolor color = mapSpr->Color;
     bool is_flat = mapSpr->IsFlat;
     bool no_light = mapSpr->NoLight;
@@ -78,7 +78,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     bool disable_egg = mapSpr->DisableEgg;
 
     if (mapSpr->ProtoId) {
-        auto nullable_proto = engine_ptr->GetProtoItem(mapSpr->ProtoId);
+        auto nullable_proto = engine->GetProtoItem(mapSpr->ProtoId);
         FO_VERIFY_AND_THROW(nullable_proto, "Map sprite references unknown item proto");
         auto proto = nullable_proto.as_ptr();
         color = proto->GetColorize() ? proto->GetColorizeColor() : ucolor::clear;
@@ -90,7 +90,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         disable_egg = proto->GetDisableEgg();
     }
 
-    ptr<MapSprite> mspr = self->AddMapSprite(sprite, mapSpr->Hex, draw_order, draw_order_hy_offset, //
+    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
         mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
@@ -137,16 +137,16 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Map_DrawEntitySprite(ptr<MapView> self, ptr<ClientEntity> entity, int32_t effectSubtype, ucolor color, int32_t padding)
 {
-    auto engine_ptr = self->GetEngine();
+    auto engine = self->GetEngine();
 
-    if (!engine_ptr->CanDrawInScripts) {
+    if (!engine->CanDrawInScripts) {
         throw ScriptException("You can use this function only in render events");
     }
     if (padding < 0) {
         throw ScriptException("Negative padding");
     }
-    auto effect = engine_ptr->GetOffscreenEffect(effectSubtype);
 
+    auto effect = engine->GetOffscreenEffect(effectSubtype);
     return self->DrawEntitySprite(entity, effect, color, padding);
 }
 
@@ -200,7 +200,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItem(ptr<MapView> self, ident_t itemI
     }
 
     auto item = self->GetItem(itemId);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -211,14 +211,13 @@ FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemOnHex(ptr<MapView> self, mpos hex
     }
 
     auto item = self->GetItemOnHex(hex);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(ptr<MapView> self)
 {
     span<refcount_ptr<ItemHexView>> map_items = self->GetItems();
-
     return MakeScriptRefHandleVectorAs<ItemView, ItemHexView>(map_items);
 }
 
@@ -230,7 +229,6 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(ptr<MapView> self, mpos
     }
 
     span<ptr<ItemHexView>> hex_items = self->GetItemsOnHex(hex);
-
     return MakeScriptHandleVectorAs<ItemView, ItemHexView>(hex_items);
 }
 
@@ -241,8 +239,8 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritter(ptr<MapView> self, ident_t
         return nullptr;
     }
 
-    nptr<CritterView> cr = self->GetCritter(critterId);
-    return cr.get_no_const();
+    auto cr = self->GetCritter(critterId);
+    return cr;
 }
 
 ///@ ExportMethod
@@ -264,8 +262,8 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterOnHex(ptr<MapView> self, mp
         return nullptr;
     }
 
-    ptr<CritterHexView> cr = critters.front();
-    return cr.get_no_const();
+    auto cr = critters.front();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -287,8 +285,8 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self,
         return nullptr;
     }
 
-    ptr<CritterHexView> cr = critters.front();
-    return cr.get_no_const();
+    auto cr = critters.front();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -440,6 +438,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
         if (GeometryHelper::GetDistance(fromHex, toHex) > 0 && cut == 0) {
             return {GeometryHelper::GetHexDir(fromHex, toHex)};
         }
+
         return {};
     }
 
@@ -455,6 +454,7 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
     }
 
     auto result = self->FindPath(nullptr, fromHex, to_hex, -1);
+
     if (!result) {
         return {};
     }
@@ -465,37 +465,38 @@ FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, mpos fromHex, m
 ///@ ExportMethod
 FO_SCRIPT_API vector<mdir> Client_Map_GetPath(ptr<MapView> self, ptr<CritterView> cr, mpos toHex, int32_t cut)
 {
-    ptr<CritterView> cr_arg = cr;
-
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
-    auto hex_cr = cr_arg.dyn_cast<CritterHexView>();
-    if (!hex_cr) {
+    auto nullable_hex_cr = cr.dyn_cast<CritterHexView>();
+
+    if (!nullable_hex_cr) {
         throw ScriptException("Critter is not on map");
     }
-    auto cr_ptr = hex_cr.as_ptr();
 
-    if (GeometryHelper::GetDistance(cr_ptr->GetHex(), toHex) <= 1 + cr_ptr->GetMultihex()) {
-        if (GeometryHelper::GetDistance(cr_ptr->GetHex(), toHex) > cr_ptr->GetMultihex() && cut == 0) {
-            return {GeometryHelper::GetHexDir(cr_ptr->GetHex(), toHex)};
+    auto hex_cr = nullable_hex_cr.as_ptr();
+
+    if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) <= 1 + hex_cr->GetMultihex()) {
+        if (GeometryHelper::GetDistance(hex_cr->GetHex(), toHex) > hex_cr->GetMultihex() && cut == 0) {
+            return {GeometryHelper::GetHexDir(hex_cr->GetHex(), toHex)};
         }
+
         return {};
     }
 
     auto to_hex = toHex;
     const auto init_to_hex = toHex;
 
-    if (cut > 0 && !self->CutPath(cr_ptr, cr_ptr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
+    if (cut > 0 && !self->CutPath(hex_cr, hex_cr->GetHex(), to_hex, numeric_cast<int32_t>(cut))) {
+        return {};
+    }
+    if (cut > 0 && GeometryHelper::GetDistance(hex_cr->GetHex(), init_to_hex) <= cut + hex_cr->GetMultihex() && GeometryHelper::GetDistance(hex_cr->GetHex(), to_hex) <= 1 + hex_cr->GetMultihex()) {
         return {};
     }
 
-    if (cut > 0 && GeometryHelper::GetDistance(cr_ptr->GetHex(), init_to_hex) <= cut + cr_ptr->GetMultihex() && GeometryHelper::GetDistance(cr_ptr->GetHex(), to_hex) <= 1 + cr_ptr->GetMultihex()) {
-        return {};
-    }
+    auto result = self->FindPath(hex_cr, hex_cr->GetHex(), to_hex, -1);
 
-    auto result = self->FindPath(cr_ptr, cr_ptr->GetHex(), to_hex, -1);
     if (!result) {
         return {};
     }
@@ -540,13 +541,11 @@ FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, mpos fromHex, 
 ///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Map_GetPathLength(ptr<MapView> self, ptr<CritterView> cr, mpos toHex, int32_t cut)
 {
-    ptr<CritterView> cr_arg = cr;
-
     if (!self->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid toHex arg");
     }
 
-    auto hex_cr = cr_arg.dyn_cast<CritterHexView>();
+    auto hex_cr = cr.dyn_cast<CritterHexView>();
 
     if (!hex_cr) {
         throw ScriptException("Critter is not on map");
@@ -713,7 +712,6 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, nptr<CritterView> cr)
 {
-    ptr<const MapView> self_const = self;
     auto nullable_cr_hex = cr.dyn_cast<CritterHexView>();
 
     if (!nullable_cr_hex) {
@@ -722,7 +720,8 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
     }
 
     auto cr_hex = nullable_cr_hex.as_ptr();
-    if (cr_hex->GetMap() != self_const || !cr_hex->IsMapSpriteValid()) {
+
+    if (cr_hex->GetMap() != self || !cr_hex->IsMapSpriteValid()) {
         self->ClearTransparentEgg(slot);
         return;
     }
@@ -746,27 +745,27 @@ FO_SCRIPT_API void Client_Map_ClearTransparentEgg(ptr<MapView> self, Transparent
 FO_SCRIPT_API nptr<ItemView> Client_Map_GetItemAtScreenPos(ptr<MapView> self, ipos32 pos)
 {
     bool item_egg;
-    nptr<ItemHexView> item = self->GetItemAtScreen(pos, item_egg, 0, true).first;
-    return item.get_no_const();
+    auto item = self->GetItemAtScreen(pos, item_egg, 0, true).first;
+    return item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> self, ipos32 pos, int32_t extraRange = 0)
 {
-    nptr<CritterHexView> cr = self->GetCritterAtScreen(pos, false, 0, true).first;
+    auto cr = self->GetCritterAtScreen(pos, false, 0, true).first;
 
     if (!cr && extraRange != 0) {
         cr = self->GetCritterAtScreen(pos, true, extraRange, false).first;
     }
 
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos)
 {
-    nptr<ClientEntity> entity = self->GetEntityAtScreen(pos, 0, true).first;
-    return entity.get_no_const();
+    auto entity = self->GetEntityAtScreen(pos, 0, true).first;
+    return entity;
 }
 
 ///@ ExportMethod
@@ -841,7 +840,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterVie
     nptr<RenderEffect> customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
 
     auto fog = self->AddFog(cr, drawOrder, customFlushEffect);
-    return fog.get_no_const();
+    return fog;
 }
 
 ///@ ExportMethod
@@ -854,7 +853,7 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawO
     nptr<RenderEffect> customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
 
     auto fog = self->AddFog(hex, drawOrder, customFlushEffect);
-    return fog.get_no_const();
+    return fog;
 }
 
 ///@ ExportMethod
@@ -865,7 +864,7 @@ FO_SCRIPT_API nptr<SpritePattern> Client_Map_RunSpritePattern(ptr<MapView> self,
     }
 
     auto sprite_pattern = self->RunSpritePattern(spriteName, spriteCount);
-    return sprite_pattern.get_no_const();
+    return sprite_pattern;
 }
 
 ///@ ExportMethod
@@ -887,7 +886,7 @@ FO_SCRIPT_API ptr<ItemView> Client_Map_CreateLocalItem(ptr<MapView> self, hstrin
     }
 
     auto item = self->AddLocalItem(pid, hex);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod

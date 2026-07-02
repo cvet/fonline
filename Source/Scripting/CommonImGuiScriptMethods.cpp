@@ -92,13 +92,6 @@ static auto ToFSize32(const ImVec2& size) -> fsize32
     return {size.x, size.y};
 }
 
-static auto ToImU32(ucolor color) -> ImU32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
-}
-
 static auto ToColorComp(float32_t value) -> uint8_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -155,7 +148,7 @@ FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
     }
 
     auto imgui = engine->GetImGui();
-    return imgui.get_no_const();
+    return imgui;
 }
 
 ///@ ExportMethod

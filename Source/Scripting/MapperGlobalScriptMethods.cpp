@@ -96,8 +96,8 @@ static auto MapperColorDataAt(vector<ucolor>& data, size_t offset) noexcept -> p
 
     FO_STRONG_ASSERT(offset < data.size(), "Color offset out of bounds");
 
-    nptr<ucolor> data_lookup = data.data();
-    auto data_begin = data_lookup.as_ptr();
+    nptr<ucolor> nullable_data = data.data();
+    auto data_begin = nullable_data.as_ptr();
     return data_begin.get() + offset;
 }
 
@@ -111,7 +111,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, hstrin
     }
 
     auto item = mapper->CreateItem(pid, hex, nullptr);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -124,7 +124,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddItem(ptr<MapperEngine> mapper, ptr<Pr
     }
 
     auto item = mapper->CreateItem(proto->GetProtoId(), hex, nullptr);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -137,7 +137,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     }
 
     auto cr = mapper->CreateCritter(pid, hex);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -150,7 +150,7 @@ FO_SCRIPT_API ptr<CritterView> Mapper_Game_AddCritter(ptr<MapperEngine> mapper, 
     }
 
     auto cr = mapper->CreateCritter(proto->GetProtoId(), hex);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -158,7 +158,7 @@ FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, 
 {
     auto map = RequireCurMapperMap(mapper);
     auto item = map->GetItemOnHex(hex, hstring());
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -180,7 +180,7 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
     }
 
     ptr<CritterHexView> cr = critters.front();
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -308,7 +308,7 @@ FO_SCRIPT_API ptr<ItemView> Mapper_Game_AddTile(ptr<MapperEngine> mapper, hstrin
     const auto corrected_layer = numeric_cast<uint8_t>(std::clamp(layer, 0, 4));
 
     auto tile = map->AddMapperTile(pid, hex, corrected_layer, roof);
-    return tile.get_no_const();
+    return tile;
 }
 
 ///@ ExportMethod
@@ -345,7 +345,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
 FO_SCRIPT_API nptr<MapView> Mapper_Game_LoadMap(ptr<MapperEngine> mapper, string_view fileName)
 {
     auto map = mapper->LoadMap(fileName);
-    return map.get_no_const();
+    return map;
 }
 
 ///@ ExportMethod

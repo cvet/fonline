@@ -104,7 +104,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterVie
 {
     auto hex_cr = RequireHexCritter(self);
     auto moving = hex_cr->GetMoving();
-    return moving.get_no_const();
+    return moving;
 }
 
 ///@ ExportMethod
@@ -237,7 +237,7 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoI
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
     auto item = self->GetInvItem(itemId);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -257,7 +257,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
             auto item = inv_items[i].as_ptr();
 
             if (item->GetProtoId() == protoId) {
-                return item.get_no_const();
+                return item;
             }
         }
     }
@@ -269,14 +269,14 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
 
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get_no_const();
+                    return item;
                 }
 
                 another_slot = item;
             }
         }
 
-        return another_slot.get_no_const();
+        return another_slot;
     }
 
     return nullptr;
@@ -292,7 +292,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<P
             auto item = inv_items[i].as_ptr();
 
             if (item->GetProtoId() == proto->GetProtoId()) {
-                return item.get_no_const();
+                return item;
             }
         }
     }
@@ -304,14 +304,14 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<P
 
             if (item->GetProtoId() == proto->GetProtoId()) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get_no_const();
+                    return item;
                 }
 
                 another_slot = item;
             }
         }
 
-        return another_slot.get_no_const();
+        return another_slot;
     }
 
     return nullptr;
@@ -327,7 +327,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemP
         auto item = inv_items[i].as_ptr();
 
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item.get_no_const();
+            return item;
         }
     }
 
@@ -473,7 +473,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     auto engine_ptr = self->GetEngine();
     engine_ptr->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
     auto moving = hex_cr->GetMoving();
-    return moving.get_no_const();
+    return moving;
 }
 
 ///@ ExportMethod
@@ -486,7 +486,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     auto engine_ptr = self->GetEngine();
     engine_ptr->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
     auto moving = hex_cr->GetMoving();
-    return moving.get_no_const();
+    return moving;
 }
 
 ///@ ExportMethod

@@ -519,8 +519,8 @@ static auto PropertiesObjectArrayAsBytes(span<const T> values) -> const_span<uin
         return {};
     }
 
-    nptr<const T> values_ptr = values.data();
-    nptr<const uint8_t> bytes = values_ptr.reinterpret_as<const uint8_t>();
+    nptr<const T> nullable_values = values.data();
+    nptr<const uint8_t> bytes = nullable_values.reinterpret_as<const uint8_t>();
     return {bytes.get(), values.size() * sizeof(T)};
 }
 

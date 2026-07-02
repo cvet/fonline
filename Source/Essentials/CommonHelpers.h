@@ -61,21 +61,6 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
 }
 
 // Smart pointer helpers
-template<typename T, typename U>
-[[nodiscard]] inline auto dynamic_ptr_cast(ptr<unique_ptr<U>> p) noexcept -> unique_nptr<T>
-{
-    auto casted = (nptr<U> {*p}).template dyn_cast<T>();
-
-    if (casted) {
-        auto casted_owner = casted.as_ptr();
-        ptr<U> released_owner = std::move(*p).release();
-        ignore_unused(released_owner);
-        return adopt_unique_ptr(casted_owner);
-    }
-
-    return nullptr;
-}
-
 template<typename T>
 [[nodiscard]] inline auto require_refcount_ptr(refcount_nptr<T> value) -> refcount_ptr<T>
 {

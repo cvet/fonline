@@ -43,20 +43,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
-template<typename TParent, typename TEntity>
-static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto parent = entity->template GetParent<TParent>();
-
-    if (!parent) {
-        throw ScriptException(error_message);
-    }
-
-    return std::move(parent).take_not_null();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, Item*, bool> initFunc)
 {
@@ -92,7 +78,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
-    return item.get_no_const();
+    return item.as_ptr();
 }
 
 ///@ ExportMethod
@@ -106,7 +92,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-    return item.get_no_const();
+    return item.as_ptr();
 }
 
 ///@ ExportMethod

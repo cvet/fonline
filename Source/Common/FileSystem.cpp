@@ -129,20 +129,6 @@ auto FileHeader::Copy() const -> FileHeader
     return FileHeader(_filePath, _fileSize, _writeTime, data_source);
 }
 
-static auto TakeFileBuffer(auto&& buf) -> unique_del_ptr<const uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(buf, "File buffer holder is empty");
-
-    function<void(const uint8_t*)> deleter = std::move(buf.get_deleter());
-    nptr<const uint8_t> nullable_file_buf = buf.release();
-    FO_VERIFY_AND_THROW(nullable_file_buf, "Released file buffer pointer is null");
-
-    auto file_buf = nullable_file_buf.as_ptr();
-    return make_unique_del_ptr(file_buf, std::move(deleter));
-}
-
 File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
     FileHeader(path, size, write_time, ds),
     _fileBuf {std::move(buf)}
@@ -161,7 +147,7 @@ auto File::Load(const FileHeader& fh) -> File
     auto buf = data_source->OpenFile(fh.GetPath(), size, write_time);
     FO_VERIFY_AND_THROW(buf, "Missing required buffer");
 
-    return File(fh.GetPath(), size, write_time, data_source, TakeFileBuffer(std::move(buf)));
+    return File(fh.GetPath(), size, write_time, data_source, take_not_null(buf));
 }
 
 auto File::GetStr() const -> string
@@ -705,7 +691,7 @@ auto FileSystem::ReadFile(string_view path) const -> File
         uint64_t write_time = 0;
 
         if (auto buf = ds->OpenFile(path, size, write_time)) {
-            return File(path, size, write_time, ds, TakeFileBuffer(std::move(buf)));
+            return File(path, size, write_time, ds, take_not_null(buf));
         }
     }
 

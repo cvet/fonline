@@ -136,13 +136,6 @@ static auto ReadInstructionPointer(ptr<const AngelScript::asDWORD> instruction, 
     return std::bit_cast<void*>(address);
 }
 
-static auto ReadInstructionFunctionPtr(ptr<const AngelScript::asDWORD> instruction, size_t word_offset) noexcept -> nptr<AngelScript::asIScriptFunction>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return cast_from_void<AngelScript::asIScriptFunction*>(ReadInstructionPointer(instruction, word_offset).get());
-}
-
 enum class ScriptSourceScopeKind
 {
     Namespace,
@@ -918,7 +911,7 @@ static auto ResolveInstructionFunction(ptr<const AngelScript::asDWORD> instructi
     case AngelScript::asBC_ALLOC:
         return engine->GetFunctionById(ReadInstructionFunctionId(instruction, AS_PTR_SIZE + 1));
     case AngelScript::asBC_FuncPtr:
-        return ReadInstructionFunctionPtr(instruction, 1);
+        return cast_from_void<AngelScript::asIScriptFunction*>(ReadInstructionPointer(instruction, 1).get());
     default:
         return nullptr;
     }
@@ -1497,13 +1490,6 @@ static auto IsScriptTypeNamed(ptr<AngelScript::asIScriptEngine> engine, int32_t 
     return string_view(type_info->GetName()) == type_name;
 }
 
-static auto IsSupportedAdminRemoteCallArgType(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id, bool expect_any) noexcept -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return expect_any ? IsScriptTypeNamed(engine, type_id, "any") : type_id == AngelScript::asTYPEID_INT32;
-}
-
 static auto IsSupportedAdminRemoteCallSignature(ptr<const AngelScript::asIScriptFunction> func) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -1573,7 +1559,7 @@ static auto IsSupportedAdminRemoteCallSignature(ptr<const AngelScript::asIScript
         ignore_unused(param_flags);
         ignore_unused(param_name);
 
-        if (!IsSupportedAdminRemoteCallArgType(engine, param_type_id, expect_any)) {
+        if (!(expect_any ? IsScriptTypeNamed(engine, param_type_id, "any") : param_type_id == AngelScript::asTYPEID_INT32)) {
             return false;
         }
     }

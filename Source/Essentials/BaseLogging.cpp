@@ -47,7 +47,6 @@ constexpr size_t AsyncQueueDropLimit = 100000;
 static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
-static void WriteBaseLogImpl(string_view message, optional<std::reference_wrapper<const CatchedStackTraceData>> st) noexcept;
 static void WriteSync(string_view message) noexcept;
 static void FlushLogAtExit();
 
@@ -136,24 +135,14 @@ extern void SuspendAsyncLogWriting() noexcept
     }
 }
 
-extern void WriteBaseLog(string_view message) noexcept
-{
-    WriteBaseLogImpl(message, std::nullopt);
-}
-
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData& st) noexcept
-{
-    WriteBaseLogImpl(message, std::cref(st));
-}
-
-static void WriteBaseLogImpl(string_view message, optional<std::reference_wrapper<const CatchedStackTraceData>> st) noexcept
+extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) noexcept
 {
     try {
         if (BaseLogging == nullptr) {
             std::cout << message;
 
-            if (st.has_value()) {
-                std::cout << FormatStackTrace(st->get()) << "\n";
+            if (st != nullptr) {
+                std::cout << FormatStackTrace(*st) << "\n";
             }
 
             std::cout.flush();
@@ -176,8 +165,8 @@ static void WriteBaseLogImpl(string_view message, optional<std::reference_wrappe
                         BaseLoggingData::AsyncEntry entry;
                         entry.Message.assign(message);
 
-                        if (st.has_value()) {
-                            entry.StackTrace = st->get();
+                        if (st != nullptr) {
+                            entry.StackTrace = *st;
                         }
 
                         BaseLogging->AsyncQueue.emplace_back(std::move(entry));
@@ -195,11 +184,11 @@ static void WriteBaseLogImpl(string_view message, optional<std::reference_wrappe
             }
         }
 
-        if (st.has_value()) {
+        if (st != nullptr) {
             std::string combined;
             combined.reserve(message.size() + 256);
             combined.append(message);
-            combined.append(FormatStackTrace(st->get()));
+            combined.append(FormatStackTrace(*st));
             combined.append("\n");
             WriteSync(combined);
         }

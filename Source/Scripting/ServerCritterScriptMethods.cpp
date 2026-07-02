@@ -40,20 +40,6 @@
 
 FO_BEGIN_NAMESPACE
 
-template<typename TParent, typename TEntity>
-static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto parent = entity->template GetParent<TParent>();
-
-    if (!parent) {
-        throw ScriptException(error_message);
-    }
-
-    return std::move(parent).take_not_null();
-}
-
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_SetupScript(ptr<Critter> self, ScriptFunc<void, Critter*, bool> initFunc)
 {
@@ -88,7 +74,7 @@ FO_SCRIPT_API bool Server_Critter_IsMoving(ptr<Critter> self)
 FO_SCRIPT_API nptr<MovingContext> Server_Critter_GetMovingContext(ptr<Critter> self)
 {
     auto moving = self->GetMovingContext();
-    return moving.get_no_const();
+    return moving;
 }
 
 ///@ ExportMethod
@@ -101,7 +87,7 @@ FO_SCRIPT_API uint32_t Server_Critter_GetMovingUid(ptr<Critter> self)
 FO_SCRIPT_API nptr<Player> Server_Critter_GetPlayer(ptr<Critter> self)
 {
     auto player = self->GetPlayer();
-    return player.get_no_const();
+    return player;
 }
 
 ///@ ExportMethod PassOwnership
@@ -240,27 +226,25 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(ptr<Critter> self, r
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<Critter> globalCr)
 {
-    ptr<Critter> global_cr_ptr = globalCr;
-
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
     }
-    if (global_cr_ptr->GetMapId()) {
+    if (globalCr->GetMapId()) {
         throw ScriptException("Global critter is not on global map");
     }
-    if (self == global_cr_ptr) {
+    if (self == globalCr) {
         throw ScriptException("Cannot join own group");
     }
 
     MapManager& map_mngr = self->GetEngine()->MapMngr;
 
     if (self->GetMapId()) {
-        map_mngr.TransferToGlobal(self, global_cr_ptr->GetId());
+        map_mngr.TransferToGlobal(self, globalCr->GetId());
         return;
     }
 
     const auto& self_group = self->GetRawGlobalMapGroup();
-    const auto& target_group = global_cr_ptr->GetRawGlobalMapGroup();
+    const auto& target_group = globalCr->GetRawGlobalMapGroup();
 
     if (self_group && target_group && self_group.get() == target_group.get()) {
         return;
@@ -272,7 +256,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<C
         return;
     }
 
-    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, global_cr_ptr->GetId());
+    map_mngr.AddCritterToMap(self, nullptr, {}, mdir {}, globalCr->GetId());
 
     if (self->IsDestroyed()) {
         return;
@@ -326,7 +310,7 @@ FO_SCRIPT_API void Server_Critter_SetDir(ptr<Critter> self, mdir dir)
 FO_SCRIPT_API nptr<Critter> Server_Critter_GetCritter(ptr<Critter> self, ident_t id, CritterSeeType seeType)
 {
     auto cr = self->GetCritter(id, seeType);
-    return cr.get_no_const();
+    return cr;
 }
 
 ///@ ExportMethod
@@ -469,7 +453,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, hstring pid, i
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
-    return item.get_no_const();
+    return item.as_ptr();
 }
 
 ///@ ExportMethod
@@ -483,7 +467,7 @@ FO_SCRIPT_API ptr<Item> Server_Critter_AddItem(ptr<Critter> self, ptr<ProtoItem>
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemCritter(self, proto->GetProtoId(), count);
-    return item.get_no_const();
+    return item.as_ptr();
 }
 
 ///@ ExportMethod
@@ -494,21 +478,21 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ident_t itemI
     }
 
     auto item = self->GetInvItem(itemId);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, hstring protoId)
 {
     auto item = self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     auto item = self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, proto->GetProtoId());
-    return item.get_no_const();
+    return item;
 }
 
 ///@ ExportMethod
@@ -518,7 +502,7 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty 
 
     for (ptr<Item> item : self->GetInvItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item.get_no_const();
+            return item;
         }
     }
 
@@ -782,13 +766,13 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto engine_ptr = self->GetEngine();
-    auto map_ptr = RequireParent<Map>(self, "Critter is not on map");
+    auto engine = self->GetEngine();
+    auto map = RequireParent<Map>(self, "Critter is not on map");
 
-    ValidateEntityAccess(map_ptr);
+    ValidateEntityAccess(map);
 
-    if (!map_ptr->GetSize().is_valid_pos(hex)) {
-        throw ScriptException("Invalid target hex arg", hex, map_ptr->GetSize());
+    if (!map->GetSize().is_valid_pos(hex)) {
+        throw ScriptException("Invalid target hex arg", hex, map->GetSize());
     }
     if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
         throw ScriptException("Speed arg out of range", speed);
@@ -797,7 +781,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     self->StopMoving();
 
     if (speed == 0) {
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
         failed_moving->Complete(MovingState::CantMove);
         return failed_moving;
     }
@@ -811,7 +795,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
     const int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
     const ipos16 clamped_offset = {clamped_ox, clamped_oy};
-    const auto find_path = engine_ptr->MapMngr.FindPath(map_ptr, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
+    const auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -836,7 +820,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
             break;
         }
 
-        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
+        auto failed_moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), vector<mdir> {}, vector<uint16_t> {}, nanotime {}, timespan {}, self->GetHex(), self->GetHexOffset(), self->GetHexOffset());
 
         if (state == MovingState::HexBusy) {
             failed_moving->SetBlockHexes(self->GetHex(), hex);
@@ -846,8 +830,8 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
         return failed_moving;
     }
 
-    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map_ptr->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine_ptr->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
-    engine_ptr->StartCritterMoving(self, moving, nullptr);
+    auto moving = SafeAlloc::MakeRefCounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(speed), find_path.Steps, find_path.ControlSteps, engine->GameTime.GetFrameTime(), timespan {}, self->GetHex(), self->GetHexOffset(), find_path.EndHexOffset);
+    engine->StartCritterMoving(self, moving, nullptr);
     return moving;
 }
 

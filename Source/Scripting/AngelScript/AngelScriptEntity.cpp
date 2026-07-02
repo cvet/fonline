@@ -48,24 +48,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetArgAddress(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
-    return nullable_arg_address.as_ptr();
-}
-
-static auto GetGenericAddressOfArg(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
-    return nullable_arg_address.as_ptr();
-}
-
 template<typename T>
 static auto GetGenericArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
 {
@@ -73,65 +55,6 @@ static auto GetGenericArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript:
 
     auto arg_address = GetGenericArgAddress(gen, arg_index);
     return cast_from_void<T*>(arg_address.get());
-}
-
-template<typename T>
-static auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto arg_address = GetGenericAddressOfArg(gen, arg_index);
-    return cast_from_void<T*>(arg_address.get());
-}
-
-template<typename T>
-static auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<T> nullable_auxiliary = cast_from_void<T*>(gen->GetAuxiliary());
-    FO_STRONG_ASSERT(nullable_auxiliary, "Generic call auxiliary is null");
-    return nullable_auxiliary.as_ptr();
-}
-
-template<typename T>
-static auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<T> nullable_object = cast_from_void<T*>(gen->GetObject());
-    FO_STRONG_ASSERT(nullable_object, "Generic call object is null");
-    return nullable_object.as_ptr();
-}
-
-template<typename T>
-static auto ReadTypedHandleSlot(ptr<void> slot) noexcept -> nptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return NativeDataProvider::ReadTypedHandleSlot<T>(slot);
-}
-
-template<typename T>
-static void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, const T& entity) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get_no_const());
-}
-
-static void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, std::nullptr_t) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) Entity*(nullptr);
-}
-
-static void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) ScriptArray*(ReleaseScriptOwnership(std::move(arr)));
 }
 
 static void Entity_AddRef(const Entity* self)
@@ -423,7 +346,7 @@ static void Entity_SetPropertyValue(AngelScript::asIScriptGeneric* gen)
     CheckScriptEntityAccessAndNonDestroyed(entity_ptr);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
     ptr<Properties> props = entity_ptr->GetPropertiesForEdit();
-    auto as_obj = GetGenericAddressOfArg(gen, 0);
+    auto as_obj = GetGenericAddressArg(gen, 0);
 
     auto prop_data = ConvertScriptToPropsObject(prop, as_obj);
     props->SetValue(prop, prop_data);
@@ -605,7 +528,7 @@ static void Game_DestroyOne(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
     ptr<EntityManagerApi> entity_mngr = backend->GetEntityMngr();
-    auto nullable_entity = ReadTypedHandleSlot<Entity>(GetGenericAddressOfArg(gen, 0));
+    auto nullable_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(GetGenericAddressArg(gen, 0));
 
     if (nullable_entity) {
         auto entity = nullable_entity.as_ptr();
@@ -620,12 +543,12 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
     ptr<EntityManagerApi> entity_mngr = backend->GetEntityMngr();
-    auto nullable_entities = ReadTypedHandleSlot<ScriptArray>(GetGenericAddressOfArg(gen, 0));
+    auto nullable_entities = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(GetGenericAddressArg(gen, 0));
     FO_VERIFY_AND_THROW(!!nullable_entities, "Entity array argument is null");
     auto entities = nullable_entities.as_ptr();
 
     for (int32_t i = 0; i < entities->GetSize(); i++) {
-        auto nullable_entity = ReadTypedHandleSlot<Entity>(entities->At(i));
+        auto nullable_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(entities->At(i));
 
         if (nullable_entity) {
             auto entity = nullable_entity.as_ptr();
@@ -768,7 +691,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto nullable_func = ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
 
     if (!nullable_func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -866,7 +789,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto nullable_func = ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
 
     if (!nullable_func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -1096,7 +1019,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity_ptr = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(entity_ptr);
-    auto nullable_func = ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericAddressOfArg(gen, 0));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericAddressArg(gen, 0));
     ValidateCallbackFunc(nullable_func);
     auto func = nullable_func.as_ptr();
 
@@ -1132,7 +1055,7 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
 
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity_ptr = GetGenericObjectAs<Entity>(gen);
-    auto nullable_func = ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericAddressOfArg(gen, 0));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericAddressArg(gen, 0));
     ValidateCallbackFunc(nullable_func);
     auto func = nullable_func.as_ptr();
 
@@ -1193,10 +1116,10 @@ static void Game_SetConstGlobalVar(AngelScript::asIScriptGeneric* gen)
     }
 
     const auto target_type_id = gen->GetArgTypeId(0);
-    auto target_addr = GetGenericAddressOfArg(gen, 0);
+    auto target_addr = GetGenericAddressArg(gen, 0);
 
     const auto value_type_id = gen->GetArgTypeId(1);
-    auto value_addr = GetGenericAddressOfArg(gen, 1);
+    auto value_addr = GetGenericAddressArg(gen, 1);
 
     const auto target_base = target_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
     const auto value_base = value_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);

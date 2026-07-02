@@ -41,12 +41,6 @@
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_video.h"
 
-#if FO_WINDOWS
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#endif
-#include "WinApiUndef.inc"
-
 FO_BEGIN_NAMESPACE
 
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
@@ -620,7 +614,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_WINDOWS
     if (_ctx->ActiveRendererType != RenderType::Null) {
         const auto sdl_windows_props = SDL_GetWindowProperties(GetSdlWindow(MainWindow._windowHandle).get());
-        ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<HWND>(SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        ImGui::GetMainViewport()->PlatformHandleRaw = SDL_GetPointerProperty(sdl_windows_props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     }
 #endif
 
@@ -1192,7 +1186,6 @@ auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y
         return {window_x, window_y};
     }
 
-    ptr<Application> app = const_cast<Application*>(this);
     auto active_renderer = GetActiveRenderer(GetApp()->_ctx);
     return WindowPosToScreenPos(active_renderer, {Settings.ScreenWidth, Settings.ScreenHeight}, {window_x, window_y});
 }

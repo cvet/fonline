@@ -297,8 +297,7 @@ extern void set_this_thread_name(const string& name) noexcept
     Platform::SetThreadName(name);
 
 #if FO_TRACY
-    ptr<const char> thread_name = name.c_str();
-    tracy::SetThreadName(thread_name.get());
+    tracy::SetThreadName(name.c_str());
 #endif
 }
 

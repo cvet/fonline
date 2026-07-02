@@ -41,8 +41,7 @@ FO_BEGIN_NAMESPACE
 extern void LogToFile(string_view path, bool append = false);
 extern void SetAsyncLogWriting(bool enabled);
 extern void SuspendAsyncLogWriting() noexcept;
-extern void WriteBaseLog(string_view message) noexcept;
-extern void WriteBaseLog(string_view message, const CatchedStackTraceData& st) noexcept;
+extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
 extern void SafeWriteStackTrace(const StackTraceData& st) noexcept;
 
 FO_END_NAMESPACE

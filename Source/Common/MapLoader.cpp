@@ -80,7 +80,6 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     // Critters
     for (const auto& pkv : map_data.GetSections("Critter")) {
         ptr<map<string_view, string_view>> kv = pkv;
-
         const auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {
@@ -114,7 +113,6 @@ void MapLoader::Load(string_view name, const string& buf, const EngineMetadata& 
     // Items
     for (const auto& pkv : map_data.GetSections("Item")) {
         ptr<map<string_view, string_view>> kv = pkv;
-
         const auto proto_it = kv->find("$Proto");
 
         if (proto_it == kv->end()) {

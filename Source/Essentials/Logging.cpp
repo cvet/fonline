@@ -86,7 +86,7 @@ extern void WriteLogMessage(LogType type, string_view message, nptr<const Catche
             result += '\n';
 
             if (st) {
-                WriteBaseLog(result, *st);
+                WriteBaseLog(result, st.get());
             }
             else {
                 WriteBaseLog(result);
@@ -164,7 +164,7 @@ static void EmitLogMessage(LogType type, string_view message, nptr<const Catched
     result += '\n';
 
     if (st) {
-        WriteBaseLog(result, *st);
+        WriteBaseLog(result, st.get());
     }
     else {
         WriteBaseLog(result);

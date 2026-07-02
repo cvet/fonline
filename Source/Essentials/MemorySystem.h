@@ -121,20 +121,8 @@ public:
         requires(!refcountable<T>)
     static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
     {
-        nptr<T> ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-
-        if (!ptr) {
-            ReportBadAlloc("Make raw failed", typeid(T).name(), 1, sizeof(T));
-
-            while (!ptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-            }
-
-            if (!ptr) {
-                ReportAndExit("Failed to allocate raw from backup pool");
-            }
-        }
-
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
         return ptr.get_no_const();
     }
 
@@ -149,20 +137,8 @@ public:
         requires(refcountable<T>)
     static auto MakeRefCounted(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> refcount_ptr<T>
     {
-        nptr<T> ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-
-        if (!ptr) {
-            ReportBadAlloc("Make ref counted failed", typeid(T).name(), 1, sizeof(T));
-
-            while (!ptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T(std::forward<Args>(args)...);
-            }
-
-            if (!ptr) {
-                ReportAndExit("Failed to allocate ref counted from backup pool");
-            }
-        }
-
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make ref counted failed", "Failed to allocate ref counted from backup pool", 1, sizeof(T));
         return refcount_ptr<T>::from_adopted_ref(ptr.get());
     }
 
@@ -170,23 +146,13 @@ public:
         requires(!refcountable<T>)
     static auto MakeShared(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> shared_ptr<T>
     {
-        nptr<shared_ptr_storage_block<T>> block = new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...);
-
-        if (!block) {
-            ReportBadAlloc("Make shared ptr failed", typeid(T).name(), 1, sizeof(T));
-
-            while (!block && FreeBackupMemoryChunk()) {
-                block = new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...);
-            }
-
-            if (!block) {
-                ReportAndExit("Failed to allocate shared ptr from backup pool");
-            }
-        }
+        auto alloc = [&]() { return nptr<shared_ptr_storage_block<T>>(new (std::nothrow) shared_ptr_storage_block<T>(std::forward<Args>(args)...)); };
+        auto block = AllocWithBackupRetry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
 
         nptr<T> obj = block->stored_object();
-        init_shared_from_this_weak(block.get_no_const(), obj.get_no_const());
-        return shared_ptr<T>(block.get_no_const(), obj.get_no_const());
+        shared_ptr<T> result = shared_ptr<T>(block.get_no_const(), obj.get_no_const());
+        init_shared_from_this_weak(result, obj.get_no_const());
+        return result;
     }
 
     template<typename T>
@@ -198,20 +164,8 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        nptr<T> ptr = new (std::nothrow) T[count]();
-
-        if (!ptr) {
-            ReportBadAlloc("Make raw array failed", typeid(T).name(), count, count * sizeof(T));
-
-            while (!ptr && FreeBackupMemoryChunk()) {
-                ptr = new (std::nothrow) T[count]();
-            }
-
-            if (!ptr) {
-                ReportAndExit("Failed to allocate from backup pool");
-            }
-        }
-
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw array failed", "Failed to allocate from backup pool", count, count * sizeof(T));
         return ptr.get_no_const();
     }
 
@@ -220,6 +174,29 @@ public:
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
         return unique_arr_ptr<T>(MakeRawArr<T>(count));
+    }
+
+private:
+    // Shared out-of-memory path for all factories: report, retry the allocation while backup chunks
+    // can be released, and exit when the backup pool is exhausted
+    template<typename T, typename AllocFunc>
+    static auto AllocWithBackupRetry(AllocFunc&& alloc, const char* alloc_desc, const char* exhausted_desc, size_t count, size_t size) -> ptr<T>
+    {
+        nptr<T> ptr = alloc();
+
+        if (!ptr) {
+            ReportBadAlloc(alloc_desc, typeid(T).name(), count, size);
+
+            while (!ptr && FreeBackupMemoryChunk()) {
+                ptr = alloc();
+            }
+
+            if (!ptr) {
+                ReportAndExit(exhausted_desc);
+            }
+        }
+
+        return ptr.as_ptr();
     }
 };
 

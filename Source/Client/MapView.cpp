@@ -3811,11 +3811,8 @@ auto MapView::FindPath(nptr<CritterHexView> nullable_cr, mpos start_hex, mpos& t
             return HexBlockResult::Blocked;
         }
 
-        nptr<const CritterHexView> target_cr = nullable_cr;
-
-        for (ptr<const CritterHexView> c : cell.Critters) {
-            nptr<const CritterHexView> cell_cr = c;
-            if (!c->IsDead() && !(cell_cr == target_cr)) {
+        for (auto cr : cell.Critters) {
+            if (!cr->IsDead() && nullable_cr != cr) {
                 return HexBlockResult::DeferCritter;
             }
         }

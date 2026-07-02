@@ -92,7 +92,7 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
     }
 
-    SECTION("CommandLineArgsMakeAcceptsEmptyNativeArgv")
+    SECTION("CommandLineArgsAcceptEmptyNativeArgv")
     {
         const CommandLineArgs args {0, nullptr};
 

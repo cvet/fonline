@@ -74,13 +74,6 @@ static auto ResolveTintColor(ucolor tint_color) noexcept -> ucolor
     return tint_color == ucolor::clear ? Color::Neutral : tint_color;
 }
 
-static auto ToImU32(ucolor color) -> ImU32
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
-}
-
 static auto MakeItemRect(const ImVec2& min_pos, const ImVec2& max_pos) -> irect32
 {
     FO_STACK_TRACE_ENTRY();

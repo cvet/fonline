@@ -1040,9 +1040,7 @@ void ClientEngine::Net_OnRemoveCritter()
 
         OnCritterOut.Fire(cr);
 
-        nptr<CritterView> removed_cr = cr;
-
-        if (GetChosen() == removed_cr) {
+        if (GetChosen() == cr) {
             _chosen.reset();
         }
     }

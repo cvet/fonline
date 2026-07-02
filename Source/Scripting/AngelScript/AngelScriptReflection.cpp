@@ -783,15 +783,6 @@ static auto GetGenericScriptTypeObject(ptr<AngelScript::asIScriptGeneric> gen) n
     return nullable_object.as_ptr();
 }
 
-static auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = gen->GetArgAddress(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic argument address is null");
-    return nullable_arg_address.as_ptr();
-}
-
 static auto GetGenericOutObjectSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void*>
 {
     FO_NO_STACK_TRACE_ENTRY();
