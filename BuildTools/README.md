@@ -79,9 +79,10 @@ Linux system package installation is explicit and separate from workspace prepar
 - `web-packages`
 - `android-packages`
 - `windows-cross-packages`
+- `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first.
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
 
 Host prerequisite checks are also available through the main tool:
 
