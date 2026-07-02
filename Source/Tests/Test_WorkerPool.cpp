@@ -545,6 +545,99 @@ TEST_CASE("WorkerPoolClearAndParallelism")
     }
 }
 
+// ============================================================================
+// WorkerPool — concurrent chaos (keyed bookkeeping under external mutation)
+// ============================================================================
+
+TEST_CASE("WorkerPoolConcurrentChaos")
+{
+    // No isolated test exercises the keyed bookkeeping (_pendingRerun / _wakeRequests /
+    // _cancelOnFinish / _queuedKeys / _runningKeys) under concurrent external mutation. Several driver
+    // threads hammer Submit / Wake / Cancel / Clear over a small, deliberately overlapping key space
+    // while the worker threads run the bodies — the interleaving that actually stresses every
+    // transition in WorkerEntry's finalize block. Bodies are non-deterministic, so only structural
+    // invariants are asserted: the pool must stay race-free (TSan), never touch a freed closure (ASan),
+    // and drain to a fully idle, self-consistent state.
+    SECTION("DriversHammerSubmitWakeCancelClear")
+    {
+        std::atomic<bool> shutdown_flag {false};
+        WorkerPool pool {"chaos", 4, shutdown_flag};
+
+        std::atomic_int body_runs {0};
+
+        constexpr int driver_count = 6;
+        constexpr int ops_per_driver = 3000;
+        constexpr size_t key_space = 8; // small so keys overlap and contend across drivers and workers
+
+        const auto make_body = [&body_runs]() -> WorkerPool::Job {
+            return [&body_runs]() -> std::optional<timespan> {
+                const int n = body_runs.fetch_add(1, std::memory_order_relaxed) + 1;
+                // Every fourth run self-reschedules with a tiny delay, exercising the reschedule path
+                // and the wake-override / cancel-on-finish interplay when an external op lands mid-run.
+                return n % 4 == 0 ? std::optional<timespan> {std::chrono::microseconds {50}} : std::nullopt;
+            };
+        };
+
+        std::vector<std::thread> drivers;
+        drivers.reserve(driver_count);
+
+        for (int d = 0; d < driver_count; d++) {
+            drivers.emplace_back([&, d]() {
+                // Per-driver deterministic LCG — no shared RNG state, no <random> dependency.
+                uint32_t rng = 0xC0FFEEU + static_cast<uint32_t>(d) * 2654435761U;
+                const auto next = [&rng]() {
+                    rng = rng * 1664525U + 1013904223U;
+                    return rng;
+                };
+
+                for (int i = 0; i < ops_per_driver; i++) {
+                    const WorkerJobKey key {WorkerJobType::Player, static_cast<size_t>(next() % key_space) + 1};
+
+                    switch (next() % 6) {
+                    case 0:
+                    case 1:
+                        pool.Submit(key, make_body());
+                        break;
+                    case 2:
+                        pool.Submit(key, std::chrono::microseconds {static_cast<int64_t>(next() % 200)}, make_body());
+                        break;
+                    case 3:
+                        (void)pool.Wake(key);
+                        break;
+                    case 4:
+                        (void)pool.Cancel(key);
+                        break;
+                    case 5:
+                        if (i % 512 == 511) {
+                            pool.Clear();
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            });
+        }
+
+        for (auto& t : drivers) {
+            t.join();
+        }
+
+        // Stop the self-reschedule churn and drain everything to a clean barrier. After Clear() no queued
+        // job remains and every in-flight body is marked cancel-on-finish, so the pool must reach idle.
+        pool.Clear();
+        REQUIRE(pool.WaitIdle(std::chrono::seconds {10}));
+
+        const auto diag = pool.GetDiagnostics();
+        CHECK(diag.ScheduledJobs == 0);
+        CHECK(diag.QueuedKeys == 0);
+        CHECK(diag.RunningJobs == 0);
+        CHECK(diag.PendingReruns == 0);
+        CHECK(diag.ActiveWorkers == 0);
+        CHECK(body_runs.load() > 0);
+    }
+}
+
 TEST_CASE("WorkerPoolWaitIdleTimeout")
 {
     // The timed WaitIdle backs the shutdown grace window: while a job is still in flight it must

@@ -50,8 +50,6 @@ class StaticItem;
 class Item : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
-    friend void PropagateEntityLock(ptr<Item> item, ptr<EntityLock> parent_lock);
-    friend void RevertEntityLock(ptr<Item> item);
 
 public:
     Item() = delete;

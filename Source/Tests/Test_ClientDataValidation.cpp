@@ -419,4 +419,93 @@ TEST_CASE("ClientDataValidation")
     }
 }
 
+TEST_CASE("ClientDataValidationFuzz")
+{
+    // Broad fuzz over the untrusted remote-call validator: build one valid payload that drives the whole
+    // recursive parser (string, int array, enum, struct fields, and a ref-type sub-buffer), then feed
+    // thousands of bit-flipped / truncated variants through ValidateInboundRemoteCallData. However the wire
+    // is mangled, the validator must either accept or throw a known engine exception — never read out of
+    // bounds (ASan), trip UB (UBSan), or hang. A deterministic LCG keeps the run reproducible. Every element
+    // type consumes bytes, so a corrupted collection count can only exhaust the reader, never spin forever.
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterEnumGroup("TestEnum", "int32", {{"None", 0}, {"Value", 1}});
+    meta.RegisterValueType("TestStruct");
+    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}});
+    meta.RegisterRefType("TestRefType");
+    meta.RegisterRefTypeLayout("TestRefType", {{"Numbers", "int32[]"}, {"Label", "string"}, {"Mode", "TestEnum"}});
+
+    const BaseTypeDesc& string_type = meta.GetBaseType("string");
+    const BaseTypeDesc& enum_type = meta.GetBaseType("TestEnum");
+    const BaseTypeDesc& int_type = meta.GetBaseType("int32");
+    const BaseTypeDesc& struct_type = meta.GetBaseType("TestStruct");
+    const BaseTypeDesc& ref_type = meta.GetBaseType("TestRefType");
+
+    const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeArrayArg(int_type, "numbers"), MakeSimpleArg(enum_type, "mode"), MakeSimpleArg(struct_type, "packed"), MakeSimpleArg(ref_type, "snapshot")});
+
+    const auto build_valid = [&]() {
+        AnyData::Array numbers;
+        numbers.EmplaceBack(int64_t {10});
+        numbers.EmplaceBack(int64_t {20});
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Numbers", AnyData::Value {std::move(numbers)});
+        snapshot.Emplace("Label", AnyData::Value {string {"alpha"}});
+        snapshot.Emplace("Mode", AnyData::Value {string {"Value"}});
+        const auto ref_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
+
+        vector<uint8_t> data;
+        DataWriter writer(data);
+        const string text = "hello";
+        writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
+        writer.WritePtr(text.data(), text.length());
+        writer.Write<int32_t>(3); // int array element count
+        writer.Write<int32_t>(1);
+        writer.Write<int32_t>(2);
+        writer.Write<int32_t>(3);
+        writer.Write<int32_t>(1); // enum value "Value"
+        writer.Write<float32_t>(2.5f); // struct Number
+        writer.Write<uint8_t>(uint8_t {1}); // struct Flag
+        WriteRefTypePayload(writer, ref_raw);
+        return data;
+    };
+
+    const auto valid = build_valid();
+    CHECK_NOTHROW(ValidateInboundRemoteCallData(call, valid, meta));
+
+    uint32_t rng = 0xABCDEF01;
+    const auto next = [&rng]() {
+        rng = rng * 1664525U + 1013904223U;
+        return rng;
+    };
+
+    constexpr int iterations = 4000;
+    int accepted = 0;
+    int rejected = 0;
+
+    for (int iter = 0; iter < iterations; iter++) {
+        vector<uint8_t> data = valid;
+
+        if (iter % 5 == 0 && !data.empty()) {
+            data.resize(next() % data.size()); // truncate
+        }
+        if (!data.empty()) {
+            const int flips = static_cast<int>(next() % 3) + 1;
+            for (int f = 0; f < flips; f++) {
+                data[next() % data.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
+            }
+        }
+
+        try {
+            ValidateInboundRemoteCallData(call, data, meta);
+            accepted++;
+        }
+        catch (const std::exception&) {
+            rejected++;
+        }
+    }
+
+    CHECK(rejected > 0); // corruption is actually detected
+    CHECK(accepted + rejected == iterations);
+}
+
 FO_END_NAMESPACE

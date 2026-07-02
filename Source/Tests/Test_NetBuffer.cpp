@@ -232,4 +232,123 @@ TEST_CASE("NetBuffer")
     }
 }
 
+// ============================================================================
+// NetBuffer — adversarial / malformed wire input (untrusted-client boundary)
+// ============================================================================
+
+TEST_CASE("NetBufferAdversarial")
+{
+    // Drive the full receive pipeline with deliberately corrupted encrypted frames. No matter which
+    // bytes the wire flips, the parser must either consume a frame or throw a known engine exception —
+    // never read out of bounds (ASan), trip UB (UBSan), or desync the rolling encryption key into an
+    // over-read. Deterministic LCG corruption keeps the run reproducible.
+    SECTION("CorruptedFramesNeverOverread")
+    {
+        constexpr uint32_t key = 0x00BEEF01;
+
+        const auto build_frame = [&](uint32_t variant) {
+            NetOutBuffer out {16};
+            out.SetEncryptKey(key);
+            out.StartMsg(NetMessage::RemoteCall);
+            out.Write<uint32_t>(variant * 2654435761U);
+            out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
+            out.Write<uint16_t>(static_cast<uint16_t>(variant));
+            out.EndMsg();
+            const auto data = out.GetData();
+            return vector<uint8_t> {data.begin(), data.end()};
+        };
+
+        uint32_t rng = 0x1234567;
+        const auto next = [&rng]() {
+            rng = rng * 1664525U + 1013904223U;
+            return rng;
+        };
+
+        int parsed = 0;
+        int threw = 0;
+
+        for (int iter = 0; iter < 5000; iter++) {
+            auto frame = build_frame(static_cast<uint32_t>(iter));
+
+            // Every 8th frame is left intact as a control; the rest get 1..3 random bit flips.
+            if (iter % 8 != 0 && !frame.empty()) {
+                const int flips = static_cast<int>(next() % 3) + 1;
+                for (int f = 0; f < flips; f++) {
+                    frame[next() % frame.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
+                }
+            }
+
+            NetInBuffer in {16};
+            in.SetEncryptKey(key);
+            in.AddData({frame.data(), frame.size()});
+
+            try {
+                if (in.NeedProcess()) {
+                    (void)in.ReadMsg();
+                    (void)in.Read<uint32_t>();
+                    (void)in.Read<string>();
+                    (void)in.Read<uint16_t>();
+                    parsed++;
+                }
+            }
+            catch (const std::exception&) {
+                // Any malformed input must surface as a thrown engine exception, not a crash/overread.
+                threw++;
+            }
+        }
+
+        CHECK(parsed > 0); // the intact control frames always parse
+        CHECK(threw > 0); // corruption is actually detected on the malformed frames
+        CHECK(parsed + threw <= 5000);
+    }
+
+    // ReadPropsData is parsed straight off the wire (entity property sync) but no test feeds it malformed
+    // input. A declared block count or size larger than the bytes actually buffered must be rejected
+    // before allocating, and a well-formed blob must round-trip.
+    SECTION("PropsDataWireRoundtripAndCorruption")
+    {
+        const vector<uint8_t> a {1, 2, 3, 4};
+        const vector<uint8_t> b {};
+        const vector<uint8_t> c {9, 9, 9};
+        vector<const uint8_t*> ptrs {a.data(), b.data(), c.data()};
+        vector<uint32_t> sizes {static_cast<uint32_t>(a.size()), static_cast<uint32_t>(b.size()), static_cast<uint32_t>(c.size())};
+
+        NetOutBuffer out {16};
+        out.WritePropsData(&ptrs, &sizes);
+
+        NetInBuffer in {16};
+        in.AddData(out.GetData());
+
+        vector<vector<uint8_t>> read_back;
+        in.ReadPropsData(read_back);
+        REQUIRE(read_back.size() == 3);
+        CHECK(read_back[0] == a);
+        CHECK(read_back[1] == b);
+        CHECK(read_back[2] == c);
+
+        // Malformed: one block declares 0xFFFFFFFF bytes with nothing behind it → reject before resize.
+        NetOutBuffer bad {16};
+        bad.Write<uint16_t>(1);
+        bad.Write<uint32_t>(0xFFFFFFFF);
+
+        NetInBuffer bad_in {16};
+        bad_in.AddData(bad.GetData());
+
+        vector<vector<uint8_t>> bad_out;
+        CHECK_THROWS_AS(bad_in.ReadPropsData(bad_out), NetBufferException);
+        CHECK(bad_in.GetDataSize() == 0); // buffer reset on rejection
+
+        // Malformed: the block count far exceeds what the remaining bytes could possibly carry.
+        NetOutBuffer bad2 {16};
+        bad2.Write<uint16_t>(0xFFFF);
+        bad2.Write<uint32_t>(0); // only 4 trailing bytes, nowhere near 0xFFFF blocks
+
+        NetInBuffer bad2_in {16};
+        bad2_in.AddData(bad2.GetData());
+
+        vector<vector<uint8_t>> bad2_out;
+        CHECK_THROWS_AS(bad2_in.ReadPropsData(bad2_out), NetBufferException);
+    }
+}
+
 FO_END_NAMESPACE

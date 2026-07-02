@@ -52,6 +52,10 @@ class ServerEntity;
 // (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there.
 [[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 
+// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
+// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
+// sync context (script/job execution) and throws if there is none.
+
 class EntityLock final
 {
 public:
@@ -146,6 +150,43 @@ private:
         std::atomic<int32_t> State {STATE_WAITING};
     };
 
+    // Per-thread hold counters. Entities number in the millions while concurrent holders per lock
+    // number in the low single digits, so a linear inline vector replaces a hash map here: an idle
+    // lock allocates nothing, whereas a per-entity hash map eagerly allocates 4 KB of bucket storage
+    // — gigabytes across a loaded world (and past ThreadSanitizer's per-size-class allocator cap).
+    // Exposes the unordered_map subset EntityLock uses; emplace assumes the key is absent.
+    class ThreadHoldCounts final
+    {
+    public:
+        using value_type = pair<std::thread::id, int32_t>;
+        using storage_type = small_vector<value_type, 2>;
+
+        [[nodiscard]] auto find(std::thread::id id) noexcept { return std::ranges::find(_entries, id, &value_type::first); }
+        [[nodiscard]] auto find(std::thread::id id) const noexcept { return std::ranges::find(_entries, id, &value_type::first); }
+        [[nodiscard]] auto contains(std::thread::id id) const noexcept -> bool { return find(id) != _entries.end(); }
+        [[nodiscard]] auto empty() const noexcept -> bool { return _entries.empty(); }
+        [[nodiscard]] auto size() const noexcept -> size_t { return _entries.size(); }
+        [[nodiscard]] auto begin() noexcept { return _entries.begin(); }
+        [[nodiscard]] auto begin() const noexcept { return _entries.begin(); }
+        [[nodiscard]] auto end() noexcept { return _entries.end(); }
+        [[nodiscard]] auto end() const noexcept { return _entries.end(); }
+
+        auto operator[](std::thread::id id) -> int32_t&
+        {
+            if (auto it = find(id); it != _entries.end()) {
+                return it->second;
+            }
+
+            return _entries.emplace_back(id, 0).second;
+        }
+
+        void emplace(std::thread::id id, int32_t count) { _entries.emplace_back(id, count); }
+        void erase(storage_type::const_iterator it) { _entries.erase(it); }
+
+    private:
+        storage_type _entries {};
+    };
+
     // Grants ownership to the next eligible waiter(s) after the lock becomes free. Called under
     // `_mutex` from `Release` / `ReleaseShared`. Exclusive waiters require zero shared holders;
     // a run of consecutive shared waiters at the queue front is granted together (readers batch),
@@ -163,11 +204,11 @@ private:
     mutable mutex _mutex {};
     std::atomic<std::thread::id> _ownerThread {};
     int32_t _recursionCount FO_TSA_GUARDED_BY(_mutex) {};
-    unordered_map<std::thread::id, int32_t> _sharedHolders FO_TSA_GUARDED_BY(_mutex) {}; // Per-thread shared ("read") holders with their recursion counts.
+    ThreadHoldCounts _sharedHolders FO_TSA_GUARDED_BY(_mutex) {}; // Per-thread shared ("read") holders with their recursion counts.
     // Per-thread descendant-hold ("intention") counts: how many descendants of this lock's entity the
     // thread currently holds. A foreign entry blocks this lock's exclusive Acquire; the owner's own
     // entry does not. Bumped by Register*, dropped by Unregister. Never coexists with `_sharedHolders`.
-    unordered_map<std::thread::id, int32_t> _descendantHolders FO_TSA_GUARDED_BY(_mutex) {};
+    ThreadHoldCounts _descendantHolders FO_TSA_GUARDED_BY(_mutex) {};
     list<WaitEntry> _waitQueue FO_TSA_GUARDED_BY(_mutex) {};
 };
 
@@ -270,8 +311,6 @@ private:
     SyncContext _ctx {};
 };
 
-void PropagateEntityLock(ptr<class Item> item, ptr<EntityLock> parent_lock);
-void RevertEntityLock(ptr<class Item> item);
 // Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
 // thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
 // sync context (script/job execution) and throws if there is none.

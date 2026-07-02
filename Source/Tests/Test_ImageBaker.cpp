@@ -110,6 +110,18 @@ struct FrmFrameSpec
     vector<uint8_t> Indices {};
 };
 
+static void AppendFrmFrames(vector<uint8_t>& data, const vector<FrmFrameSpec>& frames)
+{
+    for (const auto& frame : frames) {
+        AppendBe16(data, frame.Width);
+        AppendBe16(data, frame.Height);
+        AppendBe32(data, numeric_cast<uint32_t>(frame.Indices.size()));
+        AppendBeInt16(data, frame.NextX);
+        AppendBeInt16(data, frame.NextY);
+        data.insert(data.end(), frame.Indices.begin(), frame.Indices.end());
+    }
+}
+
 [[nodiscard]] static auto MakeRawTga(uint16_t width, uint16_t height, uint8_t pixel_depth, const vector<uint8_t>& pixels) -> vector<uint8_t>
 {
     vector<uint8_t> data;
@@ -159,14 +171,23 @@ struct FrmFrameSpec
     SetBeInt16(data, 0xA, offs_x);
     SetBeInt16(data, 0x16, offs_y);
     SetBe32(data, 0x22, 0);
+    AppendFrmFrames(data, frames);
 
-    for (const auto& frame : frames) {
-        AppendBe16(data, frame.Width);
-        AppendBe16(data, frame.Height);
-        AppendBe32(data, numeric_cast<uint32_t>(frame.Indices.size()));
-        AppendBeInt16(data, frame.NextX);
-        AppendBeInt16(data, frame.NextY);
-        data.insert(data.end(), frame.Indices.begin(), frame.Indices.end());
+    return data;
+}
+
+[[nodiscard]] static auto MakeFrmWithDirTable(uint16_t fps, const vector<FrmFrameSpec>& frames, int32_t dirs_to_fill) -> vector<uint8_t>
+{
+    auto data = MakeFrm(fps, frames, 1, -1);
+
+    for (int32_t dir = 1; dir < dirs_to_fill; dir++) {
+        const size_t dir_pos = numeric_cast<size_t>(dir) * 2;
+        const size_t data_offset = data.size() - 0x3E;
+
+        SetBeInt16(data, 0xA + dir_pos, numeric_cast<int16_t>(10 + dir));
+        SetBeInt16(data, 0x16 + dir_pos, numeric_cast<int16_t>(-10 - dir));
+        SetBe32(data, 0x22 + numeric_cast<size_t>(dir) * 4, numeric_cast<uint32_t>(data_offset));
+        AppendFrmFrames(data, frames);
     }
 
     return data;
@@ -334,6 +355,19 @@ struct FrmFrameSpec
     return data;
 }
 
+[[nodiscard]] static auto MakeZarWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+{
+    vector<uint8_t> data;
+    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
+    data.emplace_back(0x34);
+    data.emplace_back(0);
+    AppendLe32(data, 1);
+    AppendLe32(data, 1);
+    data.emplace_back(1);
+    AppendLe32(data, palette_count);
+    return data;
+}
+
 [[nodiscard]] static auto MakePaletteZar() -> vector<uint8_t>
 {
     vector<uint8_t> data;
@@ -475,14 +509,20 @@ struct FrmFrameSpec
     return data;
 }
 
-[[nodiscard]] static auto MakeSimpleTil() -> vector<uint8_t>
+static void AppendTilPrefix(vector<uint8_t>& data)
 {
-    vector<uint8_t> data;
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', '>', '\0'});
     data.emplace_back(0);
     data.insert(data.end(), 11, 0);
-    AppendLe32(data, 3);
     AppendLe32(data, 1);
+    AppendLe32(data, 1);
+}
+
+[[nodiscard]] static auto MakeSimpleTil() -> vector<uint8_t>
+{
+    vector<uint8_t> data;
+    AppendTilPrefix(data);
+    SetLe32(data, data.size() - 8, 3);
     data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
     data.insert(data.end(), 3, 0);
     AppendLe32(data, 1);
@@ -501,6 +541,41 @@ struct FrmFrameSpec
     const vector<uint8_t> rle = {0x05, 1, 0x06, 1, 0x7F, 0x07, 0x40};
     AppendLe32(data, numeric_cast<uint32_t>(rle.size()));
     data.insert(data.end(), rle.begin(), rle.end());
+    return data;
+}
+
+[[nodiscard]] static auto MakeTilWithoutTiledata() -> vector<uint8_t>
+{
+    vector<uint8_t> data;
+    AppendTilPrefix(data);
+    return data;
+}
+
+[[nodiscard]] static auto MakeTilWithBadZarHeader() -> vector<uint8_t>
+{
+    vector<uint8_t> data;
+    AppendTilPrefix(data);
+    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+    data.insert(data.end(), 3, 0);
+    AppendLe32(data, 1);
+    data.insert(data.end(), {'b', 'a', 'd', 'z', 'a', 'r'});
+    return data;
+}
+
+[[nodiscard]] static auto MakeTilWithPaletteCount(uint32_t palette_count) -> vector<uint8_t>
+{
+    vector<uint8_t> data;
+    AppendTilPrefix(data);
+    data.insert(data.end(), {'<', 't', 'i', 'l', 'e', 'd', 'a', 't', 'a', '>'});
+    data.insert(data.end(), 3, 0);
+    AppendLe32(data, 1);
+    data.insert(data.end(), {'<', 'z', 'a', 'r', '>', '\0'});
+    data.emplace_back(0x34);
+    data.emplace_back(0);
+    AppendLe32(data, 1);
+    AppendLe32(data, 1);
+    data.emplace_back(1);
+    AppendLe32(data, palette_count);
     return data;
 }
 
@@ -654,7 +729,7 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     data.insert(data.end(), rle.begin(), rle.end());
 }
 
-[[nodiscard]] static auto MakeSimpleSpr() -> vector<uint8_t>
+[[nodiscard]] static auto MakeSprWithSequenceFrames(const vector<int16_t>& sequence_frames, int32_t dir_count = 1) -> vector<uint8_t>
 {
     vector<uint8_t> data;
     data.insert(data.end(), {'<', 's', 'p', 'r', 'i', 't', 'e', '>', '\0', '\0', '\0'});
@@ -667,9 +742,16 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     data.emplace_back(0x64);
 
     AppendLeInt32(data, 1); // Sequence count
-    AppendLeInt32(data, 1); // Sequence item count
-    AppendLeInt16(data, 0); // Frame index
-    AppendLeInt32(data, 0);
+    AppendLeInt32(data, numeric_cast<int32_t>(sequence_frames.size())); // Sequence item count
+
+    for (const int16_t frame : sequence_frames) {
+        AppendLeInt16(data, frame);
+    }
+
+    for (size_t i = 0; i < sequence_frames.size(); i++) {
+        AppendLeInt32(data, 0);
+    }
+
     AppendLeInt32(data, 4);
     data.insert(data.end(), {'w', 'a', 'l', 'k'});
     AppendLe16(data, 0); // Animation index
@@ -679,11 +761,14 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     AppendLe32(data, 0);
     AppendLeInt32(data, 0); // Collection name length
     AppendLeInt32(data, 1); // Frame count
-    AppendLeInt32(data, 1); // Direction count
-    AppendLeInt32(data, 0); // BBox x
-    AppendLeInt32(data, 0); // BBox y
-    AppendLeInt32(data, 0);
-    AppendLeInt32(data, 0);
+    AppendLeInt32(data, dir_count); // Direction count
+
+    for (int32_t i = 0; i < dir_count; i++) {
+        AppendLeInt32(data, 0); // BBox x
+        AppendLeInt32(data, 0); // BBox y
+        AppendLeInt32(data, 0);
+        AppendLeInt32(data, 0);
+    }
 
     SetLe32(data, file_offset_pos, numeric_cast<uint32_t>(data.size()));
 
@@ -702,6 +787,18 @@ static void AppendSprImage(vector<uint8_t>& data, int32_t pos_x, int32_t pos_y, 
     data.emplace_back(0);
 
     return data;
+}
+
+static void ReplaceFirstTagByte(vector<uint8_t>& data, string_view tag, uint8_t replacement)
+{
+    const auto it = std::search(data.begin(), data.end(), tag.begin(), tag.end(), [](uint8_t lhs, char rhs) { return lhs == numeric_cast<uint8_t>(rhs); });
+    FO_VERIFY_AND_THROW(it != data.end(), "Test tag not found", tag);
+    *it = replacement;
+}
+
+[[nodiscard]] static auto MakeSimpleSpr() -> vector<uint8_t>
+{
+    return MakeSprWithSequenceFrames({0});
 }
 
 static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, const vector<uint8_t>& data, uint64_t write_time = 1)
@@ -811,6 +908,18 @@ TEST_CASE("ImageBaker")
         CHECK(frame.NextY == 0);
         CHECK(frame.Data == vector<uint8_t> {255, 0, 0, 128, 0, 255, 0, 255});
         CHECK(rig.Outputs.size() == 1);
+    }
+
+    SECTION("TargetEarlyReturnsDoNotWrite")
+    {
+        TestRig rig;
+        rig.AddSourceFile("ui/readme.txt", "not an image", 11);
+
+        ImageBaker baker {rig.MakeContext()};
+
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "ui/readme.txt"));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "ui/missing.tga"));
+        CHECK(rig.Outputs.empty());
     }
 
     SECTION("BakesRleTgaWhenScanningAllFiles")
@@ -964,6 +1073,61 @@ TEST_CASE("ImageBaker")
 
         CHECK(reader.Read<uint8_t>() == 42);
         CHECK_NOTHROW(reader.VerifyEnd());
+    }
+
+    SECTION("BakesFrmEmbeddedDirectionsAndReportsTruncatedDirTable")
+    {
+        const vector<FrmFrameSpec> frames {
+            FrmFrameSpec {
+                .Width = 1,
+                .Height = 1,
+                .NextX = 2,
+                .NextY = 3,
+                .Indices = {1},
+            },
+        };
+
+        TestRig dirs;
+        AddSourceBinaryFile(dirs, "gfx/directional.frm", MakeFrmWithDirTable(5, frames, GameSettings::MAP_DIR_COUNT));
+
+        ImageBaker dirs_baker {dirs.MakeContext()};
+        dirs_baker.BakeFiles(dirs.GetAllSourceFiles(), "gfx/directional.frm");
+
+        REQUIRE(dirs.Outputs.contains("gfx/directional.frm"));
+
+        DataReader reader {dirs.Outputs.at("gfx/directional.frm")};
+        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint16_t>() == 1);
+        CHECK(reader.Read<uint16_t>() == 200);
+        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+
+        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            if (dir == 0) {
+                CHECK(reader.Read<int16_t>() == 1);
+                CHECK(reader.Read<int16_t>() == -1);
+            }
+            else {
+                CHECK(reader.Read<int16_t>() == 10 + dir);
+                CHECK(reader.Read<int16_t>() == -10 - dir);
+            }
+
+            CHECK_FALSE(reader.Read<bool>());
+            CHECK(reader.Read<uint16_t>() == 1);
+            CHECK(reader.Read<uint16_t>() == 1);
+            CHECK(reader.Read<int16_t>() == 2);
+            CHECK(reader.Read<int16_t>() == 3);
+            CHECK(reader.ReadPtr<uint8_t>(4) != nullptr);
+        }
+
+        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK_NOTHROW(reader.VerifyEnd());
+
+        TestRig truncated;
+        AddSourceBinaryFile(truncated, "gfx/truncated-dirs.frm", MakeFrmWithDirTable(5, frames, 2));
+
+        ImageBaker truncated_baker {truncated.MakeContext()};
+        CHECK_THROWS_AS(truncated_baker.BakeFiles(truncated.GetAllSourceFiles(), "gfx/truncated-dirs.frm"), ImageBakerException);
+        CHECK(truncated.Outputs.empty());
     }
 
     SECTION("BakesFrxAnimatedPalettePixels")
@@ -1212,6 +1376,80 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[0].NextX == 1);
         CHECK(sequence.Frames[0].NextY == 1);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x2D, 0x14, 0x28, 0xFF, 0, 0, 0, 0x40});
+    }
+
+    SECTION("BakesSprSkippedInvalidSequenceAndAllColorOffsets")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/spr-all-offsets.fofrm", "Frm=actor$[9,1,2,3]walk.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSprWithSequenceFrames({-43, 11, 12, 13, 5}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/spr-all-offsets.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/spr-all-offsets.fofrm"));
+        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/spr-all-offsets.fofrm"));
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 3);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].NextX == 1);
+        CHECK(sequence.Frames[0].NextY == 1);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x34, 0x24, 0x14, 0xFF, 0x29, 0x20, 0x17, 0xFF, 0x01, 0x02, 0x03, 0x40});
+    }
+
+    SECTION("BakesSprRepeatedFramesAsShared")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/repeated.spr", MakeSprWithSequenceFrames({0, 0}, 2));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/repeated.spr");
+
+        REQUIRE(rig.Outputs.contains("gfx/repeated.spr"));
+
+        DataReader reader {rig.Outputs.at("gfx/repeated.spr")};
+        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK(reader.Read<uint16_t>() == 2);
+        CHECK(reader.Read<uint16_t>() == 200);
+        CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
+
+        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK(reader.Read<int16_t>() == 0);
+            CHECK(reader.Read<int16_t>() == 0);
+            CHECK_FALSE(reader.Read<bool>());
+
+            const auto width = reader.Read<uint16_t>();
+            const auto height = reader.Read<uint16_t>();
+            const auto next_x = reader.Read<int16_t>();
+            const auto next_y = reader.Read<int16_t>();
+
+            const size_t data_size = numeric_cast<size_t>(width) * height * 4;
+            const auto* data = reader.ReadPtr<uint8_t>(data_size);
+
+            if (width == 3) {
+                CHECK(width == 3);
+                CHECK(height == 1);
+                CHECK(next_x == 1);
+                CHECK(next_y == 1);
+                CHECK(vector<uint8_t>(data, data + data_size) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+            }
+            else {
+                CHECK(width == 1);
+                CHECK(height == 1);
+                CHECK(next_x == 0);
+                CHECK(next_y == 1);
+                CHECK(vector<uint8_t>(data, data + data_size) == vector<uint8_t> {0, 0, 0, 0});
+            }
+
+            CHECK(reader.Read<bool>());
+            CHECK(reader.Read<uint16_t>() == 0);
+        }
+
+        CHECK(reader.Read<uint8_t>() == 42);
+        CHECK_NOTHROW(reader.VerifyEnd());
     }
 
     SECTION("BakesFofrmSequenceThroughNestedImages")
@@ -1484,16 +1722,48 @@ Frm=one.toy
     {
         TestRig rig;
         AddSourceBinaryFile(rig, "legacy/bad.zar", vector<uint8_t> {'b', 'a', 'd', 'z', 'a', 'r'});
+        AddSourceBinaryFile(rig, "legacy/bad-palette.zar", MakeZarWithPaletteCount(257));
         AddSourceBinaryFile(rig, "legacy/bad.til", vector<uint8_t> {'b', 'a', 'd', 't', 'i', 'l', '\0'});
+        AddSourceBinaryFile(rig, "legacy/missing-tiledata.til", MakeTilWithoutTiledata());
+        AddSourceBinaryFile(rig, "legacy/bad-zar-header.til", MakeTilWithBadZarHeader());
+        AddSourceBinaryFile(rig, "legacy/bad-palette.til", MakeTilWithPaletteCount(257));
         AddSourceBinaryFile(rig, "legacy/bad.mos", vector<uint8_t> {'b', 'a', 'd', 'm', 'o', 's', '\0', '\0'});
         AddSourceBinaryFile(rig, "legacy/bad.bam", vector<uint8_t> {'b', 'a', 'd', 'b', 'a', 'm', '\0', '\0'});
 
         ImageBaker baker {rig.MakeContext()};
 
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad.zar"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad-palette.zar"), ImageBakerException);
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad.til"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/missing-tiledata.til"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad-zar-header.til"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad-palette.til"), ImageBakerException);
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad.mos"), ImageBakerException);
         CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "legacy/bad.bam"), ImageBakerException);
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("InvalidSprInputsAreReported")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/bad-header.spr", vector<uint8_t>(11));
+        rig.AddSourceFile("gfx/missing-sequence.fofrm", "Frm=actor$run.spr\n");
+        AddSourceBinaryFile(rig, "gfx/actor.spr", MakeSimpleSpr());
+
+        auto missing_spranim = MakeSimpleSpr();
+        ReplaceFirstTagByte(missing_spranim, "<spranim>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/missing-spranim.spr", missing_spranim);
+
+        auto bad_internal_zar = MakeSimpleSpr();
+        ReplaceFirstTagByte(bad_internal_zar, "<zar>", numeric_cast<uint8_t>('x'));
+        AddSourceBinaryFile(rig, "gfx/bad-internal-zar.spr", bad_internal_zar);
+
+        ImageBaker baker {rig.MakeContext()};
+
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-header.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-sequence.fofrm"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/missing-spranim.spr"), ImageBakerException);
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/bad-internal-zar.spr"), ImageBakerException);
         CHECK(rig.Outputs.empty());
     }
 

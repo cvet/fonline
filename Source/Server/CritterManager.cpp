@@ -64,6 +64,10 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
         auto nullable_item_already = cr->GetInvItemByPid(item->GetProtoId());
 
         if (nullable_item_already) {
+            if (nullable_item_already == item.get()) {
+                return item;
+            }
+
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             nullable_item_already->SetCount(nullable_item_already->GetCount() + count);
@@ -77,11 +81,6 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritterId(cr->GetId());
-
-    auto nullable_entity_lock = cr->GetEntityLock();
-    FO_VERIFY_AND_THROW(nullable_entity_lock, "Critter has no entity lock");
-    auto entity_lock = nullable_entity_lock.as_ptr();
-    PropagateEntityLock(item, entity_lock);
 
     cr->SetItem(item);
 
@@ -121,8 +120,6 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
     EnsureEntitySynced(item);
 
     cr->RemoveItem(item);
-    RevertEntityLock(item);
-    EnsureEntitySynced(item);
 
     item->SetOwnership(ItemOwnership::Nowhere);
 
@@ -367,44 +364,6 @@ auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
     }
 
     return result;
-}
-
-auto CritterManager::GetItemByPidInvPriority(ptr<Critter> cr, hstring item_pid) -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ValidateEntityAccess(cr);
-
-    auto proto = _engine->GetProtoItem(item_pid);
-
-    if (!proto) {
-        throw CritterManagerException("Item proto not found", item_pid);
-    }
-
-    if (proto->GetStackable()) {
-        for (ptr<Item> item : cr->GetInvItems()) {
-            if (item->GetProtoId() == item_pid) {
-                return item.as_nptr();
-            }
-        }
-    }
-    else {
-        nptr<Item> another_slot;
-
-        for (ptr<Item> item : cr->GetInvItems()) {
-            if (item->GetProtoId() == item_pid) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.as_nptr();
-                }
-
-                another_slot = item.as_nptr();
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
 }
 
 FO_END_NAMESPACE

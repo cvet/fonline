@@ -490,8 +490,9 @@ auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), Entity::EventResult::ContinueChain, "Destroyed entity tried to fire an entity event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    FO_STRONG_ASSERT(_callbacks, "Entity event fired without cached callbacks", _callbackName);
-    return _entity->FireEvent(*_callbacks, call);
+    auto* callbacks = _callbacks.load(std::memory_order_acquire);
+    FO_STRONG_ASSERT(callbacks, "Entity event fired without cached callbacks", _callbackName);
+    return _entity->FireEvent(*callbacks, call);
 }
 
 auto EntityEvent::CheckCallbacks() -> bool
@@ -500,13 +501,13 @@ auto EntityEvent::CheckCallbacks() -> bool
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), false, "Destroyed entity tried to check callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    if (_callbacks) {
-        return !_callbacks->empty();
+    if (auto* callbacks = _callbacks.load(std::memory_order_acquire); callbacks != nullptr) {
+        return !callbacks->empty();
     }
 
     if (auto callbacks = _entity->FindEventCallbacks(_callbackName)) {
-        _callbacks = callbacks;
-        return !_callbacks->empty();
+        _callbacks.store(callbacks.get_no_const(), std::memory_order_release);
+        return !callbacks->empty();
     }
 
     return false;
@@ -537,7 +538,7 @@ void EntityEvent::UnsubscribeAll() noexcept
     FO_VERIFY_AND_RETURN(!_entity->IsDestroyed(), "Destroyed entity tried to unsubscribe all callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
     _entity->UnsubscribeAllEvent(_callbackName);
-    _callbacks = nullptr;
+    _callbacks.store(nullptr, std::memory_order_release);
 }
 
 Entity::~Entity() = default;

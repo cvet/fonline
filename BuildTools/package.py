@@ -1221,12 +1221,14 @@ class Packager:
 	def ensure_msi_toolset(self) -> None:
 		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
 		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
-		# (candle/light) on Windows, GNOME msitools (wixl) elsewhere — matching msicreator/createmsi.py.
+		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
+		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl).
 		if os.name == 'nt':
 			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
 			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
 		else:
-			assert shutil.which('wixl') is not None, 'Wix pack requires the msitools "wixl" toolset on PATH (install the "msitools" package)'
+			assert shutil.which('wixl') is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
 
 	def make_wix_installer(self) -> None:
 		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register

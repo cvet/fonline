@@ -89,7 +89,7 @@ public:
 
 protected:
     ptr<AngelScript::asITypeInfo> _typeInfo;
-    mutable int _refCount {1};
+    mutable std::atomic<int32_t> _refCount {1};
 };
 
 class ScriptTypeOf

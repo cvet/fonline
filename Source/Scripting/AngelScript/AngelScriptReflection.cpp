@@ -122,14 +122,14 @@ void ScriptType::AddRef() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    AngelScript::asAtomicInc(_refCount);
+    _refCount.fetch_add(1, std::memory_order_acq_rel);
 }
 
 void ScriptType::Release() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (AngelScript::asAtomicDec(_refCount) == 0) {
+    if (_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         delete this;
     }
 }

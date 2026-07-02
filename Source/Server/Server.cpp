@@ -2263,8 +2263,7 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
-    auto cr_holder = cr.hold_ref();
-    ignore_unused(cr_holder);
+    EnsureEntitySynced(cr);
 
     WriteLog(LogType::Info, "Unload critter {}", cr->GetName());
 
@@ -2277,7 +2276,6 @@ void ServerEngine::UnloadCritter(ptr<Critter> cr)
 
     cr->MarkAsDestroying();
 
-    ValidateEntityAccess(cr);
     OnCritterUnload.Fire(cr);
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
@@ -2357,6 +2355,7 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
     };
 
     for (ptr<Item> item : copy_hold_ref(cr->GetInvItems())) {
+        EnsureEntitySynced(item);
         unload_item(item);
         cr->RemoveItem(item);
     }
@@ -2367,10 +2366,8 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
-    auto player_holder = player.hold_ref();
-    auto cr_holder = nullable_cr.try_hold_ref();
-    ignore_unused(player_holder);
-    ignore_unused(cr_holder);
+    EnsureEntitySynced(player);
+    EnsureEntitySynced(nullable_cr);
 
     auto ctx = RequireCurrentSyncContext();
 

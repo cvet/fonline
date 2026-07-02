@@ -500,11 +500,6 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     item->SetMapId(GetId());
     item->SetHex(hex);
 
-    auto nullable_entity_lock = GetEntityLock();
-    FO_VERIFY_AND_THROW(nullable_entity_lock, "Map has no entity lock");
-    auto entity_lock = nullable_entity_lock.as_ptr();
-    PropagateEntityLock(item, entity_lock);
-
     SetItem(item);
 
     auto item_ids = GetItemIds();
@@ -620,9 +615,6 @@ void Map::RemoveItem(ident_t item_id)
     ptr<Field> field = _hexField->GetCellForWriting(hex);
 
     vec_remove_unique_value(field->Items, item);
-
-    RevertEntityLock(item);
-    EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);

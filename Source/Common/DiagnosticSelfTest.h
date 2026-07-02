@@ -35,45 +35,19 @@
 
 #include "Common.h"
 
-#include "Critter.h"
-#include "Geometry.h"
-#include "Item.h"
-#include "Map.h"
-#include "Player.h"
-#include "Settings.h"
-
 FO_BEGIN_NAMESPACE
 
-class ServerEngine;
-class ProtoManager;
-class EntityManager;
-class MapManager;
-class ItemManager;
-
-FO_DECLARE_EXCEPTION(CritterManagerException);
-
-class CritterManager final
+// Diagnostic self-test that deliberately crashes the process to verify the crash
+// diagnostics reliably reach the log file. Driven by the FO_SELFTEST_CRASH
+// environment variable so it is inert in production and invisible to the config
+// and script settings surface. Intended for the crash-to-log pipeline tests; it
+// must never be wired into normal runtime paths.
+namespace DiagnosticSelfTest
 {
-public:
-    CritterManager() = delete;
-    explicit CritterManager(ptr<ServerEngine> engine);
-    CritterManager(const CritterManager&) = delete;
-    CritterManager(CritterManager&&) noexcept = delete;
-    auto operator=(const CritterManager&) = delete;
-    auto operator=(CritterManager&&) noexcept = delete;
-    ~CritterManager() = default;
-
-    [[nodiscard]] auto GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>;
-    [[nodiscard]] auto GetPlayerCritters() -> vector<refcount_ptr<Critter>>;
-
-    auto CreateCritterOnMap(hstring proto_id, nptr<const Properties> props, ptr<Map> map, mpos hex, mdir dir) -> ptr<Critter>;
-    void DestroyCritter(ptr<Critter> cr);
-    void DestroyInventory(ptr<Critter> cr);
-    auto AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send) -> ptr<Item>;
-    void RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool send);
-
-private:
-    ptr<ServerEngine> _engine;
-};
+    // Reads FO_SELFTEST_CRASH and induces the requested crash. Does nothing when
+    // the variable is unset, empty or names an unknown mode (the process keeps
+    // running). Most modes never return.
+    extern void RunIfRequested();
+}
 
 FO_END_NAMESPACE

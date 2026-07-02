@@ -80,6 +80,8 @@ FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
 {
+    ValidateEntityAccess(cr);
+
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
@@ -93,6 +95,8 @@ FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Critter> cr)
 {
+    ValidateEntityAccess(cr);
+
     if (cr->GetMapId() == ident_t {}) {
         throw ScriptException("Critter is not on map");
     }

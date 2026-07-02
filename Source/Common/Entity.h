@@ -238,6 +238,7 @@ public:
     void AddRef() const noexcept;
     auto TryAddRef() const noexcept -> bool;
     void Release() const noexcept;
+    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     virtual void ValidateAccess() const { }
 
@@ -258,7 +259,6 @@ protected:
     virtual ~Entity();
 
     auto GetInitRef() noexcept -> ptr<Properties> { return &_props; }
-    auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
 protected:
     virtual auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult;
@@ -298,7 +298,7 @@ protected:
 
     ptr<Entity> _entity;
     string_view _callbackName;
-    nptr<vector<Entity::EventCallbackData>> _callbacks {};
+    std::atomic<vector<Entity::EventCallbackData>*> _callbacks {};
 };
 
 template<fixed_string Name, typename... Args>

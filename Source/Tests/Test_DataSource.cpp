@@ -49,11 +49,107 @@ static void AppendLe32(string& output, uint32_t value)
     output.append(reinterpret_cast<const char*>(&byte3), sizeof(byte3));
 }
 
+struct StoredZipEntry
+{
+    string_view FileName {};
+    string_view FileContent {};
+    uint32_t ExternalAttributes {};
+};
+
+struct StoredZipCentralEntry
+{
+    string_view FileName {};
+    string_view FileContent {};
+    uint32_t Crc {};
+    uint32_t LocalHeaderOffset {};
+    uint32_t ExternalAttributes {};
+};
+
+static auto MakeStoredZip(std::initializer_list<StoredZipEntry> entries) -> string
+{
+    string zip;
+    vector<StoredZipCentralEntry> central_entries;
+    central_entries.reserve(entries.size());
+
+    for (const auto& entry : entries) {
+        const auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
+        const auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
+        const auto crc = CalcZipCrc32(entry.FileContent);
+        const auto local_header_offset = numeric_cast<uint32_t>(zip.size());
+
+        AppendLe32(zip, 0x04034B50);
+        AppendLe16(zip, 20);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe32(zip, crc);
+        AppendLe32(zip, content_size);
+        AppendLe32(zip, content_size);
+        AppendLe16(zip, name_size);
+        AppendLe16(zip, 0);
+        zip.append(entry.FileName);
+        zip.append(entry.FileContent);
+
+        central_entries.push_back(StoredZipCentralEntry {
+            entry.FileName,
+            entry.FileContent,
+            crc,
+            local_header_offset,
+            entry.ExternalAttributes,
+        });
+    }
+
+    const auto central_dir_offset = numeric_cast<uint32_t>(zip.size());
+
+    for (const auto& entry : central_entries) {
+        const auto name_size = numeric_cast<uint16_t>(entry.FileName.size());
+        const auto content_size = numeric_cast<uint32_t>(entry.FileContent.size());
+
+        AppendLe32(zip, 0x02014B50);
+        AppendLe16(zip, 20);
+        AppendLe16(zip, 20);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe32(zip, entry.Crc);
+        AppendLe32(zip, content_size);
+        AppendLe32(zip, content_size);
+        AppendLe16(zip, name_size);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe16(zip, 0);
+        AppendLe32(zip, entry.ExternalAttributes);
+        AppendLe32(zip, entry.LocalHeaderOffset);
+        zip.append(entry.FileName);
+    }
+
+    const auto central_dir_size = numeric_cast<uint32_t>(zip.size() - central_dir_offset);
+    const auto entry_count = numeric_cast<uint16_t>(central_entries.size());
+
+    AppendLe32(zip, 0x06054B50);
+    AppendLe16(zip, 0);
+    AppendLe16(zip, 0);
+    AppendLe16(zip, entry_count);
+    AppendLe16(zip, entry_count);
+    AppendLe32(zip, central_dir_size);
+    AppendLe32(zip, central_dir_offset);
+    AppendLe16(zip, 0);
+
+    return zip;
+}
+
 static auto MakeStoredZip(string_view file_name, string_view file_content) -> string
+{
+    return MakeStoredZip({StoredZipEntry {file_name, file_content}});
+}
+
+static auto MakeStoredZipWithDeclaredSize(string_view file_name, string_view file_content, uint32_t declared_size) -> string
 {
     string zip;
     const auto name_size = numeric_cast<uint16_t>(file_name.size());
-    const auto content_size = numeric_cast<uint32_t>(file_content.size());
     const auto crc = CalcZipCrc32(file_content);
 
     AppendLe32(zip, 0x04034B50);
@@ -63,8 +159,8 @@ static auto MakeStoredZip(string_view file_name, string_view file_content) -> st
     AppendLe16(zip, 0);
     AppendLe16(zip, 0);
     AppendLe32(zip, crc);
-    AppendLe32(zip, content_size);
-    AppendLe32(zip, content_size);
+    AppendLe32(zip, declared_size);
+    AppendLe32(zip, declared_size);
     AppendLe16(zip, name_size);
     AppendLe16(zip, 0);
     zip.append(file_name);
@@ -80,8 +176,8 @@ static auto MakeStoredZip(string_view file_name, string_view file_content) -> st
     AppendLe16(zip, 0);
     AppendLe16(zip, 0);
     AppendLe32(zip, crc);
-    AppendLe32(zip, content_size);
-    AppendLe32(zip, content_size);
+    AppendLe32(zip, declared_size);
+    AppendLe32(zip, declared_size);
     AppendLe16(zip, name_size);
     AppendLe16(zip, 0);
     AppendLe16(zip, 0);
@@ -172,6 +268,17 @@ static auto MakeFallout2DatWithInvalidNameSize() -> string
     return dat;
 }
 
+static auto MakeFallout2HeaderOnlyDat(uint32_t tree_size, uint32_t dat_size) -> string
+{
+    string dat;
+
+    AppendLe32(dat, 0);
+    AppendLe32(dat, tree_size);
+    AppendLe32(dat, dat_size);
+
+    return dat;
+}
+
 static auto MakeFallout1LikeDat() -> string
 {
     string dat;
@@ -179,6 +286,17 @@ static auto MakeFallout1LikeDat() -> string
     AppendLe32(dat, 0x01000000);
     AppendLe32(dat, 0);
     AppendLe32(dat, 12);
+
+    return dat;
+}
+
+static auto MakeArcanumMalformedDat(uint32_t tree_size) -> string
+{
+    string dat;
+
+    AppendLe32(dat, 0x44415431);
+    AppendLe32(dat, 0);
+    AppendLe32(dat, tree_size);
 
     return dat;
 }
@@ -239,6 +357,7 @@ TEST_CASE("DataSource")
         const auto recursive = DataSource::MountDir(temp_dir, true, false, false);
 
         CHECK(non_recursive->IsDiskDir());
+        CHECK_FALSE(non_recursive->GetPackName().empty());
         CHECK(recursive->IsDiskDir());
         CHECK(non_recursive->IsFileExists("root.txt"));
         CHECK_FALSE(non_recursive->IsFileExists("nested"));
@@ -248,8 +367,15 @@ TEST_CASE("DataSource")
 
         size_t size = 0;
         uint64_t write_time = 0;
+        CHECK(non_recursive->GetFileInfo("root.txt", size, write_time));
+        CHECK(size == 4);
+        CHECK(write_time != 0);
         CHECK_FALSE(non_recursive->GetFileInfo("nested/child.txt", size, write_time));
         CHECK_FALSE(non_recursive->GetFileInfo("missing.txt", size, write_time));
+
+        const auto root_buf = non_recursive->OpenFile("root.txt", size, write_time);
+        REQUIRE(root_buf);
+        CHECK(string_view {reinterpret_cast<const char*>(root_buf.get()), size} == "root");
         CHECK_FALSE(non_recursive->OpenFile("nested/child.txt", size, write_time));
         CHECK_FALSE(non_recursive->OpenFile("missing.txt", size, write_time));
         CHECK(non_recursive->GetFileNames("nested", false, "txt").empty());
@@ -398,6 +524,56 @@ TEST_CASE("DataSource")
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
 
+    SECTION("ZipPackSkipsDirectoryEntriesAndFiltersMultipleFiles")
+    {
+        const string temp_dir = MakeTempDataSourceDir("data_source_zip_multi_pack");
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        const string zip_path = strex(temp_dir).combine_path("Multi.zip").str();
+        REQUIRE(fs_create_directories(temp_dir));
+        const string zip_content = MakeStoredZip({
+            StoredZipEntry {"folder/", "", 0x10},
+            StoredZipEntry {"folder/first.txt", "one"},
+            StoredZipEntry {"folder/deeper/second.bin", "two"},
+            StoredZipEntry {"root.txt", "root"},
+        });
+        REQUIRE(fs_write_file(zip_path, zip_content));
+
+        auto zip_pack = DataSource::MountPack(temp_dir, "Multi", false);
+        REQUIRE(zip_pack);
+
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        CHECK_FALSE(zip_pack->IsFileExists("folder/"));
+        CHECK_FALSE(zip_pack->GetFileInfo("folder/", size, write_time));
+        CHECK_FALSE(zip_pack->OpenFile("folder/", size, write_time));
+
+        const auto root_names = zip_pack->GetFileNames("", false, "txt");
+        REQUIRE(root_names.size() == 1);
+        CHECK(root_names.front() == "root.txt");
+
+        const auto folder_txt_names = zip_pack->GetFileNames("folder", false, "txt");
+        REQUIRE(folder_txt_names.size() == 1);
+        CHECK(folder_txt_names.front() == "folder/first.txt");
+
+        const auto folder_recursive_names = zip_pack->GetFileNames("folder", true, "");
+        REQUIRE(folder_recursive_names.size() == 2);
+        CHECK(std::ranges::find(folder_recursive_names, "folder/first.txt") != folder_recursive_names.end());
+        CHECK(std::ranges::find(folder_recursive_names, "folder/deeper/second.bin") != folder_recursive_names.end());
+        CHECK(zip_pack->GetFileNames("", true, "dat").empty());
+
+        const auto buf = zip_pack->OpenFile("folder/deeper/second.bin", size, write_time);
+        REQUIRE(buf);
+        CHECK(size == 3);
+        CHECK(write_time != 0);
+        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "two");
+
+        zip_pack.reset();
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
+
     SECTION("BosPackUsesZipReader")
     {
         const string temp_dir = MakeTempDataSourceDir("data_source_bos_pack");
@@ -466,19 +642,35 @@ TEST_CASE("DataSource")
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("TruncatedPlain.dat").str(), MakeFallout2DatEntry("plain.txt", "short", 0, 4096, 4096, 0)));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidPacked.dat").str(), MakeFallout2DatEntry("packed.txt", "not-deflated", 1, 32, 12, 0)));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidOffset.dat").str(), MakeFallout2DatEntry("offset.txt", "payload", 0, 7, 7, 0xFFFFFFFF)));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ShortPacked.dat").str(), MakeFallout2DatEntry("short-packed.txt", "short", 1, 32, 4096, 0)));
 
-        const auto plain_pack = DataSource::MountPack(temp_dir, "TruncatedPlain", false);
-        const auto packed_pack = DataSource::MountPack(temp_dir, "InvalidPacked", false);
+        auto plain_pack = DataSource::MountPack(temp_dir, "TruncatedPlain", false);
+        auto packed_pack = DataSource::MountPack(temp_dir, "InvalidPacked", false);
+        auto offset_pack = DataSource::MountPack(temp_dir, "InvalidOffset", false);
+        auto short_packed_pack = DataSource::MountPack(temp_dir, "ShortPacked", false);
+        REQUIRE(plain_pack);
+        REQUIRE(packed_pack);
+        REQUIRE(offset_pack);
+        REQUIRE(short_packed_pack);
 
         size_t size = 0;
         uint64_t write_time = 0;
 
         CHECK(plain_pack->IsFileExists("plain.txt"));
         CHECK(packed_pack->IsFileExists("packed.txt"));
+        CHECK(offset_pack->IsFileExists("offset.txt"));
+        CHECK(short_packed_pack->IsFileExists("short-packed.txt"));
         CHECK_THROWS_AS(plain_pack->OpenFile("plain.txt", size, write_time), DataSourceException);
         CHECK_THROWS_AS(packed_pack->OpenFile("packed.txt", size, write_time), DataSourceException);
+        CHECK_THROWS_AS(offset_pack->OpenFile("offset.txt", size, write_time), DataSourceException);
+        CHECK_THROWS_AS(short_packed_pack->OpenFile("short-packed.txt", size, write_time), DataSourceException);
 
-        (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+        plain_pack.reset();
+        packed_pack.reset();
+        offset_pack.reset();
+        short_packed_pack.reset();
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("DatPackTreeEdgeCases")
@@ -506,6 +698,26 @@ TEST_CASE("DataSource")
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "Fallout1", false), DataSourceException);
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+
+    SECTION("DatPackRejectsMalformedTrees")
+    {
+        const string temp_dir = MakeTempDataSourceDir("data_source_dat_malformed_trees");
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("FalloutWrongSize.dat").str(), MakeFallout2HeaderOnlyDat(4, 4096)));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("FalloutTreeBeforeFile.dat").str(), MakeFallout2HeaderOnlyDat(128, 12)));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ArcanumTreeBeforeFile.dat").str(), MakeArcanumMalformedDat(4096)));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("ArcanumMissingFileCount.dat").str(), MakeArcanumMalformedDat(2)));
+
+        CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "FalloutWrongSize", false), DataSourceException);
+        CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "FalloutTreeBeforeFile", false), DataSourceException);
+        CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "ArcanumTreeBeforeFile", false), DataSourceException);
+        CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "ArcanumMissingFileCount", false), DataSourceException);
+
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("ArcanumDatLoadsCompressedEntries")
@@ -548,12 +760,39 @@ TEST_CASE("DataSource")
 
         REQUIRE(fs_create_directories(temp_dir));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("BrokenZip.zip").str(), MakeEmptyZip()));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("InvalidZip.zip").str(), string_view {"not a zip"}));
         REQUIRE(fs_write_file(strex(temp_dir).combine_path("BrokenDat.dat").str(), string_view {"bad"}));
 
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BrokenZip", false), DataSourceException);
+        CHECK_THROWS(DataSource::MountPack(temp_dir, "InvalidZip", false));
         CHECK_THROWS_AS(DataSource::MountPack(temp_dir, "BrokenDat", false), DataSourceException);
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
+    }
+
+    SECTION("ZipPackEntryReadErrorsThrow")
+    {
+        const string temp_dir = MakeTempDataSourceDir("data_source_zip_read_errors");
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        const string zip_path = strex(temp_dir).combine_path("SizeMismatch.zip").str();
+        REQUIRE(fs_create_directories(temp_dir));
+        REQUIRE(fs_write_file(zip_path, MakeStoredZipWithDeclaredSize("mismatch.txt", "tiny", 32)));
+
+        auto zip_pack = DataSource::MountPack(temp_dir, "SizeMismatch", false);
+        REQUIRE(zip_pack);
+
+        size_t size = 0;
+        uint64_t write_time = 0;
+
+        CHECK(zip_pack->IsFileExists("mismatch.txt"));
+        CHECK(zip_pack->GetFileInfo("mismatch.txt", size, write_time));
+        CHECK(size == 32);
+        CHECK_THROWS_AS(zip_pack->OpenFile("mismatch.txt", size, write_time), DataSourceException);
+
+        zip_pack.reset();
+        CHECK(fs_remove_dir_tree(temp_dir));
     }
 
     SECTION("EmbeddedPackAcceptsDefaultResourceArray")
@@ -598,30 +837,42 @@ TEST_CASE("DataSource")
 
         const string listed_file = strex(temp_dir).combine_path("listed.txt").str();
         const string nested_file = strex(temp_dir).combine_path("nested/value.bin").str();
+        const string shrinking_file = strex(temp_dir).combine_path("shrinking.txt").str();
         const string manifest_path = "FilesTree.txt";
         CHECK_FALSE(fs_exists(manifest_path));
 
         REQUIRE(fs_write_file(listed_file, string_view {"listed-data"}));
         REQUIRE(fs_write_file(nested_file, string_view {"nested-data"}));
-        REQUIRE(fs_write_file(manifest_path, strex("{}\n{}\n", listed_file, nested_file).str()));
+        REQUIRE(fs_write_file(shrinking_file, string_view {"shrinking-data"}));
+        REQUIRE(fs_write_file(manifest_path, strex("{}\n\n  \n{}\n{}\n", listed_file, nested_file, shrinking_file).str()));
 
         const auto files_list = DataSource::MountPack("ignored", "FilesList", false);
 
         size_t size = 0;
         uint64_t write_time = 0;
+        CHECK_FALSE(files_list->IsDiskDir());
         CHECK(files_list->GetPackName() == "@FilesList");
         CHECK(files_list->IsFileExists(listed_file));
+        CHECK_FALSE(files_list->IsFileExists(strex(temp_dir).combine_path("missing.txt").str()));
         CHECK(files_list->GetFileInfo(listed_file, size, write_time));
         CHECK(size == 11);
         CHECK(write_time != 0);
+        CHECK_FALSE(files_list->GetFileInfo(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
 
         const auto buf = files_list->OpenFile(listed_file, size, write_time);
         REQUIRE(buf);
-        CHECK(span_to_string({buf.get(), size}) == "listed-data");
+        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "listed-data");
+        CHECK_FALSE(files_list->OpenFile(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
 
         const auto filtered = files_list->GetFileNames(temp_dir, true, "bin");
         REQUIRE(filtered.size() == 1);
         CHECK(filtered[0] == nested_file);
+
+        CHECK(fs_remove_file(listed_file));
+        CHECK_THROWS_AS(files_list->OpenFile(listed_file, size, write_time), DataSourceException);
+
+        REQUIRE(fs_write_file(shrinking_file, string_view {"tiny"}));
+        CHECK_THROWS_AS(files_list->OpenFile(shrinking_file, size, write_time), DataSourceException);
 
         CHECK(fs_remove_file(manifest_path));
         CHECK(fs_remove_dir_tree(temp_dir));

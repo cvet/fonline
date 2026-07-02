@@ -44,6 +44,10 @@ ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (_context->Settings->BakeLanguages.empty()) {
+        throw ProtoTextBakerException("No bake languages specified");
+    }
 }
 
 ProtoTextBaker::~ProtoTextBaker()
@@ -214,7 +218,6 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            FO_VERIFY_AND_THROW(!_context->Settings->BakeLanguages.empty(), "Prototype text baker cannot choose a default language because BakeLanguages is empty", type_name, pid, _context->PackName);
             const string& default_lang = _context->Settings->BakeLanguages.front();
 
             all_proto_texts[type_name][pid] = {};

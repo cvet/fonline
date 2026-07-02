@@ -853,16 +853,8 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
                 break;
             }
 
-            if (len != 0) {
-                nptr<uint8_t> nullable_pod_data = _podData.get();
-                FO_VERIFY_AND_THROW(nullable_pod_data, "POD data buffer is null");
-
-                auto pod_data = nullable_pod_data.as_ptr();
-                reader.ReadBytes(span<uint8_t> {pod_data.get(), _registrator->_wholePodDataSize}.subspan(start_pos, len));
-            }
-            else {
-                (void)reader.ReadBytes(len);
-            }
+            FO_VERIFY_AND_THROW(start_pos <= _registrator->_wholePodDataSize && len <= _registrator->_wholePodDataSize - start_pos, "Serialized POD data section is outside the property layout bounds", _registrator->GetTypeName(), start_pos, len, _registrator->_wholePodDataSize);
+            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8_t>(len).get(), len);
         }
 
         // Read complex properties

@@ -1155,7 +1155,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
     // Empty context: no held locks → the access gate grants everything, including a null entity.
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a.get()));
+    CHECK(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
     // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
@@ -1163,9 +1163,9 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         vector<nptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
         CHECK_FALSE(ctx.IsEmpty());
-        CHECK(ctx.ValidateAccess(cr_a.get())); // cr_a's own lock is held
-        CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
-        CHECK(IsEntityAccessValid(cr_a.get()));
+        CHECK(ctx.ValidateAccess(cr_a)); // cr_a's own lock is held
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a));
 
         {
             bool sync_diag_seen = false;
@@ -1176,16 +1176,16 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
             });
             const auto clear_log_callback = scope_exit([]() noexcept { SetLogCallback("entity_access_valid_diagnose_test", {}); });
 
-            CHECK_FALSE(IsEntityAccessValid(cr_b.get(), false));
+            CHECK_FALSE(IsEntityAccessValid(cr_b, false));
             CHECK_FALSE(sync_diag_seen);
 
-            CHECK_FALSE(IsEntityAccessValid(cr_b.get()));
+            CHECK_FALSE(IsEntityAccessValid(cr_b));
             CHECK(sync_diag_seen);
         }
 
-        CHECK_FALSE(IsEntityAccessValid(cr_b.get())); // sibling: no lock in its chain is held
-        CHECK_FALSE(IsEntityAccessValid(cr_c.get()));
-        CHECK_FALSE(IsEntityAccessValid(map.get()));
+        CHECK_FALSE(IsEntityAccessValid(cr_b)); // sibling: no lock in its chain is held
+        CHECK_FALSE(IsEntityAccessValid(cr_c));
+        CHECK_FALSE(IsEntityAccessValid(map));
 
         // Negative: the binding-level gate (ServerEntity::ValidateAccess, hit by every script
         // property read / method call) must THROW on an uncovered entity, not merely report false -
@@ -1197,18 +1197,20 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
     CHECK(ctx.IsEmpty());
 
-    // Two siblings sharing a map escalate to the SINGLE map lock: their own locks are dropped, the
-    // map's own lock is held, and the hierarchy walk grants access to every critter on the map.
+    // Two siblings are locked INDIVIDUALLY — there is deliberately no sibling-to-parent escalation, so
+    // `Sync({cr_a, cr_b})` holds exactly those two critters' own locks. The shared map is only
+    // descendant-MARKED (not exclusively held), so the map itself is not accessible and an unrequested
+    // third sibling on the same map is NOT covered.
     {
         vector<nptr<ServerEntity>> both {cr_a, cr_b};
         ctx.SyncEntities(both);
-        CHECK(ctx.ValidateAccess(map.get())); // escalated → the map's own lock is held
-        CHECK_FALSE(ctx.ValidateAccess(cr_a.get())); // the siblings' own locks were dropped
-        CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
-        CHECK(IsEntityAccessValid(cr_a.get())); // accessible via the map ancestor lock
-        CHECK(IsEntityAccessValid(cr_b.get()));
-        CHECK(IsEntityAccessValid(cr_c.get())); // unrequested sibling, also covered by the map lock
-        CHECK(IsEntityAccessValid(map.get()));
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map's own lock is NOT held (only marked)
+        CHECK(ctx.ValidateAccess(cr_a)); // each requested sibling's own lock is held
+        CHECK(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a)); // covered by its own held lock
+        CHECK(IsEntityAccessValid(cr_b));
+        CHECK_FALSE(IsEntityAccessValid(cr_c)); // unrequested sibling: not covered (map only marked, not held)
+        CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
 
@@ -1217,10 +1219,10 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     {
         vector<nptr<ServerEntity>> pair {cr_a, map};
         ctx.SyncEntities(pair);
-        CHECK(ctx.ValidateAccess(cr_a.get())); // own lock kept
-        CHECK(ctx.ValidateAccess(map.get())); // map lock kept
-        CHECK(IsEntityAccessValid(cr_a.get()));
-        CHECK(IsEntityAccessValid(cr_c.get())); // map lock covers siblings
+        CHECK(ctx.ValidateAccess(cr_a)); // own lock kept
+        CHECK(ctx.ValidateAccess(map)); // map lock kept
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(cr_c)); // map lock covers siblings
     }
     ctx.Release();
 
@@ -1229,38 +1231,38 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // a singleton Game.Lock-style lock), it adds one lock and is idempotent when already covered.
     ctx.EnsureEntitySynced(cr_a);
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a.get()));
-    CHECK(IsEntityAccessValid(cr_b.get()));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
 
     ctx.LockSingleton(server->GetEntityLock().get());
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a.get()));
-    CHECK(IsEntityAccessValid(cr_a.get()));
-    CHECK_FALSE(IsEntityAccessValid(cr_b.get()));
+    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_b));
     ctx.Release();
 
     ctx.SyncEntity(cr_a);
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a.get()));
+    CHECK(ctx.ValidateAccess(cr_a));
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a.get()));
+    CHECK(ctx.ValidateAccess(cr_a));
     ctx.EnsureEntitySynced(cr_b);
-    CHECK(ctx.ValidateAccess(cr_b.get()));
-    CHECK(IsEntityAccessValid(cr_a.get()));
-    CHECK(IsEntityAccessValid(cr_b.get()));
+    CHECK(ctx.ValidateAccess(cr_b));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
 
     // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
     ctx.SyncEntity(cr_a);
-    CHECK(ctx.ValidateAccess(cr_a.get()));
+    CHECK(ctx.ValidateAccess(cr_a));
     ctx.SyncEntity(cr_b);
-    CHECK_FALSE(ctx.ValidateAccess(cr_a.get()));
-    CHECK(ctx.ValidateAccess(cr_b.get()));
-    CHECK_FALSE(IsEntityAccessValid(cr_a.get()));
-    CHECK(IsEntityAccessValid(cr_b.get()));
+    CHECK_FALSE(ctx.ValidateAccess(cr_a));
+    CHECK(ctx.ValidateAccess(cr_b));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a.get())); // empty again → unrestricted
+    CHECK(IsEntityAccessValid(cr_a)); // empty again → unrestricted
 }
 
 // ============================================================================
@@ -1376,11 +1378,11 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     {
         vector<nptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
-        CHECK(ctx.ValidateAccess(cr_a.get())); // own lock
+        CHECK(ctx.ValidateAccess(cr_a)); // own lock
         CHECK(ctx.ValidateAccess(player_a)); // widened: player's own lock held
         CHECK_FALSE(ctx.ValidateAccess(player_b));
-        CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
-        CHECK(IsEntityAccessValid(cr_a.get()));
+        CHECK_FALSE(ctx.ValidateAccess(cr_b));
+        CHECK(IsEntityAccessValid(cr_a));
         CHECK(IsEntityAccessValid(player_a));
         CHECK_FALSE(IsEntityAccessValid(player_b));
     }
@@ -1391,9 +1393,9 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         vector<nptr<ServerEntity>> one {player_a};
         ctx.SyncEntities(one);
         CHECK(ctx.ValidateAccess(player_a));
-        CHECK(ctx.ValidateAccess(cr_a.get()));
+        CHECK(ctx.ValidateAccess(cr_a));
         CHECK(IsEntityAccessValid(player_a));
-        CHECK(IsEntityAccessValid(cr_a.get()));
+        CHECK(IsEntityAccessValid(cr_a));
     }
     ctx.Release();
 
@@ -1403,52 +1405,49 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     {
         vector<nptr<ServerEntity>> item_holder_map {item_a, cr_a, map};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_map));
-        CHECK(ctx.ValidateAccess(item_a.get()));
-        CHECK(ctx.ValidateAccess(cr_a.get()));
-        CHECK(ctx.ValidateAccess(map.get()));
+        CHECK(ctx.ValidateAccess(item_a));
+        CHECK(ctx.ValidateAccess(cr_a));
+        CHECK(ctx.ValidateAccess(map));
         CHECK(ctx.ValidateAccess(player_a));
-        CHECK(IsEntityAccessValid(item_a.get()));
+        CHECK(IsEntityAccessValid(item_a));
         CHECK(IsEntityAccessValid(player_a));
     }
     ctx.Release();
 
-    // Duplicate-lock sibling-escalation regression: an inventory item and its holder share the
-    // holder's propagated lock, but the holder must still be considered explicitly. Otherwise
-    // Sync(item, holder, same-map-recipient) keeps only the two critter locks instead of escalating
-    // to the shared map, so a map-level verifier can race a partial stack split.
+    // No propagation, no escalation: Sync({item, holder, recipient}) holds each one's OWN lock — the item
+    // keeps its own lock (it does not share the holder's), and the two critters are NOT collapsed onto
+    // their shared map. Widening still adds each critter's Player. The shared map is only marked, not held.
     {
         vector<nptr<ServerEntity>> item_holder_recipient {item_a, cr_a, cr_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
-        CHECK(ctx.ValidateAccess(map.get())); // holder + recipient escalated to their shared map
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
         CHECK(ctx.ValidateAccess(player_a)); // widened from the requested holder
         CHECK(ctx.ValidateAccess(player_b)); // widened from the requested recipient
-        CHECK_FALSE(ctx.ValidateAccess(item_a.get())); // item's propagated holder lock was dropped
-        CHECK_FALSE(ctx.ValidateAccess(cr_a.get()));
-        CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
-        CHECK(IsEntityAccessValid(item_a.get())); // still covered through item -> holder -> map
-        CHECK(IsEntityAccessValid(cr_a.get()));
-        CHECK(IsEntityAccessValid(cr_b.get()));
+        CHECK(ctx.ValidateAccess(item_a)); // item's own lock is held
+        CHECK(ctx.ValidateAccess(cr_a)); // holder's own lock is held
+        CHECK(ctx.ValidateAccess(cr_b)); // recipient's own lock is held
+        CHECK(IsEntityAccessValid(item_a));
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(cr_b));
     }
     ctx.Release();
 
-    // Ancestor-coverage regression (the engine fix): syncing BOTH players widens each to its critter;
-    // the two critters share the map and escalate to the single map lock (their own locks dropped), so
-    // each widen target is now covered only by its ANCESTOR (map) lock, not its own. The verify-after-
-    // acquire step must accept that ancestor coverage; otherwise it re-walks and burns the retry budget,
-    // throwing EntitySyncException. This is the exact path the engine fix (widen re-check walks the
-    // parent chain) repaired.
+    // Syncing BOTH players widens each to its controlled critter. With no escalation those critters keep
+    // their OWN locks (not collapsed onto the shared map), so each is covered by its own held lock and the
+    // widen verify-after-acquire is satisfied directly. The shared map is only marked, so the map itself
+    // is not accessible.
     {
         vector<nptr<ServerEntity>> players {player_a, player_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
         CHECK(ctx.ValidateAccess(player_a)); // players' own locks held
         CHECK(ctx.ValidateAccess(player_b));
-        CHECK(ctx.ValidateAccess(map.get())); // critters escalated → the map's own lock is held
-        CHECK_FALSE(ctx.ValidateAccess(cr_a.get())); // the critters' own locks were dropped by escalation
-        CHECK_FALSE(ctx.ValidateAccess(cr_b.get()));
+        CHECK(ctx.ValidateAccess(cr_a)); // widened critters' own locks held
+        CHECK(ctx.ValidateAccess(cr_b));
+        CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
         CHECK(IsEntityAccessValid(player_a));
-        CHECK(IsEntityAccessValid(cr_a.get())); // accessible via the map ancestor lock - the fix
-        CHECK(IsEntityAccessValid(cr_b.get()));
-        CHECK(IsEntityAccessValid(map.get()));
+        CHECK(IsEntityAccessValid(cr_a));
+        CHECK(IsEntityAccessValid(cr_b));
+        CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
 }
@@ -2044,8 +2043,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             vector<nptr<ServerEntity>> req {map};
             for (int32_t i = 0; i < ITERS; i++) {
                 ctx.SyncEntities(req);
-                CHECK(IsEntityAccessValid(cr_a.get())); // descendant reachable via the ancestor cover
-                CHECK(IsEntityAccessValid(cr_b.get()));
+                CHECK(IsEntityAccessValid(cr_a)); // descendant reachable via the ancestor cover
+                CHECK(IsEntityAccessValid(cr_b));
                 ctx.Release();
                 ancestor_done.fetch_add(1, std::memory_order_relaxed);
             }
@@ -2058,7 +2057,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             vector<nptr<ServerEntity>> req {cr_a};
             for (int32_t i = 0; i < ITERS; i++) {
                 ctx.SyncEntities(req);
-                CHECK(IsEntityAccessValid(cr_a.get())); // own lock
+                CHECK(IsEntityAccessValid(cr_a)); // own lock
                 ctx.Release();
                 sibling_done.fetch_add(1, std::memory_order_relaxed);
             }

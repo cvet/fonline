@@ -64,6 +64,23 @@ namespace
         int32_t RefCount {};
     };
 
+    struct ArrayNoDefaultValue
+    {
+        explicit ArrayNoDefaultValue(int32_t value) noexcept :
+            Value {value}
+        {
+        }
+
+        ~ArrayNoDefaultValue() noexcept { Value = 0; }
+
+        int32_t Value {};
+    };
+
+    struct ArrayComparableValue
+    {
+        int32_t Value {};
+    };
+
     static void ArrayDummyRefAddRef(void* obj)
     {
         cast_from_void<ArrayDummyRef*>(obj)->RefCount++;
@@ -72,6 +89,53 @@ namespace
     static void ArrayDummyRefRelease(void* obj)
     {
         cast_from_void<ArrayDummyRef*>(obj)->RefCount--;
+    }
+
+    static void ArrayNoDefaultValueConstruct(void* obj, int32_t value)
+    {
+        new (obj) ArrayNoDefaultValue(value);
+    }
+
+    static void ArrayNoDefaultValueDestruct(void* obj) noexcept
+    {
+        cast_from_void<ArrayNoDefaultValue*>(obj)->~ArrayNoDefaultValue();
+    }
+
+    static auto ArrayComparableValueEquals(const ArrayComparableValue& self, const ArrayComparableValue& other) -> bool
+    {
+        return self.Value == other.Value;
+    }
+
+    static auto ArrayComparableValueEqualsMutable(const ArrayComparableValue& self, ArrayComparableValue& other) -> bool
+    {
+        return self.Value == other.Value;
+    }
+
+    static auto ArrayComparableValueCmp(const ArrayComparableValue& self, const ArrayComparableValue& other) -> int32_t
+    {
+        if (self.Value < other.Value) {
+            return -1;
+        }
+        if (self.Value > other.Value) {
+            return 1;
+        }
+        return 0;
+    }
+
+    static auto ArrayComparableValueCmpMutable(const ArrayComparableValue& self, ArrayComparableValue& other) -> int32_t
+    {
+        if (self.Value < other.Value) {
+            return -1;
+        }
+        if (self.Value > other.Value) {
+            return 1;
+        }
+        return 0;
+    }
+
+    static auto ArrayComparableValueCmpByValue(const ArrayComparableValue& self, ArrayComparableValue other) -> int32_t
+    {
+        return ArrayComparableValueCmp(self, other);
     }
 
     static auto MakeAngelScriptEngine(ScriptMessages& messages) -> AngelScript::asIScriptEngine*
@@ -89,6 +153,89 @@ namespace
         REQUIRE(engine->RegisterObjectType("ArrayDummyRef", 0, AngelScript::asOBJ_REF) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(ArrayDummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("ArrayDummyRef", AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(ArrayDummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+    }
+
+    static void RegisterArrayNoDefaultValue(AngelScript::asIScriptEngine* engine)
+    {
+        REQUIRE(engine->RegisterObjectType("ArrayNoDefaultValue", sizeof(ArrayNoDefaultValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_APP_CLASS_C | AngelScript::asGetTypeTraits<ArrayNoDefaultValue>()) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("ArrayNoDefaultValue", AngelScript::asBEHAVE_CONSTRUCT, "void f(int value)", FO_SCRIPT_FUNC_THIS(ArrayNoDefaultValueConstruct), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        REQUIRE(engine->RegisterObjectBehaviour("ArrayNoDefaultValue", AngelScript::asBEHAVE_DESTRUCT, "void f()", FO_SCRIPT_FUNC_THIS(ArrayNoDefaultValueDestruct), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+    }
+
+    static void RegisterArrayComparableValue(AngelScript::asIScriptEngine* engine, string_view type_name, bool with_multiple_equals, bool with_multiple_cmp)
+    {
+        const string name {type_name};
+        REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
+
+        if (with_multiple_equals) {
+            REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("bool opEquals(const {} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueEquals), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+            REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("bool opEquals({} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueEqualsMutable), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        }
+
+        if (with_multiple_cmp) {
+            REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("int opCmp(const {} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+            REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("int opCmp({} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpMutable), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        }
+    }
+
+    static void RegisterArrayCmpOnlyValue(AngelScript::asIScriptEngine* engine, string_view type_name)
+    {
+        const string name {type_name};
+        REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
+        REQUIRE(engine->RegisterObjectMethod(name.c_str(), strex("int opCmp(const {} &in) const", name).c_str(), FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+    }
+
+    static void RegisterArrayComparatorFilterValue(AngelScript::asIScriptEngine* engine, string_view type_name, string_view method_decl, const AngelScript::asSFuncPtr& func_ptr)
+    {
+        const string name {type_name};
+        REQUIRE(engine->RegisterObjectType(name.c_str(), sizeof(ArrayComparableValue), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_POD | AngelScript::asOBJ_APP_CLASS | AngelScript::asOBJ_APP_CLASS_ALLINTS) >= 0);
+        REQUIRE(engine->RegisterObjectMethod(name.c_str(), string {method_decl}.c_str(), func_ptr, FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+    }
+
+    static auto CheckArrayCmpOnlyValueOps() -> bool
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto* ctx = AngelScript::asGetActiveContext();
+        FO_VERIFY_AND_THROW(ctx != nullptr, "Missing active AngelScript context");
+
+        auto* engine = ctx->GetEngine();
+        FO_VERIFY_AND_THROW(engine != nullptr, "Missing AngelScript engine");
+
+        auto* array_type = engine->GetTypeInfoByDecl("array<ArrayCmpOnlyNativeValue>");
+        FO_VERIFY_AND_THROW(array_type != nullptr, "Missing array<ArrayCmpOnlyNativeValue> type");
+
+        auto* values = ScriptArray::Create(array_type, 2);
+        FO_VERIFY_AND_THROW(values != nullptr, "Failed to create ScriptArray");
+        auto release_values = scope_exit([&values]() noexcept { safe_call([&values] { values->Release(); }); });
+
+        auto* same_values = ScriptArray::Create(array_type, 2);
+        FO_VERIFY_AND_THROW(same_values != nullptr, "Failed to create ScriptArray");
+        auto release_same_values = scope_exit([&same_values]() noexcept { safe_call([&same_values] { same_values->Release(); }); });
+
+        ArrayComparableValue low_value {1};
+        ArrayComparableValue same_low_value {1};
+        ArrayComparableValue high_value {3};
+
+        values->SetValue(0, &low_value);
+        values->SetValue(1, &high_value);
+        same_values->SetValue(0, &same_low_value);
+        same_values->SetValue(1, &high_value);
+
+        if (!(*values == *same_values)) {
+            return false;
+        }
+        if (values->Find(&same_low_value) != 0) {
+            return false;
+        }
+
+        same_values->SetValue(0, &high_value);
+
+        if (*values == *same_values) {
+            return false;
+        }
+
+        return true;
     }
 
     static auto BuildAngelScriptModule(AngelScript::asIScriptEngine* engine, string_view module_name, string_view source) -> int32_t
@@ -569,6 +716,9 @@ namespace ScriptBuiltins
         GenderType[] cloned = genders.clone();
         if (!(genders == cloned)) return -11;
 
+        genders.sortAsc();
+        if (genders[0] != GenderType::Male || genders[1] != GenderType::Female || genders[2] != GenderType::Female) return -12;
+
         return 1;
     }
 
@@ -680,6 +830,25 @@ namespace ScriptBuiltins
         return 1;
     }
 
+    int ArrayWideEnumOps()
+    {
+        WideEnum low = WideEnum::Low;
+        WideEnum high = WideEnum::High;
+        WideEnum[] values = {};
+        values.insertLast(high);
+        values.insertLast(low);
+        values.sortAsc();
+        if (values[0] != low || values[1] != high) return -1;
+        if (values.find(high) != 1) return -2;
+
+        WideEnum[] clone = values.clone();
+        if (!(values == clone)) return -3;
+        clone[1] = low;
+        if (values == clone) return -4;
+
+        return 1;
+    }
+
     int ArrayConstructorOps()
     {
         array<int> filled = array<int>(3, 7);
@@ -732,6 +901,35 @@ namespace ScriptBuiltins
         bool opEquals(const ArrayComparableHandle? other) const
         {
             return other !is null && Value == other.Value;
+        }
+    }
+
+    class ArrayCmpOnlyHandle
+    {
+        int Value = 0;
+
+        int opCmp(const ArrayCmpOnlyHandle? other) const
+        {
+            if (other is null) return 1;
+            if (Value < other.Value) return -1;
+            if (Value > other.Value) return 1;
+            return 0;
+        }
+    }
+
+    class ArrayHandleInRefComparator
+    {
+        int opCmp(ArrayHandleInRefComparator?&in other) const
+        {
+            return 0;
+        }
+    }
+
+    class ArrayConstHandleComparator
+    {
+        int opCmp(ArrayConstHandleComparator? other) const
+        {
+            return 0;
         }
     }
 
@@ -857,6 +1055,22 @@ namespace ScriptBuiltins
         values.sortAsc();
     }
 
+    void ArrayHandleInRefComparatorThrows()
+    {
+        ArrayHandleInRefComparator first;
+        ArrayHandleInRefComparator second;
+        ArrayHandleInRefComparator?[] values = {first, second};
+        values.sortAsc();
+    }
+
+    void ArrayConstHandleComparatorThrows()
+    {
+        ArrayConstHandleComparator first;
+        ArrayConstHandleComparator second;
+        array<const ArrayConstHandleComparator?> values = {first, second};
+        values.sortAsc();
+    }
+
     int ArrayObjectNoCmpEqualsOps()
     {
         ArrayNoCompare first;
@@ -899,6 +1113,29 @@ namespace ScriptBuiltins
         ArrayComparableHandle?[] null_then_low = {null, low};
         null_then_low.sortAsc();
         if (null_then_low[0] !is null || null_then_low[1] !is low) return -5;
+
+        return 1;
+    }
+
+    int ArrayHandleCmpOnlyOps()
+    {
+        ArrayCmpOnlyHandle low = ArrayCmpOnlyHandle();
+        low.Value = 1;
+        ArrayCmpOnlyHandle same_low = ArrayCmpOnlyHandle();
+        same_low.Value = 1;
+        ArrayCmpOnlyHandle high = ArrayCmpOnlyHandle();
+        high.Value = 3;
+
+        ArrayCmpOnlyHandle?[] values = {high, low};
+        values.sortAsc();
+        if (values[0] !is low || values[1] !is high) return -1;
+        if (values.find(same_low) != 0) return -2;
+
+        ArrayCmpOnlyHandle?[] same_values = {same_low, high};
+        if (!(values == same_values)) return -3;
+
+        same_values[0] = high;
+        if (values == same_values) return -4;
 
         return 1;
     }
@@ -1239,23 +1476,25 @@ namespace ScriptBuiltins
 
         const string_view section_name = "Enum";
         writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-        writer.WriteStringBytes(section_name);
-        writer.Write<uint32_t>(uint32_t {1}); // 1 entry
+        writer.WritePtr(section_name.data(), section_name.size());
+        writer.Write<uint32_t>(uint32_t {2}); // 2 entries
 
-        // GenderType int Male 0 Female 1
-        writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
-
-        auto write_token = [&](string_view token) {
+        const auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
             writer.WriteStringBytes(token);
         };
+        const auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
+            writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
+            write_token(name);
+            write_token(underlying_type);
+            write_token(first_name);
+            write_token(first_value);
+            write_token(second_name);
+            write_token(second_value);
+        };
 
-        write_token("GenderType");
-        write_token("uint8");
-        write_token("Male");
-        write_token("0");
-        write_token("Female");
-        write_token("1");
+        write_enum("GenderType", "uint8", "Male", "0", "Female", "1");
+        write_enum("WideEnum", "uint16", "Low", "12", "High", "650");
 
         return metadata;
     }
@@ -1697,6 +1936,14 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CHECK(func.GetResult() == 1);
     }
 
+    // ArrayWideEnumOps
+    {
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ArrayWideEnumOps"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 1);
+    }
+
     // ArrayInsertNegativeArrayNoop
     {
         auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ArrayInsertNegativeArrayNoop"));
@@ -1729,6 +1976,14 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CHECK(func.GetResult() == 1);
     }
 
+    // ArrayHandleCmpOnlyOps
+    {
+        auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::ArrayHandleCmpOnlyOps"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 1);
+    }
+
     // Direct ScriptArray API coverage
     {
         ScriptMessages messages;
@@ -1755,7 +2010,51 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         REQUIRE(gc_node_handle_type != nullptr);
         CHECK((gc_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) != 0);
 
-        auto int_arr = ScriptArray::Create(int_type, 2);
+        REQUIRE(BuildAngelScriptModule(as_engine, "ArrayFinalNodeModule", "final class ArrayFinalNode { int Value; }\n") >= 0);
+        auto* final_module = as_engine->GetModule("ArrayFinalNodeModule", AngelScript::asGM_ONLY_IF_EXISTS);
+        REQUIRE(final_module != nullptr);
+        auto* final_node_type = final_module->GetTypeInfoByDecl("ArrayFinalNode");
+        REQUIRE(final_node_type != nullptr);
+        CHECK((final_node_type->GetFlags() & AngelScript::asOBJ_NOINHERIT) != 0);
+        auto* final_node_handle_type = final_module->GetTypeInfoByDecl("array<ArrayFinalNode@>");
+        REQUIRE(final_node_handle_type != nullptr);
+        CHECK((final_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) == 0);
+
+        RegisterArrayComparableValue(as_engine, "ArrayNoCompareValue", false, false);
+        auto* no_compare_value_type = as_engine->GetTypeInfoByDecl("array<ArrayNoCompareValue>");
+        REQUIRE(no_compare_value_type != nullptr);
+
+        RegisterArrayComparableValue(as_engine, "ArrayMultiEqualsValue", true, false);
+        auto* multi_equals_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiEqualsValue>");
+        REQUIRE(multi_equals_value_type != nullptr);
+
+        RegisterArrayComparableValue(as_engine, "ArrayMultiCmpValue", false, true);
+        auto* multi_cmp_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiCmpValue>");
+        REQUIRE(multi_cmp_value_type != nullptr);
+
+        RegisterArrayCmpOnlyValue(as_engine, "ArrayCmpOnlyNativeValue");
+        REQUIRE(as_engine->RegisterGlobalFunction("bool CheckArrayCmpOnlyValueOps()", FO_SCRIPT_FUNC(CheckArrayCmpOnlyValueOps), FO_SCRIPT_FUNC_CONV) >= 0);
+        REQUIRE(BuildAngelScriptModule(as_engine, "ArrayCmpOnlyValueOpsModule", "bool RunArrayCmpOnlyValueOps() { return CheckArrayCmpOnlyValueOps(); }\n") >= 0);
+        auto* cmp_only_module = as_engine->GetModule("ArrayCmpOnlyValueOpsModule", AngelScript::asGM_ONLY_IF_EXISTS);
+        REQUIRE(cmp_only_module != nullptr);
+        auto* cmp_only_func = cmp_only_module->GetFunctionByDecl("bool RunArrayCmpOnlyValueOps()");
+        REQUIRE(cmp_only_func != nullptr);
+
+        RegisterArrayComparatorFilterValue(as_engine, "ArrayCmpParamMismatchValue", "int opCmp(const ArrayCmpOnlyNativeValue &in) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp));
+        auto* param_mismatch_value_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpParamMismatchValue>");
+        REQUIRE(param_mismatch_value_type != nullptr);
+
+        RegisterArrayComparatorFilterValue(as_engine, "ArrayCmpByValueParamValue", "int opCmp(ArrayCmpByValueParamValue) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpByValue));
+        auto* by_value_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpByValueParamValue>");
+        REQUIRE(by_value_param_type != nullptr);
+
+        RegisterArrayComparatorFilterValue(as_engine, "ArrayCmpOutRefParamValue", "int opCmp(ArrayCmpOutRefParamValue &out) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpMutable));
+        auto* out_ref_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpOutRefParamValue>");
+        REQUIRE(out_ref_param_type != nullptr);
+
+        auto* int_arr = ScriptArray::Create(int_type, 2);
+        REQUIRE(int_arr != nullptr);
+        auto release_int_arr = scope_exit([&int_arr]() noexcept { safe_call([&int_arr] { int_arr->Release(); }); });
 
         auto uint_arr = ScriptArray::Create(uint_type, 1);
 
@@ -1787,8 +2086,20 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         CHECK_THROWS_AS((*int_arr = *uint_arr), ScriptException);
+        CHECK_FALSE(*int_arr == *uint_arr);
+        {
+            auto* smaller_int_arr = ScriptArray::Create(int_type, 1);
+            REQUIRE(smaller_int_arr != nullptr);
+            auto release_smaller_int_arr = scope_exit([&smaller_int_arr]() noexcept { safe_call([&smaller_int_arr] { smaller_int_arr->Release(); }); });
+            CHECK_FALSE(*int_arr == *smaller_int_arr);
+        }
+        CHECK_THROWS_AS(int_arr->InsertAt(-1, &first_int_value), ScriptException);
         CHECK_THROWS_AS(int_arr->InsertAt(0, *uint_arr), ScriptException);
+        CHECK_THROWS_AS(int_arr->InsertAt(-1, *int_arr), ScriptException);
         CHECK_THROWS_AS(int_arr->InsertAt(3, *int_arr), ScriptException);
+        CHECK_THROWS_AS(int_arr->RemoveAt(int_arr->GetSize()), ScriptException);
+        CHECK_THROWS_AS(int_arr->SortAsc(-1, 2), ScriptException);
+        CHECK_THROWS_AS(int_arr->SortDesc(int_arr->GetSize(), 2), ScriptException);
 
         ArrayDummyRef first_dummy_ref;
         void* first_dummy_ref_handle = &first_dummy_ref;
@@ -1807,6 +2118,11 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         auto release_gc_node = scope_exit([&]() noexcept { safe_call([&] { as_engine->ReleaseScriptObject(gc_node, gc_node_type); }); });
 
         auto gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
+
+        auto* final_handle_arr = ScriptArray::Create(final_node_handle_type, 0);
+        REQUIRE(final_handle_arr != nullptr);
+        auto release_final_handle_arr = scope_exit([&final_handle_arr]() noexcept { safe_call([&final_handle_arr] { final_handle_arr->Release(); }); });
+        CHECK(final_handle_arr->IsEmpty());
 
         void* gc_node_handle = gc_node;
         gc_handle_arr->SetValue(0, &gc_node_handle);
@@ -1843,6 +2159,79 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CheckPrimitiveScriptArrayDirectOps<float32_t>(as_engine, "float", -1.5f, 2.25f);
         CheckPrimitiveScriptArrayDirectOps<float64_t>(as_engine, "double", -3.5, 4.75);
 
+        {
+            auto* no_compare_values = ScriptArray::Create(no_compare_value_type, 1);
+            REQUIRE(no_compare_values != nullptr);
+            auto release_no_compare_values = scope_exit([&no_compare_values]() noexcept { safe_call([&no_compare_values] { no_compare_values->Release(); }); });
+            auto* no_compare_other = ScriptArray::Create(no_compare_value_type, 1);
+            REQUIRE(no_compare_other != nullptr);
+            auto release_no_compare_other = scope_exit([&no_compare_other]() noexcept { safe_call([&no_compare_other] { no_compare_other->Release(); }); });
+
+            ArrayComparableValue low_value {1};
+            ArrayComparableValue high_value {3};
+            no_compare_values->SetValue(0, &low_value);
+            no_compare_other->SetValue(0, &high_value);
+
+            CHECK_THROWS_WITH((*no_compare_values == *no_compare_other), Catch::Matchers::ContainsSubstring("Type does not have a matching opEquals or opCmp method"));
+            CHECK_THROWS_WITH(no_compare_values->Find(&high_value), Catch::Matchers::ContainsSubstring("Type does not have a matching opEquals or opCmp method"));
+        }
+
+        {
+            auto* multi_equals_values = ScriptArray::Create(multi_equals_value_type, 1);
+            REQUIRE(multi_equals_values != nullptr);
+            auto release_multi_equals_values = scope_exit([&multi_equals_values]() noexcept { safe_call([&multi_equals_values] { multi_equals_values->Release(); }); });
+            auto* multi_equals_other = ScriptArray::Create(multi_equals_value_type, 1);
+            REQUIRE(multi_equals_other != nullptr);
+            auto release_multi_equals_other = scope_exit([&multi_equals_other]() noexcept { safe_call([&multi_equals_other] { multi_equals_other->Release(); }); });
+
+            ArrayComparableValue first_value {1};
+            ArrayComparableValue same_value {1};
+            multi_equals_values->SetValue(0, &first_value);
+            multi_equals_other->SetValue(0, &same_value);
+
+            CHECK_THROWS_WITH((*multi_equals_values == *multi_equals_other), Catch::Matchers::ContainsSubstring("Type has multiple matching opEquals or opCmp methods"));
+            CHECK_THROWS_WITH(multi_equals_values->Find(&same_value), Catch::Matchers::ContainsSubstring("Type has multiple matching opEquals or opCmp methods"));
+        }
+
+        {
+            auto* multi_cmp_values = ScriptArray::Create(multi_cmp_value_type, 2);
+            REQUIRE(multi_cmp_values != nullptr);
+            auto release_multi_cmp_values = scope_exit([&multi_cmp_values]() noexcept { safe_call([&multi_cmp_values] { multi_cmp_values->Release(); }); });
+
+            ArrayComparableValue low_value {1};
+            ArrayComparableValue high_value {3};
+            multi_cmp_values->SetValue(0, &high_value);
+            multi_cmp_values->SetValue(1, &low_value);
+
+            CHECK_THROWS_WITH(multi_cmp_values->SortAsc(), Catch::Matchers::ContainsSubstring("Type has multiple matching opCmp methods"));
+        }
+
+        {
+            auto* ctx = as_engine->CreateContext();
+            REQUIRE(ctx != nullptr);
+            auto release_ctx = scope_exit([&ctx]() noexcept { safe_call([&ctx] { ctx->Release(); }); });
+
+            REQUIRE(ctx->Prepare(cmp_only_func) >= 0);
+            REQUIRE(ctx->Execute() == AngelScript::asEXECUTION_FINISHED);
+            CHECK(ctx->GetReturnByte() != 0);
+        }
+
+        for (auto* filtered_type : {param_mismatch_value_type, by_value_param_type, out_ref_param_type}) {
+            auto* filtered_values = ScriptArray::Create(filtered_type, 1);
+            REQUIRE(filtered_values != nullptr);
+            auto release_filtered_values = scope_exit([&filtered_values]() noexcept { safe_call([&filtered_values] { filtered_values->Release(); }); });
+            auto* filtered_other = ScriptArray::Create(filtered_type, 1);
+            REQUIRE(filtered_other != nullptr);
+            auto release_filtered_other = scope_exit([&filtered_other]() noexcept { safe_call([&filtered_other] { filtered_other->Release(); }); });
+
+            ArrayComparableValue low_value {1};
+            ArrayComparableValue high_value {3};
+            filtered_values->SetValue(0, &low_value);
+            filtered_other->SetValue(0, &high_value);
+
+            CHECK_THROWS_WITH((*filtered_values == *filtered_other), Catch::Matchers::ContainsSubstring("Type does not have a matching opEquals or opCmp method"));
+        }
+
         int_arr->EnumReferences(as_engine);
         int_arr->ReleaseAllHandles();
         CHECK(int_arr->IsEmpty());
@@ -1857,6 +2246,13 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         RegisterAngelScriptArray(as_engine);
 
         CHECK(BuildAngelScriptModule(as_engine, "ArrayVoidRejected", "void Test() { array<void> values; }\n") < 0);
+        CHECK(!messages.Entries.empty());
+        messages.Entries.clear();
+        RegisterArrayNoDefaultValue(as_engine);
+        CHECK(BuildAngelScriptModule(as_engine, "ArrayNativeNoDefaultValueRejected", "void Test() { array<ArrayNoDefaultValue> values; }\n") < 0);
+        CHECK(HasScriptMessage(messages, "The subtype has no default constructor"));
+        messages.Entries.clear();
+        CHECK(BuildAngelScriptModule(as_engine, "ArrayNoDefaultCtorRejected", "class NoDefault { NoDefault(int) {} }\nvoid Test() { array<NoDefault> values; }\n") < 0);
         CHECK(!messages.Entries.empty());
     }
 
@@ -1889,6 +2285,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
     run_throwing_func("ScriptBuiltins::ArrayEqualsNullThrows", "Array arg is null");
     run_throwing_func("ScriptBuiltins::ArrayFactoryNullThrows", "Array arg is null");
     run_throwing_func("ScriptBuiltins::ArrayObjectNoCmpSortThrows", "Type does not have a matching opCmp method");
+    run_throwing_func("ScriptBuiltins::ArrayHandleInRefComparatorThrows", "Type does not have a matching opCmp method");
+    run_throwing_func("ScriptBuiltins::ArrayConstHandleComparatorThrows", "Type does not have a matching opCmp method");
 }
 
 TEST_CASE("ScriptBuiltinsDictOperations")

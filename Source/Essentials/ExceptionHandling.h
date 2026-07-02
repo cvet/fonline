@@ -47,6 +47,7 @@ using ExceptionCallback = function<void(string_view message, const CatchedStackT
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
+extern void InstallCrashHandlerStackForThisThread() noexcept;
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 

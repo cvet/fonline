@@ -125,8 +125,8 @@ private:
     nptr<ScriptDictTypeData> _keyTypeData;
     nptr<ScriptDictTypeData> _valueTypeData;
     map<void*, void*, ScriptDictComparator> _data;
-    mutable int32_t _refCount {1};
-    mutable bool _gcFlag {};
+    mutable std::atomic<int32_t> _refCount {1};
+    mutable std::atomic<bool> _gcFlag {};
 };
 
 void RegisterAngelScriptDict(ptr<AngelScript::asIScriptEngine> as_engine);

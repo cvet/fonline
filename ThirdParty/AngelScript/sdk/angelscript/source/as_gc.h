@@ -105,6 +105,7 @@ protected:
 	int            IdentifyGarbageWithCyclicRefs();
 	asSObjTypePair GetNewObjectAtIdx(int idx);
 	asSObjTypePair GetOldObjectAtIdx(int idx);
+	asUINT         GetNewObjectsCount() const; // (FOnline Patch)
 	void           RemoveNewObjectAtIdx(int idx);
 	void           RemoveOldObjectAtIdx(int idx);
 	void           MoveObjectToOldList(int idx);

@@ -785,17 +785,17 @@ void ScriptDict::AddRef() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _gcFlag = false;
-    AngelScript::asAtomicInc(_refCount);
+    _gcFlag.store(false, std::memory_order_relaxed);
+    _refCount.fetch_add(1, std::memory_order_acq_rel);
 }
 
 void ScriptDict::Release() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _gcFlag = false;
+    _gcFlag.store(false, std::memory_order_relaxed);
 
-    if (AngelScript::asAtomicDec(_refCount) == 0) {
+    if (_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
         delete this;
     }
 }
@@ -804,21 +804,21 @@ auto ScriptDict::GetRefCount() const -> int32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _refCount;
+    return _refCount.load(std::memory_order_relaxed);
 }
 
 void ScriptDict::SetFlag() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    _gcFlag = true;
+    _gcFlag.store(true, std::memory_order_relaxed);
 }
 
 bool ScriptDict::GetFlag() const
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _gcFlag;
+    return _gcFlag.load(std::memory_order_relaxed);
 }
 
 void ScriptDict::EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const

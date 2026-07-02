@@ -97,7 +97,7 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
     te->Id = event_id;
     te->FuncName = std::visit([](auto&& f) -> ScriptFuncName { return f.GetName(); }, func);
     te->Func = std::move(func);
-    te->FireTime = _engine->GetFrameTime() + effective_delay;
+    te->FireTime = _engine->GameTime.GetFrameTime() + effective_delay;
     te->RepeatDuration = repeat;
     te->Data = std::move(data);
 
@@ -177,7 +177,7 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
         }
 
         const auto effective_delay = repeat.has_value() ? std::max(repeat.value(), MIN_REPEAT_TIME) : timespan::zero;
-        const auto fire_time = repeat.has_value() ? _engine->GetFrameTime() + effective_delay : nanotime::zero;
+        const auto fire_time = repeat.has_value() ? _engine->GameTime.GetFrameTime() + effective_delay : nanotime::zero;
 
         for (size_t i = 0; i < time_events->size(); i++) {
             auto& te = (*time_events)[i];
@@ -346,7 +346,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
     FO_STACK_TRACE_ENTRY();
 
     vector<shared_ptr<Entity::TimeEventData>> ready_events;
-    const auto time = _engine->GetFrameTime();
+    const auto time = _engine->GameTime.GetFrameTime();
 
     {
         std::scoped_lock lock {_timeEventLocker};
@@ -408,7 +408,7 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
 
     vector<ReadyTimeEvent> ready;
     optional<nanotime> next_future_fire_time;
-    const auto time = _engine->GetFrameTime();
+    const auto time = _engine->GameTime.GetFrameTime();
 
     for (ptr<Entity> entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
@@ -457,7 +457,7 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
         return;
     }
 
-    const auto time = _engine->GetFrameTime();
+    const auto time = _engine->GameTime.GetFrameTime();
 
     auto remove_event = [entity, &te]() mutable {
         auto time_events = entity->GetTimeEvents();
@@ -690,7 +690,7 @@ auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> 
         next_fire_time = te->FireTime;
     }
 
-    const auto now = _engine->GetFrameTime();
+    const auto now = _engine->GameTime.GetFrameTime();
 
     if (next_fire_time <= now) {
         // Edge case: handler took long enough that next FireTime is already in the past. Schedule

@@ -342,7 +342,7 @@ void Critter::MarkIsForPlayer()
     if (GetMapId()) {
         map = GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
-        ValidateEntityAccess(map.get());
+        ValidateEntityAccess(map);
     }
 
     SetControlledByPlayer(true);
@@ -366,7 +366,7 @@ void Critter::UnmarkIsForPlayer()
     if (GetMapId()) {
         map = GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
-        ValidateEntityAccess(map.get());
+        ValidateEntityAccess(map);
     }
 
     SetControlledByPlayer(false);
@@ -1028,6 +1028,43 @@ auto Critter::GetInvItemByPid(hstring item_pid) noexcept -> nptr<Item>
         if (item->GetProtoId() == item_pid) {
             return item.as_nptr();
         }
+    }
+
+    return nullptr;
+}
+
+auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    auto nullable_proto = _engine->GetProtoItem(item_pid);
+    FO_VERIFY_AND_THROW(nullable_proto, "Item proto not found", item_pid);
+    auto proto = nullable_proto.as_ptr();
+
+    if (proto->GetStackable()) {
+        for (auto& item : _invItems) {
+            if (item->GetProtoId() == item_pid) {
+                return item.get();
+            }
+        }
+    }
+    else {
+        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere.
+        nptr<Item> another_slot;
+
+        for (auto& item : _invItems) {
+            if (item->GetProtoId() == item_pid) {
+                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
+                    return item.get();
+                }
+
+                another_slot = item.get();
+            }
+        }
+
+        return another_slot;
     }
 
     return nullptr;

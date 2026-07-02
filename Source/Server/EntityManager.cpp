@@ -1270,7 +1270,7 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
 
     processed.emplace(entity);
 
-    EnsureCascadeNodeSynced(entity);
+    EnsureEntitySynced(entity);
 
     if (!entity->IsPersistent()) {
         WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
@@ -1291,7 +1291,7 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
 
     processed.emplace(entity);
 
-    EnsureCascadeNodeSynced(entity);
+    EnsureEntitySynced(entity);
 
     ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
 
@@ -1299,23 +1299,6 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
         WriteLog("Remove entity {} {} from database", entity->GetTypeName(), entity->GetId());
         _engine->DbStorage.Delete(entity->GetTypeNamePlural(), entity->GetId());
         entity->SetPersistent(false);
-    }
-}
-
-void EntityManager::EnsureCascadeNodeSynced(ptr<ServerEntity> entity)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // The (de)persist cascade walks an owned subtree (every node is reachable from a root the caller
-    // already covers), so pulling each node's own lock into the current sync context is safe - and
-    // necessary during a destroy cascade. There, a node is detached from its parent BEFORE being
-    // de-persisted (e.g. CritterManager::RemoveItemFromCritter clears the critter id, then calls
-    // MakePersistent(false) on the now-orphaned item), which severs the ancestor cover the caller
-    // relied on and would otherwise trip ForEachPersistentChildEntity's access validation. This
-    // mirrors the inner-item EnsureEntitySynced already used in ItemManager::DestroyItem.
-    if (auto nullable_ctx = _engine->GetCurrentSyncContext()) {
-        auto ctx = nullable_ctx.as_ptr();
-        ctx->EnsureEntitySynced(entity);
     }
 }
 
@@ -1725,10 +1708,6 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto entity_ref = entity.hold_ref();
-    ignore_unused(entity_ref);
-
-    ValidateEntityAccess(entity);
     EnsureEntitySynced(entity);
 
     if (entity->IsDestroying() || entity->IsDestroyed()) {

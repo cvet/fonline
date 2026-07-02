@@ -121,6 +121,9 @@ FO_SCRIPT_API ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ide
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_UnloadCritter(ptr<ServerEngine> server, ptr<Critter> cr)
 {
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(cr->GetParentRaw());
+
     server->UnloadCritter(cr);
 }
 
@@ -134,6 +137,9 @@ FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ptr<ServerEngine> server, 
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Critter> cr1, ptr<Critter> cr2)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr1);
+    ValidateEntityAccess(cr2);
 
     if (cr1->GetMapId() != cr2->GetMapId()) {
         throw ScriptException("Critters different maps");
@@ -152,6 +158,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item1);
+    ValidateEntityAccess(item2);
+
     if (item1->GetMapId() != item2->GetMapId()) {
         throw ScriptException("Items different maps");
     }
@@ -166,6 +175,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Critter> cr, ptr<Item> item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(item);
 
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Critter/Item different maps");
@@ -184,6 +196,9 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(cr);
+
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Item/Critter different maps");
     }
@@ -201,6 +216,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Crit
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(cr);
+
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
     }
@@ -214,6 +231,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Crit
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, mpos hex, ptr<Critter> cr)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
 
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
@@ -229,6 +248,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(item);
+
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
@@ -240,6 +261,8 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item
 FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, mpos hex, ptr<Item> item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item);
 
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
@@ -262,13 +285,20 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
-    return moved_item;
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCr);
+
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Critter> toCr)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCr);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -280,6 +310,10 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Map> toMap, mpos toHex)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toMap);
+
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -295,6 +329,10 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
         throw ScriptException("Invalid hexex args");
     }
 
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toMap);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -306,13 +344,20 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Item> toCont, any_t stackId = any_t {})
 {
-    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
-    return moved_item;
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCont);
+
+    return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Item> toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCont);
+
     if (count <= 0) {
         return nullptr;
     }
@@ -324,12 +369,23 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Critter> toCr)
 {
+    ValidateEntityAccess(toCr);
+
+    for (nptr<Item> nullable_item : items) {
+        ValidateEntityAccess(nullable_item);
+
+        if (nullable_item) {
+            ValidateEntityAccess(nullable_item->GetParentRaw());
+        }
+    }
+
     for (nptr<Item> nullable_item : items) {
         if (!nullable_item) {
             continue;
         }
 
         auto item = nullable_item.as_ptr();
+
         if (item->IsDestroyed()) {
             continue;
         }
@@ -341,6 +397,13 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Map> toMap, mpos toHex)
 {
+    ValidateEntityAccess(toMap);
+
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+    }
+
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
@@ -362,12 +425,23 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Item> toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(toCont);
+
+    for (nptr<Item> nullable_item : items) {
+        ValidateEntityAccess(nullable_item);
+
+        if (nullable_item) {
+            ValidateEntityAccess(nullable_item->GetParentRaw());
+        }
+    }
+
     for (nptr<Item> nullable_item : items) {
         if (!nullable_item) {
             continue;
         }
 
         auto item = nullable_item.as_ptr();
+
         if (item->IsDestroyed()) {
             continue;
         }
@@ -382,6 +456,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t i
     auto entity = server->EntityMngr.GetEntity(id);
 
     if (entity) {
+        ValidateEntityAccess(entity);
+        ValidateEntityAccess(entity->GetParentRaw());
+
         server->EntityMngr.DestroyEntity(entity.as_ptr());
     }
 }
@@ -390,6 +467,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t i
 FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
     if (entity) {
+        ValidateEntityAccess(entity);
+        ValidateEntityAccess(entity->GetParentRaw());
+
         server->EntityMngr.DestroyEntity(entity.as_ptr());
     }
 }
@@ -401,6 +481,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
         auto entity = server->EntityMngr.GetEntity(id);
 
         if (entity) {
+            ValidateEntityAccess(entity);
+            ValidateEntityAccess(entity->GetParentRaw());
+
             server->EntityMngr.DestroyEntity(entity.as_ptr());
         }
     }
@@ -411,6 +494,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
 {
     for (nptr<ServerEntity> entity : entities) {
         if (entity) {
+            ValidateEntityAccess(entity);
+            ValidateEntityAccess(entity->GetParentRaw());
+
             server->EntityMngr.DestroyEntity(entity.as_ptr());
         }
     }
@@ -420,6 +506,9 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
 FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item)
 {
     if (item) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
         server->ItemMngr.DestroyItem(item.as_ptr());
     }
 }
@@ -428,6 +517,9 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
 FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item, int32_t count)
 {
     if (item && count > 0) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
         auto item_ref = item.as_ptr();
         const auto cur_count = item_ref->GetCount();
 
@@ -446,6 +538,9 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
     auto item = server->EntityMngr.GetItem(itemId);
 
     if (item) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
         server->ItemMngr.DestroyItem(item.as_ptr());
     }
 }
@@ -456,6 +551,9 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
     auto nullable_item = server->EntityMngr.GetItem(itemId);
 
     if (nullable_item && count > 0) {
+        ValidateEntityAccess(nullable_item);
+        ValidateEntityAccess(nullable_item->GetParentRaw());
+
         auto item = nullable_item.as_ptr();
         const int32_t cur_count = item->GetCount();
 
@@ -473,6 +571,9 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
 {
     for (nptr<Item> item : items) {
         if (item) {
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(item->GetParentRaw());
+
             server->ItemMngr.DestroyItem(item.as_ptr());
         }
     }
@@ -486,6 +587,9 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
             auto item = server->EntityMngr.GetItem(item_id);
 
             if (item) {
+                ValidateEntityAccess(item);
+                ValidateEntityAccess(item->GetParentRaw());
+
                 server->ItemMngr.DestroyItem(item.as_ptr());
             }
         }
@@ -495,15 +599,11 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Critter> cr)
 {
-    nptr<Critter> cr_lookup = cr;
+    if (cr && !cr->GetControlledByPlayer()) {
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(cr->GetParentRaw());
 
-    if (!cr_lookup) {
-        return;
-    }
-
-    auto cr_ptr = cr_lookup.as_ptr();
-    if (!cr_ptr->GetControlledByPlayer()) {
-        server->CrMngr.DestroyCritter(cr_ptr);
+        server->CrMngr.DestroyCritter(cr.as_ptr());
     }
 }
 
@@ -513,12 +613,11 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
     if (crId) {
         auto nullable_cr = server->EntityMngr.GetCritter(crId);
 
-        if (nullable_cr) {
-            auto cr = nullable_cr.as_ptr();
+        if (nullable_cr && !nullable_cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(nullable_cr);
+            ValidateEntityAccess(nullable_cr->GetParentRaw());
 
-            if (!cr->GetControlledByPlayer()) {
-                server->CrMngr.DestroyCritter(cr);
-            }
+            server->CrMngr.DestroyCritter(nullable_cr.as_ptr());
         }
     }
 }
@@ -526,13 +625,12 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<Critter*> critters)
 {
-    for (nptr<Critter> nullable_cr : critters) {
-        if (nullable_cr) {
-            auto cr = nullable_cr.as_ptr();
+    for (nptr<Critter> cr : critters) {
+        if (cr && !cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(cr->GetParentRaw());
 
-            if (!cr->GetControlledByPlayer()) {
-                server->CrMngr.DestroyCritter(cr);
-            }
+            server->CrMngr.DestroyCritter(cr.as_ptr());
         }
     }
 }
@@ -542,14 +640,13 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
 {
     for (const ident_t id : critterIds) {
         if (id) {
-            auto nullable_cr = server->EntityMngr.GetCritter(id);
+            auto cr = server->EntityMngr.GetCritter(id);
 
-            if (nullable_cr) {
-                auto cr = nullable_cr.as_ptr();
+            if (cr && !cr->GetControlledByPlayer()) {
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(cr->GetParentRaw());
 
-                if (!cr->GetControlledByPlayer()) {
-                    server->CrMngr.DestroyCritter(cr);
-                }
+                server->CrMngr.DestroyCritter(cr.as_ptr());
             }
         }
     }
@@ -636,6 +733,9 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, nptr<Location> loc)
 {
     if (loc) {
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(loc->GetParentRaw());
+
         server->MapMngr.DestroyLocation(loc.as_ptr());
     }
 }
@@ -646,6 +746,9 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t
     auto loc = server->EntityMngr.GetLocation(locId);
 
     if (loc) {
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(loc->GetParentRaw());
+
         server->MapMngr.DestroyLocation(loc.as_ptr());
     }
 }
@@ -654,6 +757,9 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t
 FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, nptr<Map> map)
 {
     if (map) {
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(map->GetParentRaw());
+
         server->MapMngr.DestroyMap(map.as_ptr());
     }
 }
@@ -664,6 +770,9 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, ident_t mapI
     auto map = server->EntityMngr.GetMap(mapId);
 
     if (map) {
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(map->GetParentRaw());
+
         server->MapMngr.DestroyMap(map.as_ptr());
     }
 }
@@ -717,6 +826,8 @@ FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> se
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -728,6 +839,8 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> s
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -739,6 +852,8 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -1046,6 +1161,8 @@ FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ptr<ServerEngine> se
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_DbHasEntity(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
+    ValidateEntityAccess(entity);
+
     return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
 }
 
@@ -1380,6 +1497,9 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
 {
     ignore_unused(server);
 
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(usedItem);
+
     nptr<Item> used_item = usedItem;
 
     if (!staticItem->StaticScriptFunc) {
@@ -1489,6 +1609,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     string log;
 
+    bool process_done = false;
+
     while (true) {
         while (true) {
             DWORD bytes = 0;
@@ -1508,8 +1630,15 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
             }
         }
 
-        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+        // Drain once more AFTER the process has exited: a fast command (e.g. `echo`) can write its
+        // whole output and terminate between the last peek and this check, leaving it buffered in the
+        // pipe. Breaking immediately on exit would lose that final output.
+        if (process_done) {
             break;
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            process_done = true;
         }
     }
 

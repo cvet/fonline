@@ -221,6 +221,7 @@ void Item::SetItemToContainer(ptr<Item> item)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    EnsureEntitySynced(item);
 
     if (!_innerItems) {
         _innerItems.emplace();
@@ -231,11 +232,6 @@ void Item::SetItemToContainer(ptr<Item> item)
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetParent(this);
-
-    auto nullable_entity_lock = GetEntityLock();
-    FO_VERIFY_AND_THROW(nullable_entity_lock, "Container item has no entity lock");
-    auto entity_lock = nullable_entity_lock.as_ptr();
-    PropagateEntityLock(item, entity_lock);
 }
 
 auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>
@@ -243,11 +239,16 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
         auto nullable_item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
 
         if (nullable_item_already) {
+            if (nullable_item_already == item.get()) {
+                return item;
+            }
+
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
             nullable_item_already->SetCount(nullable_item_already->GetCount() + count);
@@ -279,11 +280,7 @@ void Item::RemoveItemFromContainer(ptr<Item> item)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
-
-    RevertEntityLock(item);
-    auto ctx = _engine->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    ctx->EnsureEntitySynced(item);
+    EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
     item->SetOwnership(ItemOwnership::Nowhere);

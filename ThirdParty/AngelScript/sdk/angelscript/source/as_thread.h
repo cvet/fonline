@@ -74,7 +74,10 @@ protected:
 	int refCount;
 
 #ifndef AS_NO_THREADS
-#if defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
+#if defined(AS_MODERN_THREADS)
+	// (FOnline Patch): standard C++ thread_local storage instead of a platform TLS key.
+	static thread_local asCThreadLocalData *tld;
+#elif defined(_MSC_VER) && defined(AS_WINDOWS_THREADS) && (WINAPI_FAMILY & WINAPI_FAMILY_PHONE_APP)
 	// On Windows Store we must use MSVC specific thread variables for thread
 	// local storage, as the TLS API isn't available. On desktop we can't use
 	// this as it may cause problems if the library is used in a dll.

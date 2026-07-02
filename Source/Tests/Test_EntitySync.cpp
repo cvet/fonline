@@ -1539,6 +1539,139 @@ TEST_CASE("EntityLockContention")
         CHECK(sync_ops.load() == sync_count * sync_iterations);
         CHECK(reader_ops.load() > 0);
     }
+
+    // Down-direction contention faithful to ServerMapOperations: many "subtree" workers concurrently
+    // mark the same ancestor via RegisterDescendantHold (sibling parallelism — sibling marks never
+    // block each other), while a few "ancestor-exclusive" threads take the ancestor with Acquire and
+    // therefore must wait until every FOREIGN descendant-mark has drained. Each exclusive Release fires
+    // the GrantWaiters path that has to batch-grant the queued DescendantHold waiters (the consecutive
+    // same-kind run), and every RegisterDescendantHold arriving while an exclusive writer is parked
+    // queues behind it (HasWaitingExclusive). Ticket ordering keeps both sides making progress. This
+    // exercises the descendant-hold wait queue, the DescendantHold batch-grant arm of GrantWaiters, and
+    // HasForeignDescendantHolder draining under churn — the least-covered concurrent path of EntityLock.
+    SECTION("DescendantHoldChurnWithExclusive")
+    {
+        EntityLock ancestor;
+        std::atomic<uint64_t> ticket {0};
+        std::atomic_int marker_ops {0};
+        std::atomic_int exclusive_ops {0};
+        std::atomic_bool stop {false};
+
+        constexpr int marker_count = 6;
+        constexpr int exclusive_count = 3;
+        constexpr int exclusive_iterations = 1500;
+
+        std::vector<std::thread> markers;
+        markers.reserve(marker_count);
+
+        for (int i = 0; i < marker_count; i++) {
+            markers.emplace_back([&]() {
+                while (!stop.load(std::memory_order_acquire)) {
+                    ancestor.RegisterDescendantHold(ticket.fetch_add(1, std::memory_order_relaxed));
+                    marker_ops.fetch_add(1, std::memory_order_relaxed);
+                    ancestor.UnregisterDescendantHold();
+                    // Brief sleep so the exclusive writers actually drain the marks and make steady
+                    // progress instead of being perpetually re-blocked by a fresh stream of marks.
+                    std::this_thread::sleep_for(std::chrono::microseconds(10));
+                }
+            });
+        }
+
+        std::vector<std::thread> exclusives;
+        exclusives.reserve(exclusive_count);
+
+        for (int i = 0; i < exclusive_count; i++) {
+            exclusives.emplace_back([&]() {
+                for (int j = 0; j < exclusive_iterations; j++) {
+                    ancestor.Acquire(ticket.fetch_add(1, std::memory_order_relaxed));
+                    exclusive_ops.fetch_add(1, std::memory_order_relaxed);
+                    ancestor.Release();
+                }
+            });
+        }
+
+        for (auto& t : exclusives) {
+            t.join();
+        }
+
+        stop.store(true, std::memory_order_release);
+
+        for (auto& t : markers) {
+            t.join();
+        }
+
+        CHECK(exclusive_ops.load() == exclusive_count * exclusive_iterations);
+        CHECK(marker_ops.load() > 0);
+    }
+
+    // SyncContext's descendant path is non-parking: AcquireLocks TryRegisterDescendantHold's the set and,
+    // on the first contended node, releases the marks it already took and retries. Mirror that try-and-
+    // back-off for descendant marks running against ancestor-exclusive writers, so the TryRegisterDescendantHold
+    // rejection path (foreign owner / parked exclusive) and the Unregister-driven GrantWaiters are hammered
+    // without any thread ever parking on the descendant-hold futex.
+    SECTION("TryDescendantHoldBackoffWithExclusive")
+    {
+        EntityLock ancestor;
+        std::atomic<uint64_t> ticket {0};
+        std::atomic_int marker_ops {0};
+        std::atomic_int exclusive_ops {0};
+        std::atomic_bool stop {false};
+
+        constexpr int marker_count = 4;
+        constexpr int exclusive_count = 2;
+        constexpr int exclusive_iterations = 2000;
+
+        std::vector<std::thread> markers;
+        markers.reserve(marker_count);
+
+        for (int i = 0; i < marker_count; i++) {
+            markers.emplace_back([&]() {
+                while (!stop.load(std::memory_order_acquire)) {
+                    for (int32_t spins = 0; !ancestor.TryRegisterDescendantHold();) {
+                        if (++spins < 64) {
+                            std::this_thread::yield();
+                        }
+                        else {
+                            std::this_thread::sleep_for(std::chrono::microseconds(20));
+                        }
+                    }
+
+                    marker_ops.fetch_add(1, std::memory_order_relaxed);
+                    ancestor.UnregisterDescendantHold();
+                }
+            });
+        }
+
+        std::vector<std::thread> exclusives;
+        exclusives.reserve(exclusive_count);
+
+        for (int i = 0; i < exclusive_count; i++) {
+            exclusives.emplace_back([&]() {
+                for (int j = 0; j < exclusive_iterations; j++) {
+                    ancestor.Acquire(ticket.fetch_add(1, std::memory_order_relaxed));
+                    exclusive_ops.fetch_add(1, std::memory_order_relaxed);
+                    ancestor.Release();
+                    // Leave the lock fully free for a beat so the non-parking TryRegisterDescendantHold
+                    // markers reliably catch a window and make progress (TryRegister never queues, so it
+                    // only succeeds when no exclusive owns and none is parked ahead).
+                    std::this_thread::sleep_for(std::chrono::microseconds(10));
+                }
+            });
+        }
+
+        for (auto& t : exclusives) {
+            t.join();
+        }
+
+        stop.store(true, std::memory_order_release);
+
+        for (auto& t : markers) {
+            t.join();
+        }
+
+        CHECK(exclusive_ops.load() == exclusive_count * exclusive_iterations);
+        CHECK(marker_ops.load() > 0);
+    }
 }
 
 FO_END_NAMESPACE

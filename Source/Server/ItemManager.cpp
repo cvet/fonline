@@ -68,7 +68,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(holder.dyn_cast<ServerEntity>().get());
+    EnsureEntitySynced(holder.dyn_cast<ServerEntity>());
     EnsureEntitySynced(item);
 
     switch (item->GetOwnership()) {
@@ -559,7 +559,7 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
         return;
     }
 
-    auto nullable_item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+    auto nullable_item = cr->GetItemByPidInvPriority(pid);
 
     if (!nullable_item) {
         return;
@@ -579,7 +579,7 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
             auto item = nullable_item.as_ptr();
             DestroyItem(item);
 
-            nullable_item = _engine->CrMngr.GetItemByPidInvPriority(cr, pid);
+            nullable_item = cr->GetItemByPidInvPriority(pid);
 
             if (!nullable_item) {
                 break;
