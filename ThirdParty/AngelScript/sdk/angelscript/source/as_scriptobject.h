@@ -43,6 +43,7 @@
 
 #include "as_config.h"
 #include "as_atomic.h"
+#include <atomic> // (FOnline Patch): for the atomic GC flag below
 
 BEGIN_AS_NAMESPACE
 
@@ -135,7 +136,7 @@ public:
 
 protected:
 	mutable asCAtomic refCount;
-	mutable asBYTE    gcFlag:1;
+	mutable std::atomic<bool> gcFlag{false}; // (FOnline Patch): atomic so concurrent AddRef/Release don't data-race on this GC hint
 	mutable asBYTE    hasRefCountReachedZero:1;
 	bool              isDestructCalled;
 

@@ -587,6 +587,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
     SetCacheValues(AS_DISABLE_INSTALL ON)
     AddSubdirectory("${FO_ANGELSCRIPT_SDK_DIR}/angelscript/projects/cmake" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     TargetCompileDefinitions(AngelScriptCore PUBLIC AS_USE_NAMESPACE)
+    TargetCompileDefinitions(AngelScriptCore PUBLIC AS_MODERN_THREADS)
     TargetCompileDefinitions(AngelScriptCore PUBLIC $<${expr_DebugBuild}:AS_DEBUG>)
     TargetCompileDefinitions(
         AngelScriptCore PUBLIC

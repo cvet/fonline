@@ -239,8 +239,7 @@ $Name = NoLanguagesItem
 $Text = No default language
 )");
 
-            ProtoTextBaker baker(local_rig.MakeContext("ProtoTextNoLanguages"));
-            CHECK_THROWS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+            CHECK_THROWS_AS(ProtoTextBaker(local_rig.MakeContext("ProtoTextNoLanguages")), ProtoTextBakerException);
         }
     }
 }

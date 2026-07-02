@@ -90,7 +90,7 @@ int asCGarbageCollector::AddScriptObjectToGC(void *obj, asCObjectType *objType)
 	// This will maintain the number of objects in the GC at a maintainable level without
 	// halting the application, and without burdening the application with manually invoking the 
 	// garbage collector.
-	if( engine->ep.autoGarbageCollect && gcNewObjects.GetLength() )
+	if( engine->ep.autoGarbageCollect && GetNewObjectsCount() ) // (FOnline Patch)
 	{
 		// If the GC is already processing in another thread, then don't try this again
 		if( TRYENTERCRITICALSECTION(gcCollecting) )
@@ -111,7 +111,7 @@ int asCGarbageCollector::AddScriptObjectToGC(void *obj, asCObjectType *objType)
 				}
 
 				// Run a few steps of DestroyGarbage
-				int iter = (int)gcNewObjects.GetLength();
+				int iter = (int)GetNewObjectsCount(); // (FOnline Patch)
 				if( iter > 10 ) iter = 10;
 				while( iter-- > 0 )
 					DestroyNewGarbage();
@@ -268,13 +268,17 @@ int asCGarbageCollector::GarbageCollect(asDWORD flags, asUINT iterations)
 //       When a bucket is filled up, the buckets are switched, and then new bucket is emptied to gather new statistics.
 void asCGarbageCollector::GetStatistics(asUINT *currentSize, asUINT *totalDestroyed, asUINT *totalDetected, asUINT *newObjects, asUINT *totalNewDestroyed) const
 {
-	// It is not necessary to protect this with critical sections, however
-	// as it is not protected the variables can be filled in slightly different
-	// moments and might not match perfectly when inspected by the application
-	// afterwards.
+	// (FOnline Patch) The list lengths are mutated under gcCritical by other threads (add/remove/move
+	// between new and old lists), so read them under the same lock; the unprotected read is a data
+	// race when contexts execute concurrently with a collection. The plain counters below are only
+	// written by the single collecting thread (serialized by gcCollecting).
+	ENTERCRITICALSECTION(const_cast<asCGarbageCollector*>(this)->gcCritical);
+	const asUINT newObjectsCount = (asUINT)gcNewObjects.GetLength();
+	const asUINT oldObjectsCount = (asUINT)gcOldObjects.GetLength();
+	LEAVECRITICALSECTION(const_cast<asCGarbageCollector*>(this)->gcCritical);
 
 	if( currentSize )
-		*currentSize = (asUINT)(gcNewObjects.GetLength() + gcOldObjects.GetLength());
+		*currentSize = newObjectsCount + oldObjectsCount;
 
 	if( totalDestroyed )
 		*totalDestroyed = numDestroyed;
@@ -283,10 +287,20 @@ void asCGarbageCollector::GetStatistics(asUINT *currentSize, asUINT *totalDestro
 		*totalDetected = numDetected;
 
 	if( newObjects )
-		*newObjects = (asUINT)gcNewObjects.GetLength();
+		*newObjects = newObjectsCount;
 
 	if( totalNewDestroyed )
 		*totalNewDestroyed = numNewDestroyed;
+}
+
+// (FOnline Patch) Locked counterpart of GetNewObjectAtIdx: the new-objects list is appended under
+// gcCritical by any thread creating a GC object, so its length must be read under the same lock.
+asUINT asCGarbageCollector::GetNewObjectsCount() const
+{
+	ENTERCRITICALSECTION(const_cast<asCGarbageCollector*>(this)->gcCritical);
+	asUINT count = (asUINT)gcNewObjects.GetLength();
+	LEAVECRITICALSECTION(const_cast<asCGarbageCollector*>(this)->gcCritical);
+	return count;
 }
 
 asCGarbageCollector::asSObjTypePair asCGarbageCollector::GetNewObjectAtIdx(int idx)
@@ -370,7 +384,7 @@ int asCGarbageCollector::DestroyNewGarbage()
 		case destroyGarbage_init:
 		{
 			// If there are no objects to be freed then don't start
-			if( gcNewObjects.GetLength() == 0 )
+			if( GetNewObjectsCount() == 0 ) // (FOnline Patch)
 				return 0;
 
 			// Update the seqAtSweepStart which is used to determine when 
@@ -394,7 +408,7 @@ int asCGarbageCollector::DestroyNewGarbage()
 			// Destroy all objects that have refCount == 1. If any objects are
 			// destroyed, go over the list again, because it may have made more
 			// objects reach refCount == 1.
-			if( ++destroyNewIdx < gcNewObjects.GetLength() )
+			if( ++destroyNewIdx < GetNewObjectsCount() ) // (FOnline Patch)
 			{
 				asSObjTypePair gcObj = GetNewObjectAtIdx(destroyNewIdx);
 				if( engine->CallObjectMethodRetInt(gcObj.obj, gcObj.type->beh.gcGetRefCount) == 1 )
