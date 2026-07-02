@@ -37,6 +37,7 @@
 #include "Application.h"
 #include "ClientDataValidation.h"
 #include "EntitySync.h"
+#include "Managed/ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "PropertiesSerializator.h"
@@ -290,6 +291,9 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, Settings, Resources);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, Resources);
 #endif
 
     return std::nullopt;

@@ -204,6 +204,7 @@ public:
     void RegisterSpriteFactory(unique_ptr<SpriteFactory>&& factory);
     auto GetSpriteFactory(std::type_index ti) -> SpriteFactory*;
     void CleanupSpriteCache();
+    void UnsubscribeWindowEvents() noexcept;
 
     void PushScissor(irect32 rect);
     void PopScissor();

@@ -38,6 +38,7 @@
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
+#include "Managed/ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "ParticleSprites.h"
 
@@ -543,6 +544,9 @@ MapperEngine::MapperEngine(GlobalSettings& settings, FileSystem&& resources, IAp
 
 #if FO_ANGELSCRIPT_SCRIPTING
     InitAngelScriptScripting(this, Settings, Resources);
+#endif
+#if FO_MANAGED_SCRIPTING
+    InitManagedScripting(this, Resources);
 #endif
 
     _curLang = TextPack {Hashes};

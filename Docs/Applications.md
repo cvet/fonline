@@ -11,6 +11,7 @@ Because of that, this doc names source entry points and roles, not universal fin
 ## Source paths inspected
 
 - `Source/Applications/ASCompilerApp.cpp`
+- `Source/Applications/ManagedScriptBakerApp.cpp`
 - `Source/Applications/BakerApp.cpp`
 - `Source/Applications/BakerLib.cpp`
 - `Source/Applications/ClientApp.cpp`
@@ -38,6 +39,7 @@ Because of that, this doc names source entry points and roles, not universal fin
 - `Source/Applications/BakerApp.cpp` — build/resource baking entry point.
 - `Source/Applications/BakerLib.cpp` — baking library entry point when baking is composed as a library.
 - `Source/Applications/ASCompilerApp.cpp` — AngelScript compiler entry point.
+- `Source/Applications/ManagedScriptBakerApp.cpp` — Managed (C#) script generate-and-bake entry point; prepares metadata then runs `ManagedScriptBaker` (C# API generation + assembly compilation). Built as `<FO_DEV_NAME>_ManagedScriptBaker` when `FO_MANAGED_SCRIPTING` is enabled, and invoked by the `CompileManagedScripts` target (usable as a pre-build environment-generation step or a manual task).
 - `Source/Applications/TestingApp.cpp` — test runner application entry point.
 
 ## CMake wiring
@@ -69,7 +71,7 @@ Server-hosted embedded clients keep separate settings objects alive for the life
 - Client startup or host/runtime behavior: `ClientApp.cpp`, `ClientLib.cpp`, [ClientUpdater.md](ClientUpdater.md).
 - Server lifecycle: `ServerApp.cpp` and server variants, [ServerRuntime.md](ServerRuntime.md).
 - Resource generation: `BakerApp.cpp`, `BakerLib.cpp`, [BakingPipeline.md](BakingPipeline.md).
-- Script compilation: `ASCompilerApp.cpp`, [Scripting.md](Scripting.md) and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
+- Script compilation: `ASCompilerApp.cpp` / `ManagedScriptBakerApp.cpp`, [Scripting.md](Scripting.md) and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - Mapper automation: `MapperApp.cpp`, [MapperTools.md](MapperTools.md).
 - Tests: `TestingApp.cpp`, [../Source/Tests/README.md](../Source/Tests/README.md), the current `Source/Tests/README.md` route until Docs/Testing.md is created.
 

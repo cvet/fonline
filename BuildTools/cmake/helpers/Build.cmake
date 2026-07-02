@@ -303,6 +303,42 @@ macro(AddNativeIncludeDir)
 	endif()
 endmacro()
 
+macro(AddManagedAssembly assembly)
+	if(FO_MANAGED_SCRIPTING)
+		StatusMessage("Add Managed assembly: ${assembly}")
+		AppendList(FO_MANAGED_ASSEMBLIES ${assembly})
+	endif()
+endmacro()
+
+macro(AddManagedReference assembly target)
+	if(FO_MANAGED_SCRIPTING)
+		foreach(ref ${ARGN})
+			StatusMessage("Add Managed reference (${assembly}.${target}): ${ref}")
+			AppendList(FO_MANAGED_REFERENCES "${assembly},${target},${ref}")
+		endforeach()
+	endif()
+endmacro()
+
+macro(AddManagedSource assembly target)
+	if(FO_MANAGED_SCRIPTING)
+		foreach(pathPattern ${ARGN})
+			FileGlob(globFiles LIST_DIRECTORIES FALSE "${FO_CONTRIBUTION_DIR}/${pathPattern}")
+
+			foreach(globFile ${globFiles})
+				GetFilenameComponent(globFileName ${globFile} NAME)
+				if(globFileName MATCHES "\\.gen\\.cs$" OR globFileName MATCHES "^(Server|Client|Mapper)(Enums|Types|Entities|Events|Settings|Content)\\.cs$")
+					continue()
+				endif()
+
+				GetFilenameComponent(globFile ${globFile} ABSOLUTE)
+				StatusMessage("Add Managed source (${assembly}.${target}): ${globFile}")
+				AppendList(FO_MANAGED_SOURCE "${assembly},${target},${globFile}")
+				AppendList(FO_MANAGED_SOURCE_FILES ${globFile})
+			endforeach()
+		endforeach()
+	endif()
+endmacro()
+
 macro(AddEngineSources)
 	set(sourceArgs ${ARGN})
 	ListLength(sourceArgs sourceArgsCount)
@@ -592,6 +628,8 @@ macro(SetupApplicationTarget target)
 	if(APP_TARGET_WRITE_BUILD_HASH)
 		WriteBuildHash(${target})
 	endif()
+
+	CopyManagedRuntimeToTarget(${target})
 endmacro()
 
 macro(AddExecutableApplication target sourceFile)
@@ -669,7 +707,7 @@ endmacro()
 # binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
 # the file does not exist, or the target has not been declared — so callers
 # can wire it up unconditionally for optional dependencies (Steamworks SDK,
-# Mono runtime, plugin DLLs, ...).
+# managed runtime, plugin DLLs, ...).
 function(CopyRuntimeToTarget targetName runtimePath)
 	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
 		return()
@@ -679,6 +717,23 @@ function(CopyRuntimeToTarget targetName runtimePath)
 	AddCustomCommand(TARGET ${targetName} POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy_if_different "${runtimePath}" "$<TARGET_FILE_DIR:${targetName}>"
 		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
+endfunction()
+
+function(CopyManagedRuntimeToTarget targetName)
+	if(NOT FO_MANAGED_SCRIPTING OR NOT TARGET ${targetName})
+		return()
+	endif()
+	if(NOT TARGET SetupManagedRuntime OR NOT DEFINED FO_MANAGED_RUNTIME_DIR)
+		return()
+	endif()
+
+	add_dependencies(${targetName} SetupManagedRuntime)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND}
+			-DINPUT_DIR="${FO_MANAGED_RUNTIME_DIR}"
+			-DOUTPUT_DIR="$<TARGET_FILE_DIR:${targetName}>"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CopyManagedRuntime.cmake"
+		COMMENT "Copy Managed runtime for ${targetName}")
 endfunction()
 
 # Wire one CMake target's output binary to be copied next to another's output

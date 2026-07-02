@@ -142,6 +142,7 @@ public:
     void AddItem(Item* item, mpos hex, Critter* dropper);
     void SetItem(Item* item);
     void RemoveItem(ident_t item_id);
+    void RefreshItemMultihex(Item* item);
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void SetHexManualBlock(mpos hex, bool enable, bool full);

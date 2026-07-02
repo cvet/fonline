@@ -46,6 +46,7 @@ ANDROID_ABI_BY_ARCH = {
 }
 ANDROID_ACTIVITY_CLASS = 'FOnlineActivity'
 RUNTIME_COMPANION_EXTENSIONS = ('.dll', '.so', '.dylib')
+RUNTIME_COMPANION_DIRECTORIES = ('ManagedRuntime',)
 PACKAGED_BUILD_NAME_MARKER = b'###NotPackaged###'
 PACKAGED_BUILD_NAME_CAPACITY = 128
 
@@ -403,6 +404,7 @@ class Packager:
 	def copy_runtime_companions(self, bin_path: str, primary_name: str, primary_ext: str, excluded_names: set[str] | None = None) -> None:
 		primary_file_name = primary_name + primary_ext
 		excluded_names = excluded_names or set()
+
 		for entry_name in sorted(os.listdir(bin_path)):
 			entry_path = os.path.join(bin_path, entry_name)
 			if not os.path.isfile(entry_path):
@@ -416,6 +418,18 @@ class Packager:
 
 			log('Runtime companion included', entry_name)
 			shutil.copy(entry_path, os.path.join(self.target_output_path, entry_name))
+
+		for entry_name in RUNTIME_COMPANION_DIRECTORIES:
+			if entry_name in excluded_names:
+				continue
+
+			entry_path = os.path.join(bin_path, entry_name)
+			if not os.path.isdir(entry_path):
+				continue
+
+			output_path = os.path.join(self.target_output_path, entry_name)
+			log('Runtime companion directory included', entry_name)
+			shutil.copytree(entry_path, output_path, dirs_exist_ok=True)
 
 	def package_platform_binary(self, bin_path: str, input_name: str, output_name: str, output_ext: str, additional_config_data: str | None = None, excluded_companions: set[str] | None = None) -> str:
 		output_file_path = os.path.join(self.target_output_path, output_name + output_ext)

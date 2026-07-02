@@ -102,7 +102,7 @@ The abstract base for individual baker implementations. Each baker provides:
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. During lazy output discovery it walks resource packs in the same order as `MasterBaker`, so cross-pack dependencies such as `ManagedScriptBaker` reading `Metadata.fometa-*` see earlier pack outputs; runtime file lookup still searches pack outputs in reverse order for normal resource precedence.
 
 ## Built-in baker types
 
@@ -120,6 +120,7 @@ The abstract base for individual baker implementations. Each baker provides:
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `8`, enabled when `FO_MANAGED_SCRIPTING` is active
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
@@ -141,7 +142,7 @@ frame selectors fall back to the first available cycle/frame.
 `ScriptsAndBaking.cmake` also creates script compilation commands:
 
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
-- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` when `FO_MONO_SCRIPTING` is enabled.
+- `CompileManagedScripts` runs the standalone `ManagedScriptBakerApp` (built as `<FO_DEV_NAME>_ManagedScriptBaker`) when `FO_MANAGED_SCRIPTING` is enabled, so the managed project environment can be regenerated and rebuilt without a full resource bake. The `Managed` baker generates target API C# files as `*.gen.cs`, copies engine-owned managed core support into project-local `*.gen.cs` files, writes one generated `.gen.csproj`, and a matching `.gen.sln` under the project's managed script directory, normally `Scripts/Managed/`. Generated files include an auto-generated disclaimer, are rewritten only when their content changes, and stale `.gen.*` files in that directory are removed when they are no longer produced. The project and solution are named from `FO_MANAGED_PROJECT_NAME` when set. The CMake bake path passes `FO_NICE_NAME`, so embedding projects get readable names such as `Scripts/Managed/<FO_NICE_NAME>.gen.csproj` and `Scripts/Managed/<FO_NICE_NAME>.gen.sln`. Managed assemblies are built into the baking pack under `Baking/<Pack>/Assemblies/<Target>Assemblies/` so packaging consumes them through the regular resource path; for a `Scripts` pack the entry assemblies are `Scripts.Server.dll`, `Scripts.Client.dll`, and `Scripts.Mapper.dll`, and any copied helper dlls from the MSBuild output are packed beside them for runtime dependency resolution. Managed builds run MSBuild with node reuse disabled to avoid stale project-file locks during later prebake passes. Managed builds also depend on `SetupManagedRuntime`, which publishes the Mono runtime plus Mono corelib into the CMake build tree, deploys it next to generated application binaries, and native package outputs carry that `ManagedRuntime/` directory as a runtime companion.
 
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
@@ -152,6 +153,7 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_BakerSetup.cpp`
 - `Test_ConfigBaker.cpp`
 - `Test_MetadataBaker.cpp`
+- `Test_ManagedScriptBaker.cpp`
 - `Test_RawCopyBaker.cpp`
 - `Test_ImageBaker.cpp`
 - `Test_EffectBaker.cpp`

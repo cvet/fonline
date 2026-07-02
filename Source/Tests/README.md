@@ -108,6 +108,7 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`

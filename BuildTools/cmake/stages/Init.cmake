@@ -28,6 +28,8 @@ DeclareValueOptions(
 	FO_MODEL_MAX_TEXTURES "Maximum textures per 3D model" 8
 	FO_MODEL_MAX_BONES "Maximum bone matrices per 3D model" 54
 	FO_MODEL_BONES_PER_VERTEX "Number of bone influences per 3D vertex" 4
+	FO_MANAGED_MSBUILD "Path to MSBuild executable for Managed script assemblies" ""
+	FO_MANAGED_TARGET_FRAMEWORK "Target framework for Managed script assemblies" "net10.0"
 	FO_MSAN_LIBCXX_ROOT "Path to an MSan-instrumented libc++ install prefix for San_Memory builds" ""
 	FO_MSAN_IGNORELIST "Path to MemorySanitizer ignorelist" "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/sanitizers/msan-ignorelist.txt"
 	FO_RESHARPER_SETTINGS "Path to ReSharper solution settings (empty is default config)" "")
@@ -36,7 +38,7 @@ DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
-	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
+	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
 	FO_DISABLE_UNQLITE "Force disable using of Unqlite" OFF
@@ -315,7 +317,7 @@ AddCompileDefinitionsList(
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
-	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
+	FO_MANAGED_SCRIPTING=$<BOOL:${FO_MANAGED_SCRIPTING}>)
 
 # The remaining engine settings (FO_GEOMETRY, FO_MAP_*, FO_EFFECT_*, FO_MODEL_*, FO_USE_NAMESPACE, FO_NO_*,
 # FO_MAIN_CONFIG, ...) are value/shape config consumed only after an engine header is included; codegen emits

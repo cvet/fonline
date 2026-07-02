@@ -19,5 +19,5 @@
 
 ### Native C++
 ### AngelScript
-### Mono C#
+### Managed C#
 ## Video tutorials

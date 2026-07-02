@@ -1314,6 +1314,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ClientEngine* client, int
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Game_SaveScreenshot(ClientEngine* client, string_view filePath)
 {
+    FO_STACK_TRACE_ENTRY();
+
     if (filePath.empty()) {
         throw ScriptException("Screenshot file path is empty");
     }

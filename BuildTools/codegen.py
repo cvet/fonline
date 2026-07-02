@@ -410,6 +410,19 @@ def run_codegen_step(action: Callable[[], None], error_message: str) -> None:
 
 # Parse tags
 tag_metas: TagMetaStore = create_tag_meta_store()
+script_metadata_tags = {
+    'Entity',
+    'EntityHolder',
+    'FixedType',
+    'ValueType',
+    'RefType',
+    'Enum',
+    'Property',
+    'Event',
+    'RemoteCall',
+    'Setting',
+    'MigrationRule',
+}
 
 
 def find_comment_start(line: str) -> int:
@@ -525,28 +538,31 @@ def parse_meta_file(abs_path: str) -> None:
                 if comment_pos != -1:
                     last_comment = [tag_str[comment_pos + 2:].strip()]
                     tag_str = tag_str[:comment_pos].rstrip()
-                
+
                 comment = last_comment if last_comment else []
-                
+
                 tag_split = tag_str.split(' ', 1)
                 tag_name = tag_split[0]
-                
+                if tag_name in script_metadata_tags and os.path.splitext(abs_path)[1].lower() in ('.cs', '.fos'):
+                    last_comment = []
+                    continue
+
                 if tag_name not in tag_metas:
                     show_error('Invalid tag ' + tag_name, abs_path + ' (' + str(line_index + 1) + ')', line.strip())
                     continue
-                
+
                 tag_info = tag_split[1] if len(tag_split) > 1 else None
 
                 tag_context = resolve_tag_context(tag_name, lines, line_index, tag_pos)
-                
+
                 tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment))
                 last_comment = []
-                
+
             elif line_len - tag_pos >= 3 and line[tag_pos + 2] != '/':
                 last_comment.append(line[tag_pos + 2:].strip())
             else:
                 last_comment = []
-                
+
         except Exception as ex:
             show_error('Invalid tag format', abs_path + ' (' + str(line_index + 1) + ')', line.strip(), ex)
 
@@ -1778,14 +1794,39 @@ def is_engine_hook_enabled(hook_name: str) -> bool:
     return False
 
 
+def does_setting_tag_match_target(settings_tag: ExportSettingsTag, target: str) -> bool:
+    return settings_tag.target in [target, 'Common'] or (target == 'Mapper' and settings_tag.target == 'Client')
+
+
 def append_settings_getter(global_lines: list[str], target: str) -> None:
     global_lines.append('[[maybe_unused]] auto Get' + target + 'Settings() -> unordered_set<string>')
     global_lines.append('{')
     global_lines.append('    unordered_set<string> settings = {')
     for settings_tag in codegen_tags['ExportSettings']:
-        if settings_tag.target in [target, 'Common']:
+        if does_setting_tag_match_target(settings_tag, target):
             for setting in settings_tag.settings:
                 global_lines.append('        "' + setting.name + '",')
+    global_lines.append('    };')
+    global_lines.append('    return settings;')
+    global_lines.append('}')
+    global_lines.append('')
+
+
+def append_settings_typed_getter(global_lines: list[str], target: str) -> None:
+    # Like Get<target>Settings() but with each setting's meta type, so the managed baker can generate typed
+    # accessors for the engine ExportSettings (which are not in the metadata blob's "Setting" section -- that
+    # only carries project `///@ Setting` tags). Ordered (vector) for deterministic generation.
+    global_lines.append('[[maybe_unused]] auto Get' + target + 'SettingsTyped() -> vector<pair<string, string>>')
+    global_lines.append('{')
+    global_lines.append('    vector<pair<string, string>> settings = {')
+    for settings_tag in codegen_tags['ExportSettings']:
+        if does_setting_tag_match_target(settings_tag, target):
+            for setting in settings_tag.settings:
+                # Managed Settings codegen accepts scalar and array complex-type syntax. Dict settings are still
+                # skipped: engine ExportSettings do not expose a stable managed dictionary bridge here.
+                if setting.value_type.startswith('dict.'):
+                    continue
+                global_lines.append('        {"' + setting.name + '", "' + meta_type_to_unified_type(setting.value_type) + '"},')
     global_lines.append('    };')
     global_lines.append('    return settings;')
     global_lines.append('}')
@@ -1850,6 +1891,10 @@ def generate_generic_code() -> None:
     # Settings list
     append_settings_getter(global_lines, 'Server')
     append_settings_getter(global_lines, 'Client')
+    append_settings_getter(global_lines, 'Mapper')
+    append_settings_typed_getter(global_lines, 'Server')
+    append_settings_typed_getter(global_lines, 'Client')
+    append_settings_typed_getter(global_lines, 'Mapper')
     
     generated_output.create_file('GenericCode-Common.gen.cpp', args.genoutput)
     generated_output.write_codegen_template('GenericCode')

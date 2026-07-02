@@ -2878,9 +2878,14 @@ class Grid : Panel
         // Remove current instances
         for (int i = 0; i < _Children.length();) {
             if (_Cells.findByRef(_Children[i]) != -1) {
-                _Children[i].SetActive(false);
-                _SetCellIndex(_Children[i], null, -1);
+                Object cell = _Children[i];
                 _Children.removeAt(i);
+                _Cells.removeAt(_Cells.findByRef(cell));
+                _SetCellIndex(cell, null, -1);
+                cell._Parent = null;
+                cell._Remove();
+                cell._ActiveSelf = false;
+                cell._RefreshActive();
             }
             else {
                 i++;
@@ -4298,6 +4303,7 @@ void EngineCallback_Finish()
         cursorScreen.Remove();
         CleanupObjectGraph(cursorScreen);
         CursorScreen = null;
+        cursorScreen = null;
     }
 
     for (int i = Screens.length() - 1; i >= 0; i--) {

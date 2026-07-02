@@ -403,6 +403,9 @@ namespace NativeDataCaller
             FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
             return temp.emplace(target_entity);
         }
+        else if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
+            return temp.emplace(*cast_from_void<raw_t*>(data));
+        }
         else if constexpr (std::is_reference_v<T>) {
             return *MemReadUnaligned<raw_t*>(data);
         }
@@ -479,7 +482,7 @@ class ScriptSystemBackend
 {
 public:
     static constexpr int32_t ANGELSCRIPT_BACKEND_INDEX = 0;
-    // static constexpr int32_t MONO_BACKEND_INDEX = 1;
+    static constexpr int32_t MANAGED_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
 
@@ -534,6 +537,8 @@ public:
 
     [[nodiscard]] auto FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*;
     [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> ScriptFuncDesc*;
+    [[nodiscard]] auto FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types, const ComplexTypeDesc& ret_type) noexcept -> ScriptFuncDesc*;
+    [[nodiscard]] auto FindFuncCandidates(hstring func_name) noexcept -> vector<ScriptFuncDesc*>;
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto CheckFunc(hstring func_name, string_view attribute = {}) const noexcept -> bool

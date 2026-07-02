@@ -144,7 +144,7 @@ private:
         float32_t Position {};
         raw_ptr<const ModelAnimation> Anim {};
         bool Reversed {};
-        vector<raw_ptr<Output>> AnimOutput {};
+        vector<size_t> AnimOutput {};
         vector<Event> Events {};
     };
 
@@ -152,20 +152,23 @@ private:
     void Interpolate(vec3& v1, const vec3& v2, float32_t factor) const;
 
     template<typename T>
-    void FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result);
+    auto FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result) -> bool;
 
     shared_ptr<vector<pair<ModelAnimation*, bool>>> _anims {};
-    shared_ptr<vector<Output>> _outputs {};
+    shared_ptr<deque<Output>> _outputs {};
     vector<Track> _tracks {};
     float32_t _eventsTime {};
     bool _interpolationDisabled {};
 };
 
 template<typename T>
-void ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result)
+auto ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result) -> bool
 {
     FO_VERIFY_AND_THROW(times.size() == values.size(), "Animation SRT keyframe time and value tracks have different sizes", time, duration, times.size(), values.size());
-    FO_VERIFY_AND_THROW(!times.empty(), "Animation SRT track has no keyframes to sample", time, duration, values.size());
+
+    if (times.empty()) {
+        return false;
+    }
 
     if (reserved) {
         for (auto i = numeric_cast<int32_t>(times.size() - 1); i >= 0; i--) {
@@ -203,6 +206,8 @@ void ModelAnimationController::FindSrtValue(float32_t time, float32_t duration, 
             }
         }
     }
+
+    return true;
 }
 
 FO_END_NAMESPACE

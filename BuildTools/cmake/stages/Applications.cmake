@@ -153,6 +153,19 @@ if(FO_BUILD_ASCOMPILER)
         WRITE_BUILD_HASH)
 endif()
 
+if(FO_MANAGED_SCRIPTING AND FO_BUILD_BAKER_LIB)
+    AddExecutableApplication(
+        ${FO_DEV_NAME}_ManagedScriptBaker
+        "${FO_ENGINE_ROOT}/Source/Applications/ManagedScriptBakerApp.cpp"
+        OUTPUT_DIR ${FO_BAKER_OUTPUT}
+        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
+        OUTPUT_NAME ${FO_DEV_NAME}_ManagedScriptBaker
+        TESTING_APP 0
+        LINK_LIBS AppHeadless BakerLib
+        DEPENDS ${FO_GEN_DEPENDENCIES}
+        WRITE_BUILD_HASH)
+endif()
+
 if(FO_BUILD_BAKER)
     AddExecutableApplication(${FO_DEV_NAME}_Baker "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
         OUTPUT_DIR ${FO_BAKER_OUTPUT}

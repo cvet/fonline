@@ -164,6 +164,8 @@ void MapView::OnDestroySelf()
 {
     FO_STACK_TRACE_ENTRY();
 
+    _eventUnsubscriber.Unsubscribe();
+
     for (auto& cr : _critters) {
         safe_call([&] { cr->DestroySelf(); });
     }
@@ -3916,7 +3918,10 @@ auto MapView::AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* cu
     fog->CustomFlushEffect = custom_flush_effect;
 
     _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
-    return fog.get();
+    // Hand the script an owned reference (PassOwnership): the fog map keeps its own ref, and the script's handle
+    // must count too, otherwise PrepareFogToDraw's refcount==1 eviction would free the fog out from under a
+    // script that is still holding and configuring it.
+    return fog.release_ownership();
 }
 
 auto MapView::AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*
@@ -3930,7 +3935,10 @@ auto MapView::AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_fl
     fog->CustomFlushEffect = custom_flush_effect;
 
     _fogs[static_cast<size_t>(draw_order)].emplace_back(fog);
-    return fog.get();
+    // Hand the script an owned reference (PassOwnership): the fog map keeps its own ref, and the script's handle
+    // must count too, otherwise PrepareFogToDraw's refcount==1 eviction would free the fog out from under a
+    // script that is still holding and configuring it.
+    return fog.release_ownership();
 }
 
 auto MapView::AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8_t* palpha, bool* callback) -> MapSprite*
