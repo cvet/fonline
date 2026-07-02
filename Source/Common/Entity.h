@@ -281,7 +281,7 @@ protected:
 
     raw_ptr<Entity> _entity;
     string_view _callbackName;
-    raw_ptr<vector<Entity::EventCallbackData>> _callbacks {};
+    std::atomic<vector<Entity::EventCallbackData>*> _callbacks {};
 };
 
 template<fixed_string Name, typename... Args>

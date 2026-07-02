@@ -45,38 +45,65 @@ asCAtomic::asCAtomic()
 
 asDWORD asCAtomic::get() const
 {
+	// (FOnline Patch) The counter member is std::atomic on the modern branch (see as_atomic.h); the
+	// former plain read raced with concurrent atomic inc/dec. Assert on the loaded value, not a re-read.
+#if defined(AS_MODERN_THREADS)
+	asDWORD v = value.load(std::memory_order_acquire);
+#else
+	asDWORD v = value;
+#endif
+
 	// A very high ref count is highly unlikely. It most likely a problem with
 	// memory that has been overwritten or is being accessed after it was deleted.
-	asASSERT(value < 1000000);
+	asASSERT(v < 1000000);
 
-	return value;
+	return v;
 }
 
 void asCAtomic::set(asDWORD val)
 {
 	// A very high ref count is highly unlikely. It most likely a problem with
 	// memory that has been overwritten or is being accessed after it was deleted.
-	asASSERT(value < 1000000);
+	asASSERT(val < 1000000);
 
+	// (FOnline Patch) Atomic store on the modern branch; the former plain write raced with inc/dec.
+#if defined(AS_MODERN_THREADS)
+	value.store(val, std::memory_order_release);
+#else
 	value = val;
+#endif
 }
 
 asDWORD asCAtomic::atomicInc()
 {
+	// (FOnline Patch) RMW on the atomic member; assert on the returned value (a bare pre-read races).
+#if defined(AS_MODERN_THREADS)
+	asDWORD v = value.fetch_add(1, std::memory_order_acq_rel) + 1;
+#else
+	asDWORD v = (asDWORD)asAtomicInc((int&)value);
+#endif
+
 	// A very high ref count is highly unlikely. It most likely a problem with
 	// memory that has been overwritten or is being accessed after it was deleted.
-	asASSERT(value < 1000000);
+	asASSERT(v < 1000000);
 
-	return asAtomicInc((int&)value);
+	return v;
 }
 
 asDWORD asCAtomic::atomicDec()
 {
+	// (FOnline Patch) RMW on the atomic member; assert on the returned value (a bare pre-read races).
+#if defined(AS_MODERN_THREADS)
+	asDWORD v = value.fetch_sub(1, std::memory_order_acq_rel) - 1;
+#else
+	asDWORD v = (asDWORD)asAtomicDec((int&)value);
+#endif
+
 	// A very high ref count is highly unlikely. It most likely a problem with
 	// memory that has been overwritten or is being accessed after it was deleted.
-	asASSERT(value < 1000000);
+	asASSERT(v < 1000000);
 
-	return asAtomicDec((int&)value);
+	return v;
 }
 
 //
@@ -201,7 +228,7 @@ int asAtomicDec(int &value)
 #else
 
 // If we get here, then the configuration in as_config.h
-//  is wrong for the compiler/platform combination. 
+//  is wrong for the compiler/platform combination.
 int ERROR_PleaseFixTheConfig[-1];
 
 #endif

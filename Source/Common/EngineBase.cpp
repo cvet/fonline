@@ -1165,6 +1165,8 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 
     FO_VERIFY_AND_THROW(min_value <= max_value, "Engine random integer range has an inverted min/max", min_value, max_value);
 
+    scoped_lock locker {_randomGeneratorLocker};
+
     return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
 }
 
