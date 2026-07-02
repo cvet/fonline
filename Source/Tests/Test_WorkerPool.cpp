@@ -561,7 +561,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
     SECTION("DriversHammerSubmitWakeCancelClear")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"chaos", 4, shutdown_flag};
+        WorkerPool pool {"chaos", 4, &shutdown_flag};
 
         std::atomic_int body_runs {0};
 

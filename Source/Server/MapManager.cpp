@@ -115,7 +115,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Critter proto not found on map", map_proto->GetName(), cr_pid);
                         }
 
-                        auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
+                        auto cr_props = Properties(cr_proto->GetProperties()->GetRegistrator());
                         const auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
@@ -158,7 +158,7 @@ void MapManager::LoadFromResources()
                             throw MapManagerException("Item proto not found on map", map_proto->GetName(), item_pid);
                         }
 
-                        auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
+                        auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
                         const auto props_data_size = reader.Read<uint32_t>();
                         props_data.resize(props_data_size);
                         span<uint8_t> props_data_span = props_data;
@@ -330,14 +330,14 @@ void MapManager::GenerateMapContent(ptr<Map> map)
 
     // Generate critters
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
-        auto cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
+        auto cr = _engine->CrMngr.CreateCritterOnMap(base_cr->GetProtoId(), base_cr->GetProperties(), map, base_cr->GetHex(), base_cr->GetDir());
         id_map.emplace(base_cr_id, cr->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     }
 
     // Generate hex items
     for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
         id_map.emplace(base_item_id, item->GetId());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         map->AddItem(item, base_item->GetHex(), nullptr);
@@ -366,7 +366,7 @@ void MapManager::GenerateMapContent(ptr<Map> map)
         owner_id = id_map[owner_id];
 
         // Create item
-        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
+        auto item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, base_item->GetProperties());
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
         // Add to parent
@@ -1185,25 +1185,25 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
     auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
 
     if (nullable_map != nullptr) {
-        FO_VERIFY_AND_THROW(cr->GetMapId() == nullable_map->GetId(), "Critter belongs to a different map");
         auto map = nullable_map.as_ptr();
+        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
         auto map_holder = map.hold_ref();
         ignore_unused(map_holder);
-        ValidateEntityAccess(nullable_map);
+        ValidateEntityAccess(map);
         ValidateEntityAccess(cr);
         _engine->OnMapCritterOut.Fire(map, cr);
 
-        if (cr->IsDestroyed() || nullable_map->IsDestroyed()) {
+        if (cr->IsDestroyed() || map->IsDestroyed()) {
             return;
         }
 
         EnsureEntitySynced(map);
         EnsureEntitySynced(cr);
 
-        FO_VERIFY_AND_THROW(cr->GetMapId() == nullable_map->GetId(), "Critter belongs to a different map");
-        auto map_cr = nullable_map->GetCritter(cr->GetId());
+        FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+        auto map_cr = map->GetCritter(cr->GetId());
         nptr<Critter> expected_cr = cr;
-        FO_VERIFY_AND_THROW(map_cr == expected_cr, "Critter is not registered in its map before map-exit notification", nullable_map->GetId(), cr->GetId(), cr->GetMapId());
+        FO_VERIFY_AND_THROW(map_cr == expected_cr, "Critter is not registered in its map before map-exit notification", map->GetId(), cr->GetId(), cr->GetMapId());
 
         for (ptr<Critter> other : copy_hold_ref(cr->GetCritters(CritterSeeType::WhoSeeMe, CritterFindType::Any))) {
             if (other->IsDestroyed()) {
@@ -1214,17 +1214,17 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
             ValidateEntityAccess(cr);
             other->OnCritterDisappeared.Fire(cr);
 
-            if (cr->IsDestroyed() || nullable_map->IsDestroyed()) {
+            if (cr->IsDestroyed() || map->IsDestroyed()) {
                 return;
             }
 
             EnsureEntitySynced(map);
             EnsureEntitySynced(cr);
 
-            FO_VERIFY_AND_THROW(cr->GetMapId() == nullable_map->GetId(), "Critter belongs to a different map");
-            auto current_map_cr = nullable_map->GetCritter(cr->GetId());
+            FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
+            auto current_map_cr = map->GetCritter(cr->GetId());
             nptr<Critter> current_expected_cr = cr;
-            FO_VERIFY_AND_THROW(current_map_cr == current_expected_cr, "Critter is not registered in its map after disappearance notification", nullable_map->GetId(), cr->GetId(), cr->GetMapId());
+            FO_VERIFY_AND_THROW(current_map_cr == current_expected_cr, "Critter is not registered in its map after disappearance notification", map->GetId(), cr->GetId(), cr->GetMapId());
         }
 
         EnsureEntitySynced(map);
@@ -1233,19 +1233,19 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
         cr->ClearVisibleEnitites();
 
         // Notify spectators
-        if (nullable_map->HasSpectatorPlayers()) {
-            for (ptr<Player> player : copy_hold_ref(nullable_map->GetSpectatorPlayers())) {
+        if (map->HasSpectatorPlayers()) {
+            for (ptr<Player> player : copy_hold_ref(map->GetSpectatorPlayers())) {
                 player->Send_RemoveCritter(cr);
             }
         }
 
-        nullable_map->RemoveCritter(cr);
+        map->RemoveCritter(cr);
         cr->SetMapId({});
 
         if (!cr->GetControlledByPlayer()) {
-            auto cr_ids = nullable_map->GetCritterIds();
+            auto cr_ids = map->GetCritterIds();
             vec_remove_unique_value(cr_ids, cr->GetId());
-            nullable_map->SetCritterIds(cr_ids);
+            map->SetCritterIds(cr_ids);
         }
     }
     else {

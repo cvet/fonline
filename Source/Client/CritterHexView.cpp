@@ -442,7 +442,7 @@ auto CritterHexView::GetModelLayersData() const -> ptr<const int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prop_raw_data = GetProperties().GetRawData(GetPropertyModelLayers());
+    const auto prop_raw_data = GetProperties()->GetRawData(GetPropertyModelLayers());
     FO_VERIFY_AND_THROW(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT, "Model layer property raw data size does not match layer count", prop_raw_data.size(), MODEL_LAYERS_COUNT, sizeof(int32_t));
     nptr<const uint8_t> data = prop_raw_data.data();
     return data.reinterpret_as<int32_t>().as_ptr();

@@ -1427,7 +1427,7 @@ TEST_CASE("ImageBaker")
             const auto next_y = reader.Read<int16_t>();
 
             const size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const auto* data = reader.ReadPtr<uint8_t>(data_size);
+            const auto* data = reader.ReadPtr<uint8_t>(data_size).get();
 
             if (width == 3) {
                 CHECK(width == 3);

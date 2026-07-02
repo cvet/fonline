@@ -267,7 +267,7 @@ auto ItemManager::SplitItem(ptr<Item> item, int32_t count) -> nptr<Item>
     FO_VERIFY_AND_THROW(count > 0, "Count must be positive", count);
     FO_VERIFY_AND_THROW(count < item->GetCount(), "Count is outside allowed range", count, item->GetCount());
 
-    auto new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties());
+    auto new_item = CreateItem(item->GetProtoId(), count, item->GetProperties());
 
     auto new_item_holder = new_item.hold_ref();
     ignore_unused(new_item_holder);
@@ -565,18 +565,18 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
         return;
     }
 
-    if (nullable_item->GetStackable()) {
-        if (count >= nullable_item->GetCount()) {
-            auto item = nullable_item.as_ptr();
+    auto item = nullable_item.as_ptr();
+
+    if (item->GetStackable()) {
+        if (count >= item->GetCount()) {
             DestroyItem(item);
         }
         else {
-            nullable_item->SetCount(nullable_item->GetCount() - count);
+            item->SetCount(item->GetCount() - count);
         }
     }
     else {
         for (int32_t i = 0; i < count; ++i) {
-            auto item = nullable_item.as_ptr();
             DestroyItem(item);
 
             nullable_item = cr->GetItemByPidInvPriority(pid);
@@ -584,6 +584,8 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
             if (!nullable_item) {
                 break;
             }
+
+            item = nullable_item.as_ptr();
         }
     }
 }

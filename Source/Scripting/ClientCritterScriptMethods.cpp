@@ -470,8 +470,8 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
-    auto engine_ptr = self->GetEngine();
-    engine_ptr->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
     auto moving = hex_cr->GetMoving();
     return moving;
 }
@@ -483,8 +483,8 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     const int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
     const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    auto engine_ptr = self->GetEngine();
-    engine_ptr->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
     auto moving = hex_cr->GetMoving();
     return moving;
 }
@@ -493,16 +493,16 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
 FO_SCRIPT_API void Client_Critter_MoveToDir(ptr<CritterView> self, mdir dir, int32_t speed)
 {
     auto hex_cr = RequireHexCritter(self);
-    auto engine_ptr = self->GetEngine();
-    engine_ptr->CritterMoveTo(hex_cr, dir, speed);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, dir, speed);
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 {
     auto hex_cr = RequireHexCritter(self);
-    auto engine_ptr = self->GetEngine();
-    engine_ptr->CritterMoveTo(hex_cr, mdir {0}, 0);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, mdir {0}, 0);
 }
 
 ///@ ExportMethod
@@ -536,8 +536,8 @@ FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 {
     auto hex_cr = RequireHexCritter(self);
-    auto engine_ptr = self->GetEngine();
-    engine_ptr->CritterLookTo(hex_cr, dir);
+    auto engine = self->GetEngine();
+    engine->CritterLookTo(hex_cr, dir);
 }
 
 ///@ ExportMethod

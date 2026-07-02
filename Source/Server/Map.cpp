@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef()),
     _protoMap {proto},
@@ -692,24 +692,25 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
     else if (type == NetProperty::MapItem) {
         auto nullable_item = entity.dyn_cast<Item>();
         FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-        FO_VERIFY_AND_THROW(nullable_item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
-        FO_VERIFY_AND_THROW(nullable_item->GetMapId() == GetId(), "Item belongs to a different map");
-        FO_VERIFY_AND_THROW(GetItem(nullable_item->GetId()) == nullable_item, "Map item index returned a different item instance");
-        ptr<Map> self = this;
+
         auto item = nullable_item.as_ptr();
+        FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
+        FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
+        FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item.get(), "Map item index returned a different item instance");
+        ptr<Map> self = this;
         auto map_holder = self.hold_ref();
         auto item_holder = item.hold_ref();
         ignore_unused(map_holder);
         ignore_unused(item_holder);
 
-        const ident_t initial_item_map_id = nullable_item->GetMapId();
-        const mpos initial_item_hex = nullable_item->GetHex();
+        const ident_t initial_item_map_id = item->GetMapId();
+        const mpos initial_item_hex = item->GetHex();
 
         for (ptr<Critter> cr : copy_hold_ref(_critters)) {
-            if (cr->CheckVisibleItem(nullable_item->GetId())) {
+            if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
                 ValidateEntityAccess(cr);
-                ValidateEntityAccess(nullable_item);
+                ValidateEntityAccess(item);
                 cr->OnItemOnMapChanged.Fire(item);
 
                 if (IsMapItemContextChanged(item, initial_item_map_id, initial_item_hex)) {

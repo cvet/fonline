@@ -103,11 +103,12 @@ static void Global_Yield(int32_t durationMs)
 
     nptr<AngelScript::asIScriptContext> nullable_ctx = AngelScript::asGetActiveContext();
     FO_VERIFY_AND_THROW(nullable_ctx, "Missing script execution context");
-    ptr<AngelScript::asIScriptEngine> as_engine = nullable_ctx->GetEngine();
+    auto ctx = nullable_ctx.as_ptr();
+    ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto backend = GetScriptBackend(engine);
     nptr<AngelScriptContextManager> context_mngr = backend->GetContextMngr();
-    context_mngr->SuspendScriptContext(nullable_ctx.as_ptr(), engine->GameTime.GetFrameTime() + std::chrono::milliseconds(durationMs));
+    context_mngr->SuspendScriptContext(ctx, engine->GameTime.GetFrameTime() + std::chrono::milliseconds(durationMs));
 }
 
 static auto Global_GetGlobalExceptionCount() -> int32_t
@@ -757,8 +758,6 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
         for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
             auto enums_arr = CreateScriptArray(as_engine, strex("array<{}Property>", registrator->GetTypeName()).c_str());
-            backend->AddCleanupCallback([enums_arr]() FO_DEFERRED { enums_arr->Release(); });
-            (void)ReleaseScriptOwnership(std::move(enums_arr));
             enums_arr->Reserve(numeric_cast<int32_t>(properties.size()));
 
             for (const auto& prop : properties) {
@@ -769,6 +768,10 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(strex("{}PropertyGroup", registrator->GetTypeName()).c_str()));
             FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("array<{}Property>@+ get_{}()", registrator->GetTypeName(), group_name).c_str(), FO_SCRIPT_GENERIC(Global_GetPropertyGroup), FO_SCRIPT_GENERIC_CONV, cast_to_void(enums_arr.get())));
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
+
+            // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is
+            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle).
+            backend->AddCleanupCallback([raw = ReleaseScriptOwnership(std::move(enums_arr))]() FO_DEFERRED { raw->Release(); });
         }
     }
 

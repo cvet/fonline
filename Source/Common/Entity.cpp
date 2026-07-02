@@ -477,6 +477,17 @@ auto Entity::HasTimeEvents() const noexcept -> bool
     return _timeEvents && !_timeEvents->empty();
 }
 
+auto Entity::EnsureTimeEvents() -> ptr<TimeEventList>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_timeEvents) {
+        _timeEvents.emplace();
+    }
+
+    return ptr<TimeEventList> {&*_timeEvents};
+}
+
 EntityEvent::EntityEvent(ptr<Entity> entity, string_view callback_name) noexcept :
     _entity {entity},
     _callbackName {callback_name}

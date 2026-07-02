@@ -159,7 +159,7 @@ namespace BakerTests
         REQUIRE(static_cast<bool>(registrator));
 
         ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
@@ -206,7 +206,7 @@ namespace BakerTests
 
             vector<uint8_t> props_data;
             set<hstring> str_hashes;
-            proto.GetProperties().StoreAllData(props_data, str_hashes);
+            proto.GetProperties()->StoreAllData(props_data, str_hashes);
             ignore_unused(str_hashes);
 
             writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));

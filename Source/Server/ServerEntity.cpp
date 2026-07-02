@@ -162,7 +162,7 @@ auto ServerEntity::IsExplicitlyPersistent() const noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto& props = const_cast<Properties&>(GetProperties());
+    auto& props = const_cast<Properties&>(*GetProperties());
     return EntityProperties(props).GetExplicitlyPersistent();
 }
 

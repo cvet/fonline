@@ -428,9 +428,9 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
     nptr<const ufbx_mesh> nullable_fbx_mesh = fbx_node->mesh;
 
     if (nullable_fbx_mesh && nullable_fbx_mesh->num_faces != 0) {
+        auto fbx_mesh = nullable_fbx_mesh.as_ptr();
         bone->AttachedMesh.emplace();
         ptr<BakerMeshData> mesh = &*bone->AttachedMesh;
-        auto fbx_mesh = nullable_fbx_mesh.as_ptr();
         FO_VERIFY_AND_THROW(fbx_mesh->num_faces == fbx_mesh->num_triangles, "FBX mesh contains non-triangle faces", fbx_mesh->num_faces, fbx_mesh->num_triangles);
         nptr<const ufbx_skin_deformer> nullable_fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 

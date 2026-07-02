@@ -82,7 +82,7 @@ namespace
 
         ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
         proto.SetSize(map_size);
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
@@ -316,7 +316,7 @@ namespace ServerEngineTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
         proto.SetStackable(true);
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);

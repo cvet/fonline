@@ -24,7 +24,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
 
     ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
     proto.SetSize(msize {50, 50});
-    proto.GetProperties().StoreAllData(props_data, str_hashes);
+    proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
     vector<uint8_t> protos_data;
     auto writer = DataWriter(protos_data);

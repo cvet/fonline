@@ -64,14 +64,16 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
         auto nullable_item_already = cr->GetInvItemByPid(item->GetProtoId());
 
         if (nullable_item_already) {
-            if (nullable_item_already == item.get()) {
+            auto item_already = nullable_item_already.as_ptr();
+
+            if (item_already == item.get()) {
                 return item;
             }
 
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
-            nullable_item_already->SetCount(nullable_item_already->GetCount() + count);
-            return nullable_item_already.as_ptr();
+            item_already->SetCount(item_already->GetCount() + count);
+            return item_already;
         }
     }
 

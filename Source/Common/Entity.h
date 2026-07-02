@@ -191,7 +191,7 @@ public:
     [[nodiscard]] virtual auto IsGlobal() const noexcept -> bool { return false; }
     [[nodiscard]] auto GetTypeName() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeName(); }
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
-    [[nodiscard]] auto GetProperties() const noexcept -> const Properties& { return _props; }
+    [[nodiscard]] auto GetProperties() const noexcept -> ptr<const Properties> { return &_props; }
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> ptr<Properties> { return &_props; }
     [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
     [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
@@ -208,23 +208,16 @@ public:
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
     [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? nptr<const TimeEventList> {&*_timeEvents} : nullptr; }
     [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? nptr<TimeEventList> {&*_timeEvents} : nullptr; }
-    [[nodiscard]] auto EnsureTimeEvents() -> ptr<TimeEventList>
-    {
-        if (!_timeEvents) {
-            _timeEvents.emplace();
-        }
-
-        return ptr<TimeEventList> {&*_timeEvents};
-    }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
-    [[nodiscard]] auto StoreData(bool with_protected) const -> Properties::StoredData;
+    auto StoreData(bool with_protected) const -> Properties::StoredData;
     void RestoreData(const vector<vector<uint8_t>>& props_data);
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetValueAsInt(ptr<const Property> prop, int32_t value);
     void SetValueAsInt(int32_t prop_index, int32_t value);
     void SetValueAsAny(ptr<const Property> prop, const any_t& value);
     void SetValueAsAny(int32_t prop_index, const any_t& value);
+    auto EnsureTimeEvents() -> ptr<TimeEventList>;
     void SubscribeEvent(string_view event_name, EventCallbackData&& callback);
     void UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept;
     void UnsubscribeAllEvent(string_view event_name) noexcept;
@@ -241,13 +234,8 @@ public:
     auto GetRefCount() const noexcept -> int32_t { return _refCounter.load(); }
 
     virtual void ValidateAccess() const { }
-
     virtual void LockForPropertyAccess() noexcept { }
     virtual void UnlockForPropertyAccess() noexcept { }
-
-    // Shared ("read") variant of the above. Defaults to the exclusive lock so any entity that only
-    // overrides the exclusive pair stays correct; the Game singleton (`ServerEngine`) overrides this
-    // to take its engine-global lock in shared mode so concurrent property reads don't serialize.
     virtual void LockForPropertyAccessShared() noexcept { LockForPropertyAccess(); }
     virtual void UnlockForPropertyAccessShared() noexcept { UnlockForPropertyAccess(); }
 

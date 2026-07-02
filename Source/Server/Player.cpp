@@ -435,9 +435,9 @@ void Player::Send_Property(NetProperty type, ptr<const Property> prop, ptr<const
         return;
     }
 
-    const auto& props = entity->GetProperties();
-    props.ValidateForRawData(prop);
-    const auto prop_raw_data = props.GetRawData(prop);
+    const auto props = entity->GetProperties();
+    props->ValidateForRawData(prop);
+    const auto prop_raw_data = props->GetRawData(prop);
 
     scoped_lock conn_lock {_connectionLock};
 

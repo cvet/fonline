@@ -111,7 +111,7 @@ namespace
         {"Source/Server/Server.cpp", "OnCritterSendInitialInfo.Fire(cr);", 1, "post-send initial info"},
         {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 1, "player login gate"},
         {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 2, "player login gate"},
-        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(nullable_player.as_ptr(), unlogined_player);", 1, "player relogin gate"},
+        {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);", 1, "player relogin gate"},
         {"Source/Server/Server.cpp", "const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);", 3, "player login gate"},
         {"Source/Server/Server.cpp", "const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);", 1, "player movement gate"},
         {"Source/Server/Server.cpp", "const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);", 1, "player movement gate"},

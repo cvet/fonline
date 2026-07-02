@@ -189,7 +189,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
         MapLoader::Load(
             map_name, file_content, server_engine, server_engine.Hashes,
             [&](ident_t id, ptr<const ProtoCritter> proto, ptr<const map<string_view, string_view>> kv) {
-                auto props = proto->GetProperties().Copy();
+                auto props = proto->GetProperties()->Copy();
                 props.ApplyFromText(*kv);
 
                 errors += ValidateProperties(props, strex("map {} critter {} with id {}", map_name, proto->GetName(), id), &server_engine);
@@ -203,7 +203,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_cr_writer->WriteByteVector(props_data);
             },
             [&](ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv) {
-                auto props = proto->GetProperties().Copy();
+                auto props = proto->GetProperties()->Copy();
                 props.ApplyFromText(*kv);
 
                 errors += ValidateProperties(props, strex("map {} item {} with id {}", map_name, proto->GetName(), id), &server_engine);
@@ -223,7 +223,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                     auto client_proto = client_engine.GetProtoItem(proto->GetProtoId());
                     FO_VERIFY_AND_THROW(client_proto, "Missing required client prototype");
 
-                    auto client_props = client_proto->GetProperties().Copy();
+                    auto client_props = client_proto->GetProperties()->Copy();
                     client_props.ApplyFromText(*kv);
 
                     // For hidden items keep only string hashes for client

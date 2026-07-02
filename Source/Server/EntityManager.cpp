@@ -1369,12 +1369,12 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
     if (auto nullable_entity_with_proto = entity.dyn_cast<EntityWithProto>()) {
         auto entity_with_proto = nullable_entity_with_proto.as_ptr();
         auto proto = entity_with_proto->GetProto();
-        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), _engine->Hashes, *_engine);
+        auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), proto->GetProperties(), _engine->Hashes, *_engine);
         doc.Emplace("_Proto", string(proto->GetName()));
         return doc;
     }
     else {
-        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
+        auto doc = PropertiesSerializator::SaveToDocument(entity->GetProperties(), nullptr, _engine->Hashes, *_engine);
         return doc;
     }
 }

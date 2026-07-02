@@ -82,12 +82,12 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     size_t data_pos = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto nullable_field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i)).as_ptr();
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
             if (raw_data.size() - data_pos < sizeof(uint32_t)) {
-                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, nullable_field_prop->GetName());
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
             uint32_t field_size = 0;
@@ -96,14 +96,14 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
             MemCopy(field_size_target.get(), field_size_source.get(), sizeof(field_size));
             data_pos += sizeof(field_size);
 
-            if (nullable_field_prop->IsPlainData() && field_size != 0 && field_size != nullable_field_prop->GetBaseSize()) {
-                throw PropertySerializationException("Wrong ref field raw size", base_type.Name, nullable_field_prop->GetName());
+            if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
+                throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
             }
 
             const size_t field_data_size = field_size;
 
             if (raw_data.size() - data_pos < field_data_size) {
-                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, nullable_field_prop->GetName());
+                throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
             field_raw_data = raw_data.subspan(data_pos, field_data_size);
@@ -111,7 +111,6 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
         }
 
         if (!field_raw_data.empty()) {
-            auto field_prop = nullable_field_prop.as_ptr();
             props->SetRawData(field_prop, field_raw_data);
         }
     }
@@ -434,14 +433,17 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine
     if (!nullable_prop) {
         throw ScriptException("Invalid property index", type_name, prop_index);
     }
-    if (nullable_prop->IsDisabled()) {
+
+    auto prop = nullable_prop.as_ptr();
+
+    if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled", type_name, prop_index);
     }
-    if (!nullable_prop->IsPlainData()) {
+    if (!prop->IsPlainData()) {
         throw ScriptException("Property is not plain data", type_name, prop_index);
     }
 
-    return nullable_prop.as_ptr();
+    return prop;
 }
 
 FO_END_NAMESPACE

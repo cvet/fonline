@@ -1675,7 +1675,7 @@ namespace CommonMethods
 
         auto ctx = context_mngr->RequestContext();
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
-        auto return_context = scope_exit([context_mngr, ctx, context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+        auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         auto* as_engine = ctx->GetEngine();
         REQUIRE(as_engine != nullptr);

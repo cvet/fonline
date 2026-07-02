@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 ItemView::ItemView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(*GetInitRef())
 {
@@ -75,7 +75,7 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 
     auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
 
-    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto, &GetProperties());
+    auto ref_item = SafeAlloc::MakeRefCounted<ItemView>(_engine, ident_t {}, proto, GetProperties());
 
     ref_item->SetId(GetId(), false);
 

@@ -430,7 +430,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
         return nullable_sub_type_data;
     }
 
-    nullable_sub_type_data = SafeAlloc::MakeRaw<ScriptDictTypeData>();
+    ptr<ScriptDictTypeData> sub_type_data = SafeAlloc::MakeRaw<ScriptDictTypeData>();
 
     const bool must_be_const = (type_id & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = type_info->GetEngine();
@@ -440,7 +440,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
         auto sub_type = nullable_sub_type.as_ptr();
 
         // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types.
-        nullable_sub_type_data->FastCompare = GetScriptTypeFastCompare(sub_type);
+        sub_type_data->FastCompare = GetScriptTypeFastCompare(sub_type);
 
         for (AngelScript::asUINT i = 0; i < sub_type->GetMethodCount(); i++) {
             nptr<AngelScript::asIScriptFunction> nullable_func = sub_type->GetMethodByIndex(i);
@@ -498,36 +498,35 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
             }
 
             if (is_cmp) {
-                if (nullable_sub_type_data->CmpFunc || nullable_sub_type_data->CmpFuncReturnCode != AngelScript::asSUCCESS) {
-                    nullable_sub_type_data->CmpFunc.reset();
-                    nullable_sub_type_data->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
+                if (sub_type_data->CmpFunc || sub_type_data->CmpFuncReturnCode != AngelScript::asSUCCESS) {
+                    sub_type_data->CmpFunc.reset();
+                    sub_type_data->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                 }
                 else {
-                    nullable_sub_type_data->CmpFunc = func;
+                    sub_type_data->CmpFunc = func;
                 }
             }
             else if (is_eq) {
-                if (nullable_sub_type_data->EqFunc || nullable_sub_type_data->EqFuncReturnCode != AngelScript::asSUCCESS) {
-                    nullable_sub_type_data->EqFunc.reset();
-                    nullable_sub_type_data->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
+                if (sub_type_data->EqFunc || sub_type_data->EqFuncReturnCode != AngelScript::asSUCCESS) {
+                    sub_type_data->EqFunc.reset();
+                    sub_type_data->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                 }
                 else {
-                    nullable_sub_type_data->EqFunc = func;
+                    sub_type_data->EqFunc = func;
                 }
             }
         }
     }
 
-    if (!nullable_sub_type_data->EqFunc && nullable_sub_type_data->EqFuncReturnCode == AngelScript::asSUCCESS) {
-        nullable_sub_type_data->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
+    if (!sub_type_data->EqFunc && sub_type_data->EqFuncReturnCode == AngelScript::asSUCCESS) {
+        sub_type_data->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
-    if (!nullable_sub_type_data->CmpFunc && nullable_sub_type_data->CmpFuncReturnCode == AngelScript::asSUCCESS) {
-        nullable_sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
+    if (!sub_type_data->CmpFunc && sub_type_data->CmpFuncReturnCode == AngelScript::asSUCCESS) {
+        sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 
-    auto sub_type_data = nullable_sub_type_data.as_ptr();
     type_info->SetUserData(cast_to_void(sub_type_data.get()), AS_TYPE_DICT_CACHE);
-    return nullable_sub_type_data;
+    return sub_type_data;
 }
 
 auto ScriptDict::IsEmpty() const -> bool

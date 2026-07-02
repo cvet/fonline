@@ -1130,32 +1130,32 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
             continue;
         }
 
-        if (nullable_prop->IsDisabled()) {
-            if (registrator->GetSide() == EngineSideKind::ServerSide && nullable_prop->IsClientOnly()) {
-                continue;
-            }
-            if (registrator->GetSide() == EngineSideKind::ClientSide && nullable_prop->IsServerOnly()) {
-                continue;
-            }
-
-            WriteLog("Failed to load disabled property {}", nullable_prop->GetName());
-            errors++;
-            continue;
-        }
-
-        if (nullable_prop->IsVirtual()) {
-            WriteLog("Failed to load virtual property {}", nullable_prop->GetName());
-            errors++;
-            continue;
-        }
-
-        if (nullable_prop->IsTemporary()) {
-            WriteLog("Failed to load temporary property {}", nullable_prop->GetName());
-            errors++;
-            continue;
-        }
-
         auto prop = nullable_prop.as_ptr();
+
+        if (prop->IsDisabled()) {
+            if (registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
+                continue;
+            }
+            if (registrator->GetSide() == EngineSideKind::ClientSide && prop->IsServerOnly()) {
+                continue;
+            }
+
+            WriteLog("Failed to load disabled property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsVirtual()) {
+            WriteLog("Failed to load virtual property {}", prop->GetName());
+            errors++;
+            continue;
+        }
+
+        if (prop->IsTemporary()) {
+            WriteLog("Failed to load temporary property {}", prop->GetName());
+            errors++;
+            continue;
+        }
 
         try {
             ApplyPropertyFromText(prop, value);
@@ -1918,14 +1918,15 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
     if (!nullable_prop) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!nullable_prop->IsPlainData()) {
-        throw PropertiesException("Can't retreive integer value from non plain data property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsDisabled()) {
-        throw PropertiesException("Can't retreive integer value from disabled property", nullable_prop->GetName());
-    }
 
     auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
+    }
     return GetPlainDataValueAsInt(prop);
 }
 
@@ -1938,14 +1939,15 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
     if (!nullable_prop) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!nullable_prop->IsPlainData()) {
-        throw PropertiesException("Can't retreive integer value from non plain data property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsDisabled()) {
-        throw PropertiesException("Can't retreive integer value from disabled property", nullable_prop->GetName());
-    }
 
     auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
+    }
     return GetPlainDataValueAsAny(prop);
 }
 
@@ -1958,14 +1960,15 @@ void Properties::SetValueAsInt(int32_t property_index, int32_t value)
     if (!nullable_prop) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!nullable_prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non plain data property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsDisabled()) {
-        throw PropertiesException("Can't set integer value to disabled property", nullable_prop->GetName());
-    }
 
     auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
+    }
     SetPlainDataValueAsInt(prop, value);
 }
 
@@ -1978,14 +1981,15 @@ void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
     if (!nullable_prop) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!nullable_prop->IsPlainData()) {
-        throw PropertiesException("Can't set any value to non plain data property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsDisabled()) {
-        throw PropertiesException("Can't set any value to disabled property", nullable_prop->GetName());
-    }
 
     auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set any value to non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set any value to disabled property", prop->GetName());
+    }
     SetPlainDataValueAsAny(prop, value);
 }
 
@@ -1998,20 +2002,21 @@ void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
     if (!nullable_prop) {
         throw PropertiesException("Property not found", property_index);
     }
-    if (!nullable_prop->IsPlainData()) {
-        throw PropertiesException("Can't set integer value to non plain data property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsDisabled()) {
-        throw PropertiesException("Can't set integer value to disabled property", nullable_prop->GetName());
-    }
-    if (nullable_prop->IsVirtual()) {
-        throw PropertiesException("Can't set integer value to virtual property", nullable_prop->GetName());
-    }
-    if (!nullable_prop->IsMutable()) {
-        throw PropertiesException("Can't set integer value to non mutable property", nullable_prop->GetName());
-    }
 
     auto prop = nullable_prop.as_ptr();
+
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
+    }
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
+    }
+    if (prop->IsVirtual()) {
+        throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
+    }
+    if (!prop->IsMutable()) {
+        throw PropertiesException("Can't set integer value to non mutable property", prop->GetName());
+    }
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
 
     if (base_type.IsHashedString) {

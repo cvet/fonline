@@ -782,7 +782,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
     FO_STACK_TRACE_ENTRY();
 
     const auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
-    auto nullable_holder_prop = holder->GetProperties().GetRegistrator()->FindProperty(prop_name);
+    auto nullable_holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(nullable_holder_prop, "Missing required holder property");
 
     return nullable_holder_prop.as_ptr();

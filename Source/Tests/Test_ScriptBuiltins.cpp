@@ -205,13 +205,9 @@ namespace
         auto* array_type = engine->GetTypeInfoByDecl("array<ArrayCmpOnlyNativeValue>");
         FO_VERIFY_AND_THROW(array_type != nullptr, "Missing array<ArrayCmpOnlyNativeValue> type");
 
-        auto* values = ScriptArray::Create(array_type, 2);
-        FO_VERIFY_AND_THROW(values != nullptr, "Failed to create ScriptArray");
-        auto release_values = scope_exit([&values]() noexcept { safe_call([&values] { values->Release(); }); });
+        auto values = ScriptArray::Create(array_type, 2);
 
-        auto* same_values = ScriptArray::Create(array_type, 2);
-        FO_VERIFY_AND_THROW(same_values != nullptr, "Failed to create ScriptArray");
-        auto release_same_values = scope_exit([&same_values]() noexcept { safe_call([&same_values] { same_values->Release(); }); });
+        auto same_values = ScriptArray::Create(array_type, 2);
 
         ArrayComparableValue low_value {1};
         ArrayComparableValue same_low_value {1};
@@ -2052,9 +2048,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         auto* out_ref_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpOutRefParamValue>");
         REQUIRE(out_ref_param_type != nullptr);
 
-        auto* int_arr = ScriptArray::Create(int_type, 2);
-        REQUIRE(int_arr != nullptr);
-        auto release_int_arr = scope_exit([&int_arr]() noexcept { safe_call([&int_arr] { int_arr->Release(); }); });
+        auto int_arr = ScriptArray::Create(int_type, 2);
 
         auto uint_arr = ScriptArray::Create(uint_type, 1);
 
@@ -2088,9 +2082,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CHECK_THROWS_AS((*int_arr = *uint_arr), ScriptException);
         CHECK_FALSE(*int_arr == *uint_arr);
         {
-            auto* smaller_int_arr = ScriptArray::Create(int_type, 1);
-            REQUIRE(smaller_int_arr != nullptr);
-            auto release_smaller_int_arr = scope_exit([&smaller_int_arr]() noexcept { safe_call([&smaller_int_arr] { smaller_int_arr->Release(); }); });
+            auto smaller_int_arr = ScriptArray::Create(int_type, 1);
             CHECK_FALSE(*int_arr == *smaller_int_arr);
         }
         CHECK_THROWS_AS(int_arr->InsertAt(-1, &first_int_value), ScriptException);
@@ -2119,9 +2111,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
         auto gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
 
-        auto* final_handle_arr = ScriptArray::Create(final_node_handle_type, 0);
-        REQUIRE(final_handle_arr != nullptr);
-        auto release_final_handle_arr = scope_exit([&final_handle_arr]() noexcept { safe_call([&final_handle_arr] { final_handle_arr->Release(); }); });
+        auto final_handle_arr = ScriptArray::Create(final_node_handle_type, 0);
         CHECK(final_handle_arr->IsEmpty());
 
         void* gc_node_handle = gc_node;
@@ -2160,12 +2150,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CheckPrimitiveScriptArrayDirectOps<float64_t>(as_engine, "double", -3.5, 4.75);
 
         {
-            auto* no_compare_values = ScriptArray::Create(no_compare_value_type, 1);
-            REQUIRE(no_compare_values != nullptr);
-            auto release_no_compare_values = scope_exit([&no_compare_values]() noexcept { safe_call([&no_compare_values] { no_compare_values->Release(); }); });
-            auto* no_compare_other = ScriptArray::Create(no_compare_value_type, 1);
-            REQUIRE(no_compare_other != nullptr);
-            auto release_no_compare_other = scope_exit([&no_compare_other]() noexcept { safe_call([&no_compare_other] { no_compare_other->Release(); }); });
+            auto no_compare_values = ScriptArray::Create(no_compare_value_type, 1);
+            auto no_compare_other = ScriptArray::Create(no_compare_value_type, 1);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};
@@ -2177,12 +2163,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         {
-            auto* multi_equals_values = ScriptArray::Create(multi_equals_value_type, 1);
-            REQUIRE(multi_equals_values != nullptr);
-            auto release_multi_equals_values = scope_exit([&multi_equals_values]() noexcept { safe_call([&multi_equals_values] { multi_equals_values->Release(); }); });
-            auto* multi_equals_other = ScriptArray::Create(multi_equals_value_type, 1);
-            REQUIRE(multi_equals_other != nullptr);
-            auto release_multi_equals_other = scope_exit([&multi_equals_other]() noexcept { safe_call([&multi_equals_other] { multi_equals_other->Release(); }); });
+            auto multi_equals_values = ScriptArray::Create(multi_equals_value_type, 1);
+            auto multi_equals_other = ScriptArray::Create(multi_equals_value_type, 1);
 
             ArrayComparableValue first_value {1};
             ArrayComparableValue same_value {1};
@@ -2194,9 +2176,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         {
-            auto* multi_cmp_values = ScriptArray::Create(multi_cmp_value_type, 2);
-            REQUIRE(multi_cmp_values != nullptr);
-            auto release_multi_cmp_values = scope_exit([&multi_cmp_values]() noexcept { safe_call([&multi_cmp_values] { multi_cmp_values->Release(); }); });
+            auto multi_cmp_values = ScriptArray::Create(multi_cmp_value_type, 2);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};
@@ -2217,12 +2197,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         for (auto* filtered_type : {param_mismatch_value_type, by_value_param_type, out_ref_param_type}) {
-            auto* filtered_values = ScriptArray::Create(filtered_type, 1);
-            REQUIRE(filtered_values != nullptr);
-            auto release_filtered_values = scope_exit([&filtered_values]() noexcept { safe_call([&filtered_values] { filtered_values->Release(); }); });
-            auto* filtered_other = ScriptArray::Create(filtered_type, 1);
-            REQUIRE(filtered_other != nullptr);
-            auto release_filtered_other = scope_exit([&filtered_other]() noexcept { safe_call([&filtered_other] { filtered_other->Release(); }); });
+            auto filtered_values = ScriptArray::Create(filtered_type, 1);
+            auto filtered_other = ScriptArray::Create(filtered_type, 1);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};

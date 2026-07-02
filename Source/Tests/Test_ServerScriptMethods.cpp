@@ -41,8 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
-auto Server_Game_SystemCall(ServerEngine* server, string_view command) -> int32_t;
-auto Server_Game_SystemCall(ServerEngine* server, string_view command, string& output) -> int32_t;
+auto Server_Game_SystemCall(ptr<ServerEngine> server, string_view command) -> int32_t;
+auto Server_Game_SystemCall(ptr<ServerEngine> server, string_view command, string& output) -> int32_t;
 
 namespace
 {
@@ -2744,7 +2744,7 @@ namespace ScriptMethodsTest
 
         ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name).as_ptr()};
         proto.SetSize(map_size);
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
@@ -2768,9 +2768,9 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name).as_ptr()};
         proto.SetStackable(true);
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
@@ -3614,18 +3614,17 @@ TEST_CASE("ServerMiscScriptOperations")
         auto already_logined_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginAlreadyLoginedPlayerThrows"));
         REQUIRE(already_logined_func);
 
-        Player* already_logined_unlogined = create_unlogined_player("ScriptLoginAlready");
-        REQUIRE(already_logined_unlogined != nullptr);
+        ptr<Player> already_logined_unlogined = create_unlogined_player("ScriptLoginAlready");
 
         auto already_logined_cleanup = scope_exit([&already_logined_unlogined]() noexcept {
             safe_call([&already_logined_unlogined] {
-                if (already_logined_unlogined != nullptr && !already_logined_unlogined->IsDestroyed()) {
+                if (!already_logined_unlogined->IsDestroyed()) {
                     already_logined_unlogined->GetConnection()->HardDisconnect();
                 }
             });
         });
 
-        REQUIRE(already_logined_func.Call(already_logined_unlogined));
+        REQUIRE(already_logined_func.Call(already_logined_unlogined.get()));
         CHECK(already_logined_func.GetResult() == 0);
     }
 
@@ -3649,11 +3648,11 @@ TEST_CASE("ServerMiscScriptOperations")
 #endif
 
         string output;
-        CHECK(Server_Game_SystemCall(server.get(), output_command, output) == 0);
+        CHECK(Server_Game_SystemCall(server, output_command, output) == 0);
         CHECK(output.find("FOnlineSystemCallAlpha") != string::npos);
         CHECK(output.find("FOnlineSystemCallBeta") != string::npos);
 
-        CHECK(Server_Game_SystemCall(server.get(), log_command) == 0);
+        CHECK(Server_Game_SystemCall(server, log_command) == 0);
     }
 #endif
 

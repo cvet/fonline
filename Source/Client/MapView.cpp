@@ -63,7 +63,7 @@ void FogLayer::Dispose() noexcept
 }
 
 MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto, isize32 screen_size, nptr<const Properties> props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef())
 {
@@ -238,7 +238,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             max_id = std::max(max_id, id.underlying_value());
 
-            auto props = proto->GetProperties().Copy();
+            auto props = proto->GetProperties()->Copy();
             props.ApplyFromText(*kv);
 
             nptr<const Properties> props_ptr = &props;
@@ -256,7 +256,7 @@ void MapView::LoadFromFile(string_view map_name, const string& str)
 
             max_id = std::max(max_id, id.underlying_value());
 
-            auto props = proto->GetProperties().Copy();
+            auto props = proto->GetProperties()->Copy();
             props.ApplyFromText(*kv);
 
             nptr<const Properties> props_ptr = &props;
@@ -345,7 +345,7 @@ void MapView::LoadStaticData()
             auto item_proto = _engine->GetProtoItem(item_pid);
             FO_VERIFY_AND_THROW(item_proto, "Missing required item prototype");
 
-            auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
+            auto item_props = Properties(item_proto->GetProperties()->GetRegistrator());
             const auto props_data_size = reader.Read<uint32_t>();
             props_data.resize(props_data_size);
             span<uint8_t> props_data_span = props_data;
@@ -4186,21 +4186,21 @@ auto MapView::SaveToText() const -> string
     };
 
     const auto fill_critter = [&fill_generic_section](ptr<const CritterView> cr) {
-        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
+        auto kv = cr->GetProperties()->SaveToText(cr->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", cr->GetId());
         kv["$Proto"] = cr->GetProto()->GetName();
         fill_generic_section("Critter", kv);
     };
 
     const auto fill_item = [&fill_item_section](ptr<const ItemView> item) {
-        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
+        auto kv = item->GetProperties()->SaveToText(item->GetProto()->GetProperties());
         kv["$Id"] = strex("{}", item->GetId());
         kv["$Proto"] = item->GetProto()->GetName();
         fill_item_section("Item", kv);
     };
 
     // Header
-    auto proto_map_kv = GetProperties().SaveToText(nullptr);
+    auto proto_map_kv = GetProperties()->SaveToText(nullptr);
 
     for (const auto& [key, value] : _headerExtraFields) {
         proto_map_kv.emplace(key, value);

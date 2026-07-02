@@ -129,7 +129,7 @@ class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
     CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) noexcept :
-        CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
+        CustomEntity(engine, id, registrator, proto->GetProperties(), proto->GetProperties()),
         EntityWithProto(proto)
     {
         FO_VALIDATE_ENTITY(NONE);

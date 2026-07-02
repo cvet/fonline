@@ -2385,13 +2385,9 @@ TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
 
     Properties empty_complex(&registrator);
 
-    vector<const uint8_t*>* empty_complex_chunks = nullptr;
-    vector<uint32_t>* empty_complex_sizes = nullptr;
-    empty_complex.StoreData(false, &empty_complex_chunks, &empty_complex_sizes);
-    REQUIRE(empty_complex_chunks != nullptr);
-    REQUIRE(empty_complex_sizes != nullptr);
-    CHECK(empty_complex_chunks->size() == 2);
-    CHECK(empty_complex_sizes->size() == 2);
+    const auto empty_complex_data = empty_complex.StoreData(false);
+    CHECK(empty_complex_data.Data->size() == 2);
+    CHECK(empty_complex_data.Sizes->size() == 2);
 
     Properties base(&registrator);
     base.SetValue<int32_t>(value_prop, 10);
@@ -2401,16 +2397,14 @@ TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
     full_source.SetValue<int32_t>(value_prop, 77);
     full_source.SetValue<string>(name_prop, "full");
 
-    vector<const uint8_t*>* full_chunks = nullptr;
-    vector<uint32_t>* full_sizes = nullptr;
-    full_source.StoreData(false, &full_chunks, &full_sizes);
+    const auto full_data = full_source.StoreData(false);
 
     Properties derived(&registrator, &base);
     derived.SetValue<int32_t>(value_prop, 25);
     CHECK(derived.GetValue<int32_t>(value_prop) == 25);
     CHECK(derived.GetValue<string>(name_prop) == "base");
 
-    derived.RestoreData(*full_chunks, *full_sizes);
+    derived.RestoreData(*full_data.Data, *full_data.Sizes);
     CHECK(derived.GetValue<int32_t>(value_prop) == 77);
     CHECK(derived.GetValue<string>(name_prop) == "full");
 }
@@ -2458,8 +2452,8 @@ TEST_CASE("PropertiesApplyFromTextErrorsAndSkips")
 
     CHECK_NOTHROW(props.ApplyFromText(map<string, string> {{"ClientOnlyValue", "17"}}));
     CHECK_THROWS(props.ApplyFromText(map<string, string> {{"MissingValue", "1"}}));
-    CHECK_THROWS(props.ApplyFromText(map<string, string> {{virtual_prop->GetName(), "1"}}));
-    CHECK_THROWS(props.ApplyFromText(map<string, string> {{temp_prop->GetName(), "1"}}));
+    CHECK_THROWS(props.ApplyFromText(map<string, string> {{string(virtual_prop->GetName()), "1"}}));
+    CHECK_THROWS(props.ApplyFromText(map<string, string> {{string(temp_prop->GetName()), "1"}}));
     CHECK_THROWS(props.ApplyFromText(map<string, string> {{"Value", "not-an-int"}}));
 }
 
@@ -2683,13 +2677,13 @@ TEST_CASE("PropertiesPlainDataValueAccessors")
     CHECK(props.GetValue<float32_t>(float32_prop) == Catch::Approx(15.0f));
     CHECK(props.GetValue<float64_t>(float64_prop) == Catch::Approx(-17.0));
 
-    HashStorage small_hashes {[](const void* data, size_t len) -> uint64_t {
-        const string_view text {static_cast<const char*>(data), len};
-        return text == "SmallHash" ? uint64_t {7} : hashing_ex::hash(data, len);
+    HashStorage small_hashes {[](const_span<uint8_t> data) -> uint64_t {
+        const string_view text {reinterpret_cast<const char*>(data.data()), data.size()};
+        return text == "SmallHash" ? uint64_t {7} : HashStorage::DefaultHash(data);
     }};
     TestNameResolver small_resolver;
-    PropertyRegistrator small_registrator("PlainAccessorsHashEntity", EngineSideKind::ServerSide, small_hashes, small_resolver);
-    const auto* hash_prop = small_registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
+    PropertyRegistrator small_registrator("PlainAccessorsHashEntity", EngineSideKind::ServerSide, &small_hashes, &small_resolver);
+    const auto hash_prop = small_registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
     const hstring small_hash = small_hashes.ToHashedString("SmallHash");
     Properties small_props(&small_registrator);
 

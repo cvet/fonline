@@ -124,7 +124,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, hstring prot
         }
 
         auto proto = nullable_proto.as_ptr();
-        Properties props_ = proto->GetProperties().Copy();
+        Properties props_ = proto->GetProperties()->Copy();
 
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
@@ -152,7 +152,7 @@ FO_SCRIPT_API ptr<Item> Server_Map_AddItem(ptr<Map> self, mpos hex, ptr<ProtoIte
     }
 
     if (!props.empty()) {
-        Properties props_ = proto->GetProperties().Copy();
+        Properties props_ = proto->GetProperties()->Copy();
 
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
@@ -438,6 +438,10 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, It
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
+
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     if (!self->GetSize().is_valid_pos(hex)) {
@@ -501,6 +505,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(ptr<Map> self, 
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -512,6 +519,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> sel
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -545,6 +555,9 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(ptr<Map> self, 
 ///@ ExportMethod
 FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
+    if (radius < 0) {
+        throw ScriptException("Radius arg must not be negative", radius);
+    }
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
@@ -935,7 +948,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
     }
 
     auto proto = nullable_proto.as_ptr();
-    Properties props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
@@ -955,7 +968,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
         throw ScriptException("Invalid hex arg");
     }
 
-    Properties props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int32_t>(key), value);
@@ -982,7 +995,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId,
     }
 
     auto proto = nullable_proto.as_ptr();
-    Properties props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
@@ -1002,7 +1015,7 @@ FO_SCRIPT_API ptr<Critter> Server_Map_AddCritter(ptr<Map> self, ptr<ProtoCritter
         throw ScriptException("Invalid hex arg");
     }
 
-    Properties props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);

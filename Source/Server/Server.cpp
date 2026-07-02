@@ -1320,8 +1320,8 @@ void ServerEngine::DrawGui()
 
     const auto draw_properties_table = [&info_row, &begin_info_table](ptr<const Entity> entity) {
         if (begin_info_table("##PropsTable")) {
-            const auto& props = entity->GetProperties();
-            const auto registrator = props.GetRegistrator();
+            const auto props = entity->GetProperties();
+            const auto registrator = props->GetRegistrator();
             const auto props_count = registrator->GetPropertiesCount();
 
             for (size_t i = 1; i < props_count; ++i) {
@@ -1343,7 +1343,7 @@ void ServerEngine::DrawGui()
                 string value_str;
 
                 try {
-                    value_str = props.SavePropertyToText(prop);
+                    value_str = props->SavePropertyToText(prop);
                 }
                 catch (const std::exception& ex) {
                     value_str = strex("<error: {}>", ex.what()).str();
@@ -2961,7 +2961,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
     EntityMngr.RegisterPlayer(player, ident_t {});
     registered_player = true;
 
-    const auto player_doc = PropertiesSerializator::SaveToDocument(&player->GetProperties(), nullptr, Hashes, *this);
+    const auto player_doc = PropertiesSerializator::SaveToDocument(player->GetProperties(), nullptr, Hashes, *this);
     DbStorage.Insert(PlayersCollectionName, player->GetId(), player_doc);
     inserted_player_record = true;
 
@@ -3034,16 +3034,16 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
 
     if (!nullable_player) {
         nullable_player = unlogined_player;
+        auto player = nullable_player.as_ptr();
         const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
         }
-        if (!PropertiesSerializator::LoadFromDocument(nullable_player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             throw GenericException("Invalid player data");
         }
 
-        auto player = nullable_player.as_ptr();
         EntityMngr.RegisterPlayer(player, player_id);
         registered_player = true;
 
@@ -3070,28 +3070,29 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         }
     }
     else {
+        auto player = nullable_player.as_ptr();
         auto ctx = RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 2> sync_entities {nullable_player, unlogined_player.as_nptr()};
+        const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player.as_nptr()};
         ctx->SyncEntities(sync_entities);
 
-        if (nullable_player->IsDestroyed() || unlogined_player->IsDestroyed()) {
+        if (player->IsDestroyed() || unlogined_player->IsDestroyed()) {
             return nullptr;
         }
 
         // Kick previous
-        nullable_player->SwapConnection(unlogined_player);
+        player->SwapConnection(unlogined_player);
         reconnect_swapped = true;
         unlogined_player->GetConnection()->HardDisconnect();
-        nullable_player->Send_LoginSuccess();
+        player->Send_LoginSuccess();
 
-        ValidateEntityAccess(nullable_player);
+        ValidateEntityAccess(player);
         ValidateEntityAccess(unlogined_player);
 
-        const EventResult login_result = OnPlayerLogin.Fire(nullable_player.as_ptr(), unlogined_player);
+        const EventResult login_result = OnPlayerLogin.Fire(player, unlogined_player);
 
         if (login_result == Entity::EventResult::StopChain) {
-            nullable_player->SetLogined(false);
-            nullable_player->GetConnection()->GracefulDisconnect();
+            player->SetLogined(false);
+            player->GetConnection()->GracefulDisconnect();
             unlogined_player->SetLogined(false);
             unlogined_player->MarkAsDestroyed();
             return nullptr;
@@ -3099,7 +3100,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
 
         unlogined_player->MarkAsDestroyed();
 
-        auto nullable_cr = nullable_player->GetControlledCritter();
+        auto nullable_cr = player->GetControlledCritter();
 
         if (nullable_cr) {
             auto cr = nullable_cr.as_ptr();
@@ -3807,7 +3808,7 @@ void ServerEngine::OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> pro
         entry_id = ident_t {1};
     }
 
-    auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
+    auto value = PropertiesSerializator::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
 
     hstring collection_name;
 
@@ -3852,7 +3853,7 @@ void ServerEngine::OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property
 
     if (!GameTime.IsTimeSynchronized()) {
         // Init / external pin path: persist the exact property value.
-        const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, Hashes, *this);
+        const auto value = PropertiesSerializator::SavePropertyToValue(entity->GetProperties(), prop, Hashes, *this);
         DbStorage.Update(entity->GetTypeName(), ident_t {1}, prop->GetName(), value);
         return;
     }

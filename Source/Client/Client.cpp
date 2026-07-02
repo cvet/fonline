@@ -700,9 +700,9 @@ void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& props = entity->GetProperties();
-    props.ValidateForRawData(prop);
-    const auto prop_raw_data = props.GetRawData(prop);
+    const auto props = entity->GetProperties();
+    props->ValidateForRawData(prop);
+    const auto prop_raw_data = props->GetRawData(prop);
 
     _conn.OutBuf->StartMsg(NetMessage::SendProperty);
     _conn.OutBuf->Write(numeric_cast<uint32_t>(prop_raw_data.size()));
@@ -1747,7 +1747,7 @@ void ClientEngine::Net_OnProperty()
     }
 
     auto entity = nullable_entity.as_ptr();
-    auto nullable_prop = entity->GetProperties().GetRegistrator()->GetPropertyByIndex(property_index);
+    auto nullable_prop = entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(property_index);
 
     if (!nullable_prop) {
         BreakIntoDebugger();
@@ -3198,11 +3198,14 @@ auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType,
     if (!nullable_effect) {
         throw ScriptException("Effect script value target is not loaded", static_cast<uint32_t>(effectType), effectSubtype);
     }
-    if (!nullable_effect->IsNeedScriptValueBuf()) {
+
+    auto effect = nullable_effect.as_ptr();
+
+    if (!effect->IsNeedScriptValueBuf()) {
         throw ScriptException("Effect does not declare ScriptValueBuf", static_cast<uint32_t>(effectType), effectSubtype);
     }
 
-    return nullable_effect.as_ptr();
+    return effect;
 }
 
 FO_END_NAMESPACE

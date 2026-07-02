@@ -462,7 +462,7 @@ static auto IsInspectorValueSameAsProto(ptr<const Entity> entity, ptr<const Prop
     }
 
     try {
-        return entity_with_proto->GetProto()->GetProperties().SavePropertyToText(prop) == value_text;
+        return entity_with_proto->GetProto()->GetProperties()->SavePropertyToText(prop) == value_text;
     }
     catch (const std::exception&) {
         return true;
@@ -1677,7 +1677,7 @@ void MapperEngine::CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> ent
     entity_buf.IsCritter = !!nullable_cr;
     entity_buf.IsItem = !!nullable_item_view;
     entity_buf.Proto = entity_with_proto->GetProto();
-    entity_buf.Props.emplace(entity->GetProperties().Copy());
+    entity_buf.Props.emplace(entity->GetProperties()->Copy());
 
     if (nullable_cr) {
         auto cr = nullable_cr.as_ptr();
@@ -3170,7 +3170,7 @@ void MapperEngine::DrawInspectorImGui()
 
         try {
             auto selected_prop = nullable_selected_prop.as_ptr();
-            InspectorSelectedLineValue = entity_with_proto->GetProto()->GetProperties().SavePropertyToText(selected_prop);
+            InspectorSelectedLineValue = entity_with_proto->GetProto()->GetProperties()->SavePropertyToText(selected_prop);
             apply_value(nullable_entity.as_ptr());
         }
         catch (const std::exception&) {
@@ -3222,7 +3222,7 @@ void MapperEngine::DrawInspectorImGui()
                 ImGui::TableNextRow(ImGuiTableRowFlags_None, ImGui::GetFrameHeightWithSpacing() + 2.0f);
 
                 auto prop = nullable_prop.as_ptr();
-                auto value = nullable_entity->GetProperties().SavePropertyToText(prop);
+                auto value = nullable_entity->GetProperties()->SavePropertyToText(prop);
                 const auto is_const = prop->IsCoreProperty() && !prop->IsMutable();
                 const auto selected = InspectorSelectedLine == line;
                 auto entity = nullable_entity.as_ptr();
@@ -3670,12 +3670,12 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        auto nullable_apply_prop = nullable_target->GetProperties().GetRegistrator()->FindProperty(prop_name);
+                        auto target = nullable_target.as_ptr();
+                        auto nullable_apply_prop = target->GetProperties()->GetRegistrator()->FindProperty(prop_name);
                         if (!nullable_apply_prop) {
                             return false;
                         }
 
-                        auto target = nullable_target.as_ptr();
                         auto apply_prop = nullable_apply_prop.as_ptr();
                         return mapper->ApplyEntityPropertyText(target, apply_prop, old_value);
                     },
@@ -3685,12 +3685,12 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        auto nullable_apply_prop = nullable_target->GetProperties().GetRegistrator()->FindProperty(prop_name);
+                        auto target = nullable_target.as_ptr();
+                        auto nullable_apply_prop = target->GetProperties()->GetRegistrator()->FindProperty(prop_name);
                         if (!nullable_apply_prop) {
                             return false;
                         }
 
-                        auto target = nullable_target.as_ptr();
                         auto apply_prop = nullable_apply_prop.as_ptr();
                         return mapper->ApplyEntityPropertyText(target, apply_prop, new_value);
                     }});
@@ -3714,7 +3714,7 @@ void MapperEngine::SelectInspectorPropertyLine(int32_t line)
         }
         if (InspectorSelectedLine >= start_line && InspectorSelectedLine - start_line < numeric_cast<int32_t>(ShowProps.size()) && ShowProps[InspectorSelectedLine - start_line]) {
             auto selected_prop = ShowProps[InspectorSelectedLine - start_line].as_ptr();
-            InspectorSelectedLineInitialValue = InspectorSelectedLineValue = entity->GetProperties().SavePropertyToText(selected_prop);
+            InspectorSelectedLineInitialValue = InspectorSelectedLineValue = entity->GetProperties()->SavePropertyToText(selected_prop);
         }
     }
 }
@@ -3775,7 +3775,7 @@ auto MapperEngine::GetInspectorEntity() -> nptr<ClientEntity>
         OnInspectorProperties.Fire(entity.as_ptr(), prop_indices);
 
         for (const auto prop_index : prop_indices) {
-            ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
+            ShowProps.emplace_back(prop_index != -1 ? entity->GetProperties()->GetRegistrator()->GetPropertyByIndex(prop_index) : nullptr);
         }
     }
 
@@ -4373,7 +4373,7 @@ static void SetSelectionContour(ptr<ClientEntity> entity, ucolor color)
     // Selection outline goes through the same script contour pipeline as the client (ContourPipeline.fos):
     // write the entity's Contour property; the script's property-setter caches it and OnRenderMap_AfterSprites
     // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter.
-    nptr<const Property> prop = entity->GetProperties().GetRegistrator()->FindProperty("Contour");
+    nptr<const Property> prop = entity->GetProperties()->GetRegistrator()->FindProperty("Contour");
 
     if (prop != nullptr) {
         entity->GetPropertiesForEdit()->SetValue<ucolor>(prop.as_ptr(), color);
@@ -5053,7 +5053,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
 
     if (nptr<CritterHexView> nullable_cr = entity.dyn_cast<CritterHexView>()) {
         auto cr = nullable_cr.as_ptr();
-        auto cr_clone = cur_map->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDir(), &cr->GetProperties());
+        auto cr_clone = cur_map->AddMapperCritter(cr->GetProtoId(), cr->GetHex(), cr->GetDir(), cr->GetProperties());
 
         const_span<refcount_ptr<ItemView>> inv_items = cr->GetInvItems();
 
@@ -5092,7 +5092,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
 
     if (nptr<ItemHexView> nullable_item = entity.dyn_cast<ItemHexView>()) {
         auto item = nullable_item.as_ptr();
-        auto item_clone = cur_map->AddMapperItem(item->GetProtoId(), item->GetHex(), &item->GetProperties());
+        auto item_clone = cur_map->AddMapperItem(item->GetProtoId(), item->GetHex(), item->GetProperties());
 
         CloneInnerItems(cur_map, item_clone, item);
 
@@ -5134,7 +5134,7 @@ void MapperEngine::CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<
         auto inner_item_proto = inner_item->GetProto().dyn_cast<const ProtoItem>();
         FO_VERIFY_AND_THROW(inner_item_proto, "Inner item prototype is not an item prototype");
 
-        auto inner_item_clone = to_item->AddMapperInnerItem(map->GenTempEntityId(), inner_item_proto.as_ptr(), stack_id, &from_item->GetProperties());
+        auto inner_item_clone = to_item->AddMapperInnerItem(map->GenTempEntityId(), inner_item_proto.as_ptr(), stack_id, from_item->GetProperties());
         CloneInnerItems(map, inner_item_clone, inner_item);
     }
 }
@@ -5159,7 +5159,7 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
         if (!item->IsDestroyed() && item->GetMultihexGeneration() == MultihexGenerationType::SameSibling) {
             auto ignore_props = vector<ptr<const Property>> {item->GetPropertyHex(), item->GetPropertyMultihexMesh()};
 
-            if (!item->GetProperties().CompareData(item->GetProto()->GetProperties(), ignore_props, true)) {
+            if (!item->GetProperties()->CompareData(*item->GetProto()->GetProperties(), ignore_props, true)) {
                 merges += CoalesceItemMultihexMesh(map, item, false);
             }
         }
@@ -5238,7 +5238,7 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
         UniqueGroup* match = nullptr;
 
         for (auto& group : proto_groups) {
-            if (group.survivor->GetProperties().CompareData(item->GetProperties(), ignore_props, true)) {
+            if (group.survivor->GetProperties()->CompareData(*item->GetProperties(), ignore_props, true)) {
                 match = &group;
                 break;
             }
@@ -5469,7 +5469,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
         // The survivor's data changes only when it merges INTO a clean target whose (clean) data differs from
         // the old survivor's data; that flips neighbor eligibility, so rebuild from scratch. This happens at
         // most once per region (clean data is absorbing), keeping the whole region O(N).
-        const bool data_changed = item != old_survivor && !old_survivor->GetProperties().CompareData(item->GetProperties(), ignore_props, true);
+        const bool data_changed = item != old_survivor && !old_survivor->GetProperties()->CompareData(*item->GetProperties(), ignore_props, true);
 
         if (data_changed) {
             rebuild();
@@ -5674,13 +5674,13 @@ auto MapperEngine::CompareMultihexItemForMerge(ptr<const ItemHexView> source_ite
     auto ignore_props = vector<ptr<const Property>> {source_item->GetPropertyHex(), source_item->GetPropertyMultihexMesh()};
 
     if (allow_clean_merge) {
-        if (source_item->GetProperties().CompareData(source_item->GetProto()->GetProperties(), ignore_props, true)) {
+        if (source_item->GetProperties()->CompareData(*source_item->GetProto()->GetProperties(), ignore_props, true)) {
             return true;
         }
     }
 
     // Our data is same as checked item
-    if (source_item->GetProperties().CompareData(target_item->GetProperties(), ignore_props, true)) {
+    if (source_item->GetProperties()->CompareData(*target_item->GetProperties(), ignore_props, true)) {
         return true;
     }
 
@@ -5706,7 +5706,7 @@ auto MapperEngine::BreakItemsMultihexMeshes(ptr<MapView> map) -> size_t
         item->SetMultihexMesh({});
 
         for (const auto multihex : multihex_mesh) {
-            map->AddMapperItem(item->GetProtoId(), multihex, &item->GetProperties());
+            map->AddMapperItem(item->GetProtoId(), multihex, item->GetProperties());
             breaks++;
         }
 
@@ -5745,7 +5745,7 @@ auto MapperEngine::TryBreakItemFromMultihexMesh(ptr<MapView> map, ptr<ItemHexVie
 
     if (check_hex_for_hit(item->GetHex())) {
         item->SetMultihexMesh({});
-        auto separated_item = map->AddMapperItem(item->GetProtoId(), item->GetHex(), &item->GetProperties());
+        auto separated_item = map->AddMapperItem(item->GetProtoId(), item->GetHex(), item->GetProperties());
 
         const auto new_mesh_holder_hex = multihex_mesh.front();
         vec_remove_unique_value(multihex_mesh, new_mesh_holder_hex);
@@ -5758,7 +5758,7 @@ auto MapperEngine::TryBreakItemFromMultihexMesh(ptr<MapView> map, ptr<ItemHexVie
         for (const auto multihex : multihex_mesh) {
             if (check_hex_for_hit(multihex)) {
                 item->SetMultihexMesh({});
-                auto separated_item = map->AddMapperItem(item->GetProtoId(), multihex, &item->GetProperties());
+                auto separated_item = map->AddMapperItem(item->GetProtoId(), multihex, item->GetProperties());
 
                 vec_remove_unique_value(multihex_mesh, multihex);
                 item->SetMultihexMesh(multihex_mesh);
@@ -5805,7 +5805,7 @@ void MapperEngine::BufferCopy()
         entity_buf.IsCritter = !!cr;
         entity_buf.IsItem = !!item;
         entity_buf.Proto = entity_with_proto->GetProto();
-        entity_buf.Props.emplace(entity->GetProperties().Copy());
+        entity_buf.Props.emplace(entity->GetProperties()->Copy());
 
         vector<refcount_ptr<ItemView>> children = GetEntityInnerItems(entity);
 
@@ -6086,12 +6086,13 @@ void MapperEngine::CurDraw()
         auto nullable_spr = GetPreviewSprite(proto->GetPicMap());
 
         if (nullable_spr) {
+            auto spr = nullable_spr.as_ptr();
             const auto zoom = cur_map->GetSpritesZoom();
             ipos32 pos = cur_map->MapToScreenPos(cur_map->GetHexMapPos(hex));
             pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(proto->GetOffset().y) * zoom));
-            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetOffset().y) * zoom));
+            pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().x) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetOffset().y) * zoom));
             pos += ipos32(iround<int32_t>(numeric_cast<float32_t>(Settings->MapHexWidth / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(Settings->MapHexHeight) * zoom));
-            pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetSize().height) * zoom));
+            pos -= ipos32(iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width / 2) * zoom), iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom));
 
             if (proto->GetIsTile() && PreviewRoofTiles) {
                 // The flat tile/roof XY offset already came from the prototype Offset above; a roof preview rides the
@@ -6100,10 +6101,9 @@ void MapperEngine::CurDraw()
                 pos.y += iround<int32_t>(elev_y * zoom);
             }
 
-            const auto width = iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetSize().width) * zoom);
-            const auto height = iround<int32_t>(numeric_cast<float32_t>(nullable_spr->GetSize().height) * zoom);
-            auto preview_spr = nullable_spr.as_ptr();
-            SprMngr.DrawSpriteSize(preview_spr, pos, {width, height}, true, false, Color::Neutral);
+            const auto width = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().width) * zoom);
+            const auto height = iround<int32_t>(numeric_cast<float32_t>(spr->GetSize().height) * zoom);
+            SprMngr.DrawSpriteSize(spr, pos, {width, height}, true, false, Color::Neutral);
         }
         return;
     }

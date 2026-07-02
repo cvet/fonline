@@ -47,16 +47,15 @@ auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<co
     AnyData::Document doc;
 
     for (size_t i = 1; i < props->GetRegistrator()->GetPropertiesCount(); i++) {
-        auto nullable_prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        auto prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i)).as_ptr();
 
-        if (nullable_prop->IsDisabled()) {
+        if (prop->IsDisabled()) {
             continue;
         }
-        if (!nullable_prop->IsPersistent()) {
+        if (!prop->IsPersistent()) {
             continue;
         }
 
-        auto prop = nullable_prop.as_ptr();
         props->ValidateForRawData(prop);
 
         // Skip same as in base or zero values
@@ -71,7 +70,7 @@ auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<co
         else {
             const auto raw_data = props->GetRawData(prop);
 
-            if (nullable_prop->IsPlainData()) {
+            if (prop->IsPlainData()) {
                 if (std::ranges::all_of(raw_data, [](uint8_t value) noexcept { return value == 0; })) {
                     continue;
                 }
@@ -84,7 +83,7 @@ auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<co
         }
 
         auto value = SavePropertyToValue(props, prop, hash_resolver, name_resolver);
-        doc.Emplace(string {nullable_prop->GetName()}, std::move(value));
+        doc.Emplace(string {prop->GetName()}, std::move(value));
     }
 
     return doc;

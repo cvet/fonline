@@ -281,7 +281,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
 
     for (auto&& [type_name, protos] : all_protos) {
         for (auto& proto : protos | std::views::values) {
-            errors += ValidateProperties(proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys);
+            errors += ValidateProperties(*proto->GetProperties(), strex("proto {} {}", type_name, proto->GetName()), script_sys);
         }
     }
 
@@ -311,7 +311,7 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
                 writer.WriteStringBytes(proto_name);
 
-                proto->GetProperties().StoreAllData(props_data, str_hashes);
+                proto->GetProperties()->StoreAllData(props_data, str_hashes);
                 writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
                 ptr<DataWriter> writer_ptr = &writer;
                 writer_ptr->WriteByteVector(props_data);

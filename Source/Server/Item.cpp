@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 Item::Item(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {&proto->GetProperties()}, &proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     ItemProperties(*GetInitRef()),
     _protoItem {proto}
@@ -245,14 +245,16 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
         auto nullable_item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
 
         if (nullable_item_already) {
-            if (nullable_item_already == item.get()) {
+            auto item_already = nullable_item_already.as_ptr();
+
+            if (item_already == item.get()) {
                 return item;
             }
 
             const auto count = item->GetCount();
             _engine->ItemMngr.DestroyItem(item);
-            nullable_item_already->SetCount(nullable_item_already->GetCount() + count);
-            return nullable_item_already.as_ptr();
+            item_already->SetCount(item_already->GetCount() + count);
+            return item_already;
         }
     }
 

@@ -356,9 +356,9 @@ void MasterBaker::BakeAllInternal()
     while (true) {
         vector<std::future<void>> res_bakings;
 
-        for (auto& nullable_bake_context : pack_bake_contexts) {
-            if (!nullable_bake_context->Done) {
-                auto bake_context = nullable_bake_context.as_ptr();
+        for (auto& bake_context_holder : pack_bake_contexts) {
+            if (!bake_context_holder->Done) {
+                auto bake_context = bake_context_holder.as_ptr();
                 res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [&bake_pack, bake_context, bake_order]() FO_DEFERRED { bake_pack(bake_context, bake_order); }));
             }
         }
