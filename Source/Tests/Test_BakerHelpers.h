@@ -133,6 +133,34 @@ namespace BakerTests
         return metadata;
     }
 
+    // Serializes a full metadata blob in the `Metadata.fometa-*` wire format: u16 section count, then per
+    // section { u16+name, u32 entry count, per entry { u32 token count, per token u16+text } }. Lets a test
+    // declare dynamic Entity / EntityHolder / Property / Event / FixedType metadata without hand-packing bytes.
+    inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
+    {
+        vector<uint8_t> metadata;
+        auto writer = DataWriter(metadata);
+
+        writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
+
+        for (const auto& [section_name, entries] : sections) {
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
+            writer.WritePtr(section_name.data(), section_name.length());
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
+
+            for (const auto& tokens : entries) {
+                writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
+
+                for (const string_view token : tokens) {
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+                    writer.WritePtr(token.data(), token.length());
+                }
+            }
+        }
+
+        return metadata;
+    }
+
     inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
     {
         FO_STACK_TRACE_ENTRY();

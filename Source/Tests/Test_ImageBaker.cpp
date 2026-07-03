@@ -590,10 +590,10 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
     AppendLeInt32(data, 0);
 }
 
-[[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
+[[nodiscard]] static auto MakeArtWithFrameIndices(int32_t flags, const vector<uint8_t>& indices) -> vector<uint8_t>
 {
     vector<uint8_t> data;
-    AppendLeInt32(data, 0); // Flags
+    AppendLeInt32(data, flags);
     AppendLeInt32(data, 10); // FrameRate
     AppendLeInt32(data, 1); // RotationCount
     AppendLe32(data, 1);
@@ -625,10 +625,14 @@ static void AppendArtFrameInfo(vector<uint8_t>& data, int32_t width, int32_t hei
     }
 
     AppendArtFrameInfo(data, 0, 0, 0, 0, 0);
-    AppendArtFrameInfo(data, 2, 1, 2, 5, 7);
-    data.emplace_back(1);
-    data.emplace_back(2);
+    AppendArtFrameInfo(data, numeric_cast<int32_t>(indices.size()), 1, numeric_cast<int32_t>(indices.size()), 5, 7);
+    data.insert(data.end(), indices.begin(), indices.end());
     return data;
+}
+
+[[nodiscard]] static auto MakeSimpleArt() -> vector<uint8_t>
+{
+    return MakeArtWithFrameIndices(0, {1, 2});
 }
 
 [[nodiscard]] static auto MakeRleFrameRangeArt() -> vector<uint8_t>
@@ -1268,6 +1272,28 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {0x46, 0x32, 0x28, 0x46, 0x1E, 0x14, 0x0A, 0x1E});
     }
 
+    SECTION("BakesStaticArtFlagZeroPixelsAndOptionEdgesThroughFofrm")
+    {
+        TestRig rig;
+        rig.AddSourceFile("gfx/static-art.fofrm", "Frm=static$1f0x.art\n");
+        AddSourceBinaryFile(rig, "gfx/static.art", MakeArtWithFrameIndices(1, {0, 1}));
+
+        ImageBaker baker {rig.MakeContext()};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/static-art.fofrm");
+
+        REQUIRE(rig.Outputs.contains("gfx/static-art.fofrm"));
+        const auto sequence = ReadSingleDirSequence(rig.Outputs.at("gfx/static-art.fofrm"));
+
+        CHECK(sequence.SequenceSize == 1);
+        CHECK(sequence.AnimTicks == 100);
+        REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Width == 2);
+        CHECK(sequence.Frames[0].Height == 1);
+        CHECK(sequence.Frames[0].NextX == -4);
+        CHECK(sequence.Frames[0].NextY == -6);
+        CHECK(sequence.Frames[0].Data == vector<uint8_t> {0, 0, 0, 0, 0x1E, 0x14, 0x0A, 0xFF});
+    }
+
     SECTION("BakesBamSpecificFrameOptionsThroughFofrm")
     {
         TestRig specific_frame;
@@ -1332,6 +1358,28 @@ TEST_CASE("ImageBaker")
         CHECK(sequence.Frames[1].Width == 0);
         CHECK(sequence.Frames[1].Height == 0);
         CHECK(sequence.Frames[1].Data.empty());
+
+        TestRig forward;
+        forward.AddSourceFile("gfx/art-forward.fofrm", "Frm=range$1F0-1.art\n");
+        AddSourceBinaryFile(forward, "gfx/range.art", MakeRleFrameRangeArt());
+
+        ImageBaker forward_baker {forward.MakeContext()};
+        forward_baker.BakeFiles(forward.GetAllSourceFiles(), "gfx/art-forward.fofrm");
+
+        REQUIRE(forward.Outputs.contains("gfx/art-forward.fofrm"));
+        const auto forward_sequence = ReadSingleDirSequence(forward.Outputs.at("gfx/art-forward.fofrm"));
+
+        CHECK(forward_sequence.SequenceSize == 2);
+        CHECK(forward_sequence.AnimTicks == 100);
+        REQUIRE(forward_sequence.Frames.size() == 2);
+        CHECK(forward_sequence.Frames[0].Width == 0);
+        CHECK(forward_sequence.Frames[0].Height == 0);
+        CHECK(forward_sequence.Frames[0].Data.empty());
+        CHECK(forward_sequence.Frames[1].Width == 3);
+        CHECK(forward_sequence.Frames[1].Height == 1);
+        CHECK(forward_sequence.Frames[1].NextX == 0);
+        CHECK(forward_sequence.Frames[1].NextY == -1);
+        CHECK(forward_sequence.Frames[1].Data == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x33, 0x22, 0x11, 0xFF, 0x66, 0x55, 0x44, 0xFF});
     }
 
     SECTION("BakesDirectionalArtOptionEdgesThroughFofrm")
@@ -1678,6 +1726,23 @@ Frm=one.toy
         baker.BakeFiles(rig.GetAllSourceFiles(), "gfx/skipped.tga");
 
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("BakeCheckerSkipsScanModeFiles")
+    {
+        TestRig rig;
+        AddSourceBinaryFile(rig, "gfx/skipped-scan.tga", MakeRawTga(1, 1, 24, {0, 0, 255}), 31);
+
+        vector<pair<string, uint64_t>> checked;
+
+        ImageBaker baker {rig.MakeContext("TestPack", [&checked](string_view path, uint64_t write_time) {
+            checked.emplace_back(string {path}, write_time);
+            return false;
+        })};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        CHECK(rig.Outputs.empty());
+        CHECK(checked == vector<pair<string, uint64_t>> {{"gfx/skipped-scan.tga", 31}});
     }
 
     SECTION("InvalidTgaInputsAreReported")

@@ -925,23 +925,31 @@ namespace ScriptMethodsTest
             return -7;
         }
 
+        try {
+            container.AddItem(proto, 0);
+            Game.DestroyCritter(cr);
+            return -8;
+        }
+        catch {
+        }
+
         array<Item> allChildren = container.GetItems();
         if (allChildren.length() < 2) {
             Game.DestroyCritter(cr);
-            return -8;
+            return -9;
         }
 
         Critter? owner = childByPid.GetCritter();
         if (owner is null || owner.Id != cr.Id) {)"
                     R"(
             Game.DestroyCritter(cr);
-            return -9;
+            return -10;
         }
 
         try {
             container.AddItem("TestItem".hstr(), 0);
             Game.DestroyCritter(cr);
-            return -10;
+            return -11;
         }
         catch {
         }
@@ -1168,43 +1176,56 @@ namespace ScriptMethodsTest
             return -8;
         }
 
-        mpos nestedMapHex(0, 0);
-        Map? nestedMap = nestedMapItem.GetMapPosition(nestedMapHex);
-        if (nestedMap is null || nestedMap.Id != map.Id || nestedMapHex != mpos(23, 24)) {
+        Map? nestedMapDirect = nestedMapItem.GetMap();
+        if (nestedMapDirect is null || nestedMapDirect.Id != map.Id) {
             Game.DestroyLocation(loc);
             return -9;
         }
 
-        if (nestedMapItem.GetCritter() !is null) {
+        mpos nestedMapHex(0, 0);
+        Map? nestedMap = nestedMapItem.GetMapPosition(nestedMapHex);
+        if (nestedMap is null || nestedMap.Id != map.Id || nestedMapHex != mpos(23, 24)) {
             Game.DestroyLocation(loc);
             return -10;
+        }
+
+        if (nestedMapItem.GetCritter() !is null) {
+            Game.DestroyLocation(loc);
+            return -11;
         }
 
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(25, 24), mdir(0));
         if (cr is null) {
             Game.DestroyLocation(loc);
-            return -11;
+            return -12;
         }
 
         Item critterContainer = cr.AddItem("TestItem2".hstr(), 1);
         if (critterContainer is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -12;
+            return -13;
         }
 
         Item nestedCritterItem = critterContainer.AddItem("TestItem".hstr(), 1);
         if (nestedCritterItem is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -13;
+            return -14;
         }
 
         Critter? nestedOwner = nestedCritterItem.GetCritter();
         if (nestedOwner is null || nestedOwner.Id != cr.Id) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -14;
+            return -15;
+        }
+
+        Map? nestedCritterDirectMap = nestedCritterItem.GetMap();
+        if (nestedCritterDirectMap is null || nestedCritterDirectMap.Id != map.Id) {
+            Game.DestroyCritter(cr);
+            Game.DestroyLocation(loc);
+            return -16;
         }
 
         mpos nestedCritterHex(0, 0);
@@ -1212,7 +1233,7 @@ namespace ScriptMethodsTest
         if (nestedCritterMap is null || nestedCritterMap.Id != map.Id || nestedCritterHex != cr.Hex) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -15;
+            return -17;
         }
 
         Game.DestroyLocation(loc);

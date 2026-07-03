@@ -35,6 +35,7 @@
 #include "AngelScriptScripting.h"
 #include "Baker.h"
 #include "DataSerialization.h"
+#include "DiskFileSystem.h"
 #include "Logging.h"
 #include "Movement.h"
 #include "Server.h"
@@ -50,6 +51,13 @@ namespace
     const vector<mdir> SERVER_TEST_MOVE_STEPS {hdir::NorthEast, hdir::NorthEast, hdir::East, hdir::East, hdir::SouthEast};
     const vector<uint16_t> SERVER_TEST_MOVE_CONTROL_STEPS {2, 4, 5};
 
+    enum class ServerTestScriptMode : uint8_t
+    {
+        Default,
+        StopOnInit,
+        ThrowOnInit,
+    };
+
     static auto MakeServerTestSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
@@ -60,6 +68,25 @@ namespace
         BakerTests::ApplySelfContainedServerSettings(settings);
 
         return settings;
+    }
+
+    static auto MakeServerHealthFileName() -> string
+    {
+        const auto exe_path = Platform::GetExePath();
+
+        return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
+    }
+
+    static auto MakeTempServerResourceDir(string_view name) -> string
+    {
+        const auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        return fs_path_to_string(base);
+    }
+
+    static void RemoveServerHealthFile(string_view name) noexcept
+    {
+        std::error_code ec;
+        (void)std::filesystem::remove(std::filesystem::path {fs_make_path(name)}, ec);
     }
 
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
@@ -304,6 +331,44 @@ namespace ServerEngineTest
             });
     }
 
+    static auto MakeInitGateScriptBinary(const FileSystem& metadata_resources, ServerTestScriptMode mode) -> vector<uint8_t>
+    {
+        BakerServerEngine compiler_engine {metadata_resources};
+
+        const string_view body = mode == ServerTestScriptMode::StopOnInit ? string_view {"return EventResult::StopChain;"} : string_view {R"(throw("Unit test OnInit failure");
+        return EventResult::ContinueChain;)"};
+
+        return BakerTests::CompileInlineScripts(&compiler_engine, "ServerEngineInitGateScripts",
+            {
+                {"Scripts/ServerEngineInitGateTest.fos",
+                    strex(R"(
+namespace ServerEngineInitGateTest
+{{
+    [[ModuleInit]]
+    void RegisterHooks()
+    {{
+        Game.OnInit.Subscribe(OnInit);
+    }}
+
+    [[Event]]
+    EventResult OnInit()
+    {{
+        {}
+    }}
+}}
+)",
+                        body)
+                        .str()},
+            },
+            [](string_view message) {
+                const auto message_str = string(message);
+
+                if (message_str.find("error") != string::npos || message_str.find("Error") != string::npos || message_str.find("fatal") != string::npos || message_str.find("Fatal") != string::npos) {
+                    throw ScriptSystemException(message_str);
+                }
+            });
+    }
+
     // `MakeSingleProtoResourceBlob` builds a proto with default properties, which leaves `Stackable`
     // false. The conservation stress (ServerEngineConcurrentItemTransferConservesTotal) needs a
     // stackable item so `MoveItem` exercises the split/merge `count` read-modify-write. Mirror of the
@@ -335,7 +400,7 @@ namespace ServerEngineTest
         return protos_data;
     }
 
-    static auto MakeServerTestResources() -> FileSystem
+    static auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default) -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
@@ -356,7 +421,7 @@ namespace ServerEngineTest
         const auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         const auto stackable_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "UnitTestStackable");
         const auto fomap_blob = MakeEmptyMapBlob();
-        const auto script_blob = MakeScriptBinary(compiler_resources);
+        auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
 
         auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -366,7 +431,7 @@ namespace ServerEngineTest
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("UnitTestStackable.fopro-bin-server", stackable_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
-        runtime_source->AddFile("ServerEngineTest.fos-bin-server", script_blob);
+        runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -395,9 +460,9 @@ namespace ServerEngineTest
         return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
     }
 
-    static void CheckServerStartupFailsSafely(GlobalSettings& settings)
+    static void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
     {
-        auto server = MakeServerEngine(settings);
+        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, std::move(resources));
 
         const auto startup_error = WaitForServerStart(server);
         INFO(startup_error);
@@ -406,6 +471,11 @@ namespace ServerEngineTest
         CHECK_FALSE(server->IsStarted());
 
         REQUIRE_NOTHROW(server->Shutdown());
+    }
+
+    static void CheckServerStartupFailsSafely(GlobalSettings& settings)
+    {
+        CheckServerStartupFailsSafely(settings, MakeServerTestResources());
     }
 
     static auto MakeServerStorageDoc(int64_t value) -> AnyData::Document
@@ -489,6 +559,37 @@ namespace ServerEngineTest
 
         return condition();
     }
+}
+
+TEST_CASE("ServerResourcesMountBakedServerEntries")
+{
+    if (IsPackaged()) {
+        SKIP("Baked directory mounting is only used by unpackaged test binaries");
+    }
+
+    const string temp_dir = MakeTempServerResourceDir("baked_entries");
+    const bool removed_before = fs_remove_dir_tree(temp_dir);
+    ignore_unused(removed_before);
+
+    auto cleanup = scope_exit([&temp_dir]() noexcept { fs_remove_dir_tree(temp_dir); });
+
+    const string baked_dir = strex(temp_dir).combine_path("Baked").str();
+    const string packaged_dir = strex(temp_dir).combine_path("Packaged").str();
+
+    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
+    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
+    REQUIRE(fs_write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
+    BakerTests::OverrideSetting(settings.ServerResources, packaged_dir);
+    BakerTests::OverrideSetting(settings.ServerResourceEntries, vector<string> {"ServerPack"});
+
+    auto resources = GetServerResources(settings);
+
+    CHECK(resources.ReadFileText("payload.txt") == "baked-server");
+    CHECK(resources.IsFileExists("payload.txt"));
+    CHECK_FALSE(resources.IsFileExists("client-only.txt"));
 }
 
 TEST_CASE("ServerEngineConnectionAcceptPredicates")
@@ -586,6 +687,106 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count);
 }
 
+TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    server->LockForPropertyAccessShared();
+    server->UnlockForPropertyAccessShared();
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    std::atomic_bool callback_ran {false};
+    const uint64_t completed_jobs = server->GetCompletedServerJobsCount();
+
+    server->ScheduleDelayedCallback(timespan {std::chrono::milliseconds {1}}, [&callback_ran] { callback_ran.store(true, std::memory_order_release); });
+
+    REQUIRE(WaitForUnlockedServerCondition(server.get(), locked, [&server, &callback_ran, completed_jobs] { return callback_ran.load(std::memory_order_acquire) && server->GetCompletedServerJobsCount() > completed_jobs; }));
+
+    CHECK(callback_ran.load(std::memory_order_acquire));
+    CHECK(server->GetCompletedServerJobsCount() > completed_jobs);
+}
+
+TEST_CASE("ServerEngineWritesHealthFile")
+{
+    const string health_file_name = MakeServerHealthFileName();
+    RemoveServerHealthFile(health_file_name);
+
+    auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name); });
+
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.WriteHealthFile, true);
+    BakerTests::OverrideSetting(settings.HealthFilePeriodMs, int32_t {5});
+
+    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server.get());
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    string health_content;
+    REQUIRE(WaitForUnlockedServerCondition(
+        server.get(), locked,
+        [&health_file_name, &health_content] {
+            const auto content = fs_read_file(health_file_name);
+
+            if (!content.has_value() || content->find("Server uptime:") == string::npos || content->find("Connections:") == string::npos) {
+                return false;
+            }
+
+            health_content = *content;
+            return true;
+        },
+        std::chrono::milliseconds {2000}));
+
+    CHECK(health_content.find("FOnline v0.0.0") != string::npos);
+    CHECK(health_content.find("Version: 0.0.0") != string::npos);
+    CHECK(health_content.find("Starting...") == string::npos);
+    CHECK(health_content.find("Server uptime:") != string::npos);
+    CHECK(health_content.find("Connections:") != string::npos);
+}
+
 TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
 {
     // Regression for the cvet-server-1 Staging crash: MongoDB was down, so InitStorageJob threw and
@@ -598,6 +799,21 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
+}
+
+TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
+{
+    auto settings = MakeServerTestSettings();
+
+    SECTION("ExplicitStopChain")
+    {
+        CheckServerStartupFailsSafely(settings, MakeServerTestResources(ServerTestScriptMode::StopOnInit));
+    }
+
+    SECTION("ExplicitResultException")
+    {
+        CheckServerStartupFailsSafely(settings, MakeServerTestResources(ServerTestScriptMode::ThrowOnInit));
+    }
 }
 
 TEST_CASE("ServerEngineCustomCollectionStartupValidation")
