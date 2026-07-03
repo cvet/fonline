@@ -301,7 +301,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
         if (length != 0) {
             auto init_payload = ScriptArrayInitListPayload(init_list, _elementSize);
-            MemCopy(At(0).get(), init_payload.get(), numeric_cast<size_t>(length * _elementSize));
+            MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
         }
     }
     else if ((_subTypeId & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -309,8 +309,8 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
         if (length != 0) {
             auto init_payload = ScriptArrayInitListBytesAt(init_list, sizeof(int32_t));
-            MemCopy(At(0).get(), init_payload.get(), numeric_cast<size_t>(length * _elementSize));
-            MemFill(init_payload.get(), 0, numeric_cast<size_t>(length * _elementSize));
+            MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
+            MemFill(init_payload, 0, numeric_cast<size_t>(length * _elementSize));
         }
     }
     else {
@@ -451,9 +451,9 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         FO_VERIFY_AND_THROW(!!sub_type, "Array sub-type info not found");
         // dst (array element) and value (incoming AngelScript stack slot) are only asDWORD-aligned, so read/
         // write the handles through aligned locals to avoid a misaligned 8-byte pointer access (UBSan)
-        const nptr<void> old_obj = MemReadUnaligned<void*>(dst.get());
-        const nptr<void> new_obj = MemReadUnaligned<void*>(value.get());
-        MemWriteUnaligned<void*>(dst.get(), new_obj.get_no_const());
+        const nptr<void> old_obj = MemReadUnaligned<void*>(dst);
+        const nptr<void> new_obj = MemReadUnaligned<void*>(value);
+        MemWriteUnaligned<void*>(dst, new_obj.get_no_const());
 
         if (new_obj) {
             engine->AddRefScriptObject(new_obj.get_no_const(), sub_type.get());
@@ -475,7 +475,7 @@ void ScriptArray::SetValue(int32_t index, ptr<void> value)
         *cast_from_void<double*>(dst.get()) = *cast_from_void<const double*>(value.get());
     }
     else if (_subTypeId > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
-        MemCopy(dst.get(), value.get(), _elementSize);
+        MemCopy(dst, value, _elementSize);
     }
 }
 
@@ -1100,7 +1100,7 @@ void ScriptArray::Copy(ptr<void> dst, ptr<void> src) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    MemCopy(dst.get(), src.get(), numeric_cast<size_t>(_elementSize));
+    MemCopy(dst, src, numeric_cast<size_t>(_elementSize));
 }
 
 auto ScriptArray::GetArrayItemPointer(int32_t index) -> ptr<void>
@@ -1277,7 +1277,7 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
     else if (count != 0) {
         auto dst_buffer = GetBuffer().as_ptr();
         auto src_buffer = src.GetBuffer().as_ptr();
-        MemCopy(dst_buffer.get(), src_buffer.get(), numeric_cast<size_t>(count * _elementSize));
+        MemCopy(dst_buffer, src_buffer, numeric_cast<size_t>(count * _elementSize));
     }
 }
 
@@ -1519,7 +1519,7 @@ static auto ScriptArray_First(ScriptArray& arr) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(0);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptArray_Last(ScriptArray& arr) -> void*
@@ -1527,7 +1527,7 @@ static auto ScriptArray_Last(ScriptArray& arr) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(arr.GetSize() - 1);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptArray_At(ScriptArray& arr, int32_t index) -> void*
@@ -1535,7 +1535,7 @@ static auto ScriptArray_At(ScriptArray& arr, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = arr.At(index);
-    return value.get_no_const();
+    return value.get();
 }
 
 static void ScriptArray_Clear(ScriptArray& arr)

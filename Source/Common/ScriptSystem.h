@@ -403,14 +403,14 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return static_cast<void**>(slot.get_no_const());
+        return static_cast<void**>(slot.get());
     }
 
     inline auto ReadIndirectHandleSlotPointer(ptr<void> slot_address) noexcept -> ptr<void*>
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void***>(slot_address.get_no_const());
+        return *static_cast<void***>(slot_address.get());
     }
 
     template<typename T>
@@ -422,7 +422,7 @@ namespace NativeDataProvider
             return *GetHandleSlot(slot);
         }
         else {
-            return *cast_from_void<T**>(slot.get_no_const());
+            return *cast_from_void<T**>(slot.get());
         }
     }
 
@@ -436,10 +436,10 @@ namespace NativeDataProvider
         }
 
         if constexpr (std::is_void_v<T>) {
-            return *static_cast<const void* const*>(slot.get_no_const());
+            return *static_cast<const void* const*>(slot.get());
         }
         else {
-            return *static_cast<const T* const*>(slot.get_no_const());
+            return *static_cast<const T* const*>(slot.get());
         }
     }
 
@@ -452,7 +452,7 @@ namespace NativeDataProvider
             *GetHandleSlot(slot) = value.get();
         }
         else {
-            *cast_from_void<T**>(slot.get_no_const()) = value.get();
+            *cast_from_void<T**>(slot.get()) = value.get();
         }
     }
 
@@ -467,7 +467,7 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void* const*>(slot.get_no_const());
+        return *static_cast<void* const*>(slot.get());
     }
 
     inline auto ReadIndirectHandleSlot(ptr<void> slot_address) noexcept -> nptr<void>

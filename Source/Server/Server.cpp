@@ -4015,7 +4015,7 @@ void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, 
     ignore_unused(prop);
 
     auto nullable_item = entity.dyn_cast<Item>();
-    const auto new_count = MemReadUnaligned<uint32_t>(new_value.get());
+    const auto new_count = MemReadUnaligned<uint32_t>(new_value);
     FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
     auto item = nullable_item.as_ptr();
 

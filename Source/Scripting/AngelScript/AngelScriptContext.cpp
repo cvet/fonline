@@ -301,7 +301,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
         int32_t as_result = 0;
         FO_AS_VERIFY(ctx->Unprepare());
 
-        refcount_ptr<AngelScript::asIScriptContext> ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_add_ref(ctx.get_no_const());
+        refcount_ptr<AngelScript::asIScriptContext> ctx_holder = refcount_ptr<AngelScript::asIScriptContext>::from_add_ref(ctx.get());
 
         if (_contextSetupCallback) {
             _contextSetupCallback(ctx_holder, AngelScriptContextSetupReason::Return);
@@ -344,7 +344,7 @@ auto AngelScriptContextManager::PrepareContext(ptr<AngelScript::asIScriptFunctio
 
     auto ctx = RequestContext();
     const auto ctx_generation = GetContextGeneration(ctx);
-    const auto as_result = ctx->Prepare(func.get_no_const());
+    const auto as_result = ctx->Prepare(func.get());
 
     if (as_result < 0) {
         ReturnContext(ctx, ctx_generation);

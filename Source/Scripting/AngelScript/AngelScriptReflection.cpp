@@ -415,7 +415,7 @@ void ScriptType::Instantiate(ptr<void*> out, int32_t out_type_id) const
         throw ScriptException(strex("Invalid 'instance' argument, incompatible types (instance: {}, expected='{}')", DescribeTypeId(engine, out_type_id), _typeInfo->GetName()));
     }
 
-    *out = engine->CreateScriptObject(_typeInfo.get_no_const());
+    *out = engine->CreateScriptObject(_typeInfo.get());
 }
 
 void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> out, int32_t out_type_id) const
@@ -448,13 +448,13 @@ void ScriptType::InstantiateCopy(ptr<void> in, int32_t in_type_id, ptr<void*> ou
     }
 
     auto in_object = nullable_in_object.as_ptr();
-    ptr<const AngelScript::asIScriptObject> in_obj = cast_from_void<AngelScript::asIScriptObject*>(in_object.get_no_const());
+    ptr<const AngelScript::asIScriptObject> in_obj = cast_from_void<AngelScript::asIScriptObject*>(in_object.get());
 
     if (in_obj->GetObjectType() != _typeInfo.get()) {
         throw ScriptException(strex("Invalid 'copyFrom' argument, incompatible runtime type (copyFrom: {}, runtime: {}, expected='{}')", DescribeTypeId(engine, in_type_id), DescribeTypeInfo(engine, in_obj->GetObjectType()), _typeInfo->GetName()));
     }
 
-    *out = engine->CreateScriptObjectCopy(in_object.get(), _typeInfo.get_no_const());
+    *out = engine->CreateScriptObjectCopy(in_object.get(), _typeInfo.get());
 }
 
 static auto ScriptTypeOfTemplateCallback(AngelScript::asITypeInfo* raw_ot, bool& dont_garbage_collect) -> bool

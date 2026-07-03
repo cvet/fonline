@@ -740,7 +740,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
     auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
     if (size != 0u) {
-        MemCopy(buf.get(), output_data->data(), size);
+        MemCopy(buf, output_data->data(), size);
     }
 
     ptr<const uint8_t> released_buf = std::move(buf).release();

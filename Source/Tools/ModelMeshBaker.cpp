@@ -44,7 +44,7 @@ extern "C" void* ufbx_malloc(size_t size)
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(size);
-    return bytes.get_no_const();
+    return bytes.get();
 }
 
 extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
@@ -57,11 +57,11 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
     if (const size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
         FO_STRONG_ASSERT(nullable_old_data, "Reallocation requested a copy but the previous block pointer is null");
         auto old_data = nullable_old_data.as_ptr();
-        MemCopy(new_ptr.get_no_const(), old_data.get(), copy_size);
+        MemCopy(new_ptr, old_data, copy_size);
     }
 
     allocator.deallocate(nullable_old_data.get(), old_size);
-    return new_ptr.get_no_const();
+    return new_ptr.get();
 }
 
 extern "C" void ufbx_free(void* ptr, size_t old_size)
@@ -382,7 +382,7 @@ static auto MakeUfbxSceneHolder(ptr<ufbx_scene> scene) -> unique_del_ptr<ufbx_sc
 {
     FO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<ufbx_scene> {scene.get_no_const(), CleanupUfbxScene};
+    return unique_del_ptr<ufbx_scene> {scene.get(), CleanupUfbxScene};
 }
 
 static void CleanupUfbxBakedAnim(ufbx_baked_anim* raw_anim) noexcept
@@ -399,7 +399,7 @@ static auto MakeUfbxBakedAnimHolder(ptr<ufbx_baked_anim> anim) -> unique_del_ptr
 {
     FO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<ufbx_baked_anim> {anim.get_no_const(), CleanupUfbxBakedAnim};
+    return unique_del_ptr<ufbx_baked_anim> {anim.get(), CleanupUfbxBakedAnim};
 }
 
 static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>
@@ -445,7 +445,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                 const ufbx_face fbx_face = fbx_mesh->faces[face_index];
                 FO_VERIFY_AND_THROW(!triangle_indices.empty(), "Triangulation buffer is empty");
                 nptr<uint32_t> triangle_indices_data = triangle_indices.data();
-                const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices_data.get_no_const(), triangle_indices.size(), fbx_mesh.get(), fbx_face);
+                const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices_data.get(), triangle_indices.size(), fbx_mesh.get(), fbx_face);
 
                 mesh_triangles_count += triangles_count;
 

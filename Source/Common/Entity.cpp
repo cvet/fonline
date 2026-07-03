@@ -517,7 +517,7 @@ auto EntityEvent::CheckCallbacks() -> bool
     }
 
     if (auto callbacks = _entity->FindEventCallbacks(_callbackName)) {
-        _callbacks.store(callbacks.get_no_const(), std::memory_order_release);
+        _callbacks.store(callbacks.get(), std::memory_order_release);
         return !callbacks->empty();
     }
 

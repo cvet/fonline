@@ -321,7 +321,7 @@ public:
 
         _binBuf->resize(_binBuf->size() + size);
         ptr<AngelScript::asBYTE> target = _binBuf->data() + _writePos;
-        MemCopy(target.get(), source.get(), size);
+        MemCopy(target, source, size);
         _writePos += size;
 
         return 0;
@@ -342,7 +342,7 @@ public:
         }
 
         ptr<const AngelScript::asBYTE> source = _binBuf->data() + _readPos;
-        MemCopy(target.get(), source.get(), size);
+        MemCopy(target, source, size);
         _readPos += size;
 
         return 0;

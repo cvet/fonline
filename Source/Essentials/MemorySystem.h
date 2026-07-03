@@ -50,6 +50,7 @@ extern auto FreeBackupMemoryChunk() noexcept -> bool;
 extern void SetBadAllocCallback(BadAllocCallback callback) noexcept;
 extern void ReportBadAlloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
 [[noreturn]] extern void ReportAndExit(string_view message) noexcept;
+extern auto AllocatorGetInUseBytes() noexcept -> size_t;
 
 template<typename T>
 class SafeAllocator
@@ -100,12 +101,6 @@ public:
     void deallocate(T* ptr, size_t count) const noexcept
     {
         (void)count;
-        // GCC's -Wfree-nonheap-object (on by default, fires only with optimization) raises a false positive here when it
-        // fully inlines std::vector::_M_realloc_insert through this allocator: it loses provenance of the old-buffer
-        // pointer and reports "operator delete called on pointer with nonzero offset". A real non-heap free is impossible
-        // by construction — this allocator only ever frees pointers produced by its own allocate() (::operator new). The
-        // check stays active everywhere else; suppress it only on this one GCC-specific false-positive site (the helper
-        // is a no-op on Clang/MSVC, which are unaffected).
         FO_GCC_IGNORE_WARNINGS_PUSH("-Wfree-nonheap-object")
         ::operator delete(ptr);
         FO_GCC_IGNORE_WARNINGS_POP()
@@ -123,7 +118,7 @@ public:
     {
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
         auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
-        return ptr.get_no_const();
+        return ptr.get();
     }
 
     template<typename T, typename... Args>
@@ -150,8 +145,8 @@ public:
         auto block = AllocWithBackupRetry<shared_ptr_storage_block<T>>(alloc, "Make shared ptr failed", "Failed to allocate shared ptr from backup pool", 1, sizeof(T));
 
         nptr<T> obj = block->stored_object();
-        shared_ptr<T> result = shared_ptr<T>(block.get_no_const(), obj.get_no_const());
-        init_shared_from_this_weak(result, obj.get_no_const());
+        shared_ptr<T> result = shared_ptr<T>(block.get(), obj.get());
+        init_shared_from_this_weak(result, obj.get());
         return result;
     }
 
@@ -166,7 +161,7 @@ public:
 
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
         auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw array failed", "Failed to allocate from backup pool", count, count * sizeof(T));
-        return ptr.get_no_const();
+        return ptr.get();
     }
 
     template<typename T>
@@ -177,8 +172,6 @@ public:
     }
 
 private:
-    // Shared out-of-memory path for all factories: report, retry the allocation while backup chunks
-    // can be released, and exit when the backup pool is exhausted
     template<typename T, typename AllocFunc>
     static auto AllocWithBackupRetry(AllocFunc&& alloc, const char* alloc_desc, const char* exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
@@ -200,56 +193,54 @@ private:
     }
 };
 
-// Memory low level management
-extern auto MemMalloc(size_t size) noexcept -> void*;
-extern auto MemCalloc(size_t num, size_t size) noexcept -> void*;
-extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*;
-extern void MemFree(void* ptr) noexcept;
+// Memory low level management.
+extern auto MemMalloc(size_t size) noexcept -> nptr<void>;
+extern auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>;
+extern auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>;
+extern void MemFree(nptr<void> ptr) noexcept;
 
-inline void MemCopy(void* dest, const void* src, size_t size) noexcept
+inline void MemCopy(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
-    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero
-    // So check size first
+    // Standard: If either dest or src is an invalid or null pointer, the behavior is undefined, even if count is zero.
+    // So check size first.
     if (size != 0) {
-        std::memcpy(dest, src, size);
+        std::memcpy(dest.get(), src.get(), size);
     }
 }
 
-inline void MemMove(void* dest, const void* src, size_t size) noexcept
+inline void MemMove(nptr<void> dest, nptr<const void> src, size_t size) noexcept
 {
     if (size != 0) {
-        std::memmove(dest, src, size);
+        std::memmove(dest.get(), src.get(), size);
     }
 }
 
-inline void MemFill(void* ptr, int32_t value, size_t size) noexcept
+inline void MemFill(nptr<void> ptr, int32_t value, size_t size) noexcept
 {
     if (size != 0) {
-        std::memset(ptr, value, size);
+        std::memset(ptr.get(), value, size);
     }
 }
 
-inline auto MemCompare(const void* ptr1, const void* ptr2, size_t size) noexcept -> bool
+inline auto MemCompare(nptr<const void> ptr1, nptr<const void> ptr2, size_t size) noexcept -> bool
 {
-    return size == 0 || std::memcmp(ptr1, ptr2, size) == 0;
+    return size == 0 || std::memcmp(ptr1.get(), ptr2.get(), size) == 0;
 }
 
 template<typename T>
-inline auto MemReadUnaligned(const void* src) noexcept -> T
+inline auto MemReadUnaligned(nptr<const void> src) noexcept -> T
 {
     static_assert(std::is_trivially_copyable_v<T>);
     T value;
-    std::memcpy(&value, src, sizeof(T));
+    std::memcpy(&value, src.get(), sizeof(T));
     return value;
 }
 
 template<typename T>
-inline void MemWriteUnaligned(void* dest, const T& value) noexcept
+inline void MemWriteUnaligned(nptr<void> dest, const T& value) noexcept
 {
     static_assert(std::is_trivially_copyable_v<T>);
-    std::memcpy(dest, &value, sizeof(T));
+    std::memcpy(dest.get(), &value, sizeof(T));
 }
-
-extern auto AllocatorGetInUseBytes() noexcept -> size_t;
 
 FO_END_NAMESPACE

@@ -706,7 +706,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
             ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
-            MemCopy(target.get(), data.data(), sizeof(cached));
+            MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;

@@ -136,7 +136,7 @@ static auto ReturnScriptEntity(ptr<const Entity> entity) noexcept -> const Entit
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return entity.get_no_const();
+    return entity.get();
 }
 
 static auto Entity_Proto(const Entity* self) -> const Entity*

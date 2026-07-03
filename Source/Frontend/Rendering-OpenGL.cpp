@@ -1472,14 +1472,14 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_ctx->ProjMatrix);
-        MemCopy(projection_matrix.get(), projection_matrix_values.get(), 16 * sizeof(float32_t));
+        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
         ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size.get(), main_texture_size_data.get(), 4 * sizeof(float32_t));
+        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     if (GL_HAS(uniform_buffer_object)) {

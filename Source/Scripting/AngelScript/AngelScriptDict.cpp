@@ -879,7 +879,7 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
     }
 
     ptr<void> obj = SafeAlloc::MakeRawArr<uint8_t>(element_size);
-    MemFill(obj.get(), 0, element_size);
+    MemFill(obj, 0, element_size);
     return obj;
 }
 
@@ -908,7 +908,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
     }
 
     ptr<void> copied = SafeAlloc::MakeRawArr<uint8_t>(element_size);
-    MemFill(copied.get(), 0, element_size);
+    MemFill(copied, 0, element_size);
 
     if ((sub_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
         const auto copied_obj = NativeDataProvider::ReadHandleSlot(value);
@@ -932,7 +932,7 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
         *cast_from_void<int64_t*>(copied.get()) = *cast_from_void<const int64_t*>(value.get());
     }
     else if (sub_type_id > AngelScript::asTYPEID_DOUBLE) { // Enums - copy actual size
-        MemCopy(copied.get(), value.get(), element_size);
+        MemCopy(copied, value, element_size);
     }
 
     return copied;
@@ -1272,7 +1272,7 @@ static auto ScriptDict_Get(const ScriptDict& dict, void* key) -> void*
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.Get(key_ptr);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
@@ -1282,7 +1282,7 @@ static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.GetOrCreate(key_ptr);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptDict_Remove(ScriptDict& dict, void* key) -> bool
@@ -1334,7 +1334,7 @@ static auto ScriptDict_GetDefault(const ScriptDict& dict, void* key, void* def_v
     auto key_ptr = RequireScriptDictValue(key_arg);
     auto def_val_ptr = RequireScriptDictValue(def_val_arg);
     ptr<void> value = dict.GetDefault(key_ptr, def_val_ptr);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptDict_GetKey(const ScriptDict& dict, int32_t index) -> void*
@@ -1342,7 +1342,7 @@ static auto ScriptDict_GetKey(const ScriptDict& dict, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> key = dict.GetKey(index);
-    return key.get_no_const();
+    return key.get();
 }
 
 static auto ScriptDict_GetValue(const ScriptDict& dict, int32_t index) -> void*
@@ -1350,7 +1350,7 @@ static auto ScriptDict_GetValue(const ScriptDict& dict, int32_t index) -> void*
     FO_STACK_TRACE_ENTRY();
 
     ptr<void> value = dict.GetValue(index);
-    return value.get_no_const();
+    return value.get();
 }
 
 static auto ScriptDict_GetKeys(const ScriptDict& dict) -> ScriptArray*

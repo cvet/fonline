@@ -422,7 +422,7 @@ int32_t VideoClip::DecodePacket()
 
             ptr<char> dest_buf = ogg_sync_buffer(&impl->SyncState.Value, read_bytes);
             ptr<const uint8_t> source = ptr<const uint8_t> {impl->RawVideoData.data()}.offset(impl->ReadPos);
-            MemCopy(dest_buf.get(), source.get(), read_bytes);
+            MemCopy(dest_buf, source, read_bytes);
             impl->ReadPos += read_bytes;
             ogg_sync_wrote(&impl->SyncState.Value, read_bytes);
         }

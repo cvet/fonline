@@ -93,7 +93,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
             uint32_t field_size = 0;
             auto field_size_target = ptr<uint32_t> {&field_size}.reinterpret_as<uint8_t>();
             auto field_size_source = ptr<const uint8_t> {raw_data.data()}.offset(data_pos);
-            MemCopy(field_size_target.get(), field_size_source.get(), sizeof(field_size));
+            MemCopy(field_size_target, field_size_source, sizeof(field_size));
             data_pos += sizeof(field_size);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
@@ -206,13 +206,13 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
                 const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
                 auto field_size_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
                 auto field_size_source = ptr<const uint32_t> {&field_size}.reinterpret_as<uint8_t>();
-                MemCopy(field_size_target.get(), field_size_source.get(), sizeof(field_size));
+                MemCopy(field_size_target, field_size_source, sizeof(field_size));
                 data_pos += sizeof(field_size);
 
                 if (field_size != 0) {
                     auto field_data_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
                     auto field_data_source = ptr<const uint8_t> {field_raw_entries[i].data()};
-                    MemCopy(field_data_target.get(), field_data_source.get(), field_size);
+                    MemCopy(field_data_target, field_data_source, field_size);
                     data_pos += field_size;
                 }
             }

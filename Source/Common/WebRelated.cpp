@@ -319,7 +319,7 @@ extern "C"
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
     {
         FO_NAMESPACE ptr<const char> clipboard_text = FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
-        return clipboard_text.get_no_const();
+        return clipboard_text.get();
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)

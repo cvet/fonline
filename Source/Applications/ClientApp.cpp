@@ -215,7 +215,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     vector<char*> runtime_args(args.size()); // SmartPointerAudit: raw ABI container
 
     for (size_t index = 0; index < args.size(); ++index) {
-        runtime_args[index] = args[index].get_no_const();
+        runtime_args[index] = args[index].get();
     }
 
     WriteLog("Client runtime host: entering DLL {}, runtime {}, build {}", requested_runtime.Path, loaded_runtime_name, loaded_build_hash);

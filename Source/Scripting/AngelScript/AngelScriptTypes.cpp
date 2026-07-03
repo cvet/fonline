@@ -114,8 +114,8 @@ static auto GetMutableStructFieldStorage(ptr<void> obj, size_t offset) noexcept 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<uint8_t> bytes = cast_from_void<uint8_t*>(obj.get_no_const());
-    return bytes.get_no_const() + offset;
+    ptr<uint8_t> bytes = cast_from_void<uint8_t*>(obj.get());
+    return bytes.get() + offset;
 }
 
 static auto ReadRequiredHandleSlot(ptr<void> slot) noexcept -> ptr<void>
@@ -160,7 +160,7 @@ static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    MemFill(obj.get(), 0, type.Size);
+    MemFill(obj, 0, type.Size);
 
     if (type.StructLayout) {
         for (const auto& field : type.StructLayout->Fields) {
@@ -194,7 +194,7 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    MemCopy(obj.get(), other.get(), type->Size);
+    MemCopy(obj, other, type->Size);
 }
 
 static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
@@ -207,7 +207,7 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 
     VisitBaseTypePrimitive(obj.get(), *type, [&index, &gen](auto&& v) {
         auto arg = GetGenericAddressArgAs<const void>(gen, index);
-        MemCopy(&v, arg.get(), sizeof(v));
+        MemCopy(&v, arg, sizeof(v));
         index++;
     });
 }
@@ -319,7 +319,7 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
-    const auto equals = MemCompare(obj.get(), other.get(), type->Size);
+    const auto equals = MemCompare(obj, other, type->Size);
     new (gen->GetAddressOfReturnLocation()) bool(equals);
 }
 

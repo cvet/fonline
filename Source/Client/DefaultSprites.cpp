@@ -459,7 +459,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     const auto pixel_count = numeric_cast<size_t>(width) * height;
                     vector<ucolor> pixels(pixel_count);
-                    MemCopy(pixels.data(), reader.GetCurBuf().get(), pixel_count * sizeof(ucolor));
+                    MemCopy(pixels.data(), reader.GetCurBuf(), pixel_count * sizeof(ucolor));
                     reader.GoForward(pixel_count * sizeof(ucolor));
 
                     dir_anim->_sprOffset[j].x = nx;
@@ -505,7 +505,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         const auto pixel_count = numeric_cast<size_t>(width) * height;
         vector<ucolor> pixels(pixel_count);
-        MemCopy(pixels.data(), reader.GetCurBuf().get(), pixel_count * sizeof(ucolor));
+        MemCopy(pixels.data(), reader.GetCurBuf(), pixel_count * sizeof(ucolor));
         reader.GoForward(pixel_count * sizeof(ucolor));
 
         auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());

@@ -173,7 +173,7 @@ static auto ReadMutableObjectHandleSlot(nptr<const void> slot) noexcept -> nptr<
         return nullptr;
     }
 
-    return *static_cast<void* const*>(const_cast<void*>(slot.get_no_const()));
+    return *static_cast<void* const*>(const_cast<void*>(slot.get()));
 }
 
 static auto ResolveInboundRemoteCallImplementation(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> nptr<AngelScript::asIScriptFunction>
@@ -374,7 +374,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
                     auto field_data = nullable_field_data.as_ptr();
                     span<uint8_t> buf_span {*buf};
                     auto field_dest = RemoteCallBufferAt(buf_span, field.Offset, field.Type.Size);
-                    MemCopy(field_dest.get(), field_data.get(), field.Type.Size);
+                    MemCopy(field_dest, field_data, field.Type.Size);
                 }
             }
             nptr<uint8_t> buf_data = buf->data();

@@ -202,7 +202,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _hashResolver.get_no_const()->ToHashedString(name);
+    return _hashResolver->ToHashedString(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
@@ -559,7 +559,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     int32_t new_layers[MODEL_LAYERS_COUNT];
 
     if (layers) {
-        MemCopy(new_layers, layers.get(), sizeof(_curLayers));
+        MemCopy(new_layers, layers, sizeof(_curLayers));
     }
     else {
         MemCopy(new_layers, _curLayers, sizeof(_curLayers));
@@ -2117,7 +2117,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     ptr<float32_t> proj_matrix = proj_buf->ProjMatrix;
     ptr<const float32_t> draw_projection_values = glm::value_ptr(_drawProj);
-    MemCopy(proj_matrix.get(), draw_projection_values.get(), 16 * sizeof(float32_t));
+    MemCopy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
 
     effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex.as_nptr() : nullptr;
 
@@ -2140,12 +2140,12 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
     ptr<float32_t> ground_position = model_buf->GroundPosition;
     ptr<const float32_t> ground_position_values = glm::value_ptr(_groundPos);
-    MemCopy(ground_position.get(), ground_position_values.get(), 3 * sizeof(float32_t));
+    MemCopy(ground_position, ground_position_values, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
     ptr<float32_t> light_color = model_buf->LightColor;
     ptr<const float32_t> light_color_values = glm::value_ptr(_modelMngr->_lightColor);
-    MemCopy(light_color.get(), light_color_values.get(), 4 * sizeof(float32_t));
+    MemCopy(light_color, light_color_values, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2158,7 +2158,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
                 ptr<float32_t> texture_size = &custom_tex_buf->TexSize[texture_uniform_offset];
                 ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
-                MemCopy(texture_size.get(), texture_size_data.get(), 4 * sizeof(float32_t));
+                MemCopy(texture_size, texture_size_data, 4 * sizeof(float32_t));
             }
             else {
                 effect->ModelTex[i] = nullptr;

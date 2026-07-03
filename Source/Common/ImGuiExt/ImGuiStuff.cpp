@@ -51,7 +51,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(sz);
-    return bytes.get_no_const();
+    return bytes.get();
 }
 
 static void ImGuiFree(void* raw_mem, void* user_data)

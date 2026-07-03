@@ -269,7 +269,7 @@ public:
                 }
 
                 ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-                MemCopy(main_texture_size.get(), size_data.get(), 4 * sizeof(float32_t));
+                MemCopy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }
 

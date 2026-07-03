@@ -59,7 +59,7 @@ public:
         T data;
         const_span<uint8_t> bytes = TakeBytes(sizeof(data));
         auto source = ReadBytesPtr(bytes);
-        MemCopy(&data, source.get(), sizeof(data));
+        MemCopy(&data, source, sizeof(data));
         return data;
     }
 
@@ -124,7 +124,7 @@ public:
 
         if (!out.empty()) {
             auto target = MutableObjectsPtr(out);
-            ptr<uint8_t> bytes = target.reinterpret_as<uint8_t>();
+            ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
             ReadBytes({bytes.get(), out.size() * sizeof(T)});
         }
     }
@@ -202,7 +202,7 @@ private:
         if (!bytes.empty()) {
             auto target = WriteBytesPtr(out);
             auto source = ReadBytesPtr(bytes);
-            MemCopy(target.get(), source.get(), bytes.size());
+            MemCopy(target, source, bytes.size());
         }
     }
 
@@ -244,7 +244,7 @@ public:
         T data;
         span<uint8_t> bytes = TakeBytes(sizeof(data));
         auto source = ReadBytesPtr(bytes);
-        MemCopy(&data, source.get(), sizeof(data));
+        MemCopy(&data, source, sizeof(data));
         return data;
     }
 
@@ -271,7 +271,7 @@ public:
 
         if (!out.empty()) {
             auto target = MutableObjectsPtr(out);
-            ptr<uint8_t> bytes = target.reinterpret_as<uint8_t>();
+            ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
             ReadBytes({bytes.get(), out.size() * sizeof(T)});
         }
     }
@@ -334,7 +334,7 @@ private:
         if (!bytes.empty()) {
             auto target = ReadBytesPtr(out);
             auto source = ReadBytesPtr(bytes);
-            MemCopy(target.get(), source.get(), bytes.size());
+            MemCopy(target, source, bytes.size());
         }
     }
 
@@ -374,7 +374,7 @@ public:
     {
         span<uint8_t> bytes = AppendBytes(sizeof(T));
         auto target = WriteBytesPtr(bytes);
-        MemCopy(target.get(), &data, bytes.size());
+        MemCopy(target, &data, bytes.size());
     }
 
     void WriteBytes(const_span<uint8_t> data)
@@ -383,7 +383,7 @@ public:
             auto source = SourceBytesPtr(data);
             span<uint8_t> bytes = AppendBytes(data.size());
             auto target = WriteBytesPtr(bytes);
-            MemCopy(target.get(), source.get(), bytes.size());
+            MemCopy(target, source, bytes.size());
         }
     }
 
@@ -409,7 +409,7 @@ public:
 
         if (!data.empty()) {
             auto source = SourceObjectsPtr(data);
-            ptr<const uint8_t> bytes = source.reinterpret_as<const uint8_t>();
+            ptr<const uint8_t> bytes = source.template reinterpret_as<const uint8_t>();
             WriteBytes({bytes.get(), data.size() * sizeof(T)});
         }
     }

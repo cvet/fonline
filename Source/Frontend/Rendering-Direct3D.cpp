@@ -225,7 +225,7 @@ static auto OffsetMappedBytes(ptr<const uint8_t> bytes, size_t offset) noexcept 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ptr<const uint8_t> {bytes.get_no_const() + offset};
+    return ptr<const uint8_t> {bytes.get() + offset};
 }
 
 static auto GetMappedResourceData(nptr<void> nullable_mapped_data) -> ptr<void>
@@ -1282,7 +1282,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
     for (int32_t i = 0; i < size.height; i++) {
         auto src = OffsetMappedBytes(mapped_bytes, numeric_cast<size_t>(tex_resource.RowPitch) * i);
-        MemCopy(&result[numeric_cast<size_t>(i) * size.width], src.get(), numeric_cast<size_t>(size.width) * 4);
+        MemCopy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
 
     d3d_device_context->Unmap(staging_tex.get(), 0);
@@ -1314,7 +1314,7 @@ void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<
 
     nptr<const ucolor> source_data = data.data();
     FO_VERIFY_AND_THROW(required_size == 0 || !!source_data, "Texture update source data is null for a non-empty region");
-    _ctx->D3DDeviceContext->UpdateSubresource(TexHandle.get_no_const(), 0, &dest_box, source_data.get(), src_pitch, 0);
+    _ctx->D3DDeviceContext->UpdateSubresource(TexHandle.get(), 0, &dest_box, source_data.get(), src_pitch, 0);
 }
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
@@ -1382,13 +1382,13 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     if (upload_vertices != 0) {
 #if FO_ENABLE_3D
         if (usage == EffectUsage::Model) {
-            MemCopy(vertices_dst.get(), Vertices3D.data(), upload_vertices * vert_size);
+            MemCopy(vertices_dst, Vertices3D.data(), upload_vertices * vert_size);
         }
         else {
-            MemCopy(vertices_dst.get(), Vertices.data(), upload_vertices * vert_size);
+            MemCopy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
         }
 #else
-        MemCopy(vertices_dst.get(), Vertices.data(), upload_vertices * vert_size);
+        MemCopy(vertices_dst, Vertices.data(), upload_vertices * vert_size);
 #endif
     }
 
@@ -1419,7 +1419,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
 
     if (upload_indices != 0) {
         auto indices_dst = GetMappedResourceData(indices_resource.pData);
-        MemCopy(indices_dst.get(), Indices.data(), upload_indices * sizeof(vindex_t));
+        MemCopy(indices_dst, Indices.data(), upload_indices * sizeof(vindex_t));
     }
 
     _ctx->D3DDeviceContext->Unmap(IndexBuf.get(), 0);
@@ -1519,13 +1519,13 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 #if FO_ENABLE_3D
         if constexpr (std::same_as<std::decay_t<decltype(buf)>, ModelBuffer>) {
             const auto bind_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32_t) * 16;
-            MemCopy(cbuffer_dst.get(), &buf, bind_size);
+            MemCopy(cbuffer_dst, &buf, bind_size);
         }
         else
 #endif
         {
             ignore_unused(this);
-            MemCopy(cbuffer_dst.get(), &buf, sizeof(buf));
+            MemCopy(cbuffer_dst, &buf, sizeof(buf));
         }
 
         _ctx->D3DDeviceContext->Unmap(buf_handle.get(), 0);
@@ -1535,14 +1535,14 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         auto& proj_buf = ProjBuf = ProjBuffer();
         ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_ctx->ProjMatrix);
-        MemCopy(projection_matrix.get(), projection_matrix_values.get(), 16 * sizeof(float32_t));
+        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
         ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size.get(), main_texture_size_data.get(), 4 * sizeof(float32_t));
+        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     const auto upload_cbuffer = [&setup_cbuffer](bool need_buf, auto& buf, auto& cbuf, bool reset_buf) {
@@ -1591,10 +1591,10 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         _ctx->D3DDeviceContext->IASetVertexBuffers(0, 1, d3d_dbuf->VertexBuf.get_pp(), &stride, &offset);
 
         if constexpr (sizeof(vindex_t) == 2) {
-            _ctx->D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf.get_no_const(), DXGI_FORMAT_R16_UINT, 0);
+            _ctx->D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf.get(), DXGI_FORMAT_R16_UINT, 0);
         }
         else {
-            _ctx->D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf.get_no_const(), DXGI_FORMAT_R32_UINT, 0);
+            _ctx->D3DDeviceContext->IASetIndexBuffer(d3d_dbuf->IndexBuf.get(), DXGI_FORMAT_R32_UINT, 0);
         }
 
         _ctx->D3DDeviceContext->IASetPrimitiveTopology(draw_mode);

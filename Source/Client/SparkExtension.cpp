@@ -248,7 +248,7 @@ namespace SPK::FO
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_particleMngr->_viewProjMatrix);
-        MemCopy(projection_matrix.get(), projection_matrix_values.get(), 16 * sizeof(float32_t));
+        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->MainTex = _texture;
 
         spark_render_buffer->Render(group.getNbParticles() << 2, _effect.as_ptr());

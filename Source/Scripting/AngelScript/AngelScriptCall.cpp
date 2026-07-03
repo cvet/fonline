@@ -76,7 +76,7 @@ static void SetScriptArgAddressFromHandleSlot(ptr<AngelScript::asIScriptContext>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<void> slot_address = static_cast<void*>(slot.get_no_const());
+    ptr<void> slot_address = static_cast<void*>(slot.get());
     return slot_address;
 }
 
@@ -430,7 +430,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             }
         }
         else {
-            MemFill(call.RetData.get(), 0, as_engine->GetSizeOfPrimitiveType(ret_type_id));
+            MemFill(call.RetData, 0, as_engine->GetSizeOfPrimitiveType(ret_type_id));
         }
     }
 
@@ -559,7 +559,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else if (base_type->IsEnum || base_type->IsPrimitive) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest.get(), arg_data.get(), base_type->Size);
+                    MemCopy(arg_dest, arg_data, base_type->Size);
                 }
                 else {
                     throw NotSupportedException("Invalid script func call - invalid simple type", base_type->Name);
@@ -583,10 +583,10 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 
                     if (is_ref_type) {
                         auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
-                        const nptr<void> cur_obj = *cur_obj_slot;
+                        nptr<void> cur_obj = *cur_obj_slot;
 
                         if (cur_obj) {
-                            as_engine->ReleaseScriptObject(cur_obj.get_no_const(), as_ret_type.get());
+                            as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
                         }
 
                         *cur_obj_slot = ret_obj.get();
@@ -599,7 +599,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else {
                     auto ret_value = GetContextAddressOfReturnValue(ctx);
-                    MemCopy(call.RetData.get(), ret_value.get(), func_desc->Ret.BaseType.Size);
+                    MemCopy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
                 }
             }
         }
@@ -617,7 +617,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if (arg_type->IsMutable) {
                     if (base_type->IsEnum && base_type->EnumUnderlyingType->Size != sizeof(int32_t)) {
                         mutable_data[i] = cast_to_void(&enum_mutable_data[i]);
-                        MemCopy(mutable_data[i].get(), arg_data.get(), base_type->Size);
+                        MemCopy(mutable_data[i], arg_data, base_type->Size);
                         FO_AS_VERIFY(ctx->SetArgAddress(i, mutable_data[i].get()));
                     }
                     else {
@@ -632,11 +632,11 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else if (base_type->IsEnum) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest.get(), arg_data.get(), base_type->Size);
+                    MemCopy(arg_dest, arg_data, base_type->Size);
                 }
                 else if (base_type->IsPrimitive) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest.get(), arg_data.get(), base_type->Size);
+                    MemCopy(arg_dest, arg_data, base_type->Size);
                 }
                 else {
                     throw NotSupportedException("Invalid script func call - invalid simple type", base_type->Name);
@@ -714,7 +714,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 else {
                     FO_VERIFY_AND_THROW(as_engine->GetSizeOfPrimitiveType(ret_type_id) == numeric_cast<int32_t>(func_desc->Ret.BaseType.Size), "AngelScript primitive return size does not match registered function descriptor", as_engine->GetSizeOfPrimitiveType(ret_type_id), func_desc->Ret.BaseType.Size);
                     auto ret_value = GetContextAddressOfReturnValue(ctx);
-                    MemCopy(call.RetData.get(), ret_value.get(), func_desc->Ret.BaseType.Size);
+                    MemCopy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
                 }
             }
 
@@ -729,7 +729,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     if (arg_type->Kind == ComplexTypeKind::Simple) {
                         ptr<const BaseTypeDesc> base_type = &arg_type->BaseType;
                         FO_VERIFY_AND_THROW(base_type->IsEnum, "Mutable AngelScript argument base type is not enum");
-                        MemCopy(arg_data.get(), mutable_entry.get(), base_type->Size);
+                        MemCopy(arg_data, mutable_entry, base_type->Size);
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Array) {
                         nptr<ScriptArray> nullable_arr = cast_from_void<ScriptArray*>(mutable_entry.get_no_const());

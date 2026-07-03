@@ -169,7 +169,7 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
     }
 
     auto resolved_addr = nullable_resolved_addr.as_ptr();
-    MemCopy(&addr, resolved_addr.get(), sizeof(addr));
+    MemCopy(&addr, resolved_addr, sizeof(addr));
     return addr;
 }
 
@@ -220,11 +220,7 @@ auto net_sockets::last_error_text() noexcept -> string
     }
 
     auto ws = nullable_ws.as_ptr();
-    auto ws_holder = unique_del_ptr<wchar_t> {ws.get_no_const(), [](ptr<wchar_t> text) {
-                                                  FO_STACK_TRACE_ENTRY();
-
-                                                  (void)::LocalFree(static_cast<HLOCAL>(text.get_no_const()));
-                                              }};
+    auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { (void)::LocalFree(static_cast<HLOCAL>(text.get())); }};
     const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);

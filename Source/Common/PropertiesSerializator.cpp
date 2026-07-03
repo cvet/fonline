@@ -258,7 +258,7 @@ static auto RawMutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
     static_assert(std::is_trivially_copyable_v<T>);
 
     ptr<T> value_ptr = &value;
-    return value_ptr.reinterpret_as<uint8_t>();
+    return value_ptr.template reinterpret_as<uint8_t>();
 }
 
 template<typename T>
@@ -269,7 +269,7 @@ static auto RawObjectBytes(const T& value) noexcept -> ptr<const uint8_t>
     static_assert(std::is_trivially_copyable_v<T>);
 
     ptr<const T> value_ptr = &value;
-    return value_ptr.reinterpret_as<const uint8_t>();
+    return value_ptr.template reinterpret_as<const uint8_t>();
 }
 
 static auto RawWritePtrAt(ptr<uint8_t> data, size_t pos) noexcept -> ptr<uint8_t>
@@ -292,7 +292,7 @@ static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> b
 
     auto lhs_data = RawBytesPtr(lhs);
     auto rhs_data = RawBytesPtr(rhs);
-    return MemCompare(lhs_data.get(), rhs_data.get(), lhs.size());
+    return MemCompare(lhs_data, rhs_data, lhs.size());
 }
 
 template<typename T>
@@ -305,7 +305,7 @@ static auto ReadRawValue(span<const uint8_t> data) -> T
     T value {};
     auto source = RawBytesPtr(data);
     auto target = RawMutableObjectBytes(value);
-    MemCopy(target.get(), source.get(), sizeof(value));
+    MemCopy(target, source, sizeof(value));
     return value;
 }
 
@@ -360,7 +360,7 @@ static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
     if (!bytes.empty()) {
         auto bytes_ptr = RawBytesPtr(bytes);
         auto enum_value_ptr = RawMutableObjectBytes(enum_value);
-        MemCopy(enum_value_ptr.get(), bytes_ptr.get(), bytes.size());
+        MemCopy(enum_value_ptr, bytes_ptr, bytes.size());
     }
 
     return enum_value;
@@ -393,7 +393,7 @@ static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void
         FO_VERIFY_AND_THROW(nullable_source, "Raw write source is null for a non-empty copy");
         auto source = nullable_source.as_ptr();
         auto target_pos = RawWritePtrAt(target, data_pos);
-        MemCopy(target_pos.get(), source.get(), size);
+        MemCopy(target_pos, source, size);
     }
 
     data_pos += size;

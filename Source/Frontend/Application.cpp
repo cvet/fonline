@@ -246,7 +246,7 @@ static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_p
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Window> {window.get_no_const(), [](SDL_Window* raw_window) {
+    return unique_del_ptr<SDL_Window> {window.get(), [](SDL_Window* raw_window) {
                                            FO_NO_STACK_TRACE_ENTRY();
 
                                            if (raw_window != nullptr) {
@@ -260,7 +260,7 @@ static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Renderer> {renderer.get_no_const(), [](SDL_Renderer* raw_renderer) {
+    return unique_del_ptr<SDL_Renderer> {renderer.get(), [](SDL_Renderer* raw_renderer) {
                                              FO_NO_STACK_TRACE_ENTRY();
 
                                              if (raw_renderer != nullptr) {
@@ -3055,7 +3055,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
 
         if (!buf.empty()) {
             auto converted_data_ptr = converted_data.as_ptr();
-            MemCopy(buf.data(), converted_data_ptr.get(), buf.size());
+            MemCopy(buf.data(), converted_data_ptr, buf.size());
         }
     }
 

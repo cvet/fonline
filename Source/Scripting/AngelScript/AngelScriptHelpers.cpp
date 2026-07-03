@@ -135,7 +135,7 @@ static auto ReadScriptPropertyObject(const_span<uint8_t> buffer, size_t& pos) no
 
     T value {};
     auto source = ReadScriptPropertyBytes(buffer, pos, sizeof(T));
-    MemCopy(&value, source.get(), sizeof(T));
+    MemCopy(&value, source, sizeof(T));
     return value;
 }
 
@@ -182,7 +182,7 @@ static void WriteScriptPropertyBytes(span<uint8_t> buffer, size_t& pos, ptr<cons
     }
 
     auto dest = ScriptPropertyBufferAt(buffer, pos, size);
-    MemCopy(dest.get(), source.get(), size);
+    MemCopy(dest, source, size);
     pos += size;
 }
 
@@ -791,7 +791,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     FO_STACK_TRACE_ENTRY();
 
     const auto resolve_hash = [prop](ptr<const uint8_t> hptr) -> hstring {
-        const auto hash = MemReadUnaligned<hstring::hash_t>(hptr.get());
+        const auto hash = MemReadUnaligned<hstring::hash_t>(hptr);
         return hash ? prop->GetRegistrator()->GetHashResolver()->ResolveHash(hash) : hstring();
     };
 
@@ -815,7 +815,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
     const auto resolve_enum = [](ptr<const uint8_t> eptr, size_t elen) -> int32_t {
         int32_t result = 0;
-        MemCopy(&result, eptr.get(), elen);
+        MemCopy(&result, eptr, elen);
         return result;
     };
     const auto create_ref_obj = [prop](ptr<const uint8_t> ref_data, size_t ref_data_size) -> refcount_ptr<DynamicRefTypeInstance> {
@@ -843,19 +843,19 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         else if (prop->IsBaseTypeEnum()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             FO_VERIFY_AND_THROW(data_size <= sizeof(int32_t), "Serialized enum payload is wider than AngelScript integer storage", prop->GetName(), data_size, sizeof(int32_t));
-            MemFill(construct_addr.get(), 0, sizeof(int32_t));
+            MemFill(construct_addr, 0, sizeof(int32_t));
             auto value_data = ReadScriptPropertyBytes(data_span, data_pos, data_size);
-            MemCopy(construct_addr.get(), value_data.get(), data_size);
+            MemCopy(construct_addr, value_data, data_size);
         }
         else if (prop->IsBaseTypePrimitive()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = ReadScriptPropertyBytes(data_span, data_pos, data_size);
-            MemCopy(construct_addr.get(), value_data.get(), data_size);
+            MemCopy(construct_addr, value_data, data_size);
         }
         else if (prop->IsBaseTypeStruct()) {
             FO_VERIFY_AND_THROW(data_size != 0, "Serialized primitive payload has zero size", data_size);
             auto value_data = ReadScriptPropertyBytes(data_span, data_pos, data_size);
-            MemCopy(construct_addr.get(), value_data.get(), data_size);
+            MemCopy(construct_addr, value_data, data_size);
         }
         else {
             FO_UNREACHABLE_PLACE();
@@ -944,12 +944,12 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 if (prop->GetBaseSize() == sizeof(int32_t)) {
                     auto values_data = ReadScriptPropertyBytes(data_span, data_pos, data_size);
-                    MemCopy(arr->At(0).get_no_const(), values_data.get(), data_size);
+                    MemCopy(arr->At(0), values_data, data_size);
                 }
                 else {
                     for (uint32_t i = 0; i < arr_size; i++) {
                         auto value_data = ReadScriptPropertyBytes(data_span, data_pos, prop->GetBaseSize());
-                        MemCopy(arr->At(numeric_cast<int32_t>(i)).get_no_const(), value_data.get(), prop->GetBaseSize());
+                        MemCopy(arr->At(numeric_cast<int32_t>(i)), value_data, prop->GetBaseSize());
                     }
                 }
             }
@@ -961,7 +961,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 const auto arr_size = numeric_cast<uint32_t>(data_size / prop->GetBaseSize());
                 arr->Resize(numeric_cast<int32_t>(arr_size));
                 auto values_data = ReadScriptPropertyBytes(data_span, data_pos, data_size);
-                MemCopy(arr->At(0).get_no_const(), values_data.get(), data_size);
+                MemCopy(arr->At(0), values_data, data_size);
             }
         }
         else if (prop->IsBaseTypeStruct()) {
@@ -973,7 +973,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = ReadScriptPropertyBytes(data_span, data_pos, prop->GetBaseSize());
-                    MemCopy(arr->At(numeric_cast<int32_t>(i)).get_no_const(), value_data.get(), prop->GetBaseSize());
+                    MemCopy(arr->At(numeric_cast<int32_t>(i)), value_data, prop->GetBaseSize());
                 }
             }
         }
@@ -1043,12 +1043,12 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->GetBaseSize() == sizeof(int32_t)) {
                                 auto values_data = ReadScriptPropertyBytes(data_span, data_pos, values_size);
-                                MemCopy(arr->At(0).get_no_const(), values_data.get(), values_size);
+                                MemCopy(arr->At(0), values_data, values_size);
                             }
                             else {
                                 for (uint32_t i = 0; i < arr_size; i++) {
                                     auto value_data = ReadScriptPropertyBytes(data_span, data_pos, prop->GetBaseSize());
-                                    MemCopy(arr->At(numeric_cast<int32_t>(i)).get_no_const(), value_data.get(), prop->GetBaseSize());
+                                    MemCopy(arr->At(numeric_cast<int32_t>(i)), value_data, prop->GetBaseSize());
                                 }
                             }
                         }
@@ -1057,14 +1057,14 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             const size_t values_size = arr_size * prop->GetBaseSize();
                             auto values_data = ReadScriptPropertyBytes(data_span, data_pos, values_size);
-                            MemCopy(arr->At(0).get_no_const(), values_data.get(), values_size);
+                            MemCopy(arr->At(0), values_data, values_size);
                         }
                         else if (prop->IsBaseTypeStruct()) {
                             arr->Resize(numeric_cast<int32_t>(arr_size));
 
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 auto value_data = ReadScriptPropertyBytes(data_span, data_pos, prop->GetBaseSize());
-                                MemCopy(arr->At(numeric_cast<int32_t>(i)).get_no_const(), value_data.get(), prop->GetBaseSize());
+                                MemCopy(arr->At(numeric_cast<int32_t>(i)), value_data, prop->GetBaseSize());
                             }
                         }
                         else {
@@ -2104,7 +2104,7 @@ void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> en
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get_no_const());
+    new (gen->GetAddressOfReturnLocation()) Entity*(entity.get());
 }
 
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept

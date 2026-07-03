@@ -97,7 +97,7 @@ static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
         return ::GetModuleHandleW(nullptr);
     }
 
-    return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get_no_const();
+    return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get();
 }
 
 static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
@@ -181,7 +181,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
         return std::nullopt;
     }
 
-    path_data[numeric_cast<size_t>(size)] = '\0';
+    path_data[static_cast<size_t>(size)] = '\0';
     return string {path_data.get()};
 
 #elif FO_MAC
@@ -612,7 +612,7 @@ auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) no
     func = ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, func_name_cstr.get());
 #endif
 
-    return func.get_no_const();
+    return func.get();
 }
 
 FO_END_NAMESPACE

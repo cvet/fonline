@@ -90,7 +90,7 @@ namespace
 
             ptr<void> target = raw_data;
             ptr<const asBYTE> source = &_buf->at(_readPos);
-            MemCopy(target.get(), source.get(), size);
+            MemCopy(target, source, size);
             _readPos += size;
             return 0;
         }
@@ -108,7 +108,7 @@ namespace
             _buf->resize(_writePos + size);
             ptr<asBYTE> target = &_buf->at(_writePos);
             ptr<const void> source = raw_data;
-            MemCopy(target.get(), source.get(), size);
+            MemCopy(target, source, size);
             _writePos += size;
             return 0;
         }

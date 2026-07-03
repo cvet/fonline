@@ -139,10 +139,10 @@ template<typename T>
     auto object = GetGenericObject(gen);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(object.get_no_const());
+        return static_cast<T*>(object.get());
     }
     else {
-        return cast_from_void<T*>(object.get_no_const());
+        return cast_from_void<T*>(object.get());
     }
 }
 
@@ -151,7 +151,7 @@ template<typename T>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return cast_from_void<T*>(GetGenericAuxiliary(gen).get_no_const());
+    return cast_from_void<T*>(GetGenericAuxiliary(gen).get());
 }
 
 template<typename T>
@@ -162,26 +162,11 @@ template<typename T>
     auto arg_address = GetGenericAddressArg(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get_no_const());
+        return static_cast<T*>(arg_address.get());
     }
     else {
-        return cast_from_void<T*>(arg_address.get_no_const());
+        return cast_from_void<T*>(arg_address.get());
     }
-}
-
-template<typename T>
-inline void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, const T& entity) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ReturnGenericEntity(gen, nptr<Entity>(entity.get_no_const()));
-}
-
-inline void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, std::nullptr_t) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ReturnGenericEntity(gen, nptr<Entity>());
 }
 
 #ifdef AS_MAX_PORTABILITY
@@ -203,84 +188,6 @@ FO_BEGIN_NAMESPACE
 
 namespace aswrap
 {
-    static auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return gen->GetArgAddress(arg_index);
-    }
-
-    static auto GetGenericAddressOfArg(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return gen->GetAddressOfArg(arg_index);
-    }
-
-    static auto GetGenericObjectAddress(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return gen->GetObject();
-    }
-
-    static auto ReturnGenericAddress(ptr<void> address) noexcept -> void*
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return address.get_no_const();
-    }
-
-    static auto ReturnNullableGenericAddress(nptr<void> address) noexcept -> void*
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return address.get_no_const();
-    }
-
-    template<typename T>
-    static auto GenericAddressAsPointer(ptr<void> address) noexcept -> T
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        static_assert(std::is_pointer_v<T>);
-
-        if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
-            static_assert(sizeof(T) == sizeof(void*));
-            return std::bit_cast<T>(address.get());
-        }
-        else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
-            return ReturnGenericAddress(address);
-        }
-        else {
-            return cast_from_void<T>(address.get());
-        }
-    }
-
-    template<typename T>
-    static auto GetGenericArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return cast_from_void<T*>(GetGenericArgAddress(gen, arg_index).get());
-    }
-
-    template<typename T>
-    static auto GetGenericAddressArgValue(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return cast_from_void<T*>(GetGenericAddressOfArg(gen, arg_index).get());
-    }
-
-    template<typename T>
-    static auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return cast_from_void<T*>(GetGenericObjectAddress(gen).get());
-    }
-
     template<typename T>
     struct ArgReader
     {
@@ -290,14 +197,25 @@ namespace aswrap
 
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
-                return *GetGenericArgObject<BaseType>(gen, arg_index);
+                return *cast_from_void<BaseType*>(GetGenericArgAddress(gen, arg_index).get());
             }
             else if constexpr (std::is_pointer_v<T>) {
-                return GenericAddressAsPointer<T>(GetGenericArgAddress(gen, arg_index));
+                auto arg_address = GetGenericArgAddress(gen, arg_index);
+
+                if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+                    static_assert(sizeof(T) == sizeof(void*));
+                    return std::bit_cast<T>(arg_address.get());
+                }
+                else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+                    return arg_address.get();
+                }
+                else {
+                    return cast_from_void<T>(arg_address.get());
+                }
             }
             else {
                 using BaseType = std::remove_cv_t<T>;
-                return *GetGenericAddressArgValue<BaseType>(gen, arg_index);
+                return *GetGenericAddressArgAs<BaseType>(gen, arg_index);
             }
         }
     };
@@ -309,14 +227,25 @@ namespace aswrap
         {
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
-                return *GetGenericObject<BaseType>(gen);
+                return *GetGenericObjectAs<BaseType>(gen);
             }
             else if constexpr (std::is_pointer_v<T>) {
-                return GenericAddressAsPointer<T>(GetGenericObjectAddress(gen));
+                auto object = GetGenericObject(gen);
+
+                if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
+                    static_assert(sizeof(T) == sizeof(void*));
+                    return std::bit_cast<T>(object.get());
+                }
+                else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
+                    return object.get();
+                }
+                else {
+                    return cast_from_void<T>(object.get());
+                }
             }
             else {
                 using BaseType = std::remove_cv_t<T>;
-                return *GetGenericObject<BaseType>(gen);
+                return *GetGenericObjectAs<BaseType>(gen);
             }
         }
     };
@@ -335,7 +264,7 @@ namespace aswrap
         }
         else {
             nptr<void> return_address = cast_to_void(value);
-            return ReturnNullableGenericAddress(return_address);
+            return return_address.get();
         }
     }
 
@@ -349,7 +278,7 @@ namespace aswrap
             return std::bit_cast<void*>(std::addressof(value));
         }
         else {
-            return ReturnGenericAddress(cast_to_void(std::addressof(value)));
+            return cast_to_void(std::addressof(value));
         }
     }
 
@@ -412,7 +341,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            auto object = GetGenericObject<C>(gen);
+            auto object = GetGenericObjectAs<C>(gen);
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
@@ -432,7 +361,7 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            auto object = GetGenericObject<const C>(gen);
+            auto object = GetGenericObjectAs<const C>(gen);
 
             if constexpr (std::is_void_v<R>) {
                 (object->*Method)(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
@@ -502,14 +431,14 @@ namespace aswrap
         template<std::size_t... Index>
         static void invoke(AngelScript::asIScriptGeneric* gen, std::index_sequence<Index...>)
         {
-            new (GetGenericObject<T>(gen).get()) T(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
+            new (GetGenericObjectAs<T>(gen).get()) T(ArgReader<Args>::read(gen, static_cast<int>(Index))...);
         }
     };
 
     template<typename T>
     void destroy(AngelScript::asIScriptGeneric* gen)
     {
-        GetGenericObject<T>(gen)->~T();
+        GetGenericObjectAs<T>(gen)->~T();
     }
 }
 

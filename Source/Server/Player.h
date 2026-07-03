@@ -72,8 +72,10 @@ public:
     [[nodiscard]] auto GetControlledCritter() const noexcept -> nptr<const Critter>;
     [[nodiscard]] auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity> override;
     [[nodiscard]] auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity> override;
-    [[nodiscard]] auto GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSIS;
-    [[nodiscard]] auto GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS;
+    // Leading return type so FO_TSA_NO_ANALYSIS appertains to the function; after a trailing return type
+    // clang binds the attribute to the return type and silently ignores it (see Map.h getters).
+    [[nodiscard]] ptr<ServerConnection> GetConnection() noexcept FO_TSA_NO_ANALYSIS;
+    [[nodiscard]] ptr<const ServerConnection> GetConnection() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetViewMap() const noexcept -> nptr<const ViewMapContext>;
     [[nodiscard]] auto GetViewMapTarget() const noexcept -> nptr<const Map>;
     [[nodiscard]] auto GetViewMapTarget() noexcept -> nptr<Map>;

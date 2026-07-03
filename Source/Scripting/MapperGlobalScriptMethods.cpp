@@ -325,7 +325,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
                                 .str();
 
-    return mapper->LoadMapFromText(name, map_text).get_no_const();
+    return mapper->LoadMapFromText(name, map_text).get();
 }
 
 ///@ ExportMethod
@@ -338,7 +338,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return mapper->LoadMapFromText(name, string(text)).get_no_const();
+    return mapper->LoadMapFromText(name, string(text)).get();
 }
 
 ///@ ExportMethod
@@ -907,9 +907,9 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
                 auto row = MapperColorDataAt(row_buf, 0);
                 auto top_row = MapperColorDataAt(pixels, top);
                 auto bottom_row = MapperColorDataAt(pixels, bottom);
-                MemCopy(row.get(), top_row.get(), row_bytes);
-                MemCopy(top_row.get(), bottom_row.get(), row_bytes);
-                MemCopy(bottom_row.get(), row.get(), row_bytes);
+                MemCopy(row, top_row, row_bytes);
+                MemCopy(top_row, bottom_row, row_bytes);
+                MemCopy(bottom_row, row, row_bytes);
             }
         }
     }

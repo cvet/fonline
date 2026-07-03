@@ -93,7 +93,7 @@ auto Player::GetControlledCritter() const noexcept -> nptr<const Critter>
     return _controlledCr.load(std::memory_order_acquire);
 }
 
-auto Player::GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSIS
+ptr<ServerConnection> Player::GetConnection() noexcept FO_TSA_NO_ANALYSIS
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -101,7 +101,7 @@ auto Player::GetConnection() noexcept -> ptr<ServerConnection> FO_TSA_NO_ANALYSI
     return _connection;
 }
 
-auto Player::GetConnection() const noexcept -> ptr<const ServerConnection> FO_TSA_NO_ANALYSIS
+ptr<const ServerConnection> Player::GetConnection() const noexcept FO_TSA_NO_ANALYSIS
 {
     FO_NO_STACK_TRACE_ENTRY();
 

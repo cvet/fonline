@@ -303,7 +303,7 @@ FO_BEGIN_NAMESPACE
 
 #endif
 
-extern auto MemMalloc(size_t size) noexcept -> void*
+extern auto MemMalloc(size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -319,7 +319,7 @@ extern auto MemMalloc(size_t size) noexcept -> void*
 #endif
 }
 
-extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
+extern auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -342,34 +342,34 @@ extern auto MemCalloc(size_t num, size_t size) noexcept -> void*
 #endif
 }
 
-extern auto MemRealloc(void* ptr, size_t size) noexcept -> void*
+extern auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
     tracy::InitRpmalloc();
-    TracyFree(ptr);
-    void* p = tracy::rprealloc(ptr, size);
+    TracyFree(ptr.get());
+    void* p = tracy::rprealloc(ptr.get(), size);
     TracyAlloc(p, size);
     return p;
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
-    return rprealloc(ptr, size);
+    return rprealloc(ptr.get(), size);
 #else
-    return realloc(ptr, size);
+    return realloc(ptr.get(), size);
 #endif
 }
 
-extern void MemFree(void* ptr) noexcept
+extern void MemFree(nptr<void> ptr) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC && FO_TRACY
-    TracyFree(ptr);
-    tracy::rpfree(ptr);
+    TracyFree(ptr.get());
+    tracy::rpfree(ptr.get());
 #elif FO_HAVE_RPMALLOC && !FO_TRACY
-    rpfree(ptr);
+    rpfree(ptr.get());
 #else
-    free(ptr);
+    free(ptr.get());
 #endif
 }
 

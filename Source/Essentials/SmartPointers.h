@@ -54,13 +54,10 @@ concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from)
 
 template<typename T>
 class refcount_ptr;
-
 template<typename T>
 class refcount_nptr;
-
 template<typename T>
 class ptr;
-
 template<typename T>
 class nptr;
 
@@ -79,12 +76,12 @@ inline constexpr bool is_borrow_pointer_wrapper_v<refcount_nptr<T>> = true;
 
 template<typename T>
 class unique_ptr;
-
 template<typename T>
 class unique_nptr;
-
 template<typename T>
 class unique_del_ptr;
+template<typename T>
+class unique_arr_ptr;
 
 // Owning smart pointers (refcount_ptr/unique_ptr/unique_del_ptr and their nullable variants) that
 // implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below.
@@ -103,6 +100,8 @@ template<typename T>
 inline constexpr bool is_owning_pointer_v<refcount_nptr<T>> = true;
 template<typename T>
 inline constexpr bool is_owning_pointer_v<unique_nptr<T>> = true;
+template<typename T>
+inline constexpr bool is_owning_pointer_v<unique_arr_ptr<T>> = true;
 
 template<typename T>
 class ptr
@@ -217,6 +216,18 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator*() const noexcept -> const U&
     {
         return *_ptr;
+    }
+    // Pointer-to-member access. A raw `p->*pmf` expression is not a first-class value, so to support
+    // `(sp->*pmf)(args...)` the operator returns a small forwarding callable bound to the pointee.
+    template<typename M>
+    [[nodiscard]] FO_FORCE_INLINE auto operator->*(M member) noexcept
+    {
+        return [obj = _ptr, member](auto&&... args) -> decltype(auto) { return (obj->*member)(std::forward<decltype(args)>(args)...); };
+    }
+    template<typename M>
+    [[nodiscard]] FO_FORCE_INLINE auto operator->*(M member) const noexcept
+    {
+        return [obj = _ptr, member](auto&&... args) -> decltype(auto) { return (obj->*member)(std::forward<decltype(args)>(args)...); };
     }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
@@ -2013,7 +2024,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _owner.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _owner.get(); }
-    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _owner.get_no_const(); }
+    [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _owner.get(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() noexcept -> ptr<T> { return _owner.as_ptr(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return _owner.as_ptr(); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return _owner.as_nptr(); }

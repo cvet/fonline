@@ -1454,9 +1454,9 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             for (int32_t y = 0; y < size.height / 2; y++) {
                 const auto top = numeric_cast<size_t>(y) * width;
                 const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                MemCopy(row_buf_data.get(), pixels_data.get() + top, row_bytes);
+                MemCopy(row_buf_data, pixels_data.get() + top, row_bytes);
                 MemCopy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
-                MemCopy(pixels_data.get() + bottom, row_buf_data.get(), row_bytes);
+                MemCopy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }

@@ -53,7 +53,7 @@ public:
         auto pstr = SafeAlloc::MakeUnique<string>(data, length);
         ptr<string> released_string = std::move(pstr).release();
         ptr<void> string_constant = cast_to_void(released_string.get());
-        return string_constant.get_no_const();
+        return string_constant.get();
     }
 
     auto ReleaseStringConstant(const void* str) -> int override
@@ -831,7 +831,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
         if (pos - prev > 0 || !remove_empty_entries) {
             array->Resize(array->GetSize() + 1);
             ptr<void> entry_slot = array->At(count);
-            ptr<string> entry = cast_from_void<string*>(entry_slot.get_no_const());
+            ptr<string> entry = cast_from_void<string*>(entry_slot.get());
             auto entry_begin = ScriptStringCStrAt(str, prev);
             entry->assign(entry_begin.get(), pos - prev);
             count++;
@@ -843,7 +843,7 @@ static auto CreateScriptStringSplit(const string& str, const string& delim, bool
     if (str.size() - prev > 0 || !remove_empty_entries) {
         array->Resize(array->GetSize() + 1);
         ptr<void> entry_slot = array->At(count);
-        ptr<string> entry = cast_from_void<string*>(entry_slot.get_no_const());
+        ptr<string> entry = cast_from_void<string*>(entry_slot.get());
         auto entry_begin = ScriptStringCStrAt(str, prev);
         entry->assign(entry_begin.get());
     }

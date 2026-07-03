@@ -71,7 +71,7 @@ public:
     [[nodiscard]] auto GetAs() noexcept -> T
     {
         FO_STRONG_ASSERT(sizeof(T) == _dataSize, "Property raw data size mismatch", sizeof(T), _dataSize);
-        return MemReadUnaligned<T>(GetPtr().get());
+        return MemReadUnaligned<T>(GetPtr());
     }
 
     auto Alloc(size_t size) -> ptr<uint8_t>;
@@ -81,7 +81,7 @@ public:
 
         if (size != 0) {
             FO_VERIFY_AND_THROW(value, "Source value pointer is null");
-            MemCopy(data.get(), value.get(), size);
+            MemCopy(data, value, size);
         }
     }
 
@@ -89,7 +89,7 @@ public:
     void SetAs(T value)
     {
         auto target = Alloc(sizeof(T));
-        MemCopy(target.get(), &value, sizeof(T));
+        MemCopy(target, &value, sizeof(T));
     }
 
     void Pass(span<const uint8_t> value);
@@ -506,7 +506,7 @@ static auto PropertiesObjectAsBytes(const T& value) -> const_span<uint8_t>
     FO_NO_STACK_TRACE_ENTRY();
 
     ptr<const T> value_ptr = &value;
-    ptr<const uint8_t> bytes = value_ptr.reinterpret_as<const uint8_t>();
+    ptr<const uint8_t> bytes = value_ptr.template reinterpret_as<const uint8_t>();
     return {bytes.get(), sizeof(T)};
 }
 
@@ -520,7 +520,7 @@ static auto PropertiesObjectArrayAsBytes(span<const T> values) -> const_span<uin
     }
 
     nptr<const T> nullable_values = values.data();
-    nptr<const uint8_t> bytes = nullable_values.reinterpret_as<const uint8_t>();
+    nptr<const uint8_t> bytes = nullable_values.template reinterpret_as<const uint8_t>();
     return {bytes.get(), values.size() * sizeof(T)};
 }
 
@@ -554,7 +554,7 @@ static void PropertiesWriteBytes(span<uint8_t> target, size_t pos, const_span<ui
 
     auto target_pos = PropertiesSpanDataAt(target, pos, source.size());
     auto source_pos = PropertiesSpanDataAt(source, 0);
-    MemCopy(target_pos.get(), source_pos.get(), source.size());
+    MemCopy(target_pos, source_pos, source.size());
 }
 
 template<typename T>
@@ -569,7 +569,7 @@ static void PropertiesCopyRawVectorData(vector<T>& target, const_span<uint8_t> s
     FO_VERIFY_AND_THROW(source.size() == target.size() * sizeof(T), "Source size does not match target vector byte size");
 
     auto source_data = PropertiesSpanDataAt(source, 0);
-    MemCopy(target.data(), source_data.get(), source.size());
+    MemCopy(target.data(), source_data, source.size());
 }
 
 template<typename T>
@@ -581,7 +581,7 @@ static auto PropertiesReadObject(const_span<uint8_t> data) -> T
 
     T result;
     auto source = PropertiesSpanDataAt(data, 0);
-    MemCopy(&result, source.get(), sizeof(result));
+    MemCopy(&result, source, sizeof(result));
     return result;
 }
 
@@ -594,7 +594,7 @@ static auto PropertiesReadObjectAt(const_span<uint8_t> data, size_t pos) -> T
 
     T result;
     auto source = PropertiesSpanDataAt(data, pos);
-    MemCopy(&result, source.get(), sizeof(result));
+    MemCopy(&result, source, sizeof(result));
     return result;
 }
 

@@ -195,7 +195,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
                 indirect_args[index] = arg_data;
             }
             else {
-                indirect_args[index] = MemReadUnaligned<void*>(arg_data.get());
+                indirect_args[index] = MemReadUnaligned<void*>(arg_data);
             }
 
             args_data.emplace_back(static_cast<void*>(indirect_args[index].get_pp()));
@@ -346,8 +346,8 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     if (!failed) {
         const auto& enum_type = meta->GetBaseType(*enum_name);
         auto result_arg = GetGenericArgAddress(gen, 1);
-        MemFill(result_arg.get(), 0, enum_type.Size);
-        MemCopy(result_arg.get(), &enum_value, enum_type.Size);
+        MemFill(result_arg, 0, enum_type.Size);
+        MemCopy(result_arg, &enum_value, enum_type.Size);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -363,7 +363,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    MemCopy(&enum_index, enum_arg.get(), enum_type.Size);
+    MemCopy(&enum_index, enum_arg, enum_type.Size);
     const bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;

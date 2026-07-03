@@ -1419,7 +1419,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0).as_ptr();
-        MemCopy(&store_type, store_type_data.get(), sizeof(store_type));
+        MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1459,7 +1459,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0).as_ptr();
-        MemCopy(&store_type, store_type_data.get(), sizeof(store_type));
+        MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);
@@ -1498,7 +1498,7 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
         auto store_type_data = raw_data.at(0).as_ptr();
-        MemCopy(&store_type, store_type_data.get(), sizeof(store_type));
+        MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
         auto owned_chunks = MakeOwnedStoreData(stored_data);

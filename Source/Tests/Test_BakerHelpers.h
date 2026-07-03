@@ -308,7 +308,7 @@ namespace BakerTests
 
             if (size != 0u) {
                 ptr<uint8_t> buf_ptr = buf.get();
-                MemCopy(buf_ptr.get(), it->second.Data.data(), size);
+                MemCopy(buf_ptr, it->second.Data.data(), size);
             }
 
             return MakeMemoryDataSourceFileBufferHolder(std::move(buf));

@@ -176,7 +176,7 @@ void Properties::AllocData() noexcept
 
     if (!_baseProps) {
         _podData = SafeAlloc::MakeUniqueArr<uint8_t>(_registrator->_wholePodDataSize);
-        MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
+        MemFill(_podData, 0, _registrator->_wholePodDataSize);
         _complexData = SafeAlloc::MakeUniqueArr<pair<unique_arr_ptr<uint8_t>, size_t>>(_registrator->_complexProperties.size());
     }
 }
@@ -337,7 +337,7 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
                 auto overlay_data_bytes = nullable_overlay_data_bytes.as_ptr();
                 auto target = new_data_bytes.offset(new_size);
                 auto source = overlay_data_bytes.offset(entry.DataOffset);
-                MemCopy(target.get(), source.get(), entry.DataSize);
+                MemCopy(target, source, entry.DataSize);
             }
 
             entry.DataOffset = static_cast<uint32_t>(new_size);
@@ -500,7 +500,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
             auto overlay_data = nullable_overlay_data.as_ptr();
             auto other_overlay_data = nullable_other_overlay_data.as_ptr();
-            MemCopy(overlay_data.get(), other_overlay_data.get(), _overlayDataSize);
+            MemCopy(overlay_data, other_overlay_data, _overlayDataSize);
         }
         else {
             _overlayData.reset();
@@ -515,7 +515,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
             auto pod_data = nullable_pod_data.as_ptr();
             auto other_pod_data = nullable_other_pod_data.as_ptr();
-            MemCopy(pod_data.get(), other_pod_data.get(), _registrator->_wholePodDataSize);
+            MemCopy(pod_data, other_pod_data, _registrator->_wholePodDataSize);
         }
 
         for (size_t i = 0; i < _registrator->_complexProperties.size(); i++) {
@@ -532,7 +532,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
                     auto complex_data = nullable_complex_data.as_ptr();
                     auto other_complex_data = nullable_other_complex_data.as_ptr();
-                    MemCopy(complex_data.get(), other_complex_data.get(), complex_data_size);
+                    MemCopy(complex_data, other_complex_data, complex_data_size);
                 }
             }
             else {
@@ -626,7 +626,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
                 auto overlay_data = nullable_overlay_data.as_ptr();
                 auto target = overlay_data.offset(data_offset);
-                MemCopy(target.get(), other_raw_data.data(), entry.DataSize);
+                MemCopy(target, other_raw_data.data(), entry.DataSize);
                 data_offset += entry.DataSize;
             }
 
@@ -842,7 +842,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
         }
     }
     else {
-        MemFill(_podData.get(), 0, _registrator->_wholePodDataSize);
+        MemFill(_podData, 0, _registrator->_wholePodDataSize);
         ResetComplexData();
 
         while (true) {
@@ -854,7 +854,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
             }
 
             FO_VERIFY_AND_THROW(start_pos <= _registrator->_wholePodDataSize && len <= _registrator->_wholePodDataSize - start_pos, "Serialized POD data section is outside the property layout bounds", _registrator->GetTypeName(), start_pos, len, _registrator->_wholePodDataSize);
-            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8_t>(len).get(), len);
+            MemCopy(_podData.get() + start_pos, reader.ReadPtr<uint8_t>(len), len);
         }
 
         // Read complex properties
@@ -879,8 +879,9 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
     FO_STACK_TRACE_ENTRY();
 
     auto& cache_ptr = _storeDataCaches[with_protected ? 1 : 0];
-    if (!cache_ptr) {
-        cache_ptr.emplace();
+
+    if (!cache_ptr.has_value()) {
+        cache_ptr = StoreDataCache {};
     }
 
     ptr<std::remove_reference_t<decltype(*cache_ptr)>> cache = &*cache_ptr;
@@ -990,7 +991,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             uint16_t prop_index {};
             auto prop_index_target = ptr<uint16_t> {&prop_index}.reinterpret_as<uint8_t>();
             auto prop_index_source = property_indices.offset(i * sizeof(uint16_t));
-            MemCopy(prop_index_target.get(), prop_index_source.get(), sizeof(uint16_t));
+            MemCopy(prop_index_target, prop_index_source, sizeof(uint16_t));
 
             FO_VERIFY_AND_THROW(prop_index > 0, "Serialized separate property payload references the reserved zero property index", _registrator->GetTypeName(), i, property_data_count);
             FO_VERIFY_AND_THROW(prop_index < _registrator->_registeredProperties.size(), "Serialized separate property index is outside the registrator property table", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), i, property_data_count);
@@ -1014,7 +1015,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
         if (full_sizes[0] != 0) {
             FO_VERIFY_AND_THROW(full_data[0], "POD data payload is null");
             auto pod_data = full_data[0].as_ptr();
-            MemCopy(target._podData.get(), pod_data.get(), full_sizes[0]);
+            MemCopy(target._podData, pod_data, full_sizes[0]);
         }
 
         if (full_data.size() > 1) {
@@ -1023,7 +1024,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             vector<uint16_t> complex_indicies(complex_data_count);
             FO_VERIFY_AND_THROW(full_data[1], "Complex index table payload is null");
             auto complex_indices_data = full_data[1].as_ptr();
-            MemCopy(complex_indicies.data(), complex_indices_data.get(), full_sizes[1]);
+            MemCopy(complex_indicies.data(), complex_indices_data, full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
                 FO_VERIFY_AND_THROW(complex_indicies[i] > 0, "Serialized complex property index table references the reserved zero property index", _registrator->GetTypeName(), i, complex_indicies.size());
@@ -1051,7 +1052,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
     FO_VERIFY_AND_THROW(all_data[0], "Store-type marker payload is null");
     auto store_type_data = all_data[0].as_ptr();
     auto store_type_target = ptr<uint8_t> {&store_type};
-    MemCopy(store_type_target.get(), store_type_data.get(), sizeof(store_type));
+    MemCopy(store_type_target, store_type_data, sizeof(store_type));
 
     vector<nptr<const uint8_t>> payload_data(all_data.begin() + 1, all_data.end());
     vector<uint32_t> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
@@ -1224,7 +1225,7 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
 
     if (ignore_props.empty() && !ignore_temporary) {
         if (!_baseProps && !other._baseProps) {
-            if (!MemCompare(_podData.get(), other._podData.get(), _registrator->_wholePodDataSize)) {
+            if (!MemCompare(_podData, other._podData, _registrator->_wholePodDataSize)) {
                 return false;
             }
 
@@ -1237,7 +1238,7 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
                 if (complex_data.second != other_complex_data.second) {
                     return false;
                 }
-                if (complex_data.second != 0 && !MemCompare(complex_data.first.get(), other_complex_data.first.get(), complex_data.second)) {
+                if (complex_data.second != 0 && !MemCompare(complex_data.first, other_complex_data.first, complex_data.second)) {
                     return false;
                 }
             }
@@ -1268,7 +1269,7 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
                     auto entry_data = overlay_data.offset(entry.DataOffset);
                     auto other_entry_data = other_overlay_data.offset(other_entry.DataOffset);
 
-                    if (!MemCompare(entry_data.get(), other_entry_data.get(), entry.DataSize)) {
+                    if (!MemCompare(entry_data, other_entry_data, entry.DataSize)) {
                         return false;
                     }
                 }
@@ -1518,7 +1519,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
             auto overlay_data = nullable_overlay_data.as_ptr();
             auto target = overlay_data.offset(data_offset);
-            MemCopy(target.get(), data.data(), data.size());
+            MemCopy(target, data.data(), data.size());
         };
 
         if (auto nullable_entry = FindOverlayEntry(prop)) {
@@ -1582,7 +1583,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
                 auto pod_data = nullable_pod_data.as_ptr();
                 auto target = pod_data.offset(*prop->_podDataOffset);
-                MemCopy(target.get(), raw_data.data(), raw_data.size());
+                MemCopy(target, raw_data.data(), raw_data.size());
             }
         }
         else {
@@ -1606,7 +1607,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
                 FO_STRONG_ASSERT(nullable_complex_data_bytes, "Complex data buffer is null");
 
                 auto complex_data_bytes = nullable_complex_data_bytes.as_ptr();
-                MemCopy(complex_data_bytes.get(), raw_data.data(), raw_data.size());
+                MemCopy(complex_data_bytes, raw_data.data(), raw_data.size());
             }
         }
 

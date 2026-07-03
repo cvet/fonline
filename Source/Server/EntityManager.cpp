@@ -863,7 +863,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
 
             if (inner_entities) {
                 actual_inner_entity_ids = vec_transform(*inner_entities, [](auto&& entity) -> ident_t {
-                    auto custom_entity = require_refcount_ptr(entity.dyn_cast<const CustomEntity>());
+                    auto custom_entity = require_refcount_ptr(entity.template dyn_cast<const CustomEntity>());
                     return custom_entity->GetId();
                 });
             }

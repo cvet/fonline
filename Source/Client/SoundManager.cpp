@@ -143,7 +143,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
             auto target = ptr<uint8_t> {output.data()};
             auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
-            MemCopy(target.get(), source.get(), offset);
+            MemCopy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
@@ -156,7 +156,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
                 auto stream_target = ptr<uint8_t> {output.data()}.offset(offset);
                 auto stream_source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
-                MemCopy(stream_target.get(), stream_source.get(), write);
+                MemCopy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
             }
@@ -164,7 +164,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             // Cut off end
             if (offset < output.size()) {
                 auto silence_target = ptr<uint8_t> {output.data()}.offset(offset);
-                MemFill(silence_target.get(), silence, output.size() - offset);
+                MemFill(silence_target, silence, output.size() - offset);
             }
         }
         else {
@@ -172,7 +172,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             if (!output.empty()) {
                 auto target = ptr<uint8_t> {output.data()};
                 auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
-                MemCopy(target.get(), source.get(), output.size());
+                MemCopy(target, source, output.size());
             }
             sound->ConvertedBufCur += output.size();
         }
@@ -210,7 +210,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         // Give silent
         if (!output.empty()) {
             auto silence_target = ptr<uint8_t> {output.data()};
-            MemFill(silence_target.get(), silence, output.size());
+            MemFill(silence_target, silence, output.size());
         }
         return true;
     }
@@ -218,7 +218,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
     // Give silent
     if (!output.empty()) {
         auto silence_target = ptr<uint8_t> {output.data()};
-        MemFill(silence_target.get(), silence, output.size());
+        MemFill(silence_target, silence, output.size());
     }
 
     return false;

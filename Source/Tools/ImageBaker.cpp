@@ -139,7 +139,7 @@ static auto BytesAsMutableSpan(span<uint8_t> data, size_t value_count) noexcept 
 
     FO_STRONG_ASSERT(data.size() >= value_count * sizeof(T), "Byte span is too small to reinterpret as the requested value count");
     nptr<uint8_t> bytes = data.data();
-    ptr<T> values = reinterpret_cast<T*>(bytes.get_no_const());
+    ptr<T> values = reinterpret_cast<T*>(bytes.get());
     return {values.get(), value_count};
 }
 
@@ -163,7 +163,7 @@ static auto MutableObjectBytes(T& object) noexcept -> span<uint8_t>
     FO_NO_STACK_TRACE_ENTRY();
 
     ptr<T> object_ptr = &object;
-    ptr<uint8_t> bytes = object_ptr.reinterpret_as<uint8_t>();
+    ptr<uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
     return {bytes.get(), sizeof(T)};
 }
 
@@ -2453,7 +2453,7 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
                 ptr<const uint8_t*> io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
                 ptr<const uint8_t> source = *io_ptr;
                 ptr<uint8_t> target = png_data;
-                MemCopy(target.get(), source.get(), length);
+                MemCopy(target, source, length);
                 ptr<const uint8_t> next_source = source.get() + length;
                 *io_ptr = next_source.get();
             }
@@ -2526,7 +2526,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
         if (cur_pos + len <= data.size()) {
             if (len != 0) {
                 auto source = ImageSpanBytesAt(data, cur_pos);
-                MemCopy(out.get(), source.get(), len);
+                MemCopy(out, source, len);
             }
 
             cur_pos += (len);

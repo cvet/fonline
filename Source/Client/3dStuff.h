@@ -209,7 +209,7 @@ private:
     ptr<EffectManager> _effectMngr;
     ptr<IAppRender> _render;
     ptr<GameTimer> _gameTime;
-    ptr<HashResolver> _hashResolver;
+    mutable ptr<HashResolver> _hashResolver;
     ptr<NameResolver> _nameResolver;
     ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;

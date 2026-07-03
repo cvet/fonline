@@ -186,7 +186,7 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
     if (move_len != 0) {
         auto target = ptr<uint8_t> {_bufData.data()};
         auto source = ptr<uint8_t> {_bufData.data()}.offset(len);
-        MemMove(target.get(), source.get(), move_len);
+        MemMove(target, source, move_len);
     }
 
     _bufEndPos -= len;
@@ -337,7 +337,7 @@ void NetInBuffer::ShrinkReadBuf()
 
         auto target = ptr<uint8_t> {_bufData.data()};
         auto source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
-        MemMove(target.get(), source.get(), move_len);
+        MemMove(target, source, move_len);
 
         _bufEndPos -= _bufReadPos;
         _bufReadPos = 0;
