@@ -1416,6 +1416,37 @@ namespace ScriptMethodsTest
         return 0;
     }
 
+    // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
+    // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
+    // via the strong-validated SetMapId before registration pulled it into the sync context, and
+    // ValidateEntityAccessStrong aborts the whole process on an uncovered access. The crash MECHANISM
+    // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
+    // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
+    // fresh critter, so if registration ever stopped syncing fresh entities this would abort the server.
+    [[Async]]
+    int TestCreateCritterUnderSyncContext()
+    {
+        // Hold a lock on an unrelated anchor so the sync context is non-empty (the roster-switch condition).
+        Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (anchor is null) return -1;
+
+        Game.Sync(anchor);
+        if (!Game.IsEntityLocked(anchor)) return -2;
+
+        // Create a fresh critter under the non-empty context. Registration must sync it before the
+        // strong-validated SetMapId, and it must be covered (own lock held) afterwards.
+        Critter created = Game.CreateCritter("TestCritter".hstr(), false);
+        if (created is null) return -3;
+        if (!Game.IsEntityLocked(created)) return -4;
+
+        Game.SyncRelease();
+
+        Game.DestroyCritter(created);
+        Game.DestroyCritter(anchor);
+
+        return 0;
+    }
+
     // ========== Item Ownership ==========
 
     int TestItemOwnership()
@@ -3206,6 +3237,14 @@ TEST_CASE("ServerEntityLifecycle")
     SECTION("LoadAndDestroyUnloadedCritter")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoadAndDestroyUnloadedCritter"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("CreateCritterUnderHeldSyncContext")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateCritterUnderSyncContext"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

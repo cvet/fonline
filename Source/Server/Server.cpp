@@ -2133,29 +2133,6 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
 
     MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
 
-    bool release_empty_sync_context = false;
-
-    if (!cr->IsDestroyed()) {
-        auto ctx = RequireCurrentSyncContext();
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr);
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr);
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto nullable_ctx = GetCurrentSyncContext()) {
-                auto ctx = nullable_ctx.as_ptr();
-                ctx->Release();
-            }
-        }
-    });
-
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr);
         OnGlobalMapCritterIn.Fire(cr);
@@ -2213,29 +2190,6 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     EntityMngr.MakePersistent(cr, true, true);
     MapMngr.AddCritterToMap(cr, nullptr, {}, hdir {}, {});
-
-    bool release_empty_sync_context = false;
-
-    if (!cr->IsDestroyed()) {
-        auto ctx = RequireCurrentSyncContext();
-
-        if (ctx->IsEmpty()) {
-            ctx->SyncEntity(cr);
-            release_empty_sync_context = true;
-        }
-        else {
-            ctx->EnsureEntitySynced(cr);
-        }
-    }
-
-    auto release_empty_sync = scope_exit([this, release_empty_sync_context]() noexcept {
-        if (release_empty_sync_context) {
-            if (auto nullable_ctx = GetCurrentSyncContext()) {
-                auto ctx = nullable_ctx.as_ptr();
-                ctx->Release();
-            }
-        }
-    });
 
     if (!cr->IsDestroyed()) {
         ValidateEntityAccess(cr);
@@ -2368,34 +2322,10 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
     EnsureEntitySynced(player);
     EnsureEntitySynced(nullable_cr);
 
-    auto ctx = RequireCurrentSyncContext();
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        const array<nptr<ServerEntity>, 2> sync_entities {player.as_nptr(), nullable_cr};
-        ctx->SyncEntities(sync_entities);
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(player);
-        ctx->EnsureEntitySynced(player->GetControlledCritter());
-        ctx->EnsureEntitySynced(nullable_cr);
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() mutable noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(player);
-    ValidateEntityAccess(nullable_cr);
-
     auto nullable_prev_cr = player->GetControlledCritter();
     auto prev_cr_holder = nullable_prev_cr.try_hold_ref();
     ignore_unused(prev_cr_holder);
-    ValidateEntityAccess(nullable_prev_cr);
+    EnsureEntitySynced(nullable_prev_cr);
 
     if (!nullable_cr) {
         if (!nullable_prev_cr) {
@@ -2481,53 +2411,30 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     auto prev_cr_holder = nullable_prev_cr.try_hold_ref();
     ignore_unused(cr_holder);
     ignore_unused(prev_cr_holder);
-
     ValidateEntityAccess(cr);
     ValidateEntityAccess(nullable_prev_cr);
 
     refcount_nptr<Map> nullable_map {};
+
     if (cr->GetMapId()) {
         nullable_map = require_refcount_ptr(cr->GetParent<Map>());
     }
+
     ident_t map_id {};
+
     if (nullable_map) {
         auto map = nullable_map.as_ptr();
         map_id = map->GetId();
     }
+
     ident_t prev_cr_id {};
+
     if (nullable_prev_cr) {
         auto prev_cr = nullable_prev_cr.as_ptr();
         prev_cr_id = prev_cr->GetId();
     }
+
     FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!nullable_map, "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map_id, prev_cr_id);
-
-    auto ctx = RequireCurrentSyncContext();
-
-    bool release_empty_sync_context = false;
-
-    if (ctx->IsEmpty()) {
-        if (nullable_map) {
-            const array<nptr<ServerEntity>, 2> sync_entities {cr.as_nptr(), nullable_map};
-            ctx->SyncEntities(sync_entities);
-        }
-        else {
-            ctx->SyncEntity(cr);
-        }
-        release_empty_sync_context = true;
-    }
-    else {
-        ctx->EnsureEntitySynced(cr);
-        ctx->EnsureEntitySynced(nullable_map);
-    }
-
-    auto release_empty_sync = scope_exit([ctx, release_empty_sync_context]() mutable noexcept {
-        if (release_empty_sync_context) {
-            ctx->Release();
-        }
-    });
-
-    ValidateEntityAccess(cr);
-    ValidateEntityAccess(nullable_prev_cr);
     ValidateEntityAccess(nullable_map);
 
     cr->Send_TimeSync();
@@ -2566,14 +2473,13 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
             auto map = nullable_map.as_ptr();
             auto nullable_loc = map->GetLocation();
             FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-            ctx->EnsureEntitySynced(nullable_loc);
+            ValidateEntityAccess(nullable_loc);
         }
 
         cr->Send_LoadMap(nullable_map);
     }
 
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
-
     cr->Send_AddCritter(cr);
 
     if (!nullable_map) {
@@ -2647,6 +2553,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
             player->Send_ViewMap();
         }
     }
+
     cr->Send_PlaceToGameComplete();
     cr->Send_TimeSync();
 }
