@@ -32,6 +32,7 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "CommonHelpers.h"
 #include "DiskFileSystem.h"
 #include "SafeArithmetics.h"
 
@@ -114,12 +115,13 @@ TEST_CASE("DiskFileSystem")
         CHECK(stream_get_read_pos(stream) == 0);
 
         array<char, 3> buf {};
-        REQUIRE(stream_read_exact(stream, buf.data(), buf.size()));
+        nptr<char> buf_data = buf.data();
+        REQUIRE(stream_read_exact(stream, make_span(buf_data, buf.size())));
         CHECK(string_view {buf.data(), buf.size()} == "abc");
         CHECK(stream_get_read_pos(stream) == 3);
         REQUIRE(stream_set_read_pos(stream, 1, std::ios_base::cur));
         CHECK(stream_get_read_pos(stream) == 4);
-        REQUIRE(stream_read_exact(stream, buf.data(), 2));
+        REQUIRE(stream_read_exact(stream, make_span(buf_data, 2)));
         CHECK(string_view {buf.data(), 2} == "ef");
 
         CHECK(fs_remove_dir_tree(temp_dir));
@@ -141,7 +143,7 @@ TEST_CASE("DiskFileSystem")
 
             REQUIRE(fs_write_file(file_path, data));
             REQUIRE(fs_hash_file(file_path).has_value());
-            CHECK(*fs_hash_file(file_path) == fs_hash_data(data.data(), data.size()));
+            CHECK(*fs_hash_file(file_path) == fs_hash_data(data));
         };
 
         for (const auto size : {size_t(0), size_t(1), size_t(3), size_t(4), size_t(15), size_t(16), size_t(17), size_t(47), size_t(48), size_t(49), size_t(63), size_t(64), size_t(65), size_t(96), size_t(97), size_t(70000)}) {

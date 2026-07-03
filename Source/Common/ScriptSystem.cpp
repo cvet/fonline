@@ -42,78 +42,80 @@
 
 FO_BEGIN_NAMESPACE
 
-static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32_t>>& funcs, ScriptFunc<void> func, int32_t priority)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    funcs.emplace_back(std::move(func), priority);
-    std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
-}
-
-static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, string_view error)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto& func : funcs | std::views::keys) {
-        if (!func.Call()) {
-            throw ScriptSystemException(error);
-        }
-    }
-}
-
-DynamicRefTypeInstance::DynamicRefTypeInstance(const PropertyRegistrator* registrator) noexcept :
+DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
     _registrator {registrator},
-    _props {SafeAlloc::MakeUnique<Properties>(registrator)}
+    _props {std::in_place, _registrator}
 {
 }
 
 DynamicRefTypeInstance::~DynamicRefTypeInstance() noexcept = default;
 
+auto DynamicRefTypeInstance::GetProps() noexcept -> ptr<Properties>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_props.has_value(), "Dynamic ref-type instance has no properties");
+    return &*_props;
+}
+
+auto DynamicRefTypeInstance::GetProps() const noexcept -> ptr<const Properties>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(_props.has_value(), "Dynamic ref-type instance has no properties");
+    return &*_props;
+}
+
 void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(base_type.IsRefType, "Missing required base type is ref type");
-    FO_VERIFY_AND_THROW(base_type.RefType, "Missing required base type ref type");
+    FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    auto fields_registrator = base_type.RefType->FieldsRegistrator.as_ptr();
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type raw data belongs to a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
 
-    _props = SafeAlloc::MakeUnique<Properties>(_registrator.get());
+    _props.emplace(_registrator);
+    auto props = GetProps();
 
-    const auto* pdata = raw_data.data();
-    const auto* pdata_end = raw_data.data() + raw_data.size();
+    size_t data_pos = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i)).as_ptr();
         span<const uint8_t> field_raw_data {};
 
-        if (pdata < pdata_end) {
-            if (static_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+        if (data_pos < raw_data.size()) {
+            if (raw_data.size() - data_pos < sizeof(uint32_t)) {
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            uint32_t field_size;
-            MemCopy(&field_size, pdata, sizeof(field_size));
-            pdata += sizeof(field_size);
+            uint32_t field_size = 0;
+            auto field_size_target = ptr<uint32_t> {&field_size}.reinterpret_as<uint8_t>();
+            auto field_size_source = ptr<const uint8_t> {raw_data.data()}.offset(data_pos);
+            MemCopy(field_size_target, field_size_source, sizeof(field_size));
+            data_pos += sizeof(field_size);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
                 throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
             }
-            if (static_cast<size_t>(pdata_end - pdata) < field_size) {
+
+            const size_t field_data_size = field_size;
+
+            if (raw_data.size() - data_pos < field_data_size) {
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            field_raw_data = {pdata, field_size};
-            pdata += field_size;
+            field_raw_data = raw_data.subspan(data_pos, field_data_size);
+            data_pos += field_data_size;
         }
 
         if (!field_raw_data.empty()) {
-            _props->SetRawData(field_prop, field_raw_data);
+            props->SetRawData(field_prop, field_raw_data);
         }
     }
 
-    if (pdata != pdata_end) {
+    if (data_pos != raw_data.size()) {
         throw PropertySerializationException("Corrupted ref type property data", base_type.Name);
     }
 
@@ -121,36 +123,34 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     _cachedRawDataDirty = false;
 }
 
-auto DynamicRefTypeInstance::GetRawData(const Property* prop) const -> span<const uint8_t>
+auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> span<const uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(prop != nullptr, "Missing required property");
-    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator() != nullptr ? prop->GetRegistrator()->GetTypeName() : hstring {}, _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator()->GetTypeName(), _registrator->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
     return _props->GetRawData(prop);
 }
 
-void DynamicRefTypeInstance::SetValue(const Property* prop, PropertyRawData& prop_data)
+void DynamicRefTypeInstance::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(prop != nullptr, "Missing required property");
-    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator() != nullptr ? prop->GetRegistrator()->GetTypeName() : hstring {}, _registrator->GetTypeName());
+    FO_VERIFY_AND_THROW(prop->GetRegistrator() == _registrator, "Dynamic ref-type property belongs to a different registrator", prop->GetName(), prop->GetRegistrator()->GetTypeName(), _registrator->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
-    _props->SetValue(prop, prop_data);
+    GetProps()->SetValue(prop, prop_data);
     _cachedRawDataDirty = true;
 }
 
-auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const vector<uint8_t>&
+auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(base_type.IsRefType, "Missing required base type is ref type");
-    FO_VERIFY_AND_THROW(base_type.RefType, "Missing required base type ref type");
+    FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    const auto* fields_registrator = base_type.RefType->FieldsRegistrator.get();
+    auto fields_registrator = base_type.RefType->FieldsRegistrator.as_ptr();
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type serialization requested a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
@@ -160,12 +160,13 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
         size_t last_non_default_field = 0;
 
         for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-            const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto field_raw_data = _props->GetRawData(field_prop);
+            auto nullable_field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            auto field_prop = nullable_field_prop.as_ptr();
+            const auto field_raw_data = GetProps()->GetRawData(field_prop);
 
             bool is_default = field_raw_data.empty();
 
-            if (!is_default && field_prop->IsPlainData()) {
+            if (!is_default && nullable_field_prop->IsPlainData()) {
                 is_default = true;
 
                 for (const auto byte : field_raw_data) {
@@ -199,20 +200,24 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
             }
 
             _cachedRawData.resize(data_size);
-            auto* pdata = _cachedRawData.data();
+            size_t data_pos = 0;
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
                 const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
-                MemCopy(pdata, &field_size, sizeof(field_size));
-                pdata += sizeof(field_size);
+                auto field_size_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
+                auto field_size_source = ptr<const uint32_t> {&field_size}.reinterpret_as<uint8_t>();
+                MemCopy(field_size_target, field_size_source, sizeof(field_size));
+                data_pos += sizeof(field_size);
 
                 if (field_size != 0) {
-                    MemCopy(pdata, field_raw_entries[i].data(), field_size);
-                    pdata += field_size;
+                    auto field_data_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
+                    auto field_data_source = ptr<const uint8_t> {field_raw_entries[i].data()};
+                    MemCopy(field_data_target, field_data_source, field_size);
+                    data_pos += field_size;
                 }
             }
 
-            FO_VERIFY_AND_THROW(static_cast<size_t>(pdata - _cachedRawData.data()) == data_size, "Dynamic ref-type cached raw buffer size does not match bytes written", _registrator->GetTypeName(), pdata - _cachedRawData.data(), data_size);
+            FO_VERIFY_AND_THROW(data_pos == data_size, "Dynamic ref-type cached raw buffer size does not match bytes written", _registrator->GetTypeName(), data_pos, data_size);
         }
 
         _cachedRawDataDirty = false;
@@ -221,7 +226,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
     return _cachedRawData;
 }
 
-void ScriptSystem::MapScriptTypes(EngineMetadata* meta)
+void ScriptSystem::MapScriptTypes(ptr<EngineMetadata> meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -276,9 +281,9 @@ void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend>
 {
     FO_STACK_TRACE_ENTRY();
 
-    _backends.resize(index + 1);
-    FO_VERIFY_AND_THROW(!_backends[index], "Backends[index] is already set");
-    _backends[index] = std::move(backend);
+    const auto [it, inserted] = _backends.emplace(index, std::move(backend));
+    ignore_unused(it);
+    FO_VERIFY_AND_THROW(inserted, "Backends[index] is already set");
 }
 
 void ScriptSystem::ShutdownBackends()
@@ -295,10 +300,11 @@ void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
-    AddModuleFunc(_initFunc, std::move(func), priority);
+    _initFunc.emplace_back(std::move(func), priority);
+    std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
-auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
+auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -332,22 +338,22 @@ auto ScriptSystem::ValidateArgs(const ScriptFuncDesc* func, const_span<size_t> a
     return true;
 }
 
-auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> ScriptFuncDesc*
+auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
-        if (ValidateArgs(it->second.get(), arg_types, ArgMapTypeIndex<void>())) {
-            return it->second.get();
+        if (ValidateArgs(it->second, arg_types, ArgMapTypeIndex<void>())) {
+            return it->second;
         }
     }
 
     return nullptr;
 }
 
-auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> ScriptFuncDesc*
+auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -369,7 +375,7 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
     };
 
     for (auto it = range.first; it != range.second; ++it) {
-        const auto* func = it->second.get();
+        ptr<ScriptFuncDesc> func = it->second;
 
         if (!func->Call || func->Ret.Kind != ComplexTypeKind::None || func->Args.size() != arg_types.size()) {
             continue;
@@ -385,18 +391,17 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
         }
 
         if (args_match) {
-            return it->second.get();
+            return func;
         }
     }
 
     return nullptr;
 }
 
-void ScriptSystem::AddGlobalScriptFunc(ScriptFuncDesc* func)
+void ScriptSystem::AddGlobalScriptFunc(ptr<ScriptFuncDesc> func)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(func, "Missing AngelScript function");
     FO_VERIFY_AND_THROW(func->Name, "Script function descriptor has no name");
 
     _globalFuncMap.emplace(func->Name, func);
@@ -407,21 +412,30 @@ void ScriptSystem::InitModules()
     FO_STACK_TRACE_ENTRY();
 
     UnfreezeGlobalVars();
-    RunModuleFuncs(_initFunc, "Module initialization failed");
+
+    for (auto& func : _initFunc | std::views::keys) {
+        if (!func.Call()) {
+            throw ScriptSystemException("Module initialization failed");
+        }
+    }
+
     FreezeGlobalVars();
 }
 
-auto ScriptHelpers::GetIntConvertibleEntityProperty(const BaseEngine* engine, string_view type_name, int32_t prop_index) -> const Property*
+auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* prop_reg = engine->GetPropertyRegistrator(type_name);
+    auto prop_reg = engine->GetPropertyRegistrator(type_name);
     FO_VERIFY_AND_THROW(prop_reg, "Missing required property registrator");
-    const auto* prop = prop_reg->GetPropertyByIndex(prop_index);
+    auto nullable_prop = prop_reg->GetPropertyByIndex(prop_index);
 
-    if (prop == nullptr) {
+    if (!nullable_prop) {
         throw ScriptException("Invalid property index", type_name, prop_index);
     }
+
+    auto prop = nullable_prop.as_ptr();
+
     if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled", type_name, prop_index);
     }

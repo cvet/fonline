@@ -205,13 +205,9 @@ namespace
         auto* array_type = engine->GetTypeInfoByDecl("array<ArrayCmpOnlyNativeValue>");
         FO_VERIFY_AND_THROW(array_type != nullptr, "Missing array<ArrayCmpOnlyNativeValue> type");
 
-        auto* values = ScriptArray::Create(array_type, 2);
-        FO_VERIFY_AND_THROW(values != nullptr, "Failed to create ScriptArray");
-        auto release_values = scope_exit([&values]() noexcept { safe_call([&values] { values->Release(); }); });
+        auto values = ScriptArray::Create(array_type, 2);
 
-        auto* same_values = ScriptArray::Create(array_type, 2);
-        FO_VERIFY_AND_THROW(same_values != nullptr, "Failed to create ScriptArray");
-        auto release_same_values = scope_exit([&same_values]() noexcept { safe_call([&same_values] { same_values->Release(); }); });
+        auto same_values = ScriptArray::Create(array_type, 2);
 
         ArrayComparableValue low_value {1};
         ArrayComparableValue same_low_value {1};
@@ -258,18 +254,14 @@ namespace
         auto* array_type = engine->GetTypeInfoByDecl(array_type_decl.c_str());
         REQUIRE(array_type != nullptr);
 
-        auto* values = ScriptArray::Create(array_type, 2);
-        REQUIRE(values != nullptr);
-        auto release_values = scope_exit([&values]() noexcept { safe_call([&values] { values->Release(); }); });
+        auto values = ScriptArray::Create(array_type, 2);
 
         T low_value = low;
         T high_value = high;
         values->SetValue(0, &high_value);
         values->SetValue(1, &low_value);
 
-        auto* same_values = ScriptArray::Create(array_type, 2);
-        REQUIRE(same_values != nullptr);
-        auto release_same_values = scope_exit([&same_values]() noexcept { safe_call([&same_values] { same_values->Release(); }); });
+        auto same_values = ScriptArray::Create(array_type, 2);
 
         same_values->SetValue(0, &high_value);
         same_values->SetValue(1, &low_value);
@@ -279,12 +271,12 @@ namespace
         CHECK_FALSE(*values == *same_values);
 
         values->SortAsc();
-        CHECK(*cast_from_void<T*>(values->At(0)) == low_value);
-        CHECK(*cast_from_void<T*>(values->At(1)) == high_value);
+        CHECK(*cast_from_void<T*>(values->At(0).get()) == low_value);
+        CHECK(*cast_from_void<T*>(values->At(1).get()) == high_value);
 
         values->SortDesc();
-        CHECK(*cast_from_void<T*>(values->At(0)) == high_value);
-        CHECK(*cast_from_void<T*>(values->At(1)) == low_value);
+        CHECK(*cast_from_void<T*>(values->At(0).get()) == high_value);
+        CHECK(*cast_from_void<T*>(values->At(1).get()) == low_value);
 
         CHECK(values->Find(&low_value) == 1);
         CHECK(values->Find(1, &high_value) == -1);
@@ -680,7 +672,8 @@ namespace ScriptBuiltins
 
         return 1;
     }
-
+)"
+                    R"(
     int ArrayEdgeNoopOps()
     {
         int[] values = {1, 2};
@@ -999,7 +992,8 @@ namespace ScriptBuiltins
         int[] values = {1, 2};
         values.sortAsc(1, 3);
     }
-
+)"
+                    R"(
     void ArrayReduceTooMuchThrows()
     {
         int[] values = {1};
@@ -1483,7 +1477,7 @@ namespace ScriptBuiltins
 
         const auto write_token = [&](string_view token) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-            writer.WritePtr(token.data(), token.size());
+            writer.WriteStringBytes(token);
         };
         const auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
             writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
@@ -1527,10 +1521,8 @@ namespace ScriptBuiltins
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1544,12 +1536,17 @@ namespace ScriptBuiltins
 
         return "ServerEngine startup timed out";
     }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+    }
 }
 
 TEST_CASE("ScriptBuiltinsStringOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1559,7 +1556,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -1777,7 +1774,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         CHECK_FALSE(fatal);
     }
 
-    // Empty any → int must return 0
+    // Empty any в†’ int must return 0
     {
         auto func = server->FindFunc<int32_t>(fn("ScriptBuiltins::EmptyAnyToInt"));
         REQUIRE(func);
@@ -1789,7 +1786,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 TEST_CASE("ScriptBuiltinsArrayOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -1799,7 +1796,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2051,17 +2048,11 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         auto* out_ref_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpOutRefParamValue>");
         REQUIRE(out_ref_param_type != nullptr);
 
-        auto* int_arr = ScriptArray::Create(int_type, 2);
-        REQUIRE(int_arr != nullptr);
-        auto release_int_arr = scope_exit([&int_arr]() noexcept { safe_call([&int_arr] { int_arr->Release(); }); });
+        auto int_arr = ScriptArray::Create(int_type, 2);
 
-        auto* uint_arr = ScriptArray::Create(uint_type, 1);
-        REQUIRE(uint_arr != nullptr);
-        auto release_uint_arr = scope_exit([&uint_arr]() noexcept { safe_call([&uint_arr] { uint_arr->Release(); }); });
+        auto uint_arr = ScriptArray::Create(uint_type, 1);
 
-        auto* dummy_ref_arr = ScriptArray::Create(dummy_ref_handle_type, 1);
-        REQUIRE(dummy_ref_arr != nullptr);
-        auto release_dummy_ref_arr = scope_exit([&dummy_ref_arr]() noexcept { safe_call([&dummy_ref_arr] { dummy_ref_arr->Release(); }); });
+        auto dummy_ref_arr = ScriptArray::Create(dummy_ref_handle_type, 1);
 
         CHECK(int_arr->GetArrayObjectType() == int_type);
         CHECK(std::as_const(*int_arr).GetArrayObjectType() == int_type);
@@ -2083,17 +2074,15 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         {
             auto copied_int_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*int_arr);
             CHECK(copied_int_arr->GetSize() == int_arr->GetSize());
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(0)) == first_int_value);
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(1)) == second_int_value);
+            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(0).get()) == first_int_value);
+            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(1).get()) == second_int_value);
             CHECK(*copied_int_arr == *int_arr);
         }
 
         CHECK_THROWS_AS((*int_arr = *uint_arr), ScriptException);
         CHECK_FALSE(*int_arr == *uint_arr);
         {
-            auto* smaller_int_arr = ScriptArray::Create(int_type, 1);
-            REQUIRE(smaller_int_arr != nullptr);
-            auto release_smaller_int_arr = scope_exit([&smaller_int_arr]() noexcept { safe_call([&smaller_int_arr] { smaller_int_arr->Release(); }); });
+            auto smaller_int_arr = ScriptArray::Create(int_type, 1);
             CHECK_FALSE(*int_arr == *smaller_int_arr);
         }
         CHECK_THROWS_AS(int_arr->InsertAt(-1, &first_int_value), ScriptException);
@@ -2120,13 +2109,9 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         REQUIRE(gc_node != nullptr);
         auto release_gc_node = scope_exit([&]() noexcept { safe_call([&] { as_engine->ReleaseScriptObject(gc_node, gc_node_type); }); });
 
-        auto* gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
-        REQUIRE(gc_handle_arr != nullptr);
-        auto release_gc_handle_arr = scope_exit([&gc_handle_arr]() noexcept { safe_call([&gc_handle_arr] { gc_handle_arr->Release(); }); });
+        auto gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1);
 
-        auto* final_handle_arr = ScriptArray::Create(final_node_handle_type, 0);
-        REQUIRE(final_handle_arr != nullptr);
-        auto release_final_handle_arr = scope_exit([&final_handle_arr]() noexcept { safe_call([&final_handle_arr] { final_handle_arr->Release(); }); });
+        auto final_handle_arr = ScriptArray::Create(final_node_handle_type, 0);
         CHECK(final_handle_arr->IsEmpty());
 
         void* gc_node_handle = gc_node;
@@ -2134,16 +2119,14 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CHECK(as_engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE) >= 0);
 
         {
-            auto* defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1, &gc_node_handle);
-            REQUIRE(defaulted_gc_handle_arr != nullptr);
-            auto release_defaulted_gc_handle_arr = scope_exit([&defaulted_gc_handle_arr]() noexcept { safe_call([&defaulted_gc_handle_arr] { defaulted_gc_handle_arr->Release(); }); });
+            auto defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type, 1, &gc_node_handle);
 
             auto copied_gc_handle_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*defaulted_gc_handle_arr);
             CHECK(copied_gc_handle_arr->GetSize() == defaulted_gc_handle_arr->GetSize());
             CHECK(copied_gc_handle_arr->FindByRef(&gc_node_handle) == 0);
         }
 
-        gc_handle_arr->ReleaseAllHandles(as_engine);
+        gc_handle_arr->ReleaseAllHandles();
         CHECK(gc_handle_arr->IsEmpty());
 
         ArrayDummyRef second_dummy_ref;
@@ -2167,12 +2150,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         CheckPrimitiveScriptArrayDirectOps<float64_t>(as_engine, "double", -3.5, 4.75);
 
         {
-            auto* no_compare_values = ScriptArray::Create(no_compare_value_type, 1);
-            REQUIRE(no_compare_values != nullptr);
-            auto release_no_compare_values = scope_exit([&no_compare_values]() noexcept { safe_call([&no_compare_values] { no_compare_values->Release(); }); });
-            auto* no_compare_other = ScriptArray::Create(no_compare_value_type, 1);
-            REQUIRE(no_compare_other != nullptr);
-            auto release_no_compare_other = scope_exit([&no_compare_other]() noexcept { safe_call([&no_compare_other] { no_compare_other->Release(); }); });
+            auto no_compare_values = ScriptArray::Create(no_compare_value_type, 1);
+            auto no_compare_other = ScriptArray::Create(no_compare_value_type, 1);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};
@@ -2184,12 +2163,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         {
-            auto* multi_equals_values = ScriptArray::Create(multi_equals_value_type, 1);
-            REQUIRE(multi_equals_values != nullptr);
-            auto release_multi_equals_values = scope_exit([&multi_equals_values]() noexcept { safe_call([&multi_equals_values] { multi_equals_values->Release(); }); });
-            auto* multi_equals_other = ScriptArray::Create(multi_equals_value_type, 1);
-            REQUIRE(multi_equals_other != nullptr);
-            auto release_multi_equals_other = scope_exit([&multi_equals_other]() noexcept { safe_call([&multi_equals_other] { multi_equals_other->Release(); }); });
+            auto multi_equals_values = ScriptArray::Create(multi_equals_value_type, 1);
+            auto multi_equals_other = ScriptArray::Create(multi_equals_value_type, 1);
 
             ArrayComparableValue first_value {1};
             ArrayComparableValue same_value {1};
@@ -2201,9 +2176,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         {
-            auto* multi_cmp_values = ScriptArray::Create(multi_cmp_value_type, 2);
-            REQUIRE(multi_cmp_values != nullptr);
-            auto release_multi_cmp_values = scope_exit([&multi_cmp_values]() noexcept { safe_call([&multi_cmp_values] { multi_cmp_values->Release(); }); });
+            auto multi_cmp_values = ScriptArray::Create(multi_cmp_value_type, 2);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};
@@ -2224,12 +2197,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         for (auto* filtered_type : {param_mismatch_value_type, by_value_param_type, out_ref_param_type}) {
-            auto* filtered_values = ScriptArray::Create(filtered_type, 1);
-            REQUIRE(filtered_values != nullptr);
-            auto release_filtered_values = scope_exit([&filtered_values]() noexcept { safe_call([&filtered_values] { filtered_values->Release(); }); });
-            auto* filtered_other = ScriptArray::Create(filtered_type, 1);
-            REQUIRE(filtered_other != nullptr);
-            auto release_filtered_other = scope_exit([&filtered_other]() noexcept { safe_call([&filtered_other] { filtered_other->Release(); }); });
+            auto filtered_values = ScriptArray::Create(filtered_type, 1);
+            auto filtered_other = ScriptArray::Create(filtered_type, 1);
 
             ArrayComparableValue low_value {1};
             ArrayComparableValue high_value {3};
@@ -2240,7 +2209,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         }
 
         int_arr->EnumReferences(as_engine);
-        int_arr->ReleaseAllHandles(as_engine);
+        int_arr->ReleaseAllHandles();
         CHECK(int_arr->IsEmpty());
     }
 
@@ -2299,7 +2268,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 TEST_CASE("ScriptBuiltinsDictOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2309,7 +2278,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -2379,7 +2348,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2389,7 +2358,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 

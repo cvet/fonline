@@ -36,10 +36,11 @@
 
 FO_USING_NAMESPACE();
 
-ScriptImGui::ScriptImGui(BaseEngine* engine) :
+ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
     Entity(engine->GetPropertyRegistratorForEdit("ImGui"), nullptr, nullptr),
     _engine {engine}
 {
+    FO_STACK_TRACE_ENTRY();
 }
 
 static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
@@ -49,17 +50,24 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
     ignore_unused(user_data);
 
     constexpr SafeAllocator<uint8_t> allocator;
-    return allocator.allocate(sz);
+    ptr<uint8_t> bytes = allocator.allocate(sz);
+    return bytes.get();
 }
 
-static void ImGuiFree(void* ptr, void* user_data)
+static void ImGuiFree(void* raw_mem, void* user_data)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(user_data);
 
+    nptr<uint8_t> bytes = cast_from_void<uint8_t*>(raw_mem);
+
+    if (!bytes) {
+        return;
+    }
+
     constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(static_cast<uint8_t*>(ptr), 0);
+    allocator.deallocate(bytes.get(), 0);
 }
 
 void ImGuiExt::Init()

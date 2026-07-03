@@ -74,20 +74,20 @@ struct StackTraceState
 static void CollectScriptLayers(std::vector<ScriptStackTraceLayer>& out_layers) noexcept;
 static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t to, std::vector<StackTraceFrame>& out) noexcept;
 static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTraceLayer& layer, uint32_t search_from) noexcept -> uint32_t;
-static auto SameFrameFunction(void* a, void* b) noexcept -> bool;
-static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t;
-static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFrameCacheEntry;
-static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry;
+static auto SameFrameFunction(NativeStackFrameAddress a, NativeStackFrameAddress b) noexcept -> bool;
+static auto ResolveFunctionKey(NativeStackFrameAddress addr) noexcept -> uintptr_t;
+static auto ResolveNativeFrame(NativeStackFrameAddress addr, uint32_t index) -> ResolvedNativeFrameCacheEntry;
+static auto ResolveNativeFrameUncached(NativeStackFrameAddress addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry;
 #if HAS_NATIVE_TRACE
 static auto GetNativeTraceResolver() noexcept -> backward::TraceResolver&;
 #endif
-static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<ResolvedNativeFrameCacheEntry>;
-static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFrameCacheEntry& entry) noexcept;
-static auto MakeNativeAddressCacheEntry(void* addr) noexcept -> ResolvedNativeFrameCacheEntry;
-static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame;
-static auto MakeNativeFunctionKey(void* addr, std::string_view name) noexcept -> uintptr_t;
-static auto MakeNativeAddressKey(void* addr) noexcept -> uintptr_t;
-static auto IsLowNativeAddress(void* addr) noexcept -> bool;
+static auto TryGetResolvedNativeFrameFromCache(NativeStackFrameAddress addr) -> std::optional<ResolvedNativeFrameCacheEntry>;
+static void StoreResolvedNativeFrameInCache(NativeStackFrameAddress addr, const ResolvedNativeFrameCacheEntry& entry) noexcept;
+static auto MakeNativeAddressCacheEntry(NativeStackFrameAddress addr) noexcept -> ResolvedNativeFrameCacheEntry;
+static auto MakeNativeAddressFrame(NativeStackFrameAddress addr) noexcept -> StackTraceFrame;
+static auto MakeNativeFunctionKey(NativeStackFrameAddress addr, std::string_view name) noexcept -> uintptr_t;
+static auto MakeNativeAddressKey(NativeStackFrameAddress addr) noexcept -> uintptr_t;
+static auto IsLowNativeAddress(NativeStackFrameAddress addr) noexcept -> bool;
 static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool;
 static void TrimInPlace(std::string& s) noexcept;
 static auto GetStackTraceState() noexcept -> StackTraceState&;
@@ -237,7 +237,7 @@ extern auto GetStackTraceEntry(uint32_t deep) noexcept -> std::optional<StackTra
     return std::nullopt;
 }
 
-extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
+extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -253,7 +253,7 @@ extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FR
     const uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(STACK_TRACE_MAX_NATIVE_FRAMES));
 
     for (uint32_t i = 0; i < n; i++) {
-        out_frames[i] = raw_frames[i];
+        out_frames[i] = std::bit_cast<NativeStackFrameAddress>(raw_frames[i]);
     }
 
     out_count = n;
@@ -268,7 +268,7 @@ extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FR
         const size_t count = std::min(native.size(), STACK_TRACE_MAX_NATIVE_FRAMES);
 
         for (size_t i = 0; i < count; i++) {
-            out_frames[i] = native[i].addr;
+            out_frames[i] = std::bit_cast<NativeStackFrameAddress>(native[i].addr);
         }
 
         out_count = static_cast<uint32_t>(count);
@@ -369,9 +369,9 @@ static void ResolveNativeRange(const StackTraceData& st, uint32_t from, uint32_t
 
     try {
         for (uint32_t i = from; i < to; i++) {
-            void* addr = st.NativeFrames[i];
+            const NativeStackFrameAddress addr = st.NativeFrames[i];
 
-            if (addr == nullptr) {
+            if (addr == 0) {
                 continue;
             }
 
@@ -397,8 +397,8 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
     uint32_t matched = 0;
 
     while (matched < birth_n && matched < trace_n) {
-        void* birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
-        void* trace_addr = st.NativeFrames[trace_n - 1 - matched];
+        const NativeStackFrameAddress birth_addr = layer.BirthNativeFrames[birth_n - 1 - matched];
+        const NativeStackFrameAddress trace_addr = st.NativeFrames[trace_n - 1 - matched];
 
         if (!SameFrameFunction(birth_addr, trace_addr)) {
             break;
@@ -420,7 +420,7 @@ static auto FindLayerNativeAnchor(const StackTraceData& st, const ScriptStackTra
     return anchor;
 }
 
-static auto SameFrameFunction(void* a, void* b) noexcept -> bool
+static auto SameFrameFunction(NativeStackFrameAddress a, NativeStackFrameAddress b) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -428,14 +428,14 @@ static auto SameFrameFunction(void* a, void* b) noexcept -> bool
         return true;
     }
 
-    if (a == nullptr || b == nullptr) {
+    if (a == 0 || b == 0) {
         return false;
     }
 
     return ResolveFunctionKey(a) == ResolveFunctionKey(b);
 }
 
-static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t
+static auto ResolveFunctionKey(NativeStackFrameAddress addr) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -454,7 +454,7 @@ static auto ResolveFunctionKey(void* addr) noexcept -> uintptr_t
     }
 }
 
-static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFrameCacheEntry
+static auto ResolveNativeFrame(NativeStackFrameAddress addr, uint32_t index) -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -476,7 +476,7 @@ static auto ResolveNativeFrame(void* addr, uint32_t index) -> ResolvedNativeFram
 }
 
 #if HAS_NATIVE_TRACE
-static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
+static auto ResolveNativeFrameUncached(NativeStackFrameAddress addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -491,7 +491,7 @@ static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> R
             StackTraceState& state = GetStackTraceState();
             std::scoped_lock locker {state.NativeResolverLocker};
 
-            resolved = GetNativeTraceResolver().resolve(backward::Trace(addr, index));
+            resolved = GetNativeTraceResolver().resolve(backward::Trace(std::bit_cast<void*>(addr), index));
         }
 
         StackTraceFrame frame;
@@ -524,7 +524,7 @@ static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> R
 }
 
 #else
-static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
+static auto ResolveNativeFrameUncached(NativeStackFrameAddress addr, uint32_t index) noexcept -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -533,7 +533,7 @@ static auto ResolveNativeFrameUncached(void* addr, uint32_t index) noexcept -> R
 }
 #endif
 
-static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<ResolvedNativeFrameCacheEntry>
+static auto TryGetResolvedNativeFrameFromCache(NativeStackFrameAddress addr) -> std::optional<ResolvedNativeFrameCacheEntry>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -550,7 +550,7 @@ static auto TryGetResolvedNativeFrameFromCache(void* addr) -> std::optional<Reso
     return it->second;
 }
 
-static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFrameCacheEntry& entry) noexcept
+static void StoreResolvedNativeFrameInCache(NativeStackFrameAddress addr, const ResolvedNativeFrameCacheEntry& entry) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -582,7 +582,7 @@ static void StoreResolvedNativeFrameInCache(void* addr, const ResolvedNativeFram
     }
 }
 
-static auto MakeNativeAddressCacheEntry(void* addr) noexcept -> ResolvedNativeFrameCacheEntry
+static auto MakeNativeAddressCacheEntry(NativeStackFrameAddress addr) noexcept -> ResolvedNativeFrameCacheEntry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -592,7 +592,7 @@ static auto MakeNativeAddressCacheEntry(void* addr) noexcept -> ResolvedNativeFr
     return entry;
 }
 
-static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame
+static auto MakeNativeAddressFrame(NativeStackFrameAddress addr) noexcept -> StackTraceFrame
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -600,13 +600,13 @@ static auto MakeNativeAddressFrame(void* addr) noexcept -> StackTraceFrame
     frame.Type = StackTraceFrame::FrameType::Native;
 
     char hex_buf[32];
-    (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", addr);
+    (void)std::snprintf(hex_buf, sizeof(hex_buf), "%p", std::bit_cast<void*>(addr));
     frame.Function = hex_buf;
 
     return frame;
 }
 
-static auto MakeNativeFunctionKey(void* addr, std::string_view name) noexcept -> uintptr_t
+static auto MakeNativeFunctionKey(NativeStackFrameAddress addr, std::string_view name) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -617,21 +617,21 @@ static auto MakeNativeFunctionKey(void* addr, std::string_view name) noexcept ->
     return static_cast<uintptr_t>(std::hash<std::string_view> {}(name));
 }
 
-static auto MakeNativeAddressKey(void* addr) noexcept -> uintptr_t
+static auto MakeNativeAddressKey(NativeStackFrameAddress addr) noexcept -> uintptr_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return std::bit_cast<uintptr_t>(addr);
+    return addr;
 }
 
-static auto IsLowNativeAddress(void* addr) noexcept -> bool
+static auto IsLowNativeAddress(NativeStackFrameAddress addr) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     // Unit tests synthesize native frames with small integer addresses. These are not
     // userspace instruction pointers on supported native platforms, and POSIX symbol
     // resolvers can be extremely slow or return the same "??" symbol for all of them.
-    return reinterpret_cast<uintptr_t>(addr) < 0x10000U;
+    return addr < 0x10000U;
 }
 
 static auto IsUnresolvedNativeName(std::string_view s) noexcept -> bool

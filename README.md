@@ -77,7 +77,7 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/Debugging.md](Docs/Debugging.md) — native debugging, stack traces, Visual Studio helpers, and validation notes.
 - [Docs/Scripting.md](Docs/Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [Docs/ScriptMethodsMap.md](Docs/ScriptMethodsMap.md) — native script method ownership map by runtime side and receiver family.
-- [Docs/Nullability.md](Docs/Nullability.md) — `T?` / `FO_NULLABLE` script/native nullability contract and analyzer workflow.
+- [Docs/Nullability.md](Docs/Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native nullability contract and analyzer workflow.
 - [Docs/Tools.md](Docs/Tools.md) — engine tool map: baker, AS compiler, mapper, editor, asset explorer, particle editor, and asset processors.
 - [Docs/MapperTools.md](Docs/MapperTools.md) — mapper lifecycle, automation, native mapper helpers, and known headless-render workflows.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) — WebAssembly target preparation and debug workflow.

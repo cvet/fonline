@@ -274,7 +274,7 @@ Use this checklist before editing a `*ScriptMethods.cpp` file:
 1. Identify the side that owns the state: common utility, server authority, client view/frontend, or mapper editor.
 2. Identify the receiver family: global/game, entity, critter, map, item, location, player, ImGui, or another registered type.
 3. Add `///@ ExportMethod` and `FO_SCRIPT_API` in the owning file. Use trailing C++ default parameters for optional suffix arguments instead of duplicating overloads whose bodies only supply fallback values. Codegen normalizes engine value-type defaults such as `isize32 {}` or `ucolor {}` into AngelScript defaults such as `isize()` or `ucolor()`.
-4. Apply `FO_NULLABLE` only when a pointer parameter/return genuinely accepts or returns null; see [Nullability.md](Nullability.md).
+4. Spell a scalar pointer parameter/return `nptr<T>` only when it genuinely accepts or returns null; otherwise use the non-null `ptr<T>`. See [Nullability.md](Nullability.md).
 5. Regenerate code so method descriptors and wrappers reflect the new signature.
 6. Add or update the smallest relevant script method tests.
 7. Update this page if a file is added/removed or a group meaning changes.

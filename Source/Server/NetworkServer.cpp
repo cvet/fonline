@@ -35,8 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
-NetworkServerConnection::NetworkServerConnection(ServerNetworkSettings& settings) :
-    _settings {&settings}
+NetworkServerConnection::NetworkServerConnection(ptr<ServerNetworkSettings> settings) :
+    _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -47,9 +47,9 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 
     FO_VERIFY_AND_THROW(!_sendCallbackSet, "Send callback set is already set");
     FO_VERIFY_AND_THROW(!_disconnectCallbackSet, "Disconnect callback set is already set");
-    FO_VERIFY_AND_THROW(send, "Missing required send");
-    FO_VERIFY_AND_THROW(receive, "Missing required receive");
-    FO_VERIFY_AND_THROW(disconnect, "Missing required disconnect");
+    FO_VERIFY_AND_THROW(send, "Missing required send callback");
+    FO_VERIFY_AND_THROW(receive, "Missing required receive callback");
+    FO_VERIFY_AND_THROW(disconnect, "Missing required disconnect callback");
 
     if (_isDisconnected) {
         return;
@@ -129,7 +129,7 @@ void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
 class DummyNetConnection : public NetworkServerConnection
 {
 public:
-    explicit DummyNetConnection(ServerNetworkSettings& settings, NetworkServer::DummyConnectionState state) :
+    explicit DummyNetConnection(ptr<ServerNetworkSettings> settings, NetworkServer::DummyConnectionState state) :
         NetworkServerConnection(settings)
     {
         FO_STACK_TRACE_ENTRY();
@@ -152,7 +152,7 @@ protected:
     void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
 };
 
-auto NetworkServer::CreateDummyConnection(ServerNetworkSettings& settings, DummyConnectionState state) -> shared_ptr<NetworkServerConnection>
+auto NetworkServer::CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state) -> shared_ptr<NetworkServerConnection>
 {
     FO_STACK_TRACE_ENTRY();
 

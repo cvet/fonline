@@ -178,12 +178,12 @@ TEST_CASE("StackTrace")
         // launched Execute(). Anchor = first native trace frame above the matched bottom.
         StackTraceData st {};
         // Pretend native frames addresses 0xA0, 0xB0, ..., 0xA0 = top, 0x80 = main.
-        const std::array<void*, 5> pcs {
-            reinterpret_cast<void*>(static_cast<uintptr_t>(0xA0)), // child's native bridge code
-            reinterpret_cast<void*>(static_cast<uintptr_t>(0xA1)), // child's Execute()
-            reinterpret_cast<void*>(static_cast<uintptr_t>(0xB0)), // parent's native bridge code (= anchor for child layer)
-            reinterpret_cast<void*>(static_cast<uintptr_t>(0xB1)), // parent's Execute()         (= anchor for parent layer)
-            reinterpret_cast<void*>(static_cast<uintptr_t>(0x80)), // main()
+        const std::array<NativeStackFrameAddress, 5> pcs {
+            static_cast<NativeStackFrameAddress>(0xA0), // child's native bridge code
+            static_cast<NativeStackFrameAddress>(0xA1), // child's Execute()
+            static_cast<NativeStackFrameAddress>(0xB0), // parent's native bridge code (= anchor for child layer)
+            static_cast<NativeStackFrameAddress>(0xB1), // parent's Execute()         (= anchor for parent layer)
+            static_cast<NativeStackFrameAddress>(0x80), // main()
         };
         for (size_t i = 0; i < pcs.size(); i++) {
             st.NativeFrames[i] = pcs[i];
@@ -194,17 +194,17 @@ TEST_CASE("StackTrace")
         child.ScriptFrames.push_back(MakeScriptFrame("ChildScript", "Scripts/Child.fos", 10));
         // Child layer was launched at the 0xB0 frame; its birth stack matches the trace
         // bottom from 0xB0 down through main.
-        child.BirthNativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xB0));
-        child.BirthNativeFrames[1] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xB1));
-        child.BirthNativeFrames[2] = reinterpret_cast<void*>(static_cast<uintptr_t>(0x80));
+        child.BirthNativeFrames[0] = static_cast<NativeStackFrameAddress>(0xB0);
+        child.BirthNativeFrames[1] = static_cast<NativeStackFrameAddress>(0xB1);
+        child.BirthNativeFrames[2] = static_cast<NativeStackFrameAddress>(0x80);
         child.BirthNativeFrameCount = 3;
 
         ScriptStackTraceLayer parent;
         parent.ScriptFrames.push_back(MakeScriptFrame("ParentScript", "Scripts/Parent.fos", 20));
         // Parent layer was launched at 0xB1; its birth stack matches the trace bottom
         // from 0xB1 down through main.
-        parent.BirthNativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xB1));
-        parent.BirthNativeFrames[1] = reinterpret_cast<void*>(static_cast<uintptr_t>(0x80));
+        parent.BirthNativeFrames[0] = static_cast<NativeStackFrameAddress>(0xB1);
+        parent.BirthNativeFrames[1] = static_cast<NativeStackFrameAddress>(0x80);
         parent.BirthNativeFrameCount = 2;
 
         std::vector<ScriptStackTraceLayer> layers;
@@ -243,7 +243,7 @@ TEST_CASE("StackTrace")
         st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
 
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            st.NativeFrames[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(0x1000 + i));
+            st.NativeFrames[i] = static_cast<NativeStackFrameAddress>(0x1000 + i);
         }
 
         // Pretend the script layer was launched 50 frames into the trace, so its birth
@@ -283,7 +283,7 @@ TEST_CASE("StackTrace")
     SECTION("FormatStackTraceMarksTruncationInHeader")
     {
         StackTraceData st {};
-        st.NativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
+        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
         st.NativeFrameCount = 1;
         st.NativeTruncated = true;
 
@@ -302,9 +302,9 @@ TEST_CASE("StackTrace")
     SECTION("ResolvedNativeFramesAreCachedGlobally")
     {
         StackTraceData st {};
-        st.NativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
-        st.NativeFrames[1] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xBABE));
-        st.NativeFrames[2] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
+        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
+        st.NativeFrames[1] = static_cast<NativeStackFrameAddress>(0xBABE);
+        st.NativeFrames[2] = static_cast<NativeStackFrameAddress>(0xCAFE);
         st.NativeFrameCount = 3;
 
         REQUIRE(GetResolvedStackTraceCacheSize() == 0);
@@ -327,7 +327,7 @@ TEST_CASE("StackTrace")
     {
         // A normal capture inside a unit test thread is well below the 128-frame cap,
         // so the truncation flag must come back clean.
-        std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> frames {};
+        std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> frames {};
         uint32_t count = 0;
         bool truncated = true; // start with the wrong value to make sure capture clears it.
 
@@ -354,7 +354,7 @@ TEST_CASE("StackTrace")
         st.NativeFrameCount = STACK_TRACE_MAX_NATIVE_FRAMES;
 
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            st.NativeFrames[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(0x2000 + i));
+            st.NativeFrames[i] = static_cast<NativeStackFrameAddress>(0x2000 + i);
         }
 
         ScriptStackTraceLayer layer;
@@ -363,7 +363,7 @@ TEST_CASE("StackTrace")
 
         // Birth uses a disjoint address range -> nothing aligns at the bottom.
         for (uint32_t i = 0; i < STACK_TRACE_MAX_NATIVE_FRAMES; i++) {
-            layer.BirthNativeFrames[i] = reinterpret_cast<void*>(static_cast<uintptr_t>(0x9000 + i));
+            layer.BirthNativeFrames[i] = static_cast<NativeStackFrameAddress>(0x9000 + i);
         }
 
         std::vector<ScriptStackTraceLayer> layers;
@@ -386,8 +386,8 @@ TEST_CASE("StackTrace")
         // BirthNativeFrameCount == 0: layer is recorded but the resolver can't anchor it in
         // the native trace, so all native frames go after every script layer.
         StackTraceData st {};
-        st.NativeFrames[0] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xCAFE));
-        st.NativeFrames[1] = reinterpret_cast<void*>(static_cast<uintptr_t>(0xBABE));
+        st.NativeFrames[0] = static_cast<NativeStackFrameAddress>(0xCAFE);
+        st.NativeFrames[1] = static_cast<NativeStackFrameAddress>(0xBABE);
         st.NativeFrameCount = 2;
 
         std::vector<ScriptStackTraceLayer> layers;

@@ -89,7 +89,8 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
         const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
-        return FO_NAMESPACE hashing_ex::hash(hashes, sizeof(hashes));
+        FO_NAMESPACE ptr<const FO_NAMESPACE hstring::hash_t> hashes_data = hashes;
+        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes_data, sizeof(hashes)));
     }
 };
 template<>
@@ -108,19 +109,19 @@ FO_BEGIN_NAMESPACE
 class TextPack final
 {
 public:
-    explicit TextPack(HashResolver& hash_resolver);
+    explicit TextPack(ptr<HashResolver> hash_resolver);
     TextPack(const TextPack&) = default;
     TextPack(TextPack&&) noexcept = default;
     auto operator=(const TextPack&) -> TextPack& = default;
     auto operator=(TextPack&&) noexcept -> TextPack& = default;
     ~TextPack() = default;
 
-    [[nodiscard]] auto GetText(TextPackKey key) const -> const string&;
-    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> const string&;
+    [[nodiscard]] auto GetText(TextPackKey key) const -> string_view;
+    [[nodiscard]] auto GetText(TextPackKey key, size_t skip) const -> string_view;
     [[nodiscard]] auto GetTextCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto IsTextPresent(TextPackKey key) const -> bool;
-    [[nodiscard]] auto GetStr(TextPackKey key) const -> const string&;
-    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> const string&;
+    [[nodiscard]] auto GetStr(TextPackKey key) const -> string_view;
+    [[nodiscard]] auto GetStr(TextPackKey key, size_t skip) const -> string_view;
     [[nodiscard]] auto GetStrCount(TextPackKey key) const -> size_t;
     [[nodiscard]] auto GetSize() const noexcept -> size_t;
     [[nodiscard]] auto CheckIntersections(const TextPack& other) const -> bool;
@@ -146,7 +147,7 @@ private:
     void WriteKeyPart(DataWriter& writer, hstring part) const;
     auto ReadKeyPart(DataReader& reader) -> hstring;
 
-    raw_ptr<HashResolver> _hashResolver;
+    ptr<HashResolver> _hashResolver;
     multimap<TextPackKey, string> _strData {};
     string _emptyStr {};
     mutable std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};

@@ -174,27 +174,33 @@ namespace ClientEngineTest
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
+
+    static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
+    }
 }
 
 TEST_CASE("ClientEngineStartsAndRegistersEntities")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     CHECK_FALSE(client->IsConnecting());
     CHECK_FALSE(client->IsConnected());
-    CHECK(client->GetCurPlayer() == nullptr);
-    CHECK(client->GetCurLocation() == nullptr);
-    CHECK(client->GetCurMap() == nullptr);
+    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
+    CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
+    CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
     const auto critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
-    const auto* critter_proto = client->GetProtoCritter(critter_pid);
-    REQUIRE(critter_proto != nullptr);
+    auto nullable_critter_proto = client->GetProtoCritter(critter_pid);
+    REQUIRE(static_cast<bool>(nullable_critter_proto));
+    auto critter_proto = nullable_critter_proto.as_ptr();
 
-    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client.get(), ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client.get(), ident_t {1002}, critter_proto);
+    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
 
     REQUIRE(client->GetEntity(player->GetId()) == player.get());
     REQUIRE(client->GetEntity(critter->GetId()) == critter.get());
@@ -204,14 +210,14 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     critter->DestroySelf();
     player->DestroySelf();
 
-    CHECK(client->GetEntity(ident_t {1002}) == nullptr);
-    CHECK(client->GetEntity(ident_t {1001}) == nullptr);
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1001})));
 }
 
 TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -243,7 +249,7 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -265,7 +271,7 @@ TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
 TEST_CASE("ClientEngineMethodRefTypeOps")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 

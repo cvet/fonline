@@ -59,8 +59,8 @@ TEST_CASE("WorkerPoolAnonymous")
     SECTION("SubmitFireAndForget")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 2, shutdown_flag};
         std::atomic_int counter {0};
+        WorkerPool pool {"test", 2, &shutdown_flag};
 
         for (int i = 0; i < 100; i++) {
             pool.Submit([&]() -> std::optional<timespan> {
@@ -76,11 +76,11 @@ TEST_CASE("WorkerPoolAnonymous")
     SECTION("DelayedSubmitNotRunBeforeDeadline")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_bool fired {false};
         std::atomic<int64_t> fired_after_ms {0};
-
         const auto submit_time = std::chrono::steady_clock::now();
+        WorkerPool pool {"test", 1, &shutdown_flag};
+
         pool.Submit(std::chrono::milliseconds {80}, [&]() -> std::optional<timespan> {
             const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - submit_time).count();
             fired_after_ms.store(elapsed);
@@ -99,8 +99,8 @@ TEST_CASE("WorkerPoolAnonymous")
     SECTION("AnonymousSelfRescheduleRunsUntilNullopt")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit([&]() -> std::optional<timespan> {
             const int next = runs.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -124,13 +124,14 @@ TEST_CASE("WorkerPoolKeyed")
         // One thread, blocking job in flight; subsequent Submit(key, ...) calls with the same key
         // should coalesce into the queued slot rather than stack up.
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int blocker_acquired {0};
         std::atomic_int blocker_release {0};
         std::atomic_int submissions {0};
+        const WorkerJobKey gate_key {WorkerJobType::Player, 1};
+        const WorkerJobKey dup_key {WorkerJobType::Player, 2};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         // First job: blocks until release flag flips, occupying the worker.
-        const WorkerJobKey gate_key {WorkerJobType::Player, 1};
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             blocker_acquired.fetch_add(1);
             while (blocker_release.load() == 0) {
@@ -141,7 +142,6 @@ TEST_CASE("WorkerPoolKeyed")
         REQUIRE(WaitFor([&] { return blocker_acquired.load() == 1; }));
 
         // Now another key, submitted many times — second and beyond should be dropped (queued dedup).
-        const WorkerJobKey dup_key {WorkerJobType::Player, 2};
         for (int i = 0; i < 10; i++) {
             pool.Submit(dup_key, [&]() -> std::optional<timespan> {
                 submissions.fetch_add(1);
@@ -160,12 +160,11 @@ TEST_CASE("WorkerPoolKeyed")
         // While a keyed job is running, a fresh Submit(key, newClosure) should make `newClosure`
         // execute exactly once after the current run, replacing any previously-stored closure.
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int latest_value {0};
         std::atomic_int run_count {0};
         std::atomic_int gate {0};
-
         const WorkerJobKey key {WorkerJobType::Player, 7};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             run_count.fetch_add(1);
@@ -197,13 +196,13 @@ TEST_CASE("WorkerPoolKeyed")
     SECTION("PendingRerunHonoursSubmittedDelayWhileRunning")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int run_count {0};
         std::atomic_bool first_run_started {false};
         std::atomic_int first_run_release {0};
         std::atomic<int64_t> rerun_after_ms {0};
-
         const WorkerJobKey key {WorkerJobType::Player, 8};
+        std::chrono::steady_clock::time_point submit_time {};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             run_count.fetch_add(1);
@@ -216,7 +215,7 @@ TEST_CASE("WorkerPoolKeyed")
 
         REQUIRE(WaitFor([&] { return first_run_started.load(); }));
 
-        const auto submit_time = std::chrono::steady_clock::now();
+        submit_time = std::chrono::steady_clock::now();
         pool.Submit(key, std::chrono::milliseconds {80}, [&]() -> std::optional<timespan> {
             const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - submit_time).count();
             rerun_after_ms.store(elapsed);
@@ -235,12 +234,11 @@ TEST_CASE("WorkerPoolKeyed")
     {
         // {Player, 42} and {CritterMovement, 42} must NOT collide.
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 2, shutdown_flag};
         std::atomic_int player_runs {0};
         std::atomic_int critter_runs {0};
-
         const WorkerJobKey player_key {WorkerJobType::Player, 42};
         const WorkerJobKey critter_key {WorkerJobType::CritterMovement, 42};
+        WorkerPool pool {"test", 2, &shutdown_flag};
 
         pool.Submit(player_key, [&]() -> std::optional<timespan> {
             player_runs.fetch_add(1);
@@ -259,9 +257,9 @@ TEST_CASE("WorkerPoolKeyed")
     SECTION("KeyedSelfRescheduleHonoursReturnedDelay")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             const int next = runs.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -283,9 +281,9 @@ TEST_CASE("WorkerPoolWake")
     SECTION("WakeQueuedRunsImmediatelyInsteadOfDelay")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         // Submit with a 5-second delay — it would normally not run during the test.
         pool.Submit(key, std::chrono::seconds {5}, [&]() -> std::optional<timespan> {
@@ -304,8 +302,8 @@ TEST_CASE("WorkerPoolWake")
     SECTION("WakeMissingKeyReturnsFalse")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         const WorkerJobKey key {WorkerJobType::Player, 999};
+        WorkerPool pool {"test", 1, &shutdown_flag};
         CHECK_FALSE(pool.Wake(key));
     }
 
@@ -314,11 +312,11 @@ TEST_CASE("WorkerPoolWake")
         // Body returns a 5-second delay between runs; Wake during execution must collapse the
         // wait so the next run starts immediately.
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         std::atomic_bool first_run_started {false};
         std::atomic_int first_run_release {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             const int n = runs.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -351,12 +349,13 @@ TEST_CASE("WorkerPoolCancel")
     SECTION("CancelQueuedDropsTheJob")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int gate_run {0};
         std::atomic_int gate_release {0};
         std::atomic_int target_runs {0};
-
         const WorkerJobKey gate_key {WorkerJobType::Player, 1};
+        const WorkerJobKey target_key {WorkerJobType::Player, 2};
+        WorkerPool pool {"test", 1, &shutdown_flag};
+
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             gate_run.fetch_add(1);
             while (gate_release.load() == 0) {
@@ -366,7 +365,6 @@ TEST_CASE("WorkerPoolCancel")
         });
         REQUIRE(WaitFor([&] { return gate_run.load() == 1; }));
 
-        const WorkerJobKey target_key {WorkerJobType::Player, 2};
         pool.Submit(target_key, [&]() -> std::optional<timespan> {
             target_runs.fetch_add(1);
             return std::nullopt;
@@ -385,11 +383,11 @@ TEST_CASE("WorkerPoolCancel")
     SECTION("CancelRunningArmsCancelOnFinishToDropSelfReschedule")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         std::atomic_bool first_started {false};
         std::atomic_int first_release {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
@@ -414,11 +412,11 @@ TEST_CASE("WorkerPoolCancel")
     SECTION("SubmitAfterCancelRunningOverridesCancelOnFinish")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         std::atomic_bool first_started {false};
         std::atomic_int first_release {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
@@ -454,10 +452,19 @@ TEST_CASE("WorkerPoolExceptionHandling")
     SECTION("ExceptionInJobDoesNotKillPool")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
+        std::atomic_int exception_seen {0};
         std::atomic_int success {0};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
-        pool.Submit([]() -> std::optional<timespan> { throw std::runtime_error("boom"); });
+        pool.Submit([&]() -> std::optional<timespan> {
+            exception_seen.fetch_add(1);
+            shutdown_flag.store(true, std::memory_order_release);
+            throw std::runtime_error("boom");
+        });
+
+        REQUIRE(WaitFor([&] { return exception_seen.load() == 1; }));
+        pool.WaitIdle();
+        shutdown_flag.store(false, std::memory_order_release);
 
         for (int i = 0; i < 5; i++) {
             pool.Submit([&]() -> std::optional<timespan> {
@@ -480,12 +487,12 @@ TEST_CASE("WorkerPoolClearAndParallelism")
     SECTION("ClearRemovesQueuedAndArmsCancelOnRunning")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int gate_started {0};
         std::atomic_int gate_release {0};
         std::atomic_int gate_reruns {0};
         std::atomic_int dropped_runs {0};
         const WorkerJobKey gate_key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             const int n = gate_started.fetch_add(1) + 1;
@@ -521,9 +528,9 @@ TEST_CASE("WorkerPoolClearAndParallelism")
     SECTION("MultipleWorkersRunIndependentJobsConcurrently")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 4, shutdown_flag};
-        constexpr int total = 200;
         std::atomic_int counter {0};
+        WorkerPool pool {"test", 4, &shutdown_flag};
+        constexpr int total = 200;
 
         for (int i = 0; i < total; i++) {
             pool.Submit([&]() -> std::optional<timespan> {
@@ -554,7 +561,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
     SECTION("DriversHammerSubmitWakeCancelClear")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"chaos", 4, shutdown_flag};
+        WorkerPool pool {"chaos", 4, &shutdown_flag};
 
         std::atomic_int body_runs {0};
 
@@ -638,9 +645,9 @@ TEST_CASE("WorkerPoolWaitIdleTimeout")
     SECTION("ReturnsFalseWhileBusyThenTrueWhenDrained")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int started {0};
         std::atomic_int release {0};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit([&]() -> std::optional<timespan> {
             started.fetch_add(1);
@@ -672,8 +679,8 @@ TEST_CASE("WorkerPoolDiagnostics")
     SECTION("CompletedJobsCountsEveryRun")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 2, shutdown_flag};
         std::atomic_int counter {0};
+        WorkerPool pool {"test", 2, &shutdown_flag};
 
         for (int i = 0; i < 100; i++) {
             pool.Submit([&]() -> std::optional<timespan> {
@@ -695,9 +702,9 @@ TEST_CASE("WorkerPoolDiagnostics")
     SECTION("SelfRescheduleCountsEachRun")
     {
         std::atomic<bool> shutdown_flag {false};
-        WorkerPool pool {"test", 1, shutdown_flag};
         std::atomic_int runs {0};
         const WorkerJobKey key {WorkerJobType::Player, 1};
+        WorkerPool pool {"test", 1, &shutdown_flag};
 
         pool.Submit(key, [&]() -> std::optional<timespan> {
             const int next = runs.fetch_add(1, std::memory_order_relaxed) + 1;

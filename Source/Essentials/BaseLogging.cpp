@@ -398,7 +398,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
         for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
             WriteBaseLog("- [Native] 0x");
-            const auto addr = std::bit_cast<uintptr_t>(st.NativeFrames[i]);
+            const NativeStackFrameAddress addr = st.NativeFrames[i];
             WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
             WriteBaseLog("\n");
         }

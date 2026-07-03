@@ -526,20 +526,13 @@ auto EntityLock::GetExclusiveRecursionForCurrentThread() const noexcept -> int32
 // widen-coupled chain with each node's lock state, so the violation (the caller will throw) is debuggable.
 // Pure logging — the coverage decision is already made by IsEntityAccessValid (this runs only when it is
 // uncovered).
-static void LogUncoveredEntity(const ServerEntity* entity) noexcept
+static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto try_hold_entity = [](const ServerEntity* e) -> refcount_ptr<const ServerEntity> {
-        if (e != nullptr && e->TryAddRef()) {
-            return refcount_ptr<const ServerEntity>(refcount_ptr<const ServerEntity>::adopt, e);
-        }
-        else {
-            return {};
-        }
-    };
+    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
-    const auto lock_state = [](const EntityLock* lock) -> string_view {
+    const auto lock_state = [](nptr<const EntityLock> lock) -> string_view {
         if (lock == nullptr) {
             return "none";
         }
@@ -555,7 +548,7 @@ static void LogUncoveredEntity(const ServerEntity* entity) noexcept
         WriteLog("SyncDiag   chain: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
 
-    auto* widen = entity != nullptr ? const_cast<ServerEntity*>(entity)->GetSyncWidenEntity() : nullptr;
+    auto widen = entity != nullptr ? entity->GetSyncWidenEntity() : nullptr;
 
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
         WriteLog("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
@@ -574,7 +567,7 @@ static void LogUncoveredEntity(const ServerEntity* entity) noexcept
 // tolerate lock-free reparenting, which is now out of contract. The per-step coverage rule: a
 // held-by-this-thread or lock-free ancestor on the entity's own chain, or on its widen-coupled entity's
 // chain (player<->critter symmetric auto-widen).
-auto IsEntityAccessValid(const ServerEntity* entity, bool diagnose) noexcept -> bool
+auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -589,18 +582,11 @@ auto IsEntityAccessValid(const ServerEntity* entity, bool diagnose) noexcept -> 
         return true;
     }
 
-    const auto try_hold_entity = [](const ServerEntity* e) -> refcount_ptr<const ServerEntity> {
-        if (e != nullptr && e->TryAddRef()) {
-            return refcount_ptr<const ServerEntity>(refcount_ptr<const ServerEntity>::adopt, e);
-        }
-        else {
-            return {};
-        }
-    };
+    const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
-    const auto chain_covers = [&try_hold_entity](const ServerEntity* start) -> bool {
+    const auto chain_covers = [&try_hold_entity](nptr<const ServerEntity> start) -> bool {
         for (auto current = try_hold_entity(start); current; current = current->GetParentRaw()) {
-            const auto* lock = current->GetEntityLock();
+            const auto lock = current->GetEntityLock();
 
             if (lock == nullptr || lock->IsLockedByCurrentThread()) {
                 return true;
@@ -610,7 +596,7 @@ auto IsEntityAccessValid(const ServerEntity* entity, bool diagnose) noexcept -> 
         return false;
     };
 
-    if (chain_covers(entity) || chain_covers(const_cast<ServerEntity*>(entity)->GetSyncWidenEntity())) {
+    if (chain_covers(entity) || chain_covers(entity->GetSyncWidenEntity())) {
         return true;
     }
 
@@ -675,14 +661,14 @@ void SyncContext::Deactivate() noexcept
 // its items reverted), which drops the child's parent ref and lets the lock-owning ancestor — and
 // its `_ownedLock` storage that `_heldLocks` still points at — be freed before `ReleaseLocks` runs.
 // Pinning the owner keeps the lock storage alive for the whole hold regardless of later reparenting.
-static auto FindLockOwner(ServerEntity* entity, const EntityLock* lock) noexcept -> refcount_ptr<ServerEntity>
+static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexcept -> refcount_ptr<ServerEntity>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    refcount_ptr<ServerEntity> owner = entity;
+    auto owner = entity.hold_ref();
 
     for (auto parent = entity->GetParentRaw(); parent && parent->GetEntityLock() == lock; parent = parent->GetParentRaw()) {
-        owner = parent;
+        owner = parent.as_ptr().hold_ref();
     }
 
     return owner;
@@ -756,7 +742,7 @@ static void RollbackOps(const vector<pair<EntityLock*, bool>>& ops, size_t count
     }
 }
 
-void SyncContext::SyncEntities(span<ServerEntity*> entities)
+void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -787,18 +773,18 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
         // if two entities share a common ancestor, use the ancestor's lock
         unordered_map<EntityLock*, ServerEntity*> lock_to_entity;
 
-        for (auto* entity : entities) {
+        for (nptr<ServerEntity> entity : entities) {
             if (entity == nullptr) {
                 continue;
             }
 
-            auto* lock = entity->GetEntityLock();
+            nptr<EntityLock> lock = entity->GetEntityLock();
 
             if (lock == nullptr) {
                 continue;
             }
 
-            lock_to_entity.emplace(lock, entity);
+            lock_to_entity.emplace(lock.get(), entity.get());
         }
 
         // Symmetric auto-widening for entity pairs that don't share an ownership parent:
@@ -822,26 +808,26 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
                     snapshot.emplace_back(entity);
                 }
 
-                for (auto* entity : entities) {
+                for (nptr<ServerEntity> entity : entities) {
                     if (entity != nullptr) {
-                        snapshot.emplace_back(entity);
+                        snapshot.emplace_back(entity.get());
                     }
                 }
 
                 for (auto* entity : snapshot) {
-                    auto* widen = entity->GetSyncWidenEntity();
+                    auto widen = entity->GetSyncWidenEntity();
 
                     if (widen == nullptr) {
                         continue;
                     }
 
-                    auto* widen_lock = widen->GetEntityLock();
+                    auto widen_lock = widen->GetEntityLock();
 
                     if (widen_lock == nullptr) {
                         continue;
                     }
 
-                    if (lock_to_entity.emplace(widen_lock, widen).second) {
+                    if (lock_to_entity.emplace(widen_lock.get(), widen.get()).second) {
                         widened = true;
                     }
                 }
@@ -892,20 +878,20 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
 
         for (auto& owner : new_owners) {
             for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
-                auto* parent_lock = parent->GetEntityLock();
+                auto parent_lock = parent->GetEntityLock();
 
                 if (parent_lock == nullptr) {
                     continue;
                 }
-                if (std::ranges::find(new_locks, parent_lock) != new_locks.end()) {
+                if (std::ranges::find(new_locks, parent_lock.get()) != new_locks.end()) {
                     continue; // covered exclusively
                 }
-                if (std::ranges::find(new_holds, parent_lock) != new_holds.end()) {
+                if (std::ranges::find(new_holds, parent_lock.get()) != new_holds.end()) {
                     continue; // already marked
                 }
 
-                new_holds.emplace_back(parent_lock);
-                new_hold_owners.emplace_back(parent);
+                new_holds.emplace_back(parent_lock.get());
+                new_hold_owners.emplace_back(parent.as_ptr().hold_ref());
             }
         }
 
@@ -917,16 +903,16 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
         // a lock in our held set. If a requested entity's parent chain no longer passes
         // through any held lock, it escaped during AcquireLocks (concurrent SetParent moved
         // it out of the cover) — release everything and recompute.
-        const auto held_contains = [this](EntityLock* lock) noexcept { return lock != nullptr && std::ranges::find(_heldLocks, lock) != _heldLocks.end(); };
+        const auto held_contains = [this](nptr<EntityLock> lock) noexcept { return lock != nullptr && std::ranges::find(_heldLocks, lock.get()) != _heldLocks.end(); };
 
         bool all_covered = true;
 
-        for (auto* entity : entities) {
+        for (nptr<ServerEntity> entity : entities) {
             if (entity == nullptr) {
                 continue;
             }
 
-            auto* own_lock = entity->GetEntityLock();
+            auto own_lock = entity->GetEntityLock();
 
             if (own_lock == nullptr) {
                 continue;
@@ -963,10 +949,10 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
             // parent lock still covers it. Checking only to widens own lock here would fail to
             // verify on every retry and exhaust the budget whenever two player-controlled critters
             // (each widening to its Player) are locked together and escalated onto their map.
-            auto* widen = entity->GetSyncWidenEntity();
+            auto widen = entity->GetSyncWidenEntity();
 
             if (widen != nullptr) {
-                auto* widen_lock = widen->GetEntityLock();
+                auto widen_lock = widen->GetEntityLock();
 
                 if (widen_lock != nullptr) {
                     bool widen_covered = held_contains(widen_lock);
@@ -996,17 +982,17 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
         // AcquireLocks (e.g. its parent link changed), a mark is now stale and the
         // ancestor/descendant exclusion would have a hole — recompute against the current layout.
         if (all_covered) {
-            const auto marked = [this](EntityLock* lock) noexcept { //
-                return std::ranges::find(_heldLocks, lock) != _heldLocks.end() || std::ranges::find(_heldDescendantHolds, lock) != _heldDescendantHolds.end();
+            const auto marked = [this](nptr<EntityLock> lock) noexcept { //
+                return std::ranges::find(_heldLocks, lock.get()) != _heldLocks.end() || std::ranges::find(_heldDescendantHolds, lock.get()) != _heldDescendantHolds.end();
             };
 
             for (auto& owner : _heldLockOwners) {
-                if (!owner) {
+                if (owner.get() == nullptr) {
                     continue;
                 }
 
                 for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
-                    auto* parent_lock = parent->GetEntityLock();
+                    auto parent_lock = parent->GetEntityLock();
 
                     if (parent_lock != nullptr && !marked(parent_lock)) {
                         all_covered = false;
@@ -1038,7 +1024,7 @@ void SyncContext::SyncEntities(span<ServerEntity*> entities)
     }
 }
 
-void SyncContext::SyncEntity(ServerEntity* entity)
+void SyncContext::SyncEntity(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1046,11 +1032,11 @@ void SyncContext::SyncEntity(ServerEntity* entity)
         return;
     }
 
-    ServerEntity* arr[] = {entity};
+    nptr<ServerEntity> arr[] = {entity};
     SyncEntities(arr);
 }
 
-void SyncContext::EnsureEntitySynced(ServerEntity* entity)
+void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1066,7 +1052,7 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
         return;
     }
 
-    auto* lock = entity->GetEntityLock();
+    auto lock = entity->GetEntityLock();
 
     if (lock == nullptr) {
         return;
@@ -1091,28 +1077,28 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
     vector<refcount_ptr<ServerEntity>> add_mark_owners;
 
     for (auto parent = entity->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
-        auto* parent_lock = parent->GetEntityLock();
+        auto parent_lock = parent->GetEntityLock();
 
         if (parent_lock == nullptr || parent_lock == lock) {
             continue; // no lock, or shares `entity`'s lock — not a separate ancestor
         }
-        if (std::ranges::find(_heldLocks, parent_lock) != _heldLocks.end()) {
+        if (std::ranges::find(_heldLocks, parent_lock.get()) != _heldLocks.end()) {
             continue; // already covered exclusively
         }
-        if (std::ranges::find(_heldDescendantHolds, parent_lock) != _heldDescendantHolds.end()) {
+        if (std::ranges::find(_heldDescendantHolds, parent_lock.get()) != _heldDescendantHolds.end()) {
             continue; // already marked
         }
-        if (std::ranges::find(add_marks, parent_lock) != add_marks.end()) {
+        if (std::ranges::find(add_marks, parent_lock.get()) != add_marks.end()) {
             continue;
         }
 
-        add_marks.emplace_back(parent_lock);
-        add_mark_owners.emplace_back(parent);
+        add_marks.emplace_back(parent_lock.get());
+        add_mark_owners.emplace_back(parent.as_ptr().hold_ref());
     }
 
     vector<pair<EntityLock*, bool>> ops; // bool = is-exclusive
     ops.reserve(add_marks.size() + 1);
-    ops.emplace_back(lock, true);
+    ops.emplace_back(lock.get(), true);
 
     for (auto* mark : add_marks) {
         ops.emplace_back(mark, false);
@@ -1141,8 +1127,8 @@ void SyncContext::EnsureEntitySynced(ServerEntity* entity)
             // Pin the lock's OWNER (whose `_ownedLock` it is), not necessarily `entity`: for a shared/
             // propagated lock `entity` is a child that could be reparented out mid-hold, which would free
             // the owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
-            _heldLocks.emplace_back(lock);
-            _heldLockOwners.emplace_back(FindLockOwner(entity, lock));
+            _heldLocks.emplace_back(lock.get());
+            _heldLockOwners.emplace_back(FindLockOwner(entity.as_ptr(), lock));
 
             for (size_t i = 0; i < add_marks.size(); i++) {
                 _heldDescendantHolds.emplace_back(add_marks[i]);
@@ -1181,16 +1167,16 @@ void SyncContext::Release() noexcept
     ReleaseSingletonLocks();
 }
 
-auto SyncContext::GetHeldEntities() -> vector<ServerEntity*>
+auto SyncContext::GetHeldEntities() -> vector<ptr<ServerEntity>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<ServerEntity*> entities;
+    vector<ptr<ServerEntity>> entities;
     entities.reserve(_heldLockOwners.size());
 
     for (auto& owner : _heldLockOwners) {
-        if (owner && owner->GetId()) {
-            entities.emplace_back(owner.get());
+        if (owner.get() != nullptr && owner->GetId()) {
+            entities.emplace_back(owner);
         }
     }
 
@@ -1243,7 +1229,7 @@ void SyncContext::ReleaseSingletonLocks() noexcept
     _singletonLocks.clear();
 }
 
-auto SyncContext::ValidateAccess(const ServerEntity* entity) const noexcept -> bool
+auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1251,7 +1237,7 @@ auto SyncContext::ValidateAccess(const ServerEntity* entity) const noexcept -> b
         return false;
     }
 
-    const auto* lock = entity->GetEntityLock();
+    const auto lock = entity->GetEntityLock();
 
     if (lock == nullptr) {
         return true;
@@ -1581,16 +1567,16 @@ void SyncContext::ReleaseLocks() noexcept
 
     for (size_t i = _heldLocks.size(); i-- > 0;) {
         EntityLock* lock = _heldLocks[i];
-        ServerEntity* owner = _heldLockOwners[i].get();
+        // Steal the owner pin so it drops at the end of this iteration, after any lock release.
+        auto owner = std::move(_heldLockOwners[i]);
 
-        if (owner != nullptr && owner->GetEntityLock() == lock && owner->GetRefCount() == 1) {
+        if (owner->GetEntityLock() == lock && owner->GetRefCount() == 1) {
             // Sole reference to an unreachable entity we still hold exclusively: destroy it under the
-            // lock. Its `_ownedLock` storage dies with it, so it must not be Release()d afterwards.
-            _heldLockOwners[i] = nullptr;
+            // lock (when the stolen pin dies below). Its `_ownedLock` storage dies with it, so it must
+            // not be Release()d afterwards.
         }
         else {
             lock->Release();
-            _heldLockOwners[i] = nullptr;
         }
     }
 
@@ -1636,7 +1622,7 @@ auto NextSyncTicket() noexcept -> uint64_t
     return TicketCounter.fetch_add(1, std::memory_order_relaxed);
 }
 
-void EnsureEntitySynced(ServerEntity* entity)
+void EnsureEntitySynced(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 

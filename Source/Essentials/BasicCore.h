@@ -310,6 +310,16 @@ struct fixed_string
 // Generic helpers
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
+// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
+// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
+// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
+[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
+
+#define FO_BASIC_STRONG_ASSERT(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 
@@ -371,7 +381,6 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
-#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)
@@ -582,8 +591,7 @@ public:
     {
         if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
-            const auto* ptr = static_cast<const T*>(this);
-            delete ptr;
+            delete static_cast<const T*>(this);
         }
     }
 

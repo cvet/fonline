@@ -65,12 +65,12 @@ enum class AngelScriptContextSetupReason : uint8_t
 
 struct AngelScriptContextExtendedData
 {
-    raw_ptr<AngelScript::asIScriptContext> Root {};
-    raw_ptr<AngelScript::asIScriptContext> Parent {};
+    nptr<AngelScript::asIScriptContext> Root {};
+    nptr<AngelScript::asIScriptContext> Parent {};
     int32_t ExceptionCount {};
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
-    std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
     std::atomic_bool ExecutionActive {};
@@ -79,12 +79,12 @@ struct AngelScriptContextExtendedData
 #if FO_TRACY
     bool TracyExecutionActive {};
     size_t TracyExecutionCalls {};
-    vector<const AngelScriptTracyCallEntry*> TracyStackTrace {};
+    vector<nptr<const AngelScriptTracyCallEntry>> TracyStackTrace {};
     vector<TracyCZoneCtx> TracyZones {};
 #endif
 
-    static auto Get(AngelScript::asIScriptContext* ctx) -> AngelScriptContextExtendedData*;
-    static auto Get(const AngelScript::asIScriptContext* ctx) -> const AngelScriptContextExtendedData*;
+    static auto Get(ptr<AngelScript::asIScriptContext> ctx) -> nptr<AngelScriptContextExtendedData>;
+    static auto Get(ptr<const AngelScript::asIScriptContext> ctx) -> nptr<const AngelScriptContextExtendedData>;
 };
 
 class AngelScriptContextManager final
@@ -92,34 +92,34 @@ class AngelScriptContextManager final
 public:
     using DelayedScheduler = function<void(timespan delay, function<void()> body)>;
 
-    explicit AngelScriptContextManager(AngelScript::asIScriptEngine* as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
+    explicit AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
     ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
 
-    auto RequestContext() -> AngelScript::asIScriptContext*;
-    void ReturnContext(AngelScript::asIScriptContext* ctx, uint64_t expected_generation) noexcept;
-    auto GetContextGeneration(AngelScript::asIScriptContext* ctx) const noexcept -> uint64_t;
-    auto PrepareContext(AngelScript::asIScriptFunction* func) -> AngelScript::asIScriptContext*;
-    void SetContextSetupCallback(function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> context_setup_callback);
-    auto RunContext(AngelScript::asIScriptContext* ctx, bool can_suspend, bool execution_reserved = false) -> bool;
-    void SuspendScriptContext(AngelScript::asIScriptContext* ctx, nanotime time);
-    void ResumeSpecificContext(AngelScript::asIScriptContext* ctx);
+    auto RequestContext() -> ptr<AngelScript::asIScriptContext>;
+    void ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept;
+    auto GetContextGeneration(ptr<AngelScript::asIScriptContext> ctx) const noexcept -> uint64_t;
+    auto PrepareContext(ptr<AngelScript::asIScriptFunction> func) -> ptr<AngelScript::asIScriptContext>;
+    void SetContextSetupCallback(function<void(ptr<AngelScript::asIScriptContext>, AngelScriptContextSetupReason)> context_setup_callback);
+    auto RunContext(ptr<AngelScript::asIScriptContext> ctx, bool can_suspend, bool execution_reserved = false) -> bool;
+    void SuspendScriptContext(ptr<AngelScript::asIScriptContext> ctx, nanotime time);
+    void ResumeSpecificContext(ptr<AngelScript::asIScriptContext> ctx);
 
     void SetDelayedScheduler(DelayedScheduler scheduler) { _delayedScheduler = std::move(scheduler); }
 
 private:
     void CreateContext() FO_TSA_REQUIRES(_poolLocker);
 
-    raw_ptr<AngelScript::asIScriptEngine> _asEngine;
+    ptr<AngelScript::asIScriptEngine> _asEngine;
     timespan _overrunTimeout;
     mutable mutex _poolLocker {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts FO_TSA_GUARDED_BY(_poolLocker) {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _busyContexts FO_TSA_GUARDED_BY(_poolLocker) {};
     function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> _debuggerStopCallback {};
-    function<void(AngelScript::asIScriptContext*, AngelScriptContextSetupReason)> _contextSetupCallback {};
+    function<void(ptr<AngelScript::asIScriptContext>, AngelScriptContextSetupReason)> _contextSetupCallback {};
     DelayedScheduler _delayedScheduler {};
 };
 

@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetRepeat() const noexcept -> timespan { return _repeat; }
     [[nodiscard]] auto IsRepeatChanged() const noexcept -> bool { return _repeatChanged; }
     [[nodiscard]] auto IsDataChanged() const noexcept -> bool { return _dataChanged; }
-    [[nodiscard]] auto GetDataRaw() const noexcept -> const vector<any_t>& { return _data; }
+    [[nodiscard]] auto GetRawData() const noexcept -> const_span<any_t> { return _data; }
 
     void Stop() noexcept;
     void Repeat(timespan repeat) noexcept;
@@ -85,14 +85,14 @@ public:
 
     struct ReadyTimeEvent
     {
-        refcount_ptr<Entity> OwnerEntity {};
+        refcount_ptr<Entity> OwnerEntity;
         shared_ptr<Entity::TimeEventData> Event {};
     };
 
     struct FiredTimeEvent
     {
         bool CallResult {};
-        refcount_ptr<TimeEventContext> Context {};
+        refcount_nptr<TimeEventContext> Context {};
     };
 
     struct DispatcherHooks
@@ -101,37 +101,37 @@ public:
         function<void(uint32_t event_id)> Cancel {};
     };
 
-    explicit TimeEventManager(BaseEngine& engine);
+    explicit TimeEventManager(ptr<BaseEngine> engine);
     TimeEventManager(const TimeEventManager&) = delete;
     TimeEventManager(TimeEventManager&&) noexcept = delete;
     auto operator=(const TimeEventManager&) = delete;
     auto operator=(TimeEventManager&&) noexcept = delete;
     ~TimeEventManager() = default;
 
-    [[nodiscard]] auto CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
+    [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
 
     void SetDispatcherHooks(DispatcherHooks hooks);
     void ClearDispatcherHooks();
 
-    auto StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
-    void ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
-    void StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id);
+    auto StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
+    void ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
+    void StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id);
     void ProcessTimeEvents();
     void ClearTimeEvents();
-    void CancelAllForEntity(Entity* entity);
+    void CancelAllForEntity(ptr<Entity> entity);
     auto CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>;
-    auto FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent;
-    void PostFireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result);
-    auto FireAndAdvance(Entity* entity, uint32_t event_id) -> optional<timespan>;
+    auto FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent;
+    void PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result);
+    auto FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>;
 
 private:
-    void AddEntityTimeEventPolling(Entity* entity);
-    void RemoveEntityTimeEventPolling(Entity* entity);
-    void ProcessEntityTimeEvents(Entity* entity);
-    void NotifySchedule(Entity* entity, uint32_t event_id, timespan delay);
+    void AddEntityTimeEventPolling(ptr<Entity> entity);
+    void RemoveEntityTimeEventPolling(ptr<Entity> entity);
+    void ProcessEntityTimeEvents(ptr<Entity> entity);
+    void NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay);
     void NotifyCancel(uint32_t event_id);
 
-    raw_ptr<BaseEngine> _engine;
+    ptr<BaseEngine> _engine;
     mutable std::recursive_mutex _timeEventLocker {}; // Recursive: not modelable by TSA
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     std::atomic_uint32_t _timeEventCounter {};

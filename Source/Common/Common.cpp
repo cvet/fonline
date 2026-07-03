@@ -165,8 +165,14 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
     const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
         numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
         numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
-    file.write(reinterpret_cast<const char*>(header), static_cast<std::streamsize>(sizeof(header)));
-    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
+    ptr<const uint8_t> header_bytes = header;
+    file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
+
+    if (!data.empty()) {
+        nptr<const ucolor> pixels = data.data();
+        file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
+    }
+
     FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
 }
 

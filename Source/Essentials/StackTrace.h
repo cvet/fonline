@@ -53,18 +53,19 @@ struct StackTraceFrame
 
 inline constexpr size_t STACK_TRACE_MAX_NATIVE_FRAMES = 128;
 inline constexpr size_t STACK_TRACE_RESOLVE_CACHE_MAX_ENTRIES = 4096;
+using NativeStackFrameAddress = uintptr_t;
 
 struct ScriptStackTraceLayer
 {
     std::vector<StackTraceFrame> ScriptFrames {};
-    std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
 };
 
 struct StackTraceData
 {
-    std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES> NativeFrames {};
+    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> NativeFrames {};
     uint32_t NativeFrameCount {};
     bool NativeTruncated {};
     std::shared_ptr<const std::vector<ScriptStackTraceLayer>> ScriptLayers {};
@@ -90,7 +91,7 @@ using ScriptStackTraceProvider = std::function<void(std::vector<ScriptStackTrace
 extern void SetScriptStackTraceProvider(ScriptStackTraceProvider provider) noexcept;
 extern auto HasScriptStackTraceProvider() noexcept -> bool;
 extern auto GetStackTrace() noexcept -> StackTraceData;
-extern void CaptureNativeStackFrames(std::array<void*, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
+extern void CaptureNativeStackFrames(std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip = 0) noexcept;
 extern void ClearResolvedStackTraceCache() noexcept;
 extern auto GetResolvedStackTraceCacheSize() noexcept -> size_t;
 extern auto ResolveStackTrace(const StackTraceData& st) -> std::vector<StackTraceFrame>;

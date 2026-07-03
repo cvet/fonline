@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static void EmitLogMessage(LogType type, string_view message, const CatchedStackTraceData* st);
+static void EmitLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st);
 static void FlushLogMessageRepeatsLocked();
 static auto IsSameAsLastLogMessage(LogType type, string_view message) -> bool;
 static void RememberLastLogMessage(LogType type, string_view message);
@@ -74,7 +74,7 @@ struct LoggingData
 };
 FO_GLOBAL_DATA(LoggingData, Logging);
 
-extern void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceData* st) noexcept
+extern void WriteLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -84,7 +84,14 @@ extern void WriteLogMessage(LogType type, string_view message, const CatchedStac
             result.reserve(message.length() + 1);
             result += message;
             result += '\n';
-            WriteBaseLog(result, st);
+
+            if (st) {
+                WriteBaseLog(result, st.get());
+            }
+            else {
+                WriteBaseLog(result);
+            }
+
             return;
         }
 
@@ -135,7 +142,7 @@ extern void LogDisableTags()
     Logging->TagsDisabled = true;
 }
 
-static void EmitLogMessage(LogType type, string_view message, const CatchedStackTraceData* st)
+static void EmitLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -156,7 +163,12 @@ static void EmitLogMessage(LogType type, string_view message, const CatchedStack
     result += message;
     result += '\n';
 
-    WriteBaseLog(result, st);
+    if (st) {
+        WriteBaseLog(result, st.get());
+    }
+    else {
+        WriteBaseLog(result);
+    }
 
     if (!Logging->LogFunctions.empty()) {
         if (Logging->LogFunctionsInProcess) {
@@ -176,7 +188,8 @@ static void EmitLogMessage(LogType type, string_view message, const CatchedStack
     }
 
 #if FO_TRACY
-    TracyMessage(result.c_str(), result.length());
+    ptr<const char> tracy_message = result.c_str();
+    TracyMessage(tracy_message.get(), result.length());
 #endif
 }
 

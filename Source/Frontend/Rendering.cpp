@@ -247,7 +247,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     }
 }
 
-auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
+auto RenderEffect::CanBatch(ptr<const RenderEffect> other) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

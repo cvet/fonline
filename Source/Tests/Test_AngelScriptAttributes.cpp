@@ -54,36 +54,56 @@ namespace
     {
     public:
         explicit BytecodeStream(vector<asBYTE>& buf) :
-            _buf {buf}
+            _buf {BufferPtr(buf)}
         {
+            FO_NO_STACK_TRACE_ENTRY();
         }
 
-        int Read(void* ptr, asUINT size) override
+        int Read(void* raw_data, asUINT size) override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            REQUIRE(_readPos + size <= _buf.size());
-            MemCopy(ptr, _buf.data() + _readPos, size);
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            REQUIRE(_readPos + size <= _buf->size());
+            ptr<void> target = raw_data;
+            ptr<const asBYTE> source = &_buf->at(_readPos);
+            MemCopy(target, source, size);
             _readPos += size;
             return 0;
         }
 
-        int Write(const void* ptr, asUINT size) override
+        int Write(const void* raw_data, asUINT size) override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            _buf.resize(_writePos + size);
-            MemCopy(_buf.data() + _writePos, ptr, size);
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            _buf->resize(_writePos + size);
+            ptr<asBYTE> target = &_buf->at(_writePos);
+            ptr<const void> source = raw_data;
+            MemCopy(target, source, size);
             _writePos += size;
             return 0;
         }
 
     private:
-        vector<asBYTE>& _buf;
+        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &buf;
+        }
+
+        ptr<vector<asBYTE>> _buf;
         size_t _readPos {};
         size_t _writePos {};
     };
@@ -176,14 +196,14 @@ namespace
         ignore_unused(obj);
     }
 
-    static void RegisterDummyPlayerType(asIScriptEngine* engine)
+    static void RegisterDummyPlayerType(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterObjectType("Player", 0, asOBJ_REF) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Player", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
-    static void RegisterDummyCritterType(asIScriptEngine* engine)
+    static void RegisterDummyCritterType(ptr<asIScriptEngine> engine)
     {
         // Critter is registered as an implicit-handle ref type so the
         // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
@@ -194,7 +214,7 @@ namespace
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
     }
 
-    static void RegisterDummyRouteSnapshotType(asIScriptEngine* engine)
+    static void RegisterDummyRouteSnapshotType(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterObjectType("RouteSnapshot", 0, asOBJ_REF) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("RouteSnapshot", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
@@ -272,10 +292,14 @@ namespace
 
         static void Callback(const asSMessageInfo* msg, void* param)
         {
-            auto* self = static_cast<ScriptMessages*>(param);
-            FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
+            ptr<const asSMessageInfo> message = msg;
+            nptr<ScriptMessages> nullable_self = cast_from_void<ScriptMessages*>(param);
+            FO_VERIFY_AND_THROW(nullable_self, "Script object instance is null");
+            auto self = nullable_self.as_ptr();
+            nptr<const char> section = message->section;
+            nptr<const char> text = message->message;
 
-            self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
+            self->Entries.emplace_back(strex("{}({},{}): {}", section ? section.get() : "<unknown>", message->row, message->col, text ? text.get() : "<no message>").str());
         }
     };
 
@@ -286,46 +310,62 @@ namespace
         string Errors {};
     };
 
-    struct PreprocessorContextDeleter
-    {
-        void operator()(Preprocessor::Context* ctx) const noexcept { Preprocessor::DeleteContext(ctx); }
-    };
-
     static auto ParseScript(string_view path, string_view script, std::initializer_list<string_view> defines = {}) -> ParsedScript
     {
-        auto pp_ctx = std::unique_ptr<Preprocessor::Context, PreprocessorContextDeleter> {Preprocessor::CreateContext()};
+        auto pp_ctx = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
+        REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
+        auto pp_ctx_ptr = pp_ctx.as_ptr();
+
         for (const auto define : defines) {
-            Preprocessor::Define(pp_ctx.get(), std::string(define));
+            Preprocessor::Define(pp_ctx_ptr.get(), std::string(define));
         }
         Preprocessor::StringOutStream pp_errors;
         Preprocessor::LexemList lexems;
         auto loader = SingleScriptLoader {string(path), string(script)};
         const auto std_path = std::string {path};
 
-        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
+        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx_ptr.get(), std_path, lexems, &pp_errors, &loader);
         REQUIRE(pp_errors_count == 0);
         REQUIRE(pp_errors.String.empty());
 
         ParsedScript result;
-        result.Records = ParseFunctionAttributeRecords(pp_ctx.get(), lexems, result.Errors);
+        result.Records = ParseFunctionAttributeRecords(pp_ctx_ptr, lexems, result.Errors);
 
         Preprocessor::StringOutStream out;
-        Preprocessor::PrintLexemList(pp_ctx.get(), lexems, out);
+        Preprocessor::PrintLexemList(pp_ctx_ptr.get(), lexems, out);
         result.Source = std::move(out.String);
         return result;
     }
 
-    static auto MakeEngine(ScriptMessages& messages) -> asIScriptEngine*
+    static auto MessageCallbackUserData(ScriptMessages& messages) noexcept -> ptr<ScriptMessages>
     {
-        auto* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-        REQUIRE(engine != nullptr);
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return &messages;
+    }
+
+    static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        engine->ShutDownAndRelease();
+    }
+
+    static auto MakeEngine(ScriptMessages& messages) -> unique_del_ptr<asIScriptEngine>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<asIScriptEngine> nullable_engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+        REQUIRE(nullable_engine);
+        auto engine = make_unique_del_ptr(nullable_engine.as_ptr(), ReleaseScriptEngine);
 
         REQUIRE(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
-        REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), &messages, asCALL_CDECL) >= 0);
+        auto message_callback_user_data = MessageCallbackUserData(messages);
+        REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), message_callback_user_data.get(), asCALL_CDECL) >= 0);
         return engine;
     }
 
-    static void RegisterDummyEventApi(asIScriptEngine* engine)
+    static void RegisterDummyEventApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("void DummyEventFunc()") >= 0);
         REQUIRE(engine->RegisterEnum("EventResult") >= 0);
@@ -340,7 +380,7 @@ namespace
         REQUIRE(engine->RegisterObjectMethod("DummyEvent", "void Unsubscribe(DummyEventFuncResult@+ func)", asFUNCTION(DummyEvent_Unsubscribe), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummySchedulerApi(asIScriptEngine* engine)
+    static void RegisterDummySchedulerApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("void TimeEventFunc()") >= 0);
         REQUIRE(engine->RegisterObjectType("DummyScheduler", 0, asOBJ_REF | asOBJ_NOCOUNT) >= 0);
@@ -353,7 +393,7 @@ namespace
         REQUIRE(engine->RegisterObjectMethod("DummyScheduler", "void SetTimeEventData(TimeEventFunc@+ func, int data)", asFUNCTION(DummyScheduler_SetTimeEventData), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummyPropertyApi(asIScriptEngine* engine)
+    static void RegisterDummyPropertyApi(ptr<asIScriptEngine> engine)
     {
         REQUIRE(engine->RegisterFuncdef("int PropertyGetterFunc(int entity)") >= 0);
         REQUIRE(engine->RegisterFuncdef("void PropertySetterFunc(int entity)") >= 0);
@@ -363,7 +403,7 @@ namespace
         REQUIRE(engine->RegisterObjectMethod("DummyPropertyApi", "void AddPropertySetter(int prop, PropertySetterFunc@+ func)", asFUNCTION(DummyProperty_AddPropertySetter), asCALL_GENERIC) >= 0);
     }
 
-    static void RegisterDummyAnimCallbackApi(asIScriptEngine* engine)
+    static void RegisterDummyAnimCallbackApi(ptr<asIScriptEngine> engine)
     {
         RegisterDummyCritterType(engine);
         REQUIRE(engine->RegisterFuncdef("void AnimCallbackFunc(Critter@+ cr)") >= 0);
@@ -371,12 +411,12 @@ namespace
         REQUIRE(engine->RegisterObjectMethod("Critter", "void AddAnimCallback(int stateAnim, int actionAnim, float normalizedTime, AnimCallbackFunc@+ func)", asFUNCTION(DummyCritter_AddAnimCallback), asCALL_GENERIC) >= 0);
     }
 
-    static auto BuildModule(asIScriptEngine* engine, string_view module_name, string_view source, ScriptMessages& messages) -> asIScriptModule*
+    static auto BuildModule(ptr<asIScriptEngine> engine, string_view module_name, string_view source, ScriptMessages& messages) -> ptr<asIScriptModule>
     {
-        auto* mod = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(mod != nullptr);
-        REQUIRE(mod->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        const auto build_result = mod->Build();
+        nptr<asIScriptModule> nullable_module = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
+        REQUIRE(nullable_module);
+        REQUIRE(nullable_module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
+        const auto build_result = nullable_module->Build();
         if (build_result < 0) {
             for (const auto& entry : messages.Entries) {
                 INFO("AS message: " << entry);
@@ -387,27 +427,27 @@ namespace
             INFO(messages.Entries.front());
         }
         CHECK(messages.Entries.empty());
-        return mod;
+        return nullable_module.as_ptr();
     }
 
-    static auto FindScriptFunction(asIScriptModule* mod, string_view decl) -> asIScriptFunction*
+    static auto FindScriptFunction(ptr<asIScriptModule> mod, string_view decl) -> nptr<asIScriptFunction>
     {
         for (asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-            auto* func = mod->GetFunctionByIndex(i);
-            if ((func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
+            nptr<asIScriptFunction> func = mod->GetFunctionByIndex(i);
+            if (func && (func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
                 return func;
             }
         }
 
         for (asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-            auto* object_type = mod->GetObjectTypeByIndex(i);
-            if (object_type == nullptr) {
+            nptr<asITypeInfo> object_type = mod->GetObjectTypeByIndex(i);
+            if (!object_type) {
                 continue;
             }
 
             for (asUINT j = 0; j < object_type->GetMethodCount(); j++) {
-                auto* func = object_type->GetMethodByIndex(j, false);
-                if ((func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
+                nptr<asIScriptFunction> func = object_type->GetMethodByIndex(j, false);
+                if (func && (func->GetFuncType() == asFUNC_SCRIPT || func->GetFuncType() == asFUNC_VIRTUAL) && string_view(func->GetDeclaration(true, true, false)) == decl) {
                     return func;
                 }
             }
@@ -416,17 +456,17 @@ namespace
         return nullptr;
     }
 
-    static void CheckAttributes(const asIScriptFunction* func, std::initializer_list<string_view> expected)
+    static void CheckAttributes(nptr<const asIScriptFunction> func, std::initializer_list<string_view> expected)
     {
-        REQUIRE(func != nullptr);
+        REQUIRE(func);
 
-        const auto* user_data = GetFunctionAttributesUserData(func);
+        auto user_data = GetFunctionAttributesUserData(func.as_ptr());
         if (expected.size() == 0) {
-            CHECK(user_data == nullptr);
+            CHECK_FALSE(static_cast<bool>(user_data));
             return;
         }
 
-        REQUIRE(user_data != nullptr);
+        REQUIRE(static_cast<bool>(user_data));
         REQUIRE(user_data->Attributes.size() == expected.size());
 
         size_t index = 0;
@@ -1384,14 +1424,14 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         meta.RegisterEntityType("Critter", true, false, true, true, true);
         meta.RegisterRefType("RouteSnapshot");
 
-        PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, meta.Hashes, meta);
-        const auto* int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
-        const auto* string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
-        const auto* counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
-        const auto* proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
-        const auto* ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
-        const auto* ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
-        const auto* ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
+        PropertyRegistrator registrator("ScriptPropertyNameEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+        const auto int_prop = registrator.RegisterProperty({"Common", "int32", "Value", "Mutable", "Persistent", "PublicSync"});
+        const auto string_array_prop = registrator.RegisterProperty({"Common", "string[]", "Tags", "Mutable", "Persistent", "PublicSync"});
+        const auto counter_dict_prop = registrator.RegisterProperty({"Common", "string=>int32", "Counters", "Mutable", "Persistent", "PublicSync"});
+        const auto proto_array_dict_prop = registrator.RegisterProperty({"Common", "int32=>ProtoCritter[]", "SpawnTables", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_array_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+        const auto ref_dict_prop = registrator.RegisterProperty({"Common", "string=>RouteSnapshot", "SnapshotsByName", "Mutable", "Persistent", "PublicSync"});
 
         CHECK(MakeScriptPropertyName(int_prop) == "int");
         CHECK(MakeScriptPropertyName(string_array_prop) == "array<string>");
@@ -1474,7 +1514,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         const float32_t float_value = 1.5f;
         const float64_t double_value = 2.25;
 
-        CHECK(GetScriptObjectInfo(nullptr, asTYPEID_VOID) == "void");
+        CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_VOID) == "void");
         CHECK(GetScriptObjectInfo(&bool_value, asTYPEID_BOOL) == "bool: true");
         CHECK(GetScriptObjectInfo(&int8_value, asTYPEID_INT8) == "int8: -8");
         CHECK(GetScriptObjectInfo(&int16_value, asTYPEID_INT16) == "int16: -1600");
@@ -1491,14 +1531,13 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
     SECTION("CreatesScriptArrayAndDictByDeclaration")
     {
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
         RegisterAngelScriptArray(engine);
         RegisterAngelScriptDict(engine);
 
-        auto* arr = CreateScriptArray(engine, "array<int>");
-        REQUIRE(arr != nullptr);
+        auto arr = CreateScriptArray(engine, "array<int>");
         CHECK(arr->IsEmpty());
         CHECK(arr->GetSize() == 0);
 
@@ -1506,16 +1545,12 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         int32_t arr_value = 42;
         arr->SetValue(1, &arr_value);
         CHECK(arr->GetSize() == 2);
-        CHECK(*cast_from_void<int32_t*>(arr->At(1)) == 42);
-        arr->Release();
+        CHECK(*cast_from_void<int32_t*>(arr->At(1).get()) == 42);
 
-        auto* cached_arr = CreateScriptArray(engine, "array<int>");
-        REQUIRE(cached_arr != nullptr);
+        auto cached_arr = CreateScriptArray(engine, "array<int>");
         CHECK(cached_arr->IsEmpty());
-        cached_arr->Release();
 
-        auto* dict = CreateScriptDict(engine, "dict<int,int>");
-        REQUIRE(dict != nullptr);
+        auto dict = CreateScriptDict(engine, "dict<int,int>");
         CHECK(dict->IsEmpty());
         CHECK(dict->GetSize() == 0);
 
@@ -1525,8 +1560,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
 
         CHECK(dict->GetSize() == 1);
         CHECK(dict->Exists(&dict_key));
-        CHECK(*cast_from_void<int32_t*>(dict->Get(&dict_key)) == 9);
-        dict->Release();
+        CHECK(*cast_from_void<int32_t*>(dict->Get(&dict_key).get()) == 9);
     }
 
     SECTION("RendersScriptFunctionNames")
@@ -1545,14 +1579,13 @@ void NamespacedCall()
 )";
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
-        auto* mod = BuildModule(engine, "HelperFuncNames", Script, messages);
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
+        auto mod = BuildModule(engine, "HelperFuncNames", Script, messages);
 
         EngineMetadata meta {[] { }};
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()"), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()"), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
-        CHECK_THROWS(GetScriptFuncName(nullptr, meta.Hashes));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
     }
 
     SECTION("BindsAndStripsAttributes")
@@ -1566,10 +1599,10 @@ void NamespacedCall()
         CHECK(parsed.Source.find("[Two]") == string::npos);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrTestModule", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTestModule", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1590,10 +1623,10 @@ void NamespacedCall()
         REQUIRE(parsed.Records.size() == 1);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrAfterClass", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAfterClass", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1609,16 +1642,17 @@ void NamespacedCall()
         REQUIRE(parsed.Records.size() == 1);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrWithParameters", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrWithParameters", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        auto* func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
-        CheckAttributes(func, {"Primary(2)", "Secondary"});
+        auto nullable_func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
+        CheckAttributes(nullable_func, {"Primary(2)", "Secondary"});
+        auto func = nullable_func.as_ptr();
         CHECK(HasFunctionAttribute(func, "Primary"));
         CHECK(FindFunctionAttribute(func, "Primary") == "Primary(2)");
     }
@@ -1673,10 +1707,10 @@ void NamespacedCall()
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrRoundtripSave", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrRoundtripSave", parsed.Source, messages);
 
         vector<asBYTE> bytecode;
         auto stream = BytecodeStream {bytecode};
@@ -1687,11 +1721,12 @@ void NamespacedCall()
         SerializeFunctionAttributeRecords(writer, parsed.Records);
 
         ScriptMessages load_messages;
-        auto* load_engine = MakeEngine(load_messages);
-        auto release_load_engine = scope_exit([&load_engine]() noexcept { safe_call([&load_engine] { load_engine->ShutDownAndRelease(); }); });
+        auto load_engine_holder = MakeEngine(load_messages);
+        ptr<asIScriptEngine> load_engine = load_engine_holder.get();
 
-        auto* load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
-        REQUIRE(load_mod != nullptr);
+        nptr<asIScriptModule> nullable_load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
+        REQUIRE(nullable_load_mod);
+        auto load_mod = nullable_load_mod.as_ptr();
 
         auto load_stream = BytecodeStream {bytecode};
         REQUIRE(load_mod->LoadByteCode(&load_stream) >= 0);
@@ -1736,11 +1771,11 @@ void NamespacedCall()
         CHECK(parsed.Source.find("? a") != string::npos);
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyCritterType(engine);
 
-        auto* mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrNullableStrip", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1769,11 +1804,11 @@ void TakesIntPlease(int? value)
         CHECK(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = engine->GetModule("AttrNullablePrimitive", asGM_ALWAYS_CREATE);
-        REQUIRE(mod != nullptr);
+        nptr<asIScriptModule> mod = engine->GetModule("AttrNullablePrimitive", asGM_ALWAYS_CREATE);
+        REQUIRE(mod);
         REQUIRE(mod->AddScriptSection("AttrNullablePrimitive", parsed.Source.data(), parsed.Source.length()) >= 0);
         CHECK(mod->Build() < 0);
 
@@ -1793,10 +1828,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrInvalidModuleInitPriority", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrInvalidModuleInitPriority", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1813,10 +1848,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
         // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
         // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
         // rather than as a viral marker (Rule 2 default for unknown attributes).
@@ -1838,10 +1873,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrFuncPtr", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrFuncPtr", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1856,11 +1891,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1875,11 +1910,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventResultPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1894,11 +1929,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1915,11 +1950,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventMethodPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventMethodPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1936,11 +1971,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventMethodNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventMethodNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1957,10 +1992,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrEventDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1978,11 +2013,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventWrongUsage", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventWrongUsage", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -1999,11 +2034,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTimeEventPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2020,11 +2055,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTimeEventNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2041,10 +2076,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrTimeEventDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTimeEventDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2062,11 +2097,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventWrongUsage", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTimeEventWrongUsage", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2083,11 +2118,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummySchedulerApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrEventUsedForTimeEvent", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrEventUsedForTimeEvent", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2104,11 +2139,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyEventApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrTimeEventUsedForEvent", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrTimeEventUsedForEvent", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2125,11 +2160,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAnimCallbackPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2144,11 +2179,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAnimCallbackNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2165,11 +2200,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAnimCallbackDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2187,11 +2222,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyAnimCallbackApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrAnimCallbackWrongUsage", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAnimCallbackWrongUsage", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2208,11 +2243,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertyGetterPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2229,11 +2264,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertyGetterNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2250,10 +2285,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertyGetterDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2271,11 +2306,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertyGetterWrongUsage", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertyGetterWrongUsage", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2292,11 +2327,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertySetterPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2313,11 +2348,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterNegative", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertySetterNegative", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2334,10 +2369,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertySetterDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2355,11 +2390,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPropertyApi(engine);
 
-        auto* mod = BuildModule(engine, "AttrPropertySetterWrongUsage", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrPropertySetterWrongUsage", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2376,12 +2411,12 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
         RegisterDummyCritterType(engine);
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2400,10 +2435,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2422,11 +2457,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2444,10 +2479,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallClientDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2465,10 +2500,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "ItemTriggerDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2486,10 +2521,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
+        auto mod = BuildModule(engine, "ItemStaticDirectCall", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2507,11 +2542,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "AttrAdminRemoteCallWrongSignature", parsed.Source, messages);
+        auto mod = BuildModule(engine, "AttrAdminRemoteCallWrongSignature", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2529,11 +2564,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2552,10 +2587,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientPositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallClientPositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2574,12 +2609,12 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
         RegisterDummyRouteSnapshotType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerRefTypePositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2600,11 +2635,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyRouteSnapshotType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallClientRefTypePositive", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2626,11 +2661,11 @@ void TakesIntPlease(int? value)
         CHECK(parsed.Records.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "LegacyRemoteCallServerComment", parsed.Source, messages);
+        auto mod = BuildModule(engine, "LegacyRemoteCallServerComment", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2639,7 +2674,7 @@ void TakesIntPlease(int? value)
         meta.RegisterSide(EngineSideKind::ServerSide);
         meta.RegisterInboundRemoteCall(MakeInboundRemoteCall(meta, "Activate", "RemoteCallTest.fos", {MakeSimpleRemoteCallArg(meta.GetBaseType("int32"))}));
 
-        auto* func = FindScriptFunction(mod, "void RemoteCallTest::Activate(Player@, int)");
+        auto func = FindScriptFunction(mod, "void RemoteCallTest::Activate(Player@, int)");
         CheckAttributes(func, {});
 
         const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, meta);
@@ -2654,11 +2689,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerWrongSignature", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerWrongSignature", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2680,11 +2715,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerWrongSide", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerWrongSide", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2706,10 +2741,10 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
 
-        auto* mod = BuildModule(engine, "RemoteCallClientExtra", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallClientExtra", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
@@ -2731,11 +2766,11 @@ void TakesIntPlease(int? value)
         REQUIRE(parsed.Errors.empty());
 
         ScriptMessages messages;
-        auto* engine = MakeEngine(messages);
-        auto release_engine = scope_exit([&engine]() noexcept { safe_call([&engine] { engine->ShutDownAndRelease(); }); });
+        auto engine_holder = MakeEngine(messages);
+        ptr<asIScriptEngine> engine = engine_holder.get();
         RegisterDummyPlayerType(engine);
 
-        auto* mod = BuildModule(engine, "RemoteCallServerMissingAttribute", parsed.Source, messages);
+        auto mod = BuildModule(engine, "RemoteCallServerMissingAttribute", parsed.Source, messages);
         const auto bind_error = BindFunctionAttributeRecords(mod, parsed.Records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());

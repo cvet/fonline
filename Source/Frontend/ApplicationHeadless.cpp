@@ -37,31 +37,26 @@ FO_BEGIN_NAMESPACE
 
 struct Application::Context
 {
-    unique_ptr<Null_Renderer> HeadlessRenderer {};
-    raw_ptr<RenderTexture> HeadlessRenderTarget {};
+    Null_Renderer HeadlessRenderer {};
+    nptr<RenderTexture> HeadlessRenderTarget {};
     vector<unique_ptr<HeadlessWindowStub>> HeadlessWindowStubs {};
 };
 
-static constexpr int32_t MAX_ATLAS_WIDTH_ = 8192;
-static constexpr int32_t MAX_ATLAS_HEIGHT_ = 8192;
-static constexpr int32_t MAX_BONES_ = 32;
-const int32_t& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const int32_t& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const int32_t& AppRender::MAX_BONES {MAX_BONES_};
+int32_t AppRender::MAX_ATLAS_WIDTH {8192};
+int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
+int32_t AppRender::MAX_BONES {32};
 const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
 const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
-    MainWindow {this},
-    Render {this},
-    Input {this},
-    Audio {this}
+    MainWindow {ptr<Application> {this}},
+    Render {ptr<Application> {this}},
+    Input {ptr<Application> {this}},
+    Audio {ptr<Application> {this}},
+    _ctx {SafeAlloc::MakeUnique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>();
 
     ignore_unused(flags);
     ignore_unused(_time);
@@ -74,44 +69,38 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_imguiEffect);
     ignore_unused(MainWindow._grabbed);
 
-    _ctx->HeadlessRenderer = SafeAlloc::MakeUnique<Null_Renderer>();
-    _ctx->HeadlessRenderer->Init(Settings, nullptr);
+    _ctx->HeadlessRenderer.Init(Settings, nullptr);
     MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
     MainWindow._title = Settings.GameName;
     MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
     MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
-    _allWindows.emplace_back(&MainWindow);
-    _activeWindow = &MainWindow;
+    ptr<AppWindow> main_window = &MainWindow;
+    _allWindows.emplace_back(main_window);
+    _activeWindow = main_window;
 }
 
 Application::~Application()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!_ctx) {
-        return;
-    }
-
     _imguiTextures.clear();
-    _imguiEffect = nullptr;
-    _imguiDrawBuf = nullptr;
+    _imguiEffect.reset();
+    _imguiDrawBuf.reset();
     _ctx->HeadlessRenderTarget = nullptr;
 
-    _ctx->HeadlessRenderer = nullptr;
-
-    for (auto& window : _childWindows) {
-        window->_virtualRenderTex.reset();
+    for (size_t i = 0; i != _childWindows.size(); ++i) {
+        _childWindows[i]->_virtualRenderTex.reset();
     }
 
     _childWindows.clear();
     _allWindows.clear();
-    _activeWindow = &MainWindow;
+    ptr<AppWindow> main_window = &MainWindow;
+    _activeWindow = main_window;
     _currentRenderingWindow = nullptr;
     _previousRenderTarget = nullptr;
 
     MainWindow._windowHandle = nullptr;
     _ctx->HeadlessWindowStubs.clear();
-    _ctx = nullptr;
 }
 
 void Application::OpenLink(string_view link)
@@ -128,7 +117,7 @@ void Application::LoadImGuiEffect(const FileSystem& resources)
     ignore_unused(resources);
 }
 
-auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindow*
+auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppWindow>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -136,42 +125,46 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> AppWindo
         size = {Settings.ScreenWidth, Settings.ScreenHeight};
     }
 
-    auto window = unique_ptr<AppWindow> {new AppWindow {this}};
+    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
     window->_virtualLayoutSize = size;
     window->_title = title.empty() ? strex("Window {}", _childWindows.size() + 1).str() : string {title};
 
-    auto* ptr = window.get();
-    _allWindows.emplace_back(ptr);
+    auto window_ptr = window.as_ptr();
+    _allWindows.emplace_back(window_ptr);
     _childWindows.emplace_back(std::move(window));
-    _activeWindow = ptr;
+    _activeWindow = window_ptr;
 
-    return ptr;
+    return window_ptr;
 }
 
-void Application::DestroyChildWindow(AppWindow* window)
+void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (window == nullptr || window == &MainWindow) {
+    ptr<AppWindow> main_window = &MainWindow;
+
+    if (!nullable_window || nullable_window == main_window) {
         return;
     }
 
-    std::erase_if(_allWindows, [&](const auto& entry) { return entry.get_no_const() == window; });
+    auto window = nullable_window.as_ptr();
 
-    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.get() == window; });
+    std::erase_if(_allWindows, [&](const auto& entry) { return entry == window; });
+
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return ptr<const AppWindow> {entry} == window; });
 
     if (it == _childWindows.end()) {
         return;
     }
 
-    if (_activeWindow.get_no_const() == window) {
-        _activeWindow = &MainWindow;
+    if (_activeWindow == window) {
+        _activeWindow = main_window;
     }
 
-    if (_currentRenderingWindow.get_no_const() == window) {
+    if (_currentRenderingWindow == window) {
         _currentRenderingWindow = nullptr;
     }
 
@@ -179,18 +172,23 @@ void Application::DestroyChildWindow(AppWindow* window)
     _childWindows.erase(it);
 }
 
-void Application::SetActiveWindow(AppWindow* window)
+void Application::SetActiveWindow(nptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _activeWindow = window != nullptr ? window : &MainWindow;
+    if (!window) {
+        ptr<AppWindow> main_window = &MainWindow;
+        _activeWindow = main_window;
+        return;
+    }
+
+    _activeWindow = window;
 }
 
-void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
+void Application::EnsureVirtualRenderTexture(ptr<AppWindow> window, isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(window, "Missing application window");
     FO_VERIFY_AND_THROW(window->_isVirtual, "Window is not virtual");
 
     if (size.width <= 0 || size.height <= 0) {
@@ -199,8 +197,16 @@ void Application::EnsureVirtualRenderTexture(AppWindow* window, isize32 size)
 
     window->_virtualLayoutSize = size;
 
-    if (!window->_virtualRenderTex || window->_virtualRenderTex->Size != size) {
-        window->_virtualRenderTex = _ctx->HeadlessRenderer->CreateTexture(size, true, true);
+    bool recreate_texture = true;
+    auto nullable_virtual_render_tex = window->GetRenderTexture();
+
+    if (nullable_virtual_render_tex) {
+        auto virtual_render_tex = nullable_virtual_render_tex.as_ptr();
+        recreate_texture = virtual_render_tex->Size != size;
+    }
+
+    if (recreate_texture) {
+        window->_virtualRenderTex = _ctx->HeadlessRenderer.CreateTexture(size, true, true);
     }
 }
 
@@ -208,7 +214,7 @@ auto Application::IsMainWindowActuallyFullscreen() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return MainWindow._windowHandle != nullptr && MainWindow.ResolveWindowStub()->Fullscreen;
+    return MainWindow._windowHandle && MainWindow.ResolveWindowStub()->Fullscreen;
 }
 
 auto Application::IsMainWindowDisplayModeSize(isize32 size) const -> bool
@@ -247,11 +253,9 @@ auto Application::MakeAspectFitRect(isize32 source_size, isize32 target_size) co
     return {(target_size.width - width) / 2, (target_size.height - height) / 2, width, height};
 }
 
-void Application::BeginWindowRender(AppWindow* window)
+void Application::BeginWindowRender(ptr<AppWindow> window)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(window, "Missing application window");
 
     if (!window->_isVirtual) {
         _currentRenderingWindow = window;
@@ -261,7 +265,7 @@ void Application::BeginWindowRender(AppWindow* window)
     EnsureVirtualRenderTexture(window, window->_virtualLayoutSize);
 
     _previousRenderTarget = _ctx->HeadlessRenderTarget;
-    Render.SetRenderTarget(window->_virtualRenderTex.get());
+    Render.SetRenderTarget(window->GetRenderTexture());
     _currentRenderingWindow = window;
 
     const isize32 screen_size = window->GetScreenSize();
@@ -279,12 +283,12 @@ void Application::EndWindowRender()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_currentRenderingWindow == nullptr) {
+    if (!_currentRenderingWindow) {
         return;
     }
 
     const bool was_virtual = _currentRenderingWindow->_isVirtual;
-    auto* prev = _previousRenderTarget.get_no_const();
+    nptr<RenderTexture> prev = _previousRenderTarget;
 
     _previousRenderTarget = nullptr;
     _currentRenderingWindow = nullptr;
@@ -321,17 +325,17 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
     return delta;
 }
 
-auto Application::CreateInternalWindow(isize32 size) -> WindowInternalHandle*
+auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle>
 {
     FO_STACK_TRACE_ENTRY();
 
     auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
     handle->Size = size;
 
-    auto* ptr = handle.get();
+    auto headless_window = handle.as_ptr();
     _ctx->HeadlessWindowStubs.emplace_back(std::move(handle));
 
-    return reinterpret_cast<WindowInternalHandle*>(ptr);
+    return cast_to_void(headless_window.get());
 }
 
 auto Application::ResolveTouchPos(float32_t normalized_x, float32_t normalized_y) const -> ipos32
@@ -364,7 +368,7 @@ auto Application::GetTouchDistance(ipos32 from, ipos32 to) const -> float32_t
     return 0.0f;
 }
 
-auto Application::FindTouchPoint(int64_t finger_id) -> TouchPointState*
+auto Application::FindTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -373,7 +377,7 @@ auto Application::FindTouchPoint(int64_t finger_id) -> TouchPointState*
     return nullptr;
 }
 
-auto Application::FindOtherTouchPoint(int64_t finger_id) -> TouchPointState*
+auto Application::FindOtherTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -382,7 +386,7 @@ auto Application::FindOtherTouchPoint(int64_t finger_id) -> TouchPointState*
     return nullptr;
 }
 
-auto Application::AcquireTouchPoint(int64_t finger_id) -> TouchPointState*
+auto Application::AcquireTouchPoint(int64_t finger_id) -> nptr<TouchPointState>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -456,7 +460,7 @@ void Application::EndFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_currentRenderingWindow != nullptr) {
+    if (_currentRenderingWindow) {
         EndWindowRender();
     }
 
@@ -533,7 +537,7 @@ auto AppWindow::GetScreenSize() const -> isize32
         return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
     }
 
-    return {App->Settings.ScreenWidth, App->Settings.ScreenHeight};
+    return {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -547,9 +551,9 @@ void AppWindow::SetScreenSize(isize32 size)
         }
     }
     else {
-        if (size.width != App->Settings.ScreenWidth || size.height != App->Settings.ScreenHeight) {
-            App->Settings.ScreenWidth = size.width;
-            App->Settings.ScreenHeight = size.height;
+        if (size.width != GetApp()->Settings.ScreenWidth || size.height != GetApp()->Settings.ScreenHeight) {
+            GetApp()->Settings.ScreenWidth = size.width;
+            GetApp()->Settings.ScreenHeight = size.height;
             _onScreenSizeChangedDispatcher();
         }
     }
@@ -583,7 +587,7 @@ auto AppWindow::IsFocused() const -> bool
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        return _app->_activeWindow.get() == this;
+        return _app->_activeWindow == this;
     }
 
     return true;
@@ -620,7 +624,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
         return false;
     }
 
-    auto* window = ResolveWindowStub();
+    auto window = ResolveWindowStub();
     const bool changed = window->Fullscreen != enable;
     window->Fullscreen = enable;
     _app->Settings.Fullscreen = enable;
@@ -668,111 +672,114 @@ void AppWindow::Destroy()
         return;
     }
 
-    if (_windowHandle && this != &App->MainWindow) {
-        std::erase_if(_app->_ctx->HeadlessWindowStubs, [handle = _windowHandle.get()](const auto& entry) { return entry.get() == static_cast<HeadlessWindowStub*>(handle); });
+    if (_windowHandle && !(this == &GetApp()->MainWindow)) {
+        auto window_handle = _windowHandle.as_ptr();
+        ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
+        std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return ptr<const HeadlessWindowStub> {entry} == window_stub; });
         _windowHandle = nullptr;
     }
 }
 
-auto AppWindow::ResolveWindowHandle() const -> WindowInternalHandle*
+auto AppWindow::ResolveWindowHandle() const -> ptr<WindowInternalHandle>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_windowHandle, "Missing native window handle");
 
-    return _windowHandle.get_no_const();
+    ptr<WindowInternalHandle> window_handle {_windowHandle.get_no_const()};
+    return window_handle;
 }
 
-auto AppWindow::ResolveWindowStub() const -> HeadlessWindowStub*
+auto AppWindow::ResolveWindowStub() const -> ptr<HeadlessWindowStub>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return static_cast<HeadlessWindowStub*>(ResolveWindowHandle());
+    return cast_from_void<HeadlessWindowStub*>(ResolveWindowHandle().get());
 }
 
 auto AppRender::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->CreateTexture(size, linear_filtered, with_depth);
+    return _app->_ctx->HeadlessRenderer.CreateTexture(size, linear_filtered, with_depth);
 }
 
-void AppRender::SetRenderTarget(RenderTexture* tex)
+void AppRender::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
 
     _app->_ctx->HeadlessRenderTarget = tex;
-    _app->_ctx->HeadlessRenderer->SetRenderTarget(tex);
+    _app->_ctx->HeadlessRenderer.SetRenderTarget(tex);
 }
 
-auto AppRender::GetRenderTarget() -> RenderTexture*
+auto AppRender::GetRenderTarget() -> nptr<RenderTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderTarget.get();
+    return _app->_ctx->HeadlessRenderTarget;
 }
 
 void AppRender::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _app->_ctx->HeadlessRenderer->ClearRenderTarget(color, depth, stencil);
+    _app->_ctx->HeadlessRenderer.ClearRenderTarget(color, depth, stencil);
 }
 
 void AppRender::EnableScissor(irect32 rect)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _app->_ctx->HeadlessRenderer->EnableScissor(rect);
+    _app->_ctx->HeadlessRenderer.EnableScissor(rect);
 }
 
 void AppRender::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _app->_ctx->HeadlessRenderer->DisableScissor();
+    _app->_ctx->HeadlessRenderer.DisableScissor();
 }
 
 auto AppRender::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->CreateDrawBuffer(is_static);
+    return _app->_ctx->HeadlessRenderer.CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> unique_ptr<RenderEffect>
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->CreateEffect(usage, name, file_loader);
+    return _app->_ctx->HeadlessRenderer.CreateEffect(usage, name, loader);
 }
 
 auto AppRender::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
+    return _app->_ctx->HeadlessRenderer.CreateOrthoMatrix(left, right, bottom, top, nearp, farp);
 }
 
 auto AppRender::IsRenderTargetFlipped() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->IsRenderTargetFlipped();
+    return _app->_ctx->HeadlessRenderer.IsRenderTargetFlipped();
 }
 
 auto AppRender::GetProjMatrix() const -> mat44
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _app->_ctx->HeadlessRenderer->GetProjMatrix();
+    return _app->_ctx->HeadlessRenderer.GetProjMatrix();
 }
 
 void AppRender::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    _app->_ctx->HeadlessRenderer->SetOrthoDepthRange(nearp, farp);
+    _app->_ctx->HeadlessRenderer.SetOrthoDepthRange(nearp, farp);
 }
 
 auto AppInput::IsMouseAvailable() const noexcept -> bool
@@ -796,7 +803,7 @@ auto AppInput::GetGamepadState() const noexcept -> GamepadState
     return {};
 }
 
-void AppInput::SetMousePosition(ipos32 pos, const IAppWindow* relative_to)
+void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -840,7 +847,7 @@ void AppInput::SetClipboardText(string_view text)
     ignore_unused(text);
 }
 
-auto AppInput::GetClipboardText() -> const string&
+auto AppInput::GetClipboardText() -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -877,13 +884,12 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
     return true;
 }
 
-void AppAudio::MixAudio(uint8_t* output, const uint8_t* buf, size_t len, int32_t volume)
+void AppAudio::MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume)
 {
     FO_STACK_TRACE_ENTRY();
 
     ignore_unused(output);
     ignore_unused(buf);
-    ignore_unused(len);
     ignore_unused(volume);
 
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");

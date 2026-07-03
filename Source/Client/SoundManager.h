@@ -46,7 +46,7 @@ class SoundManager final
 {
 public:
     SoundManager() = delete;
-    SoundManager(AudioSettings& settings, FileSystem& resources, IAppAudio& audio);
+    SoundManager(ptr<AudioSettings> settings, ptr<FileSystem> resources, ptr<IAppAudio> audio);
     SoundManager(const SoundManager&) = delete;
     SoundManager(SoundManager&&) noexcept = delete;
     auto operator=(const SoundManager&) = delete;
@@ -62,17 +62,17 @@ private:
     struct Sound;
 
     auto Load(string_view fname, bool is_music, timespan repeat_time) -> bool;
-    auto LoadWav(Sound* sound, string_view fname) -> bool;
-    auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
-    auto LoadOgg(Sound* sound, string_view fname) -> bool;
+    auto LoadWav(ptr<Sound> sound, string_view fname) -> bool;
+    auto LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -> bool;
+    auto LoadOgg(ptr<Sound> sound, string_view fname) -> bool;
     void ProcessSounds(uint8_t silence, span<uint8_t> output);
-    auto ProcessSound(Sound* sound, uint8_t silence, span<uint8_t> output) -> bool;
-    auto StreamOgg(Sound* sound) -> bool;
-    auto ConvertData(Sound* sound) -> bool;
+    auto ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool;
+    auto StreamOgg(ptr<Sound> sound) -> bool;
+    auto ConvertData(ptr<Sound> sound) -> bool;
 
-    raw_ptr<AudioSettings> _settings;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<IAppAudio> _audio;
+    ptr<AudioSettings> _settings;
+    ptr<FileSystem> _resources;
+    ptr<IAppAudio> _audio;
     bool _isActive {};
     int32_t _streamingPortion {};
     vector<unique_ptr<Sound>> _playingSounds;

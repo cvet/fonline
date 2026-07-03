@@ -42,7 +42,7 @@ TEST_CASE("TextureAtlasSpaceNode")
     {
         TextureAtlas::SpaceNode root {nullptr, {0, 0}, {10, 10}};
 
-        auto* node = root.FindPosition({4, 3});
+        auto node = root.FindPosition({4, 3});
 
         REQUIRE(node == &root);
         CHECK(root.Busy);
@@ -61,20 +61,20 @@ TEST_CASE("TextureAtlasSpaceNode")
     {
         TextureAtlas::SpaceNode root {nullptr, {0, 0}, {10, 10}};
 
-        auto* first = root.FindPosition({4, 3});
-        auto* second = root.FindPosition({2, 3});
-        auto* third = root.FindPosition({10, 7});
-        auto* missing = root.FindPosition({1, 8});
+        auto first = root.FindPosition({4, 3});
+        auto second = root.FindPosition({2, 3});
+        auto third = root.FindPosition({10, 7});
+        auto missing = root.FindPosition({1, 8});
 
         REQUIRE(first == &root);
-        REQUIRE(second != nullptr);
-        REQUIRE(third != nullptr);
+        REQUIRE(static_cast<bool>(second));
+        REQUIRE(static_cast<bool>(third));
         CHECK(second != first);
         CHECK(second->Pos == ipos32 {4, 0});
         CHECK(second->Size == isize32 {2, 3});
         CHECK(third->Pos == ipos32 {0, 3});
         CHECK(third->Size == isize32 {10, 7});
-        CHECK(missing == nullptr);
+        CHECK_FALSE(static_cast<bool>(missing));
         CHECK(root.IsBusyRecursively());
     }
 
@@ -82,11 +82,11 @@ TEST_CASE("TextureAtlasSpaceNode")
     {
         TextureAtlas::SpaceNode root {nullptr, {0, 0}, {10, 10}};
 
-        auto* right = root.FindPosition({4, 3});
-        auto* child = root.FindPosition({2, 3});
+        auto right = root.FindPosition({4, 3});
+        auto child = root.FindPosition({2, 3});
 
         REQUIRE(right == &root);
-        REQUIRE(child != nullptr);
+        REQUIRE(static_cast<bool>(child));
         REQUIRE(root.Children.size() == 2);
 
         child->Free();
@@ -106,11 +106,11 @@ TEST_CASE("TextureAtlasSpaceNode")
     {
         TextureAtlas::SpaceNode root {nullptr, {0, 0}, {10, 10}};
 
-        auto* first = root.FindPosition({4, 3});
-        auto* nested = root.FindPosition({2, 3});
+        auto first = root.FindPosition({4, 3});
+        auto nested = root.FindPosition({2, 3});
 
         REQUIRE(first == &root);
-        REQUIRE(nested != nullptr);
+        REQUIRE(static_cast<bool>(nested));
         REQUIRE(nested == root.Children[0].get());
         REQUIRE(nested->Parent == &root);
         REQUIRE(root.Children[0]->Children.size() == 1);

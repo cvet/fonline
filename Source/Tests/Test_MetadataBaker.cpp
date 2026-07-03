@@ -29,11 +29,16 @@ TEST_CASE("MetadataBaker")
         map<string, vector<vector<string>>> tags;
         DataReader reader(output);
         const auto tag_count = reader.Read<uint16_t>();
+        const auto read_string = [&reader](uint16_t size) -> string {
+            string value;
+            value.resize(size);
+            reader.ReadStringBytes(value);
+            return value;
+        };
 
         for (uint16_t i = 0; i < tag_count; i++) {
             const auto tag_name_len = reader.Read<uint16_t>();
-            const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
-            const string tag_name {tag_name_ptr, tag_name_len};
+            const auto tag_name = read_string(tag_name_len);
             const auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
@@ -43,8 +48,7 @@ TEST_CASE("MetadataBaker")
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
                     const auto part_len = reader.Read<uint16_t>();
-                    const auto* part_ptr = reader.ReadPtr<char>(part_len);
-                    value_parts.emplace_back(part_ptr, part_len);
+                    value_parts.emplace_back(read_string(part_len));
                 }
 
                 tags[tag_name].emplace_back(std::move(value_parts));
@@ -194,13 +198,18 @@ namespace TestSettings
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
         const auto tag_count = reader.Read<uint16_t>();
+        const auto read_string = [&reader](uint16_t size) -> string {
+            string value;
+            value.resize(size);
+            reader.ReadStringBytes(value);
+            return value;
+        };
 
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
             const auto tag_name_len = reader.Read<uint16_t>();
-            const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
-            const string tag_name {tag_name_ptr, tag_name_len};
+            const auto tag_name = read_string(tag_name_len);
             const auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
@@ -210,8 +219,7 @@ namespace TestSettings
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
                     const auto part_len = reader.Read<uint16_t>();
-                    const auto* part_ptr = reader.ReadPtr<char>(part_len);
-                    value_parts.emplace_back(part_ptr, part_len);
+                    value_parts.emplace_back(read_string(part_len));
                 }
 
                 if (tag_name == "Setting") {
@@ -243,14 +251,19 @@ namespace TestMigration
         const auto& output = rig.Outputs.at("TestPack.fometa-client");
         DataReader reader(output);
         const auto tag_count = reader.Read<uint16_t>();
+        const auto read_string = [&reader](uint16_t size) -> string {
+            string value;
+            value.resize(size);
+            reader.ReadStringBytes(value);
+            return value;
+        };
 
         vector<vector<string>> migration_entries;
         vector<vector<string>> settings_entries;
 
         for (uint16_t i = 0; i < tag_count; i++) {
             const auto tag_name_len = reader.Read<uint16_t>();
-            const auto* tag_name_ptr = reader.ReadPtr<char>(tag_name_len);
-            const string tag_name {tag_name_ptr, tag_name_len};
+            const auto tag_name = read_string(tag_name_len);
             const auto tag_value_count = reader.Read<uint32_t>();
 
             for (uint32_t j = 0; j < tag_value_count; j++) {
@@ -260,8 +273,7 @@ namespace TestMigration
 
                 for (uint32_t k = 0; k < value_parts_count; k++) {
                     const auto part_len = reader.Read<uint16_t>();
-                    const auto* part_ptr = reader.ReadPtr<char>(part_len);
-                    value_parts.emplace_back(part_ptr, part_len);
+                    value_parts.emplace_back(read_string(part_len));
                 }
 
                 if (tag_name == "MigrationRule") {
@@ -328,12 +340,15 @@ namespace TestRefTypeProps
         REQUIRE(route_snapshot_type.IsRefType);
         REQUIRE(route_snapshot_type.RefType != nullptr);
         REQUIRE(route_snapshot_type.RefType->FieldsRegistrator != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Steps") != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Tags") != nullptr);
-        REQUIRE(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Note") != nullptr);
-        CHECK(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Steps")->GetViewTypeName() == "int32[]");
-        CHECK(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Tags")->GetViewTypeName() == "hstring[]");
-        CHECK(route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Note")->GetViewTypeName() == "string");
+        auto steps_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Steps");
+        auto tags_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Tags");
+        auto note_prop = route_snapshot_type.RefType->FieldsRegistrator->FindProperty("Note");
+        REQUIRE(static_cast<bool>(steps_prop));
+        REQUIRE(static_cast<bool>(tags_prop));
+        REQUIRE(static_cast<bool>(note_prop));
+        CHECK(steps_prop->GetViewTypeName() == "int32[]");
+        CHECK(tags_prop->GetViewTypeName() == "hstring[]");
+        CHECK(note_prop->GetViewTypeName() == "string");
     }
 
     SECTION("registers entity properties that use baked ref types")
@@ -367,22 +382,22 @@ namespace TestRefTypeEntityProps
         meta.RegisterEnumGroup("CritterProperty", "uint16", {{"None", 0}});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
-        const auto* critter_registrator = meta.GetPropertyRegistrator("Critter");
-        REQUIRE(critter_registrator != nullptr);
+        auto critter_registrator = meta.GetPropertyRegistrator("Critter");
+        REQUIRE(static_cast<bool>(critter_registrator));
 
-        const auto* snapshot_prop = critter_registrator->FindProperty("Snapshot");
-        const auto* snapshots_prop = critter_registrator->FindProperty("Snapshots");
+        auto snapshot_prop = critter_registrator->FindProperty("Snapshot");
+        auto snapshots_prop = critter_registrator->FindProperty("Snapshots");
 
-        REQUIRE(snapshot_prop != nullptr);
-        REQUIRE(snapshots_prop != nullptr);
+        REQUIRE(static_cast<bool>(snapshot_prop));
+        REQUIRE(static_cast<bool>(snapshots_prop));
         CHECK(snapshot_prop->GetViewTypeName() == "RouteSnapshot");
         CHECK(snapshot_prop->IsBaseTypeRefType());
         CHECK_FALSE(snapshot_prop->IsArray());
         CHECK(snapshots_prop->GetViewTypeName() == "RouteSnapshot[]");
         CHECK(snapshots_prop->IsBaseTypeRefType());
         CHECK(snapshots_prop->IsArray());
-        CHECK(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Steps") != nullptr);
-        CHECK(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Note") != nullptr);
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Steps")));
+        CHECK(static_cast<bool>(meta.GetBaseType("RouteSnapshot").RefType->FieldsRegistrator->FindProperty("Note")));
     }
 
     SECTION("registers ref types in declaration order")
@@ -423,11 +438,11 @@ namespace TestNestedRefTypeProps
         REQUIRE(alpha_type.RefType->FieldsRegistrator != nullptr);
         REQUIRE(beta_type.RefType->FieldsRegistrator != nullptr);
 
-        const auto* dependency_prop = alpha_type.RefType->FieldsRegistrator->FindProperty("Dependency");
-        REQUIRE(dependency_prop != nullptr);
+        auto dependency_prop = alpha_type.RefType->FieldsRegistrator->FindProperty("Dependency");
+        REQUIRE(static_cast<bool>(dependency_prop));
         CHECK(dependency_prop->GetViewTypeName() == "Beta");
         CHECK(dependency_prop->IsBaseTypeRefType());
-        CHECK(beta_type.RefType->FieldsRegistrator->FindProperty("Value") != nullptr);
+        CHECK(static_cast<bool>(beta_type.RefType->FieldsRegistrator->FindProperty("Value")));
     }
 
     SECTION("rejects legacy ref type layout syntax")

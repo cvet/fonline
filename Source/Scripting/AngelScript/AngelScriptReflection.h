@@ -54,7 +54,7 @@ class ScriptArray;
 class ScriptType
 {
 public:
-    explicit ScriptType(AngelScript::asITypeInfo* ti);
+    explicit ScriptType(ptr<AngelScript::asITypeInfo> ti);
 
     void AddRef() const;
     void Release() const;
@@ -70,9 +70,9 @@ public:
     auto IsEnum() const -> bool;
     auto IsFunction() const -> bool;
     auto IsShared() const -> bool;
-    auto GetBaseType() const -> ScriptType*;
+    auto GetBaseType() const -> refcount_nptr<ScriptType>;
     auto GetInterfaceCount() const -> int;
-    auto GetInterface(int index) const -> ScriptType*;
+    auto GetInterface(int index) const -> refcount_nptr<ScriptType>;
     auto Implements(const ScriptType* other) const -> bool;
     auto Equals(const ScriptType* other) const -> bool;
     auto DerivesFrom(const ScriptType* other) const -> bool;
@@ -81,26 +81,33 @@ public:
     auto GetPropertiesCount() const -> int;
     auto GetPropertyDeclaration(int index, bool include_namespace) const -> string;
     auto GetEnumLength() const -> int;
-    auto GetEnumNames() const -> ScriptArray*;
-    auto GetEnumValues() const -> ScriptArray*;
+    auto GetEnumNames() const -> refcount_ptr<ScriptArray>;
+    auto GetEnumValues() const -> refcount_ptr<ScriptArray>;
 
-    void Instantiate(void** out, int out_type_id) const;
-    void InstantiateCopy(void* in, int in_type_id, void** out, int out_type_id) const;
+    void Instantiate(ptr<void*> out, int out_type_id) const;
+    void InstantiateCopy(ptr<void> in, int in_type_id, ptr<void*> out, int out_type_id) const;
 
 protected:
-    raw_ptr<AngelScript::asITypeInfo> _typeInfo;
-    mutable std::atomic<int> _refCount {1};
+    ptr<AngelScript::asITypeInfo> _typeInfo;
+    mutable std::atomic<int32_t> _refCount {1};
 };
 
-class ScriptTypeOf : public ScriptType
+class ScriptTypeOf
 {
 public:
-    explicit ScriptTypeOf(AngelScript::asITypeInfo* ti);
+    explicit ScriptTypeOf(nptr<AngelScript::asITypeInfo> ti);
 
-    auto ConvertToType() -> ScriptType*;
+    void AddRef() const;
+    void Release() const;
+
+    auto ConvertToType() -> refcount_nptr<ScriptType>;
+
+private:
+    nptr<AngelScript::asITypeInfo> _typeInfo {};
+    mutable int _refCount {1};
 };
 
-void RegisterAngelScriptReflection(AngelScript::asIScriptEngine* as_engine);
+void RegisterAngelScriptReflection(ptr<AngelScript::asIScriptEngine> as_engine);
 
 FO_END_NAMESPACE
 

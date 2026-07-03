@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(TimeNotSyncException);
 class GameTimer final
 {
 public:
-    explicit GameTimer(TimerSettings& settings);
+    explicit GameTimer(ptr<TimerSettings> settings);
     GameTimer(const GameTimer&) = delete;
     GameTimer(GameTimer&&) noexcept = delete;
     auto operator=(const GameTimer&) = delete;
@@ -62,7 +62,7 @@ public:
     void FrameAdvance(bool clamp_to_cap);
 
 private:
-    raw_ptr<TimerSettings> _settings;
+    ptr<TimerSettings> _settings;
 
     // Advanced on the main worker (FrameAdvance) but read from WorkerPool/network threads (entity
     // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race.

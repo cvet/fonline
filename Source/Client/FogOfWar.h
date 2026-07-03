@@ -80,7 +80,7 @@ public:
     auto operator=(const FogShape&) -> FogShape& = delete;
     auto operator=(FogShape&&) noexcept -> FogShape& = default;
 
-    [[nodiscard]] auto GetPoints() const noexcept -> const vector<PrimitivePoint>& { return _points; }
+    [[nodiscard]] auto GetPoints() const noexcept -> const_span<PrimitivePoint> { return _points; }
 
     void RequestRebuild() noexcept { _rebuildFog = true; }
     void SetDrawOffset(ipos32 offset) noexcept { *_drawOffset = offset; }
@@ -89,7 +89,7 @@ public:
     void Clear();
 
 private:
-    void BuildPoints(const Input& input, vector<PrimitivePoint>& points) const;
+    void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
     void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
     void UpdateTransition(nanotime frame_time);
     void FinishTransition();

@@ -107,7 +107,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 
     if (is_traced_overlay) {
-        FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Missing required input trace bullet to block");
+        FO_VERIFY_AND_THROW(input.TraceBulletToBlock, "Trace bullet to block callback is required in overlay trace mode");
     }
 
     const auto base_hex = input.FogOrigin.BaseHex;
@@ -121,7 +121,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     const ipos32 base_pos = GeometryHelper::GetHexOffset(ipos32(input.FogOrigin.BaseHex), ipos32(base_hex));
     const auto center_alpha = is_traced_overlay ? uint8_t {255} : uint8_t {0};
     const auto center_color = is_traced_overlay ? ucolor {overlay_color.comp.r, overlay_color.comp.g, overlay_color.comp.b, center_alpha} : (has_custom_center_color ? input.CenterColor : ucolor {0, 0, 0, center_alpha});
-    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset.get()};
+    const auto center_point = PrimitivePoint {.PointPos = {base_pos.x + half_hw, base_pos.y + half_hh}, .PointColor = center_color, .PointOffset = _drawOffset};
 
     auto target_raw_hex = ipos32 {base_hex.x, base_hex.y};
     size_t points_added = 0;
@@ -159,7 +159,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
             const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
             const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
-            const auto* edge_offset = target_dist < dist ? _baseDrawOffset.get() : _drawOffset.get();
+            ptr<const ipos32> edge_offset = target_dist < dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
             if (is_traced_overlay) {
                 const auto max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
@@ -171,7 +171,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
                 const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
                 const auto color = ucolor {color_r, color_g, color_b, 255};
-                const auto* overlay_offset = result_overlay_dist < max_overlay_dist ? _baseDrawOffset.get() : _drawOffset.get();
+                ptr<const ipos32> overlay_offset = result_overlay_dist < max_overlay_dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
             }
@@ -312,7 +312,7 @@ auto FogShape::MakeCollapsed(const vector<PrimitivePoint>& points) const -> vect
     // fan keeps its soft faded edges throughout the transition instead of flashing the center color.
     for (auto& p : collapsed) {
         p.PointPos = center.PointPos;
-        p.PointOffset = _drawOffset.get();
+        p.PointOffset = _drawOffset;
     }
 
     return collapsed;

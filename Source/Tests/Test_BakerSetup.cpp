@@ -253,7 +253,7 @@ Bakers = {}
 
     settings.ApplyConfigFile(config, temp_dir);
 
-    BakerDataSource data_source {settings};
+    BakerDataSource data_source {&settings};
 
     CHECK_FALSE(data_source.IsDiskDir());
     CHECK(data_source.GetPackName() == "Baker");
@@ -346,7 +346,7 @@ Bakers = {}
 
     settings.ApplyConfigFile(config, temp_dir);
 
-    MasterBaker first_baker {settings};
+    MasterBaker first_baker {&settings};
     REQUIRE(first_baker.BakeAll());
     REQUIRE(fs_read_file(output_path).has_value());
     CHECK(*fs_read_file(output_path) == "raw-copy");
@@ -358,7 +358,7 @@ Bakers = {}
     REQUIRE(fs_last_write_time(source_path) > fs_last_write_time(output_path));
     const auto output_write_time_before_rebake = fs_last_write_time(output_path);
 
-    MasterBaker second_baker {settings};
+    MasterBaker second_baker {&settings};
     REQUIRE(second_baker.BakeAll());
     REQUIRE(fs_read_file(output_path).has_value());
     CHECK(*fs_read_file(output_path) == "raw-copy");
@@ -403,7 +403,7 @@ Bakers = {}
 
         settings.ApplyConfigFile(config, temp_dir);
 
-        MasterBaker baker {settings};
+        MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
         REQUIRE(fs_read_file(output_path).has_value());
         CHECK(*fs_read_file(output_path) == "force-source");
@@ -446,7 +446,7 @@ Bakers = {}
 
         settings.ApplyConfigFile(config, temp_dir);
 
-        MasterBaker baker {settings};
+        MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
         REQUIRE(fs_read_file(output_path).has_value());
         CHECK(*fs_read_file(output_path) == "hash-source");
@@ -482,7 +482,7 @@ Bakers = {}
 
         settings.ApplyConfigFile(config, temp_dir);
 
-        MasterBaker baker {settings};
+        MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
         CHECK_FALSE(fs_read_file(build_hash_path).has_value());
 
@@ -520,7 +520,7 @@ Bakers = {}
 
         settings.ApplyConfigFile(config, temp_dir);
 
-        MasterBaker baker {settings};
+        MasterBaker baker {&settings};
         REQUIRE(baker.BakeAll());
         REQUIRE(fs_read_file(output_path).has_value());
         CHECK(*fs_read_file(output_path) == "packed-source");
@@ -557,7 +557,7 @@ Bakers = {}
 
         settings.ApplyConfigFile(config, temp_dir);
 
-        MasterBaker baker {settings};
+        MasterBaker baker {&settings};
         CHECK_FALSE(baker.BakeAll());
         CHECK_FALSE(fs_read_file(output_path).has_value());
         CHECK_FALSE(fs_read_file(build_hash_path).has_value());

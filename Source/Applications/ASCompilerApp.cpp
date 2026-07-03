@@ -47,20 +47,24 @@ FO_USING_NAMESPACE();
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
-[[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto ASCompilerApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
+#if !FO_TESTING_APP
+    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+#endif
 
-        FO_VERIFY_AND_THROW(!App->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", App->Settings.GetResourcePacks().size());
+    try {
+        InitApp(args, AppInitFlags::DisableLogTags);
+
+        FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "AngelScript compiler cannot prepare metadata without a bake output directory", GetApp()->Settings.GetResourcePacks().size());
 
         WriteLog("Prepare metadata");
         FileSystem metadata_files;
 
-        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, MetadataBaker::NAME)) {
                 continue;
             }
@@ -72,7 +76,7 @@ int main(int argc, char** argv)
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
@@ -82,19 +86,25 @@ int main(int argc, char** argv)
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
-                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+
+                if (!data.empty()) {
+                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
                 FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
                 metadata_baker.BakeFiles(res_files.GetAllFiles(), "");
-                metadata_files.AddDirSource(strex(App->Settings.BakeOutput).combine_path(res_pack.Name), false);
+                metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
-                const auto& params = ex.params();
+                const_span<string> params = ex.params();
 
                 if (params.size() >= 2 && !params.front().empty()) {
                     WriteLog("{}", strex("{}({},{}): {} : {}", params[0], strex(params[1]).to_int64(), 0, "error", ex.message()));
@@ -115,7 +125,7 @@ int main(int argc, char** argv)
 
         WriteLog("Compile scripts");
 
-        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, AngelScriptBaker::NAME)) {
                 continue;
             }
@@ -127,7 +137,7 @@ int main(int argc, char** argv)
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
@@ -137,11 +147,18 @@ int main(int argc, char** argv)
 
                 std::ofstream file {std::filesystem::path {fs_make_path(output_path)}, std::ios::binary | std::ios::trunc};
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
-                file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size()));
+
+                if (!data.empty()) {
+                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
+                }
+
                 FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});
+            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
+            nptr<const FileSystem> metadata_files_ptr = &metadata_files;
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
 
             try {

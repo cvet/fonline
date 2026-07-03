@@ -36,6 +36,8 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "ExceptionHandling.h"
+#include "MemorySystem.h"
+#include "SmartPointers.h"
 
 #include <future>
 
@@ -125,18 +127,18 @@ class FO_TSA_SCOPED_CAPABILITY scoped_lock
 {
 public:
     explicit scoped_lock(T& mtx) FO_TSA_ACQUIRE(mtx) :
-        _mutex {mtx}
+        _mutex {&mtx}
     {
-        _mutex.lock();
+        _mutex->lock();
     }
     scoped_lock(const scoped_lock&) = delete;
     scoped_lock(scoped_lock&&) noexcept = delete;
     auto operator=(const scoped_lock&) -> scoped_lock& = delete;
     auto operator=(scoped_lock&&) noexcept -> scoped_lock& = delete;
-    ~scoped_lock() FO_TSA_RELEASE() { _mutex.unlock(); }
+    ~scoped_lock() FO_TSA_RELEASE() { _mutex->unlock(); }
 
 private:
-    T& _mutex;
+    ptr<T> _mutex;
 };
 
 // Shared (reader) RAII guard for shared_mutex (drop-in for std::shared_lock).
@@ -145,18 +147,18 @@ class FO_TSA_SCOPED_CAPABILITY shared_lock
 {
 public:
     explicit shared_lock(T& mtx) FO_TSA_ACQUIRE_SHARED(mtx) :
-        _mutex {mtx}
+        _mutex {&mtx}
     {
-        _mutex.lock_shared();
+        _mutex->lock_shared();
     }
     shared_lock(const shared_lock&) = delete;
     shared_lock(shared_lock&&) noexcept = delete;
     auto operator=(const shared_lock&) -> shared_lock& = delete;
     auto operator=(shared_lock&&) noexcept -> shared_lock& = delete;
-    ~shared_lock() FO_TSA_RELEASE_GENERIC() { _mutex.unlock_shared(); }
+    ~shared_lock() FO_TSA_RELEASE_GENERIC() { _mutex->unlock_shared(); }
 
 private:
-    T& _mutex;
+    ptr<T> _mutex;
 };
 
 // Movable-semantics exclusive lock with manual lock/unlock (drop-in for std::unique_lock). Works with
@@ -193,7 +195,7 @@ public:
     }
 
 private:
-    T* _mutex;
+    ptr<T> _mutex;
     bool _owns {true};
 };
 
@@ -217,7 +219,7 @@ private:
 // that capture the `[ThreadName]` tag. The pool's `worker_loop` sets the name inline for each picked-up task; the rest
 // of the engine just calls these as plain free functions.
 extern void set_this_thread_name(const string& name) noexcept;
-extern auto get_this_thread_name() noexcept -> const std::string&;
+extern auto get_this_thread_name() noexcept -> string_view;
 
 // Move-only completion handle for a task submitted to `run_thread`. Mirrors the slim subset of `std::thread` the engine
 // actually uses (`join` / `joinable` / `detach` / `get_id`) without exposing the `std::future` implementation detail to
@@ -246,14 +248,14 @@ public:
 private:
     friend auto run_thread(string_view, function<void()>) -> thread;
 
-    thread(std::future<void> fut, std::shared_ptr<std::atomic<std::thread::id>> running_thread_id) noexcept :
+    thread(std::future<void> fut, shared_ptr<std::atomic<std::thread::id>> running_thread_id) noexcept :
         _future {std::move(fut)},
         _runningThreadId {std::move(running_thread_id)}
     {
     }
 
     std::future<void> _future {};
-    std::shared_ptr<std::atomic<std::thread::id>> _runningThreadId {};
+    shared_ptr<std::atomic<std::thread::id>> _runningThreadId {};
 };
 
 // Submit `task` to the unbounded run-thread pool. Returns a `fo::thread` handle that can be `.join()`-ed or discarded
@@ -299,7 +301,7 @@ template<typename Func>
         return std::async(std::launch::deferred, std::forward<Func>(task));
     }
 
-    auto packaged = std::make_shared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
+    auto packaged = SafeAlloc::MakeShared<std::packaged_task<ResultType()>>(std::forward<Func>(task));
     auto future = packaged->get_future();
 
     if (mode.use_deferred) {
@@ -307,7 +309,7 @@ template<typename Func>
         // saturated. The caller asked for either mode, so running sync is in-spec and avoids letting the FIFO queue
         // grow unbounded. packaged_task::operator() captures the task's exception into the future, so the caller
         // still observes failure through future.get().
-        if (try_submit_async(task_name, [packaged] { (*packaged)(); })) {
+        if (try_submit_async(task_name, [packaged]() mutable { (*packaged)(); })) {
             return future;
         }
 
@@ -317,7 +319,7 @@ template<typename Func>
 
     // launch_async_only — must run on a pool worker. If every worker is busy and the cap is reached, submit_async
     // queues the task; a worker picks it up when it frees. The caller's thread returns immediately with the future.
-    submit_async(task_name, [packaged] { (*packaged)(); });
+    submit_async(task_name, [packaged]() mutable { (*packaged)(); });
     return future;
 }
 

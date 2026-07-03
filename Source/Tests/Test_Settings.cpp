@@ -84,19 +84,26 @@ TEST_CASE("Settings")
         char arg1[] = "--CustomCli";
         char arg2[] = "123";
         char arg3[] = "--FlagOnly";
-        char* argv[] = {arg0, arg1, arg2, arg3};
+        const vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3};
 
-        settings.ApplyCommandLine(4, argv);
+        settings.ApplyCommandLine(CommandLineArgs {argv});
 
         CHECK(settings.GetCustomSetting("CustomCli") == "123");
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
+    }
+
+    SECTION("CommandLineArgsAcceptEmptyNativeArgv")
+    {
+        const CommandLineArgs args {0, nullptr};
+
+        CHECK(args.empty());
     }
 
     SECTION("ApplyCommandLineMasksSecretValuesInLog")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass.
         string captured;
-        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, const CatchedStackTraceData*) { captured += message; });
+        SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
         const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
@@ -111,7 +118,7 @@ TEST_CASE("Settings")
         char arg4[] = "RedactionProbe";
         char* argv[] = {arg0, arg1, arg2, arg3, arg4};
 
-        settings.ApplyCommandLine(5, argv);
+        settings.ApplyCommandLine(CommandLineArgs {5, argv});
 
         // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
         // the credential value itself must never reach the log.
@@ -136,11 +143,11 @@ TEST_CASE("Settings")
         char arg2[] = "+Tag";
         char* argv[] = {arg0, arg1, arg2};
 
-        settings.ApplyCommandLine(3, argv);
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag");
 
         // A second pass over the same object appends again — what the two-pass flow used to do.
-        settings.ApplyCommandLine(3, argv);
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag Tag");
     }
 
@@ -167,6 +174,22 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
 
         CHECK_THROWS_AS(settings.ApplyConfigAtPath("missing.fomain", "/tmp/not_there"), SettingsException);
+    }
+
+    SECTION("FindCustomSettingReturnsNullableLookup")
+    {
+        GlobalSettings settings {false};
+
+        const auto missing = settings.FindCustomSetting("Missing");
+        CHECK_FALSE(static_cast<bool>(missing));
+        CHECK(settings.GetCustomSetting("Missing").empty());
+
+        settings.SetCustomSetting("Present", any_t(string("value")));
+        const auto present = settings.FindCustomSetting("Present");
+
+        REQUIRE(static_cast<bool>(present));
+        CHECK(*present == "value");
+        CHECK(settings.GetCustomSetting("Present") == "value");
     }
 
     SECTION("BakingModeSaveReturnsAppliedSettings")

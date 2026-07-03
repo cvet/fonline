@@ -74,7 +74,7 @@ extern bool IsTestingInProgress;
 //                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
 // Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
 class Entity;
-inline void ValidateEntityAccessStrong(const Entity* entity) noexcept;
+inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept;
 
 #define FO_VE_CHECK_LOCKED ValidateEntityAccessStrong(this);
 #define FO_VE_CHECK_NOT_DESTROYING FO_VERIFY_AND_THROW(!this->IsDestroying(), "Entity method called while the entity is being destroyed", this->GetName());
@@ -99,6 +99,45 @@ inline void ValidateEntityAccessStrong(const Entity* entity) noexcept;
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
+
+// Command line arguments
+using CommandLineArg = nptr<char>;
+
+class CommandLineArgs
+{
+public:
+    CommandLineArgs() = default;
+    explicit CommandLineArgs(int32_t argc, nptr<char*> argv)
+    {
+        const size_t arg_count = numeric_cast<size_t>(argc);
+        FO_VERIFY_AND_THROW(arg_count == 0 || argv, "Command line argument vector is null while argument count is non-zero");
+
+        _args.resize(arg_count);
+
+        for (size_t i = 0; i < arg_count; ++i) {
+            FO_VERIFY_AND_THROW(argv[i] != nullptr, "Command line argument string is null");
+            _args[i] = argv[i];
+        }
+    }
+    explicit CommandLineArgs(const_span<CommandLineArg> args) :
+        _args(args.begin(), args.end())
+    {
+        for (const CommandLineArg arg : _args) {
+            FO_VERIFY_AND_THROW(arg, "Command line argument string is null");
+        }
+    }
+
+    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
+    [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
+    [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
+    [[nodiscard]] auto operator[](size_t index) const -> CommandLineArg { return _args[index]; }
+    [[nodiscard]] auto begin() const noexcept { return _args.begin(); }
+    [[nodiscard]] auto end() const noexcept { return _args.end(); }
+
+private:
+    vector<CommandLineArg> _args {};
+};
 
 // Custom any as string
 class any_t : public string
@@ -269,7 +308,7 @@ public:
     using ObserverType = EventObserver<Args...>;
 
     EventDispatcher() = delete;
-    explicit EventDispatcher(ObserverType& obs) :
+    explicit EventDispatcher(ptr<ObserverType> obs) :
         _observer {obs}
     {
     }
@@ -281,8 +320,8 @@ public:
 
     auto operator()(Args&&... args) -> EventDispatcher&
     {
-        if (!_observer._subscriberCallbacks.empty()) {
-            for (auto& cb : _observer._subscriberCallbacks) {
+        if (!_observer->_subscriberCallbacks.empty()) {
+            for (auto& cb : _observer->_subscriberCallbacks) {
                 cb(std::forward<Args>(args)...);
             }
         }
@@ -290,7 +329,7 @@ public:
     }
 
 private:
-    ObserverType& _observer;
+    ptr<ObserverType> _observer;
 };
 
 // Valid plain data for properties
@@ -503,9 +542,9 @@ struct BaseTypeDesc
     bool IsSingleton {};
     bool IsFixedType {};
     bool IsEntityProto {};
-    raw_ptr<const BaseTypeDesc> EnumUnderlyingType {};
-    raw_ptr<const StructLayoutDesc> StructLayout {};
-    raw_ptr<const RefTypeDesc> RefType {};
+    nptr<const BaseTypeDesc> EnumUnderlyingType {};
+    nptr<const StructLayoutDesc> StructLayout {};
+    nptr<const RefTypeDesc> RefType {};
     size_t Size {};
 };
 
@@ -572,7 +611,7 @@ struct StructLayoutDesc
 struct RefTypeDesc
 {
     vector<MethodDesc> Methods {};
-    raw_ptr<const PropertyRegistrator> FieldsRegistrator {};
+    nptr<const PropertyRegistrator> FieldsRegistrator {};
     bool IsDynamicLayout {};
 };
 
@@ -586,7 +625,7 @@ struct RemoteCallDesc
 template<typename Fn>
 void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_VERIFY_AND_THROW(p, "Missing required p");
+    FO_VERIFY_AND_THROW(p, "Value pointer is null");
 
     if (type.IsBool) {
         fn(*cast_from_void<bool*>(p));
@@ -668,7 +707,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
 template<typename Fn>
 void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& fn)
 {
-    FO_VERIFY_AND_THROW(p, "Missing required p");
+    FO_VERIFY_AND_THROW(p, "Value pointer is null");
 
     if (type.IsBool) {
         fn(*cast_from_void<const bool*>(p));
@@ -748,27 +787,24 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
 }
 
 template<typename Fn>
-decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTypeDesc& type, Fn&& fn)
+decltype(auto) VisitBaseTypePrimitive(ptr<const void> a, ptr<const void> b, const BaseTypeDesc& type, Fn&& fn)
 {
-    FO_VERIFY_AND_THROW(a, "Missing required a");
-    FO_VERIFY_AND_THROW(b, "Missing required b");
-
     if (type.IsBool) {
-        return fn(*cast_from_void<const bool*>(a), *cast_from_void<const bool*>(b));
+        return fn(*cast_from_void<const bool*>(a.get()), *cast_from_void<const bool*>(b.get()));
     }
     else if (type.IsInt && type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const int8_t*>(a), *cast_from_void<const int8_t*>(b));
+            return fn(*cast_from_void<const int8_t*>(a.get()), *cast_from_void<const int8_t*>(b.get()));
         }
         case 2: {
-            return fn(*cast_from_void<const int16_t*>(a), *cast_from_void<const int16_t*>(b));
+            return fn(*cast_from_void<const int16_t*>(a.get()), *cast_from_void<const int16_t*>(b.get()));
         }
         case 4: {
-            return fn(*cast_from_void<const int32_t*>(a), *cast_from_void<const int32_t*>(b));
+            return fn(*cast_from_void<const int32_t*>(a.get()), *cast_from_void<const int32_t*>(b.get()));
         }
         case 8: {
-            return fn(*cast_from_void<const int64_t*>(a), *cast_from_void<const int64_t*>(b));
+            return fn(*cast_from_void<const int64_t*>(a.get()), *cast_from_void<const int64_t*>(b.get()));
         }
         default:
             break;
@@ -777,16 +813,16 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     else if (type.IsInt && !type.IsSignedInt) {
         switch (type.Size) {
         case 1: {
-            return fn(*cast_from_void<const uint8_t*>(a), *cast_from_void<const uint8_t*>(b));
+            return fn(*cast_from_void<const uint8_t*>(a.get()), *cast_from_void<const uint8_t*>(b.get()));
         }
         case 2: {
-            return fn(*cast_from_void<const uint16_t*>(a), *cast_from_void<const uint16_t*>(b));
+            return fn(*cast_from_void<const uint16_t*>(a.get()), *cast_from_void<const uint16_t*>(b.get()));
         }
         case 4: {
-            return fn(*cast_from_void<const uint32_t*>(a), *cast_from_void<const uint32_t*>(b));
+            return fn(*cast_from_void<const uint32_t*>(a.get()), *cast_from_void<const uint32_t*>(b.get()));
         }
         case 8: {
-            return fn(*cast_from_void<const uint64_t*>(a), *cast_from_void<const uint64_t*>(b));
+            return fn(*cast_from_void<const uint64_t*>(a.get()), *cast_from_void<const uint64_t*>(b.get()));
         }
         default:
             break;
@@ -794,14 +830,14 @@ decltype(auto) VisitBaseTypePrimitive(const void* a, const void* b, const BaseTy
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            return fn(*cast_from_void<const float32_t*>(a), *cast_from_void<const float32_t*>(b));
+            return fn(*cast_from_void<const float32_t*>(a.get()), *cast_from_void<const float32_t*>(b.get()));
         }
         else if (type.IsDoubleFloat) {
-            return fn(*cast_from_void<const float64_t*>(a), *cast_from_void<const float64_t*>(b));
+            return fn(*cast_from_void<const float64_t*>(a.get()), *cast_from_void<const float64_t*>(b.get()));
         }
     }
     else if (type.IsHashedString) {
-        return fn(*cast_from_void<const hstring*>(a), *cast_from_void<const hstring*>(b));
+        return fn(*cast_from_void<const hstring*>(a.get()), *cast_from_void<const hstring*>(b.get()));
     }
     else if (type.IsEnum) {
         return VisitBaseTypePrimitive(a, b, *type.EnumUnderlyingType, std::forward<Fn>(fn));
@@ -824,11 +860,11 @@ class NameResolver
 public:
     [[nodiscard]] virtual auto GetBaseType(string_view type_str) const -> const BaseTypeDesc& = 0;
     [[nodiscard]] virtual auto ResolveComplexType(string_view type_str) const -> ComplexTypeDesc = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int32_t = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int32_t = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, bool* failed = nullptr) const -> const string& = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, nptr<bool> failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, nptr<bool> failed = nullptr) const -> int32_t = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int32_t value, nptr<bool> failed = nullptr) const -> string_view = 0;
     [[nodiscard]] virtual auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> = 0;
-    [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity* = 0;
+    [[nodiscard]] virtual auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity> = 0;
     virtual ~NameResolver() = default;
 };
 

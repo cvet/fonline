@@ -51,14 +51,14 @@ auto ConfigFile::operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
 ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption options) :
     _fileNameHint {name_hint},
     _options {options},
-    _data {unique_ptr<Data> {SafeAlloc::MakeRaw<Data>()}}
+    _data {SafeAlloc::MakeUnique<Data>()}
 {
     FO_STACK_TRACE_ENTRY();
 
     _data->Input = std::move(str);
 
     auto cur_section_it = _sectionKeyValues.emplace(string_view {}, map<string_view, string_view> {});
-    map<string_view, string_view>* cur_section = &cur_section_it->second;
+    ptr<map<string_view, string_view>> cur_section = &cur_section_it->second;
     string_view section_name_for_hook {};
 
     string section_content;
@@ -75,7 +75,13 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
     while (line_begin <= _data->Input.length()) {
         const size_t line_end = _data->Input.find('\n', line_begin);
         const size_t view_end = line_end != string::npos ? line_end : _data->Input.length();
-        string_view line {_data->Input.data() + line_begin, view_end - line_begin};
+        string_view line;
+
+        if (view_end != line_begin) {
+            ptr<const char> line_begin_ptr = _data->Input.data() + line_begin;
+            line = {line_begin_ptr.get(), view_end - line_begin};
+        }
+
         bool line_stable = true;
         string merged_line;
 
@@ -308,7 +314,7 @@ auto ConfigFile::StoreOwnedString(string&& value) -> string_view
     _data->OwnedStrings.emplace_back(std::move(value));
     return _data->OwnedStrings.back();
 }
-auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> const string_view*
+auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -331,50 +337,50 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const 
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view* str = GetRawValue(section_name, key_name);
+    const auto str = GetRawValue(section_name, key_name);
 
-    return str != nullptr ? *str : string_view {};
+    return str ? *str : string_view {};
 }
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view* str = GetRawValue(section_name, key_name);
+    const auto str = GetRawValue(section_name, key_name);
 
-    return str != nullptr ? *str : def_val;
+    return str ? *str : def_val;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view* str = GetRawValue(section_name, key_name);
+    const auto str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
+    if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
+    if (str && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strvex(*str).to_int32() : 0;
+    return str ? strvex(*str).to_int32() : 0;
 }
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string_view* str = GetRawValue(section_name, key_name);
+    const auto str = GetRawValue(section_name, key_name);
 
-    if (str != nullptr && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
+    if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
+    if (str && str->length() == "false"_len && strvex(*str).compare_ignore_case("false")) {
         return 0;
     }
 
-    return str != nullptr ? strvex(*str).to_int32() : def_val;
+    return str ? strvex(*str).to_int32() : def_val;
 }
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string_view, string_view>&
@@ -387,14 +393,14 @@ auto ConfigFile::GetSection(string_view section_name) const -> const map<string_
     return it->second;
 }
 
-auto ConfigFile::GetSections(string_view section_name) -> vector<map<string_view, string_view>*>
+auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<map<string_view, string_view>>>
 {
     FO_STACK_TRACE_ENTRY();
 
     const size_t count = _sectionKeyValues.count(section_name);
     auto it = _sectionKeyValues.find(section_name);
 
-    vector<map<string_view, string_view>*> key_values;
+    vector<ptr<map<string_view, string_view>>> key_values;
     key_values.reserve(count);
 
     for (size_t i = 0; i < count; i++, ++it) {
@@ -404,11 +410,11 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string_view
     return key_values;
 }
 
-auto ConfigFile::GetSections() noexcept -> multimap<string_view, map<string_view, string_view>>&
+auto ConfigFile::GetSections() noexcept -> ptr<multimap<string_view, map<string_view, string_view>>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _sectionKeyValues;
+    return &_sectionKeyValues;
 }
 
 auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
@@ -438,7 +444,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
     return true;
 }
 
-auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> const map<string_view, string_view>*
+auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<const map<string_view, string_view>>
 {
     FO_STACK_TRACE_ENTRY();
 

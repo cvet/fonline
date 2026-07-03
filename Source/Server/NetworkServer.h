@@ -42,7 +42,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
-class NetworkServerConnection : public std::enable_shared_from_this<NetworkServerConnection>
+class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>
 {
 public:
     using AsyncSendCallback = function<const_span<uint8_t>()>;
@@ -64,7 +64,7 @@ public:
     void Disconnect();
 
 protected:
-    explicit NetworkServerConnection(ServerNetworkSettings& settings);
+    explicit NetworkServerConnection(ptr<ServerNetworkSettings> settings);
 
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
@@ -72,7 +72,7 @@ protected:
     auto SendCallback() -> const_span<uint8_t>;
     void ReceiveCallback(const_span<uint8_t> buf);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     string _host {};
     uint16_t _port {};
 
@@ -107,16 +107,16 @@ public:
 
     virtual void Shutdown() = 0;
 
-    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
-    [[nodiscard]] static auto StartUdpSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #if FO_HAVE_ASIO
-    [[nodiscard]] static auto StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 #if FO_HAVE_WEB_SOCKETS
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
+    [[nodiscard]] static auto StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>;
 #endif
 
-    [[nodiscard]] static auto CreateDummyConnection(ServerNetworkSettings& settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
+    [[nodiscard]] static auto CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state = DummyConnectionState::Disconnected) -> shared_ptr<NetworkServerConnection>;
 };
 
 FO_END_NAMESPACE

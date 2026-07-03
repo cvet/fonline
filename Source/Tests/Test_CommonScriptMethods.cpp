@@ -472,7 +472,8 @@ namespace CommonMethods
         if (mapSize.str.length() == 0) return -32;
         any mapSizeAny = mapSize;
         if (string(mapSizeAny).length() == 0) return -33;
-
+)"
+                                          R"(
         hdir dir = HDIR_SouthEast;
         if (dir.str.length() == 0) return -34;
         if (HDIR_Random.value < 0 || HDIR_Random.value > 5) return -35;
@@ -724,7 +725,8 @@ namespace CommonMethods
 
         return 0;
     }
-
+)"
+                                          R"(
     int TestScriptDynamicRefTypeAccessors()
     {
         RouteSnapshot snapshot = RouteSnapshot();
@@ -1641,10 +1643,8 @@ namespace CommonMethods
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_VERIFY_AND_THROW(server, "Missing server instance");
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -1659,19 +1659,23 @@ namespace CommonMethods
         return "ServerEngine startup timed out";
     }
 
-    static void CheckHstringStringConvBinding(ServerEngine* server)
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+    }
+
+    static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto* backend = GetScriptBackend(server);
-        REQUIRE(backend != nullptr);
+        auto backend = GetScriptBackend(server);
+        auto nullable_context_mngr = backend->GetContextMngr();
+        REQUIRE(nullable_context_mngr);
+        auto context_mngr = nullable_context_mngr.as_ptr();
 
-        auto* context_mngr = backend->GetContextMngr();
-        REQUIRE(context_mngr != nullptr);
-
-        auto* ctx = context_mngr->RequestContext();
+        auto ctx = context_mngr->RequestContext();
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
-        auto return_context = scope_exit([context_mngr, ctx, context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+        auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         auto* as_engine = ctx->GetEngine();
         REQUIRE(as_engine != nullptr);
@@ -1695,7 +1699,7 @@ namespace CommonMethods
 
 #define MAKE_CM_SERVER() \
     auto settings = MakeSettings(); \
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources()); \
+    refcount_ptr<ServerEngine> server = MakeServerEngine(settings); \
     auto shutdown = scope_exit([&server]() noexcept { \
         safe_call([&server] { \
             if (server->IsStarted()) { \
@@ -1703,7 +1707,7 @@ namespace CommonMethods
             } \
         }); \
     }); \
-    const auto startup_error = WaitForStart(server.get()); \
+    const auto startup_error = WaitForStart(server); \
     INFO(startup_error); \
     REQUIRE(startup_error.empty()); \
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}})); \
@@ -1833,7 +1837,7 @@ TEST_CASE("ScriptTypeConversionOps")
 
     SECTION("HstringStringConvBinding")
     {
-        CheckHstringStringConvBinding(server.get());
+        CheckHstringStringConvBinding(server);
     }
 
     SECTION("MetadataValueTypeConversions")
@@ -2121,9 +2125,6 @@ TEST_CASE("CommonCppApiTests")
         auto cr1 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr2 = server->CreateCritter(get_func("TestCritter"), false);
         auto cr3 = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr1 != nullptr);
-        REQUIRE(cr2 != nullptr);
-        REQUIRE(cr3 != nullptr);
 
         CHECK(server->EntityMngr.GetCrittersCount() >= 3);
 
@@ -2136,16 +2137,17 @@ TEST_CASE("CommonCppApiTests")
     SECTION("ItemManagerContainerOps")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
-        REQUIRE(cr != nullptr);
 
-        auto item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        auto item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
-        REQUIRE(item1 != nullptr);
-        REQUIRE(item2 != nullptr);
+        auto nullable_item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
+        auto nullable_item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
+        REQUIRE(static_cast<bool>(nullable_item1));
+        REQUIRE(static_cast<bool>(nullable_item2));
 
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
+        auto item2 = nullable_item2.as_ptr();
+        auto item1 = nullable_item1.as_ptr();
         server->ItemMngr.DestroyItem(item2);
         server->ItemMngr.DestroyItem(item1);
         server->CrMngr.DestroyCritter(cr);

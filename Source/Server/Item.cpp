@@ -38,10 +38,11 @@
 
 FO_BEGIN_NAMESPACE
 
-Item::Item(ServerEngine* engine, ident_t id, const ProtoItem* proto, const Properties* props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props != nullptr ? props : &proto->GetProperties(), &proto->GetProperties()),
+Item::Item(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props) noexcept :
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
-    ItemProperties(GetInitRef())
+    ItemProperties(*GetInitRef()),
+    _protoItem {proto}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -65,15 +66,15 @@ auto Item::GetName() const noexcept -> string_view
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _proto->GetName();
+    return _protoItem->GetName();
 }
 
-auto Item::GetProtoItem() const noexcept -> const ProtoItem*
+auto Item::GetProtoItem() const noexcept -> ptr<const ProtoItem>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return static_cast<const ProtoItem*>(_proto.get());
+    return _protoItem;
 }
 
 auto Item::HasMultihexEntries() const noexcept -> bool
@@ -84,23 +85,23 @@ auto Item::HasMultihexEntries() const noexcept -> bool
     return !!_multihexEntries;
 }
 
-auto Item::GetMultihexEntries() const noexcept -> const vector<mpos>&
+auto Item::GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return *_multihexEntries;
+    return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr;
 }
 
-auto Item::GetOwnedLock() noexcept -> EntityLock&
+auto Item::GetOwnedLock() noexcept -> ptr<EntityLock>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _ownedLock;
+    return &_ownedLock;
 }
 
-auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
+auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -112,14 +113,14 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> Item*
 
     for (auto& item : *_innerItems) {
         if (item->GetId() == item_id) {
-            return item.get();
+            return item;
         }
     }
 
     return nullptr;
 }
 
-auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Item*
+auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -131,19 +132,19 @@ auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> Ite
 
     for (auto& item : *_innerItems) {
         if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
-            return item.get();
+            return item;
         }
     }
 
     return nullptr;
 }
 
-auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
+auto Item::GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    vector<Item*> result;
+    vector<ptr<Item>> result;
 
     if (!_innerItems) {
         return result;
@@ -153,7 +154,7 @@ auto Item::GetInnerItems(const any_t& stack_id) -> vector<Item*>
 
     for (auto& item : *_innerItems) {
         if (stack_id.empty() || item->GetContainerStack() == stack_id) {
-            result.emplace_back(item.get());
+            result.emplace_back(item);
         }
     }
 
@@ -168,79 +169,85 @@ auto Item::HasInnerItems() const noexcept -> bool
     return _innerItems && !_innerItems->empty();
 }
 
-auto Item::GetAllInnerItems() -> vector<Item*>
+auto Item::GetAllInnerItems() -> vector<ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<Item*> result;
+    vector<ptr<Item>> result;
     result.reserve(_innerItems->size());
 
     for (auto& item : *_innerItems) {
-        result.emplace_back(item.get());
+        result.emplace_back(item);
     }
 
     return result;
 }
 
-auto Item::GetAllInnerItems() const -> vector<const Item*>
+auto Item::GetAllInnerItems() const -> vector<ptr<const Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    vector<const Item*> result;
+    vector<ptr<const Item>> result;
     result.reserve(_innerItems->size());
 
     for (const auto& item : *_innerItems) {
-        result.emplace_back(item.get());
+        result.emplace_back(item);
     }
 
     return result;
 }
 
-auto Item::GetRawInnerItems() -> vector<refcount_ptr<Item>>&
+auto Item::TakeAllInnerItems() -> vector<refcount_ptr<Item>>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
 
-    return *_innerItems;
+    vector<refcount_ptr<Item>> result = std::move(*_innerItems);
+    _innerItems.reset();
+
+    return result;
 }
 
-void Item::SetItemToContainer(Item* item)
+void Item::SetItemToContainer(ptr<Item> item)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
     EnsureEntitySynced(item);
 
-    make_if_not_exists(_innerItems);
-    vec_add_unique_value(*_innerItems, item);
+    if (!_innerItems) {
+        _innerItems.emplace();
+    }
+
+    vec_add_unique_value(*_innerItems, item.hold_ref());
 
     item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(GetId());
     item->SetParent(this);
 }
 
-auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
+auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
     EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
-        auto* item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
+        auto nullable_item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
 
-        if (item_already != nullptr) {
-            if (item_already == item) {
+        if (nullable_item_already) {
+            auto item_already = nullable_item_already.as_ptr();
+
+            if (item_already == item.get()) {
                 return item;
             }
 
@@ -251,7 +258,9 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
         }
     }
 
-    make_if_not_exists(_innerItems);
+    if (!_innerItems) {
+        _innerItems.emplace();
+    }
 
     item->SetContainerStack(stack_id);
     SetItemToContainer(item);
@@ -267,13 +276,12 @@ auto Item::AddItemToContainer(Item* item, const any_t& stack_id) -> Item*
     return item;
 }
 
-void Item::RemoveItemFromContainer(Item* item)
+void Item::RemoveItemFromContainer(ptr<Item> item)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(_innerItems, "Item inner container storage is missing");
-    FO_VERIFY_AND_THROW(item, "Missing item instance");
     EnsureEntitySynced(item);
 
     item->SetParent(nullptr);
@@ -281,8 +289,11 @@ void Item::RemoveItemFromContainer(Item* item)
     item->SetContainerId({});
     item->SetContainerStack({});
 
-    vec_remove_unique_value(*_innerItems, item);
-    destroy_if_empty(_innerItems);
+    vec_remove_unique_value(*_innerItems, item.hold_ref());
+
+    if (_innerItems->empty()) {
+        _innerItems.reset();
+    }
 
     auto inner_item_ids = GetInnerItemIds();
     vec_remove_unique_value(inner_item_ids, item->GetId());
@@ -304,12 +315,12 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
         const auto slot = GetCritterSlot();
         const auto slot_num = static_cast<size_t>(slot);
 
-        if (slot_num >= _engine->Settings.CritterSlotEnabled.size() || !_engine->Settings.CritterSlotEnabled[slot_num]) {
+        if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
             return false;
         }
 
         if (as_public) {
-            if (slot_num >= _engine->Settings.CritterSlotSendData.size() || !_engine->Settings.CritterSlotSendData[slot_num]) {
+            if (slot_num >= _engine->Settings->CritterSlotSendData.size() || !_engine->Settings->CritterSlotSendData[slot_num]) {
                 return false;
             }
         }
@@ -336,7 +347,10 @@ void Item::SetMultihexEntries(vector<mpos> entries)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!entries.empty()) {
-        make_if_not_exists(_multihexEntries);
+        if (!_multihexEntries) {
+            _multihexEntries.emplace();
+        }
+
         *_multihexEntries = std::move(entries);
     }
     else {

@@ -215,7 +215,7 @@ Results:
 - Corrected stale nullability workflow wording: current nullable appliers preserve author-chosen markers and remove redundant guards; they do not own automatic contract inference.
 - Replaced stale parent docs routes in `Nullability.md` with current engine docs and the current `Source/Tests/README.md` testing source of truth.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `ScriptSystem`, `ScriptSystemBackend`, `RegisterBackend`, `MapScriptTypes`, `InitModules`, `FindFunc`, `CheckFunc`, `CallFunc`, `CallAdminFunc`, `NativeDataProvider`, `CheckArgNotNull`, `CheckReturnNotNull`, `InitAngelScriptScripting`, `CompileAngelScript`, `AngelScriptBackend`, `RegisterMetadata`, `CompileTextScripts`, `LoadBinaryScripts`, `StripNullableTypeSuffix`, `FO_NULLABLE`, and `is_validated_pointer_meta_type`.
+- Symbol spot checks found the documented owners and APIs in current source, including `ScriptSystem`, `ScriptSystemBackend`, `RegisterBackend`, `MapScriptTypes`, `InitModules`, `FindFunc`, `CheckFunc`, `CallFunc`, `CallAdminFunc`, `NativeDataProvider`, `CheckArgNotNull`, `CheckReturnNotNull`, `InitAngelScriptScripting`, `CompileAngelScript`, `AngelScriptBackend`, `RegisterMetadata`, `CompileTextScripts`, `LoadBinaryScripts`, `StripNullableTypeSuffix`, and `is_validated_pointer_meta_type`.
 - Promoted in `Docs/DocumentationBacklog.md`: `Scripting.md`, `ScriptMethodsMap.md`, and `Nullability.md` from `drafted` to `verified`.
 
 Follow-up:

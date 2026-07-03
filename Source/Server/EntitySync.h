@@ -50,12 +50,11 @@ class ServerEntity;
 // entities dump their parent chain before the caller throws; Game.IsEntityLocked passes diagnose=false
 // because it is a deliberate non-throwing probe. NOTE: this is the read-path notion; mutating an entity
 // (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there.
-[[nodiscard]] auto IsEntityAccessValid(const ServerEntity* entity, bool diagnose = true) noexcept -> bool;
+[[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 
 // Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
 // thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
 // sync context (script/job execution) and throws if there is none.
-void EnsureEntitySynced(ServerEntity* entity);
 
 class EntityLock final
 {
@@ -226,15 +225,15 @@ public:
     [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> SyncContext*;
     [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> SyncContext*;
 
-    [[nodiscard]] auto ValidateAccess(const ServerEntity* entity) const noexcept -> bool;
+    [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
-    [[nodiscard]] auto GetHeldEntities() -> vector<ServerEntity*>;
+    [[nodiscard]] auto GetHeldEntities() -> vector<ptr<ServerEntity>>;
 
     void Activate() noexcept;
     void Deactivate() noexcept;
-    void SyncEntities(span<ServerEntity*> entities);
-    void SyncEntity(ServerEntity* entity);
-    void EnsureEntitySynced(ServerEntity* entity);
+    void SyncEntities(span<const nptr<ServerEntity>> entities);
+    void SyncEntity(nptr<ServerEntity> entity);
+    void EnsureEntitySynced(nptr<ServerEntity> entity);
     void Release() noexcept;
 
     // Singleton-lock acquisition (e.g. `Game.Lock()`). Acquires the supplied EntityLock and
@@ -306,10 +305,15 @@ public:
     auto operator=(const ScopedSyncContext&) -> ScopedSyncContext& = delete;
     auto operator=(ScopedSyncContext&&) -> ScopedSyncContext& = delete;
 
-    void Sync(ServerEntity* entity) { _ctx.SyncEntity(entity); }
+    void Sync(nptr<ServerEntity> entity) { _ctx.SyncEntity(entity); }
 
 private:
     SyncContext _ctx {};
 };
+
+// Null-tolerant convenience wrapper that mirrors ValidateEntityAccess: pulls `entity` into the current
+// thread's sync context so subsequent accesses to it — and its reparent — hold its lock. Requires an active
+// sync context (script/job execution) and throws if there is none.
+void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE
