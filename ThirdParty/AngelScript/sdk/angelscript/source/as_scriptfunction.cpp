@@ -658,7 +658,7 @@ int asCScriptFunction::GetSpaceNeededForArguments()
 	// We need to check the size for each type
 	int s = 0;
 	for( asUINT n = 0; n < parameterTypes.GetLength(); n++ )
-		s += parameterTypes[n].GetSizeOnStackDWords();
+		s += parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	return s;
 }
@@ -2010,7 +2010,7 @@ asCScriptFunction* asCScriptFunction::GetCalledFunction(asDWORD programPos)
 				else
 					return 0;
 			}
-			paramPos -= parameterTypes[v].GetSizeOnStackDWords();
+			paramPos -= parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 

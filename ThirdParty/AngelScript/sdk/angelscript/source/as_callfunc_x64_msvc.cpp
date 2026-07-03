@@ -145,6 +145,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			allArgBuffer[dpos++] = *(asQWORD*)&args[spos];
 			spos += 2;
 			allArgBuffer[dpos++] = args[spos++];
+			spos++; // (FOnline Patch) skip the argument slot padding (see GetArgSlotSizeOnStackDWords)
 			paramSize += 2;
 		}
 		else
@@ -171,9 +172,9 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 				// though this is only done for first 4 arguments, the rest are placed on the stack
 				if( paramSize < 4 && dt.IsFloatType() )
 					floatArgBuffer[dpos] = args[spos];
-				
+
 				dpos++;
-				spos++;
+				spos += 2; // (FOnline Patch) even argument slot: skip the slot padding above the value
 			}
 
 			paramSize++;

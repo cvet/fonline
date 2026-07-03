@@ -1110,7 +1110,7 @@ int asCContext::SetArgByte(asUINT arg, asBYTE value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asBYTE*)&m_regs.stackFramePointer[offset] = value;
@@ -1153,7 +1153,7 @@ int asCContext::SetArgWord(asUINT arg, asWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asWORD*)&m_regs.stackFramePointer[offset] = value;
@@ -1196,7 +1196,7 @@ int asCContext::SetArgDWord(asUINT arg, asDWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asDWORD*)&m_regs.stackFramePointer[offset] = value;
@@ -1239,7 +1239,7 @@ int asCContext::SetArgQWord(asUINT arg, asQWORD value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asQWORD*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1282,7 +1282,7 @@ int asCContext::SetArgFloat(asUINT arg, float value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(float*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1325,7 +1325,7 @@ int asCContext::SetArgDouble(asUINT arg, double value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(double*)(&m_regs.stackFramePointer[offset]) = value;
@@ -1362,7 +1362,7 @@ int asCContext::SetArgAddress(asUINT arg, void *value)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)value;
@@ -1420,7 +1420,7 @@ int asCContext::SetArgObject(asUINT arg, void *obj)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the value
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)obj;
@@ -1457,7 +1457,7 @@ int asCContext::SetArgVarType(asUINT arg, void *ptr, int typeId)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// Set the typeId and pointer
 	*(asPWORD*)(&m_regs.stackFramePointer[offset]) = (asPWORD)ptr;
@@ -1488,7 +1488,7 @@ void *asCContext::GetAddressOfArg(asUINT arg)
 		offset += AS_PTR_SIZE;
 
 	for( asUINT n = 0; n < arg; n++ )
-		offset += m_initialFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_initialFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 	// We should return the address of the location where the argument value will be placed
 
@@ -4916,6 +4916,11 @@ static const void *const dispatch_table[256] = {
 				// Pop the int arg from the stack
 				int arg = *(int*)l_sp;
 				l_sp++;
+#if AS_PTR_SIZE == 2
+				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot
+				// (see asCDataType::GetArgSlotSizeOnStackDWords), so pop the slot padding as well
+				l_sp++;
+#endif
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
@@ -5493,7 +5498,7 @@ void asCContext::CleanArgsOnStack()
 						func = CastToFuncdefType(m_currentFunction->parameterTypes[v].GetTypeInfo())->funcdef;
 					break;
 				}
-				paramPos -= m_currentFunction->parameterTypes[v].GetSizeOnStackDWords();
+				paramPos -= m_currentFunction->parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}
@@ -5540,7 +5545,7 @@ void asCContext::CleanArgsOnStack()
 			}
 		}
 
-		offset += func->parameterTypes[n].GetSizeOnStackDWords();
+		offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	// Restore the stack pointer
@@ -5630,7 +5635,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 
 		// Restore the stack pointer
 		if( !exceptionCaught )
-			m_regs.stackPointer += m_currentFunction->scriptData->variableSpace;
+			m_regs.stackPointer += (m_currentFunction->scriptData->variableSpace + 1) & ~asUINT(1); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 
 		// Determine which object variables that are really live ones
 		asCArray<int> liveObjects;
@@ -5731,7 +5736,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 	// If the exception was caught then move the program position and stack pointer to the catch block then stop the unwinding
 	if (exceptionCaught)
 	{
-		m_regs.stackPointer = m_regs.stackFramePointer - tryCatchInfo->stackSize - m_currentFunction->scriptData->variableSpace;
+		m_regs.stackPointer = m_regs.stackFramePointer - tryCatchInfo->stackSize - ((m_currentFunction->scriptData->variableSpace + 1) & ~asUINT(1)); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 		m_regs.programPointer = m_currentFunction->scriptData->byteCode.AddressOf() + tryCatchInfo->catchPos;
 		return exceptionCaught;
 	}
@@ -5777,7 +5782,7 @@ bool asCContext::CleanStackFrame(bool catchException)
 			}
 		}
 
-		offset += m_currentFunction->parameterTypes[n].GetSizeOnStackDWords();
+		offset += m_currentFunction->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	return exceptionCaught;
@@ -5975,12 +5980,13 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		varArgCount = *args;
 
-		args += 1;
-		popSize += 1;
+		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on 64-bit targets
+		args += AS_PTR_SIZE == 2 ? 2 : 1;
+		popSize += AS_PTR_SIZE == 2 ? 2 : 1;
 
 		// Calculate the arguments that need to be popped
 		asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];
-		int sizeOfVariadicArg = variadicType.GetSizeOnStackDWords();
+		int sizeOfVariadicArg = variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 		// sysFunc->paramSize already added one variadic arg for the ..., but there might not actually be any
 		popSize -= sizeOfVariadicArg;
@@ -6113,7 +6119,7 @@ int asCContext::GetVar(asUINT varIndex, asUINT stackLevel, const char** name, in
 						*typeModifiers = func->inOutFlags[n];
 						break;
 					}
-					stackPos -= func->parameterTypes[n].GetSizeOnStackDWords();
+					stackPos -= func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 				}
 			}
 			else
@@ -6446,7 +6452,7 @@ int asCContext::GetArgsOnStackCount(asUINT stackLevel)
 	// Determine the highest stack position for local variables
 	// asCScriptFunction::variableSpace give this value
 	// If the stack pointer is higher than that, then there are data pushed on the stack
-	asUINT stackPos = asDWORD(sf - sp) - func->scriptData->variableSpace;
+	asUINT stackPos = asDWORD(sf - sp) - ((func->scriptData->variableSpace + 1) & ~asUINT(1)); // (FOnline Patch) locals region is allocated even-rounded (see PrepareScriptFunction)
 	if (stackPos == 0)
 		return 0;
 
