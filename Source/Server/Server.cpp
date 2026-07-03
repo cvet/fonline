@@ -38,7 +38,7 @@
 #include "ClientDataValidation.h"
 #include "EntitySync.h"
 #include "ImGuiStuff.h"
-#include "Managed/ManagedScripting.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "PropertiesSerializator.h"

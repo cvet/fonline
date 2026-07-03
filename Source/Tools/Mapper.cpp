@@ -38,7 +38,7 @@
 #include "ConfigFile.h"
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
-#include "Managed/ManagedScripting.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "ParticleSprites.h"
 

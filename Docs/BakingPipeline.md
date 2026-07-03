@@ -119,8 +119,8 @@ The abstract base for individual baker implementations. Each baker provides:
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
-- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
-- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `8`, enabled when `FO_MANAGED_SCRIPTING` is active
+- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, order `4`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `3`, enabled when `FO_MANAGED_SCRIPTING` is active. It runs before the `Proto` (6), `Map` (7), and dialog validators so the compiled managed assemblies exist when those bakers restore the managed script subsystem and resolve `[DialogDemand]`/`[DialogResult]` and other script funcs through `ScriptSystem::FindFunc`.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 

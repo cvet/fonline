@@ -55,7 +55,7 @@ struct RemoteCallWireHooks
     function<vector<uint8_t>(const BaseTypeDesc&, const void*)> RefTypeToRaw {};
     // Read: create a backend ref-type value from raw bytes and return the FuncCallData argument pointer. The
     // backend owns the created object's lifetime (e.g. via storage captured in the callback).
-    function<void*(const BaseTypeDesc&, span<const uint8_t>)> RawToRefType {};
+    function<ptr<void>(const BaseTypeDesc&, span<const uint8_t>)> RawToRefType {};
 };
 
 // Keeps deserialized scalar values (primitive / enum bytes, string, hstring, struct bytes) alive for the duration
@@ -65,10 +65,10 @@ struct RemoteCallWireHooks
 class RemoteCallReadStorage final
 {
 public:
-    auto StoreString(string&& value) -> void* { return cast_to_void(&std::get<string>(_items.emplace_back(std::move(value)))); }
-    auto StoreHashed(hstring value) -> void* { return cast_to_void(&std::get<hstring>(_items.emplace_back(value))); }
-    auto StoreStructBytes(size_t size) -> uint8_t* { return std::get<vector<uint8_t>>(_items.emplace_back(vector<uint8_t>(size, 0))).data(); }
-    auto StorePlainBytes() -> uint8_t* { return std::get<PlainData>(_items.emplace_back(PlainData {})).Bytes; }
+    auto StoreString(string&& value) -> ptr<void> { return cast_to_void(&std::get<string>(_items.emplace_back(std::move(value)))); }
+    auto StoreHashed(hstring value) -> ptr<void> { return cast_to_void(&std::get<hstring>(_items.emplace_back(value))); }
+    auto StoreStructBytes(size_t size) -> ptr<uint8_t> { return std::get<vector<uint8_t>>(_items.emplace_back(vector<uint8_t>(size, 0))).data(); }
+    auto StorePlainBytes() -> ptr<uint8_t> { return std::get<PlainData>(_items.emplace_back(PlainData {})).Bytes; }
 
 private:
     struct PlainData
@@ -81,99 +81,10 @@ private:
 
 // Serialize one simple (non-collection) remote-call value to the wire. Mirrors the format the AngelScript
 // backend has always written; keep byte-compatible.
-inline void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (type.IsPrimitive) {
-        VisitBaseTypePrimitive(ptr, type, [&](auto&& v) {
-            using t = std::decay_t<decltype(v)>;
-            writer.Write<t>(v);
-        });
-    }
-    else if (type.IsEnum) {
-        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum type has no underlying type to serialize");
-        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type must be integral to serialize");
-        writer.WritePtr(static_cast<const uint8_t*>(ptr), type.Size);
-    }
-    else if (type.IsString) {
-        const auto& str = *cast_from_void<const string*>(ptr);
-        writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
-        writer.WritePtr(str.c_str(), str.length());
-    }
-    else if (type.IsHashedString) {
-        const auto& hstr = *cast_from_void<const hstring*>(ptr);
-        writer.Write<hstring::hash_t>(hstr.as_hash());
-    }
-    else if (type.IsRefType) {
-        const auto raw_data = hooks.RefTypeToRaw(type, ptr);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
-
-        if (!raw_data.empty()) {
-            writer.WritePtr(raw_data.data(), raw_data.size());
-        }
-    }
-    else if (type.IsStruct) {
-        for (const auto& field : type.StructLayout->Fields) {
-            WriteRemoteCallSimple(writer, static_cast<const uint8_t*>(ptr) + field.Offset, field.Type, hooks);
-        }
-    }
-    else {
-        throw NotSupportedException(FO_LINE_STR);
-    }
-}
+void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
 
 // Deserialize one simple (non-collection) remote-call value from the wire; returns the FuncCallData argument
 // pointer (into `storage` for scalars, or — for ref types — a backend object via the hook).
-inline auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> void*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    // Copy primitive/enum bytes out of the transient reader buffer into aligned per-call storage; the call site
-    // dereferences the returned pointer as the primitive's type, which requires natural alignment.
-    const auto read_plain = [&](size_t size) -> void* {
-        FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
-        uint8_t* buf = storage.StorePlainBytes();
-        reader.ReadPtr(buf, size);
-        return cast_to_void(buf);
-    };
-
-    if (type.IsPrimitive) {
-        return read_plain(type.Size);
-    }
-    else if (type.IsEnum) {
-        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum type has no underlying type to deserialize");
-        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type must be integral to deserialize");
-        return read_plain(type.Size);
-    }
-    else if (type.IsString) {
-        const auto str_len = reader.Read<int32_t>();
-        FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
-        const nptr<char> s = reader.ReadPtr<char>(str_len);
-        return storage.StoreString(string(s.get(), str_len));
-    }
-    else if (type.IsHashedString) {
-        const auto hash = reader.Read<hstring::hash_t>();
-        return storage.StoreHashed(hashes.ResolveHash(hash));
-    }
-    else if (type.IsRefType) {
-        const uint32_t raw_size = reader.Read<uint32_t>();
-        const nptr<uint8_t> raw_data = reader.ReadPtr<uint8_t>(raw_size);
-        return hooks.RawToRefType(type, {raw_data.get(), raw_size});
-    }
-    else if (type.IsStruct) {
-        uint8_t* buf = storage.StoreStructBytes(type.Size);
-
-        for (const auto& field : type.StructLayout->Fields) {
-            void* field_data = ReadRemoteCallSimple(reader, field.Type, hashes, storage, hooks);
-            MemCopy(buf + field.Offset, field_data, field.Type.Size);
-        }
-
-        return cast_to_void(buf);
-    }
-    else {
-        FO_UNREACHABLE_PLACE();
-    }
-}
+auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& type, const HashResolver& hashes, RemoteCallReadStorage& storage, const RemoteCallWireHooks& hooks) -> ptr<void>;
 
 FO_END_NAMESPACE

@@ -49,6 +49,8 @@ Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 
 Use the smallest focused tests first, then the broader run target when the change crosses subsystem boundaries.
 
+The validation project (`Engine/BuildTools/validation-project`) enables `FO_ANGELSCRIPT_SCRIPTING` and keeps `FO_MANAGED_SCRIPTING` off, so validators stay offline-friendly and do not pull in the Mono runtime build (`SetupManagedRuntime` / `setup-mono` clones and builds the pinned `dotnet/runtime` source, a heavy network step). The managed (C#/Mono) backend and `Test_ManagedScriptBaker` are exercised through the embedding project's managed build (the `auto-managed` preset), not through the validators.
+
 ### Unit tests under sanitizers
 
 The unit tests also run under Clang sanitizers via dedicated validators, which select

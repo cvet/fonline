@@ -61,24 +61,6 @@ static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, strin
     }
 }
 
-static auto AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (func_type.Kind != caller_type.Kind) {
-        return false;
-    }
-    if (func_type.BaseType != caller_type.BaseType) {
-        return false;
-    }
-    if (func_type.KeyType != caller_type.KeyType) {
-        return false;
-    }
-
-    // Not comparing IsMutable.
-    return true;
-}
-
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
     _registrator {registrator},
     _props {std::in_place, _registrator}
@@ -486,6 +468,24 @@ void ScriptSystem::InitModules()
     }
 
     FreezeGlobalVars();
+}
+
+auto ScriptSystem::AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (func_type.Kind != caller_type.Kind) {
+        return false;
+    }
+    if (func_type.BaseType != caller_type.BaseType) {
+        return false;
+    }
+    if (func_type.KeyType != caller_type.KeyType) {
+        return false;
+    }
+
+    // Not comparing IsMutable.
+    return true;
 }
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>

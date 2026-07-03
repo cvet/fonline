@@ -834,6 +834,8 @@ private:
         }
     }
 
+    static auto AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool;
+
     unordered_map<size_t, unique_ptr<ScriptSystemBackend>> _backends {};
     unordered_map<size_t, ComplexTypeDesc> _engineTypes {};
     unordered_multimap<hstring, ptr<ScriptFuncDesc>> _globalFuncMap {};

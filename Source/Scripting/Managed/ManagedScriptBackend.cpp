@@ -3877,7 +3877,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
             list<ManagedArrayBridgeData> array_bridges;
             list<refcount_ptr<DynamicRefTypeInstance>> ref_instances;
             const RemoteCallWireHooks hooks {
-                .RawToRefType = [&ref_instances](const BaseTypeDesc& type, span<const uint8_t> raw_data) -> void* {
+                .RawToRefType = [&ref_instances](const BaseTypeDesc& type, span<const uint8_t> raw_data) -> ptr<void> {
                     // Deserialize the ref type's fields into a DynamicRefTypeInstance (shared engine type); the
                     // MANAGED_DATA_ACCESSOR boxes it into a managed object (CreateRefTypeObject) when invoking. Kept
                     // alive in `ref_instances` for the call duration; the FuncCallData arg is a pointer to its pointer.
@@ -3901,7 +3901,7 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                 const ComplexTypeDesc& arg_type = args[arg_index];
 
                 if (arg_type.Kind == ComplexTypeKind::Simple) {
-                    data_storage[arg_index] = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
+                    data_storage[arg_index] = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks).get();
                 }
                 else {
                     // Array. Wire: int32 count, then each element (shared scalar format). Deserialize into a managed
@@ -3915,8 +3915,8 @@ static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_
                     bridge.SetObject(CreateManagedList(backend, arg_type.BaseType));
 
                     for (int32_t j = 0; j < count; j++) {
-                        void* element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
-                        AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element));
+                        ptr<void> element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
+                        AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
                     }
 
                     data_storage[arg_index] = cast_to_void(&bridge);

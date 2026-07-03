@@ -33,7 +33,7 @@
 
 #include "ProtoBaker.h"
 #include "AngelScriptScripting.h"
-#include "Managed/ManagedScripting.h"
+#include "ManagedScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
 #include "EngineBase.h"

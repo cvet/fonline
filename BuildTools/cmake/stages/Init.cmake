@@ -332,6 +332,7 @@ AddIncludeDirectories(
 	"${FO_ENGINE_ROOT}/Source/Client"
 	"${FO_ENGINE_ROOT}/Source/Tools"
 	"${FO_ENGINE_ROOT}/Source/Scripting"
+	"${FO_ENGINE_ROOT}/Source/Scripting/Managed"
 	"${FO_ENGINE_ROOT}/Source/Frontend"
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 

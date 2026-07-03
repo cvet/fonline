@@ -114,6 +114,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializator.h"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"

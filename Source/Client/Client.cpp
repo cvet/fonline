@@ -34,7 +34,7 @@
 #include "Client.h"
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
-#include "Managed/ManagedScripting.h"
+#include "ManagedScripting.h"
 #include "MetadataRegistration.h"
 #include "ModelSprites.h"
 #include "Movement.h"
