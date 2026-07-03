@@ -305,28 +305,30 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* engine = GetGameEngine(gen->GetEngine());
+    ptr<BaseEngine> engine = GetGameEngine(gen->GetEngine());
     const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
     const auto hashed_func_name = engine->Hashes.ToHashedString(func_name);
     const auto result_type = ResolveInvokeResultType(gen, 1);
     const auto arg_types = ResolveInvokeArgTypes(gen, 2);
-    auto* func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
+    nptr<ScriptFuncDesc> nullable_func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
 
-    if (func_desc == nullptr) {
+    if (!nullable_func_desc) {
         throw ScriptException("Script function not found", func_name);
     }
+
+    ptr<const ScriptFuncDesc> func_desc = nullable_func_desc.as_ptr();
 
     // An array out-result arrives as a null handle (?&out does not carry the caller's value), but the callee
     // fills it through the accessor's ClearArray/AddArrayElement, which need a live array. Allocate an empty one
     // of the resolved element type so collection-returning funcs behave like a native array return. The created
     // array's single ref is adopted by the caller's variable (the ?&out slot), so it frees on scope exit.
     if (result_type.Kind == ComplexTypeKind::Array) {
-        void* result_addr = gen->GetArgAddress(1);
+        ptr<void> result_addr = gen->GetArgAddress(1);
 
-        if (*cast_from_void<ScriptArray**>(result_addr) == nullptr) {
-            auto* array_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
+        if (*cast_from_void<ScriptArray**>(result_addr.get()) == nullptr) {
+            nptr<AngelScript::asITypeInfo> array_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
             FO_VERIFY_AND_THROW(array_type, "InvokeResult array result type is unavailable", func_name);
-            *cast_from_void<ScriptArray**>(result_addr) = ScriptArray::Create(array_type);
+            *cast_from_void<ScriptArray**>(result_addr.get()) = ScriptArray::Create(array_type.as_ptr()).release_ownership();
         }
     }
 

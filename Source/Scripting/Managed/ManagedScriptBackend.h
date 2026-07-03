@@ -58,7 +58,7 @@ public:
     [[nodiscard]] auto GetDomain() const -> void* { return _domain; }
     [[nodiscard]] auto GetMetadata() const noexcept -> EngineMetadata* { return _meta.get_no_const(); }
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> Entity*;
-    [[nodiscard]] auto GetImages() const noexcept -> const vector<void*>& { return _images; }
+    [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
 
 private:
     static auto GetTargetName(EngineSideKind side) -> string_view;
@@ -68,10 +68,10 @@ private:
 
     void InvokeInitializator(void* assembly, const char* method_name);
 
-    raw_ptr<EngineMetadata> _meta {};
-    raw_ptr<ScriptSystem> _scriptSys {};
+    nptr<EngineMetadata> _meta {};
+    nptr<ScriptSystem> _scriptSys {};
     void* _domain {};
-    vector<void*> _images {};
+    vector<nptr<void>> _images {};
     // Managed global script functions (registered under a marker attribute) so the cross-backend
     // `ScriptSystem::FindFunc` can find them on behalf of an out-of-engine consumer. The descs are owned here (the
     // global func map stores non-owning `raw_ptr`s); the GC handles keep each managed handler delegate alive for

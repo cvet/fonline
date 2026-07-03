@@ -2431,7 +2431,7 @@ static void AppendRemoteCallerSurface(std::ostringstream& out, const EngineMetad
 
     vector<const RemoteCallDesc*> cs_calls;
 
-    for (const auto& call : meta.GetOutboundRemoteCalls() | std::views::values) {
+    for (const auto& call : (*meta.GetOutboundRemoteCalls()) | std::views::values) {
         cs_calls.emplace_back(&call);
     }
 
@@ -2509,9 +2509,9 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
             continue;
         }
 
-        const PropertyRegistrator* registrator = meta.GetPropertyRegistrator(type_name);
+        nptr<const PropertyRegistrator> registrator = meta.GetPropertyRegistrator(type_name);
 
-        if (registrator == nullptr) {
+        if (!registrator) {
             continue;
         }
 
@@ -2544,7 +2544,7 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
         vector<string> value_types;
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            const Property* prop = registrator->GetPropertyByIndexUnsafe(i);
+            ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
 
             if (prop->IsDict() || prop->IsArray()) {
                 continue;
@@ -2599,7 +2599,7 @@ static void AppendPropertyInfoAccessor(std::ostringstream& out, string_view type
     out << CS_INDENT << "    {\n";
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-        const Property* prop = registrator->GetPropertyByIndexUnsafe(i);
+        ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
         const auto enum_value = enum_values.find(numeric_cast<int32_t>(prop->GetRegIndex()));
 
         if (enum_value == enum_values.end()) {
@@ -3390,8 +3390,8 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
 
     struct MethodAccessors
     {
-        raw_ptr<const MethodDesc> Getter {};
-        raw_ptr<const MethodDesc> Setter {};
+        nptr<const MethodDesc> Getter {};
+        nptr<const MethodDesc> Setter {};
         size_t GetterIndex {};
         size_t SetterIndex {};
     };
@@ -3444,8 +3444,8 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
         // when the native bridge is available and every accessor type can cross it; otherwise fall back
         // to an inert auto-property so the surface still compiles instead of routing through an
         // unsupported bridge call.
-        const bool getter_bridgeable = accessors.Getter == nullptr || CanUseManagedBridge(accessors.Getter->Ret);
-        const bool setter_bridgeable = accessors.Setter == nullptr || (!accessors.Setter->Args.empty() && CanUseManagedBridge(accessors.Setter->Args.front().Type));
+        const bool getter_bridgeable = !accessors.Getter || CanUseManagedBridge(accessors.Getter->Ret);
+        const bool setter_bridgeable = !accessors.Setter || (!accessors.Setter->Args.empty() && CanUseManagedBridge(accessors.Setter->Args.front().Type));
         const bool emit_bridge = allow_native_bridge && getter_bridgeable && setter_bridgeable;
 
         member_names.emplace(property_name);
@@ -3525,7 +3525,7 @@ static void AppendEntityProperties(std::ostringstream& out, const PropertyRegist
     FO_VERIFY_AND_THROW(registrator, "Property registrator is null");
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-        const Property* prop = registrator->GetPropertyByIndexUnsafe(i);
+        ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
 
         if (prop->IsDisabled() || prop->IsComponentItself()) {
             continue;
@@ -3534,7 +3534,7 @@ static void AppendEntityProperties(std::ostringstream& out, const PropertyRegist
             continue;
         }
 
-        string prop_type = MakeCsPropertyTypeName(prop);
+        string prop_type = MakeCsPropertyTypeName(prop.get());
 
         if (prop->IsNullable()) {
             prop_type += "?";
@@ -3542,8 +3542,8 @@ static void AppendEntityProperties(std::ostringstream& out, const PropertyRegist
 
         const string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
 
-        if (allow_native_bridge && CanUseManagedPropertyBridge(prop)) {
-            AppendNativeProperty(out, prop, owner_type_name, target_name, is_static, shadows_entity_base, member_names);
+        if (allow_native_bridge && CanUseManagedPropertyBridge(prop.get())) {
+            AppendNativeProperty(out, prop.get(), owner_type_name, target_name, is_static, shadows_entity_base, member_names);
         }
         else {
             AppendProperty(out, prop_type, prop_name, force_writable || prop->IsMutable(), is_static, shadows_entity_base, member_names);
@@ -3793,7 +3793,7 @@ static void AppendEntityHolderAccessors(std::ostringstream& out, string_view own
     const string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
 
     for (const auto& [entry_name, holder_entry] : holder_entries) {
-        const string target_type = holder_entry->TargetType.as_str();
+        const string target_type {holder_entry->TargetType.as_str()};
         const string escaped_target_type = EscapeCsIdentifier(target_type);
         const string escaped_entry_name = EscapeCsIdentifier(entry_name);
         const string entry_literal = EscapeCsStringLiteral(entry_name);
@@ -3917,13 +3917,13 @@ static void AppendPropertyGroupGetters(std::ostringstream& out, const EngineMeta
             continue;
         }
 
-        const PropertyRegistrator* registrator = meta.GetPropertyRegistrator(type_name);
+        nptr<const PropertyRegistrator> registrator = meta.GetPropertyRegistrator(type_name);
 
-        if (registrator == nullptr) {
+        if (!registrator) {
             continue;
         }
 
-        const map<string, vector<const Property*>> groups = registrator->GetPropertyGroups();
+        const map<string, vector<ptr<const Property>>> groups = registrator->GetPropertyGroups();
 
         if (groups.empty()) {
             continue;
@@ -3950,7 +3950,7 @@ static void AppendPropertyGroupGetters(std::ostringstream& out, const EngineMeta
             out << CS_INDENT << "        return new global::System.Collections.Generic.List<" << enum_type << ">\n";
             out << CS_INDENT << "        {\n";
 
-            for (const Property* prop : properties) {
+            for (ptr<const Property> prop : properties) {
                 out << CS_INDENT << "            (" << enum_type << ")(" << prop->GetRegIndex() << "),\n";
             }
 

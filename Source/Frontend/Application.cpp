@@ -320,6 +320,34 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *const_cast<std::remove_cvref_t<decltype(settings.MonitorHeight)>*>(&settings.MonitorHeight) = display_mode->h;
 }
 
+static auto SdlMemMalloc(size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return MemMalloc(size).get();
+}
+
+static auto SdlMemCalloc(size_t num, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return MemCalloc(num, size).get();
+}
+
+static auto SdlMemRealloc(void* mem, size_t size) noexcept -> void*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return MemRealloc(mem, size).get();
+}
+
+static void SdlMemFree(void* mem) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    MemFree(mem);
+}
+
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
     MainWindow {ptr<Application> {this}},
@@ -330,7 +358,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+    SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
     ptr<const char> app_id = FO_DEV_NAME.c_str();
     ptr<const char> app_name = Settings.GameName.c_str();
@@ -3101,7 +3129,7 @@ void Application::ShowErrorMessage(string_view message, string_view traceback, b
         return;
     }
 
-    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+    SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
     const string_view title = fatal_error ? "Fatal Error" : "Error";
 
@@ -3198,7 +3226,7 @@ void Application::ShowProgressWindow(string_view text, const ProgressWindowCallb
 {
     FO_STACK_TRACE_ENTRY();
 
-    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+    SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
     bool run_in_separate_thread = false;
 
     if (SDL_WasInit(SDL_INIT_VIDEO) != 0 || SDL_InitSubSystem(SDL_INIT_VIDEO)) {
@@ -3259,7 +3287,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
         return;
     }
 
-    SDL_SetMemoryFunctions(&MemMalloc, &MemCalloc, &MemRealloc, &MemFree);
+    SDL_SetMemoryFunctions(&SdlMemMalloc, &SdlMemCalloc, &SdlMemRealloc, &SdlMemFree);
 
     if (SDL_WasInit(SDL_INIT_VIDEO) != 0 || SDL_InitSubSystem(SDL_INIT_VIDEO)) {
         constexpr SDL_WindowFlags flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_UTILITY;

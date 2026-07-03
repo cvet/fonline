@@ -672,14 +672,16 @@ void Map::RefreshItemMultihex(ptr<Item> item)
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
 
     const auto hex = item->GetHex();
-    auto& field = _hexField->GetCellForWriting(hex);
+    ptr<Field> field = _hexField->GetCellForWriting(hex);
 
     RecacheHexFlags(field);
 
     if (item->HasMultihexEntries()) {
-        for (const auto multihex : item->GetMultihexEntries()) {
-            auto& multihex_field = _hexField->GetCellForWriting(multihex);
-            vec_remove_unique_value(multihex_field.Items, item);
+        auto multihex_entries_old = item->GetMultihexEntries().as_ptr();
+
+        for (const auto multihex : *multihex_entries_old) {
+            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
+            vec_remove_unique_value(multihex_field->Items, item);
             RecacheHexFlags(multihex_field);
         }
 
@@ -693,9 +695,9 @@ void Map::RefreshItemMultihex(ptr<Item> item)
         multihex_entries.reserve(multihex_lines.size() + multihex_mesh.size());
 
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
-            auto& multihex_field = _hexField->GetCellForWriting(multihex);
+            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
 
-            if (vec_safe_add_unique_value(multihex_field.Items, item)) {
+            if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                 RecacheHexFlags(multihex_field);
                 multihex_entries.emplace_back(multihex);
             }
@@ -703,9 +705,9 @@ void Map::RefreshItemMultihex(ptr<Item> item)
 
         for (const auto multihex : multihex_mesh) {
             if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
-                auto& multihex_field = _hexField->GetCellForWriting(multihex);
+                ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
 
-                if (vec_safe_add_unique_value(multihex_field.Items, item)) {
+                if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                     RecacheHexFlags(multihex_field);
                     multihex_entries.emplace_back(multihex);
                 }

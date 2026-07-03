@@ -149,8 +149,8 @@ inline auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& 
     else if (type.IsString) {
         const auto str_len = reader.Read<int32_t>();
         FO_VERIFY_AND_THROW(str_len >= 0, "Wire string length must be non-negative");
-        const auto* s = reader.ReadPtr<char>(str_len);
-        return storage.StoreString(string(s, str_len));
+        const nptr<char> s = reader.ReadPtr<char>(str_len);
+        return storage.StoreString(string(s.get(), str_len));
     }
     else if (type.IsHashedString) {
         const auto hash = reader.Read<hstring::hash_t>();
@@ -158,8 +158,8 @@ inline auto ReadRemoteCallSimple(MutableDataReader& reader, const BaseTypeDesc& 
     }
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
-        const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
-        return hooks.RawToRefType(type, {raw_data, raw_size});
+        const nptr<uint8_t> raw_data = reader.ReadPtr<uint8_t>(raw_size);
+        return hooks.RawToRefType(type, {raw_data.get(), raw_size});
     }
     else if (type.IsStruct) {
         uint8_t* buf = storage.StoreStructBytes(type.Size);
