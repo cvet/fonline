@@ -84,19 +84,17 @@ auto TextureAtlas::SpaceNode::FindPosition(isize32 size) -> nptr<SpaceNode>
     if (!Busy && Size.width >= size.width && Size.height >= size.height) {
         Busy = true;
 
-        ptr<SpaceNode> parent = this;
-
         if (Size.width == size.width && Size.height > size.height) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(parent, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
             Size.height = size.height;
         }
         else if (Size.height == size.height && Size.width > size.width) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(parent, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, Size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, Size.height}));
             Size.width = size.width;
         }
         else if (Size.width > size.width && Size.height > size.height) {
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(parent, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, size.height}));
-            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(parent, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x + size.width, Pos.y}, isize32 {Size.width - size.width, size.height}));
+            Children.emplace_back(SafeAlloc::MakeUnique<SpaceNode>(this, ipos32 {Pos.x, Pos.y + size.height}, isize32 {Size.width, Size.height - size.height}));
             Size.width = size.width;
             Size.height = size.height;
         }

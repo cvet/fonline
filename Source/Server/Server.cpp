@@ -290,8 +290,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
 
     WriteLog("Initialize script system");
 
-    ptr<EngineMetadata> meta = this;
-    MapScriptTypes(meta);
+    MapScriptTypes(this);
     MapEngineType<Player>(GetBaseType(Player::ENTITY_TYPE_NAME));
     MapEngineType<Item>(GetBaseType(Item::ENTITY_TYPE_NAME));
     MapEngineType<StaticItem>(GetBaseType("StaticItem"));
@@ -300,7 +299,7 @@ auto ServerEngine::InitScriptSystemJob() -> std::optional<timespan>
     MapEngineType<Location>(GetBaseType(Location::ENTITY_TYPE_NAME));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(meta, *Settings, Resources);
+    InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 
     return std::nullopt;
@@ -3597,8 +3596,7 @@ void ServerEngine::Process_Property(ptr<Player> player)
         nullable_prop = get_property(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), property_index);
 
         if (nullable_prop) {
-            ptr<ServerEngine> self = this;
-            nullable_entity = self;
+            nullable_entity = this;
         }
         break;
     case NetProperty::Player:

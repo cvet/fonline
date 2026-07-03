@@ -1422,12 +1422,11 @@ void ModelInstance::GenerateCombinedMeshes()
     _actualCombinedMeshesCount = 0;
 
     // Combine meshes recursively
-    ptr<const ModelInstance> instance = this;
-    FillCombinedMeshes(instance);
+    FillCombinedMeshes(this);
 
     // Cut
     _disableCulling = false;
-    CutCombinedMeshes(instance);
+    CutCombinedMeshes(this);
 
     // Finalize meshes
     for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {

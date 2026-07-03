@@ -211,17 +211,15 @@ void Player::SetViewMap(ptr<Map> map, mpos hex)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(!_controlledCr.load(std::memory_order_acquire), "Controlled cr is already set");
 
-    ptr<Player> self = this;
-
     if (_viewMapTarget != map) {
         if (_viewMapTarget) {
             auto view_map_target = _viewMapTarget.as_ptr();
-            view_map_target->RemoveSpectatorPlayer(self);
+            view_map_target->RemoveSpectatorPlayer(this);
         }
 
         _viewMapTarget = map;
         auto view_map_target = _viewMapTarget.as_ptr();
-        view_map_target->AddSpectatorPlayer(self);
+        view_map_target->AddSpectatorPlayer(this);
     }
 
     _viewMap.emplace(ViewMapContext {.MapId = map->GetId(), .Hex = hex});

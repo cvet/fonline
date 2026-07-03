@@ -545,8 +545,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     ResMngr.IndexFiles();
 
-    ptr<EngineMetadata> meta = this;
-    MapScriptTypes(meta);
+    MapScriptTypes(this);
     MapEngineType<PlayerView>(EngineMetadata::GetBaseType(PlayerView::ENTITY_TYPE_NAME));
     MapEngineType<ItemView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
     MapEngineType<ItemHexView>(EngineMetadata::GetBaseType(ItemView::ENTITY_TYPE_NAME));
@@ -556,7 +555,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(meta, *Settings, Resources);
+    InitAngelScriptScripting(this, *Settings, Resources);
 #endif
 
     _curLang = TextPack {&Hashes};

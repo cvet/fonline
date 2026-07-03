@@ -119,8 +119,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     auto&& system = SPK::SPKObject::copy(base_system);
     system->initialize();
 
-    ptr<ParticleManager> particle_mngr = this;
-    ParticleSystem particles {particle_mngr};
+    ParticleSystem particles {this};
     auto particles_impl = particles._impl.as_ptr();
     particles_impl->System = system;
     particles_impl->BaseSystem = base_system;

@@ -490,8 +490,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot place item on a hex outside map bounds", GetId(), item->GetId(), item->GetProtoId(), hex, _mapSize);
     EnsureEntitySynced(item);
-    ptr<Map> self = this;
-    auto map_holder = self.hold_ref();
+    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);
@@ -602,8 +601,7 @@ void Map::RemoveItem(ident_t item_id)
     FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
     ptr<Item> item = it->second;
     EnsureEntitySynced(item);
-    ptr<Map> self = this;
-    auto map_holder = self.hold_ref();
+    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);
@@ -697,8 +695,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
         FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
         FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item.get(), "Map item index returned a different item instance");
-        ptr<Map> self = this;
-        auto map_holder = self.hold_ref();
+        auto map_holder = refcount_ptr<Map>::from_add_ref(this);
         auto item_holder = item.hold_ref();
         ignore_unused(map_holder);
         ignore_unused(item_holder);
@@ -797,8 +794,7 @@ void Map::ChangeViewItem(ptr<Item> item)
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
     FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
     FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
-    ptr<Map> self = this;
-    auto map_holder = self.hold_ref();
+    auto map_holder = refcount_ptr<Map>::from_add_ref(this);
     auto item_holder = item.hold_ref();
     ignore_unused(map_holder);
     ignore_unused(item_holder);

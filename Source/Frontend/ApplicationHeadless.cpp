@@ -672,10 +672,7 @@ void AppWindow::Destroy()
         return;
     }
 
-    ptr<AppWindow> self = this;
-    ptr<AppWindow> main_window = &GetApp()->MainWindow;
-
-    if (_windowHandle && !(self == main_window)) {
+    if (_windowHandle && !(this == &GetApp()->MainWindow)) {
         auto window_handle = _windowHandle.as_ptr();
         ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
         std::erase_if(_app->_ctx->HeadlessWindowStubs, [window_stub](const auto& entry) { return ptr<const HeadlessWindowStub> {entry} == window_stub; });

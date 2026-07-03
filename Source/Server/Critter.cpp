@@ -559,8 +559,7 @@ void Critter::MoveAttachedCritters()
     }
 
     // Callbacks time
-    ptr<Critter> self = this;
-    auto this_ref_holder = self.hold_ref();
+    auto this_ref_holder = refcount_ptr<Critter>::from_add_ref(this);
     auto map_ref_holder = map;
     const auto dir = GetDir();
 
@@ -796,13 +795,12 @@ auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> 
         return false;
     }
 
-    ptr<Critter> self = this;
-    const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), self).second;
+    const auto inserted2 = cr->_visibleCrMap.emplace(GetId(), this).second;
     FO_STRONG_ASSERT(inserted2, "Visible critter graph asymmetry on add", GetId(), cr->GetId());
 
     cr->_visibleCrModes[GetId()] = mode;
     _visibleCrWhoSeeMe.emplace_back(cr);
-    cr->_visibleCr.emplace_back(self);
+    cr->_visibleCr.emplace_back(this);
 
     return true;
 }
@@ -1209,12 +1207,10 @@ void Critter::SendAndBroadcast_Moving()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    ptr<const Critter> self = this;
-
-    Send_Moving(self);
+    Send_Moving(this);
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Moving(self);
+        player->Send_Moving(this);
     }
 }
 
@@ -1224,12 +1220,10 @@ void Critter::SendAndBroadcast_Action(CritterAction action, int32_t action_data,
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    ptr<const Critter> self = this;
-
-    Send_Action(self, action, action_data, context_item);
+    Send_Action(this, action, action_data, context_item);
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Action(self, action, action_data, context_item);
+        player->Send_Action(this, action, action_data, context_item);
     }
 }
 
@@ -1239,12 +1233,10 @@ void Critter::SendAndBroadcast_MoveItem(nptr<const Item> item, CritterAction act
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
-    ptr<const Critter> self = this;
-
-    Send_MoveItem(self, item, action, prev_slot);
+    Send_MoveItem(this, item, action, prev_slot);
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_MoveItem(self, item, action, prev_slot);
+        player->Send_MoveItem(this, item, action, prev_slot);
     }
 }
 
@@ -1253,8 +1245,6 @@ void Critter::SendAndBroadcast_Attachments()
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-
-    ptr<const Critter> self = this;
 
     Send_Attachments(self);
 

@@ -86,10 +86,9 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     MapEngineType<MapView>(EngineMetadata::GetBaseType(MapView::ENTITY_TYPE_NAME));
     MapEngineType<LocationView>(EngineMetadata::GetBaseType(LocationView::ENTITY_TYPE_NAME));
 
-    ptr<EngineMetadata> meta = this;
-    MapScriptTypes(meta);
+    MapScriptTypes(this);
 #if FO_ANGELSCRIPT_SCRIPTING
-    InitAngelScriptScripting(meta, *settings, Resources);
+    InitAngelScriptScripting(this, *settings, Resources);
 #endif
 
     Hashes.SetResolveHashFailureHandler([this](hstring::hash_t hash) FO_DEFERRED { HandleUnresolvedHash(hash); });
@@ -1815,12 +1814,11 @@ void ClientEngine::Net_OnLoadMap()
         isize32 screen_size = {Settings->ScreenWidth, Settings->ScreenHeight};
         OnPreLoadMap.Fire(loc_pid, map_pid, screen_size);
 
-        ptr<ClientEngine> engine = this;
-        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(engine, loc_id, loc_proto);
+        _curLocation = SafeAlloc::MakeRefCounted<LocationView>(this, loc_id, loc_proto);
         auto location = GetCurLocation().as_ptr();
         location->RestoreData(_tempPropertiesDataExt);
 
-        _curMap = SafeAlloc::MakeRefCounted<MapView>(engine, map_id, map_proto, screen_size);
+        _curMap = SafeAlloc::MakeRefCounted<MapView>(this, map_id, map_proto, screen_size);
         auto map = GetCurMap().as_ptr();
         map->RestoreData(_tempPropertiesData);
         map->LoadStaticData();
@@ -2030,15 +2028,13 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
     auto registrator = nullable_registrator.as_ptr();
 
     refcount_ptr<CustomEntityView> entity = [&]() -> refcount_ptr<CustomEntityView> {
-        ptr<ClientEngine> engine = this;
-
         if (nullable_proto) {
             auto proto = nullable_proto.as_ptr();
 
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(engine, id, registrator, proto);
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntityView>(engine, id, registrator, nullptr, nullptr);
+        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
     }();
 
     entity->RestoreData(data);
