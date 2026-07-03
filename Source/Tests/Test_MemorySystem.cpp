@@ -24,7 +24,7 @@ TEST_CASE("MemorySystem")
 
     SECTION("MemCallocAndReallocPreservePrefix")
     {
-        nptr<uint32_t> nullable_allocated = cast_from_void<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
+        nptr<uint32_t> nullable_allocated = MemCalloc(3, sizeof(uint32_t)).cast<uint32_t>();
         REQUIRE(nullable_allocated);
         auto allocated = nullable_allocated.as_ptr();
         CHECK(allocated[0] == 0);
@@ -35,14 +35,14 @@ TEST_CASE("MemorySystem")
         allocated[1] = 22;
         allocated[2] = 33;
 
-        nptr<uint32_t> nullable_grown = cast_from_void<uint32_t*>(MemRealloc(allocated.get(), sizeof(uint32_t) * 5));
+        nptr<uint32_t> nullable_grown = MemRealloc(allocated, sizeof(uint32_t) * 5).cast<uint32_t>();
         REQUIRE(nullable_grown);
         auto grown = nullable_grown.as_ptr();
         CHECK(grown[0] == 11);
         CHECK(grown[1] == 22);
         CHECK(grown[2] == 33);
 
-        MemFree(grown.get());
+        MemFree(grown);
     }
 
     SECTION("SafeAllocConstructsObjectsAndZeroInitializedArrays")
