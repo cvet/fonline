@@ -1207,14 +1207,6 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	)
 
 
-def prepare_msi_toolset_workspace(env: Mapping[str, str]) -> None:
-	# Provision the wixl toolset used to build the Windows MSI installer (Wix pack) on the Linux
-	# package runner. Reuses the shared apt package-group installer (sudo/apt handling + idempotent
-	# marker) instead of an ad-hoc apt-get in the CI workflow.
-	workspace = Path(env['FO_WORKSPACE'])
-	install_linux_packages('msi-packages', workspace, check_only=False)
-
-
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	dotnet_root = workspace / 'dotnet'
@@ -1361,7 +1353,6 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'dotnet': lambda: build_dotnet_version(env),
 		'xwin': lambda: build_xwin_workspace_version(env),
 		'msan-libcxx': lambda: build_msan_libcxx_version(env),
-		'msi': lambda: LINUX_PACKAGE_GROUPS['msi-packages'][0],
 	}
 	part_actions = {
 		'toolset': prepare_toolset_workspace,
@@ -1371,7 +1362,6 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'dotnet': prepare_dotnet_workspace,
 		'xwin': prepare_xwin_workspace,
 		'msan-libcxx': prepare_msan_libcxx_workspace,
-		'msi': prepare_msi_toolset_workspace,
 	}
 
 	for part_name in parts:
@@ -1394,7 +1384,8 @@ LINUX_FEATURE_PACKAGE_GROUPS = {
 	'web-packages': ['web-packages'],
 	'android-packages': ['android-packages'],
 	'windows-cross-packages': ['windows-cross-packages'],
-	'all-packages': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages'],
+	'msi-packages': ['msi-packages'],
+	'all-packages': ['linux-packages', 'web-packages', 'android-packages', 'windows-cross-packages', 'msi-packages'],
 }
 
 HOST_FEATURE_WORKSPACE_PARTS = {
@@ -1407,8 +1398,7 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 		'dotnet': ['dotnet'],
 		'windows-cross': ['xwin'],
 		'msan-libcxx': ['msan-libcxx'],
-		'msi': ['msi'],
-		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msi'],
+		'all': ['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin'],
 	},
 	'windows': {
 		'toolset': ['toolset'],
@@ -2231,7 +2221,7 @@ def create_parser() -> argparse.ArgumentParser:
 	toolset_parser.add_argument('target')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx', 'msi'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
@@ -2257,6 +2247,7 @@ def create_parser() -> argparse.ArgumentParser:
 			'web-packages',
 			'android-packages',
 			'windows-cross-packages',
+			'msi-packages',
 			'all-packages',
 			'linux',
 			'web',
