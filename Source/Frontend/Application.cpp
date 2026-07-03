@@ -402,24 +402,25 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32_t additional_amount, int32_t total_amount) FO_DEFERRED {
                 nptr<Application> nullable_app = cast_from_void<Application*>(userdata);
                 FO_VERIFY_AND_THROW(nullable_app, "Audio stream callback received a null application pointer");
+                ptr<Application> app = nullable_app.as_ptr();
                 ignore_unused(total_amount);
 
                 if (additional_amount > 0) {
                     nptr<SDL_AudioStream> audio_stream = stream;
                     FO_VERIFY_AND_THROW(!!audio_stream, "Audio stream callback received a null stream");
 
-                    if (numeric_cast<size_t>(additional_amount) > GetApp()->_ctx->AudioStreamBuf.size()) {
-                        GetApp()->_ctx->AudioStreamBuf.resize(numeric_cast<size_t>(additional_amount) * 2);
+                    if (numeric_cast<size_t>(additional_amount) > app->_ctx->AudioStreamBuf.size()) {
+                        app->_ctx->AudioStreamBuf.resize(numeric_cast<size_t>(additional_amount) * 2);
                     }
 
-                    const auto silence = numeric_cast<uint8_t>(SDL_GetSilenceValueForFormat(GetApp()->_ctx->AudioSpec.format));
-                    auto audio_stream_data = GetApp()->_ctx->AudioStreamBuf.data();
+                    const auto silence = numeric_cast<uint8_t>(SDL_GetSilenceValueForFormat(app->_ctx->AudioSpec.format));
+                    auto audio_stream_data = app->_ctx->AudioStreamBuf.data();
 
                     MemFill(audio_stream_data, silence, numeric_cast<size_t>(additional_amount));
 
-                    if (GetApp()->_ctx->AudioStreamWriter) {
+                    if (app->_ctx->AudioStreamWriter) {
                         span<uint8_t> audio_stream_span = {audio_stream_data, numeric_cast<size_t>(additional_amount)};
-                        GetApp()->_ctx->AudioStreamWriter(silence, audio_stream_span);
+                        app->_ctx->AudioStreamWriter(silence, audio_stream_span);
                     }
 
                     SDL_PutAudioStreamData(audio_stream.get(), audio_stream_data, additional_amount);
