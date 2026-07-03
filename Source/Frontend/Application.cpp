@@ -431,8 +431,6 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 
             if (nullable_audio_stream) {
                 auto audio_stream = make_unique_del_ptr(nullable_audio_stream.as_ptr(), [](SDL_AudioStream* raw_audio_stream) {
-                    FO_NO_STACK_TRACE_ENTRY();
-
                     if (raw_audio_stream != nullptr) {
                         ptr<SDL_AudioStream> audio_stream = raw_audio_stream;
                         SDL_DestroyAudioStream(audio_stream.get());
