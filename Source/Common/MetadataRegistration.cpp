@@ -35,19 +35,19 @@
 
 FO_BEGIN_NAMESPACE
 
-static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataValueTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
-static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEntities(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataFixedTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataValueTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataRefTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 
-void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_bin)
+void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -60,7 +60,7 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_
         ignore_unused(i);
 
         const auto section_name_size = reader.Read<uint16_t>();
-        string_view section_name = {reader.ReadPtr<char>(section_name_size), section_name_size};
+        const string_view section_name = reader.ReadStringView(section_name_size);
 
         const auto entries_count = reader.Read<uint32_t>();
         vector<vector<string_view>> entries;
@@ -76,7 +76,7 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_
                 ignore_unused(k);
 
                 const auto token_size = reader.Read<uint16_t>();
-                string_view token = {reader.ReadPtr<char>(token_size), token_size};
+                const string_view token = reader.ReadStringView(token_size);
 
                 cur_entry.emplace_back(token);
             }
@@ -100,7 +100,7 @@ void RegisterDynamicMetadata(EngineMetadata* meta, const_span<uint8_t> metadata_
     RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
 }
 
-static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -132,7 +132,7 @@ static void RegisterDynamicMetadataEnums(EngineMetadata* meta, const vector<vect
     }
 }
 
-static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataEntities(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -149,7 +149,7 @@ static void RegisterDynamicMetadataEntities(EngineMetadata* meta, const vector<v
     }
 }
 
-static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataEntityHolders(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -169,8 +169,8 @@ static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vec
             meta->RegsiterEntityHolderEntry(holder_entity, target_entity, entry, sync, has_persistent);
         }
         else {
-            auto* prop_registrator = meta->GetPropertyRegistratorForEdit(holder_entity);
-            const auto* prop = has_persistent ? //
+            auto prop_registrator = meta->GetPropertyRegistratorForEdit(holder_entity);
+            ptr<const Property> prop = has_persistent ? //
                 prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
                 prop_registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
             meta->RegisterEnumEntry(strex("{}Property", holder_entity), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
@@ -178,7 +178,7 @@ static void RegisterDynamicMetadataEntityHolders(EngineMetadata* meta, const vec
     }
 }
 
-static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataFixedTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -189,7 +189,7 @@ static void RegisterDynamicMetadataFixedTypes(EngineMetadata* meta, const vector
     }
 }
 
-static void RegisterDynamicMetadataValueTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataValueTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -211,7 +211,7 @@ static void RegisterDynamicMetadataValueTypes(EngineMetadata* meta, const vector
     }
 }
 
-static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataRefTypes(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -261,23 +261,23 @@ static void RegisterDynamicMetadataRefTypes(EngineMetadata* meta, const vector<v
     }
 }
 
-static void RegisterDynamicMetadataProperties(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataProperties(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
         FO_VERIFY_AND_THROW(tokens.size() >= 4, "Property metadata record is missing entity name or property declaration tokens", tokens.size());
         const auto entity_name = tokens[0];
-        auto* prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
+        auto prop_registrator = meta->GetPropertyRegistratorForEdit(entity_name);
         const auto prop_tokens = span(tokens).subspan(1);
 
-        const auto* prop = prop_registrator->RegisterProperty(prop_tokens);
-        const auto prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()) : prop->GetName();
+        auto prop = prop_registrator->RegisterProperty(prop_tokens);
+        const string prop_enum_name = prop->IsInComponent() ? strex("{}_{}", prop->GetComponentName(), prop->GetNameWithoutComponent()).str() : string {prop->GetName()};
         meta->RegisterEnumEntry(strex("{}Property", entity_name), prop_enum_name, numeric_cast<int32_t>(prop->GetRegIndex()));
     }
 }
 
-static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -299,7 +299,7 @@ static void RegisterDynamicMetadataEvents(EngineMetadata* meta, const vector<vec
     }
 }
 
-static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -327,7 +327,7 @@ static void RegisterDynamicMetadataRemoteCalls(EngineMetadata* meta, const vecto
     }
 }
 
-static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -340,7 +340,7 @@ static void RegisterDynamicMetadataSettings(EngineMetadata* meta, const vector<v
     }
 }
 
-static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const vector<vector<string_view>>& engine_data)
+static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -351,11 +351,9 @@ static void RegisterDynamicMetadataMigrationRules(EngineMetadata* meta, const ve
     }
 }
 
-auto ReadMetadataBin(const FileSystem* resources, string_view target) -> vector<uint8_t>
+auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(resources, "Missing required resources");
 
     const string target_lower = strex(target).lower();
 

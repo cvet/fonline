@@ -38,6 +38,7 @@ class MethodArg:
     name: str
     nullable: bool = False
     default_value: str | None = None
+    wrapper: bool = False
 
 
 @dataclass(slots=True)
@@ -128,6 +129,10 @@ class ExportMethodTag:
     flags: list[str]
     comment: CommentLines
     ret_nullable: bool = False
+    # ptr<T> / nptr<T> wrapper spellings for the return value and the engine/entity
+    # receiver (the skipped first parameter). C++-glue detail, not part of the script hash.
+    ret_wrapper: bool = False
+    receiver_wrapper: bool = False
 
 
 @dataclass(slots=True)
@@ -827,6 +832,23 @@ def resolve_property_targets(entity: str, property_flags: list[str], game_entiti
     return [entity]
 
 
+def strip_pointer_wrapper(type_text: str) -> tuple[str, bool, bool]:
+    # Recognize ptr<T> / nptr<T> script-ABI wrapper spellings and reduce them to the raw
+    # `T*` form the meta-type parser understands. Returns (raw_type_text, is_wrapper, is_nullable).
+    type_text = type_text.strip()
+    # Strip leading C++ attributes such as [[maybe_unused]] (used on ignored receivers).
+    while type_text.startswith('[['):
+        attr_end = type_text.find(']]')
+        if attr_end == -1:
+            break
+        type_text = type_text[attr_end + 2:].strip()
+    for prefix, nullable in (('nptr<', True), ('ptr<', False)):
+        if type_text.startswith(prefix) and type_text.endswith('>'):
+            inner = type_text[len(prefix):-1].strip()
+            return inner + '*', True, nullable
+    return type_text, False, False
+
+
 def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: bool = False) -> list[MethodArg]:
     result_args: list[MethodArg] = []
     raw_args = split_engine_args(args_text)
@@ -842,17 +864,16 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
             has_default_arg = True
         else:
             assert not has_default_arg, 'Default argument is followed by non-default argument: ' + arg
-        nullable = False
-        if arg.startswith('FO_NULLABLE'):
-            nullable = True
-            arg = arg[len('FO_NULLABLE'):].lstrip()
         separator = arg.rfind(' ')
         assert separator != -1, 'Invalid argument declaration: ' + arg
-        arg_type = engine_type_to_meta_type(arg[:separator].rstrip(), valid_types)
+        type_text, wrapper, wrapper_nullable = strip_pointer_wrapper(arg[:separator].rstrip())
+        arg_type = engine_type_to_meta_type(type_text, valid_types)
+        # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
+        nullable = wrapper_nullable if wrapper else is_validated_pointer_meta_type(arg_type)
         default_value = normalize_default_arg_value(raw_default_value, arg_type) if raw_default_value is not None else None
         arg_name = arg[separator + 1:]
         assert arg_name, 'Argument name is empty: ' + arg
-        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable, default_value=default_value))
+        result_args.append(MethodArg(arg_type, arg_name, nullable=nullable, default_value=default_value, wrapper=wrapper))
     return result_args
 
 
@@ -866,11 +887,10 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
     return_tokens = line_tokens[1:function_token_index - 1]
-    ret_nullable = False
-    if return_tokens and return_tokens[0] == 'FO_NULLABLE':
-        ret_nullable = True
-        return_tokens = return_tokens[1:]
-    ret = engine_type_to_meta_type(''.join(return_tokens), valid_types)
+    ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(''.join(return_tokens))
+    ret = engine_type_to_meta_type(ret_type_text, valid_types)
+    # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
+    ret_nullable = ret_wrapper_nullable if ret_wrapper else is_validated_pointer_meta_type(ret)
 
     function_tokens = function_name.split('_', 2)
     assert len(function_tokens) == 3, function_name
@@ -880,7 +900,16 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     entity = function_tokens[1]
     assert entity in game_entities + ['Entity'], entity
     name = function_tokens[2]
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable
+
+    # The first parameter (engine/entity receiver) is skipped by parse_method_args, so detect its
+    # ptr<T> wrapper spelling here for the generated extern declaration / function-pointer cast.
+    receiver_wrapper = False
+    receiver_args = split_engine_args(function_args)
+    if receiver_args:
+        first_arg = receiver_args[0].rsplit(' ', 1)[0] if ' ' in receiver_args[0] else receiver_args[0]
+        _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
+
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, receiver_wrapper
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -907,11 +936,10 @@ def parse_export_event_signature(tag_context: str, valid_types: set[str]) -> tup
                 arg = arg.strip()
                 separator = arg.find('/')
                 type_part = arg[:separator - 1].rstrip()
-                nullable = False
-                if type_part.startswith('FO_NULLABLE'):
-                    nullable = True
-                    type_part = type_part[len('FO_NULLABLE'):].lstrip()
+                type_part, _wrapper, wrapper_nullable = strip_pointer_wrapper(type_part)
                 arg_type = engine_type_to_meta_type(type_part, valid_types)
+                # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
+                nullable = wrapper_nullable if _wrapper else is_validated_pointer_meta_type(arg_type)
                 arg_name = arg[separator + 2:-2]
                 event_args.append(MethodArg(arg_type, arg_name, nullable=nullable))
 
@@ -1113,6 +1141,11 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str]) -> str:
         'float32_t': 'float32', 'float64_t': 'float64', 'bool': 'bool', 'void': 'void',
         'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
+    # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
+    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
+    for prefix in ('ptr<', 'nptr<'):
+        if engine_type.startswith(prefix) and engine_type.endswith('>'):
+            return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types)
     if engine_type.startswith('ScriptFunc<'):
         function_args = split_engine_args(engine_type[engine_type.find('<') + 1:engine_type.rfind('>')])
         return 'callback(' + ','.join([engine_type_to_unified_type(arg.strip(), valid_types) for arg in function_args]) + ')'
@@ -1420,10 +1453,14 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args, ret_nullable = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable))
-            hash_recursive(compatibility_hasher, (target, entity, name, ret, result_args, export_flags, ret_nullable))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, receiver_wrapper=receiver_wrapper))
+            # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
+            # detail (nullability is already carried by `nullable`), so it must not change the
+            # client/server compatibility hash when a raw signature is converted to a wrapper.
+            hashable_args = [(a.arg_type, a.name, a.nullable, a.default_value) for a in result_args]
+            hash_recursive(compatibility_hasher, (target, entity, name, ret, hashable_args, export_flags, ret_nullable))
 
         except Exception as ex:
             show_error('Invalid tag ExportMethod', abs_path + ' (' + str(line_index + 1) + ')', tag_context, ex)
@@ -1717,6 +1754,17 @@ def make_arg_desc_initializer(arg: MethodArg, type_expr: str) -> str:
     return '{' + cpp_string_literal(arg.name) + ', ' + type_expr + ', ' + cpp_bool(arg.nullable) + ', ' + cpp_string_literal(arg.default_value or '') + '}'
 
 
+def apply_pointer_wrapper(engine_type: str, wrapper: bool, nullable: bool) -> str:
+    # Re-spell a raw pointer engine type as the ptr<T> / nptr<T> wrapper when the source
+    # signature used one. Keeps the generated extern declaration and function-pointer cast
+    # byte-identical to the hand-written FO_SCRIPT_API definition.
+    if not wrapper:
+        return engine_type
+    assert engine_type.endswith('*'), 'ptr/nptr wrapper requires a pointer engine type: ' + engine_type
+    inner = engine_type[:-1].rstrip()
+    return ('nptr<' if nullable else 'ptr<') + inner + '>'
+
+
 def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, target: str) -> MethodRegistrationInfo:
     is_generic = method_tag.entity == 'Entity'
     entity_info = game_entities_info[entity]
@@ -1732,8 +1780,8 @@ def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, t
             engine_entity_type_extern = 'MapperEngine*'
     return MethodRegistrationInfo(
         function_name=method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name,
-        engine_entity_type_extern=engine_entity_type_extern,
-        return_type=meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'),
+        engine_entity_type_extern=apply_pointer_wrapper(engine_entity_type_extern, method_tag.receiver_wrapper, False),
+        return_type=apply_pointer_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'), method_tag.ret_wrapper, method_tag.ret_nullable),
     )
 
 
@@ -1844,10 +1892,10 @@ def generate_generic_code() -> None:
         global_lines.append('void ApplicationShutdownHook() { /* Stub */ }')
     if not is_engine_hook_enabled('ServerInitHook'):
         global_lines.append('class ServerEngine;')
-        global_lines.append('void ServerInitHook(ServerEngine*) { /* Stub */ }')
+        global_lines.append('void ServerInitHook(ptr<ServerEngine>) { /* Stub */ }')
     if not is_engine_hook_enabled('ClientInitHook'):
         global_lines.append('class ClientEngine;')
-        global_lines.append('void ClientInitHook(ClientEngine*) { /* Stub */ }')
+        global_lines.append('void ClientInitHook(ptr<ClientEngine>) { /* Stub */ }')
     if not is_engine_hook_enabled('ClientStartupSettingsHook'):
         global_lines.append('struct GlobalSettings;')
         global_lines.append('void ClientStartupSettingsHook(GlobalSettings&, int32_t, bool) { /* Stub */ }')
@@ -1863,13 +1911,13 @@ def generate_generic_code() -> None:
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
-        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Critter*) { return CritterVisibilityMode::Full; }')
+        global_lines.append('CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>) { return CritterVisibilityMode::Full; }')
     if not is_engine_hook_enabled('CheckItemVisibilityHook'):
         global_lines.append('class ServerEngine;')
         global_lines.append('class Map;')
         global_lines.append('class Critter;')
         global_lines.append('class Item;')
-        global_lines.append('bool CheckItemVisibilityHook(const ServerEngine*, const Map*, const Critter*, const Item*) { return true; }')
+        global_lines.append('bool CheckItemVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Item>) { return true; }')
     global_lines.append('')
     
     # Engine properties
@@ -2005,7 +2053,7 @@ def append_enum_registration(helper_lines: list[str], register_lines: list[str])
         body_lines.append('});')
 
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
-        register_lines.append(function_name + '(meta);')
+        register_lines.append(function_name + '(meta.get_no_const());')
 
     if codegen_tags['ExportEnum']:
         register_lines.append('')
@@ -2061,7 +2109,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
         body_lines.append('')
 
     append_static_function(helper_lines, 'static void RegisterValueTypes(EngineMetadata* meta)', body_lines)
-    register_lines.append('RegisterValueTypes(meta);')
+    register_lines.append('RegisterValueTypes(meta.get_no_const());')
     register_lines.append('')
 
 
@@ -2101,7 +2149,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
         body_lines.append('});')
 
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
-        register_lines.append(function_name + '(meta);')
+        register_lines.append(function_name + '(meta.get_no_const());')
 
     if any(ref_type_tag.target in allowed_targets for ref_type_tag in codegen_tags['ExportRefType']):
         register_lines.append('')
@@ -2119,7 +2167,7 @@ def append_entity_type_registration(register_lines: list[str], target: str) -> N
                 cpp_bool(entity_info.is_global) + ', ' +
                 cpp_bool(entity_info.has_protos) + ', ' +
                 cpp_bool(entity_info.has_statics) + ', ' +
-                cpp_bool(entity_info.has_abstract) + ');')
+                cpp_bool(entity_info.has_abstract) + ').get_no_const();')
     register_lines.append('')
 
 
@@ -2174,7 +2222,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
             registration_info = resolve_method_registration_info(entity, method_tag, target)
             if not is_stub:
                 extern_lines.append('extern ' + registration_info.return_type + ' ' + registration_info.function_name + '(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ');')
+                    ', '.join([apply_pointer_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity'), p.wrapper, p.nullable) for p in method_tag.args]) + ');')
 
             resolved_args = ', '.join(make_arg_desc_initializer(p, 'meta->ResolveComplexType("' + meta_type_to_unified_type(p.arg_type, self_entity=entity) + '")') for p in method_tag.args)
             method_body_lines = ['methods.emplace_back(MethodDesc{ .Name = "' + method_tag.name + '", ' +
@@ -2190,7 +2238,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                         continue
                     method_body_lines.append('    NativeDataProvider::CheckArgNotNull(call, ' + str(arg_index + 1) + ', "' + method_tag.name + '", "' + p.name + '", "' + p.arg_type + '");')
                 method_body_lines.append('    NativeDataCaller::NativeCall<static_cast<' + registration_info.return_type + '(*)(' + registration_info.engine_entity_type_extern + (', ' if method_tag.args else '') +
-                    ', '.join([meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity') for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
+                    ', '.join([apply_pointer_wrapper(meta_type_to_engine_type(p.arg_type, method_tag.target, True, self_entity='Entity'), p.wrapper, p.nullable) for p in method_tag.args]) + ')>(&' + registration_info.function_name + ')>(call);')
                 if not method_tag.ret_nullable and method_tag.ret != 'void' and is_validated_pointer_meta_type(method_tag.ret):
                     method_body_lines.append('    NativeDataProvider::CheckReturnNotNull(call, "' + method_tag.name + '", "' + method_tag.ret + '");')
             else:
@@ -2224,7 +2272,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
         body_lines.append('meta->RegisterEntityMethods("' + entity + '", std::move(methods));')
         function_name = make_unique_cpp_identifier(used_names, 'RegisterMethods_', entity)
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
-        register_lines.append(function_name + '(meta);')
+        register_lines.append(function_name + '(meta.get_no_const());')
 
     register_lines.append('')
 
@@ -2247,7 +2295,7 @@ def append_event_registration(helper_lines: list[str], register_lines: list[str]
 
         function_name = make_unique_cpp_identifier(used_names, 'RegisterEvents_', entity)
         append_static_function(helper_lines, 'static void ' + function_name + '(EngineMetadata* meta)', body_lines)
-        register_lines.append(function_name + '(meta);')
+        register_lines.append(function_name + '(meta.get_no_const());')
 
     register_lines.append('')
 
@@ -2273,7 +2321,7 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
     body_lines.append('});')
 
     append_static_function(helper_lines, 'static void RegisterMigrationRulesSection(EngineMetadata* meta)', body_lines)
-    register_lines.append('RegisterMigrationRulesSection(meta);')
+    register_lines.append('RegisterMigrationRulesSection(meta.get_no_const());')
     register_lines.append('')
 
 

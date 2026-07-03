@@ -89,7 +89,7 @@ void MovingContext::EvaluateSegment(uint16_t control_step_begin, uint16_t contro
 
     for (uint16_t j = control_step_begin; j < control_step_end; j++) {
         const auto move_ok = GeometryHelper::MoveHexByDir(segment_end_hex, _steps[j], _mapSize);
-        FO_VERIFY_AND_THROW(move_ok, "Missing required move ok");
+        FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
     }
 
     auto&& [ox, oy] = GeometryHelper::GetHexOffset(segment_start_hex, segment_end_hex);
@@ -143,7 +143,7 @@ auto MovingContext::EvaluateRawProgress(float32_t elapsed_time_ms) const -> Movi
 
             for (int32_t j = control_step_begin; j < step_index; j++) {
                 const auto move_ok = GeometryHelper::MoveHexByDir(current_hex, _steps[j], _mapSize);
-                FO_VERIFY_AND_THROW(move_ok, "Missing required move ok");
+                FO_VERIFY_AND_THROW(move_ok, "Hex step moved past the map edge");
             }
 
             raw_progress.Hex = current_hex;

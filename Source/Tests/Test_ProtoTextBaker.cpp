@@ -43,7 +43,7 @@ static auto LoadOutputTextPack(const BakerTests::TestRig& rig, string_view path,
     const auto it = rig.Outputs.find(string(path));
     REQUIRE(it != rig.Outputs.end());
 
-    TextPack pack(hashes);
+    TextPack pack(&hashes);
     REQUIRE(pack.LoadFromBinaryData(it->second));
     return pack;
 }

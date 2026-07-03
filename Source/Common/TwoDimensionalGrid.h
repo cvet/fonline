@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> TSize { return _size; }
     [[nodiscard]] virtual auto GetCellForReading(TPos pos) const noexcept -> const TCell& = 0;
-    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> TCell& = 0;
+    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> ptr<TCell> = 0;
 
     virtual void Resize(TSize size) = 0;
 
@@ -106,7 +106,7 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
@@ -124,10 +124,10 @@ public:
         const auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
-            return _cells.emplace(pos, TCell {}).first->second;
+            return &(_cells.emplace(pos, TCell {}).first->second);
         }
         else {
-            return it->second;
+            return &it->second;
         }
     }
 
@@ -199,7 +199,7 @@ public:
         return *cell;
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
@@ -209,10 +209,10 @@ public:
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
-            cell = SafeAlloc::MakeUnique<TCell>();
+            cell.emplace();
         }
 
-        return *cell;
+        return &*cell;
     }
 
     void Resize(TSize size) override
@@ -227,7 +227,7 @@ public:
 
         base::_size = size;
 
-        vector<unique_ptr<TCell>> new_cells;
+        vector<optional<TCell>> new_cells;
         const auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
         new_cells.resize(new_count);
 
@@ -245,7 +245,7 @@ public:
     }
 
 private:
-    vector<unique_ptr<TCell>> _preallocatedCells {};
+    vector<optional<TCell>> _preallocatedCells {};
     const TCell _emptyCell {};
 };
 

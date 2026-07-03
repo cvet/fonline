@@ -49,7 +49,7 @@ class Location final : public ServerEntity, public EntityWithProto, public Locat
 {
 public:
     Location() = delete;
-    Location(ServerEngine* engine, ident_t id, const ProtoLocation* proto, const Properties* props = nullptr) noexcept;
+    Location(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoLocation> proto, nptr<const Properties> props = nullptr) noexcept;
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
@@ -57,25 +57,26 @@ public:
     ~Location() override;
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
-    [[nodiscard]] auto GetProtoLoc() const noexcept -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoLoc() const noexcept -> ptr<const ProtoLocation>;
     [[nodiscard]] auto HasMaps() const -> bool;
-    [[nodiscard]] auto GetMaps() const -> vector<const Map*>;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetMaps() const -> vector<ptr<const Map>>;
+    [[nodiscard]] auto GetMaps() -> vector<ptr<Map>>;
     [[nodiscard]] auto GetRawMaps() noexcept -> vector<refcount_ptr<Map>>&;
-    [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> Map*;
+    [[nodiscard]] auto GetMapByIndex(int32_t index) noexcept -> nptr<Map>;
     [[nodiscard]] auto GetMapsCount() const -> size_t;
-    [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid) noexcept -> nptr<Map>;
     [[nodiscard]] auto GetMapIndex(hstring map_pid) const -> size_t;
 
-    void AddMap(Map* map);
-    void RemoveMap(Map* map);
+    void RestoreMap(ptr<Map> map);
+    void AddMap(ptr<Map> map);
+    void RemoveMap(ptr<Map> map);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapAdded, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapAdded, ptr<Map> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapRemoved, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapRemoved, ptr<Map> /*map*/);
 
 private:
     vector<refcount_ptr<Map>> _locMaps {};

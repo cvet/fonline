@@ -47,11 +47,19 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
+    template<typename T>
+    [[nodiscard]] auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return const_cast<T*>(&setting);
+    }
+
     class TestDataBase final : public DataBaseImpl
     {
     public:
         explicit TestDataBase(DataBaseSettings& db_settings, DataBaseStringKeyEscaping string_key_escaping = DataBaseStringKeyEscaping::Raw) :
-            DataBaseImpl(db_settings, nullptr),
+            DataBaseImpl(SettingsPtr(db_settings), nullptr),
             _stringKeyEscaping {string_key_escaping}
         {
             // _hashes (member) must outlive _collectionKeyTypes/_collectionNames in the base class,
@@ -323,6 +331,13 @@ namespace
         }
 
     private:
+        static auto SettingsPtr(DataBaseSettings& settings) noexcept -> ptr<DataBaseSettings>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &settings;
+        }
+
         HashStorage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
         mutable mutex _collectionsLocker {};
@@ -377,9 +392,9 @@ namespace
             std::filesystem::remove_all(_dir, ec);
         }
 
-        [[nodiscard]] auto Dir() const -> const std::filesystem::path& { return _dir; }
-        [[nodiscard]] auto PendingPath() const -> const string& { return _pendingPath; }
-        [[nodiscard]] auto CommittedPath() const -> const string& { return _committedPath; }
+        [[nodiscard]] auto Dir() const -> ptr<const std::filesystem::path> { return &_dir; }
+        [[nodiscard]] auto PendingPath() const -> string_view { return _pendingPath; }
+        [[nodiscard]] auto CommittedPath() const -> string_view { return _committedPath; }
 
     private:
         std::filesystem::path _dir {};
@@ -408,11 +423,11 @@ namespace
 
     void ConfigureRecoverySettings(GlobalSettings& settings, string_view oplog_path)
     {
-        const_cast<bool&>(settings.OpLogEnabled) = true;
-        const_cast<string&>(settings.OpLogPath) = string(oplog_path);
-        const_cast<int32_t&>(settings.ReconnectRetryPeriod) = 20;
-        const_cast<int32_t&>(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
-        const_cast<int32_t&>(settings.PanicShutdownTimeout) = 1;
+        *FixedSettingForOverride(settings.OpLogEnabled) = true;
+        *FixedSettingForOverride(settings.OpLogPath) = string(oplog_path);
+        *FixedSettingForOverride(settings.ReconnectRetryPeriod) = 20;
+        *FixedSettingForOverride(settings.PanicOpLogSizeThreshold) = 1024 * 1024;
+        *FixedSettingForOverride(settings.PanicShutdownTimeout) = 1;
     }
 
     void WriteRecoveryLogs(const ScopedRecoveryLogs& recovery_logs, string_view pending_content, string_view committed_content = {})
@@ -779,7 +794,7 @@ TEST_CASE("DataBaseRestorePendingDeleteIsIdempotent")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-delete"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "delete test_collection 1001\n");
 
@@ -800,7 +815,7 @@ TEST_CASE("DataBaseRestorePendingInsertSkipsEqualDocument")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-insert-same"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
@@ -826,7 +841,7 @@ TEST_CASE("DataBaseRestorePendingInsertDetectsConflict")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-insert-conflict"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection 1001 {\"value\":1}\n");
 
@@ -846,7 +861,7 @@ TEST_CASE("DataBaseRestorePendingUpdateSkipsAlreadyAppliedPatch")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-update-same"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":1}\n");
 
@@ -873,7 +888,7 @@ TEST_CASE("DataBaseRestorePendingUpdateAppliesPatch")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"restore-update-apply"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "update test_collection 1001 {\"value\":3,\"added\":9}\n");
 
@@ -900,7 +915,7 @@ TEST_CASE("DataBaseRestorePendingRejectsInvalidUtf8StringKey")
 {
     GlobalSettings settings {false};
     ScopedRecoveryLogs recovery_logs {"restore-invalid-utf8-string-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
 
     string pending_content = "insert test_string_collection ";
@@ -918,7 +933,7 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsUnknownCommand")
 {
     GlobalSettings settings {false};
     ScopedRecoveryLogs recovery_logs {"oplog-unknown-command"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "upsert test_collection 1001 {\"value\":1}\n");
 
@@ -932,7 +947,7 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidNumericKey")
 {
     GlobalSettings settings {false};
     ScopedRecoveryLogs recovery_logs {"oplog-invalid-numeric-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_collection invalid-id {\"value\":1}\n");
 
@@ -946,7 +961,7 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidEscapedFileStringKey")
 {
     GlobalSettings settings {false};
     ScopedRecoveryLogs recovery_logs {"oplog-invalid-file-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_string_collection bad%zz {\"value\":1}\n");
 
@@ -960,7 +975,7 @@ TEST_CASE("DataBaseInitializeOpLogsRejectsInvalidHexStringKey")
 {
     GlobalSettings settings {false};
     ScopedRecoveryLogs recovery_logs {"oplog-invalid-hex-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     WriteRecoveryLogs(recovery_logs, "insert test_string_collection s_1 {\"value\":1}\n");
 
@@ -975,7 +990,7 @@ TEST_CASE("DataBaseWaitCommitChangesReturnsAfterSpillToOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"stop-after-spill"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_collection");
 
@@ -1054,10 +1069,10 @@ TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
     ScopedRecoveryLogs recovery_logs {"json-string-ids"};
     const auto collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    const auto connection_info = strex("JSON {}", fs_path_to_string(recovery_logs.Dir())).str();
+    const auto connection_info = strex("JSON {}", fs_path_to_string(*recovery_logs.Dir())).str();
     const DataBaseKey record_id {string("steam% user/Привет")};
 
-    auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.StartCommitChanges();
@@ -1080,7 +1095,7 @@ TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
         {string_collection, DataBaseKeyType::String},
     };
 
-    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
 
     REQUIRE_THROWS_AS(db.GetAllIntIds(string_collection), DataBaseException);
     REQUIRE_THROWS_AS(db.GetAllStringIds(int_collection), DataBaseException);
@@ -1121,7 +1136,7 @@ TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
     ScopedRecoveryLogs recovery_logs {"json-invalid-escaped-string-id"};
     const auto collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::String}};
-    const auto storage_root = fs_path_to_string(recovery_logs.Dir());
+    const auto storage_root = fs_path_to_string(*recovery_logs.Dir());
     const auto collection_dir = strex("{}/{}", storage_root, collection).str();
     const auto bad_doc_path = strex("{}/bad%zz.json", collection_dir).str();
     const auto connection_info = strex("JSON {}", storage_root).str();
@@ -1129,7 +1144,7 @@ TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
     REQUIRE(fs_create_directories(collection_dir));
     REQUIRE(fs_write_file(bad_doc_path, "{\"value\":1}"));
 
-    auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
     REQUIRE_THROWS_AS(db.GetAllStringIds(collection), DataBaseException);
 }
@@ -1215,7 +1230,7 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_collection");
     const auto record_id = ident_t {1001};
@@ -1247,7 +1262,7 @@ TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-string-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_string_collection");
     const DataBaseKey record_id {string("steam:user-123")};
@@ -1279,7 +1294,7 @@ TEST_CASE("DataBaseReconnectRestoresRelaxedStringKeysFromOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-relaxed-string-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_string_collection");
     const DataBaseKey record_id {string("steam% user\n123")};
@@ -1315,7 +1330,7 @@ TEST_CASE("DataBaseReconnectRestoresFileStringKeysFromOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-file-string-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_string_collection");
     const DataBaseKey record_id {string("steam% user/123")};
@@ -1352,7 +1367,7 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs recovery_logs {"reconnect-restore-hex-string-key"};
-    ScopedCurrentPath current_path {recovery_logs.Dir()};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
     ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
     const auto collection = hashes.ToHashedString("test_string_collection");
     const DataBaseKey record_id {string("steam%:user-123")};
@@ -1389,13 +1404,13 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-roundtrip"};
-    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     const auto collection = hashes.ToHashedString("test_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    const_cast<int32_t&>(settings.JsonIndent) = 2;
-    auto db = ConnectToDataBase(settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
+    *FixedSettingForOverride(settings.JsonIndent) = 2;
+    auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
@@ -1414,7 +1429,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(first_doc["value"].AsInt64() == 1);
     CHECK(first_doc["other"].AsInt64() == 7);
 
-    const auto json_content = fs_read_file(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
+    const auto json_content = fs_read_file(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
     REQUIRE(json_content.has_value());
     CHECK(json_content->find("\n  \"value\"") != string::npos);
 
@@ -1431,7 +1446,7 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    CHECK_FALSE(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
+    CHECK_FALSE(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
 }
 
 TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
@@ -1439,13 +1454,13 @@ TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"json-errors"};
-    const auto storage_dir = storage_dir_scope.Dir() / "storage";
+    const auto storage_dir = *storage_dir_scope.Dir() / "storage";
     const auto collection_dir = storage_dir / "test_collection";
     const auto collection = hashes.ToHashedString("test_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     std::filesystem::create_directories(collection_dir);
 
-    auto db = ConnectToDataBase(settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, strex("JSON {}", fs_path_to_string(storage_dir)).str(), collection_schemas, {});
 
     REQUIRE(fs_write_file(fs_path_to_string(collection_dir / "0.json"), "{}"));
     REQUIRE_THROWS_AS(db.GetAllIds(collection), DataBaseException);
@@ -1463,7 +1478,7 @@ TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1511,11 +1526,11 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto record_id = ident_t {1001};
 
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Unknown", collection_schemas, {}), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "JSON", collection_schemas, {}), DataBaseException);
-    REQUIRE_THROWS_AS(ConnectToDataBase(settings, "Memory extra", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "Unknown", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "JSON", collection_schemas, {}), DataBaseException);
+    REQUIRE_THROWS_AS(ConnectToDataBase(&settings, "Memory extra", collection_schemas, {}), DataBaseException);
 
-    auto db = ConnectToDataBase(settings, "Memory", collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, "Memory", collection_schemas, {});
     db.StartCommitChanges();
     db.Insert(collection, record_id, MakeDoc({{"value", 1}}));
     db.WaitCommitChanges();
@@ -1532,12 +1547,12 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-roundtrip"};
-    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     const auto collection = hashes.ToHashedString("test_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
-    auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+    auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
 
     CHECK(db.InValidState());
     CHECK(db.GetAllIntIds(collection).empty());
@@ -1575,7 +1590,7 @@ TEST_CASE("UnQLiteDataBaseRoundTripsDocumentsAndIds")
     ids = db.GetAllIntIds(collection);
     REQUIRE(ids.size() == 1);
     CHECK(ids.front() == first_id);
-    CHECK(fs_exists(fs_path_to_string(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
+    CHECK(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite")));
 }
 
 TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
@@ -1583,7 +1598,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-reconnect"};
-    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     const auto int_collection = hashes.ToHashedString("test_collection");
     const auto string_collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {
@@ -1595,7 +1610,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     const auto connection_info = strex("DbUnQLite {}", storage_dir).str();
 
     {
-        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         db.StartCommitChanges();
         db.Insert(int_collection, int_id, MakeDoc({{"value", 1}}));
@@ -1607,7 +1622,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         auto int_ids = db.GetAllIntIds(int_collection);
         REQUIRE(int_ids.size() == 1);
@@ -1632,7 +1647,7 @@ TEST_CASE("UnQLiteDataBasePersistsDocumentsAcrossReconnects")
     }
 
     {
-        auto db = ConnectToDataBase(settings, connection_info, collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, connection_info, collection_schemas, {});
 
         CHECK_FALSE(db.Valid(int_collection, int_id));
         CHECK(db.GetAllIntIds(int_collection).empty());
@@ -1648,7 +1663,7 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
     GlobalSettings settings {false};
     HashStorage hashes;
     ScopedRecoveryLogs storage_dir_scope {"unqlite-corrupted-keys"};
-    const auto storage_dir = fs_path_to_string(storage_dir_scope.Dir() / "storage");
+    const auto storage_dir = fs_path_to_string(*storage_dir_scope.Dir() / "storage");
     const auto int_collection = hashes.ToHashedString("test_collection");
     const auto string_collection = hashes.ToHashedString("test_string_collection");
     const auto collection_schemas = DataBaseCollectionSchemas {
@@ -1658,9 +1673,9 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
 
     SECTION("Invalid numeric key size")
     {
-        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<uint8_t> {1, 2, 3}, "payload");
+        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", vector<uint8_t> {1, 2, 3}, "payload");
 
-        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
@@ -1668,18 +1683,18 @@ TEST_CASE("UnQLiteDataBaseRejectsCorruptedStoredKeys")
     SECTION("Invalid numeric key value")
     {
         vector<uint8_t> zero_key(sizeof(int64_t));
-        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
+        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_collection.unqlite", zero_key, "payload");
 
-        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllIds(int_collection), DataBaseException);
     }
 
     SECTION("Invalid encoded string key")
     {
-        StoreRawUnQLiteRecord(storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<uint8_t> {'b', 'a', 'd'}, "payload");
+        StoreRawUnQLiteRecord(*storage_dir_scope.Dir() / "storage" / "test_string_collection.unqlite", vector<uint8_t> {'b', 'a', 'd'}, "payload");
 
-        auto db = ConnectToDataBase(settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
+        auto db = ConnectToDataBase(&settings, strex("DbUnQLite {}", storage_dir).str(), collection_schemas, {});
 
         REQUIRE_THROWS_AS(db.GetAllStringIds(string_collection), DataBaseException);
     }

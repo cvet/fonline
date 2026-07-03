@@ -41,8 +41,6 @@ FO_BEGIN_NAMESPACE
 
 struct BakerModelDescriptionCut
 {
-    static void WriteString(DataWriter& writer, string_view value);
-
     void Save(DataWriter& writer) const;
 
     string FileName {};
@@ -129,13 +127,20 @@ struct ModelDescriptionParseState
     int32_t Layer {-1};
     int32_t LayerValue {};
     BakerModelDescriptionLink DummyLink {};
-    raw_ptr<BakerModelDescriptionLink> Link {};
+    nptr<BakerModelDescriptionLink> Link {};
 };
+
+static auto ModelDescriptionLinkPtr(BakerModelDescriptionLink& link) noexcept -> ptr<BakerModelDescriptionLink>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return &link;
+}
 
 class ModelDescriptionParser final
 {
 public:
-    ModelDescriptionParser(const FileCollection& files, const NameResolver& name_resolver);
+    ModelDescriptionParser(ptr<const FileCollection> files, ptr<const NameResolver> name_resolver);
 
     auto Parse(string_view fname) -> pair<BakerModelDescription, uint64_t>;
 
@@ -152,8 +157,8 @@ private:
     void ParseToken(string_view fname, size_t line, string_view token, const vector<string>& tokens, size_t& index, BakerModelDescription& description, ModelDescriptionParseState& state);
     static void ApplyFloatValue(BakerModelDescriptionLink& link, string_view field, float32_t value, AssignMode mode);
 
-    raw_ptr<const FileCollection> _files;
-    raw_ptr<const NameResolver> _nameResolver;
+    ptr<const FileCollection> _files;
+    ptr<const NameResolver> _nameResolver;
     vector<string> _includeStack {};
     uint64_t _maxWriteTime {};
 };
@@ -178,7 +183,7 @@ static void UpdateModelDescriptionMaxWriteTime(const FileCollection& files, stri
 static void ValidateModelDescription(const FileCollection& source_files, const FileSystem& baked_files, const NameResolver& name_resolver, const BakerModelDescription& description, string_view fname);
 static void ValidateModelDescriptionAnimations(const NameResolver& name_resolver, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakerModelDescription& description, string_view fname);
 static void ValidateModelDescriptionAttachment(const FileCollection& source_files, const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& main_info, const BakerModelDescriptionLink& link, string_view fname);
-static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakedModelMeshInfo* parent_info, const BakerModelDescriptionLink& link, string_view fname);
+static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname);
 static void ValidateModelDescriptionCut(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakerModelDescriptionCut& cut, string_view fname);
 static void ValidateModelDescriptionTexture(const FileSystem& baked_files, const BakedModelMeshInfo& model_info, string_view texture_name, string_view token, string_view fname);
 static void ValidateModelDescriptionEffect(const FileSystem& baked_files, string_view effect_name, string_view token, string_view fname);
@@ -198,7 +203,6 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
 static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info);
 static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info, string_view owner_bone);
 static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& info);
-static auto ReadBakedModelMeshString(DataReader& reader) -> string;
 static void SkipBakedModelMeshBytes(DataReader& reader, size_t size);
 static auto SkipBakedModelMeshFloatArray(DataReader& reader) -> uint32_t;
 
@@ -299,7 +303,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
             }
 
             const BakerClientEngine client_engine(*_context->BakedFiles);
-            ModelDescriptionParser parser(files, client_engine);
+            ModelDescriptionParser parser(&files, &client_engine);
             auto [description, max_write_time] = parser.Parse(file.GetPath());
             ignore_unused(max_write_time);
 
@@ -409,9 +413,9 @@ static void UpdateModelDescriptionMaxWriteTime(const FileCollection& files, stri
     include_stack.pop_back();
 }
 
-ModelDescriptionParser::ModelDescriptionParser(const FileCollection& files, const NameResolver& name_resolver) :
-    _files {&files},
-    _nameResolver {&name_resolver}
+ModelDescriptionParser::ModelDescriptionParser(ptr<const FileCollection> files, ptr<const NameResolver> name_resolver) :
+    _files {files},
+    _nameResolver {name_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -422,7 +426,7 @@ auto ModelDescriptionParser::Parse(string_view fname) -> pair<BakerModelDescript
 
     BakerModelDescription description;
     ModelDescriptionParseState state;
-    state.Link = &description.DefaultLink;
+    state.Link = ModelDescriptionLinkPtr(description.DefaultLink);
     ParseFile(fname, {}, description, state);
 
     return {std::move(description), _maxWriteTime};
@@ -524,18 +528,18 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             state.LayerValue = parsed_value;
         }
 
-        state.Link = &state.DummyLink;
+        state.Link = ModelDescriptionLinkPtr(state.DummyLink);
         state.Mesh.clear();
     }
     else if (token == "Root") {
         if (state.Layer == -1) {
-            state.Link = &description.DefaultLink;
+            state.Link = ModelDescriptionLinkPtr(description.DefaultLink);
         }
         else if (state.LayerValue == 0) {
             throw ModelInfoBakerException(strex("Wrong zero value for layer '{}' in '{}' at line {}", state.Layer, fname, line));
         }
         else {
-            state.Link = &description.Links.emplace_back();
+            state.Link = ModelDescriptionLinkPtr(description.Links.emplace_back());
             state.Link->Layer = state.Layer;
             state.Link->LayerValue = state.LayerValue;
         }
@@ -549,7 +553,7 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
             throw ModelInfoBakerException(strex("Token '{}' requires non-zero layer value in '{}' at line {}", token, fname, line));
         }
 
-        state.Link = &description.Links.emplace_back();
+        state.Link = ModelDescriptionLinkPtr(description.Links.emplace_back());
         state.Link->Layer = state.Layer;
         state.Link->LayerValue = state.LayerValue;
         state.Link->ChildName = token == "Attach" ? strex(fname).extract_dir().combine_path(value).str() : value;
@@ -559,7 +563,10 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     else if (token == "Link") {
         const string value = TakeModelDescriptionToken(tokens, index, token, fname, line);
 
-        if (state.Link != &description.DefaultLink && state.Link != &state.DummyLink) {
+        auto default_link = ModelDescriptionLinkPtr(description.DefaultLink);
+        auto dummy_link = ModelDescriptionLinkPtr(state.DummyLink);
+
+        if (state.Link != default_link && state.Link != dummy_link) {
             state.Link->LinkBone = value;
         }
     }
@@ -749,41 +756,44 @@ void ModelDescriptionParser::ApplyFloatValue(BakerModelDescriptionLink& link, st
 {
     FO_STACK_TRACE_ENTRY();
 
-    float32_t* target = nullptr;
+    nptr<float32_t> nullable_target = nullptr;
 
     if (field == "RotX") {
-        target = &link.RotX;
+        nullable_target = &link.RotX;
     }
     else if (field == "RotY") {
-        target = &link.RotY;
+        nullable_target = &link.RotY;
     }
     else if (field == "RotZ") {
-        target = &link.RotZ;
+        nullable_target = &link.RotZ;
     }
     else if (field == "MoveX") {
-        target = &link.MoveX;
+        nullable_target = &link.MoveX;
     }
     else if (field == "MoveY") {
-        target = &link.MoveY;
+        nullable_target = &link.MoveY;
     }
     else if (field == "MoveZ") {
-        target = &link.MoveZ;
+        nullable_target = &link.MoveZ;
     }
     else if (field == "ScaleX") {
-        target = &link.ScaleX;
+        nullable_target = &link.ScaleX;
     }
     else if (field == "ScaleY") {
-        target = &link.ScaleY;
+        nullable_target = &link.ScaleY;
     }
     else if (field == "ScaleZ") {
-        target = &link.ScaleZ;
+        nullable_target = &link.ScaleZ;
     }
     else if (field == "Speed") {
-        target = &link.SpeedAjust;
+        nullable_target = &link.SpeedAjust;
     }
     else {
         FO_UNREACHABLE_PLACE();
     }
+
+    FO_VERIFY_AND_THROW(nullable_target, "Model description field did not resolve to a target value", field);
+    auto target = nullable_target.as_ptr();
 
     switch (mode) {
     case AssignMode::Set:
@@ -921,7 +931,7 @@ static void ValidateModelDescriptionAttachment(const FileCollection& source_file
     ValidateModelDescriptionLinkData(baked_files, mesh_cache, child_info, &main_info, link, fname);
 }
 
-static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, const BakedModelMeshInfo* parent_info, const BakerModelDescriptionLink& link, string_view fname)
+static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unordered_map<string, BakedModelMeshInfo>& mesh_cache, const BakedModelMeshInfo& target_info, nptr<const BakedModelMeshInfo> parent_info, const BakerModelDescriptionLink& link, string_view fname)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -943,7 +953,7 @@ static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unor
         ValidateModelDescriptionMeshReference(target_info, mesh_name, "Texture", fname);
 
         if (strex(texture_name).starts_with("Parent")) {
-            if (parent_info == nullptr) {
+            if (!parent_info) {
                 throw ModelInfoBakerException(strex("Parent texture '{}' in '{}' is used without parent model context", texture_name, fname));
             }
 
@@ -964,7 +974,7 @@ static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unor
         ValidateModelDescriptionMeshReference(target_info, mesh_name, "Effect", fname);
 
         if (strex(effect_name).starts_with("Parent")) {
-            if (parent_info == nullptr) {
+            if (!parent_info) {
                 throw ModelInfoBakerException(strex("Parent effect '{}' in '{}' is used without parent model context", effect_name, fname));
             }
 
@@ -1143,7 +1153,7 @@ static auto ReadBakedModelMeshInfo(const FileSystem& baked_files, string_view pa
     info.FileName = path;
 
     try {
-        auto reader = DataReader({file.GetBuf(), file.GetSize()});
+        auto reader = DataReader(file.GetDataSpan());
         ReadBakedModelMeshBone(reader, info);
 
         const uint32_t anim_count = reader.Read<uint32_t>();
@@ -1247,7 +1257,7 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
     string config_text;
 
     for (const File& file : fo3d_files) {
-        ModelDescriptionParser parser(files, client_engine);
+        ModelDescriptionParser parser(&files, &client_engine);
         auto [description, parsed_write_time] = parser.Parse(file.GetPath());
         ignore_unused(parsed_write_time);
 
@@ -1313,7 +1323,7 @@ static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string bone_name = ReadBakedModelMeshString(reader);
+    const string bone_name = reader.ReadString();
 
     if (!bone_name.empty()) {
         info.Bones.emplace(bone_name);
@@ -1351,7 +1361,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     len = reader.Read<uint32_t>();
     SkipBakedModelMeshBytes(reader, numeric_cast<size_t>(len) * sizeof(vindex_t));
 
-    const string diffuse_texture = ReadBakedModelMeshString(reader);
+    const string diffuse_texture = reader.ReadString();
 
     if (!diffuse_texture.empty()) {
         info.DiffuseTextures.emplace_back(diffuse_texture);
@@ -1360,7 +1370,7 @@ static void ReadBakedModelMeshData(DataReader& reader, BakedModelMeshInfo& info,
     const uint32_t skin_bones_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < skin_bones_count; i++) {
-        string skin_bone = ReadBakedModelMeshString(reader);
+        string skin_bone = reader.ReadString();
 
         if (!skin_bone.empty()) {
             info.SkinBoneRefs.emplace_back(std::move(skin_bone));
@@ -1383,9 +1393,9 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
 {
     FO_STACK_TRACE_ENTRY();
 
-    (void)ReadBakedModelMeshString(reader); // Animation file name
+    (void)reader.ReadString(); // Animation file name
 
-    const string anim_name = ReadBakedModelMeshString(reader);
+    const string anim_name = reader.ReadString();
 
     if (anim_name.empty()) {
         throw ModelInfoBakerException(strex("Invalid baked model '{}': empty animation name", info.FileName));
@@ -1400,7 +1410,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
         const uint32_t hierarchy_bones_count = reader.Read<uint32_t>();
 
         for (uint32_t j = 0; j < hierarchy_bones_count; j++) {
-            string bone_name = ReadBakedModelMeshString(reader);
+            string bone_name = reader.ReadString();
 
             if (!bone_name.empty()) {
                 info.AnimationBoneRefs.emplace_back(std::move(bone_name));
@@ -1411,7 +1421,7 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     const uint32_t outputs_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < outputs_count; i++) {
-        string bone_name = ReadBakedModelMeshString(reader);
+        string bone_name = reader.ReadString();
 
         if (!bone_name.empty()) {
             info.AnimationBoneRefs.emplace_back(std::move(bone_name));
@@ -1428,22 +1438,11 @@ static void ReadBakedModelMeshAnimation(DataReader& reader, BakedModelMeshInfo& 
     }
 }
 
-static auto ReadBakedModelMeshString(DataReader& reader) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = reader.Read<uint32_t>();
-    string value;
-    value.resize(len);
-    reader.ReadPtr(value.data(), len);
-    return value;
-}
-
 static void SkipBakedModelMeshBytes(DataReader& reader, size_t size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    (void)reader.ReadPtr<uint8_t>(size);
+    (void)reader.ReadBytes(size);
 }
 
 static auto SkipBakedModelMeshFloatArray(DataReader& reader) -> uint32_t
@@ -1459,7 +1458,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    BakerModelDescriptionCut::WriteString(writer, Model);
+    writer.WriteString(Model);
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
@@ -1467,7 +1466,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     writer.Write<int32_t>(DrawHeight);
     writer.Write<int32_t>(ViewWidth);
     writer.Write<int32_t>(ViewHeight);
-    BakerModelDescriptionCut::WriteString(writer, RotationBone);
+    writer.WriteString(RotationBone);
     DefaultLink.Save(writer);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(Links.size()));
     for (const BakerModelDescriptionLink& link : Links) {
@@ -1487,10 +1486,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     for (const BakerModelDescriptionAnimLayerValue& value : AnimLayerValues) {
         value.Save(writer);
     }
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(FastTransitionBones.size()));
-    for (const string& bone_name : FastTransitionBones) {
-        BakerModelDescriptionCut::WriteString(writer, bone_name);
-    }
+    writer.WriteStringVector(FastTransitionBones);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(StateAnimEquals.size()));
     for (const auto& [from, to] : StateAnimEquals) {
         writer.Write<int32_t>(from);
@@ -1509,8 +1505,8 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
 
     writer.Write<int32_t>(Layer);
     writer.Write<int32_t>(LayerValue);
-    BakerModelDescriptionCut::WriteString(writer, LinkBone);
-    BakerModelDescriptionCut::WriteString(writer, ChildName);
+    writer.WriteString(LinkBone);
+    writer.WriteString(ChildName);
     writer.Write<uint8_t>(IsParticles ? uint8_t {1} : uint8_t {0});
     writer.Write<float32_t>(RotX);
     writer.Write<float32_t>(RotY);
@@ -1522,22 +1518,18 @@ void BakerModelDescriptionLink::Save(DataWriter& writer) const
     writer.Write<float32_t>(ScaleY);
     writer.Write<float32_t>(ScaleZ);
     writer.Write<float32_t>(SpeedAjust);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledLayer.size()));
-    writer.WritePtr(DisabledLayer.data(), DisabledLayer.size() * sizeof(DisabledLayer[0]));
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(DisabledMesh.size()));
-    for (const string& mesh_name : DisabledMesh) {
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
-    }
+    writer.WriteSizedObjectVector(DisabledLayer);
+    writer.WriteStringVector(DisabledMesh);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(TextureInfo.size()));
     for (const auto& [texture_name, mesh_name, texture_index] : TextureInfo) {
-        BakerModelDescriptionCut::WriteString(writer, texture_name);
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
+        writer.WriteString(texture_name);
+        writer.WriteString(mesh_name);
         writer.Write<int32_t>(texture_index);
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(EffectInfo.size()));
     for (const auto& [effect_name, mesh_name] : EffectInfo) {
-        BakerModelDescriptionCut::WriteString(writer, effect_name);
-        BakerModelDescriptionCut::WriteString(writer, mesh_name);
+        writer.WriteString(effect_name);
+        writer.WriteString(mesh_name);
     }
     writer.Write<uint32_t>(numeric_cast<uint32_t>(CutInfo.size()));
     for (const BakerModelDescriptionCut& cut : CutInfo) {
@@ -1549,16 +1541,12 @@ void BakerModelDescriptionCut::Save(DataWriter& writer) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteString(writer, FileName);
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(Layers.size()));
-    writer.WritePtr(Layers.data(), Layers.size() * sizeof(Layers[0]));
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(Shapes.size()));
-    for (const string& shape : Shapes) {
-        WriteString(writer, shape);
-    }
-    WriteString(writer, UnskinBone1);
-    WriteString(writer, UnskinBone2);
-    WriteString(writer, UnskinShape);
+    writer.WriteString(FileName);
+    writer.WriteSizedObjectVector(Layers);
+    writer.WriteStringVector(Shapes);
+    writer.WriteString(UnskinBone1);
+    writer.WriteString(UnskinBone2);
+    writer.WriteString(UnskinShape);
     writer.Write<uint8_t>(RevertUnskinShape ? uint8_t {1} : uint8_t {0});
 }
 
@@ -1568,8 +1556,8 @@ void BakerModelDescriptionAnimEntry::Save(DataWriter& writer) const
 
     writer.Write<int32_t>(StateAnim);
     writer.Write<int32_t>(ActionAnim);
-    BakerModelDescriptionCut::WriteString(writer, FileName);
-    BakerModelDescriptionCut::WriteString(writer, Name);
+    writer.WriteString(FileName);
+    writer.WriteString(Name);
 }
 
 void BakerModelDescriptionAnimLayerValue::Save(DataWriter& writer) const
@@ -1580,15 +1568,6 @@ void BakerModelDescriptionAnimLayerValue::Save(DataWriter& writer) const
     writer.Write<int32_t>(ActionAnim);
     writer.Write<int32_t>(Layer);
     writer.Write<int32_t>(LayerValue);
-}
-
-void BakerModelDescriptionCut::WriteString(DataWriter& writer, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = numeric_cast<uint32_t>(value.length());
-    writer.Write<uint32_t>(len);
-    writer.WritePtr(value.data(), len);
 }
 
 static auto TokenizeModelDescriptionLine(string_view line) -> vector<string>

@@ -24,7 +24,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 - [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/ClientUpdater.md](Docs/ClientUpdater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
 - [Docs/Debugging.md](Docs/Debugging.md) - stack traces, debugger helpers, native debugging, and validation notes.
-- [Docs/Nullability.md](Docs/Nullability.md) - `T?` / `FO_NULLABLE` script/native boundary contract.
+- [Docs/Nullability.md](Docs/Nullability.md) - `T?` script / `ptr<T>`·`nptr<T>` native boundary contract.
 - [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.
@@ -51,6 +51,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 
 - Prefer existing engine idioms over new local abstractions.
 - Prefer `static` free functions for file-local helpers instead of unnamed namespaces.
+- Gate conditional compilation on our own (`FO_*` / project) macros with `#if FOO` / `#if !FOO`, never `#ifdef` / `#ifndef`: every such macro is mandatorily `#define`d to `0` or `1`, so its definedness must never carry meaning — only its value does.
 - Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
 - **Blank line before and after every control-flow block.** Put one blank line before and after every `if` / `for` / `while` / `switch` block so it is separated from surrounding non-control-flow statements (declarations, assignments, calls). **Only exception:** consecutive control-flow blocks that form a group may be stacked directly with no blank line between them — e.g. two adjacent `if`s checking related conditions stay together, but each group is still separated from neighboring declarations by a blank line.
 - Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.

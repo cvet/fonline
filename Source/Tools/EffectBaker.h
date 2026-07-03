@@ -66,7 +66,7 @@ public:
 
 private:
     void BakeShaderProgram(string_view fname, string_view content) const;
-    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate) const;
+    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate) const;
 };
 
 FO_END_NAMESPACE

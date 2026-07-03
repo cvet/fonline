@@ -63,25 +63,23 @@ FO_BEGIN_NAMESPACE
 
 #if !STUB_MODE
 #if SERVER_REGISTRATION
-void RegisterServerMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterServerMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #elif CLIENT_REGISTRATION
-void RegisterClientMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterClientMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #elif MAPPER_REGISTRATION
-void RegisterMapperMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterMapperMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #endif
 #else
 #if SERVER_REGISTRATION
-void RegisterServerStubMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterServerStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #elif CLIENT_REGISTRATION
-void RegisterClientStubMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterClientStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #elif MAPPER_REGISTRATION
-void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resources)
+void RegisterMapperStubMetadata(ptr<EngineMetadata> meta, nptr<const FileSystem> resources)
 #endif
 #endif
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(meta, "Missing required meta");
 
 #if SERVER_REGISTRATION
     meta->RegisterSide(EngineSideKind::ServerSide);
@@ -93,13 +91,13 @@ void RegisterMapperStubMetadata(EngineMetadata* meta, const FileSystem* resource
 
     ///@ CodeGen Register
 
-    if (resources != nullptr) {
+    if (resources) {
 #if SERVER_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Server"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Server"));
 #elif CLIENT_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Client"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Client"));
 #elif MAPPER_REGISTRATION
-        RegisterDynamicMetadata(meta, ReadMetadataBin(resources, "Mapper"));
+        RegisterDynamicMetadata(meta, ReadMetadataBin(resources.as_ptr(), "Mapper"));
 #endif
     }
 }

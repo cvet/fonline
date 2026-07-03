@@ -78,17 +78,16 @@ void TimeEventContext::SetDataArray(readonly_vector<any_t> data)
     _dataChanged = true;
 }
 
-TimeEventManager::TimeEventManager(BaseEngine& engine) :
-    _engine {&engine}
+TimeEventManager::TimeEventManager(ptr<BaseEngine> engine) :
+    _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
+auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     const auto event_id = ++_timeEventCounter;
@@ -105,9 +104,8 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
-        make_if_not_exists(timeEvents);
-        timeEvents->emplace_back(std::move(te));
+        auto time_events = entity->EnsureTimeEvents();
+        time_events->emplace_back(std::move(te));
 
         AddEntityTimeEventPolling(entity);
     }
@@ -116,25 +114,24 @@ auto TimeEventManager::StartTimeEvent(Entity* entity, Entity::TimeEventData::Fun
     return event_id;
 }
 
-auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id) const -> size_t
+auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), 0, "Destroyed entity used to count time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     std::scoped_lock lock {_timeEventLocker};
 
-    const auto& timeEvents = entity->GetRawTimeEvents();
+    auto time_events = entity->GetTimeEvents();
 
-    if (!timeEvents || timeEvents->empty()) {
+    if (!time_events || time_events->empty()) {
         return 0;
     }
 
     if (id != 0) {
         FO_VERIFY_AND_THROW(func_name == ScriptFuncName(), "Time event callback function name changed unexpectedly");
 
-        for (const auto& te : *timeEvents) {
+        for (const auto& te : *time_events) {
             if (te->Id == id) {
                 return 1;
             }
@@ -144,7 +141,7 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
     if (func_name != ScriptFuncName()) {
         size_t count = 0;
 
-        for (const auto& te : *timeEvents) {
+        for (const auto& te : *time_events) {
             if (te->FuncName == func_name) {
                 count++;
             }
@@ -156,11 +153,10 @@ auto TimeEventManager::CountTimeEvent(Entity* entity, ScriptFuncName func_name, 
     return 0;
 }
 
-void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
+void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     struct ResubmitInfo
@@ -174,17 +170,17 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (!timeEvents || timeEvents->empty()) {
+        if (!time_events || time_events->empty()) {
             return;
         }
 
         const auto effective_delay = repeat.has_value() ? std::max(repeat.value(), MIN_REPEAT_TIME) : timespan::zero;
         const auto fire_time = repeat.has_value() ? _engine->GameTime.GetFrameTime() + effective_delay : nanotime::zero;
 
-        for (size_t i = 0; i < timeEvents->size(); i++) {
-            auto& te = (*timeEvents)[i];
+        for (size_t i = 0; i < time_events->size(); i++) {
+            auto& te = (*time_events)[i];
 
             if (func_name != ScriptFuncName() && te->FuncName != func_name) {
                 continue;
@@ -217,11 +213,10 @@ void TimeEventManager::ModifyTimeEvent(Entity* entity, ScriptFuncName func_name,
     }
 }
 
-void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, uint32_t id)
+void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     vector<uint32_t> cancelled_ids;
@@ -229,14 +224,14 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (!timeEvents || timeEvents->empty()) {
+        if (!time_events || time_events->empty()) {
             return;
         }
 
-        for (size_t i = 0; i < timeEvents->size();) {
-            auto& te = (*timeEvents)[i];
+        for (size_t i = 0; i < time_events->size();) {
+            auto& te = (*time_events)[i];
 
             if (func_name != ScriptFuncName() && te->FuncName != func_name) {
                 i++;
@@ -249,7 +244,7 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
 
             const auto removed_id = te->Id;
             te->Id = 0;
-            timeEvents->erase(timeEvents->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
+            time_events->erase(time_events->begin() + numeric_cast<ptrdiff_t>(i)); // te is not valid anymore
             cancelled_ids.push_back(removed_id);
 
             // Identifier may be only one.
@@ -264,22 +259,22 @@ void TimeEventManager::StopTimeEvent(Entity* entity, ScriptFuncName func_name, u
     }
 }
 
-void TimeEventManager::AddEntityTimeEventPolling(Entity* entity)
+void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     std::scoped_lock lock {_timeEventLocker};
 
-    _timeEventEntities.emplace(entity);
+    _timeEventEntities.emplace(entity.hold_ref());
 }
 
-void TimeEventManager::RemoveEntityTimeEventPolling(Entity* entity)
+void TimeEventManager::RemoveEntityTimeEventPolling(ptr<Entity> entity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     std::scoped_lock lock {_timeEventLocker};
 
-    _timeEventEntities.erase(entity);
+    _timeEventEntities.erase(entity.hold_ref());
 }
 
 void TimeEventManager::ProcessTimeEvents()
@@ -292,7 +287,7 @@ void TimeEventManager::ProcessTimeEvents()
         return copy_hold_ref(_timeEventEntities);
     }();
 
-    for (auto* entity : entities) {
+    for (ptr<Entity> entity : entities) {
         if (entity->IsDestroyed()) {
             RemoveEntityTimeEventPolling(entity);
             continue;
@@ -322,8 +317,8 @@ void TimeEventManager::ClearTimeEvents()
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        for (auto* entity : copy_hold_ref(_timeEventEntities)) {
-            const auto& time_events = entity->GetRawTimeEvents();
+        for (ptr<Entity> entity : copy_hold_ref(_timeEventEntities)) {
+            auto time_events = entity->GetTimeEvents();
 
             if (time_events && !time_events->empty()) {
                 cancelled_ids.reserve(cancelled_ids.size() + time_events->size());
@@ -346,7 +341,7 @@ void TimeEventManager::ClearTimeEvents()
     }
 }
 
-void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
+void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -356,15 +351,15 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (!timeEvents || timeEvents->empty()) {
+        if (!time_events || time_events->empty()) {
             return;
         }
 
-        ready_events.reserve(timeEvents->size());
+        ready_events.reserve(time_events->size());
 
-        for (auto& te : *timeEvents) {
+        for (auto& te : *time_events) {
             if (te->FireTime <= time) {
                 ready_events.emplace_back(te);
             }
@@ -375,9 +370,9 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
         {
             std::scoped_lock lock {_timeEventLocker};
 
-            auto& timeEvents = entity->GetRawTimeEvents();
+            auto time_events = entity->GetTimeEvents();
 
-            if (!timeEvents || timeEvents->empty()) {
+            if (!time_events || time_events->empty()) {
                 return;
             }
 
@@ -385,9 +380,9 @@ void TimeEventManager::ProcessEntityTimeEvents(Entity* entity)
                 continue;
             }
 
-            const auto it = std::ranges::find(timeEvents->begin(), timeEvents->end(), te);
+            const auto it = std::ranges::find(time_events->begin(), time_events->end(), te);
 
-            if (it == timeEvents->end()) {
+            if (it == time_events->end()) {
                 continue;
             }
             if (te->FireTime > time) {
@@ -415,24 +410,24 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
     optional<nanotime> next_future_fire_time;
     const auto time = _engine->GameTime.GetFrameTime();
 
-    for (auto* entity : copy_hold_ref(_timeEventEntities)) {
+    for (ptr<Entity> entity : copy_hold_ref(_timeEventEntities)) {
         if (entity->IsDestroyed()) {
             RemoveEntityTimeEventPolling(entity);
             continue;
         }
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (!timeEvents || timeEvents->empty()) {
+        if (!time_events || time_events->empty()) {
             RemoveEntityTimeEventPolling(entity);
             continue;
         }
 
-        for (size_t i = 0; i < timeEvents->size(); i++) {
-            auto& te = (*timeEvents)[i];
+        for (size_t i = 0; i < time_events->size(); i++) {
+            auto& te = (*time_events)[i];
 
             if (te->FireTime <= time) {
-                ready.emplace_back(ReadyTimeEvent {refcount_ptr<Entity> {entity}, te});
+                ready.emplace_back(ReadyTimeEvent {entity.hold_ref(), te});
             }
             else if (!next_future_fire_time.has_value() || te->FireTime < next_future_fire_time.value()) {
                 next_future_fire_time = te->FireTime;
@@ -448,7 +443,7 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
     return ready;
 }
 
-void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result)
+void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -464,33 +459,38 @@ void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::Time
 
     const auto time = _engine->GameTime.GetFrameTime();
 
-    const auto remove_event = [entity, &te] {
-        auto& timeEvents = entity->GetRawTimeEvents();
+    auto remove_event = [entity, &te]() mutable {
+        auto time_events = entity->GetTimeEvents();
 
-        if (timeEvents) {
+        if (time_events) {
             const auto id = te->Id;
-            const auto it = std::ranges::find_if(*timeEvents, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
+            const auto it = std::ranges::find_if(*time_events, [id](const shared_ptr<Entity::TimeEventData>& te2) { return te2->Id == id; });
 
-            if (it != timeEvents->end()) {
-                timeEvents->erase(it);
+            if (it != time_events->end()) {
+                time_events->erase(it);
                 te->Id = 0;
             }
         }
     };
 
-    if (result.Context && result.Context->IsStopped()) {
-        remove_event();
-        return;
-    }
+    if (result.Context) {
+        auto context = result.Context.as_ptr();
 
-    if (result.Context && result.Context->IsDataChanged()) {
-        te->Data = result.Context->GetDataRaw();
-    }
+        if (context->IsStopped()) {
+            remove_event();
+            return;
+        }
 
-    if (result.Context && result.Context->IsRepeatChanged()) {
-        te->RepeatDuration = result.Context->GetRepeat();
-        te->FireTime = time + std::max(te->RepeatDuration, MIN_REPEAT_TIME);
-        return;
+        if (context->IsDataChanged()) {
+            const_span<any_t> data = context->GetRawData();
+            te->Data.assign(data.begin(), data.end());
+        }
+
+        if (context->IsRepeatChanged()) {
+            te->RepeatDuration = context->GetRepeat();
+            te->FireTime = time + std::max(te->RepeatDuration, MIN_REPEAT_TIME);
+            return;
+        }
     }
 
     if (te->RepeatDuration && result.CallResult) {
@@ -502,7 +502,7 @@ void TimeEventManager::PostFireTimeEvent(Entity* entity, shared_ptr<Entity::Time
     }
 }
 
-auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent
+auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -527,37 +527,45 @@ auto TimeEventManager::FireTimeEvent(Entity* entity, shared_ptr<Entity::TimeEven
     auto context = SafeAlloc::MakeRefCounted<TimeEventContext>(event_id, repeat_duration, data);
     bool call_result = false;
 
-    if (auto* func1 = std::get_if<ScriptFunc<void>>(&te->Func); func1 != nullptr) {
+    if (nptr<ScriptFunc<void>> nullable_func1 = std::get_if<ScriptFunc<void>>(&te->Func); nullable_func1) {
+        auto func1 = nullable_func1.as_ptr();
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func1->Call();
     }
-    else if (auto* func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); func2 != nullptr) {
+    else if (nptr<ScriptFunc<void, any_t>> nullable_func2 = std::get_if<ScriptFunc<void, any_t>>(&te->Func); nullable_func2) {
+        auto func2 = nullable_func2.as_ptr();
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func2->Call(data.empty() ? _emptyAnyValue : data.front());
     }
-    else if (auto* func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); func3 != nullptr) {
+    else if (nptr<ScriptFunc<void, vector<any_t>>> nullable_func3 = std::get_if<ScriptFunc<void, vector<any_t>>>(&te->Func); nullable_func3) {
+        auto func3 = nullable_func3.as_ptr();
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func3->Call(data);
     }
-    else if (auto* func4 = std::get_if<ScriptFunc<void, TimeEventContext*>>(&te->Func); func4 != nullptr) {
+    else if (nptr<ScriptFunc<void, TimeEventContext*>> nullable_func4 = std::get_if<ScriptFunc<void, TimeEventContext*>>(&te->Func); nullable_func4) {
+        auto func4 = nullable_func4.as_ptr();
         FO_VERIFY_AND_THROW(entity->IsGlobal(), "Time event expects a global entity");
         call_result = func4->Call(context.get());
     }
-    else if (auto* func5 = std::get_if<ScriptFunc<void, ScriptSelfEntity*>>(&te->Func); func5 != nullptr) {
+    else if (nptr<ScriptFunc<void, ScriptSelfEntity*>> nullable_func5 = std::get_if<ScriptFunc<void, ScriptSelfEntity*>>(&te->Func); nullable_func5) {
+        auto func5 = nullable_func5.as_ptr();
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func5->Call(entity);
+        call_result = func5->Call(entity.get());
     }
-    else if (auto* func6 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, any_t>>(&te->Func); func6 != nullptr) {
+    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, any_t>> nullable_func6 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, any_t>>(&te->Func); nullable_func6) {
+        auto func6 = nullable_func6.as_ptr();
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func6->Call(entity, data.empty() ? _emptyAnyValue : data.front());
+        call_result = func6->Call(entity.get(), data.empty() ? _emptyAnyValue : data.front());
     }
-    else if (auto* func7 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>(&te->Func); func7 != nullptr) {
+    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>> nullable_func7 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>>(&te->Func); nullable_func7) {
+        auto func7 = nullable_func7.as_ptr();
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func7->Call(entity, data);
+        call_result = func7->Call(entity.get(), data);
     }
-    else if (auto* func8 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>(&te->Func); func8 != nullptr) {
+    else if (nptr<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>> nullable_func8 = std::get_if<ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>(&te->Func); nullable_func8) {
+        auto func8 = nullable_func8.as_ptr();
         FO_VERIFY_AND_THROW(!entity->IsGlobal(), "Time event expects a non-global entity");
-        call_result = func8->Call(entity, context.get());
+        call_result = func8->Call(entity.get(), context.get());
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -584,12 +592,12 @@ void TimeEventManager::ClearDispatcherHooks()
     _dispatcher = DispatcherHooks {};
 }
 
-void TimeEventManager::NotifySchedule(Entity* entity, uint32_t event_id, timespan delay)
+void TimeEventManager::NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_dispatcher.Schedule) {
-        _dispatcher.Schedule(refcount_ptr<Entity> {entity}, event_id, delay);
+        _dispatcher.Schedule(entity.hold_ref(), event_id, delay);
     }
 }
 
@@ -602,7 +610,7 @@ void TimeEventManager::NotifyCancel(uint32_t event_id)
     }
 }
 
-void TimeEventManager::CancelAllForEntity(Entity* entity)
+void TimeEventManager::CancelAllForEntity(ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -611,12 +619,12 @@ void TimeEventManager::CancelAllForEntity(Entity* entity)
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (timeEvents && !timeEvents->empty()) {
-            cancelled_ids.reserve(timeEvents->size());
+        if (time_events && !time_events->empty()) {
+            cancelled_ids.reserve(time_events->size());
 
-            for (auto& te : *timeEvents) {
+            for (auto& te : *time_events) {
                 if (te->Id != 0) {
                     cancelled_ids.push_back(te->Id);
                 }
@@ -632,7 +640,7 @@ void TimeEventManager::CancelAllForEntity(Entity* entity)
     }
 }
 
-auto TimeEventManager::FireAndAdvance(Entity* entity, uint32_t event_id) -> optional<timespan>
+auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -645,15 +653,15 @@ auto TimeEventManager::FireAndAdvance(Entity* entity, uint32_t event_id) -> opti
     {
         std::scoped_lock lock {_timeEventLocker};
 
-        auto& timeEvents = entity->GetRawTimeEvents();
+        auto time_events = entity->GetTimeEvents();
 
-        if (!timeEvents || timeEvents->empty()) {
+        if (!time_events || time_events->empty()) {
             return std::nullopt;
         }
 
-        const auto it = std::ranges::find_if(*timeEvents, [event_id](const shared_ptr<Entity::TimeEventData>& candidate) { return candidate->Id == event_id; });
+        const auto it = std::ranges::find_if(*time_events, [event_id](const shared_ptr<Entity::TimeEventData>& candidate) { return candidate->Id == event_id; });
 
-        if (it == timeEvents->end()) {
+        if (it == time_events->end()) {
             return std::nullopt;
         }
 

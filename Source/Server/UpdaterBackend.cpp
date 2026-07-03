@@ -41,25 +41,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ReadUpdateFilePortion(string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto file = fs_open_ifstream(disk_path);
-
-    if (!file) {
-        return false;
-    }
-
-    file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
-
-    if (!file) {
-        return false;
-    }
-
-    return data.empty() || stream_read_exact(file, data.data(), data.size());
-}
-
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
@@ -87,12 +68,12 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             data.InMemory = true;
             data.MemoryData.resize(file_size);
 
-            if (file_size != 0 && !stream_read_exact(file, data.MemoryData.data(), file_size)) {
+            if (!stream_read_exact(file, data.MemoryData)) {
                 throw UpdaterException("Can't read resource pack for client", disk_path);
             }
 
             data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs_hash_data(data.MemoryData.data(), data.MemoryData.size());
+            data.Hash = fs_hash_data(data.MemoryData);
         }
         else {
             data.DiskPath = string(disk_path);
@@ -150,13 +131,13 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         }
     }
 
-    const auto build_update_desc = [this](vector<uint8_t>& desc, const vector<UpdateFileInfo>* platform_files) {
+    const auto build_update_desc = [this](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
         const auto write_file_info = [this, &writer](const UpdateFileInfo& info) {
             const auto& data = _updateFiles[info.FileIndex];
             writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
-            writer.WritePtr(info.ClientPath.data(), info.ClientPath.length());
+            writer.WriteStringBytes(info.ClientPath);
             writer.Write<uint64_t>(data.Size);
             writer.Write<uint64_t>(data.Hash);
             writer.Write<UpdateFileTarget>(info.Target);
@@ -167,7 +148,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             write_file_info(info);
         }
 
-        if (platform_files != nullptr) {
+        if (platform_files) {
             for (const auto& info : *platform_files) {
                 write_file_info(info);
             }
@@ -184,7 +165,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
     }
 }
 
-auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&
+auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -192,7 +173,7 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
     return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
-void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_portion_size)
+void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -234,7 +215,25 @@ void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t upd
     if (update_portion_size != 0 && !update_file.InMemory) {
         disk_update_data.resize(update_portion_size);
 
-        if (!ReadUpdateFilePortion(update_file.DiskPath, start_offset, disk_update_data)) {
+        const auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
+            FO_STACK_TRACE_ENTRY();
+
+            auto file = fs_open_ifstream(disk_path);
+
+            if (!file) {
+                return false;
+            }
+
+            file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
+
+            if (!file) {
+                return false;
+            }
+
+            return stream_read_exact(file, data);
+        };
+
+        if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
             WriteLog(LogType::Warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
             connection->HardDisconnect();
             return;
@@ -248,7 +247,9 @@ void UpdaterBackend::ProcessUpdateFile(ServerConnection* connection, int32_t upd
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
             const size_t offset = numeric_cast<size_t>(start_offset);
-            out_buf->Push(update_file.MemoryData.data() + offset, update_portion_size);
+            FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
+            ptr<const uint8_t> update_data = update_file.MemoryData.data() + offset;
+            out_buf->Push(update_data, update_portion_size);
         }
         else {
             out_buf->Push(disk_update_data.data(), update_portion_size);

@@ -52,11 +52,11 @@ using AsyncWriteDataCallback = function<void(string_view, const_span<uint8_t>)>;
 
 struct BakingContext
 {
-    raw_ptr<const BakingSettings> Settings {};
+    nptr<const BakingSettings> Settings {};
     string PackName {};
     BakeCheckerCallback BakeChecker {};
     AsyncWriteDataCallback WriteData {};
-    raw_ptr<const FileSystem> BakedFiles {};
+    nptr<const FileSystem> BakedFiles {};
     optional<bool> ForceSyncMode {};
 };
 
@@ -75,11 +75,11 @@ public:
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
 
-    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, const FileSystem* baked_files) -> vector<unique_ptr<BaseBaker>>;
+    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, const ScriptSystem* script_sys) const -> size_t;
+    [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> nullable_script_sys) const -> size_t;
 
     shared_ptr<BakingContext> _context;
 
@@ -96,7 +96,7 @@ private:
 class MasterBaker final
 {
 public:
-    explicit MasterBaker(BakingSettings& settings) noexcept;
+    explicit MasterBaker(ptr<BakingSettings> settings) noexcept;
     MasterBaker(const MasterBaker&) = delete;
     MasterBaker(MasterBaker&&) noexcept = default;
     auto operator=(const MasterBaker&) = delete;
@@ -108,13 +108,13 @@ public:
 private:
     void BakeAllInternal();
 
-    raw_ptr<BakingSettings> _settings;
+    ptr<BakingSettings> _settings;
 };
 
 class BakerDataSource final : public DataSource
 {
 public:
-    explicit BakerDataSource(BakingSettings& settings);
+    explicit BakerDataSource(ptr<BakingSettings> settings);
     BakerDataSource(const BakerDataSource&) = delete;
     BakerDataSource(BakerDataSource&&) noexcept = delete;
     auto operator=(const BakerDataSource&) = delete;
@@ -125,7 +125,7 @@ public:
     [[nodiscard]] auto GetPackName() const -> string_view override { return "Baker"; }
     [[nodiscard]] auto IsFileExists(string_view path) const -> bool override;
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
 
 private:
@@ -138,12 +138,13 @@ private:
     };
 
     [[nodiscard]] auto MakeOutputPath(string_view res_pack_name, string_view path) const -> string;
-    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time, unique_del_ptr<const uint8_t>* data) const -> bool;
+    [[nodiscard]] auto ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>;
+    [[nodiscard]] auto FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool;
 
     auto CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool;
     void WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data);
 
-    raw_ptr<BakingSettings> _settings;
+    ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
@@ -156,10 +157,10 @@ public:
     explicit BakerServerEngine(const FileSystem& resources);
 
     // Entity API stub
-    auto CreateCustomInnerEntity(Entity* /*holder*/, hstring /*entry*/, hstring /*pid*/) -> Entity* override { return nullptr; }
-    auto CreateCustomEntity(hstring /*type_name*/, hstring /*pid*/) -> Entity* override { return nullptr; }
-    auto GetCustomEntity(hstring /*type_name*/, ident_t /*id*/) -> refcount_ptr<Entity> override { return {}; }
-    void DestroyEntity(Entity* /*entity*/) override { }
+    auto CreateCustomInnerEntity(ptr<Entity> /*holder*/, hstring /*entry*/, hstring /*pid*/) -> nptr<Entity> override { return nullptr; }
+    auto CreateCustomEntity(hstring /*type_name*/, hstring /*pid*/) -> nptr<Entity> override { return nullptr; }
+    auto GetCustomEntity(hstring /*type_name*/, ident_t /*id*/) -> refcount_nptr<Entity> override { return nullptr; }
+    void DestroyEntity(ptr<Entity> /*entity*/) override { }
 };
 
 class BakerClientEngine : public EngineMetadata

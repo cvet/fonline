@@ -43,7 +43,7 @@ class NetworkServer_UdpSockets;
 class NetworkServerConnection_UdpSockets final : public NetworkServerConnection
 {
 public:
-    explicit NetworkServerConnection_UdpSockets(ServerNetworkSettings& settings, string host, uint16_t port, uint32_t session_id);
+    explicit NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id);
     NetworkServerConnection_UdpSockets(const NetworkServerConnection_UdpSockets&) = delete;
     NetworkServerConnection_UdpSockets(NetworkServerConnection_UdpSockets&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_UdpSockets&) = delete;
@@ -73,7 +73,7 @@ private:
 class NetworkServer_UdpSockets final : public NetworkServer
 {
 public:
-    explicit NetworkServer_UdpSockets(ServerNetworkSettings& settings, NewConnectionCallback callback);
+    explicit NetworkServer_UdpSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback);
     NetworkServer_UdpSockets(const NetworkServer_UdpSockets&) = delete;
     NetworkServer_UdpSockets(NetworkServer_UdpSockets&&) noexcept = delete;
     auto operator=(const NetworkServer_UdpSockets&) = delete;
@@ -90,7 +90,7 @@ private:
     void HandleConnectPacket(string host, uint16_t port, const UdpPacketInfo& packet);
     void TickConnections(nanotime now);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
     udp_socket _socket {};
     std::atomic_bool _stopped {};
@@ -102,20 +102,20 @@ private:
     vector<uint8_t> _packetBuf {};
 };
 
-auto NetworkServer::StartUdpSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen UDP connections on port {}", settings.ServerPort + settings.UdpPortOffset);
+    WriteLog("Listen UDP connections on port {}", settings->ServerPort + settings->UdpPortOffset);
 
-    if (settings.RejectUdpConnections) {
+    if (settings->RejectUdpConnections) {
         WriteLog(LogType::Warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
     }
 
     return SafeAlloc::MakeUnique<NetworkServer_UdpSockets>(settings, std::move(callback));
 }
 
-NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ServerNetworkSettings& settings, string host, uint16_t port, uint32_t session_id) :
+NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id) :
     NetworkServerConnection(settings),
     _channel(MakeOptions())
 {
@@ -243,8 +243,8 @@ void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const v
     }
 }
 
-NetworkServer_UdpSockets::NetworkServer_UdpSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {&settings},
+NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
+    _settings {settings},
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -319,15 +319,18 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        const auto received = _socket.receive_from({_packetBuf.data(), _packetBuf.size()}, host, port);
+        span<uint8_t> packet_buf {_packetBuf};
+        const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
         }
 
         UdpPacketInfo packet;
+        FO_STRONG_ASSERT(numeric_cast<size_t>(received) <= _packetBuf.size(), "Received byte count exceeds the packet buffer size");
+        const_span<uint8_t> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
-        if (!TryParseUdpPacket({_packetBuf.data(), numeric_cast<size_t>(received)}, packet)) {
+        if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
         }
 
@@ -379,14 +382,14 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
             }
         }
 
-        if (connection == nullptr) {
+        if (!connection) {
             auto session_id = GenerateSessionId();
 
             while (session_id == 0 || _sessions.count(session_id) != 0) {
                 session_id = GenerateSessionId();
             }
 
-            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(*_settings, host, port, session_id);
+            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
             _sessions.emplace(session_id, connection);
             _endpointToSession.emplace(endpoint_key, session_id);
             is_new_connection = true;

@@ -166,9 +166,9 @@ def patch_pe_pdb_path(file_path: str | Path, new_pdb_name: str) -> bool:
 	debug_offset: int | None = None
 	for i in range(num_sections):
 		section_offset = section_table_offset + i * 40
-		vsize, vaddr, _, raw_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
+		vsize, vaddr, _, raw_data_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
 		if vaddr <= debug_rva < vaddr + vsize:
-			debug_offset = raw_ptr + (debug_rva - vaddr)
+			debug_offset = raw_data_ptr + (debug_rva - vaddr)
 			break
 	if debug_offset is None:
 		return False

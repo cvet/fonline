@@ -78,8 +78,8 @@ TEST_CASE("NetworkServerDummyConnectionIsDisconnected")
 {
     auto settings = MakeServerNetworkSettings();
 
-    auto conn = NetworkServer::CreateDummyConnection(settings);
-    REQUIRE(conn != nullptr);
+    shared_ptr<NetworkServerConnection> conn = NetworkServer::CreateDummyConnection(&settings);
+    REQUIRE(conn);
 
     CHECK(conn->GetHost() == "Dummy");
     CHECK(conn->IsDisconnected());
@@ -94,8 +94,8 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
 {
     auto settings = MakeServerNetworkSettings();
 
-    auto conn = NetworkServer::CreateDummyConnection(settings, NetworkServer::DummyConnectionState::Connected);
-    REQUIRE(conn != nullptr);
+    shared_ptr<NetworkServerConnection> conn = NetworkServer::CreateDummyConnection(&settings, NetworkServer::DummyConnectionState::Connected);
+    REQUIRE(conn);
 
     CHECK(conn->GetHost() == "Dummy");
     CHECK_FALSE(conn->IsDisconnected());
@@ -120,21 +120,16 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     size_t client_disconnect_count = 0;
     size_t server_disconnect_count = 0;
 
-    auto server = NetworkServer::StartInterthreadServer(settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
-    REQUIRE(server != nullptr);
+    auto server = NetworkServer::StartInterthreadServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) { accepted_conn = std::move(conn); });
 
     const auto shutdown = scope_exit([&server, port]() noexcept {
-        safe_call([&server] {
-            if (server) {
-                server->Shutdown();
-            }
-        });
+        safe_call([&server] { server->Shutdown(); });
 
         safe_call([port] { InterthreadListeners.erase(port); });
     });
 
     REQUIRE(InterthreadListeners.count(port) == 1);
-    CHECK_THROWS(NetworkServer::StartInterthreadServer(settings, [](shared_ptr<NetworkServerConnection>) { }));
+    CHECK_THROWS(NetworkServer::StartInterthreadServer(&settings, [](shared_ptr<NetworkServerConnection>) { }));
 
     auto client_send = InterthreadListeners[port]([&](const_span<uint8_t> buf) {
         if (buf.empty()) {
@@ -145,7 +140,7 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
         }
     });
 
-    REQUIRE(accepted_conn != nullptr);
+    REQUIRE(accepted_conn);
     REQUIRE(client_send);
 
     client_send(vector<uint8_t> {1, 2, 3});
@@ -167,7 +162,6 @@ TEST_CASE("NetworkServerInterthreadBuffersDispatchesAndShutsDown")
     CHECK(server_disconnect_count == 1);
 
     server->Shutdown();
-    server.reset();
 
     CHECK(InterthreadListeners.count(port) == 0);
 }
@@ -185,38 +179,33 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     uint16_t port = 0;
     string startup_error;
-    unique_ptr<NetworkServer> server;
+    const auto start_server = [&settings, &port, &startup_error, &callback_count, &second_connection_promise]() -> unique_ptr<NetworkServer> {
+        for (int32_t attempt = 0; attempt != 64; ++attempt) {
+            port = TestServerPort.fetch_add(1);
+            BakerTests::OverrideSetting(settings.ServerPort, port);
 
-    for (int32_t attempt = 0; attempt != 64 && !server; ++attempt) {
-        port = TestServerPort.fetch_add(1);
-        BakerTests::OverrideSetting(settings.ServerPort, port);
+            try {
+                return NetworkServer::StartAsioServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
+                    const auto callback_index = callback_count.fetch_add(1);
 
-        try {
-            server = NetworkServer::StartAsioServer(settings, [&](shared_ptr<NetworkServerConnection> conn) {
-                const auto callback_index = callback_count.fetch_add(1);
+                    if (callback_index == 0) {
+                        throw std::runtime_error("test accept callback failure");
+                    }
 
-                if (callback_index == 0) {
-                    throw std::runtime_error("test accept callback failure");
-                }
-
-                second_connection_promise.set_value(std::move(conn));
-            });
-        }
-        catch (const std::exception& ex) {
-            startup_error = ex.what();
-        }
-    }
-
-    INFO(startup_error);
-    REQUIRE(server != nullptr);
-
-    const auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server) {
-                server->Shutdown();
+                    second_connection_promise.set_value(std::move(conn));
+                });
             }
-        });
-    });
+            catch (const std::exception& ex) {
+                startup_error = ex.what();
+            }
+        }
+
+        throw std::runtime_error(startup_error.empty() ? "NetworkServer ASIO start failed" : startup_error.c_str());
+    };
+
+    unique_ptr<NetworkServer> server = start_server();
+
+    const auto shutdown = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
 
     tcp_socket first_client;
     REQUIRE(first_client.connect("127.0.0.1", port));
@@ -228,7 +217,7 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
     REQUIRE(second_connection_future.wait_for(std::chrono::seconds {5}) == std::future_status::ready);
 
     auto second_connection = second_connection_future.get();
-    REQUIRE(second_connection != nullptr);
+    REQUIRE(second_connection);
     CHECK_FALSE(second_connection->GetHost().empty());
     CHECK(second_connection->GetPort() != 0);
 

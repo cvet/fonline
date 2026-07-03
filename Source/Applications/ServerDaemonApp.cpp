@@ -42,32 +42,37 @@ FO_USING_NAMESPACE();
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
-[[maybe_unused]] static auto ServerDaemonApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto ServerDaemonApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_TESTING_APP
+    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+#endif
+
     try {
         Platform::ForkProcess();
 
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::PrebakeResources);
+        InitApp(args, AppInitFlags::PrebakeResources);
 
         {
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(App->Settings, GetServerResources(App->Settings));
+            ptr<GlobalSettings> settings = &GetApp()->Settings;
+            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
 
-            while (!App->IsQuitRequested() && !server->IsStartingError()) {
+            while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {10});
             }
 
             if (server->IsStartingError()) {
                 WriteLog(LogType::Error, "Server startup failed, shutting down");
-                App->RequestQuit(false);
+                GetApp()->RequestQuit(false);
             }
 
             server->Shutdown();
         }
 
-        ExitApp(App->GetRequestedQuitSuccess());
+        ExitApp(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

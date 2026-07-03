@@ -115,7 +115,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         const auto fopro_options = is_fomap ? ConfigFileOption::ReadFirstSection : ConfigFileOption::None;
         auto fopro = ConfigFile(file.GetPath(), file.GetStr(), fopro_options);
 
-        for (const auto& [section_name, section_kv_view] : fopro.GetSections()) {
+        for (const auto& [section_name, section_kv_view] : *fopro.GetSections()) {
             // Skip default section
             if (section_name.empty()) {
                 continue;
@@ -251,7 +251,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                 const auto text_key = TextPackKey::FromPack(engine.Hashes, text_pack_name, pid.as_str(), key2, key3);
 
                 auto& lang_packs_map = all_proto_texts[type_name][pid];
-                lang_packs_map.try_emplace(lang, engine.Hashes);
+                lang_packs_map.try_emplace(lang, &engine.Hashes);
                 lang_packs_map.at(lang).AddStr(text_key, StringEscaping::DecodeString(value));
             }
         }
@@ -263,11 +263,11 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& lang : _context->Settings->BakeLanguages) {
         auto empty_lang_pack = map<string, TextPack>();
-        empty_lang_pack.try_emplace("Items", engine.Hashes);
-        empty_lang_pack.try_emplace("Critters", engine.Hashes);
-        empty_lang_pack.try_emplace("Maps", engine.Hashes);
-        empty_lang_pack.try_emplace("Locations", engine.Hashes);
-        empty_lang_pack.try_emplace("Protos", engine.Hashes);
+        empty_lang_pack.try_emplace("Items", &engine.Hashes);
+        empty_lang_pack.try_emplace("Critters", &engine.Hashes);
+        empty_lang_pack.try_emplace("Maps", &engine.Hashes);
+        empty_lang_pack.try_emplace("Locations", &engine.Hashes);
+        empty_lang_pack.try_emplace("Protos", &engine.Hashes);
         lang_packs.emplace_back(lang, std::move(empty_lang_pack));
     }
 

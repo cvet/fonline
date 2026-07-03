@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 class NetworkServerConnection_Asio final : public NetworkServerConnection
 {
 public:
-    explicit NetworkServerConnection_Asio(ServerNetworkSettings& settings, unique_ptr<asio::ip::tcp::socket> socket);
+    explicit NetworkServerConnection_Asio(ptr<ServerNetworkSettings> settings, unique_ptr<asio::ip::tcp::socket> socket);
     NetworkServerConnection_Asio(const NetworkServerConnection_Asio&) = delete;
     NetworkServerConnection_Asio(NetworkServerConnection_Asio&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_Asio&) = delete;
@@ -64,7 +64,7 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    unique_ptr<asio::ip::tcp::socket> _socket;
+    asio::ip::tcp::socket _socket;
     std::atomic_bool _writePending {};
     std::vector<uint8_t> _inBufData {};
 };
@@ -72,7 +72,7 @@ private:
 class NetworkServer_Asio : public NetworkServer
 {
 public:
-    explicit NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback);
+    explicit NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback);
     NetworkServer_Asio(const NetworkServer_Asio&) = delete;
     NetworkServer_Asio(NetworkServer_Asio&&) noexcept = delete;
     auto operator=(const NetworkServer_Asio&) = delete;
@@ -86,30 +86,30 @@ private:
     void AcceptNext();
     void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     asio::io_context _context {};
     asio::ip::tcp::acceptor _acceptor;
     NewConnectionCallback _connectionCallback;
     thread _runThread {};
 };
 
-auto NetworkServer::StartAsioServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen TCP connections on port {}", settings.ServerPort);
+    WriteLog("Listen TCP connections on port {}", settings->ServerPort);
 
     return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
 }
 
-NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings& settings, unique_ptr<asio::ip::tcp::socket> socket) :
+NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSettings> settings, unique_ptr<asio::ip::tcp::socket> socket) :
     NetworkServerConnection(settings),
-    _socket {std::move(socket)}
+    _socket {std::move(*socket)}
 {
     FO_STACK_TRACE_ENTRY();
 
     std::error_code endpoint_error;
-    const auto endpoint = _socket->remote_endpoint(endpoint_error);
+    const auto endpoint = _socket.remote_endpoint(endpoint_error);
 
     if (!endpoint_error) {
         _host = endpoint.address().to_string();
@@ -120,9 +120,9 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ServerNetworkSettings
         _port = 0;
     }
 
-    if (settings.DisableTcpNagle) {
+    if (settings->DisableTcpNagle) {
         std::error_code no_delay_error;
-        _socket->set_option(asio::ip::tcp::no_delay(true), no_delay_error);
+        _socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
 
@@ -148,8 +148,8 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        if (_socket->is_open()) {
-            _socket->close();
+        if (_socket.is_open()) {
+            _socket.close();
         }
     }
     catch (const std::exception& ex) {
@@ -169,7 +169,9 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
     FO_STACK_TRACE_ENTRY();
 
     if (!error) {
-        ReceiveCallback({_inBufData.data(), bytes});
+        FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
+        const_span<uint8_t> received_data {_inBufData.data(), bytes};
+        ReceiveCallback(received_data);
         NextAsyncRead();
     }
     else {
@@ -181,12 +183,12 @@ void NetworkServerConnection_Asio::NextAsyncRead()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto read_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) FO_DEFERRED {
-        auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-        thiz_->AsyncReadComplete(error, bytes);
+    const auto read_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+        ignore_unused(lifetime);
+        AsyncReadComplete(error, bytes);
     };
 
-    async_read(*_socket, asio::buffer(_inBufData), asio::transfer_at_least(1), read_handler);
+    async_read(_socket, asio::buffer(_inBufData), asio::transfer_at_least(1), read_handler);
 }
 
 void NetworkServerConnection_Asio::StartAsyncWrite()
@@ -222,12 +224,12 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto write_handler = [thiz = shared_from_this()](std::error_code error, size_t bytes) FO_DEFERRED {
-            auto* thiz_ = static_cast<NetworkServerConnection_Asio*>(thiz.get()); // NOLINT(cppcoreguidelines-pro-type-static-cast-downcast)
-            thiz_->AsyncWriteComplete(error, bytes);
+        const auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
+            ignore_unused(lifetime);
+            AsyncWriteComplete(error, bytes);
         };
 
-        async_write(*_socket, asio::buffer(buf.data(), buf.size()), write_handler);
+        async_write(_socket, asio::buffer(buf.data(), buf.size()), write_handler);
     }
     else {
         _writePending = false;
@@ -246,17 +248,17 @@ void NetworkServerConnection_Asio::DisconnectImpl()
     FO_STACK_TRACE_ENTRY();
 
     std::error_code shutdown_error;
-    _socket->shutdown(asio::ip::tcp::socket::shutdown_both, shutdown_error);
+    _socket.shutdown(asio::ip::tcp::socket::shutdown_both, shutdown_error);
     LogSocketOperationError("shutdown", shutdown_error);
 
     std::error_code close_error;
-    _socket->close(close_error);
+    _socket.close(close_error);
     LogSocketOperationError("close", close_error);
 }
 
-NetworkServer_Asio::NetworkServer_Asio(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {&settings},
-    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings.ServerPort))),
+NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
+    _settings {settings},
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -293,8 +295,8 @@ void NetworkServer_Asio::AcceptNext()
     FO_STACK_TRACE_ENTRY();
 
     auto socket = SafeAlloc::MakeUnique<asio::ip::tcp::socket>(_context);
-    auto& socket_ref = *socket;
-    _acceptor.async_accept(socket_ref, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
+    auto socket_ptr = socket.as_ptr();
+    _acceptor.async_accept(*socket_ptr, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
 }
 
 void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket)
@@ -309,7 +311,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 
     if (!error) {
         try {
-            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(*_settings, std::move(socket));
+            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
             _connectionCallback(std::move(connection));
         }

@@ -116,8 +116,8 @@ public:
     bool FollowCritter {};
     ident_t OriginCritterId {};
     ipos32 OriginWorldPos {}; // Origin's absolute world-pixel pos (camera-independent); anchors edge noise to the world so it flows as the fog moves
-    raw_ptr<RenderEffect> CustomFogEffect {}; // Rasterizes the fog points; null = engine default
-    raw_ptr<RenderEffect> CustomFlushEffect {}; // Flushes the fog to the map; null = engine default
+    nptr<RenderEffect> CustomFogEffect {}; // Rasterizes the fog points; null = engine default
+    nptr<RenderEffect> CustomFlushEffect {}; // Flushes the fog to the map; null = engine default
     FogShape Shape {};
 };
 
@@ -132,7 +132,7 @@ public:
         int32_t Distance {};
         LightFlag Flags {};
         int32_t Intensity {};
-        raw_ptr<const ipos32> Offset {};
+        nptr<const ipos32> Offset {};
         bool Applied {};
         bool NeedReapply {};
         int32_t StartIntensity {};
@@ -155,14 +155,14 @@ public:
     struct Field
     {
         ipos32 Offset {};
-        raw_ptr<MapSprite> SpriteChain {};
-        vector<raw_ptr<CritterHexView>> Critters {};
-        vector<raw_ptr<CritterHexView>> OriginCritters {};
-        vector<raw_ptr<ItemHexView>> Items {};
-        vector<raw_ptr<ItemHexView>> OriginItems {};
-        vector<pair<raw_ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
-        unordered_map<LightSource*, ucolor> LightSources {};
-        raw_ptr<ItemHexView> GroundTile {};
+        nptr<MapSprite> SpriteChain {};
+        vector<ptr<CritterHexView>> Critters {};
+        vector<ptr<CritterHexView>> OriginCritters {};
+        vector<ptr<ItemHexView>> Items {};
+        vector<ptr<ItemHexView>> OriginItems {};
+        vector<pair<ptr<ItemHexView>, bool>> MultihexItems {}; // true if drawable
+        unordered_map<ptr<LightSource>, ucolor> LightSources {};
+        nptr<ItemHexView> GroundTile {};
         int32_t RoofNum {};
         CornerType Corner {};
         bool IsView {};
@@ -183,7 +183,7 @@ public:
         ipos16 EndHexOffset {};
     };
 
-    MapView(ClientEngine* engine, ident_t id, const ProtoMap* proto, isize32 screen_size, const Properties* props = nullptr);
+    MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto, isize32 screen_size, nptr<const Properties> props = nullptr);
     MapView(const MapView&) = delete;
     MapView(MapView&&) noexcept = delete;
     auto operator=(const MapView&) = delete;
@@ -197,7 +197,7 @@ public:
     [[nodiscard]] auto GetScreenSize() const noexcept -> isize32 { return _screenSize; }
     [[nodiscard]] auto GetField(mpos hex) noexcept -> const Field& { return _hexField->GetCellForReading(hex); }
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
-    [[nodiscard]] auto GetLightData() noexcept -> ucolor* { return _hexLight.data(); }
+    [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return _hexLight.data(); }
     [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
@@ -210,12 +210,12 @@ public:
     void Process();
 
     void DrawMap();
-    auto DrawEntitySprite(ClientEntity* entity, RenderEffect* effect, ucolor color, int32_t padding) -> bool;
+    auto DrawEntitySprite(ptr<ClientEntity> entity, ptr<RenderEffect> effect, ucolor color, int32_t padding) -> bool;
 
-    auto FindPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
-    auto CutPath(CritterHexView* cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
+    auto FindPath(nptr<CritterHexView> nullable_cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset = {}) -> optional<FindPathResult>;
+    auto CutPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex, int32_t cut) -> bool;
     auto TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const -> bool;
-    void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, vector<CritterHexView*>* critters, CritterFindType find_type, mpos* pre_block_hex, mpos* block_hex, vector<mpos>* hex_steps, bool check_shoot_blocks);
+    void TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> nullable_critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks);
 
     void SetShowMapperOverlay(bool show);
     void SetShowMapperHiddenSprites(bool show);
@@ -231,10 +231,10 @@ public:
 
     void RebuildMap();
     void RebuildFog();
-    auto AddFog(CritterView* cr, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
-    auto AddFog(mpos hex, DrawOrderType draw_order, RenderEffect* custom_flush_effect) -> FogLayer*;
-    auto MeasureMapBorders(const Sprite* spr, ipos32 offset) -> bool;
-    auto MeasureMapBorders(const ItemHexView* item) -> bool;
+    auto AddFog(nptr<CritterView> cr, DrawOrderType draw_order, nptr<RenderEffect> custom_flush_effect) -> ptr<FogLayer>;
+    auto AddFog(mpos hex, DrawOrderType draw_order, nptr<RenderEffect> custom_flush_effect) -> ptr<FogLayer>;
+    auto MeasureMapBorders(ptr<const Sprite> spr, ipos32 offset) -> bool;
+    auto MeasureMapBorders(ptr<const ItemHexView> item) -> bool;
     void RecacheHexFlags(mpos hex);
     void Resize(msize size);
 
@@ -250,53 +250,53 @@ public:
     void InstantScrollTo(mpos center_hex);
 
     // Critters
-    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> CritterHexView*;
-    auto AddMapperCritter(hstring pid, mpos hex, mdir dir, const Properties* props, ident_t id = {}) -> CritterHexView*;
-    auto GetCritter(ident_t id) -> CritterHexView*;
-    auto GetNonDeadCritter(mpos hex) -> CritterHexView*;
+    auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<CritterHexView>;
+    auto AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Properties> props, ident_t id = {}) -> ptr<CritterHexView>;
+    auto GetCritter(ident_t id) -> nptr<CritterHexView>;
+    auto GetNonDeadCritter(mpos hex) -> nptr<CritterHexView>;
     auto GetCritters() -> span<refcount_ptr<CritterHexView>> { return _critters; }
     auto GetCritters() const -> const_span<refcount_ptr<CritterHexView>> { return _critters; }
-    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<CritterHexView*>;
-    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<const CritterHexView*>;
-    auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<CritterHexView*>;
-    void MoveCritter(CritterHexView* cr, mpos to_hex, bool smoothly);
-    void ReapplyCritterView(CritterHexView* cr);
-    void DestroyCritter(CritterHexView* cr);
+    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
+    auto GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<ptr<const CritterHexView>>;
+    auto GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_type) -> vector<ptr<CritterHexView>>;
+    void MoveCritter(ptr<CritterHexView> cr, mpos to_hex, bool smoothly);
+    void ReapplyCritterView(ptr<CritterHexView> cr);
+    void DestroyCritter(ptr<CritterHexView> cr);
 
     // Items
-    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ItemHexView*;
-    auto AddMapperItem(hstring pid, mpos hex, const Properties* props, ident_t id = {}) -> ItemHexView*;
-    auto AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ItemHexView*;
-    auto AddLocalItem(hstring pid, mpos hex) -> ItemHexView*;
-    auto GetItem(ident_t id) -> ItemHexView*;
-    auto GetItemOnHex(mpos hex) -> ItemHexView*;
-    auto GetItemOnHex(mpos hex, hstring pid) -> ItemHexView*;
+    auto AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<ItemHexView>;
+    auto AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props, ident_t id = {}) -> ptr<ItemHexView>;
+    auto AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) -> ptr<ItemHexView>;
+    auto AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>;
+    auto GetItem(ident_t id) -> nptr<ItemHexView>;
+    auto GetItemOnHex(mpos hex) -> nptr<ItemHexView>;
+    auto GetItemOnHex(mpos hex, hstring pid) -> nptr<ItemHexView>;
     auto GetItems() -> span<refcount_ptr<ItemHexView>> { return _items; }
     auto GetItems() const -> const_span<refcount_ptr<ItemHexView>> { return _items; }
-    auto GetItemsOnHex(mpos hex) -> span<raw_ptr<ItemHexView>>;
-    auto GetItemsOnHex(mpos hex) const -> const_span<raw_ptr<ItemHexView>>;
-    void RefreshItem(ItemHexView* item, bool deferred = false);
+    auto GetItemsOnHex(mpos hex) -> span<ptr<ItemHexView>>;
+    auto GetItemsOnHex(mpos hex) const -> const_span<ptr<ItemHexView>>;
+    void RefreshItem(ptr<ItemHexView> item, bool deferred = false);
     void DefferedRefreshItems();
-    void MoveItem(ItemHexView* item, mpos hex);
-    void DestroyItem(ItemHexView* item);
-    void DestroyItems(const_span<ItemHexView*> items);
+    void MoveItem(ptr<ItemHexView> item, mpos hex);
+    void DestroyItem(ptr<ItemHexView> item);
+    void DestroyItems(const_span<ptr<ItemHexView>> items);
 
-    auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, ipos32* hex_offset) const -> bool;
-    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<ItemHexView*, const MapSprite*>; // With transparent egg
-    auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<CritterHexView*, const MapSprite*>;
-    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<ClientEntity*, const MapSprite*>;
+    auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offset) const -> bool;
+    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>; // With transparent egg
+    auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<nptr<CritterHexView>, nptr<const MapSprite>>;
+    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
 
-    void UpdateCritterLightSource(const CritterHexView* cr);
-    void UpdateItemLightSource(const ItemHexView* item);
+    void UpdateCritterLightSource(ptr<const CritterHexView> cr);
+    void UpdateItemLightSource(ptr<const ItemHexView> item);
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
     void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
-    auto AddMapSprite(const Sprite* spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, const ipos32* poffset, const uint8_t* palpha, bool* callback) -> MapSprite*;
+    auto AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>;
 
-    auto RunSpritePattern(string_view name, size_t count) -> SpritePattern*;
+    auto RunSpritePattern(string_view name, size_t count) -> nptr<SpritePattern>;
 
     auto IsFastPid(hstring pid) const -> bool;
     auto IsIgnorePid(hstring pid) const -> bool;
@@ -323,18 +323,18 @@ private:
     void ProcessZoom(float32_t dt);
     void RefreshMinZoom();
 
-    auto AddCritterInternal(CritterHexView* cr) -> CritterHexView*;
-    void AddCritterToField(CritterHexView* cr);
-    void RemoveCritterFromField(CritterHexView* cr);
-    void SetMultihexCritter(CritterHexView* cr, bool set);
-    void DrawHexCritter(CritterHexView* cr, Field& field, mpos hex);
+    auto AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>;
+    void AddCritterToField(ptr<CritterHexView> cr);
+    void RemoveCritterFromField(ptr<CritterHexView> cr);
+    void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
+    void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
 
-    auto AddItemInternal(ItemHexView* item) -> ItemHexView*;
-    void AddItemToField(ItemHexView* item);
-    void RemoveItemFromField(ItemHexView* item);
-    void DrawHexItem(ItemHexView* item, Field& field, mpos hex, bool extra_draw);
+    auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
+    void AddItemToField(ptr<ItemHexView> item);
+    void RemoveItemFromField(ptr<ItemHexView> item);
+    void DrawHexItem(ptr<ItemHexView> item, ptr<Field> field, mpos hex, bool extra_draw);
 
-    void RecacheHexFlags(Field& field);
+    void RecacheHexFlags(ptr<Field> field);
     void RecacheScrollBlocks();
 
     void RebuildMapNow();
@@ -347,8 +347,8 @@ private:
     auto GetViewSize() const -> isize32;
     void InitView();
 
-    void AddSpriteToChain(Field& field, MapSprite* mspr);
-    void InvalidateSpriteChain(Field& field);
+    void AddSpriteToChain(ptr<Field> field, ptr<MapSprite> mspr);
+    void InvalidateSpriteChain(ptr<Field> field);
 
     auto HasFogLayers() const noexcept -> bool;
     void PrepareFogToDraw();
@@ -360,18 +360,18 @@ private:
     void UpdateTransparentEggs();
 
     void ProcessLighting();
-    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, int32_t intensity, const ipos32* offset);
+    void UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t distance, LightFlag flags, int32_t intensity, nptr<const ipos32> offset);
     void FinishLightSource(ident_t id);
     void CleanLightSourceOffsets(ident_t id);
-    void ApplyLightFan(LightSource* ls);
-    void CleanLightFan(LightSource* ls);
-    void TraceLightLine(LightSource* ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity);
-    void MarkLightStep(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
-    void MarkLightEnd(LightSource* ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
-    void MarkLightEndNeighbor(LightSource* ls, mpos hex, bool north_south, int32_t raw_intensity);
-    void MarkLight(LightSource* ls, mpos hex, int32_t raw_intensity);
-    void CalculateHexLight(mpos hex, const Field& field);
-    void LightFanToPrimitves(const LightSource* ls, vector<PrimitivePoint>& points) const;
+    void ApplyLightFan(ptr<LightSource> ls);
+    void CleanLightFan(ptr<LightSource> ls);
+    void TraceLightLine(ptr<LightSource> ls, mpos from_hex, mpos& to_hex, int32_t distance, int32_t raw_intensity);
+    void MarkLightStep(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
+    void MarkLightEnd(ptr<LightSource> ls, mpos from_hex, mpos to_hex, int32_t raw_intensity);
+    void MarkLightEndNeighbor(ptr<LightSource> ls, mpos hex, bool north_south, int32_t raw_intensity);
+    void MarkLight(ptr<LightSource> ls, mpos hex, int32_t raw_intensity);
+    void CalculateHexLight(mpos hex, ptr<const Field> field);
+    void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
     void OnScreenSizeChanged();
@@ -386,15 +386,15 @@ private:
     map<string, string> _headerExtraFields {};
 
     vector<refcount_ptr<CritterHexView>> _critters {};
-    unordered_map<ident_t, raw_ptr<CritterHexView>> _crittersMap {};
+    unordered_map<ident_t, ptr<CritterHexView>> _crittersMap {};
     vector<refcount_ptr<ItemHexView>> _items {};
-    vector<raw_ptr<ItemHexView>> _staticItems {};
-    vector<raw_ptr<ItemHexView>> _dynamicItems {};
-    vector<raw_ptr<ItemHexView>> _processingItems {};
-    unordered_map<ident_t, raw_ptr<ItemHexView>> _itemsMap {};
+    vector<ptr<ItemHexView>> _staticItems {};
+    vector<ptr<ItemHexView>> _dynamicItems {};
+    vector<ptr<ItemHexView>> _processingItems {};
+    unordered_map<ident_t, ptr<ItemHexView>> _itemsMap {};
     unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
-    unique_ptr<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
+    optional<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};
@@ -416,9 +416,9 @@ private:
     bool _isShowMapperOverlay {true};
     bool _isShowMapperHiddenSprites {true};
 
-    raw_ptr<RenderTarget> _rtMap {};
-    raw_ptr<RenderTarget> _rtIndoorMask {}; // Currently-hidden-roof alpha mask; tells the weather shader where the player can see inside and should not be visually obstructed by snow/rain/dust
-    raw_ptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
+    nptr<RenderTarget> _rtMap {};
+    nptr<RenderTarget> _rtIndoorMask {}; // Currently-hidden-roof alpha mask; tells the weather shader where the player can see inside and should not be visually obstructed by snow/rain/dust
+    nptr<RenderTarget> _rtLight {}; // Lighting and fog intermediate target
     optional<irect32> _currentRenderDrawArea {};
 
     isize32 _maxScroll {};
@@ -441,17 +441,17 @@ private:
     nanotime _hexLightTime {};
 
     unordered_map<ident_t, unique_ptr<LightSource>> _lightSources {};
-    unordered_map<LightSource*, size_t> _visibleLightSources {};
+    unordered_map<ptr<LightSource>, size_t> _visibleLightSources {};
     vector<vector<PrimitivePoint>> _lightPoints {};
     size_t _globalLights {};
     bool _needReapplyLights {};
     bool _needRebuildLightPrimitives {};
 
     // Reused per-frame scratch buffers for Process() / ProcessLighting()
-    vector<CritterHexView*> _critterToDeleteScratch {};
-    vector<ItemHexView*> _itemToDeleteScratch {};
-    vector<LightSource*> _reapplyLightSourcesScratch {};
-    vector<LightSource*> _removeLightSourcesScratch {};
+    vector<ptr<CritterHexView>> _critterToDeleteScratch {};
+    vector<ptr<ItemHexView>> _itemToDeleteScratch {};
+    vector<ptr<LightSource>> _reapplyLightSourcesScratch {};
+    vector<ptr<LightSource>> _removeLightSourcesScratch {};
 
     int32_t _hiddenRoofNum {};
 

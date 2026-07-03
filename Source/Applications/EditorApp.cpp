@@ -46,23 +46,27 @@ FO_USING_NAMESPACE();
 #if !FO_TESTING_APP
 int main(int argc, char** argv) // Handled by SDL
 #else
-[[maybe_unused]] static auto EditorApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto EditorApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
+#if !FO_TESTING_APP
+    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+#endif
+
     try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::ShowMessageOnException);
+        InitApp(args, AppInitFlags::ShowMessageOnException);
 
         {
-            auto editor = SafeAlloc::MakeUnique<FOEditor>(App->Settings);
+            auto editor = SafeAlloc::MakeUnique<FOEditor>(&GetApp()->Settings);
 
-            while (!App->IsQuitRequested()) {
-                App->BeginFrame();
+            while (!GetApp()->IsQuitRequested()) {
+                GetApp()->BeginFrame();
 
                 editor->MainLoop();
 
-                App->EndFrame();
+                GetApp()->EndFrame();
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(0));
             }

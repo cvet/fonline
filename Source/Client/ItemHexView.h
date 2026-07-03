@@ -46,7 +46,7 @@ class ItemHexView final : public ItemView, public HexView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(MapView* map, ident_t id, const ProtoItem* proto, const Properties* props = nullptr);
+    ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> proto, nptr<const Properties> props = nullptr);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -55,10 +55,16 @@ public:
 
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
-    [[nodiscard]] auto GetAnim() const -> const Sprite* { return _anim.get(); }
+    [[nodiscard]] auto GetAnim() const -> ptr<const Sprite>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
+        return _anim.as_ptr();
+    }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return _isMoving; }
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
-    [[nodiscard]] auto GetMultihexEntries() const noexcept -> const vector<mpos>& { return *_multihexEntries; }
+    [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>> { return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr; }
 
     void Init();
     void Process();
@@ -74,7 +80,7 @@ public:
 
 private:
     void OnDestroySelf() override;
-    void SetupSprite(MapSprite* mspr) override;
+    void SetupSprite(ptr<MapSprite> mspr) override;
 
     shared_ptr<Sprite> _anim {};
     hstring _animName {};
@@ -94,7 +100,7 @@ private:
     mdir _moveDir {};
     vector<mpos> _moveSteps {};
 
-    unique_ptr<vector<mpos>> _multihexEntries {};
+    optional<vector<mpos>> _multihexEntries {};
 };
 
 FO_END_NAMESPACE

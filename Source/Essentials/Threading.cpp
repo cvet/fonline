@@ -182,10 +182,9 @@ static void worker_loop(Pool* pool) noexcept
     // Remember the base worker name so we can restore it after each task's per-task name
     // override. The spawn helper already set it (e.g. "Pool-0" or "AsyncPool-3"); tasks
     // transiently rename via `set_this_thread_name` while they execute, which makes Tracy /
-    // debugger thread lists informative. `get_this_thread_name` returns a `std::string` (default
-    // allocator); convert to `fo::string` for the `set_this_thread_name` overload.
-    const auto& base_name_std = get_this_thread_name();
-    const string base_thread_name {base_name_std.data(), base_name_std.size()};
+    // debugger thread lists informative. Materialize the view before restoring the previous name.
+    const string_view base_name = get_this_thread_name();
+    const string base_thread_name {base_name.data(), base_name.size()};
 
     while (true) {
         PoolTask task;
@@ -302,7 +301,7 @@ extern void set_this_thread_name(const string& name) noexcept
 #endif
 }
 
-extern auto get_this_thread_name() noexcept -> const std::string&
+extern auto get_this_thread_name() noexcept -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -316,7 +315,7 @@ extern auto get_this_thread_name() noexcept -> const std::string&
         }
     }
 
-    return ThreadName;
+    return {ThreadName.data(), ThreadName.size()};
 }
 
 extern auto run_thread(string_view task_name, function<void()> task) -> thread
@@ -328,11 +327,11 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
     // `packaged_task` would silently store the exception into the future where a `.join()`
     // caller never observes it. The promise is set unconditionally inside a `try`/`catch`
     // around the body so a body exception both gets reported AND wakes any `.join()`.
-    auto promise = std::make_shared<std::promise<void>>();
+    auto promise = SafeAlloc::MakeShared<std::promise<void>>();
     // Shared with the lambda below so the pool body and the returned handle's `get_id()` read
     // from the same slot. The body stores the worker thread id at entry and clears it at exit;
     // readers see a valid id only while the body is actually executing.
-    auto running_thread_id = std::make_shared<std::atomic<std::thread::id>>();
+    auto running_thread_id = SafeAlloc::MakeShared<std::atomic<std::thread::id>>();
     auto handle = thread {promise->get_future(), running_thread_id};
 
     submit_run_thread(task_name, [body = std::move(task), promise = std::move(promise), running_thread_id = std::move(running_thread_id)]() mutable {

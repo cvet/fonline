@@ -86,7 +86,7 @@ private:
 
     struct TagsParsingContext
     {
-        unique_ptr<EngineMetadata> Meta {};
+        EngineMetadata Meta {[] { }};
         unordered_set<string> OtherEntityTypes {};
         unordered_map<string, unordered_map<string, string>> ComponentScopes {};
         unordered_map<string, RefTypeState> RefTypes {};

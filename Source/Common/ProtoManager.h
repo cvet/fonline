@@ -45,7 +45,7 @@ class EngineMetadata;
 class ProtoManager final
 {
 public:
-    explicit ProtoManager(EngineMetadata& meta);
+    explicit ProtoManager(ptr<EngineMetadata> meta);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
@@ -54,11 +54,11 @@ public:
 
     [[nodiscard]] auto GetAllProtos() const -> const auto& { return _protos; }
 
-    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) const noexcept -> nptr<const ProtoCritter>;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) const noexcept -> nptr<const ProtoMap>;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) const noexcept -> nptr<const ProtoLocation>;
+    [[nodiscard]] auto GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity>;
 
     [[nodiscard]] auto GetProtoItems() const noexcept -> const auto& { return _itemProtos; }
     [[nodiscard]] auto GetProtoCritters() const noexcept -> const auto& { return _crProtos; }
@@ -66,22 +66,22 @@ public:
     [[nodiscard]] auto GetProtoLocations() const noexcept -> const auto& { return _locProtos; }
     [[nodiscard]] auto GetProtoEntities(hstring type_name) const noexcept -> const unordered_map<hstring, refcount_ptr<ProtoEntity>>&;
 
-    void AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto);
+    void AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void LoadFromResources(const FileSystem& resources);
 
 private:
-    auto CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*;
+    auto CreateProto(hstring type_name, hstring pid, nptr<const Properties> props) -> ptr<ProtoEntity>;
 
-    raw_ptr<EngineMetadata> _meta;
+    ptr<EngineMetadata> _meta;
     const hstring _migrationRuleName;
     const hstring _itemTypeName;
     const hstring _crTypeName;
     const hstring _mapTypeName;
     const hstring _locTypeName;
-    unordered_map<hstring, raw_ptr<const ProtoItem>> _itemProtos {};
-    unordered_map<hstring, raw_ptr<const ProtoCritter>> _crProtos {};
-    unordered_map<hstring, raw_ptr<const ProtoMap>> _mapProtos {};
-    unordered_map<hstring, raw_ptr<const ProtoLocation>> _locProtos {};
+    unordered_map<hstring, ptr<const ProtoItem>> _itemProtos {};
+    unordered_map<hstring, ptr<const ProtoCritter>> _crProtos {};
+    unordered_map<hstring, ptr<const ProtoMap>> _mapProtos {};
+    unordered_map<hstring, ptr<const ProtoLocation>> _locProtos {};
     unordered_map<hstring, unordered_map<hstring, refcount_ptr<ProtoEntity>>> _protos {};
     const unordered_map<hstring, refcount_ptr<ProtoEntity>> _emptyProtos {};
 };

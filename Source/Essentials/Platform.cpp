@@ -72,15 +72,47 @@ FO_BEGIN_NAMESPACE
 
 #if FO_WINDOWS
 template<typename T>
-static auto WinApi_GetProcAddress(const char* mod, const char* name) -> T
+static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (auto* hmod = ::GetModuleHandleA(mod); hmod != nullptr) {
-        return reinterpret_cast<T>(::GetProcAddress(hmod, name)); // NOLINT(clang-diagnostic-cast-function-type-strict)
+    ptr<const char> module_name = mod.c_str();
+    ptr<const char> proc_name = name.c_str();
+
+    const auto hmod = ::GetModuleHandleA(module_name.get());
+
+    if (hmod != nullptr) {
+        FARPROC proc = ::GetProcAddress(hmod, proc_name.get());
+        return reinterpret_cast<T>(proc); // NOLINT(clang-diagnostic-cast-function-type-strict)
     }
 
     return nullptr;
+}
+
+static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!module_handle) {
+        return ::GetModuleHandleW(nullptr);
+    }
+
+    return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get();
+}
+
+static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    HMODULE hmodule = WinApiModuleHandle(module_handle);
+    ptr<const char> func_name_cstr = func_name.c_str();
+    FARPROC proc = ::GetProcAddress(hmodule, func_name_cstr.get());
+
+    if (proc == nullptr) {
+        return nullptr;
+    }
+
+    return reinterpret_cast<void*>(proc);
 }
 #endif
 
@@ -89,9 +121,12 @@ void Platform::InfoLog(const string& str) noexcept
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    ::OutputDebugStringW(strex(str).to_wide_char().c_str());
+    const wstring message = strex(str).to_wide_char();
+    ptr<const wchar_t> message_cstr = message.c_str();
+    ::OutputDebugStringW(message_cstr.get());
 #elif FO_ANDROID
-    __android_log_write(ANDROID_LOG_INFO, "FO", str.c_str());
+    ptr<const char> message_cstr = str.c_str();
+    __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
 #endif
 }
 
@@ -104,7 +139,9 @@ void Platform::SetThreadName(const string& str) noexcept
     const static auto set_thread_description = WinApi_GetProcAddress<SetThreadDescriptionFn>("kernel32.dll", "SetThreadDescription");
 
     if (set_thread_description != nullptr) {
-        set_thread_description(::GetCurrentThread(), strex(str).to_wide_char().c_str());
+        const wstring thread_name = strex(str).to_wide_char();
+        ptr<const wchar_t> thread_name_cstr = thread_name.c_str();
+        set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
     }
 #endif
 }
@@ -116,7 +153,8 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #if FO_WINDOWS
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);
-    auto size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+    nptr<wchar_t> path_data = path.data();
+    auto size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
 
     if (size == 0) {
         return std::nullopt;
@@ -124,36 +162,39 @@ auto Platform::GetExePath() noexcept -> optional<string>
 
     while (size == path.size()) {
         path.resize(path.size() * 2);
-        size = ::GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+        path_data = path.data();
+        size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
 
         if (size == 0) {
             return std::nullopt;
         }
     }
 
-    return strex().parse_wide_char(path.data());
+    return strex().parse_wide_char(path_data.get());
 
 #elif FO_LINUX
     char path[FILENAME_MAX];
-    const auto size = ::readlink("/proc/self/exe", path, sizeof(path) - 1);
+    ptr<char> path_data = path;
+    const auto size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
 
     if (size == -1) {
         return std::nullopt;
     }
 
-    path[size] = '\0';
-    return path;
+    path_data[static_cast<size_t>(size)] = '\0';
+    return string {path_data.get()};
 
 #elif FO_MAC
     char path[PROC_PIDPATHINFO_MAXSIZE];
+    ptr<char> path_data = path;
 
     const auto pid = ::getpid();
 
-    if (::proc_pidpath(pid, path, sizeof(path)) <= 0) {
+    if (::proc_pidpath(pid, path_data.get(), sizeof(path)) <= 0) {
         return std::nullopt;
     }
 
-    return path;
+    return string {path_data.get()};
 
 #else
     return std::nullopt;
@@ -240,14 +281,14 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 
 #elif FO_LINUX || FO_ANDROID
     // /proc/self/statm: size resident shared text lib data dt (values in pages)
-    std::FILE* file = std::fopen("/proc/self/statm", "r");
-    if (file == nullptr) {
+    nptr<std::FILE> file = std::fopen("/proc/self/statm", "r");
+    if (!file) {
         return 0;
     }
     unsigned long size_pages = 0;
     unsigned long rss_pages = 0;
-    const int matched = std::fscanf(file, "%lu %lu", &size_pages, &rss_pages);
-    std::fclose(file);
+    const int matched = std::fscanf(file.get(), "%lu %lu", &size_pages, &rss_pages);
+    std::fclose(file.get());
     if (matched != 2) {
         return 0;
     }
@@ -260,7 +301,8 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS) {
+    ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
+    if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
     }
     return 0;
@@ -276,27 +318,29 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS_EX pmc {};
-    if (::GetProcessMemoryInfo(::GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&pmc), sizeof(pmc)) != 0) {
+    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)> {&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+
+    if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
         return pmc.PrivateUsage;
     }
     return 0;
 
 #elif FO_LINUX || FO_ANDROID
-    std::FILE* file = std::fopen("/proc/self/status", "r");
-    if (file == nullptr) {
+    nptr<std::FILE> file = std::fopen("/proc/self/status", "r");
+    if (!file) {
         return 0;
     }
 
     char line[256] {};
     size_t result = 0;
-    while (std::fgets(line, sizeof(line), file) != nullptr) {
+    while (std::fgets(line, sizeof(line), file.get()) != nullptr) {
         size_t value_kib = 0;
         if (std::sscanf(line, "VmData:%zu kB", &value_kib) == 1) {
             result = value_kib * 1024;
             break;
         }
     }
-    std::fclose(file);
+    std::fclose(file.get());
     return result;
 
 #else
@@ -350,6 +394,17 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     constexpr size_t IOWAIT_FIELD_INDEX = 4;
     constexpr size_t TOTAL_TIME_FIELD_COUNT = 8; // user..steal; guest/guest_nice are folded into user/nice
 
+    const auto parse_uint64 = [](string_view text, uint64_t& value) noexcept -> bool {
+        if (text.empty()) {
+            return false;
+        }
+
+        nptr<const char> text_begin = text.data();
+        ptr<const char> text_end = text_begin.get() + text.size();
+        const auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
+        return parse_result.ec == std::errc {} && text_end == parse_result.ptr;
+    };
+
     std::ifstream stat_file {"/proc/stat"};
 
     if (stat_file) {
@@ -378,12 +433,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
                     break;
                 }
 
-                const char* const field_begin = field.data();
-                const char* const field_end = field_begin + field.size();
                 uint64_t value = 0;
-                const auto parse_result = std::from_chars(field_begin, field_end, value);
 
-                if (parse_result.ec != std::errc {} || parse_result.ptr != field_end) {
+                if (!parse_uint64(field, value)) {
                     parse_failed = true;
                     break;
                 }
@@ -412,7 +464,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
 
     result.LogicalCoreCount = static_cast<uint32_t>(result.Cores.size());
 
-    result.ProcessTimeNs = []() noexcept -> uint64_t {
+    result.ProcessTimeNs = [&parse_uint64]() noexcept -> uint64_t {
         std::ifstream file {"/proc/self/stat"};
 
         if (!file) {
@@ -428,7 +480,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return 0;
         }
 
-        const vector<string_view> fields = strvex(string_view {text.data() + comm_end + 2, text.size() - comm_end - 2}).split(' ');
+        const size_t fields_offset = comm_end + 2;
+        const string_view fields_text = string_view {text}.substr(fields_offset);
+        const vector<string_view> fields = strvex(fields_text).split(' ');
 
         if (fields.size() <= 12) {
             return 0;
@@ -437,19 +491,11 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         uint64_t user_ticks = 0;
         uint64_t system_ticks = 0;
 
-        const char* const user_ticks_begin = fields[11].data();
-        const char* const user_ticks_end = user_ticks_begin + fields[11].size();
-        const auto user_ticks_result = std::from_chars(user_ticks_begin, user_ticks_end, user_ticks);
-
-        if (user_ticks_result.ec != std::errc {} || user_ticks_result.ptr != user_ticks_end) {
+        if (!parse_uint64(fields[11], user_ticks)) {
             return 0;
         }
 
-        const char* const system_ticks_begin = fields[12].data();
-        const char* const system_ticks_end = system_ticks_begin + fields[12].size();
-        const auto system_ticks_result = std::from_chars(system_ticks_begin, system_ticks_end, system_ticks);
-
-        if (system_ticks_result.ec != std::errc {} || system_ticks_result.ptr != system_ticks_end) {
+        if (!parse_uint64(fields[12], system_ticks)) {
             return 0;
         }
 
@@ -464,11 +510,14 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
 
 #elif FO_MAC
     natural_t processor_count = 0;
-    processor_info_array_t processor_info {};
+    processor_info_array_t raw_processor_info {};
     mach_msg_type_number_t processor_info_count = 0;
 
-    if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &processor_info, &processor_info_count) == KERN_SUCCESS) {
-        const auto* load_info = reinterpret_cast<const processor_cpu_load_info_data_t*>(processor_info);
+    if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
+        FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "processor_info");
+        ptr<const integer_t> processor_info = raw_processor_info;
+        ptr<const processor_cpu_load_info_data_t> load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
+        span<const processor_cpu_load_info_data_t> load_info {load_info_data.get(), processor_count};
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 
@@ -485,7 +534,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             });
         }
 
-        (void)::vm_deallocate(::mach_task_self(), reinterpret_cast<vm_address_t>(processor_info), processor_info_count * sizeof(integer_t));
+        (void)::vm_deallocate(::mach_task_self(), reinterpret_cast<vm_address_t>(raw_processor_info), processor_info_count * sizeof(integer_t));
     }
 
     result.LogicalCoreCount = static_cast<uint32_t>(result.Cores.size());
@@ -493,8 +542,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};
         mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+        ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
 
-        if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS) {
+        if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
             return 0;
         }
 
@@ -506,55 +556,63 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     return result;
 }
 
-auto Platform::LoadModule(const string& module_name) noexcept -> void*
+auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();
 
-    void* module_handle = nullptr;
+    nptr<void> module_handle = nullptr;
 
     const auto add_extension = [](const string& path, string_view extension) -> string { //
         return path.ends_with(extension) ? path : strex(strex::safe_format, "{}{}", path, extension).str();
     };
 
 #if FO_WINDOWS
-    module_handle = ::LoadLibraryW(strex(add_extension(module_name, ".dll")).to_wide_char().c_str());
+    const string module_path = add_extension(module_name, ".dll");
+    const wstring module_path_wide = strex(module_path).to_wide_char();
+    ptr<const wchar_t> module_path_cstr = module_path_wide.c_str();
+    module_handle = ::LoadLibraryW(module_path_cstr.get());
 #elif FO_LINUX
-    module_handle = ::dlopen(add_extension(module_name, ".so").c_str(), RTLD_LAZY | RTLD_LOCAL);
+    const string module_path = add_extension(module_name, ".so");
+    ptr<const char> module_path_cstr = module_path.c_str();
+    module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC
-    module_handle = ::dlopen(add_extension(module_name, ".dylib").c_str(), RTLD_LAZY | RTLD_LOCAL);
+    const string module_path = add_extension(module_name, ".dylib");
+    ptr<const char> module_path_cstr = module_path.c_str();
+    module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #endif
 
     return module_handle;
 }
 
-void Platform::UnloadModule(void* module_handle) noexcept
+void Platform::UnloadModule(nptr<void> module_handle) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (module_handle == nullptr) {
+    if (!module_handle) {
         return;
     }
 
 #if FO_WINDOWS
-    ::FreeLibrary(static_cast<HMODULE>(module_handle));
+    ::FreeLibrary(WinApiModuleHandle(module_handle));
 #elif FO_LINUX || FO_MAC
-    ::dlclose(module_handle);
+    ::dlclose(module_handle.get());
 #endif
 }
 
-auto Platform::GetFuncAddr(void* module_handle, const string& func_name) noexcept -> void*
+auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    void* func = nullptr;
+    nptr<void> func = nullptr;
 
 #if FO_WINDOWS
-    func = reinterpret_cast<void*>(::GetProcAddress(static_cast<HMODULE>(module_handle), func_name.c_str()));
+    func = WinApi_GetProcAddressRaw(module_handle, func_name);
 #elif FO_LINUX || FO_MAC
-    func = ::dlsym(module_handle != nullptr ? module_handle : RTLD_DEFAULT, func_name.c_str());
+    ptr<const char> func_name_cstr = func_name.c_str();
+    func = ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, func_name_cstr.get());
 #endif
 
-    return func;
+    return func.get();
 }
 
 FO_END_NAMESPACE

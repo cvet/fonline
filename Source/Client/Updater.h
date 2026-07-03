@@ -70,7 +70,7 @@ class Updater final
 {
 public:
     Updater() = delete;
-    Updater(GlobalSettings& settings, IAppWindow& window);
+    Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window);
     Updater(const Updater&) = delete;
     Updater(Updater&&) noexcept = delete;
     auto operator=(const Updater&) = delete;
@@ -116,7 +116,7 @@ private:
     static auto ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool;
     static auto GetClientBinaryDir() -> string;
 
-    raw_ptr<ClientSettings> _settings;
+    ptr<ClientSettings> _settings;
     ClientConnection _conn;
     CacheStorage _cache;
     string _binaryDir;

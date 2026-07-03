@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SmartPointers.h"
 #include "StackTrace.h"
 
 FO_BEGIN_NAMESPACE
@@ -60,12 +61,12 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, static_cast<const FO_NAMESPACE StackTraceData*>(nullptr), message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {}, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
         exception_name(const FO_NAMESPACE StackTraceData& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, &st, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {&st}, message, std::forward<Args>(args)...) \
         { \
         } \
         exception_name(const exception_name& other) noexcept : \
@@ -79,7 +80,7 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
 \
     protected: \
         template<typename... Args> \
-        exception_name(const char* derived_name, const FO_NAMESPACE StackTraceData* st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -94,11 +95,11 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(const char* name, const StackTraceData* st, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(string_view name, nptr<const StackTraceData> st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
-            _extendedMessage = _name;
+            _extendedMessage.assign(_name);
             _extendedMessage.append(": ");
             _extendedMessage.append(message);
             _message = message;
@@ -114,7 +115,7 @@ public:
             // Do nothing
         }
 
-        if (st != nullptr) {
+        if (st) {
             _stackTrace = *st;
         }
         else {
@@ -140,14 +141,14 @@ public:
 
     BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name; }
-    [[nodiscard]] auto name() const noexcept -> const char* { return _name; }
-    [[nodiscard]] auto message() const noexcept -> const string& { return _message; }
-    [[nodiscard]] auto params() const noexcept -> const vector<string>& { return _params; }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.data(); }
+    [[nodiscard]] auto name() const noexcept -> const char* { return _name.data(); }
+    [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
+    [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
     [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
-    const char* _name;
+    string_view _name;
     string _message {};
     string _extendedMessage {};
     vector<string> _params {};

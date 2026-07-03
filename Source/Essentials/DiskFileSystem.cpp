@@ -178,7 +178,11 @@ auto fs_compare_file_content(string_view path, const_span<uint8_t> content) -> b
         return false;
     }
 
-    return MemCompare(existing_content->data(), content.data(), content.size());
+    if (content.empty()) {
+        return true;
+    }
+
+    return MemCompare((*existing_content).data(), content.data(), content.size());
 }
 
 auto fs_write_file(string_view path, string_view content) -> bool
@@ -222,7 +226,7 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
     }
 
     if (!content.empty()) {
-        file.write(reinterpret_cast<const char*>(content.data()), static_cast<std::streamsize>(content.size()));
+        file.write(ptr<const uint8_t> {content.data()}.reinterpret_as<char>().get(), static_cast<std::streamsize>(content.size()));
     }
 
     file.flush();
@@ -294,7 +298,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
@@ -311,12 +315,14 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     uint64_t hash = offset;
 
     while (stream) {
-        stream.read(buf.data(), numeric_cast<std::streamsize>(buf.size()));
+        nptr<char> read_buf = buf.data();
+        stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
 
         const auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
-            hash = step(hash, reinterpret_cast<const uint8_t*>(buf.data()), read_size);
+            nptr<const uint8_t> hash_bytes = read_buf.reinterpret_as<const uint8_t>();
+            hash = step(hash, hash_bytes.as_ptr(), read_size);
         }
 
         if (stream.bad()) {
@@ -327,7 +333,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     return hash;
 }
 
-auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t
+auto fs_hash_data(const_span<uint8_t> data) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -335,14 +341,18 @@ auto fs_hash_data(const void* data, size_t size) noexcept -> uint64_t
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
     constexpr uint64_t prime = UINT64_C(0x100000001b3);
 
-    const auto step = [](uint64_t hash, const uint8_t* bytes, size_t count) noexcept {
+    const auto step = [](uint64_t hash, ptr<const uint8_t> bytes, size_t count) noexcept {
         for (size_t i = 0; i < count; ++i) {
             hash = (hash ^ bytes[i]) * prime;
         }
         return hash;
     };
 
-    return step(offset, static_cast<const uint8_t*>(data), size);
+    if (data.empty()) {
+        return offset;
+    }
+
+    return step(offset, data.data(), data.size());
 }
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool recursive, const FsFileVisitor& visitor)
@@ -378,16 +388,18 @@ void fs_iterate_dir(string_view dir, bool recursive, const FsFileVisitor& visito
     RecursiveDirLook(dir, "", recursive, visitor);
 }
 
-auto stream_read_exact(std::istream& stream, void* buf, size_t len) -> bool
+auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (len == 0) {
+    if (buf.empty()) {
         return true;
     }
 
-    stream.read(static_cast<char*>(buf), static_cast<std::streamsize>(len));
-    return !!stream && stream.gcount() == static_cast<std::streamsize>(len);
+    const std::streamsize stream_len = numeric_cast<std::streamsize>(buf.size());
+    ptr<char> target_chars = reinterpret_cast<char*>(buf.data());
+    stream.read(target_chars.get(), stream_len);
+    return !!stream && stream.gcount() == stream_len;
 }
 
 auto stream_get_size(std::istream& stream) -> size_t

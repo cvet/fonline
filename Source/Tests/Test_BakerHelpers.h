@@ -46,11 +46,20 @@ FO_BEGIN_NAMESPACE
 
 namespace BakerTests
 {
+    template<typename T>
+    [[nodiscard]] inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return const_cast<T*>(&setting);
+    }
+
     template<typename T, typename U>
     inline void OverrideSetting(T& setting, U&& value)
     {
         using setting_type = std::remove_cvref_t<T>;
-        const_cast<setting_type&>(setting) = setting_type {std::forward<U>(value)};
+        auto mutable_setting = FixedSettingForOverride(setting);
+        *mutable_setting = setting_type {std::forward<U>(value)};
     }
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
@@ -124,14 +133,33 @@ namespace BakerTests
         return metadata;
     }
 
+    inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        unique_arr_ptr<const uint8_t> owned_buf {p.get()};
+        ignore_unused(owned_buf);
+    }
+
+    inline auto MakeMemoryDataSourceFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        ptr<const uint8_t> released_buf = std::move(buf).release();
+        return make_unique_del_ptr(released_buf, CleanupMemoryDataSourceFileBuffer);
+    }
+
     template<typename ProtoType>
     inline auto MakeSingleProtoResourceBlob(EngineMetadata& meta, hstring type_name, string_view proto_name) -> vector<uint8_t>
     {
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
-        proto.GetProperties().StoreAllData(props_data, str_hashes);
+        auto registrator = meta.GetPropertyRegistrator(type_name);
+        REQUIRE(static_cast<bool>(registrator));
+
+        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
         auto writer = DataWriter(protos_data);
@@ -141,11 +169,13 @@ namespace BakerTests
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.WriteStringBytes(type_name.as_str());
         writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WritePtr(props_data.data(), props_data.size());
+        if (!props_data.empty()) {
+            writer.WriteBytes({props_data.data(), props_data.size()});
+        }
 
         return protos_data;
     }
@@ -168,7 +198,7 @@ namespace BakerTests
         writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
 
         for (const auto& [proto_name, configure] : protos) {
-            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name)};
+            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name).as_ptr()};
 
             if (configure) {
                 configure(proto);
@@ -176,7 +206,7 @@ namespace BakerTests
 
             vector<uint8_t> props_data;
             set<hstring> str_hashes;
-            proto.GetProperties().StoreAllData(props_data, str_hashes);
+            proto.GetProperties()->StoreAllData(props_data, str_hashes);
             ignore_unused(str_hashes);
 
             writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
@@ -261,7 +291,7 @@ namespace BakerTests
             return true;
         }
 
-        [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_ptr<const uint8_t> override
+        [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override
         {
             const auto it = _entries.find(string(path));
 
@@ -277,10 +307,11 @@ namespace BakerTests
             auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
 
             if (size != 0u) {
-                MemCopy(buf.get(), it->second.Data.data(), size);
+                ptr<uint8_t> buf_ptr = buf.get();
+                MemCopy(buf_ptr, it->second.Data.data(), size);
             }
 
-            return unique_del_ptr<const uint8_t> {buf.release(), [](const uint8_t* p) FO_DEFERRED { delete[] p; }};
+            return MakeMemoryDataSourceFileBufferHolder(std::move(buf));
         }
 
         [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override
@@ -338,21 +369,21 @@ namespace BakerTests
         [[nodiscard]] auto GetFileSystem() const -> const FileSystem& { return _fileSystem; }
 
     private:
-        raw_ptr<MemoryDataSource> _dataSource {};
+        nptr<MemoryDataSource> _dataSource {};
         FileSystem _fileSystem {};
     };
 
-    inline auto GetTestSettings() -> GlobalSettings&
+    inline auto GetTestSettings() -> ptr<GlobalSettings>
     {
         // GlobalSettings holds member references back to *this (Common, Network, ...), so it can't
         // be safely moved out of a lambda. Construct in place and initialize once via call_once.
         static GlobalSettings instance(true);
         static std::once_flag once;
         std::call_once(once, [] { instance.ApplyDefaultSettings(); });
-        return instance;
+        return &instance;
     }
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -370,7 +401,7 @@ namespace BakerTests
         return CompileAngelScript(meta, script_settings, files, std::move(message_callback));
     }
 
-    inline auto CompileInlineScripts(EngineMetadata* meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         auto script_settings = MakeScriptCompilerSettings();
         return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));
@@ -416,12 +447,15 @@ namespace BakerTests
                 bake_checker = [](string_view, uint64_t) { return true; };
             }
 
+            nptr<const BakingSettings> settings_ptr = &Settings;
+            nptr<const FileSystem> baked_files_ptr = &BakedFiles;
+
             return SafeAlloc::MakeShared<BakingContext>(BakingContext {
-                .Settings = &Settings,
+                .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
                 .WriteData = [this](string_view path, const_span<uint8_t> data) { Outputs[string(path)] = vector<uint8_t> {data.begin(), data.end()}; },
-                .BakedFiles = &BakedFiles,
+                .BakedFiles = baked_files_ptr,
                 .ForceSyncMode = true,
             });
         }
@@ -439,8 +473,8 @@ namespace BakerTests
         unordered_map<string, vector<uint8_t>> Outputs {};
 
     private:
-        raw_ptr<MemoryDataSource> _sourceData {};
-        raw_ptr<MemoryDataSource> _bakedData {};
+        nptr<MemoryDataSource> _sourceData {};
+        nptr<MemoryDataSource> _bakedData {};
     };
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>

@@ -59,8 +59,7 @@ namespace
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);", 2, "post-commit item move"},
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);", 1, "post-commit inventory add"},
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterItemMoved.Fire(cr, item, prev_slot);", 1, "post-commit inventory remove"},
-        {"Source/Server/CritterManager.cpp", "_engine->OnMapCritterIn.Fire(map, cr.get());", 1, "post-attach critter create"},
-        {"Source/Server/CritterManager.cpp", "_engine->OnGlobalMapCritterIn.Fire(cr.get());", 1, "post-attach critter create"},
+        {"Source/Server/CritterManager.cpp", "_engine->OnMapCritterIn.Fire(map, cr);", 1, "post-attach critter create"},
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterFinish.Fire(cr);", 1, "pre-teardown critter finish"},
         {"Source/Server/EntityManager.cpp", "_engine->OnLocationInit.Fire(loc, first_time);", 1, "init guarded"},
         {"Source/Server/EntityManager.cpp", "_engine->OnMapInit.Fire(map, first_time);", 1, "init guarded"},
@@ -72,19 +71,19 @@ namespace
         {"Source/Server/Map.cpp", "cr->OnItemOnMapChanged.Fire(item);", 1, "visibility item changed"},
         {"Source/Server/Map.cpp", "cr->OnItemOnMapDisappeared.Fire(item, nullptr);", 2, "visibility item disappeared"},
         {"Source/Server/Map.cpp", "cr->OnItemOnMapAppeared.Fire(item, nullptr);", 1, "visibility item appeared"},
-        {"Source/Server/Map.cpp", "_engine->OnStaticItemWalk.Fire(item.get(), cr, false, dir);", 1, "walk trigger guarded"},
-        {"Source/Server/Map.cpp", "_engine->OnStaticItemWalk.Fire(item.get(), cr, true, dir);", 1, "walk trigger guarded"},
+        {"Source/Server/Map.cpp", "_engine->OnStaticItemWalk.Fire(item, cr, false, dir);", 1, "walk trigger guarded"},
+        {"Source/Server/Map.cpp", "_engine->OnStaticItemWalk.Fire(item, cr, true, dir);", 1, "walk trigger guarded"},
         {"Source/Server/Map.cpp", "item->OnCritterWalk.Fire(cr, false, dir);", 1, "walk trigger guarded"},
         {"Source/Server/Map.cpp", "item->OnCritterWalk.Fire(cr, true, dir);", 1, "walk trigger guarded"},
-        {"Source/Server/MapManager.cpp", "loc->OnMapAdded.Fire(map.get());", 1, "post-create map add"},
+        {"Source/Server/MapManager.cpp", "loc->OnMapAdded.Fire(map);", 1, "post-create map add"},
         {"Source/Server/MapManager.cpp", "_engine->OnLocationFinish.Fire(loc);", 1, "pre-teardown location finish"},
         {"Source/Server/MapManager.cpp", "_engine->OnMapFinish.Fire(map);", 1, "pre-teardown map finish in location"},
         {"Source/Server/MapManager.cpp", "_engine->OnMapFinish.Fire(map);", 2, "pre-teardown map finish"},
         {"Source/Server/MapManager.cpp", "loc->OnMapRemoved.Fire(map);", 1, "pre-teardown map remove"},
-        {"Source/Server/MapManager.cpp", "_engine->OnMapCritterIn.Fire(map, cr);", 1, "post-attach transfer in"},
+        {"Source/Server/MapManager.cpp", "_engine->OnMapCritterIn.Fire(map.as_ptr(), cr);", 1, "post-attach transfer in"},
         {"Source/Server/MapManager.cpp", "_engine->OnGlobalMapCritterIn.Fire(cr);", 1, "post-attach transfer in"},
         {"Source/Server/MapManager.cpp", "_engine->OnCritterSendInitialInfo.Fire(cr);", 1, "post-transfer initial info"},
-        {"Source/Server/MapManager.cpp", "_engine->OnCritterTransfer.Fire(cr, prev_map);", 1, "post-transfer final notification"},
+        {"Source/Server/MapManager.cpp", "_engine->OnCritterTransfer.Fire(cr, prev_map_ref);", 1, "post-transfer final notification"},
         {"Source/Server/MapManager.cpp", "_engine->OnMapCritterOut.Fire(map, cr);", 1, "pre-detach transfer out"},
         {"Source/Server/MapManager.cpp", "other->OnCritterDisappeared.Fire(cr);", 1, "pre-detach observer notification"},
         {"Source/Server/MapManager.cpp", "_engine->OnGlobalMapCritterOut.Fire(cr);", 1, "pre-detach global out"},
@@ -104,7 +103,7 @@ namespace
         {"Source/Server/Server.cpp", "if (OnStart.Fire() == EventResult::StopChain) {", 1, "startup gate"},
         {"Source/Server/Server.cpp", "OnFinish.Fire();", 1, "server finish"},
         {"Source/Server/Server.cpp", "OnPlayerLogout.Fire(player);", 1, "pre-teardown player logout"},
-        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr.get());", 1, "post-attach critter create"},
+        {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 2, "post-attach critter create"},
         {"Source/Server/Server.cpp", "OnGlobalMapCritterIn.Fire(cr);", 1, "post-attach critter load"},
         {"Source/Server/Server.cpp", "OnCritterLoad.Fire(cr);", 1, "post-load guarded"},
         {"Source/Server/Server.cpp", "OnCritterUnload.Fire(cr);", 1, "pre-unload notification"},
@@ -204,7 +203,7 @@ namespace
                 line_end = content.size();
             }
 
-            const string_view line {content.data() + line_begin, line_end - line_begin};
+            const string_view line = string_view {content}.substr(line_begin, line_end - line_begin);
             const string_view text = Trim(line);
 
             if (text.find(".Fire(") != string_view::npos) {
@@ -308,16 +307,20 @@ TEST_CASE("ServerEventCallContracts")
         }
     }
 
-    INFO("Unexpected server event calls:");
+    string unexpected_report = "Unexpected server event calls:";
     for (const string& key : unexpected_calls) {
-        INFO(key);
+        unexpected_report += "\n  ";
+        unexpected_report += key;
     }
+    INFO(unexpected_report);
     CHECK(unexpected_calls.empty());
 
-    INFO("Missing server event calls:");
+    string missing_report = "Missing server event calls:";
     for (const string& key : missing_calls) {
-        INFO(key);
+        missing_report += "\n  ";
+        missing_report += key;
     }
+    INFO(missing_report);
     CHECK(missing_calls.empty());
 }
 

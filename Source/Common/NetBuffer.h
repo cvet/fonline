@@ -53,7 +53,7 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     void SetEncryptKey(uint32_t seed);
@@ -62,7 +62,7 @@ public:
 
 protected:
     auto EncryptKey(int32_t move) noexcept -> uint8_t;
-    void CopyBuf(const void* from, void* to, uint8_t crypt_key, size_t len) const noexcept;
+    void CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, size_t len) const noexcept;
 
     vector<uint8_t> _bufData {};
     size_t _defaultBufLen {};
@@ -89,7 +89,7 @@ public:
     [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
     void Push(const_span<uint8_t> buf);
-    void Push(const void* buf, size_t len);
+    void Push(nptr<const void> buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
     template<typename T>
@@ -104,6 +104,7 @@ public:
     void Write(const T& value)
     {
         const auto len = numeric_cast<uint32_t>(value.length());
+
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -115,7 +116,7 @@ public:
         WriteHashedString(value);
     }
 
-    void WritePropsData(vector<const uint8_t*>* props_data, const vector<uint32_t>* props_data_sizes);
+    void WritePropsData(const vector<nptr<const uint8_t>>& props_data, const vector<uint32_t>& props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -148,7 +149,7 @@ public:
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
-    void Pop(void* buf, size_t len);
+    void Pop(nptr<void> buf, size_t len);
     void ResetBuf() noexcept override;
 
     template<typename T>

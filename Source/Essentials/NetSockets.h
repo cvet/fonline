@@ -83,7 +83,7 @@ private:
     friend class tcp_server;
     explicit tcp_socket(socket_t sock) noexcept;
 
-    unique_del_ptr<socket_t> _sock;
+    unique_del_nptr<socket_t> _sock;
 };
 
 class tcp_server final
@@ -104,7 +104,7 @@ public:
     void close() noexcept;
 
 private:
-    unique_del_ptr<socket_t> _listenSock;
+    unique_del_nptr<socket_t> _listenSock;
 };
 
 class udp_socket final
@@ -128,7 +128,7 @@ public:
     void close() noexcept;
 
 private:
-    unique_del_ptr<socket_t> _sock;
+    unique_del_nptr<socket_t> _sock;
 };
 
 FO_END_NAMESPACE

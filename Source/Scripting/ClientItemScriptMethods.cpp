@@ -35,79 +35,90 @@
 
 #include "Client.h"
 #include "Geometry.h"
+#include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Item_IsVisible(ItemView* self)
+FO_SCRIPT_API bool Client_Item_IsVisible(ptr<ItemView> self)
 {
-    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
+    auto nullable_hex_item = self.dyn_cast<ItemHexView>();
 
-    if (hex_item == nullptr) {
+    if (!nullable_hex_item) {
         throw ScriptException("Item is not on map");
     }
+
+    auto hex_item = nullable_hex_item.as_ptr();
 
     return hex_item->IsMapSpriteVisible();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ItemView* self)
+FO_SCRIPT_API ipos32 Client_Item_GetSpriteOffset(ptr<ItemView> self)
 {
-    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
+    auto nullable_hex_item = self.dyn_cast<ItemHexView>();
 
-    if (hex_item == nullptr) {
+    if (!nullable_hex_item) {
         throw ScriptException("Item is not on map");
     }
+    auto hex_item = nullable_hex_item.as_ptr();
 
     return hex_item->GetSpriteOffset();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self)
+FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 {
     auto cloned_item = self->CreateRefClone();
     cloned_item->AddRef();
-    return cloned_item.get();
+    return cloned_item;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API ItemView* Client_Item_Clone(ItemView* self, int32_t count)
+FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self, int32_t count)
 {
     auto cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
     cloned_item->AddRef();
-    return cloned_item.get();
+    return cloned_item;
 }
 
-static void ItemGetMapPos(ItemView* self, mpos& hex)
+static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 {
-    if (self->GetEngine()->GetCurMap() == nullptr) {
+    FO_STACK_TRACE_ENTRY();
+
+    auto nullable_map = item->GetEngine()->GetCurMap();
+
+    if (!nullable_map) {
         throw ScriptException("Map is not loaded");
     }
+    auto map = nullable_map.as_ptr();
 
-    switch (self->GetOwnership()) {
+    switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->GetCurMap()->GetCritter(self->GetCritterId());
-        if (cr == nullptr) {
+        auto nullable_cr = map->GetCritter(item->GetCritterId());
+        if (!nullable_cr) {
             throw ScriptException("Invalid critter ownership, critter not found");
         }
+        auto cr = nullable_cr.as_ptr();
 
         hex = cr->GetHex();
     } break;
     case ItemOwnership::MapHex: {
-        hex = self->GetHex();
+        hex = item->GetHex();
     } break;
     case ItemOwnership::ItemContainer: {
-        if (self->GetId() == self->GetContainerId()) {
+        if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Invalid container ownership, crosslinks");
         }
 
-        auto* cont = self->GetEngine()->GetCurMap()->GetItem(self->GetContainerId());
-        if (cont == nullptr) {
+        auto nullable_cont = map->GetItem(item->GetContainerId());
+        if (!nullable_cont) {
             throw ScriptException("Invalid container ownership, container not found");
         }
 
         // Look recursively
+        auto cont = nullable_cont.as_ptr();
         ItemGetMapPos(cont, hex);
     } break;
     default:
@@ -116,9 +127,9 @@ static void ItemGetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
+FO_SCRIPT_API void Client_Item_GetMapPos(ptr<ItemView> self, mpos& hex)
 {
-    if (self->GetEngine()->GetCurMap() == nullptr) {
+    if (!self->GetEngine()->GetCurMap()) {
         throw ScriptException("Map is not loaded");
     }
 
@@ -126,9 +137,10 @@ FO_SCRIPT_API void Client_Item_GetMapPos(ItemView* self, mpos& hex)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ItemView* self)
+FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ptr<ItemView> self)
 {
-    if (const auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<const ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         return hex_item->GetAnim()->IsPlaying();
     }
 
@@ -136,41 +148,46 @@ FO_SCRIPT_API bool Client_Item_IsAnimPlaying(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_PlayAnim(ItemView* self, hstring animName, bool looped, bool reversed)
+FO_SCRIPT_API void Client_Item_PlayAnim(ptr<ItemView> self, hstring animName, bool looped, bool reversed)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->PlayAnim(animName, looped, reversed);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_StopAnim(ItemView* self)
+FO_SCRIPT_API void Client_Item_StopAnim(ptr<ItemView> self)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->StopAnim();
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimTime(ItemView* self, float32_t normalizedTime)
+FO_SCRIPT_API void Client_Item_SetAnimTime(ptr<ItemView> self, float32_t normalizedTime)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetAnimTime(normalizedTime);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAnimDir(ItemView* self, mdir dir)
+FO_SCRIPT_API void Client_Item_SetAnimDir(ptr<ItemView> self, mdir dir)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetAnimDir(dir);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Item_IsMoving(ItemView* self)
+FO_SCRIPT_API bool Client_Item_IsMoving(ptr<ItemView> self)
 {
-    if (const auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<const ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         return hex_item->IsMoving();
     }
 
@@ -178,47 +195,55 @@ FO_SCRIPT_API bool Client_Item_IsMoving(ItemView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_MoveToHex(ItemView* self, mpos hex, float32_t speed)
+FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t speed)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->MoveToHex(hex, speed);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
+FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ptr<ItemView> self)
 {
-    auto& inner_items = self->GetInnerItems();
+    span<refcount_ptr<ItemView>> inner_items = self->GetInnerItems();
 
-    vector<ItemView*> items;
+    vector<ptr<ItemView>> items;
     items.reserve(inner_items.size());
 
-    for (auto& item : inner_items) {
-        items.emplace_back(item.get());
+    for (size_t i = 0; i < inner_items.size(); i++) {
+        items.emplace_back(inner_items[i]);
     }
 
-    return items;
+    return MakeScriptHandleVector<ItemView>(items);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ItemView* self)
+FO_SCRIPT_API uint8_t Client_Item_GetAlpha(ptr<ItemView> self)
 {
-    const auto* hex_item = dynamic_cast<ItemHexView*>(self);
-    return hex_item != nullptr ? hex_item->GetCurAlpha() : 0xFF;
+    auto nullable_hex_item = self.dyn_cast<ItemHexView>();
+    if (!nullable_hex_item) {
+        return 0xFF;
+    }
+
+    auto hex_item = nullable_hex_item.as_ptr();
+    return hex_item->GetCurAlpha();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_SetAlpha(ItemView* self, uint8_t alpha)
+FO_SCRIPT_API void Client_Item_SetAlpha(ptr<ItemView> self, uint8_t alpha)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         hex_item->SetTargetAlpha(alpha);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Item_Finish(ItemView* self)
+FO_SCRIPT_API void Client_Item_Finish(ptr<ItemView> self)
 {
-    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+    if (auto nullable_hex_item = self.dyn_cast<ItemHexView>()) {
+        auto hex_item = nullable_hex_item.as_ptr();
         if (!hex_item->IsFinishing()) {
             hex_item->Finish();
         }

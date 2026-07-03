@@ -52,10 +52,10 @@ public:
     auto operator=(const UpdaterBackend&) -> UpdaterBackend& = delete;
     auto operator=(UpdaterBackend&&) -> UpdaterBackend& = delete;
 
-    [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const vector<uint8_t>&;
+    [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 
     void LoadFromClientResources(const GlobalSettings& settings);
-    void ProcessUpdateFile(ServerConnection* connection, int32_t update_file_max_portion_size);
+    void ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size);
 
 private:
     struct UpdateFileData

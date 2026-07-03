@@ -318,12 +318,14 @@ extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
     {
-        return FO_NAMESPACE App->Input.GetClipboardText().c_str();
+        FO_NAMESPACE ptr<const char> clipboard_text = FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
+        return clipboard_text.get();
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
     {
-        FO_NAMESPACE App->Input.SetClipboardText(text);
+        const FO_NAMESPACE nptr<const char> text = text;
+        FO_NAMESPACE GetApp() -> Input.SetClipboardText(text ? std::string_view {text.get()} : std::string_view {});
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
@@ -331,34 +333,41 @@ extern "C"
         using FO_NAMESPACE InputEvent;
         using FO_NAMESPACE KeyCode;
 
-        FO_NAMESPACE App->Input.SetClipboardText(text);
-        FO_NAMESPACE App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, text})}, false);
-        FO_NAMESPACE App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})}, false);
+        const FO_NAMESPACE nptr<const char> text = text;
+        std::string paste_text = text ? std::string {text.get()} : std::string {};
+
+        FO_NAMESPACE GetApp() -> Input.SetClipboardText(paste_text);
+        FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})}, false);
+        FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})}, false);
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text)
     {
-        Emscripten_InjectPasteText(text);
-        free(text);
+        FO_NAMESPACE unique_del_ptr<char> owned_text {text, [](FO_NAMESPACE nptr<char> owned) {
+                                                          if (owned) {
+                                                              std::free(owned.get());
+                                                          }
+                                                      }};
+        Emscripten_InjectPasteText(owned_text.get());
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_OnWindowResized()
     {
-        if (FO_NAMESPACE App == nullptr) {
+        if (!FO_NAMESPACE IsAppInitialized()) {
             return;
         }
 
-        auto& settings = FO_NAMESPACE App->Settings;
+        auto& settings = FO_NAMESPACE GetApp() -> Settings;
 
         if (settings.AutoResize) {
             FO_NAMESPACE WebRelated::ApplyWindowSettings(settings);
 
             const auto screen_width = settings.ScreenWidth;
             const auto screen_height = settings.ScreenHeight;
-            const auto screen_size = FO_NAMESPACE App->MainWindow.GetScreenSize();
+            const auto screen_size = FO_NAMESPACE GetApp() -> MainWindow.GetScreenSize();
 
             if (screen_size.width != screen_width || screen_size.height != screen_height) {
-                FO_NAMESPACE App->MainWindow.SetScreenSize({screen_width, screen_height});
+                FO_NAMESPACE GetApp() -> MainWindow.SetScreenSize({screen_width, screen_height});
             }
             else {
                 FO_NAMESPACE WebRelated::ApplyCanvasLayout(settings);
@@ -405,7 +414,8 @@ namespace WebRelated
     {
 #if FO_WEB
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
-        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, CanvasSelector.c_str());
+        ptr<const char> canvas_selector = CanvasSelector.c_str();
+        SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, canvas_selector.get());
 #endif
     }
 
@@ -451,15 +461,22 @@ namespace WebRelated
 
     void SetupClipboard()
     {
+        FO_STACK_TRACE_ENTRY();
+
 #if FO_WEB
-        WebSetupClipboardImpl(CanvasSelector.c_str());
+        ptr<const char> canvas_selector = CanvasSelector.c_str();
+        WebSetupClipboardImpl(canvas_selector.get());
 #endif
     }
 
     void SyncClipboardToSystem(string_view text)
     {
+        FO_STACK_TRACE_ENTRY();
+
 #if FO_WEB
-        WebSyncClipboardToSystemImpl(string(text).c_str());
+        const string clipboard_text = string(text);
+        ptr<const char> text_ptr = clipboard_text.c_str();
+        WebSyncClipboardToSystemImpl(text_ptr.get());
 #else
         ignore_unused(text);
 #endif
@@ -502,10 +519,14 @@ namespace WebRelated
 
     void ShowError(string_view title, string_view text)
     {
+        FO_STACK_TRACE_ENTRY();
+
 #if FO_WEB
         const auto title_str = string(title);
         const auto text_str = string(text);
-        WebShowErrorImpl(title_str.c_str(), text_str.c_str());
+        ptr<const char> title_ptr = title_str.c_str();
+        ptr<const char> text_ptr = text_str.c_str();
+        WebShowErrorImpl(title_ptr.get(), text_ptr.get());
 #else
         ignore_unused(title);
         ignore_unused(text);

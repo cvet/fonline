@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
     AtlasSprite(const AtlasSprite&) = delete;
     AtlasSprite(AtlasSprite&&) noexcept = default;
     auto operator=(const AtlasSprite&) = delete;
@@ -51,18 +51,26 @@ public:
     ~AtlasSprite() override;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
-    [[nodiscard]] auto GetAtlas() const -> const TextureAtlas* { return _atlas.get(); }
-    [[nodiscard]] auto GetAtlas() -> TextureAtlas* { return _atlas.get(); }
-    [[nodiscard]] auto GetBatchTexture() const -> const RenderTexture* override { return _atlas->GetTexture(); }
+    [[nodiscard]] auto GetAtlas() const -> nptr<const TextureAtlas> { return _atlas; }
+    [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
+    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override
+    {
+        if (!_atlas) {
+            return nullptr;
+        }
+
+        auto atlas = _atlas.as_ptr();
+        return atlas->GetTexture();
+    }
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
-    [[nodiscard]] auto GetAtlasRect() const -> const frect32& { return _atlasRect; }
+    [[nodiscard]] auto GetAtlasRect() const noexcept -> frect32 { return _atlasRect; }
 
-    auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
 
 protected:
-    raw_ptr<TextureAtlas> _atlas {};
-    raw_ptr<TextureAtlas::SpaceNode> _atlasNode {};
+    nptr<TextureAtlas> _atlas {};
+    nptr<TextureAtlas::SpaceNode> _atlasNode {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
 };
@@ -73,7 +81,7 @@ class SpriteSheet final : public Sprite
     friend class ResourceManager;
 
 public:
-    SpriteSheet(SpriteManager& spr_mngr, int32_t frames, int32_t ticks, int32_t dirs);
+    SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ticks, int32_t dirs);
     SpriteSheet(const SpriteSheet&) = delete;
     SpriteSheet(SpriteSheet&&) noexcept = default;
     auto operator=(const SpriteSheet&) = delete;
@@ -81,15 +89,15 @@ public:
     ~SpriteSheet() override = default;
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
-    [[nodiscard]] auto GetBatchTexture() const -> const RenderTexture* override;
+    [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
-    [[nodiscard]] auto GetCurSpr() const -> const Sprite*;
-    [[nodiscard]] auto GetCurSpr() -> Sprite*;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) const -> const Sprite*;
-    [[nodiscard]] auto GetSpr(int32_t num_frm) -> Sprite*;
-    [[nodiscard]] auto GetDir(mdir dir) const -> const SpriteSheet*;
-    [[nodiscard]] auto GetDir(mdir dir) -> SpriteSheet*;
+    [[nodiscard]] auto GetCurSpr() const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetCurSpr() -> ptr<Sprite>;
+    [[nodiscard]] auto GetSpr(int32_t num_frm) const -> ptr<const Sprite>;
+    [[nodiscard]] auto GetSpr(int32_t num_frm) -> ptr<Sprite>;
+    [[nodiscard]] auto GetDir(mdir dir) const -> nptr<const SpriteSheet>;
+    [[nodiscard]] auto GetDir(mdir dir) -> nptr<SpriteSheet>;
     [[nodiscard]] auto IsPlaying() const -> bool override { return _playing; }
     [[nodiscard]] auto GetTime() const -> float32_t override;
     [[nodiscard]] auto GetWholeTicks() const noexcept -> int32_t { return _wholeTicks; }
@@ -97,9 +105,9 @@ public:
     [[nodiscard]] auto GetStateAnim() const noexcept -> CritterStateAnim { return _stateAnim; }
     [[nodiscard]] auto GetActionAnim() const noexcept -> CritterActionAnim { return _actionAnim; }
     [[nodiscard]] auto GetDirCount() const noexcept -> int32_t { return _dirCount; }
-    [[nodiscard]] auto GetSprOffset() const noexcept -> const vector<ipos32>& { return _sprOffset; }
+    [[nodiscard]] auto GetSprOffset() const noexcept -> const_span<ipos32> { return _sprOffset; }
 
-    auto FillData(RenderDrawBuffer* dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
+    auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
     void SetDir(mdir dir) override;
@@ -130,7 +138,7 @@ private:
 class DefaultSpriteFactory : public SpriteFactory
 {
 public:
-    explicit DefaultSpriteFactory(SpriteManager& spr_mngr);
+    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr);
     DefaultSpriteFactory(const DefaultSpriteFactory&) = delete;
     DefaultSpriteFactory(DefaultSpriteFactory&&) noexcept = default;
     auto operator=(const DefaultSpriteFactory&) = delete;
@@ -142,9 +150,9 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, const ucolor* data) -> shared_ptr<AtlasSprite>;
+    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> nullable_pixels) -> shared_ptr<AtlasSprite>;
 
-    raw_ptr<SpriteManager> _sprMngr;
+    ptr<SpriteManager> _sprMngr;
     vector<ucolor> _borderBuf {};
 };
 

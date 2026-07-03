@@ -68,14 +68,27 @@ static void CloseSocket(socket_t sock)
 #endif
 }
 
+static auto MakeSocketHolder(socket_t sock) -> unique_del_ptr<socket_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](ptr<socket_t> p) {
+        FO_STACK_TRACE_ENTRY();
+
+        auto owned_socket = adopt_unique_ptr(p);
+        FO_VERIFY_AND_THROW(*owned_socket != INVALID_SOCKET_VALUE, "Socket handle is invalid");
+        CloseSocket(*owned_socket);
+    });
+}
+
 static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, timespan timeout) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     fd_set read_set {};
     fd_set write_set {};
-    fd_set* read_ptr = nullptr;
-    fd_set* write_ptr = nullptr;
+    nptr<fd_set> read_ptr = nullptr;
+    nptr<fd_set> write_ptr = nullptr;
 
     if (check_read) {
         FD_ZERO(&read_set);
@@ -96,16 +109,16 @@ static auto WaitSocketReady(socket_t sock, bool check_read, bool check_write, ti
     timeout_tv.tv_usec = numeric_cast<decltype(timeout_tv.tv_usec)>((timeout_ms % 1000) * 1000);
 
 #if FO_WINDOWS
-    const auto select_result = ::select(0, read_ptr, write_ptr, nullptr, &timeout_tv);
+    const auto select_result = ::select(0, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #else
-    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr, write_ptr, nullptr, &timeout_tv);
+    const auto select_result = ::select(numeric_cast<int32_t>(sock) + 1, read_ptr.get(), write_ptr.get(), nullptr, &timeout_tv);
 #endif
 
     if (select_result <= 0) {
         return false;
     }
 
-    return (read_ptr != nullptr && FD_ISSET(sock, &read_set)) || (write_ptr != nullptr && FD_ISSET(sock, &write_set));
+    return (read_ptr && FD_ISSET(sock, &read_set)) || (write_ptr && FD_ISSET(sock, &write_set));
 }
 
 auto net_sockets::startup() noexcept -> bool
@@ -132,7 +145,9 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
         return numeric_cast<uint32_t>(htonl(INADDR_LOOPBACK));
     }
 
-    uint32_t addr = numeric_cast<uint32_t>(::inet_addr(string(host).c_str()));
+    const string host_name = string(host);
+    ptr<const char> host_name_cstr = host_name.c_str();
+    uint32_t addr = numeric_cast<uint32_t>(::inet_addr(host_name_cstr.get()));
 
     if (addr != INADDR_NONE) {
         return addr;
@@ -141,13 +156,20 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
     static std::mutex gethostbyname_locker;
     auto locker = std::scoped_lock {gethostbyname_locker};
 
-    const auto* h = ::gethostbyname(string(host).c_str()); // NOLINT(concurrency-mt-unsafe)
+    nptr<hostent> h = ::gethostbyname(host_name_cstr.get()); // NOLINT(concurrency-mt-unsafe)
 
-    if (h == nullptr || h->h_addr == nullptr || h->h_length < numeric_cast<int32_t>(sizeof(addr))) {
+    if (!h) {
         return std::nullopt;
     }
 
-    MemCopy(&addr, h->h_addr, sizeof(addr));
+    nptr<const char> nullable_resolved_addr = h->h_addr;
+
+    if (!nullable_resolved_addr || h->h_length < numeric_cast<int32_t>(sizeof(addr))) {
+        return std::nullopt;
+    }
+
+    auto resolved_addr = nullable_resolved_addr.as_ptr();
+    MemCopy(&addr, resolved_addr, sizeof(addr));
     return addr;
 }
 
@@ -155,9 +177,14 @@ auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* bytes = reinterpret_cast<const uint8_t*>(&addr_net_order);
+    const uint32_t addr_host_order = numeric_cast<uint32_t>(ntohl(addr_net_order));
 
-    return strex("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]).str();
+    return strex("{}.{}.{}.{}", //
+        numeric_cast<uint8_t>((addr_host_order >> 24) & 0xFF), //
+        numeric_cast<uint8_t>((addr_host_order >> 16) & 0xFF), //
+        numeric_cast<uint8_t>((addr_host_order >> 8) & 0xFF), //
+        numeric_cast<uint8_t>(addr_host_order & 0xFF))
+        .str();
 }
 
 auto net_sockets::host_to_net_u16(uint16_t value) noexcept -> uint16_t
@@ -184,10 +211,16 @@ auto net_sockets::last_error_text() noexcept -> string
 
 #if FO_WINDOWS
     const auto error_code = ::WSAGetLastError();
-    wchar_t* ws = nullptr;
+    nptr<wchar_t> nullable_ws = nullptr;
     ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, //
-        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
-    auto free_ws = scope_exit([ws]() noexcept { ::LocalFree(ws); });
+        nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(nullable_ws.get_pp()), 0, nullptr);
+
+    if (!nullable_ws) {
+        return strex("Unknown socket error ({})", error_code);
+    }
+
+    auto ws = nullable_ws.as_ptr();
+    auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { (void)::LocalFree(static_cast<HLOCAL>(text.get())); }};
     const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);
@@ -200,11 +233,7 @@ auto net_sockets::last_error_text() noexcept -> string
 }
 
 tcp_socket::tcp_socket(socket_t sock) noexcept :
-    _sock {unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*p);
-        delete p;
-    })}
+    _sock {MakeSocketHolder(sock)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -234,16 +263,13 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 
     addr.sin_addr.s_addr = *resolved;
 
-    if (::connect(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
+    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    if (::connect(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;
     }
 
-    _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*p);
-        delete p;
-    });
+    _sock = MakeSocketHolder(sock);
 
     return true;
 }
@@ -290,7 +316,8 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     }
 #endif
 
-    const auto r = ::connect(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    const auto r = ::connect(sock, addr_ptr.get(), sizeof(addr));
 
     if (r == SOCKET_ERROR_VALUE) {
 #if FO_WINDOWS
@@ -306,11 +333,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 #endif
     }
 
-    _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*p);
-        delete p;
-    });
+    _sock = MakeSocketHolder(sock);
 
     return true;
 }
@@ -323,7 +346,8 @@ auto tcp_socket::can_read(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, true, false, timeout);
+    auto sock = _sock.as_ptr();
+    return WaitSocketReady(*sock, true, false, timeout);
 }
 
 auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
@@ -334,7 +358,8 @@ auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, false, true, timeout);
+    auto sock = _sock.as_ptr();
+    return WaitSocketReady(*sock, false, true, timeout);
 }
 
 auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
@@ -346,8 +371,10 @@ auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
     }
 
     int32_t optval = enabled ? 1 : 0;
+    auto optval_data = ptr<const int32_t> {&optval}.reinterpret_as<const char>();
 
-    return ::setsockopt(*_sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&optval), sizeof(optval)) == 0;
+    auto sock = _sock.as_ptr();
+    return ::setsockopt(*sock, IPPROTO_TCP, TCP_NODELAY, optval_data.get(), sizeof(optval)) == 0;
 }
 
 auto tcp_socket::peek_socket_error() const noexcept -> int32_t
@@ -365,7 +392,9 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
     socklen_t len = sizeof(error);
 #endif
 
-    if (::getsockopt(*_sock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len) != 0) {
+    auto error_data = ptr<int32_t> {&error}.reinterpret_as<char>();
+    auto sock = _sock.as_ptr();
+    if (::getsockopt(*sock, SOL_SOCKET, SO_ERROR, error_data.get(), &len) != 0) {
         return -1;
     }
 
@@ -380,7 +409,8 @@ auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::send(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32_t>(data.size()), 0);
+    auto sock = _sock.as_ptr();
+    return ::send(*sock, ptr<const uint8_t> {data.data()}.reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0);
 }
 
 auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
@@ -391,7 +421,8 @@ auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::recv(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32_t>(data.size()), 0);
+    auto sock = _sock.as_ptr();
+    return ::recv(*sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0);
 }
 
 void tcp_socket::close() noexcept
@@ -426,7 +457,8 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
     addr.sin_addr.s_addr = *resolved;
 
-    if (::bind(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
+    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;
     }
@@ -436,11 +468,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
         return false;
     }
 
-    _listenSock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*p);
-        delete p;
-    });
+    _listenSock = MakeSocketHolder(sock);
 
     return true;
 }
@@ -453,7 +481,8 @@ auto tcp_server::can_accept(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_listenSock, true, false, timeout);
+    auto listen_sock = _listenSock.as_ptr();
+    return WaitSocketReady(*listen_sock, true, false, timeout);
 }
 
 auto tcp_server::accept() noexcept -> tcp_socket
@@ -467,10 +496,13 @@ auto tcp_server::accept() noexcept -> tcp_socket
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
+    ptr<int32_t> addr_len_ptr = &addr_len;
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
-    const socket_t client_sock = ::accept(*_listenSock, reinterpret_cast<sockaddr*>(&addr), &addr_len);
+    auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
+    auto listen_sock = _listenSock.as_ptr();
+    const socket_t client_sock = ::accept(*listen_sock, addr_ptr.get(), &addr_len);
 
     if (client_sock == INVALID_SOCKET_VALUE) {
         return {};
@@ -501,8 +533,9 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 #if !FO_WEB
     if (reuse_addr) {
         constexpr int32_t opt = 1;
+        auto opt_data = ptr<const int32_t> {&opt}.reinterpret_as<const char>();
 
-        if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&opt), sizeof(opt)) == SOCKET_ERROR_VALUE) {
+        if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, opt_data.get(), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             CloseSocket(sock);
             return false;
         }
@@ -524,16 +557,13 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
     addr.sin_addr.s_addr = *resolved;
 
-    if (::bind(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR_VALUE) {
+    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;
     }
 
-    _sock = unique_del_ptr<socket_t>(SafeAlloc::MakeRaw<socket_t>(sock), [](const socket_t* p) {
-        FO_VERIFY_AND_THROW(*p != INVALID_SOCKET_VALUE, "Socket handle is invalid");
-        CloseSocket(*p);
-        delete p;
-    });
+    _sock = MakeSocketHolder(sock);
 
     return true;
 }
@@ -546,7 +576,8 @@ auto udp_socket::can_read(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, true, false, timeout);
+    auto sock = _sock.as_ptr();
+    return WaitSocketReady(*sock, true, false, timeout);
 }
 
 auto udp_socket::can_write(timespan timeout) const noexcept -> bool
@@ -557,7 +588,8 @@ auto udp_socket::can_write(timespan timeout) const noexcept -> bool
         return false;
     }
 
-    return WaitSocketReady(*_sock, false, true, timeout);
+    auto sock = _sock.as_ptr();
+    return WaitSocketReady(*sock, false, true, timeout);
 }
 
 auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
@@ -570,7 +602,9 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
 
 #if !FO_WEB
     const int32_t opt = enabled ? 1 : 0;
-    return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, reinterpret_cast<const char*>(&opt), sizeof(opt)) != SOCKET_ERROR_VALUE;
+    auto opt_data = ptr<const int32_t> {&opt}.reinterpret_as<const char>();
+    auto sock = _sock.as_ptr();
+    return ::setsockopt(*sock, SOL_SOCKET, SO_BROADCAST, opt_data.get(), sizeof(opt)) != SOCKET_ERROR_VALUE;
 #else
     return false;
 #endif
@@ -596,7 +630,9 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
 
     addr.sin_addr.s_addr = *resolved;
 
-    return ::sendto(*_sock, reinterpret_cast<const char*>(data.data()), numeric_cast<int32_t>(data.size()), 0, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    auto sock = _sock.as_ptr();
+    return ::sendto(*sock, ptr<const uint8_t> {data.data()}.reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr));
 }
 
 auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
@@ -613,10 +649,13 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
     sockaddr_in addr {};
 #if FO_WINDOWS
     int32_t addr_len = sizeof(addr);
+    ptr<int32_t> addr_len_ptr = &addr_len;
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
-    const int32_t result = ::recvfrom(*_sock, reinterpret_cast<char*>(data.data()), numeric_cast<int32_t>(data.size()), 0, reinterpret_cast<sockaddr*>(&addr), &addr_len);
+    auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
+    auto sock = _sock.as_ptr();
+    const int32_t result = ::recvfrom(*sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
 
     if (result <= 0) {
         return result;

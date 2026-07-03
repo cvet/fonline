@@ -37,26 +37,26 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto* StrCheckUpdates = "Check updates";
-static auto* StrConnectToServer = "Connect to the server";
-static auto* StrCantConnectToServer = "Can't connect to the server!";
-static auto* StrConnectionEstablished = "Connection established";
-static auto* StrConnectionFailure = "Connection failure!";
-static auto* StrFilesystemError = "File system error!";
-static auto* StrUpdaterOutdated = "Client updater outdated, please update the base client";
-static auto* StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
+static constexpr string_view StrCheckUpdates = "Check updates";
+static constexpr string_view StrConnectToServer = "Connect to the server";
+static constexpr string_view StrCantConnectToServer = "Can't connect to the server!";
+static constexpr string_view StrConnectionEstablished = "Connection established";
+static constexpr string_view StrConnectionFailure = "Connection failure!";
+static constexpr string_view StrFilesystemError = "File system error!";
+static constexpr string_view StrUpdaterOutdated = "Client updater outdated, please update the base client";
+static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 
-Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
-    _settings {&settings},
-    _conn(*_settings),
-    _cache(fs_make_writable_path(settings.UserWritablePath, settings.CacheResources)),
-    _binaryDir {settings.UserWritablePath.empty() ? GetClientBinaryDir() : string(settings.UserWritablePath)},
+Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
+    _settings {settings},
+    _conn(settings),
+    _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
+    _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
     _gameTime(settings),
-    _effectMngr(settings, _resources, window.GetRender()),
-    _sprMngr(settings, window, _resources, _gameTime, _effectMngr, _hashStorage),
-    _fontMngr(_sprMngr)
+    _effectMngr(settings, ptr<FileSystem> {&_resources}, window->GetRender()),
+    _sprMngr(settings, window, ptr<FileSystem> {&_resources}, ptr<GameTimer> {&_gameTime}, ptr<EffectManager> {&_effectMngr}, ptr<HashResolver> {&_hashStorage}),
+    _fontMngr(ptr<SpriteManager> {&_sprMngr})
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -64,18 +64,19 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
 
     _startTime = nanotime::now();
 
-    _resources.AddPackSource(IsPackaged() ? settings.ClientResources : settings.BakeOutput, "Embedded");
+    _resources.AddPackSource(IsPackaged() ? settings->ClientResources : settings->BakeOutput, "Embedded");
     _resources.AddDirSource(_settings->ClientResources, false, true, true);
 
-    if (!settings.UserWritablePath.empty()) {
-        _resources.AddDirSource(fs_make_writable_path(settings.UserWritablePath, settings.ClientResources), false, true, true);
+    if (!settings->UserWritablePath.empty()) {
+        _resources.AddDirSource(fs_make_writable_path(settings->UserWritablePath, settings->ClientResources), false, true, true);
     }
     if (!_settings->DefaultSplashPack.empty()) {
         _resources.AddPackSource(IsPackaged() ? _settings->ClientResources : _settings->BakeOutput, _settings->DefaultSplashPack, true);
     }
 
     _effectMngr.LoadMinimalEffects();
-    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(_sprMngr));
+
+    _sprMngr.RegisterSpriteFactory(SafeAlloc::MakeUnique<DefaultSpriteFactory>(&_sprMngr));
 
     // Wait screen
     if (!_settings->DefaultSplash.empty()) {
@@ -88,7 +89,8 @@ Updater::Updater(GlobalSettings& settings, IAppWindow& window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        auto splash_pic = _splashPic.as_ptr();
+        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
     _sprMngr.EndScene();
 
@@ -119,10 +121,10 @@ auto Updater::Process() -> bool
     _gameTime.FrameAdvance(IsRunInDebugger());
 
     InputEvent ev;
-    while (_sprMngr.GetInput().PollEvent(ev)) {
+    while (_sprMngr.GetInput()->PollEvent(ev)) {
         if (ev.Type == InputEvent::EventType::KeyDownEvent) {
             if (ev.KeyDown.Code == KeyCode::Escape) {
-                App->RequestQuit();
+                GetApp()->RequestQuit();
             }
         }
     }
@@ -167,7 +169,8 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.get(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        auto splash_pic = _splashPic.as_ptr();
+        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
@@ -187,7 +190,7 @@ auto Updater::Process() -> bool
     _sprMngr.EndScene();
     _conn.Process();
 
-    if (_restartPrompt && !App->IsQuitRequested()) {
+    if (_restartPrompt && !GetApp()->IsQuitRequested()) {
         return false;
     }
 
@@ -331,7 +334,7 @@ void Updater::GetNextFile()
             _result = UpdaterResult::BinariesStaged;
 
             // Headless clients have no UI / no user to dismiss it, so they finish immediately (no hold).
-            if (!App->IsHeadless()) {
+            if (!GetApp()->IsHeadless()) {
                 AddText(StrRestartRequired);
                 _restartPrompt = true;
             }
@@ -434,6 +437,7 @@ void Updater::Net_OnInitData()
 
     vector<uint8_t> data;
     data.resize(data_size);
+
     _conn.InBuf->Pop(data.data(), data_size);
 
     vector<vector<uint8_t>> globals_properties_data;
@@ -443,7 +447,7 @@ void Updater::Net_OnInitData()
 
     _gameTime.SetSynchronizedTime(time);
 
-    FO_VERIFY_AND_THROW(!_fileListReceived, "File list received is already set");
+    FO_VERIFY_AND_THROW(!_fileListReceived, "Update file list was already received");
     _fileListReceived = true;
 
     const auto our_target = _binariesMode ? UpdateFileTarget::ClientBinaries : UpdateFileTarget::ClientResources;
@@ -505,8 +509,11 @@ void Updater::Net_OnInitData()
             break;
         }
 
-        FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
-        const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
+        FO_VERIFY_AND_THROW(name_len > 0, "Update file name length must be positive", name_len);
+        const size_t fname_size = numeric_cast<size_t>(name_len);
+        string fname;
+        fname.resize(fname_size);
+        reader.ReadStringBytes(fname);
         const auto size = reader.Read<uint64_t>();
         const auto hash = reader.Read<uint64_t>();
         const auto target = reader.Read<UpdateFileTarget>();
@@ -629,6 +636,7 @@ void Updater::Net_OnUpdateFileData()
     const auto data_size = numeric_cast<size_t>(data_size_raw);
 
     _updateFileBuf.resize(data_size);
+
     _conn.InBuf->Pop(_updateFileBuf.data(), data_size);
 
     if (_filesToUpdate.empty() || !_tempFile.is_open()) {
@@ -647,7 +655,7 @@ void Updater::Net_OnUpdateFileData()
     const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        _tempFile.write(reinterpret_cast<const char*>(_updateFileBuf.data()), numeric_cast<std::streamsize>(write_size));
+        _tempFile.write(ptr<const uint8_t> {_updateFileBuf.data()}.reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -696,8 +704,9 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
         const auto data = _cache.GetData(cache_key);
 
         if (data.size() == sizeof(CachedHash)) {
-            CachedHash cached;
-            MemCopy(&cached, data.data(), sizeof(cached));
+            CachedHash cached {};
+            ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
+            MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
                 return cached.Hash == expected_hash;
@@ -712,7 +721,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(cache_key, {reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)});
+    _cache.SetData(cache_key, const_span<uint8_t> {ptr<const CachedHash> {&entry}.reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
 }
@@ -721,7 +730,7 @@ auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_siz
 {
     FO_STACK_TRACE_ENTRY();
 
-    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data.data(), data.size()) == expected_hash;
+    return numeric_cast<uint64_t>(data.size()) == expected_size && fs_hash_data(data) == expected_hash;
 }
 
 auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>
@@ -776,7 +785,7 @@ auto Updater::GetClientBinaryDir() -> string
     }
     else {
         const auto exe_path = Platform::GetExePath();
-        FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         return strex(exe_path.value()).extract_dir().str();
     }
 }
@@ -921,7 +930,7 @@ auto GetClientRuntimeLivePath() -> string
     }
     else {
         const auto exe_path = Platform::GetExePath();
-        FO_VERIFY_AND_THROW(exe_path.has_value(), "Missing required exe path has value");
+        FO_VERIFY_AND_THROW(exe_path.has_value(), "Executable path could not be resolved");
         binary_dir = strex(exe_path.value()).extract_dir().str();
     }
 

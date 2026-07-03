@@ -19,9 +19,12 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     vector<uint8_t> props_data;
     set<hstring> str_hashes;
 
-    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
+    auto registrator = proto_engine.GetPropertyRegistrator(type_name);
+    REQUIRE(static_cast<bool>(registrator));
+
+    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
     proto.SetSize(msize {50, 50});
-    proto.GetProperties().StoreAllData(props_data, str_hashes);
+    proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
     vector<uint8_t> protos_data;
     auto writer = DataWriter(protos_data);
@@ -31,11 +34,13 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     writer.Write<uint32_t>(uint32_t {1});
     writer.Write<uint32_t>(uint32_t {1});
     writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-    writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+    writer.WriteStringBytes(type_name.as_str());
     writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-    writer.WritePtr(proto_name.data(), proto_name.length());
+    writer.WriteStringBytes(proto_name);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-    writer.WritePtr(props_data.data(), props_data.size());
+    if (!props_data.empty()) {
+        writer.WriteBytes({props_data.data(), props_data.size()});
+    }
 
     return protos_data;
 }

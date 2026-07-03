@@ -55,7 +55,7 @@ TEST_CASE("HashedString")
         CHECK(static_cast<bool>(hs));
         CHECK(hs.as_hash() != 0);
         CHECK(hs.as_uint64() == hs.as_hash());
-        CHECK(hs.as_hash() == hashing_ex::hash(hs.as_str().data(), hs.as_str().length()));
+        CHECK(hs.as_hash() == HashStorage::DefaultHash(string_to_span(hs.as_str())));
         CHECK(hs.as_str() == "EssentialsTest");
 
         const auto resolved = storage.ResolveHash(hs.as_hash());

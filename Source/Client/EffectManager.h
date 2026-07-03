@@ -71,63 +71,62 @@ enum class EffectType : uint32_t
 
 struct EffectCollection
 {
-    raw_ptr<RenderEffect> ImGui {};
-    raw_ptr<RenderEffect> ImGuiDefault {};
-    raw_ptr<RenderEffect> Font {};
-    raw_ptr<RenderEffect> FontDefault {};
-    raw_ptr<RenderEffect> Generic {};
-    raw_ptr<RenderEffect> GenericDefault {};
-    raw_ptr<RenderEffect> Critter {};
-    raw_ptr<RenderEffect> CritterDefault {};
-    raw_ptr<RenderEffect> Tile {};
-    raw_ptr<RenderEffect> TileDefault {};
-    raw_ptr<RenderEffect> Roof {};
-    raw_ptr<RenderEffect> RoofDefault {};
-    raw_ptr<RenderEffect> Flat {};
-    raw_ptr<RenderEffect> FlatDefault {};
-    raw_ptr<RenderEffect> Rain {};
-    raw_ptr<RenderEffect> RainDefault {};
-    raw_ptr<RenderEffect> Iface {};
-    raw_ptr<RenderEffect> IfaceDefault {};
-    raw_ptr<RenderEffect> Primitive {};
-    raw_ptr<RenderEffect> PrimitiveDefault {};
-    raw_ptr<RenderEffect> Light {};
-    raw_ptr<RenderEffect> LightDefault {};
-    raw_ptr<RenderEffect> Fog {};
-    raw_ptr<RenderEffect> FogDefault {};
-    raw_ptr<RenderEffect> FlushRenderTarget {};
-    raw_ptr<RenderEffect> FlushRenderTargetDefault {};
-    raw_ptr<RenderEffect> FlushPrimitive {};
-    raw_ptr<RenderEffect> FlushPrimitiveDefault {};
-    raw_ptr<RenderEffect> FlushMap {};
-    raw_ptr<RenderEffect> FlushMapDefault {};
-    raw_ptr<RenderEffect> FlushLight {};
-    raw_ptr<RenderEffect> FlushLightDefault {};
-    raw_ptr<RenderEffect> FlushFog {};
-    raw_ptr<RenderEffect> FlushFogDefault {};
+    nptr<RenderEffect> ImGui {};
+    nptr<RenderEffect> ImGuiDefault {};
+    nptr<RenderEffect> Font {};
+    nptr<RenderEffect> FontDefault {};
+    nptr<RenderEffect> Generic {};
+    nptr<RenderEffect> GenericDefault {};
+    nptr<RenderEffect> Critter {};
+    nptr<RenderEffect> CritterDefault {};
+    nptr<RenderEffect> Tile {};
+    nptr<RenderEffect> TileDefault {};
+    nptr<RenderEffect> Roof {};
+    nptr<RenderEffect> RoofDefault {};
+    nptr<RenderEffect> Flat {};
+    nptr<RenderEffect> FlatDefault {};
+    nptr<RenderEffect> Rain {};
+    nptr<RenderEffect> RainDefault {};
+    nptr<RenderEffect> Iface {};
+    nptr<RenderEffect> IfaceDefault {};
+    nptr<RenderEffect> Primitive {};
+    nptr<RenderEffect> PrimitiveDefault {};
+    nptr<RenderEffect> Light {};
+    nptr<RenderEffect> LightDefault {};
+    nptr<RenderEffect> Fog {};
+    nptr<RenderEffect> FogDefault {};
+    nptr<RenderEffect> FlushRenderTarget {};
+    nptr<RenderEffect> FlushRenderTargetDefault {};
+    nptr<RenderEffect> FlushPrimitive {};
+    nptr<RenderEffect> FlushPrimitiveDefault {};
+    nptr<RenderEffect> FlushMap {};
+    nptr<RenderEffect> FlushMapDefault {};
+    nptr<RenderEffect> FlushLight {};
+    nptr<RenderEffect> FlushLightDefault {};
+    nptr<RenderEffect> FlushFog {};
+    nptr<RenderEffect> FlushFogDefault {};
 #if FO_ENABLE_3D
-    raw_ptr<RenderEffect> SkinnedModel {};
-    raw_ptr<RenderEffect> SkinnedModelDefault {};
+    nptr<RenderEffect> SkinnedModel {};
+    nptr<RenderEffect> SkinnedModelDefault {};
 #endif
 };
 
 class EffectManager final
 {
 public:
-    explicit EffectManager(RenderSettings& settings, FileSystem& resources, IAppRender& render);
+    explicit EffectManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<IAppRender> render);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
     auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    auto LoadEffect(EffectUsage usage, string_view path) -> RenderEffect*;
-    auto ResolveEffect(raw_ptr<RenderEffect> defaultEffect, string_view effectPath) -> RenderEffect*;
-    void SetEffect(raw_ptr<RenderEffect>& effect, raw_ptr<RenderEffect> defaultEffect, string_view effectPath);
-    void SetEffectScriptValue(RenderEffect* effect, int32_t valueIndex, float32_t value);
-    void SetEffectScriptValues(RenderEffect* effect, int32_t valueStartIndex, const_span<float32_t> values);
-    void ClearEffectScriptValues(RenderEffect* effect);
-    auto GetOrCreateScriptValueBuf(RenderEffect* effect) -> RenderEffect::ScriptValueBuffer&;
+    auto LoadEffect(EffectUsage usage, string_view path) -> nptr<RenderEffect>;
+    auto ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>;
+    void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value);
+    void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values);
+    void ClearEffectScriptValues(ptr<RenderEffect> effect);
+    auto GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>;
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void UpdateEffects(const GameTimer& game_time);
@@ -135,11 +134,11 @@ public:
     EffectCollection Effects {};
 
 private:
-    void PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time);
+    void PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTimer& game_time);
 
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<IAppRender> _render;
+    ptr<RenderSettings> _settings;
+    ptr<FileSystem> _resources;
+    ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
 };

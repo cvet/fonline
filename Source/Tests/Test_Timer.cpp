@@ -42,7 +42,7 @@ TEST_CASE("GameTimer")
 
     SECTION("SynchronizedTimeThrowsBeforeInitialization")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
 
         CHECK_FALSE(timer.IsTimeSynchronized());
         CHECK_THROWS_AS(timer.GetSynchronizedTime(), TimeNotSyncException);
@@ -50,7 +50,7 @@ TEST_CASE("GameTimer")
 
     SECTION("FrameAdvanceUpdatesTimeAndDelta")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
         const nanotime initial_time = timer.GetFrameTime();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -62,7 +62,7 @@ TEST_CASE("GameTimer")
 
     SECTION("SynchronizedTimeMovesForwardAfterAdvance")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
         const synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
@@ -77,7 +77,7 @@ TEST_CASE("GameTimer")
 
     SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
         const synctime sync_base {123456};
 
         timer.SetSynchronizedTime(sync_base);
@@ -98,7 +98,7 @@ TEST_CASE("GameTimer")
 
     SECTION("FramesPerSecondBecomesAvailableAfterOneSecondWindow")
     {
-        GameTimer timer {settings};
+        GameTimer timer {&settings};
 
         timer.FrameAdvance(false);
         CHECK(timer.GetFramesPerSecond() == 0);

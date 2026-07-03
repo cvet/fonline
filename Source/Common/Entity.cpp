@@ -35,14 +35,14 @@
 
 FO_BEGIN_NAMESPACE
 
-Entity::Entity(const PropertyRegistrator* registrator, const Properties* init_props, const Properties* base_props) noexcept :
+Entity::Entity(ptr<const PropertyRegistrator> registrator, nptr<const Properties> init_props, nptr<const Properties> base_props) noexcept :
     _props {registrator, base_props}
 {
     FO_STACK_TRACE_ENTRY();
 
     _props.SetEntity(this);
 
-    if (init_props != nullptr) {
+    if (init_props) {
         _props.CopyFrom(*init_props);
     }
 }
@@ -96,19 +96,34 @@ auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
     return false;
 }
 
-auto Entity::GetEventCallbacks(string_view event_name) -> vector<EventCallbackData>&
+auto Entity::FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_events) {
+        if (const auto it = _events->find(event_name); it != _events->end()) {
+            return &it->second;
+        }
+    }
+
+    return nullptr;
+}
+
+auto Entity::EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
 
-    make_if_not_exists(_events);
-
-    if (const auto it = _events->find(event_name); it != _events->end()) {
-        return it->second;
+    if (!_events) {
+        _events.emplace();
     }
 
-    return _events->emplace(event_name, vector<EventCallbackData>()).first->second;
+    if (const auto it = _events->find(event_name); it != _events->end()) {
+        return &it->second;
+    }
+
+    return &_events->emplace(event_name, vector<EventCallbackData>()).first->second;
 }
 
 void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback)
@@ -117,7 +132,8 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
 
-    SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
+    auto callbacks = EnsureEventCallbacks(event_name);
+    SubscribeEvent(callbacks, std::move(callback));
 }
 
 void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept
@@ -126,7 +142,7 @@ void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr
 
     if (_events) {
         if (const auto it = _events->find(event_name); it != _events->end()) {
-            UnsubscribeEvent(it->second, subscription_ptr);
+            UnsubscribeEvent(&it->second, subscription_ptr);
         }
     }
 }
@@ -171,34 +187,34 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
     return EventResult::ContinueChain;
 }
 
-void Entity::SubscribeEvent(vector<EventCallbackData>& callbacks, EventCallbackData&& callback)
+void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
 
-    if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks.end()) {
+    if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
         throw GenericException("Highest callback already added");
     }
 
-    if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks.end()) {
+    if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks->end()) {
         throw GenericException("Lowest callback already added");
     }
 
-    callbacks.emplace_back(std::move(callback));
+    callbacks->emplace_back(std::move(callback));
 
-    std::ranges::stable_sort(callbacks, [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
+    std::ranges::stable_sort(*callbacks, [](const EventCallbackData& cb1, const EventCallbackData& cb2) {
         // From highest to lowest
         return cb1.Priority > cb2.Priority;
     });
 }
 
-void Entity::UnsubscribeEvent(vector<EventCallbackData>& callbacks, uintptr_t subscription_ptr) noexcept
+void Entity::UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto it = std::ranges::find_if(callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks.end()) {
-        callbacks.erase(it);
+    if (const auto it = std::ranges::find_if(*callbacks, [subscription_ptr](const auto& cb) { return cb.SubscriptionPtr == subscription_ptr; }); it != callbacks->end()) {
+        callbacks->erase(it);
     }
 }
 
@@ -261,11 +277,11 @@ void Entity::MarkAsDestroyed() noexcept
     _isDestroyed = true;
 }
 
-void Entity::StoreData(bool with_protected, vector<const uint8_t*>** all_data, vector<uint32_t>** all_data_sizes) const
+auto Entity::StoreData(bool with_protected) const -> Properties::StoredData
 {
     FO_STACK_TRACE_ENTRY();
 
-    _props.StoreData(with_protected, all_data, all_data_sizes);
+    return _props.StoreData(with_protected);
 }
 
 void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
@@ -277,7 +293,7 @@ void Entity::RestoreData(const vector<vector<uint8_t>>& props_data)
     _props.RestoreData(props_data);
 }
 
-void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
+void Entity::SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -286,7 +302,7 @@ void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
     _props.SetValueFromData(prop, prop_data);
 }
 
-auto Entity::GetValueAsInt(const Property* prop) const -> int32_t
+auto Entity::GetValueAsInt(ptr<const Property> prop) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -300,7 +316,7 @@ auto Entity::GetValueAsInt(int32_t prop_index) const -> int32_t
     return _props.GetValueAsInt(prop_index);
 }
 
-auto Entity::GetValueAsAny(const Property* prop) const -> any_t
+auto Entity::GetValueAsAny(ptr<const Property> prop) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -314,7 +330,7 @@ auto Entity::GetValueAsAny(int32_t prop_index) const -> any_t
     return _props.GetValueAsAny(prop_index);
 }
 
-void Entity::SetValueAsInt(const Property* prop, int32_t value)
+void Entity::SetValueAsInt(ptr<const Property> prop, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -332,7 +348,7 @@ void Entity::SetValueAsInt(int32_t prop_index, int32_t value)
     _props.SetValueAsInt(prop_index, value);
 }
 
-void Entity::SetValueAsAny(const Property* prop, const any_t& value)
+void Entity::SetValueAsAny(ptr<const Property> prop, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -350,7 +366,7 @@ void Entity::SetValueAsAny(int32_t prop_index, const any_t& value)
     _props.SetValueAsAny(prop_index, value);
 }
 
-auto Entity::GetInnerEntities(hstring entry) const noexcept -> const vector<refcount_ptr<Entity>>*
+auto Entity::GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -367,7 +383,7 @@ auto Entity::GetInnerEntities(hstring entry) const noexcept -> const vector<refc
     return &it_entry->second;
 }
 
-auto Entity::GetInnerEntities(hstring entry) noexcept -> vector<refcount_ptr<Entity>>*
+auto Entity::GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -399,44 +415,49 @@ auto Entity::GetInnerEntitiesCount() const noexcept -> size_t
     return count;
 }
 
-void Entity::AddInnerEntity(hstring entry, Entity* entity)
+void Entity::AddInnerEntity(hstring entry, ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Cannot add an inner entity to an already destroyed object");
     FO_VERIFY_AND_THROW(!_isDestroying, "Cannot add an inner entity to an object that is being destroyed");
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
-    make_if_not_exists(_innerEntities);
+    if (!_innerEntities) {
+        _innerEntities.emplace();
+    }
+
+    auto entity_ref_holder = entity.hold_ref();
 
     if (const auto it = _innerEntities->find(entry); it == _innerEntities->end()) {
-        _innerEntities->emplace(entry, vector<refcount_ptr<Entity>> {entity});
+        _innerEntities->emplace(entry, vector<refcount_ptr<Entity>> {entity_ref_holder});
     }
     else {
-        vec_add_unique_value(it->second, entity);
+        vec_add_unique_value(it->second, entity_ref_holder);
     }
 }
 
-void Entity::RemoveInnerEntity(hstring entry, Entity* entity)
+void Entity::RemoveInnerEntity(hstring entry, ptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_isDestroyed, "Object is already destroyed");
     FO_VERIFY_AND_THROW(_innerEntities, "Missing required inner entities");
     FO_VERIFY_AND_THROW(entry, "Missing required entry");
-    FO_VERIFY_AND_THROW(entity, "Missing entity instance");
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
     FO_VERIFY_AND_THROW(_innerEntities->count(entry), "Inner entity entry is not registered in holder index");
 
     auto& entities = _innerEntities->at(entry);
 
-    refcount_ptr entity_ref_holder = entity;
-    vec_remove_unique_value(entities, entity);
+    auto entity_ref_holder = entity.hold_ref();
+    vec_remove_unique_value(entities, entity_ref_holder);
 
     if (entities.empty()) {
         _innerEntities->erase(entry);
-        destroy_if_empty(_innerEntities);
+
+        if (_innerEntities->empty()) {
+            _innerEntities.reset();
+        }
     }
 }
 
@@ -456,7 +477,18 @@ auto Entity::HasTimeEvents() const noexcept -> bool
     return _timeEvents && !_timeEvents->empty();
 }
 
-EntityEvent::EntityEvent(Entity* entity, const char* callback_name) noexcept :
+auto Entity::EnsureTimeEvents() -> ptr<TimeEventList>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_timeEvents) {
+        _timeEvents.emplace();
+    }
+
+    return ptr<TimeEventList> {&*_timeEvents};
+}
+
+EntityEvent::EntityEvent(ptr<Entity> entity, string_view callback_name) noexcept :
     _entity {entity},
     _callbackName {callback_name}
 {
@@ -484,9 +516,9 @@ auto EntityEvent::CheckCallbacks() -> bool
         return !callbacks->empty();
     }
 
-    if (_entity->HasEventCallbacks(_callbackName)) {
-        _callbacks.store(&_entity->GetEventCallbacks(_callbackName), std::memory_order_release);
-        return true;
+    if (auto callbacks = _entity->FindEventCallbacks(_callbackName)) {
+        _callbacks.store(callbacks.get(), std::memory_order_release);
+        return !callbacks->empty();
     }
 
     return false;

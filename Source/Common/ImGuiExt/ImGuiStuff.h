@@ -54,7 +54,7 @@ class BaseEngine;
 class ScriptImGui : public Entity
 {
 public:
-    explicit ScriptImGui(BaseEngine* engine);
+    explicit ScriptImGui(ptr<BaseEngine> engine);
     ScriptImGui(const ScriptImGui&) = delete;
     ScriptImGui(ScriptImGui&&) noexcept = delete;
     auto operator=(const ScriptImGui&) = delete;
@@ -63,10 +63,10 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "ImGui"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
-    [[nodiscard]] auto GetEngine() noexcept -> BaseEngine* { return _engine.get(); }
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<BaseEngine> { return _engine; }
 
 private:
-    raw_ptr<BaseEngine> _engine;
+    ptr<BaseEngine> _engine;
 };
 
 ///@ ExportEnum
@@ -485,5 +485,26 @@ enum class ImGui_StyleVar : int32_t
     ButtonTextAlign = 36, // ImGuiStyleVar_ButtonTextAlign
     SelectableTextAlign = 37, // ImGuiStyleVar_SelectableTextAlign
 };
+
+inline void ImGuiTextUnformatted(string_view text)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (text.empty()) {
+        ImGui::TextUnformatted("");
+        return;
+    }
+
+    nptr<const char> text_begin = text.data();
+    ptr<const char> text_end = text_begin.get() + text.size();
+    ImGui::TextUnformatted(text_begin.get(), text_end.get());
+}
+
+[[nodiscard]] inline auto ToImU32(ucolor color) noexcept -> ImU32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
+}
 
 FO_END_NAMESPACE

@@ -20,38 +20,30 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ENABLE_3D
 
-static void WriteTestModelString(DataWriter& writer, string_view value)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    writer.Write<uint32_t>(numeric_cast<uint32_t>(value.length()));
-    writer.WritePtr(value.data(), value.length());
-}
-
 static void WriteTestModelBone(DataWriter& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names)
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteTestModelString(writer, name);
+    writer.WriteString(name);
 
     const mat44 matrix {1.0f};
-    writer.WritePtr(&matrix, sizeof(matrix));
-    writer.WritePtr(&matrix, sizeof(matrix));
+    writer.Write<mat44>(matrix);
+    writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
 
     if (attached_mesh) {
         writer.Write<uint32_t>(uint32_t {0}); // Vertices
         writer.Write<uint32_t>(uint32_t {0}); // Indices
-        WriteTestModelString(writer, diffuse_texture);
+        writer.WriteString(diffuse_texture);
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bones
         for (string_view skin_bone_name : skin_bone_names) {
-            WriteTestModelString(writer, skin_bone_name);
+            writer.WriteString(skin_bone_name);
         }
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bone offsets
         for (size_t i = 0; i < skin_bone_names.size(); i++) {
-            writer.WritePtr(&matrix, sizeof(matrix));
+            writer.Write<mat44>(matrix);
         }
     }
 
@@ -69,21 +61,21 @@ static auto MakeTestBakedModel(string_view file_name, string_view root_bone, boo
     writer.Write<uint32_t>(numeric_cast<uint32_t>(anim_names.size()));
 
     for (string_view anim_name : anim_names) {
-        WriteTestModelString(writer, file_name);
-        WriteTestModelString(writer, anim_name);
+        writer.WriteString(file_name);
+        writer.WriteString(anim_name);
         writer.Write<float32_t>(1.0f);
 
         writer.Write<uint32_t>(animation_hierarchy_bones.size() == 0 ? uint32_t {0} : uint32_t {1}); // Bones hierarchy
         if (animation_hierarchy_bones.size() != 0) {
             writer.Write<uint32_t>(numeric_cast<uint32_t>(animation_hierarchy_bones.size()));
             for (string_view bone_name : animation_hierarchy_bones) {
-                WriteTestModelString(writer, bone_name);
+                writer.WriteString(bone_name);
             }
         }
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(animation_output_bones.size())); // Bone outputs
         for (string_view bone_name : animation_output_bones) {
-            WriteTestModelString(writer, bone_name);
+            writer.WriteString(bone_name);
             writer.Write<uint32_t>(uint32_t {0}); // Position times
             writer.Write<uint32_t>(uint32_t {0}); // Rotation times
             writer.Write<uint32_t>(uint32_t {0}); // Scale times
@@ -100,15 +92,15 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
     vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    WriteTestModelString(writer, root_bone);
+    writer.WriteString(root_bone);
 
     const mat44 matrix {1.0f};
-    writer.WritePtr(&matrix, sizeof(matrix));
-    writer.WritePtr(&matrix, sizeof(matrix));
+    writer.Write<mat44>(matrix);
+    writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(uint8_t {1});
     writer.Write<uint32_t>(uint32_t {0}); // Vertices
     writer.Write<uint32_t>(uint32_t {0}); // Indices
-    WriteTestModelString(writer, {});
+    writer.WriteString({});
     writer.Write<uint32_t>(uint32_t {0}); // Skin bones
     writer.Write<uint32_t>(uint32_t {0}); // Skin bone offsets
     writer.Write<uint32_t>(uint32_t {1}); // Children
@@ -126,17 +118,17 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
     vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    WriteTestModelString(writer, root_bone);
+    writer.WriteString(root_bone);
 
     const mat44 matrix {1.0f};
-    writer.WritePtr(&matrix, sizeof(matrix));
-    writer.WritePtr(&matrix, sizeof(matrix));
+    writer.Write<mat44>(matrix);
+    writer.Write<mat44>(matrix);
     writer.Write<uint8_t>(uint8_t {1});
     writer.Write<uint32_t>(uint32_t {0}); // Vertices
     writer.Write<uint32_t>(uint32_t {0}); // Indices
-    WriteTestModelString(writer, {});
+    writer.WriteString({});
     writer.Write<uint32_t>(uint32_t {1}); // Skin bones
-    WriteTestModelString(writer, skin_bone);
+    writer.WriteString(skin_bone);
     writer.Write<uint32_t>(uint32_t {0}); // Skin bone offsets
     writer.Write<uint32_t>(uint32_t {0}); // Children
     writer.Write<uint32_t>(uint32_t {0}); // Animations
@@ -188,7 +180,7 @@ static auto ReadSavedModelInfoString(DataReader& reader) -> string
     FO_STACK_TRACE_ENTRY();
 
     const uint32_t len = reader.Read<uint32_t>();
-    const char* str = reader.ReadPtr<char>(len);
+    const char* str = reader.ReadPtr<char>(len).get();
     return str != nullptr ? string(str, len) : string {};
 }
 
@@ -386,7 +378,7 @@ TEST_CASE("ModelBakers")
     const uint32_t model_name_len = reader.Read<uint32_t>();
     string model_name;
     model_name.resize(model_name_len);
-    reader.ReadPtr(model_name.data(), model_name_len);
+    reader.ReadStringBytes(model_name);
     CHECK(model_name == "Critters/Body.fbx");
     CHECK(rig.Outputs.count("Critters/TEMPLATE_Test.fo3d") == 0);
 
