@@ -185,15 +185,18 @@ static void CrashByAbort()
     std::abort();
 }
 
+FO_MSVC_IGNORE_WARNINGS_PUSH(4702)
 static void CrashByNoexceptThrow() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     // A noexcept function that calls a throwing helper: the escaping exception cannot cross the
     // noexcept boundary, so std::terminate is invoked. This is the classic real-world terminate bug.
+    // The trailing abort is intentionally unreachable defensive code (the throw never returns).
     ThrowSelfTestException();
     std::abort();
 }
+FO_MSVC_IGNORE_WARNINGS_POP()
 
 static void ThrowSelfTestException()
 {
