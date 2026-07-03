@@ -43,6 +43,7 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>;
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>;
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, Item*, bool> initFunc)
 {
@@ -57,6 +58,7 @@ FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, Item
     self->SetInitScript(initFunc.GetName().first);
 }
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
 {
@@ -67,6 +69,7 @@ FO_SCRIPT_API void Server_Item_SetupScriptEx(ptr<Item> self, hstring initFunc)
     self->SetInitScript(initFunc);
 }
 
+// SyncScope: requires self; creates and attaches a new inner item under the container cover.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t count, any_t stackId = any_t {})
 {
@@ -81,6 +84,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t
     return item.as_ptr();
 }
 
+// SyncScope: requires self; creates and attaches a new inner item under the container cover.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto, int32_t count, any_t stackId = any_t {})
 {
@@ -95,6 +99,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
     return item.as_ptr();
 }
 
+// SyncScope: requires self; returns inner item handles covered by self while the cover remains.
 ///@ ExportMethod
 FO_SCRIPT_API vector<Item*> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
@@ -103,6 +108,7 @@ FO_SCRIPT_API vector<Item*> Server_Item_GetItems(ptr<Item> self, any_t stackId =
     return MakeScriptHandleVector<Item>(items);
 }
 
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
@@ -111,6 +117,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
     return ReleaseNullableScriptOwnership(std::move(map));
 }
 
+// SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
@@ -119,6 +126,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
     return ReleaseNullableScriptOwnership(std::move(map));
 }
 
+// SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
@@ -127,6 +135,7 @@ FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
     return ReleaseNullableScriptOwnership(std::move(cr));
 }
 
+// SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Item_RefreshVisibility(ptr<Item> self)
 {
