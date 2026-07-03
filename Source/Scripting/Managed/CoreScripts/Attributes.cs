@@ -18,6 +18,18 @@ namespace FOnline
     {
     }
 
+    // Marks a static parameterless method that registers attributed script functions into the engine's
+    // cross-backend function registry (ScriptFuncRegistration.RegisterAttributedScriptFuncs with
+    // project-supplied attribute types, e.g. dialog demand/result markers). Registrars run in the
+    // registration phase (InitializeEarly, right after the engine attribute funcs), NOT at [ModuleInit]
+    // time: registration must also happen inside bake-time validation engines, which load the compiled
+    // assembly to restore the script subsystem for reflection (ScriptSystem::FindFunc) but never run
+    // game module initialization.
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class ScriptFuncRegistrarAttribute : Attribute
+    {
+    }
+
     // Marks a coroutine-style method (one that suspends via Game.YieldAsync). Ported [[Async]]
     // AngelScript functions become `async Task` C# methods; this attribute documents that contract
     // and lets reflection/codegen identify async entry points.

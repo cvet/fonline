@@ -47,7 +47,7 @@ public:
     ~ManagedScriptBackend() override;
 
     void RegisterMetadata(EngineMetadata* meta);
-    void LoadAssemblies(const FileSystem& resources);
+    void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
     void BindRequiredStuff();
     // Take ownership of a managed global script func and register it into the cross-backend func map; the GC
     // handle keeps its handler delegate alive (freed at backend shutdown).

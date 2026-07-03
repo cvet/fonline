@@ -42,7 +42,7 @@
 
 FO_BEGIN_NAMESPACE
 
-void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources)
+void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, string_view bake_output_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -54,7 +54,7 @@ void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources)
     }
 
     managed_backend_ptr->RegisterMetadata(meta);
-    managed_backend_ptr->LoadAssemblies(resources);
+    managed_backend_ptr->LoadAssemblies(resources, bake_output_dir);
     managed_backend_ptr->BindRequiredStuff();
 }
 

@@ -86,11 +86,6 @@ protected:
 private:
     // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func
     // bound by attribute (e.g. a C# [ItemTrigger]). Consults the manifest ManagedScriptBaker emits.
-    [[nodiscard]] auto IsManagedScriptFunc(hstring func_name, string_view func_type) const -> bool;
-    [[nodiscard]] auto LoadManagedScriptFuncManifest() const -> unordered_set<string>;
-
-    mutable mutex _managedScriptFuncManifestLocker {};
-    mutable optional<unordered_set<string>> _managedScriptFuncManifest FO_TSA_GUARDED_BY(_managedScriptFuncManifestLocker) {};
 };
 
 class MasterBaker final

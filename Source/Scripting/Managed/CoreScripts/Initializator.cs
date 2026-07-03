@@ -16,6 +16,39 @@ namespace FOnline
         {
             ScriptFuncRegistration.RegisterEngineAttributeFuncs();
             RemoteCallScriptFuncs.RegisterRemoteCalls();
+            RunScriptFuncRegistrars();
+        }
+
+        // Invokes project-supplied [ScriptFuncRegistrar] methods (e.g. dialog demand/result registrars) in the
+        // registration phase so their script funcs reach the engine's cross-backend registry both at runtime and
+        // inside bake-time validation engines, which restore the script subsystem from the compiled assembly the
+        // same way the AngelScript bake restores it from bytecode.
+        private static void RunScriptFuncRegistrars()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+
+            foreach (Type type in assembly.GetTypes())
+            {
+                foreach (MethodInfo method in type.GetMethods(
+                    BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
+                {
+                    if (Attribute.GetCustomAttribute(method, typeof(ScriptFuncRegistrarAttribute)) == null)
+                    {
+                        continue;
+                    }
+
+                    if (method.GetParameters().Length != 0 || method.ReturnType != typeof(void))
+                    {
+                        throw new InvalidOperationException(
+                            "ScriptFuncRegistrar method must be static void with no parameters: " +
+                            type.FullName +
+                            "." +
+                            method.Name);
+                    }
+
+                    method.Invoke(null, null);
+                }
+            }
         }
 
         static void Initialize()

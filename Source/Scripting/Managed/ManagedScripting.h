@@ -42,7 +42,11 @@
 
 FO_BEGIN_NAMESPACE
 
-void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources);
+// bake_output_dir: when non-empty, the managed backend also disk-loads assemblies from the bake output tree
+// (<bake_output_dir>/<pack>/Assemblies/<Target>Assemblies). Bake-time validation engines pass it because the
+// just-compiled assemblies live on disk under the bake output but are not yet mounted into the resource
+// FileSystem the validators see. Runtime callers leave it empty and load from the resource packs.
+void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, string_view bake_output_dir = {});
 
 FO_END_NAMESPACE
 

@@ -4583,6 +4583,58 @@ static auto CollectLooseAssemblyPaths(const std::filesystem::path& base_dir, str
     return result;
 }
 
+// Bake-time only: scan the bake output tree for the managed entry assembly a validation engine needs. The managed
+// baker writes <bake_output_dir>/<managed pack>/Assemblies/<Target>Assemblies/<Pack>.<Target>.dll during its own
+// (earlier) bake order; the validators run in later packs whose resource FileSystem does not yet expose that
+// output, so read it straight from disk. Returns every dll in the first matching <Target>Assemblies directory so
+// helper assemblies load next to the entry.
+static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_view target_name) -> vector<std::filesystem::path>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const std::filesystem::path bake_root {bake_output_dir};
+    std::error_code ec;
+
+    if (!std::filesystem::is_directory(bake_root, ec)) {
+        return {};
+    }
+
+    const string target_subdir = strex("{}Assemblies", target_name).str();
+
+    for (std::filesystem::directory_iterator pack_it(bake_root, ec); !ec && pack_it != std::filesystem::directory_iterator(); pack_it.increment(ec)) {
+        if (!pack_it->is_directory()) {
+            continue;
+        }
+
+        const std::filesystem::path target_dir = pack_it->path() / "Assemblies" / target_subdir;
+        std::error_code dir_ec;
+
+        if (!std::filesystem::is_directory(target_dir, dir_ec)) {
+            continue;
+        }
+
+        vector<std::filesystem::path> result;
+        bool has_entry = false;
+
+        for (std::filesystem::directory_iterator it(target_dir, dir_ec); !dir_ec && it != std::filesystem::directory_iterator(); it.increment(dir_ec)) {
+            if (!it->is_regular_file() || it->path().extension() != ".dll") {
+                continue;
+            }
+
+            const string file_name = strex("{}", it->path().filename().string()).str();
+            result.emplace_back(it->path().lexically_normal());
+            has_entry = has_entry || IsManagedEntryAssemblyFileName(file_name, target_name);
+        }
+
+        if (has_entry) {
+            std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.string(); });
+            return result;
+        }
+    }
+
+    return {};
+}
+
 void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* method_name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -4652,7 +4704,7 @@ auto ManagedScriptBackend::GetGlobalEntity() const noexcept -> Entity*
     return dynamic_cast<Entity*>(_meta.get_no_const());
 }
 
-void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources)
+void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_view bake_output_dir)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4746,6 +4798,13 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources)
             if (const auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
                 assembly_paths.emplace_back(it->second);
             }
+        }
+
+        // Bake-time fallback: a validation engine (proto/map/dialog baker) restores managed to reflect over script
+        // funcs, but the assemblies the managed baker just compiled live on disk under the bake output and are not
+        // yet mounted into the resource FileSystem it sees. Scan the bake output tree for the entry assembly.
+        if (assembly_paths.empty() && !bake_output_dir.empty()) {
+            assembly_paths = CollectBakeOutputAssemblyPaths(bake_output_dir, target_name);
         }
     }
 

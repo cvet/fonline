@@ -491,14 +491,6 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(tagged_core.find("public static class CoreTagged") != string::npos);
     CHECK(tagged_core.find("///@") == string::npos);
 
-    const string managed_script_funcs = ReadTextFile(script_dir / "ManagedScriptFuncs.gen.txt");
-    CHECK(managed_script_funcs.find("ServerOnly::InitDoor|ItemInit") != string::npos);
-    CHECK(managed_script_funcs.find("ServerOnly::UseStatic|ItemStatic") != string::npos);
-    CHECK(managed_script_funcs.find("ServerOnly::EnterTrigger|ItemTrigger") != string::npos);
-    CHECK(managed_script_funcs.find("ServerOnly::InitCritter|CritterInit") != string::npos);
-    CHECK(managed_script_funcs.find("ServerOnly::InitMap|MapInit") != string::npos);
-    CHECK(managed_script_funcs.find("ServerOnly::InitLocation|LocationInit") != string::npos);
-
     const string server_entities = ReadTextFile(script_dir / "ServerEntities.gen.cs");
     CHECK(server_entities.find("NotImplementedException") == string::npos);
     CHECK(server_entities.find("NotSupportedException") == string::npos);
