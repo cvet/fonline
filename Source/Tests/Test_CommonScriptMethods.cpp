@@ -1545,6 +1545,108 @@ namespace CommonMethods
         Game.DestroyCritter(cr);
         return 0;
     }
+
+    // ========== Argument slot alignment (8-byte aligned call-argument layout) ==========
+    // Regression shapes for the even-argument-slot ABI: padded 1-DWORD slots between pointer/8-byte
+    // arguments, nested calls inside padded argument expressions (stack parity), the asBC_Thiscall1
+    // fast path (array opIndex with int argument), try/catch stack restore with odd variableSpace,
+    // and variadic '?' slots. All of it additionally runs through the bytecode save/load round-trip
+    // of this fixture, covering the serializer's argument-offset translation.
+
+    int AlignAddMixed(int a, string s, int b, int64 c, int d)
+    {
+        return a + b + d + int(c) + int(s.length());
+    }
+
+    int AlignNested(int depth, int v)
+    {
+        if (depth <= 0) return v;
+        return AlignNested(depth - 1, v) + 1;
+    }
+
+    int TestArgSlotMixedParams()
+    {
+        int r1 = AlignAddMixed(1, "abc", 2, 40, 3);
+        if (r1 != 49) return -1;
+
+        // Nested calls evaluated inside padded argument positions must not disturb the stack parity
+        int r2 = AlignAddMixed(AlignNested(3, 10), "x", AlignNested(2, 5), 100, AlignNested(1, 1));
+        if (r2 != 123) return -2;
+
+        return 0;
+    }
+
+    int TestArgSlotOpIndexThiscall1()
+    {
+        array<int> arr = {10, 20, 30, 40};
+        int sum = 0;
+
+        for (uint i = 0; i < arr.length(); i++) {
+            sum += arr[i];
+        }
+        if (sum != 100) return -1;
+
+        // Nested call as the padded index argument of the Thiscall1 fast path
+        if (arr[AlignNested(1, 1)] != 30) return -2;
+
+        return 0;
+    }
+
+    int AlignThrowingHelper()
+    {
+        array<int> a = {1};
+        return a[5];
+    }
+
+    int TestArgSlotTryCatchParityRestore()
+    {
+        // Odd count of 1-DWORD locals makes variableSpace odd; the catch stack restore must still
+        // return the stack pointer to the even-rounded locals boundary
+        int l1 = 1;
+        int l2 = 2;
+        int l3 = 3;
+        bool caught = false;
+
+        try {
+            AlignThrowingHelper();
+        }
+        catch {
+            caught = true;
+        }
+        if (!caught) return -1;
+
+        int r = AlignAddMixed(l1, "zz", l2, 1000, l3);
+        if (r != 1008) return -2;
+
+        // 8-byte value-type argument slots and return right after the catch restore
+        if ("MixedKey".hstr() != "MixedKey".hstr()) return -3;
+
+        return 0;
+    }
+
+    int TestArgSlotVariadicMixed()
+    {
+        typedInvokeFired = false;
+        typedInvokeNumber = 0;
+        typedInvokeText = "";
+        typedInvokeFlag = false;
+        typedInvokeKey = hstring();
+        typedInvokePayloadSize = 0;
+
+        // Variadic '?' slots with a method-call argument in the middle and odd locals around
+        int localPad = 7;
+        array<any> payload = {1, "two", true};
+        bool result = Invoke("CommonMethods::InvokeTargetWithTypedData", localPad + 35, "payload", true, "MixedKey".hstr(), payload);
+        if (!result) return -1;
+        if (!typedInvokeFired) return -2;
+        if (typedInvokeNumber != 42) return -3;
+        if (typedInvokeText != "payload") return -4;
+        if (!typedInvokeFlag) return -5;
+        if (typedInvokeKey != "MixedKey".hstr()) return -6;
+        if (typedInvokePayloadSize != 3) return -7;
+
+        return 0;
+    }
 }
 
  )";
@@ -1972,6 +2074,38 @@ TEST_CASE("GameInvokeOperations")
     SECTION("ByNameRejectsWrongType")
     {
         RUN_CM_FUNC("TestInvokeByNameRejectsWrongType");
+    }
+}
+
+// ========== Argument slot alignment ==========
+
+TEST_CASE("ScriptArgumentSlotAlignment")
+{
+    // Regression coverage for the 8-byte aligned call-argument layout (even argument slots, see
+    // asCDataType::GetArgSlotSizeOnStackDWords): padded 1-DWORD slots, nested calls inside padded
+    // argument expressions, the asBC_Thiscall1 fast path, the try/catch stack restore with an odd
+    // variableSpace, and variadic '?' slots. The fixture loads scripts through the bytecode
+    // save/load round-trip, so the serializer's argument-offset translation is covered too.
+    MAKE_CM_SERVER();
+
+    SECTION("MixedParams")
+    {
+        RUN_CM_FUNC("TestArgSlotMixedParams");
+    }
+
+    SECTION("OpIndexThiscall1")
+    {
+        RUN_CM_FUNC("TestArgSlotOpIndexThiscall1");
+    }
+
+    SECTION("TryCatchParityRestore")
+    {
+        RUN_CM_FUNC("TestArgSlotTryCatchParityRestore");
+    }
+
+    SECTION("VariadicMixed")
+    {
+        RUN_CM_FUNC("TestArgSlotVariadicMixed");
     }
 }
 

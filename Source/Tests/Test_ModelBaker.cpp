@@ -261,6 +261,9 @@ struct BakedModelMeshSummary
     uint32_t Vertices {};
     uint32_t Indices {};
     uint32_t Animations {};
+    uint32_t SkinBones {};
+    string DiffuseTexture {};
+    optional<Vertex3D> FirstVertex {};
 };
 
 static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary& summary)
@@ -269,15 +272,21 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
 
     const uint32_t vertex_count = reader.Read<uint32_t>();
     summary.Vertices += vertex_count;
-    (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D));
+    const auto* vertices = reader.ReadPtr<uint8_t>(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D)).get();
+    if (vertex_count != 0 && !summary.FirstVertex) {
+        Vertex3D first_vertex;
+        MemCopy(&first_vertex, vertices, sizeof(first_vertex));
+        summary.FirstVertex = first_vertex;
+    }
 
     const uint32_t index_count = reader.Read<uint32_t>();
     summary.Indices += index_count;
     (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(index_count) * sizeof(vindex_t));
 
-    (void)ReadSavedModelInfoString(reader);
+    summary.DiffuseTexture = ReadSavedModelInfoString(reader);
 
     const uint32_t skin_bone_count = reader.Read<uint32_t>();
+    summary.SkinBones += skin_bone_count;
     for (uint32_t i = 0; i < skin_bone_count; i++) {
         (void)ReadSavedModelInfoString(reader);
     }
@@ -335,6 +344,20 @@ vt 0 1
 vn 0 0 1
 usemtl BodyMat
 f 1/1/1 2/2/1 3/3/1
+)",
+        object_name)
+        .str();
+}
+
+static auto MakeMinimalPositionOnlyObjMesh(string_view object_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(R"(o {}
+v 0 0 0
+v 1 0 0
+v 0 1 0
+f 1 2 3
 )",
         object_name)
         .str();
@@ -494,6 +517,33 @@ TEST_CASE("ModelMeshBakerOrchestration")
         CHECK(summary.Vertices == 3);
         CHECK(summary.Indices == 3);
         CHECK(summary.Animations == 0);
+    }
+
+    SECTION("Bakes position-only OBJ mesh with default vertex fields")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Models/PositionOnly.obj", MakeMinimalPositionOnlyObjMesh("PlainBody"), 9);
+
+        ModelMeshBaker baker(rig.MakeContext());
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Models/PositionOnly.obj"));
+
+        REQUIRE(rig.Outputs.count("Models/PositionOnly.obj") == 1);
+        const BakedModelMeshSummary summary = ReadBakedModelMeshSummary(rig.Outputs.at("Models/PositionOnly.obj"));
+        CHECK(summary.Bones >= 1);
+        CHECK(summary.AttachedMeshes == 1);
+        CHECK(summary.Vertices == 3);
+        CHECK(summary.Indices == 3);
+        CHECK(summary.Animations == 0);
+        CHECK(summary.SkinBones == 1);
+        CHECK(summary.DiffuseTexture.empty());
+        REQUIRE(summary.FirstVertex.has_value());
+        CHECK(summary.FirstVertex->Color == ucolor {});
+        CHECK(summary.FirstVertex->TexCoord[0] == 0.0f);
+        CHECK(summary.FirstVertex->TexCoord[1] == 0.0f);
+        CHECK(summary.FirstVertex->TexCoordBase[0] == 0.0f);
+        CHECK(summary.FirstVertex->TexCoordBase[1] == 0.0f);
+        CHECK(summary.FirstVertex->BlendIndices[0] == 0.0f);
+        CHECK(summary.FirstVertex->BlendWeights[0] == 1.0f);
     }
 
     SECTION("Aggregates invalid model mesh input errors")

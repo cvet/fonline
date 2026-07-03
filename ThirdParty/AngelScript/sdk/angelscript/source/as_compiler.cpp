@@ -667,22 +667,28 @@ int asCCompiler::CompileFactory(asCBuilder *in_builder, asCScriptCode *in_script
 	int offset = (int)outFunc->GetSpaceNeededForArguments();
 	for( int a = int(outFunc->parameterTypes.GetLength()) - 1; a >= 0; a-- )
 	{
+		// (FOnline Patch) walk the alignment-aware argument slots and re-create the same padded layout for the
+		// constructor call: pad odd-sized slots before pushing the value so the value sits at the slot base
+		const int slotSize = outFunc->parameterTypes[a].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
+
 		if( !outFunc->parameterTypes[a].IsPrimitive() ||
 			outFunc->parameterTypes[a].IsReference() )
 		{
-			offset -= AS_PTR_SIZE;
+			offset -= slotSize;
 			byteCode.InstrSHORT(asBC_PshVPtr, short(-offset));
 		}
 		else
 		{
 			if( outFunc->parameterTypes[a].GetSizeOnStackDWords() == 2 )
 			{
-				offset -= 2;
+				offset -= slotSize;
 				byteCode.InstrSHORT(asBC_PshV8, short(-offset));
 			}
 			else
 			{
-				offset -= 1;
+				offset -= slotSize;
+				if( slotSize > 1 )
+					byteCode.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) argument slot padding
 				byteCode.InstrSHORT(asBC_PshV4, short(-offset));
 			}
 		}
@@ -748,7 +754,7 @@ void asCCompiler::FinalizeFunction()
 		}
 
 		// Move to next parameter
-		stackPos -= type.GetSizeOnStackDWords();
+		stackPos -= type.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 	// Add the return type too at the end if it returns on the stack, which is when it uses a hidden parameter
 	if (outFunc->DoesReturnOnStack())
@@ -881,7 +887,7 @@ int asCCompiler::SetupParametersAndReturnVariable(asCArray<asCString> &parameter
 			vs.DeclareVariable("", type, stackPos, onHeap);
 
 		// Move to next parameter
-		stackPos -= type.GetSizeOnStackDWords();
+		stackPos -= type.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	for( n = asUINT(vs.variables.GetLength()); n-- > 0; )
@@ -2153,6 +2159,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 					return -1;
 				}
 
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
+
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
 
@@ -2374,6 +2385,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			{
 				asCByteCode tmpBC(engine);
 
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
+
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
 
@@ -2443,6 +2459,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			if( paramType->GetTokenType() == ttQuestion )
 			{
 				asCByteCode tmpBC(engine);
+
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
 
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
@@ -2551,13 +2572,23 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			// Implicitly convert primitives to the parameter type
 			ImplicitConversion(ctx, dt, node, asIC_IMPLICIT_CONV);
 
+			// (FOnline Patch) even argument slots: a 1-DWORD by-value argument occupies a 2-DWORD slot; push the
+			// pad right before the value so the value lands at the 8-byte-aligned slot base. Emitting the pad
+			// after the expression evaluated keeps the stack parity even during the evaluation, so any nested
+			// call inside the argument expression still runs on an 8-byte-aligned stack.
+			const bool padArgSlot = dt.GetArgSlotSizeOnStackDWords() > dt.GetSizeOnStackDWords();
+
 			if( ctx->type.isVariable )
 			{
+				if( padArgSlot )
+					ctx->bc.InstrDWORD(asBC_PshC4, 0);
 				PushVariableOnStack(ctx, dt.IsReference());
 			}
 			else if( ctx->type.isConstant )
 			{
 				ConvertToVariable(ctx);
+				if( padArgSlot )
+					ctx->bc.InstrDWORD(asBC_PshC4, 0);
 				PushVariableOnStack(ctx, dt.IsReference());
 			}
 		}
@@ -2689,7 +2720,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 		offset += AS_PTR_SIZE;
 
 	if (descr->IsVariadic())
-		offset += 1;
+		offset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 
 #ifdef AS_DEBUG
 	// If the function being called is the opAssign or copy constructor for the same type
@@ -2796,7 +2827,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 			args[n]->type.isTemporary = false;
 		}
 
-		offset += descr->parameterTypes[realParamIdx].GetSizeOnStackDWords();
+		offset += descr->parameterTypes[realParamIdx].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 }
 
@@ -3769,6 +3800,9 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 							if (builder->GetFunctionDescription(funcs[0])->IsVariadic())
 							{
 								// Argument count
+								#if AS_PTR_SIZE == 2
+								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
+#endif
 								ctx.bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 							}
 
@@ -16782,6 +16816,9 @@ int asCCompiler::MakeFunctionCall(asCExprContext *ctx, int funcId, asCObjectType
 	if (descr->IsVariadic())
 	{
 		// Argument count
+		#if AS_PTR_SIZE == 2
+		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
+#endif
 		ctx->bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 	}
 
@@ -18846,13 +18883,13 @@ void asCCompiler::PerformFunctionCall(int funcId, asCExprContext *ctx, bool isCo
 		{
 			// Compute the additional space used for the variadic args
 			asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];
-			int sizeOfVariadicArg = variadicType.GetSizeOnStackDWords();
+			int sizeOfVariadicArg = variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 			// GetSpaceNeededForArguments already added one variadic arg for the ..., but there might not actually be any
 			argSize -= sizeOfVariadicArg;
 
 			// Add 1 for the arg count
-			argSize++;
+			argSize += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 
 			// Add the actual space used for the variadic args
 			argSize += sizeOfVariadicArg * (args->GetLength() - descr->parameterTypes.GetLength() + 1);

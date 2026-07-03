@@ -245,7 +245,7 @@ int PrepareSystemFunctionGeneric(asCScriptFunction *func, asSSystemFunctionInter
 		if( dt.IsObject() && !dt.IsObjectHandle() && !dt.IsReference() )
 			offset += AS_PTR_SIZE;
 		else
-			offset += dt.GetSizeOnStackDWords();
+			offset += dt.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	return 0;
@@ -550,7 +550,7 @@ int PrepareSystemFunction(asCScriptFunction *func, asSSystemFunctionInterface *i
 		if( dt.IsObject() && !dt.IsObjectHandle() && !dt.IsReference() )
 			offset += AS_PTR_SIZE;
 		else
-			offset += dt.GetSizeOnStackDWords();
+			offset += dt.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 #endif // !defined(AS_MAX_PORTABILITY)
 	return 0;

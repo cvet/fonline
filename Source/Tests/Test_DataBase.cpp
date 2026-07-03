@@ -372,6 +372,51 @@ namespace
         return doc;
     }
 
+    auto MakeComplexDoc() -> AnyData::Document
+    {
+        AnyData::Array values;
+        values.EmplaceBack(numeric_cast<int64_t>(7));
+        values.EmplaceBack(2.5);
+        values.EmplaceBack(false);
+        values.EmplaceBack(string {"array"});
+
+        AnyData::Dict nested;
+        nested.Emplace("flag", true);
+        nested.Emplace("label", string {"nested"});
+        nested.Emplace("score", numeric_cast<int64_t>(9));
+
+        AnyData::Document doc;
+        doc.Assign("int", numeric_cast<int64_t>(42));
+        doc.Assign("float", 3.25);
+        doc.Assign("bool", true);
+        doc.Assign("string", string {"text"});
+        doc.Assign("array", AnyData::Value {std::move(values)});
+        doc.Assign("dict", AnyData::Value {std::move(nested)});
+        return doc;
+    }
+
+    void CheckComplexDoc(const AnyData::Document& doc)
+    {
+        REQUIRE(!doc.Empty());
+        CHECK(doc["int"].AsInt64() == 42);
+        CHECK(doc["float"].AsDouble() == 3.25);
+        CHECK(doc["bool"].AsBool());
+        CHECK(doc["string"].AsString() == "text");
+
+        const auto& values = doc["array"].AsArray();
+        REQUIRE(values.Size() == 4);
+        CHECK(values[0].AsInt64() == 7);
+        CHECK(values[1].AsDouble() == 2.5);
+        CHECK_FALSE(values[2].AsBool());
+        CHECK(values[3].AsString() == "array");
+
+        const auto& nested = doc["dict"].AsDict();
+        REQUIRE(nested.Size() == 3);
+        CHECK(nested["flag"].AsBool());
+        CHECK(nested["label"].AsString() == "nested");
+        CHECK(nested["score"].AsInt64() == 9);
+    }
+
     class ScopedRecoveryLogs final
     {
     public:
@@ -1257,6 +1302,36 @@ TEST_CASE("DataBaseReconnectRestoresPendingChangesFromOplog")
     CheckRecoveryLogsCleared(recovery_logs);
 }
 
+TEST_CASE("DataBaseReconnectRestoresComplexDocumentFromOplog")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    ScopedRecoveryLogs recovery_logs {"reconnect-restore-complex-doc"};
+    ScopedCurrentPath current_path {*recovery_logs.Dir()};
+    ConfigureRecoverySettings(settings, recovery_logs.PendingPath());
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto record_id = ident_t {1001};
+
+    {
+        TestDataBase db {settings};
+        db.InitializeOpLogs();
+        db.SetBackendWriteFailure();
+        db.StartCommitChanges();
+        db.Insert(collection, record_id, MakeComplexDoc());
+        db.WaitUntilCommitOperationWrittenToOpLog();
+
+        CHECK(db.SnapshotRecord(collection, record_id).Empty());
+
+        db.SetBackendWriteFailure(false);
+        db.WaitUntilPendingChangesRestored();
+        db.WaitCommitChanges();
+
+        CheckComplexDoc(db.GetDocument(collection, record_id));
+    }
+
+    CheckRecoveryLogsCleared(recovery_logs);
+}
+
 TEST_CASE("DataBaseReconnectRestoresStringKeyChangesFromOplog")
 {
     GlobalSettings settings {false};
@@ -1409,25 +1484,29 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     const auto collection_schemas = DataBaseCollectionSchemas {{collection, DataBaseKeyType::IntId}};
     const auto first_id = ident_t {1001};
     const auto second_id = ident_t {1002};
+    const auto complex_id = ident_t {1003};
     *FixedSettingForOverride(settings.JsonIndent) = 2;
     auto db = ConnectToDataBase(&settings, strex("JSON {}", storage_dir).str(), collection_schemas, {});
 
     db.Insert(collection, first_id, MakeDoc({{"value", 1}, {"other", 7}}));
     db.Insert(collection, second_id, MakeDoc({{"value", 2}}));
+    db.Insert(collection, complex_id, MakeComplexDoc());
     db.StartCommitChanges();
     db.WaitCommitChanges();
 
     auto ids = db.GetAllIntIds(collection);
     std::sort(ids.begin(), ids.end());
 
-    REQUIRE(ids.size() == 2);
+    REQUIRE(ids.size() == 3);
     CHECK(ids[0] == first_id);
     CHECK(ids[1] == second_id);
+    CHECK(ids[2] == complex_id);
 
     const auto first_doc = db.Get(collection, first_id);
     REQUIRE(!first_doc.Empty());
     CHECK(first_doc["value"].AsInt64() == 1);
     CHECK(first_doc["other"].AsInt64() == 7);
+    CheckComplexDoc(db.Get(collection, complex_id));
 
     const auto json_content = fs_read_file(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1001.json"));
     REQUIRE(json_content.has_value());
@@ -1444,8 +1523,9 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK_FALSE(db.Valid(collection, second_id));
 
     ids = db.GetAllIntIds(collection);
-    REQUIRE(ids.size() == 1);
-    CHECK(ids.front() == first_id);
+    REQUIRE(ids.size() == 2);
+    CHECK(std::ranges::find(ids, first_id) != ids.end());
+    CHECK(std::ranges::find(ids, complex_id) != ids.end());
     CHECK_FALSE(fs_exists(fs_path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
 }
 

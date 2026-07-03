@@ -16,6 +16,25 @@ TEST_CASE("TextBaker")
 {
     using namespace BakerTests;
 
+    SECTION("RejectsEmptyBakeLanguages")
+    {
+        TestRig rig;
+        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {});
+
+        CHECK_THROWS_AS(TextBaker(rig.MakeContext("CorePack")), TextBakerException);
+    }
+
+    SECTION("IgnoresNonTextSourceFiles")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Readme.txt", "not a text pack", 7);
+
+        TextBaker baker(rig.MakeContext("CorePack"));
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        CHECK(rig.Outputs.empty());
+    }
+
     SECTION("BakesTextPackToBinary")
     {
         TestRig rig;
@@ -69,6 +88,38 @@ TEST_CASE("TextBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("BakeCheckerCompletesChangedPackLanguages")
+    {
+        TestRig rig;
+        OverrideSetting(rig.Settings.BakeLanguages, vector<string> {"engl", "russ"});
+        rig.AddSourceFile("Readme.txt", "not a text pack", 7);
+        rig.AddSourceFile("Game.engl.fotxt", "# Test pack\n\n{1}{}{Hello wasteland}\n", 7);
+        rig.AddSourceFile("Game.russ.fotxt", "# Test pack\n\n{1}{}{Privet}\n", 9);
+
+        vector<pair<string, uint64_t>> checks;
+        TextBaker baker(rig.MakeContext("CorePack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return path == "CorePack.Game.engl.fotxt-bin";
+        }));
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        REQUIRE(checks.size() == 2);
+        CHECK(checks[0] == pair<string, uint64_t> {"CorePack.Game.engl.fotxt-bin", 7});
+        CHECK(checks[1] == pair<string, uint64_t> {"CorePack.Game.russ.fotxt-bin", 9});
+        CHECK(rig.Outputs.contains("CorePack.Game.engl.fotxt-bin"));
+        CHECK(rig.Outputs.contains("CorePack.Game.russ.fotxt-bin"));
+        CHECK(rig.Outputs.size() == 2);
+    }
+
+    SECTION("RejectsInvalidTextPack")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Game.engl.fotxt", "{10}{}{Valid}\n{20}{Broken\n", 7);
+
+        TextBaker baker(rig.MakeContext("CorePack"));
+        CHECK_THROWS_AS(baker.BakeFiles(rig.GetAllSourceFiles(), ""), TextPackException);
     }
 }
 

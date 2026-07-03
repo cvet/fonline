@@ -432,7 +432,8 @@ Analyzers (check-only, exit non-zero on drift) — run before committing or in C
 - `Analyze :: Nullable Markers (Scripts)` → `apply_nullables.py --check`
 - `Analyze :: Nullable Placement` → `validate_nullable.py`
 - `Analyze :: Nullable Coverage` → `estimate_nullables.py`
-- `Analyze All` → bundles the three
+- `Analyze :: Smart Pointer Audit` → the native smart-pointer vocabulary gate (see [SmartPointers.md](SmartPointers.md))
+- `Analyze All` → bundles the four
 
 ### CI
 

@@ -3642,8 +3642,8 @@ void asCReader::CalculateStackNeeded(asCScriptFunction *func)
 
 						// Calculate the actual size of arguments for this function call
 						stackInc = -(called->GetSpaceNeededForArguments() + // size of fixed arguments
-							(numArgs - int(called->parameterTypes.GetLength()))*called->parameterTypes[called->parameterTypes.GetLength()-1].GetSizeOnStackDWords() + // size of dynamic arguments
-							1); // argument count
+							(numArgs - int(called->parameterTypes.GetLength()))*called->parameterTypes[called->parameterTypes.GetLength()-1].GetArgSlotSizeOnStackDWords() + // size of dynamic arguments // (FOnline Patch)
+							(AS_PTR_SIZE == 2 ? 2 : 1)); // argument count // (FOnline Patch) even variadic count slot
 					}
 					else
 						stackInc = -called->GetSpaceNeededForArguments();
@@ -3780,7 +3780,7 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 		else
 		{
 			asASSERT( func->parameterTypes[n].IsPrimitive() );
-			offset += func->parameterTypes[n].GetSizeOnStackDWords();
+			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 
@@ -4036,7 +4036,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset++;
+		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -4056,13 +4056,13 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additiona 32bit integer with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += 1;
+				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 		}
 		else
 		{
 			// Enums or built-in primitives are passed by value
 			asASSERT( calledFunc->parameterTypes[p].IsPrimitive() );
-			currOffset += calledFunc->parameterTypes[p].GetSizeOnStackDWords();
+			currOffset += calledFunc->parameterTypes[p].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
@@ -4087,13 +4087,13 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += 1;
+					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 			}
 			else
 			{
 				// built-in primitives or enums are passed by value
 				asASSERT(variadicType.IsPrimitive());
-				currOffset += variadicType.GetSizeOnStackDWords();
+				currOffset += variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}
@@ -5083,7 +5083,7 @@ void asCWriter::CalculateAdjustmentByPos(asCScriptFunction *func)
 		else
 		{
 			asASSERT( func->parameterTypes[n].IsPrimitive() );
-			offset += func->parameterTypes[n].GetSizeOnStackDWords();
+			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 
@@ -5345,7 +5345,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 						calledFunc = CastToFuncdefType(func->parameterTypes[v].GetTypeInfo())->funcdef;
 						break;
 					}
-					paramPos -= func->parameterTypes[v].GetSizeOnStackDWords();
+					paramPos -= func->parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 				}
 			}
 			break;
@@ -5384,7 +5384,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			numPtrs++;
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset++;
+		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -5399,13 +5399,13 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additional 32bit int with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += 1;
+				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 		}
 		else
 		{
 			// built-in primitives or enums are passed by value
 			asASSERT( calledFunc->parameterTypes[p].IsPrimitive() );
-			currOffset += calledFunc->parameterTypes[p].GetSizeOnStackDWords();
+			currOffset += calledFunc->parameterTypes[p].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
@@ -5425,13 +5425,13 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += 1;
+					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 			}
 			else
 			{
 				// built-in primitives or enums are passed by value
 				asASSERT(variadicType.IsPrimitive());
-				currOffset += variadicType.GetSizeOnStackDWords();
+				currOffset += variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}

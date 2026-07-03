@@ -194,6 +194,12 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStaticItemWalk, ptr<StaticItem> /*item*/, ptr<Critter> /*cr*/, bool /*isIn*/, mdir /*dir*/);
 
+private:
+    std::atomic_bool _started {false};
+    std::atomic_bool _startingError {false};
+    std::atomic_bool _shutdownInProgress {false};
+
+public:
     EntityManager EntityMngr;
     MapManager MapMngr;
     CritterManager CrMngr;
@@ -341,9 +347,6 @@ private:
     int32_t _syncRequest FO_TSA_GUARDED_BY(_syncLocker) {};
     bool _syncPointReady FO_TSA_GUARDED_BY(_syncLocker) {};
 
-    std::atomic_bool _started {};
-    std::atomic_bool _startingError {};
-    std::atomic_bool _shutdownInProgress {};
     std::atomic<size_t> _rejectedConnections {};
     std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};

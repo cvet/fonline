@@ -925,23 +925,31 @@ namespace ScriptMethodsTest
             return -7;
         }
 
+        try {
+            container.AddItem(proto, 0);
+            Game.DestroyCritter(cr);
+            return -8;
+        }
+        catch {
+        }
+
         array<Item> allChildren = container.GetItems();
         if (allChildren.length() < 2) {
             Game.DestroyCritter(cr);
-            return -8;
+            return -9;
         }
 
         Critter? owner = childByPid.GetCritter();
         if (owner is null || owner.Id != cr.Id) {)"
                     R"(
             Game.DestroyCritter(cr);
-            return -9;
+            return -10;
         }
 
         try {
             container.AddItem("TestItem".hstr(), 0);
             Game.DestroyCritter(cr);
-            return -10;
+            return -11;
         }
         catch {
         }
@@ -1168,43 +1176,56 @@ namespace ScriptMethodsTest
             return -8;
         }
 
-        mpos nestedMapHex(0, 0);
-        Map? nestedMap = nestedMapItem.GetMapPosition(nestedMapHex);
-        if (nestedMap is null || nestedMap.Id != map.Id || nestedMapHex != mpos(23, 24)) {
+        Map? nestedMapDirect = nestedMapItem.GetMap();
+        if (nestedMapDirect is null || nestedMapDirect.Id != map.Id) {
             Game.DestroyLocation(loc);
             return -9;
         }
 
-        if (nestedMapItem.GetCritter() !is null) {
+        mpos nestedMapHex(0, 0);
+        Map? nestedMap = nestedMapItem.GetMapPosition(nestedMapHex);
+        if (nestedMap is null || nestedMap.Id != map.Id || nestedMapHex != mpos(23, 24)) {
             Game.DestroyLocation(loc);
             return -10;
+        }
+
+        if (nestedMapItem.GetCritter() !is null) {
+            Game.DestroyLocation(loc);
+            return -11;
         }
 
         Critter cr = map.AddCritter("TestCritter".hstr(), mpos(25, 24), mdir(0));
         if (cr is null) {
             Game.DestroyLocation(loc);
-            return -11;
+            return -12;
         }
 
         Item critterContainer = cr.AddItem("TestItem2".hstr(), 1);
         if (critterContainer is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -12;
+            return -13;
         }
 
         Item nestedCritterItem = critterContainer.AddItem("TestItem".hstr(), 1);
         if (nestedCritterItem is null) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -13;
+            return -14;
         }
 
         Critter? nestedOwner = nestedCritterItem.GetCritter();
         if (nestedOwner is null || nestedOwner.Id != cr.Id) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -14;
+            return -15;
+        }
+
+        Map? nestedCritterDirectMap = nestedCritterItem.GetMap();
+        if (nestedCritterDirectMap is null || nestedCritterDirectMap.Id != map.Id) {
+            Game.DestroyCritter(cr);
+            Game.DestroyLocation(loc);
+            return -16;
         }
 
         mpos nestedCritterHex(0, 0);
@@ -1212,7 +1233,7 @@ namespace ScriptMethodsTest
         if (nestedCritterMap is null || nestedCritterMap.Id != map.Id || nestedCritterHex != cr.Hex) {
             Game.DestroyCritter(cr);
             Game.DestroyLocation(loc);
-            return -15;
+            return -17;
         }
 
         Game.DestroyLocation(loc);
@@ -1412,6 +1433,37 @@ namespace ScriptMethodsTest
         }
         catch {
         }
+
+        return 0;
+    }
+
+    // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
+    // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
+    // via the strong-validated SetMapId before registration pulled it into the sync context, and
+    // ValidateEntityAccessStrong aborts the whole process on an uncovered access. The crash MECHANISM
+    // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
+    // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
+    // fresh critter, so if registration ever stopped syncing fresh entities this would abort the server.
+    [[Async]]
+    int TestCreateCritterUnderSyncContext()
+    {
+        // Hold a lock on an unrelated anchor so the sync context is non-empty (the roster-switch condition).
+        Critter anchor = Game.CreateCritter("TestCritter".hstr(), false);
+        if (anchor is null) return -1;
+
+        Game.Sync(anchor);
+        if (!Game.IsEntityLocked(anchor)) return -2;
+
+        // Create a fresh critter under the non-empty context. Registration must sync it before the
+        // strong-validated SetMapId, and it must be covered (own lock held) afterwards.
+        Critter created = Game.CreateCritter("TestCritter".hstr(), false);
+        if (created is null) return -3;
+        if (!Game.IsEntityLocked(created)) return -4;
+
+        Game.SyncRelease();
+
+        Game.DestroyCritter(created);
+        Game.DestroyCritter(anchor);
 
         return 0;
     }
@@ -3206,6 +3258,14 @@ TEST_CASE("ServerEntityLifecycle")
     SECTION("LoadAndDestroyUnloadedCritter")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestLoadAndDestroyUnloadedCritter"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("CreateCritterUnderHeldSyncContext")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestCreateCritterUnderSyncContext"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

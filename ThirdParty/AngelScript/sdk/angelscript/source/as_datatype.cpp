@@ -738,6 +738,16 @@ int asCDataType::GetSizeOnStackDWords() const
 	return GetSizeInMemoryDWords() + size;
 }
 
+// (FOnline Patch) Alignment-aware call-argument layout: see the declaration comment in as_datatype.h.
+int asCDataType::GetArgSlotSizeOnStackDWords() const
+{
+#if AS_PTR_SIZE == 2
+	return (GetSizeOnStackDWords() + 1) & ~1;
+#else
+	return GetSizeOnStackDWords();
+#endif
+}
+
 #ifdef WIP_16BYTE_ALIGN
 int  asCDataType::GetAlignment() const
 {

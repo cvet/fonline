@@ -811,9 +811,17 @@ namespace LocEntity
         return protos_data;
     }
 
+    static auto MakeLocEntityMetadataBlob() -> vector<uint8_t>
+    {
+        return BakerTests::MakeMetadataBlob({
+            {"Entity", {{"CoverageTarget"}}},
+            {"EntityHolder", {{"Server", "Critter", "CoverageTarget", "CoverageItems", "Persistent"}}},
+        });
+    }
+
     static auto MakeResources() -> FileSystem
     {
-        const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        const auto metadata_blob = MakeLocEntityMetadataBlob();
 
         auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("LocEntityCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -1153,6 +1161,502 @@ TEST_CASE("LoadUnloadCritter")
         server->EntityMngr.UnregisterCritter(loaded);
 
         CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+    }
+
+    SECTION("DirectCustomInnerEntityLifecycle")
+    {
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+
+        const hstring custom_type = get_func("CoverageTarget");
+        const hstring custom_entry = get_func("CoverageItems");
+        auto custom = server->EntityMngr.CreateCustomInnerEntity(cr, custom_entry, {});
+        auto custom_holder = custom.hold_ref();
+
+        const ident_t custom_id = custom->GetId();
+        REQUIRE(custom_id);
+        CHECK(custom->GetTypeName() == custom_type);
+        CHECK(custom->GetCustomHolderId() == cr->GetId());
+        CHECK(custom->GetCustomHolderEntry() == custom_entry);
+        CHECK(custom->IsPersistent());
+
+        const auto parent = custom->GetParent();
+        REQUIRE(parent);
+        CHECK(parent.get() == cr.get());
+
+        const auto holder_prop = server->GetEntityHolderIdsProp(cr, custom_entry);
+        CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()) == vector<ident_t> {custom_id});
+
+        const auto inner_entities = cr->GetInnerEntities(custom_entry);
+        REQUIRE(inner_entities);
+        REQUIRE(inner_entities->size() == 1);
+        CHECK(inner_entities->front().get() == custom.get());
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id).get() == custom.get());
+
+        server->EntityMngr.DestroyInnerEntities(cr);
+
+        CHECK_FALSE(cr->HasInnerEntities());
+        CHECK(cr->GetProperties()->GetValueFast<vector<ident_t>>(holder_prop.get()).empty());
+        CHECK(custom->IsDestroyed());
+        CHECK(server->EntityMngr.GetCustomEntity(custom_type, custom_id) == nullptr);
+
+        server->EntityMngr.DestroyEntity(cr);
+    }
+
+    SECTION("DirectLoadRestoresContainerItemTree")
+    {
+        auto container = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);
+        auto container_holder = container.hold_ref();
+
+        auto nullable_inner = server->ItemMngr.AddItemContainer(container, get_func("TestItem"), 1, {});
+        REQUIRE(nullable_inner);
+        auto inner = nullable_inner.as_ptr();
+        auto inner_holder = inner.hold_ref();
+
+        server->EntityMngr.MakePersistent(container, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t container_id = container->GetId();
+        const ident_t inner_id = inner->GetId();
+
+        REQUIRE(container_id);
+        REQUIRE(inner_id);
+        CHECK(container->GetInnerItemIds() == vector<ident_t> {inner_id});
+        CHECK(inner->GetOwnership() == ItemOwnership::ItemContainer);
+        CHECK(inner->GetContainerId() == container_id);
+
+        (void)container->TakeAllInnerItems();
+        inner->MarkAsDestroyed();
+        server->EntityMngr.UnregisterItem(inner, false);
+        container->MarkAsDestroyed();
+        server->EntityMngr.UnregisterItem(container, false);
+
+        CHECK(server->EntityMngr.GetItem(container_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
+
+        bool is_error = false;
+        refcount_nptr<Item> loaded_holder = server->EntityMngr.LoadItem(container_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK_FALSE(is_error);
+        CHECK(loaded->GetId() == container_id);
+        CHECK(loaded->GetProtoId() == get_func("TestItem"));
+        CHECK(loaded->GetOwnership() == ItemOwnership::Nowhere);
+        CHECK(loaded->GetInnerItemIds() == vector<ident_t> {inner_id});
+        CHECK(server->EntityMngr.GetItem(container_id).get() == loaded.get());
+
+        const auto loaded_inner_items = loaded->GetAllInnerItems();
+        REQUIRE(loaded_inner_items.size() == 1);
+
+        auto loaded_inner = loaded_inner_items.front();
+        CHECK(loaded_inner->GetId() == inner_id);
+        CHECK(loaded_inner->GetProtoId() == get_func("TestItem"));
+        CHECK(loaded_inner->GetOwnership() == ItemOwnership::ItemContainer);
+        CHECK(loaded_inner->GetContainerId() == container_id);
+        CHECK(loaded_inner->GetParent().get() == loaded.get());
+        CHECK(server->EntityMngr.GetItem(inner_id).get() == loaded_inner.get());
+
+        server->ItemMngr.DestroyItem(loaded);
+        CHECK(server->EntityMngr.GetItem(container_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(inner_id) == nullptr);
+    }
+
+    SECTION("DirectLoadMapRestoresCrittersAndItems")
+    {
+        const vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        REQUIRE(loc.get() != nullptr);
+
+        const auto loc_maps = loc->GetMaps();
+        REQUIRE(loc_maps.size() == 1);
+
+        auto map = loc_maps.front();
+        REQUIRE(map.get() != nullptr);
+
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        REQUIRE(cr.get() != nullptr);
+        server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
+
+        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), 1, nullptr);
+        REQUIRE(item.get() != nullptr);
+
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t loc_id = loc->GetId();
+        const ident_t map_id = map->GetId();
+        const ident_t cr_id = cr->GetId();
+        const ident_t item_id = item->GetId();
+
+        REQUIRE(loc_id);
+        REQUIRE(map_id);
+        REQUIRE(cr_id);
+        REQUIRE(item_id);
+        CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
+        CHECK(map->GetItemIds() == vector<ident_t> {item_id});
+
+        const auto locations_collection = get_func("Locations");
+        const auto maps_collection = get_func("Maps");
+        const auto critters_collection = get_func("Critters");
+        const auto items_collection = get_func("Items");
+
+        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        const auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
+        const auto item_doc = server->DbStorage.Get(items_collection, item_id);
+
+        REQUIRE_FALSE(loc_doc.Empty());
+        REQUIRE_FALSE(map_doc.Empty());
+        REQUIRE_FALSE(cr_doc.Empty());
+        REQUIRE_FALSE(item_doc.Empty());
+
+        server->MapMngr.DestroyLocation(loc);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+
+        server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
+        server->DbStorage.Insert(maps_collection, map_id, map_doc);
+        server->DbStorage.Insert(critters_collection, cr_id, cr_doc);
+        server->DbStorage.Insert(items_collection, item_id, item_doc);
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK_FALSE(is_error);
+        CHECK(loaded->GetId() == map_id);
+        CHECK(loaded->GetLocId() == loc_id);
+        CHECK(loaded->GetCritterIds() == vector<ident_t> {cr_id});
+        CHECK(loaded->GetItemIds() == vector<ident_t> {item_id});
+        CHECK(server->EntityMngr.GetMap(map_id).get() == loaded.get());
+
+        auto loaded_cr = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(loaded_cr.get() != nullptr);
+        CHECK(loaded_cr->GetMapId() == map_id);
+        CHECK(loaded_cr->GetHex() == mpos {20, 21});
+        CHECK(loaded->GetCritter(cr_id).get() == loaded_cr.get());
+
+        auto loaded_item = server->EntityMngr.GetItem(item_id);
+        REQUIRE(loaded_item.get() != nullptr);
+        CHECK(loaded_item->GetOwnership() == ItemOwnership::MapHex);
+        CHECK(loaded_item->GetMapId() == map_id);
+        CHECK(loaded_item->GetHex() == mpos {22, 23});
+        CHECK(loaded->GetItem(item_id).get() == loaded_item.get());
+
+        server->CrMngr.DestroyCritter(loaded_cr.get());
+        loaded_cr.reset();
+
+        server->ItemMngr.DestroyItem(loaded_item.get());
+        loaded_item.reset();
+
+        CHECK(loaded->GetCritters().empty());
+        CHECK(loaded->GetItems().empty());
+
+        loaded->MarkAsDestroyed();
+        server->EntityMngr.UnregisterMap(loaded);
+    }
+
+    SECTION("DirectLoadMapClampsInvalidCritterAndItemHex")
+    {
+        const vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        REQUIRE(loc.get() != nullptr);
+
+        const auto loc_maps = loc->GetMaps();
+        REQUIRE(loc_maps.size() == 1);
+
+        auto map = loc_maps.front();
+        REQUIRE(map.get() != nullptr);
+
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        REQUIRE(cr.get() != nullptr);
+        server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
+
+        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), 1, nullptr);
+        REQUIRE(item.get() != nullptr);
+
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t loc_id = loc->GetId();
+        const ident_t map_id = map->GetId();
+        const ident_t cr_id = cr->GetId();
+        const ident_t item_id = item->GetId();
+
+        REQUIRE(loc_id);
+        REQUIRE(map_id);
+        REQUIRE(cr_id);
+        REQUIRE(item_id);
+
+        const auto maps_collection = get_func("Maps");
+        const auto critters_collection = get_func("Critters");
+        const auto items_collection = get_func("Items");
+
+        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        auto cr_doc = server->DbStorage.Get(critters_collection, cr_id);
+        auto item_doc = server->DbStorage.Get(items_collection, item_id);
+
+        REQUIRE_FALSE(map_doc.Empty());
+        REQUIRE_FALSE(cr_doc.Empty());
+        REQUIRE_FALSE(item_doc.Empty());
+
+        cr_doc.Assign("Hex", AnyData::Value {string {"-5 300"}});
+        item_doc.Assign("Hex", AnyData::Value {string {"300 -5"}});
+
+        server->MapMngr.DestroyLocation(loc);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+
+        server->DbStorage.Insert(maps_collection, map_id, map_doc);
+        server->DbStorage.Insert(critters_collection, cr_id, cr_doc);
+        server->DbStorage.Insert(items_collection, item_id, item_doc);
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK_FALSE(is_error);
+        CHECK(loaded->GetId() == map_id);
+        CHECK(loaded->GetCritterIds() == vector<ident_t> {cr_id});
+        CHECK(loaded->GetItemIds() == vector<ident_t> {item_id});
+        CHECK(server->EntityMngr.GetMap(map_id).get() == loaded.get());
+
+        auto loaded_cr = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(loaded_cr.get() != nullptr);
+        CHECK(loaded_cr->GetMapId() == map_id);
+        CHECK(loaded_cr->GetHex() == mpos {0, 199});
+        CHECK(loaded->GetCritter(cr_id).get() == loaded_cr.get());
+
+        auto loaded_item = server->EntityMngr.GetItem(item_id);
+        REQUIRE(loaded_item.get() != nullptr);
+        CHECK(loaded_item->GetOwnership() == ItemOwnership::MapHex);
+        CHECK(loaded_item->GetMapId() == map_id);
+        CHECK(loaded_item->GetHex() == mpos {199, 0});
+        CHECK(loaded->GetItem(item_id).get() == loaded_item.get());
+
+        server->CrMngr.DestroyCritter(loaded_cr.get());
+        loaded_cr.reset();
+
+        server->ItemMngr.DestroyItem(loaded_item.get());
+        loaded_item.reset();
+
+        CHECK(loaded->GetCritters().empty());
+        CHECK(loaded->GetItems().empty());
+
+        loaded->MarkAsDestroyed();
+        server->EntityMngr.UnregisterMap(loaded);
+    }
+
+    SECTION("DirectLoadMapPrunesMissingCritterAndItemRefs")
+    {
+        const vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        REQUIRE(loc.get() != nullptr);
+
+        const auto loc_maps = loc->GetMaps();
+        REQUIRE(loc_maps.size() == 1);
+
+        auto map = loc_maps.front();
+        REQUIRE(map.get() != nullptr);
+
+        auto cr = server->CreateCritter(get_func("TestCritter"), false);
+        REQUIRE(cr.get() != nullptr);
+        server->MapMngr.AddCritterToMap(cr, map, mpos {20, 21}, mdir {0}, ident_t {});
+
+        auto item = server->ItemMngr.CreateItemOnHex(map, mpos {22, 23}, get_func("TestItem"), 1, nullptr);
+        REQUIRE(item.get() != nullptr);
+
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t loc_id = loc->GetId();
+        const ident_t map_id = map->GetId();
+        const ident_t cr_id = cr->GetId();
+        const ident_t item_id = item->GetId();
+
+        REQUIRE(loc_id);
+        REQUIRE(map_id);
+        REQUIRE(cr_id);
+        REQUIRE(item_id);
+        CHECK(map->GetCritterIds() == vector<ident_t> {cr_id});
+        CHECK(map->GetItemIds() == vector<ident_t> {item_id});
+
+        const auto maps_collection = get_func("Maps");
+        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+        REQUIRE_FALSE(map_doc.Empty());
+
+        server->MapMngr.DestroyLocation(loc);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+
+        server->DbStorage.Insert(maps_collection, map_id, map_doc);
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK(is_error);
+        CHECK(loaded->GetId() == map_id);
+        CHECK(loaded->GetLocId() == loc_id);
+        CHECK(loaded->GetCritterIds().empty());
+        CHECK(loaded->GetItemIds().empty());
+        CHECK(loaded->GetCritters().empty());
+        CHECK(loaded->GetItems().empty());
+        CHECK(server->EntityMngr.GetMap(map_id).get() == loaded.get());
+        CHECK(server->EntityMngr.GetCritter(cr_id) == nullptr);
+        CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+
+        loaded->MarkAsDestroyed();
+        server->EntityMngr.UnregisterMap(loaded);
+    }
+
+    SECTION("DirectLoadLocationRestoresMapRefs")
+    {
+        const vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        REQUIRE(loc.get() != nullptr);
+
+        const auto loc_maps = loc->GetMaps();
+        REQUIRE(loc_maps.size() == 1);
+
+        auto map = loc_maps.front();
+        REQUIRE(map.get() != nullptr);
+
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t loc_id = loc->GetId();
+        const ident_t map_id = map->GetId();
+
+        REQUIRE(loc_id);
+        REQUIRE(map_id);
+        CHECK(loc->GetMapIds() == vector<ident_t> {map_id});
+        CHECK(map->GetLocId() == loc_id);
+        CHECK(map->GetLocMapIndex() == 0);
+        CHECK(map->GetLocation() == loc);
+
+        const auto locations_collection = get_func("Locations");
+        const auto maps_collection = get_func("Maps");
+
+        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        const auto map_doc = server->DbStorage.Get(maps_collection, map_id);
+
+        REQUIRE_FALSE(loc_doc.Empty());
+        REQUIRE_FALSE(map_doc.Empty());
+
+        server->MapMngr.DestroyLocation(loc);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+
+        server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
+        server->DbStorage.Insert(maps_collection, map_id, map_doc);
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK_FALSE(is_error);
+        CHECK(loaded->GetId() == loc_id);
+        CHECK(loaded->GetProtoId() == get_func("TestLocation"));
+        CHECK(loaded->GetMapIds() == vector<ident_t> {map_id});
+        CHECK(server->EntityMngr.GetLocation(loc_id).get() == loaded.get());
+
+        const auto loaded_maps = loaded->GetMaps();
+        REQUIRE(loaded_maps.size() == 1);
+
+        auto loaded_map = loaded_maps.front();
+        REQUIRE(loaded_map.get() != nullptr);
+        CHECK(loaded_map->GetId() == map_id);
+        CHECK(loaded_map->GetProtoId() == get_func("TestMap"));
+        CHECK(loaded_map->GetLocId() == loc_id);
+        CHECK(loaded_map->GetLocMapIndex() == 0);
+        CHECK(loaded_map->GetLocation().get() == loaded.get());
+        CHECK(server->EntityMngr.GetMap(map_id).get() == loaded_map.get());
+
+        server->MapMngr.DestroyLocation(loaded);
+        loaded_holder.reset();
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+    }
+
+    SECTION("DirectLoadLocationPrunesMissingMapRefs")
+    {
+        const vector<hstring> map_pids {get_func("TestMap")};
+        auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"), map_pids);
+        REQUIRE(loc.get() != nullptr);
+
+        const auto loc_maps = loc->GetMaps();
+        REQUIRE(loc_maps.size() == 1);
+
+        auto map = loc_maps.front();
+        REQUIRE(map.get() != nullptr);
+
+        server->EntityMngr.MakePersistent(loc, true, true);
+        server->DbStorage.WaitCommitChanges();
+
+        const ident_t loc_id = loc->GetId();
+        const ident_t map_id = map->GetId();
+
+        REQUIRE(loc_id);
+        REQUIRE(map_id);
+        CHECK(loc->GetMapIds() == vector<ident_t> {map_id});
+
+        const auto locations_collection = get_func("Locations");
+        const auto loc_doc = server->DbStorage.Get(locations_collection, loc_id);
+        REQUIRE_FALSE(loc_doc.Empty());
+
+        server->MapMngr.DestroyLocation(loc);
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+
+        server->DbStorage.Insert(locations_collection, loc_id, loc_doc);
+        server->DbStorage.WaitCommitChanges();
+
+        bool is_error = false;
+        refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
+        REQUIRE(loaded_holder);
+        auto loaded = loaded_holder.as_ptr();
+
+        CHECK(is_error);
+        CHECK(loaded->GetId() == loc_id);
+        CHECK(loaded->GetMapIds().empty());
+        CHECK_FALSE(loaded->HasMaps());
+        CHECK(server->EntityMngr.GetLocation(loc_id).get() == loaded.get());
+        CHECK(server->EntityMngr.GetMap(map_id) == nullptr);
+
+        server->MapMngr.DestroyLocation(loaded);
+        loaded_holder.reset();
+        server->DbStorage.WaitCommitChanges();
+
+        CHECK(server->EntityMngr.GetLocation(loc_id) == nullptr);
     }
 }
 

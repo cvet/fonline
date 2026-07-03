@@ -873,14 +873,6 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
     return MakeFileBufferHolder(std::move(buf));
 }
 
-static void CleanupZipInputFile(ptr<std::ifstream> file) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto owned_file = adopt_unique_ptr(file);
-    ignore_unused(owned_file);
-}
-
 struct EmbeddedZipMemStream
 {
     span<const volatile uint8_t> Buf;

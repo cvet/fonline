@@ -65,6 +65,16 @@ TEST_CASE("ProtoTextBaker")
     CHECK(bakers.front()->GetOrder() == 6);
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), "skip.bin"));
 
+    SECTION("IgnoresNonProtoSourceFiles")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Data/Readme.txt", "not a proto");
+
+        ProtoTextBaker baker(local_rig.MakeContext("ProtoTextIgnored"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        CHECK(local_rig.Outputs.empty());
+    }
+
     SECTION("SkipsUnsupportedTargetPath")
     {
         TestRig local_rig;
@@ -143,6 +153,23 @@ $Text engl Name = Custom gizmo name
         CHECK(protos_russ.GetStr(MakeTextKey(hashes, "Protos", "TextGizmo", "Name"), 0) == "Custom gizmo name");
     }
 
+    SECTION("AcceptsFixedTypeSections")
+    {
+        TestRig local_rig;
+        OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
+        local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"FixedType", {{"Blueprint"}}}}));
+        local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
+$Name = VaultDoorBlueprint
+$Text engl Name = Blueprint name
+)");
+
+        ProtoTextBaker baker(local_rig.MakeContext("ProtoTextFixed"));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+
+        CHECK(local_rig.Outputs.size() == 5);
+        CHECK(local_rig.Outputs.contains("ProtoTextFixed.Protos.engl.fotxt-bin"));
+    }
+
     SECTION("BakeCheckerCanSkipAllProtoTextTargets")
     {
         TestRig local_rig;
@@ -195,6 +222,17 @@ $Text engl Name = Audit
         {
             TestRig local_rig;
             local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+            local_rig.AddSourceFile("Custom/Unknown.fopro", R"([ProtoUnknownEntity]
+$Name = UnknownProto
+$Text engl Name = Unknown
+)");
+
+            ProtoTextBaker baker(local_rig.MakeContext("ProtoTextUnknownType"));
+            CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
+        }
+        {
+            TestRig local_rig;
+            local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
             local_rig.AddSourceFile("Items/DuplicateOne.fopro", R"([ProtoItem]
 $Name = DuplicateItem
 $Text engl Name = One
@@ -240,6 +278,39 @@ $Text = No default language
 )");
 
             CHECK_THROWS_AS(ProtoTextBaker(local_rig.MakeContext("ProtoTextNoLanguages")), ProtoTextBakerException);
+        }
+        {
+            TestRig local_rig;
+            local_rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
+            local_rig.AddSourceFile("Items/NestedMissingParent.fopro", R"([ProtoItem]
+$Name = ParentWithMissingBase
+$Parent = MissingGrandParent
+$Text engl Name = Parent
+
+[ProtoItem]
+$Name = ChildWithBrokenParent
+$Parent = ParentWithMissingBase
+$Text engl Name = Child
+)");
+
+            ProtoTextBaker baker(local_rig.MakeContext("ProtoTextNestedMissingParent"));
+            CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
+        }
+        {
+            TestRig local_rig;
+            OverrideSetting(local_rig.Settings.BakeLanguages, vector<string> {"engl"});
+            local_rig.AddBakedFile("Metadata.fometa-server", MakeDynamicMetadataBlob({{"Entity", {{"Gizmo", "HasProtos"}, {"Widget", "HasProtos"}}}}));
+            local_rig.AddSourceFile("Custom/Intersections.fopro", R"([ProtoGizmo]
+$Name = SharedCustomProto
+$Text engl Name = Gizmo name
+
+[ProtoWidget]
+$Name = SharedCustomProto
+$Text engl Name = Widget name
+)");
+
+            ProtoTextBaker baker(local_rig.MakeContext("ProtoTextIntersection"));
+            CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), ProtoTextBakerException);
         }
     }
 }

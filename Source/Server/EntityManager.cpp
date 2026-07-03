@@ -648,8 +648,8 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
     }
 
     try {
-        cr->SetMapId({});
         RegisterCritter(cr);
+        cr->SetMapId({});
         cr->SetPersistent(true);
     }
     catch (const std::exception& ex) {
