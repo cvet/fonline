@@ -500,7 +500,7 @@ static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto backend = GetScriptBackend(as_engine);
-    auto id = GetGenericAddressArgAs<const ident_t>(gen, 1);
+    auto id = GetGenericAddressArgAs<const ident_t>(gen, 0);
     const auto entity_hname = backend->GetMetadata()->Hashes.ToHashedString(*entity_name);
     ptr<EntityManagerApi> entity_mngr = backend->GetEntityMngr();
 
