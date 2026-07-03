@@ -91,7 +91,8 @@ public:
         EntityBuf(const EntityBuf& other);
         auto operator=(const EntityBuf& other) -> EntityBuf&;
         EntityBuf(EntityBuf&&) noexcept = default;
-        auto operator=(EntityBuf&&) noexcept -> EntityBuf& = default;
+        // Properties move assignment is deleted, so the defaulted variant would be implicitly deleted anyway
+        auto operator=(EntityBuf&&) noexcept -> EntityBuf& = delete;
         [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? nptr<const Properties> {&*Props} : nullptr; }
     };
 

@@ -71,7 +71,8 @@ public:
     [[nodiscard]] auto GetAs() noexcept -> T
     {
         FO_STRONG_ASSERT(sizeof(T) == _dataSize, "Property raw data size mismatch", sizeof(T), _dataSize);
-        return MemReadUnaligned<T>(GetPtr());
+        FO_STRONG_ASSERT(reinterpret_cast<uintptr_t>(GetPtr().get()) % alignof(T) == 0, "Property raw data is not aligned", sizeof(T), alignof(T));
+        return *GetPtr().reinterpret_as<T>();
     }
 
     auto Alloc(size_t size) -> ptr<uint8_t>;
@@ -134,6 +135,7 @@ public:
     [[nodiscard]] auto GetBaseType() const noexcept -> const BaseTypeDesc& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> string_view { return _baseType.Name; }
     [[nodiscard]] auto GetBaseSize() const noexcept -> size_t { return _baseType.Size; }
+    [[nodiscard]] auto GetDataAlignment() const noexcept -> size_t { return _dataAlignment; }
     [[nodiscard]] auto IsBaseTypeSimpleStruct() const noexcept -> bool { return _baseType.IsSimpleStruct; }
     [[nodiscard]] auto IsBaseTypeComplexStruct() const noexcept -> bool { return _baseType.IsComplexStruct; }
     [[nodiscard]] auto IsBaseTypeStruct() const noexcept -> bool { return _baseType.IsSimpleStruct || _baseType.IsComplexStruct; }
@@ -260,6 +262,7 @@ private:
     bool _isNullGetterForProto {};
     bool _isNullable {};
     uint16_t _regIndex {};
+    size_t _dataAlignment {1};
     optional<size_t> _podDataOffset {};
     optional<size_t> _complexDataIndex {};
 };
@@ -347,7 +350,7 @@ public:
     void CloneOwnDataFrom(const Properties& other) noexcept;
     void RebuildOverlayFromFullData(const Properties& other) noexcept;
     auto RepackOverlayData(size_t min_capacity) noexcept -> void;
-    auto AllocOverlayData(size_t data_size) noexcept -> uint32_t;
+    auto AllocOverlayData(size_t data_size, size_t data_alignment) noexcept -> uint32_t;
     void ResetComplexData() noexcept;
     void RemoveSyncedOverlayEntries() noexcept;
     void RemoveOverlayEntry(ptr<const Property> prop) noexcept;
@@ -404,6 +407,7 @@ public:
 private:
     auto ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool;
     void ReleaseOverlayEntryIndex() noexcept;
+    auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
     auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
 
     ptr<const PropertyRegistrator> _registrator;
@@ -501,104 +505,6 @@ private:
 };
 
 template<typename T>
-static auto PropertiesObjectAsBytes(const T& value) -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<const T> value_ptr = &value;
-    ptr<const uint8_t> bytes = value_ptr.template reinterpret_as<const uint8_t>();
-    return {bytes.get(), sizeof(T)};
-}
-
-template<typename T>
-static auto PropertiesObjectArrayAsBytes(span<const T> values) -> const_span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (values.empty()) {
-        return {};
-    }
-
-    nptr<const T> nullable_values = values.data();
-    nptr<const uint8_t> bytes = nullable_values.template reinterpret_as<const uint8_t>();
-    return {bytes.get(), values.size() * sizeof(T)};
-}
-
-static auto PropertiesSpanDataAt(const_span<uint8_t> data, size_t pos) -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(pos < data.size(), "Position is out of range");
-
-    return data.data() + pos;
-}
-
-static auto PropertiesSpanDataAt(span<uint8_t> data, size_t pos, size_t size) -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(size != 0, "Size must not be zero");
-    FO_VERIFY_AND_THROW(pos < data.size(), "Position is out of range");
-    FO_VERIFY_AND_THROW(size <= data.size() - pos, "Size exceeds available data");
-
-    return &data[pos];
-}
-
-static void PropertiesWriteBytes(span<uint8_t> target, size_t pos, const_span<uint8_t> source)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (source.empty()) {
-        return;
-    }
-
-    auto target_pos = PropertiesSpanDataAt(target, pos, source.size());
-    auto source_pos = PropertiesSpanDataAt(source, 0);
-    MemCopy(target_pos, source_pos, source.size());
-}
-
-template<typename T>
-static void PropertiesCopyRawVectorData(vector<T>& target, const_span<uint8_t> source)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (source.empty()) {
-        return;
-    }
-
-    FO_VERIFY_AND_THROW(source.size() == target.size() * sizeof(T), "Source size does not match target vector byte size");
-
-    auto source_data = PropertiesSpanDataAt(source, 0);
-    MemCopy(target.data(), source_data, source.size());
-}
-
-template<typename T>
-static auto PropertiesReadObject(const_span<uint8_t> data) -> T
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(data.size() == sizeof(T), "Data size does not match object size");
-
-    T result;
-    auto source = PropertiesSpanDataAt(data, 0);
-    MemCopy(&result, source, sizeof(result));
-    return result;
-}
-
-template<typename T>
-static auto PropertiesReadObjectAt(const_span<uint8_t> data, size_t pos) -> T
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(pos + sizeof(T) <= data.size(), "Object read range exceeds available data");
-
-    T result;
-    auto source = PropertiesSpanDataAt(data, pos);
-    MemCopy(&result, source, sizeof(result));
-    return result;
-}
-
-template<typename T>
     requires(std::is_arithmetic_v<T> || std::is_enum_v<T> || some_property_plain_type<T> || some_strong_type<T>)
 auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
@@ -622,7 +528,8 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match requested value type", prop->GetName(), raw_data.size(), sizeof(T));
-    return PropertiesReadObject<T>(raw_data);
+    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    return *raw_data_ptr.reinterpret_as<T>();
 }
 
 template<typename T>
@@ -651,8 +558,8 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-    const hstring::hash_t hash = PropertiesReadObject<hstring::hash_t>(raw_data);
-    return ResolveHash(hash);
+    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>());
 }
 
 template<typename T>
@@ -717,13 +624,13 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const uint32_t arr_size = PropertiesReadObjectAt<uint32_t>(data, data_pos);
+            const uint32_t arr_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const uint32_t str_size = PropertiesReadObjectAt<uint32_t>(data, data_pos);
+                const uint32_t str_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -739,17 +646,19 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for (const auto i : iterate_range(arr_size)) {
-                const hstring::hash_t hash = PropertiesReadObjectAt<hstring::hash_t>(data, numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
+                const ptr<const uint8_t> hash_data = data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t);
+                const hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 const auto hvalue = ResolveHash(hash);
                 result.emplace_back(hvalue);
             }
         }
         else {
+            FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(typename T::value_type), "Array property base size does not match requested element type", prop->GetName(), prop->GetBaseSize(), sizeof(typename T::value_type));
             FO_VERIFY_AND_THROW(data.size() % prop->GetBaseSize() == 0, "Array property raw data size is not aligned to the property base size", prop->GetName(), data.size(), prop->GetBaseSize());
             const auto arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            PropertiesCopyRawVectorData(result, data);
+            MemCopy(result.data(), data.data(), data.size());
         }
     }
 
@@ -769,7 +678,8 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(T), "Property raw data size mismatch in fast value getter", prop->GetName(), sizeof(T), raw_data.size());
-    return PropertiesReadObject<T>(raw_data);
+    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    return *raw_data_ptr.reinterpret_as<T>();
 }
 
 template<typename T>
@@ -786,8 +696,8 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t), "Property raw hash data size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), raw_data.size());
-    const hstring::hash_t hash = PropertiesReadObject<hstring::hash_t>(raw_data);
-    return ResolveHash(hash, nullptr);
+    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>(), nullptr);
 }
 
 template<typename T>
@@ -837,13 +747,13 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const uint32_t arr_size = PropertiesReadObjectAt<uint32_t>(data, data_pos);
+            const uint32_t arr_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const uint32_t str_size = PropertiesReadObjectAt<uint32_t>(data, data_pos);
+                const uint32_t str_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -859,17 +769,19 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for (const auto i : iterate_range(arr_size)) {
-                const hstring::hash_t hash = PropertiesReadObjectAt<hstring::hash_t>(data, numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
+                const ptr<const uint8_t> hash_data = data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t);
+                const hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 const auto hvalue = ResolveHash(hash, nullptr);
                 result.emplace_back(hvalue);
             }
         }
         else {
+            FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(typename T::value_type), "Property array base size mismatch in fast value getter", prop->GetName(), prop->GetBaseSize(), sizeof(typename T::value_type));
             FO_STRONG_ASSERT(data.size() % prop->GetBaseSize() == 0, "Property array raw data size is not aligned to base size", prop->GetName(), data.size(), prop->GetBaseSize());
             const auto arr_size = data.size() / prop->GetBaseSize();
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
             result.resize(arr_size);
-            PropertiesCopyRawVectorData(result, data);
+            MemCopy(result.data(), data.data(), data.size());
         }
     }
 
@@ -901,7 +813,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     else {
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match assigned value type", prop->GetName(), raw_data.size(), sizeof(T));
-        const auto cur_value = PropertiesReadObject<T>(raw_data);
+        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const T cur_value = *raw_data_ptr.reinterpret_as<T>();
         bool equal;
 
         if constexpr (std::floating_point<T>) {
@@ -923,7 +836,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                SetRawData(prop, PropertiesObjectAsBytes(new_value));
+                const ptr<const T> new_value_ptr = &new_value;
+                SetRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
             }
 
             if (_entity) {
@@ -962,7 +876,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
         const auto new_value_hash = new_value.as_hash();
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match assigned hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-        const hstring::hash_t cur_value_hash = PropertiesReadObject<hstring::hash_t>(raw_data);
+        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const hstring::hash_t cur_value_hash = *raw_data_ptr.reinterpret_as<hstring::hash_t>();
 
         if (new_value_hash != cur_value_hash) {
             if (!prop->_setters.empty() && _entity) {
@@ -976,7 +891,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                SetRawData(prop, PropertiesObjectAsBytes(new_value_hash));
+                const ptr<const hstring::hash_t> new_value_hash_ptr = &new_value_hash;
+                SetRawData(prop, {new_value_hash_ptr.reinterpret_as<uint8_t>().get(), sizeof(hstring::hash_t)});
             }
 
             if (_entity) {
@@ -1054,20 +970,19 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             }
 
             auto buf = prop_data.Alloc(data_size);
-            span<uint8_t> buf_span {buf.get(), data_size};
             size_t data_pos = 0;
 
             const auto arr_size = static_cast<uint32_t>(new_value.size());
-            PropertiesWriteBytes(buf_span, data_pos, PropertiesObjectAsBytes(arr_size));
+            MemWriteUnaligned(buf.offset(data_pos), arr_size);
             data_pos += sizeof(arr_size);
 
             for (const auto& str : new_value) {
                 const auto str_size = static_cast<uint32_t>(str.length());
-                PropertiesWriteBytes(buf_span, data_pos, PropertiesObjectAsBytes(str_size));
+                MemWriteUnaligned(buf.offset(data_pos), str_size);
                 data_pos += sizeof(str_size);
 
                 if (str_size != 0) {
-                    PropertiesWriteBytes(buf_span, data_pos, string_to_span(str));
+                    MemCopy(buf.offset(data_pos), str.data(), str_size);
                     data_pos += str_size;
                 }
             }
@@ -1081,12 +996,10 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         if (!new_value.empty()) {
             const size_t data_size = new_value.size() * sizeof(hstring::hash_t);
             auto buf = prop_data.Alloc(data_size);
-            span<uint8_t> buf_span {buf.get(), data_size};
             size_t data_pos = 0;
 
             for (const auto& hstr : new_value) {
-                const auto hash = hstr.as_hash();
-                PropertiesWriteBytes(buf_span, data_pos, PropertiesObjectAsBytes(hash));
+                *buf.offset(data_pos).reinterpret_as<hstring::hash_t>() = hstr.as_hash();
                 data_pos += sizeof(hstring::hash_t);
             }
 

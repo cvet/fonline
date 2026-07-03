@@ -115,6 +115,8 @@ This means a runtime entity is not simply a flat map from property name to value
 
 Proto-derived overlays keep the dense property index lazy: small overlays use a linear scan over their sorted entries, and `_overlayEntryIndex` is built only after the overlay entry count reaches the engine threshold. This avoids allocating an index sized to every registered property for the common low-entry overlay case while keeping dense lookup for larger overlays.
 
+Overlay data offsets are naturally aligned. Each property gets a data alignment at registration (`Property::GetDataAlignment()`): plain values and POD arrays use the largest power of two dividing the base size, capped at 8; byte-stream payloads (strings, string and ref-type arrays, dicts) stay byte-aligned. `AllocOverlayData` first best-fit searches freed holes and alignment paddings between existing entries and only extends the overlay tail (aligned) when no hole fits; `_overlayGarbageSize` tracks exactly the bytes inside the used range not owned by any entry, which lets the allocator skip the hole search when no hole can possibly fit. Repack and rebuild-from-full lay entry data out in stable alignment-descending order, which packs entries back-to-back with zero padding because every entry size is a multiple of its alignment. The registrator's main POD block is aligned by construction (offsets are multiples of the property base size, section bases are multiples of 8), so `GetRawData()` always returns data aligned to the property's data alignment regardless of which storage backs it.
+
 ## Prototypes
 
 `Source/Common/EntityProtos.h` defines prototype entities:
