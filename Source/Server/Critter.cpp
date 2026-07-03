@@ -1246,10 +1246,10 @@ void Critter::SendAndBroadcast_Attachments()
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    Send_Attachments(self);
+    Send_Attachments(this);
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {
-        player->Send_Attachments(self);
+        player->Send_Attachments(this);
     }
 }
 
