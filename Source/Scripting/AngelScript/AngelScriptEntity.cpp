@@ -48,15 +48,6 @@
 
 FO_BEGIN_NAMESPACE
 
-template<typename T>
-static auto GetGenericArgAs(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto arg_address = GetGenericArgAddress(gen, arg_index);
-    return cast_from_void<T*>(arg_address.get());
-}
-
 static void Entity_AddRef(const Entity* self)
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -694,7 +685,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1).as_ptr());
 
     if (!nullable_func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -792,7 +783,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
+    auto nullable_func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1).as_ptr());
 
     if (!nullable_func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -918,17 +909,17 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     const auto prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
-    auto is_disabled = GetGenericArgAs<bool>(gen, 1);
-    auto is_virtual = GetGenericArgAs<bool>(gen, 2);
-    auto is_dict = GetGenericArgAs<bool>(gen, 3);
-    auto is_array = GetGenericArgAs<bool>(gen, 4);
-    auto is_string_like = GetGenericArgAs<bool>(gen, 5);
-    auto enum_name = GetGenericArgAs<string>(gen, 6);
-    auto is_int = GetGenericArgAs<bool>(gen, 7);
-    auto is_float = GetGenericArgAs<bool>(gen, 8);
-    auto is_bool = GetGenericArgAs<bool>(gen, 9);
-    auto base_size = GetGenericArgAs<int32_t>(gen, 10);
-    auto is_synced = GetGenericArgAs<bool>(gen, 11);
+    auto is_disabled = GetGenericArgAddressAs<bool>(gen, 1);
+    auto is_virtual = GetGenericArgAddressAs<bool>(gen, 2);
+    auto is_dict = GetGenericArgAddressAs<bool>(gen, 3);
+    auto is_array = GetGenericArgAddressAs<bool>(gen, 4);
+    auto is_string_like = GetGenericArgAddressAs<bool>(gen, 5);
+    auto enum_name = GetGenericArgAddressAs<string>(gen, 6);
+    auto is_int = GetGenericArgAddressAs<bool>(gen, 7);
+    auto is_float = GetGenericArgAddressAs<bool>(gen, 8);
+    auto is_bool = GetGenericArgAddressAs<bool>(gen, 9);
+    auto base_size = GetGenericArgAddressAs<int32_t>(gen, 10);
+    auto is_synced = GetGenericArgAddressAs<bool>(gen, 11);
 
     if (prop_enum == 0) {
         throw ScriptException("'None' is not valid property entry in this context");

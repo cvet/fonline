@@ -787,7 +787,7 @@ static auto GetGenericOutObjectSlot(ptr<AngelScript::asIScriptGeneric> gen, Ange
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return NativeDataProvider::GetHandleSlot(GetGenericArgAddress(gen, arg_index));
+    return NativeDataProvider::GetHandleSlot(GetGenericArgAddress(gen, arg_index).as_ptr());
 }
 
 static void ScriptType_Instantiate_Generic(AngelScript::asIScriptGeneric* gen)
@@ -808,7 +808,7 @@ static void ScriptType_InstantiateCopy_Generic(AngelScript::asIScriptGeneric* ge
 
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto self = GetGenericScriptTypeObject(generic);
-    auto in = GetGenericArgAddress(generic, 0);
+    auto in = GetGenericArgAddress(generic, 0).as_ptr();
     const auto in_type_id = generic->GetArgTypeId(0);
     auto out = GetGenericOutObjectSlot(generic, 1);
     const auto out_type_id = generic->GetArgTypeId(1);

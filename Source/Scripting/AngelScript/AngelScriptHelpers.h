@@ -123,7 +123,9 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 
 [[nodiscard]] auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
 [[nodiscard]] auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>;
-[[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
+// GetArgAddress returns the argument value, which for a handle/pointer arg may legitimately be null, so it is nullable.
+[[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
+// GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null.
 [[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept;
@@ -169,6 +171,21 @@ template<typename T>
     }
 }
 
+template<typename T>
+[[nodiscard]] inline auto GetGenericArgAddressAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    auto arg_address = GetGenericArgAddress(gen, arg_index);
+
+    if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
+        return static_cast<T*>(arg_address.get());
+    }
+    else {
+        return cast_from_void<T*>(arg_address.get());
+    }
+}
+
 #ifdef AS_MAX_PORTABILITY
 
 FO_END_NAMESPACE
@@ -197,20 +214,18 @@ namespace aswrap
 
             if constexpr (std::is_lvalue_reference_v<T>) {
                 using BaseType = std::remove_reference_t<T>;
-                return *cast_from_void<BaseType*>(GetGenericArgAddress(gen, arg_index).get());
+                return *GetGenericArgAddressAs<BaseType>(gen, arg_index);
             }
             else if constexpr (std::is_pointer_v<T>) {
-                auto arg_address = GetGenericArgAddress(gen, arg_index);
-
                 if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
                     static_assert(sizeof(T) == sizeof(void*));
-                    return std::bit_cast<T>(arg_address.get());
+                    return std::bit_cast<T>(GetGenericArgAddress(gen, arg_index).get());
                 }
                 else if constexpr (std::is_void_v<remove_all_pointers_t<T>>) {
-                    return arg_address.get();
+                    return GetGenericArgAddress(gen, arg_index).get();
                 }
                 else {
-                    return cast_from_void<T>(arg_address.get());
+                    return GetGenericArgAddressAs<std::remove_pointer_t<T>>(gen, arg_index).get();
                 }
             }
             else {

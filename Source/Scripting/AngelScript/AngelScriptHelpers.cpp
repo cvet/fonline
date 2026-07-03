@@ -2082,13 +2082,11 @@ auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr
     return nullable_auxiliary.as_ptr();
 }
 
-auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>
+auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_arg_address = gen->GetArgAddress(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
-    return nullable_arg_address.as_ptr();
+    return gen->GetArgAddress(arg_index);
 }
 
 auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>
