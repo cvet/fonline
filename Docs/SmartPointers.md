@@ -221,3 +221,5 @@ python3 Tools/SmartPointerAudit/smart_pointer_clang_query.py --diff-base origin/
 ```
 
 The first command is the regular textual non-regression audit: raw pointer, reviewed ABI/container, and nullable unique-owner counts may shrink freely but must not grow without an intentional baseline update, while line-level allowlists keep reviewed reference-member, raw ABI, low-level raw, and nullable owner quarantine rows from drifting. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
+
+As an embedding-project example, Last Frontier runs the full audit invocation in CI on every push and exposes the same command locally as the `Analyze :: Smart Pointer Audit` VS Code task (bundled into its `Analyze All` and pre-commit validation tasks).
