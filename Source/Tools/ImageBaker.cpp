@@ -203,7 +203,7 @@ static auto DefaultPaletteColors() noexcept -> span<ucolor>
     FO_NO_STACK_TRACE_ENTRY();
 
     ptr<uint8_t> palette_data = FoPalette;
-    span<uint8_t> palette_bytes {palette_data.get(), sizeof(FoPalette)};
+    auto palette_bytes = make_span(palette_data, sizeof(FoPalette));
     return BytesAsColors(palette_bytes, 256);
 }
 

@@ -271,12 +271,12 @@ namespace
         CHECK_FALSE(*values == *same_values);
 
         values->SortAsc();
-        CHECK(*cast_from_void<T*>(values->At(0).get()) == low_value);
-        CHECK(*cast_from_void<T*>(values->At(1).get()) == high_value);
+        CHECK(*values->AtAs<T>(0) == low_value);
+        CHECK(*values->AtAs<T>(1) == high_value);
 
         values->SortDesc();
-        CHECK(*cast_from_void<T*>(values->At(0).get()) == high_value);
-        CHECK(*cast_from_void<T*>(values->At(1).get()) == low_value);
+        CHECK(*values->AtAs<T>(0) == high_value);
+        CHECK(*values->AtAs<T>(1) == low_value);
 
         CHECK(values->Find(&low_value) == 1);
         CHECK(values->Find(1, &high_value) == -1);
@@ -2074,8 +2074,8 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         {
             auto copied_int_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*int_arr);
             CHECK(copied_int_arr->GetSize() == int_arr->GetSize());
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(0).get()) == first_int_value);
-            CHECK(*cast_from_void<int32_t*>(copied_int_arr->At(1).get()) == second_int_value);
+            CHECK(*copied_int_arr->AtAs<int32_t>(0) == first_int_value);
+            CHECK(*copied_int_arr->AtAs<int32_t>(1) == second_int_value);
             CHECK(*copied_int_arr == *int_arr);
         }
 

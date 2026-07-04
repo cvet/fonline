@@ -42,6 +42,195 @@ FO_BEGIN_NAMESPACE
 // Data serialization helpers.
 FO_DECLARE_EXCEPTION(DataReadingException);
 
+inline void span_align_pos(size_t& pos, size_t alignment)
+{
+    FO_VERIFY_AND_THROW(alignment != 0, "Span alignment is zero");
+    FO_VERIFY_AND_THROW((alignment & (alignment - 1)) == 0, "Span alignment is not power of two");
+
+    pos = align_up(pos, alignment);
+}
+
+[[nodiscard]] inline auto span_read_bytes(const_span<uint8_t> buffer, size_t& pos, size_t size) -> const_span<uint8_t>
+{
+    if (pos > buffer.size() || size > buffer.size() - pos) {
+        throw DataReadingException("Unexpected end of buffer");
+    }
+
+    const_span<uint8_t> bytes = buffer.subspan(pos, size);
+    pos += size;
+    return bytes;
+}
+
+[[nodiscard]] inline auto span_read_bytes(span<uint8_t> buffer, size_t& pos, size_t size) -> span<uint8_t>
+{
+    if (pos > buffer.size() || size > buffer.size() - pos) {
+        throw DataReadingException("Unexpected end of buffer");
+    }
+
+    span<uint8_t> bytes = buffer.subspan(pos, size);
+    pos += size;
+    return bytes;
+}
+
+[[nodiscard]] inline auto span_read_aligned_bytes(const_span<uint8_t> buffer, size_t& pos, size_t size, size_t alignment) -> const_span<uint8_t>
+{
+    if (size != 0) {
+        span_align_pos(pos, alignment);
+    }
+
+    return span_read_bytes(buffer, pos, size);
+}
+
+[[nodiscard]] inline auto span_read_aligned_bytes(span<uint8_t> buffer, size_t& pos, size_t size, size_t alignment) -> span<uint8_t>
+{
+    if (size != 0) {
+        span_align_pos(pos, alignment);
+    }
+
+    return span_read_bytes(buffer, pos, size);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+[[nodiscard]] auto span_read_object(const_span<uint8_t> buffer, size_t& pos) -> T
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+
+    T data;
+    const_span<uint8_t> bytes = span_read_bytes(buffer, pos, sizeof(T));
+    MemCopy(&data, bytes.data(), sizeof(T));
+    return data;
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+[[nodiscard]] auto span_read_aligned_object(const_span<uint8_t> buffer, size_t& pos, size_t alignment) -> T
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+
+    span_align_pos(pos, alignment);
+    return span_read_object<T>(buffer, pos);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+[[nodiscard]] auto span_read_aligned_object(const_span<uint8_t> buffer, size_t& pos) -> T
+{
+    return span_read_aligned_object<T>(buffer, pos, alignment_for_size(sizeof(T)));
+}
+
+[[nodiscard]] inline auto span_read_string(const_span<uint8_t> buffer, size_t& pos, size_t size) -> string
+{
+    if (size == 0) {
+        return {};
+    }
+
+    const_span<uint8_t> bytes = span_read_bytes(buffer, pos, size);
+    ptr<const char> chars = ptr<const uint8_t> {bytes.data()}.reinterpret_as<const char>();
+    return {chars.get(), bytes.size()};
+}
+
+[[nodiscard]] inline auto span_write_bytes(span<uint8_t> buffer, size_t& pos, size_t size) -> span<uint8_t>
+{
+    FO_VERIFY_AND_THROW(pos <= buffer.size(), "Write position past buffer end");
+    FO_VERIFY_AND_THROW(size <= buffer.size() - pos, "Write size exceeds remaining buffer");
+
+    span<uint8_t> bytes = buffer.subspan(pos, size);
+    pos += size;
+    return bytes;
+}
+
+inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data)
+{
+    span<uint8_t> bytes = span_write_bytes(buffer, pos, data.size());
+    MemCopy(bytes.data(), data.data(), data.size());
+}
+
+inline void span_write_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size)
+{
+    span<uint8_t> bytes = span_write_bytes(buffer, pos, size);
+    MemCopy(bytes.data(), source, size);
+}
+
+[[nodiscard]] inline auto span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, size_t size, size_t alignment) -> span<uint8_t>
+{
+    if (size != 0) {
+        span_align_pos(pos, alignment);
+    }
+
+    return span_write_bytes(buffer, pos, size);
+}
+
+inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, const_span<uint8_t> data, size_t alignment)
+{
+    span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, data.size(), alignment);
+    MemCopy(bytes.data(), data.data(), data.size());
+}
+
+inline void span_write_aligned_bytes(span<uint8_t> buffer, size_t& pos, nptr<const void> source, size_t size, size_t alignment)
+{
+    span<uint8_t> bytes = span_write_aligned_bytes(buffer, pos, size, alignment);
+    MemCopy(bytes.data(), source, size);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_object(span<uint8_t> buffer, size_t& pos, const T& data)
+{
+    span_write_bytes(buffer, pos, cast_to_void(&data), sizeof(T));
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_object_bytes(span<uint8_t> buffer, size_t& pos, const T& data, size_t size)
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    FO_VERIFY_AND_THROW(size <= sizeof(T), "Write size exceeds value type size");
+
+    span_write_bytes(buffer, pos, cast_to_void(&data), size);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_aligned_object(span<uint8_t> buffer, size_t& pos, const T& data, size_t alignment)
+{
+    span_align_pos(pos, alignment);
+    span_write_object(buffer, pos, data);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_aligned_object(span<uint8_t> buffer, size_t& pos, const T& data)
+{
+    span_write_aligned_object(buffer, pos, data, alignment_for_size(sizeof(T)));
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_aligned_object_bytes(span<uint8_t> buffer, size_t& pos, const T& data, size_t size, size_t alignment)
+{
+    static_assert(std::is_trivially_copyable_v<T>);
+    FO_VERIFY_AND_THROW(size <= sizeof(T), "Write size exceeds value type size");
+
+    if (size != 0) {
+        span_align_pos(pos, alignment);
+    }
+
+    span_write_object_bytes(buffer, pos, data, size);
+}
+
+template<typename T>
+    requires(std::is_standard_layout_v<T>)
+void span_write_aligned_object_bytes(span<uint8_t> buffer, size_t& pos, const T& data, size_t size)
+{
+    span_write_aligned_object_bytes(buffer, pos, data, size, alignment_for_size(size));
+}
+
+inline void span_write_string(span<uint8_t> buffer, size_t& pos, string_view value)
+{
+    span_write_bytes(buffer, pos, nptr<const void> {value.data()}, value.length());
+}
+
 class DataReader
 {
 public:
@@ -56,18 +245,14 @@ public:
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
-        T data;
-        const_span<uint8_t> bytes = TakeBytes(sizeof(data));
-        auto source = ReadBytesPtr(bytes);
-        MemCopy(&data, source, sizeof(data));
-        return data;
+        return span_read_object<T>(_dataBuf, _readPos);
     }
 
-    auto ReadBytes(size_t size) -> const_span<uint8_t> { return TakeBytes(size); }
+    auto ReadBytes(size_t size) -> const_span<uint8_t> { return span_read_bytes(_dataBuf, _readPos, size); }
 
     void ReadBytes(span<uint8_t> out)
     {
-        const_span<uint8_t> bytes = TakeBytes(out.size());
+        const_span<uint8_t> bytes = ReadBytes(out.size());
         CopyBytesTo(out, bytes);
     }
 
@@ -81,14 +266,13 @@ public:
     // Reads a zero-copy view of the next `size` bytes as text (no length prefix); the view borrows the underlying buffer.
     auto ReadStringView(size_t size) -> string_view
     {
-        const_span<uint8_t> bytes = TakeBytes(size);
+        const_span<uint8_t> bytes = ReadBytes(size);
 
         if (bytes.empty()) {
             return {};
         }
 
-        ptr<const uint8_t> data = ReadBytesPtr(bytes);
-        ptr<const char> chars = data.reinterpret_as<const char>();
+        ptr<const char> chars = ptr<const uint8_t> {bytes.data()}.reinterpret_as<const char>();
         return {chars.get(), bytes.size()};
     }
 
@@ -147,19 +331,18 @@ public:
         requires(std::same_as<T, uint8_t> || std::same_as<T, char> || std::is_void_v<T>)
     auto ReadPtr(size_t size) -> nptr<const T>
     {
-        const_span<uint8_t> bytes = TakeBytes(size);
+        const_span<uint8_t> bytes = ReadBytes(size);
 
         if (bytes.empty()) {
             return nullptr;
         }
 
-        auto source = ReadBytesPtr(bytes);
-        return source.reinterpret_as<const T>();
+        return ptr<const uint8_t> {bytes.data()}.reinterpret_as<const T>();
     }
 
     void ReadPtr(nptr<void> nullable_out, size_t size)
     {
-        const_span<uint8_t> bytes = TakeBytes(size);
+        const_span<uint8_t> bytes = ReadBytes(size);
 
         if (!bytes.empty()) {
             FO_VERIFY_AND_THROW(nullable_out, "Output pointer is null");
@@ -177,40 +360,12 @@ public:
     }
 
 private:
-    auto TakeBytes(size_t size) -> const_span<uint8_t>
-    {
-        if (_readPos > _dataBuf.size() || size > _dataBuf.size() - _readPos) {
-            throw DataReadingException("Unexpected end of buffer");
-        }
-
-        const_span<uint8_t> bytes = _dataBuf.subspan(_readPos, size);
-        _readPos += size;
-        return bytes;
-    }
-
-    static auto ReadBytesPtr(const_span<uint8_t> bytes) -> ptr<const uint8_t>
-    {
-        FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
-
-        return bytes.data();
-    }
-
     static void CopyBytesTo(span<uint8_t> out, const_span<uint8_t> bytes)
     {
         FO_VERIFY_AND_THROW(out.size() == bytes.size(), "Output and source sizes differ");
 
-        if (!bytes.empty()) {
-            auto target = WriteBytesPtr(out);
-            auto source = ReadBytesPtr(bytes);
-            MemCopy(target, source, bytes.size());
-        }
-    }
-
-    static auto WriteBytesPtr(span<uint8_t> bytes) -> ptr<uint8_t>
-    {
-        FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
-
-        return bytes.data();
+        size_t pos = 0;
+        span_write_bytes(out, pos, bytes);
     }
 
     template<typename T>
@@ -241,18 +396,14 @@ public:
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
-        T data;
-        span<uint8_t> bytes = TakeBytes(sizeof(data));
-        auto source = ReadBytesPtr(bytes);
-        MemCopy(&data, source, sizeof(data));
-        return data;
+        return span_read_object<T>(_dataBuf, _readPos);
     }
 
-    auto ReadBytes(size_t size) -> span<uint8_t> { return TakeBytes(size); }
+    auto ReadBytes(size_t size) -> span<uint8_t> { return span_read_bytes(_dataBuf, _readPos, size); }
 
     void ReadBytes(span<uint8_t> out)
     {
-        span<uint8_t> bytes = TakeBytes(out.size());
+        span<uint8_t> bytes = ReadBytes(out.size());
         CopyBytesTo(out, bytes);
     }
 
@@ -279,19 +430,18 @@ public:
     template<typename T>
     auto ReadPtr(size_t size) -> nptr<T>
     {
-        span<uint8_t> bytes = TakeBytes(size);
+        span<uint8_t> bytes = ReadBytes(size);
 
         if (bytes.empty()) {
             return nullptr;
         }
 
-        auto source = ReadBytesPtr(bytes);
-        return source.reinterpret_as<T>();
+        return ptr<uint8_t> {bytes.data()}.reinterpret_as<T>();
     }
 
     void ReadPtr(nptr<void> nullable_out, size_t size)
     {
-        span<uint8_t> bytes = TakeBytes(size);
+        span<uint8_t> bytes = ReadBytes(size);
 
         if (!bytes.empty()) {
             FO_VERIFY_AND_THROW(nullable_out, "Output pointer is null");
@@ -309,33 +459,12 @@ public:
     }
 
 private:
-    auto TakeBytes(size_t size) -> span<uint8_t>
-    {
-        if (_readPos > _dataBuf.size() || size > _dataBuf.size() - _readPos) {
-            throw DataReadingException("Unexpected end of buffer");
-        }
-
-        span<uint8_t> bytes = _dataBuf.subspan(_readPos, size);
-        _readPos += size;
-        return bytes;
-    }
-
-    static auto ReadBytesPtr(span<uint8_t> bytes) -> ptr<uint8_t>
-    {
-        FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
-
-        return bytes.data();
-    }
-
     static void CopyBytesTo(span<uint8_t> out, span<uint8_t> bytes)
     {
         FO_VERIFY_AND_THROW(out.size() == bytes.size(), "Output and source sizes differ");
 
-        if (!bytes.empty()) {
-            auto target = ReadBytesPtr(out);
-            auto source = ReadBytesPtr(bytes);
-            MemCopy(target, source, bytes.size());
-        }
+        size_t pos = 0;
+        span_write_bytes(out, pos, bytes);
     }
 
     template<typename T>
@@ -373,17 +502,16 @@ public:
     void Write(U data)
     {
         span<uint8_t> bytes = AppendBytes(sizeof(T));
-        auto target = WriteBytesPtr(bytes);
-        MemCopy(target, &data, bytes.size());
+        size_t pos = 0;
+        span_write_object<T>(bytes, pos, data);
     }
 
     void WriteBytes(const_span<uint8_t> data)
     {
         if (!data.empty()) {
-            auto source = SourceBytesPtr(data);
             span<uint8_t> bytes = AppendBytes(data.size());
-            auto target = WriteBytesPtr(bytes);
-            MemCopy(target, source, bytes.size());
+            size_t pos = 0;
+            span_write_bytes(bytes, pos, data);
         }
     }
 
@@ -469,20 +597,6 @@ private:
         ptr<uint8_t> data = _dataBuf->data();
         ptr<uint8_t> bytes = data.get() + offset;
         return {bytes.get(), size};
-    }
-
-    static auto WriteBytesPtr(span<uint8_t> bytes) -> ptr<uint8_t>
-    {
-        FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
-
-        return bytes.data();
-    }
-
-    static auto SourceBytesPtr(const_span<uint8_t> bytes) -> ptr<const uint8_t>
-    {
-        FO_VERIFY_AND_THROW(!bytes.empty(), "Byte span is empty");
-
-        return bytes.data();
     }
 
     template<typename T>

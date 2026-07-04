@@ -624,13 +624,16 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const uint32_t arr_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
+            const ptr<const uint8_t> arr_size_data = data.data();
+            const uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const uint32_t str_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
+                const ptr<const uint8_t> str_size_data = data.data() + data_pos;
+                const uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -747,13 +750,16 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const uint32_t arr_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
+            const ptr<const uint8_t> arr_size_data = data.data();
+            const uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
+                data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const uint32_t str_size = MemReadUnaligned<uint32_t>(data.data() + data_pos);
+                const ptr<const uint8_t> str_size_data = data.data() + data_pos;
+                const uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
                 result.emplace_back(string(span_to_string(data.subspan(data_pos, str_size))));
@@ -939,7 +945,7 @@ void Properties::SetValue(ptr<const Property> prop, const T& new_value)
             SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
         else {
-            SetRawData(prop, string_to_span(new_value));
+            SetRawData(prop, make_const_span(new_value));
         }
 
         if (_entity) {
@@ -966,19 +972,22 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             size_t data_size = sizeof(uint32_t);
 
             for (const auto& str : new_value) {
+                data_size = align_up(data_size, sizeof(uint32_t));
                 data_size += sizeof(uint32_t) + static_cast<uint32_t>(str.length());
             }
 
             auto buf = prop_data.Alloc(data_size);
+            MemFill(buf, 0, data_size);
             size_t data_pos = 0;
 
             const auto arr_size = static_cast<uint32_t>(new_value.size());
-            MemWriteUnaligned(buf.offset(data_pos), arr_size);
+            *buf.offset(data_pos).reinterpret_as<uint32_t>() = arr_size;
             data_pos += sizeof(arr_size);
 
             for (const auto& str : new_value) {
+                data_pos = align_up(data_pos, sizeof(uint32_t));
                 const auto str_size = static_cast<uint32_t>(str.length());
-                MemWriteUnaligned(buf.offset(data_pos), str_size);
+                *buf.offset(data_pos).reinterpret_as<uint32_t>() = str_size;
                 data_pos += sizeof(str_size);
 
                 if (str_size != 0) {

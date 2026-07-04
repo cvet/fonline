@@ -542,7 +542,7 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
     auto entities = nullable_entities.as_ptr();
 
     for (int32_t i = 0; i < entities->GetSize(); i++) {
-        auto nullable_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(entities->At(i));
+        auto nullable_entity = entities->AtAs<Entity>(i);
 
         if (nullable_entity) {
             auto entity = nullable_entity.as_ptr();

@@ -115,7 +115,7 @@ protected:
                     if (output_len != 0) {
                         FO_VERIFY_AND_THROW(!!nullable_output_data, "Missing key callback output data");
                         auto output_data = nullable_output_data.as_ptr();
-                        const_span<uint8_t> output_bytes {output_data.get(), output_len};
+                        const auto output_bytes = make_const_span(output_data, output_len);
                         result->assign(output_bytes.begin(), output_bytes.end());
                     }
                     else {

@@ -56,6 +56,21 @@ template<typename T>
     return float_abs(f1 - f2) <= epsilon * std::max(float_abs(f1), float_abs(f2));
 }
 
+// Alignment, alignment must be a power of two
+template<typename T>
+    requires(std::is_unsigned_v<T>)
+[[nodiscard]] constexpr auto align_up(T value, T alignment) noexcept -> T
+{
+    return (value + alignment - 1) & ~(alignment - 1);
+}
+
+[[nodiscard]] constexpr auto alignment_for_size(size_t size) noexcept -> size_t
+{
+    static_assert((MAX_ALIGNMENT & (MAX_ALIGNMENT - 1)) == 0);
+
+    return size != 0 ? std::min(size & (~size + 1), MAX_ALIGNMENT) : 1;
+}
+
 // Numeric cast
 FO_DECLARE_EXCEPTION(OverflowException);
 FO_DECLARE_EXCEPTION(DivisionByZeroException);

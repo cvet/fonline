@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 #if !FO_HAVE_RPMALLOC
-static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= alignof(std::max_align_t));
+static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_ALIGNMENT);
 #endif
 
 // Safe memory allocation

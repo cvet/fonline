@@ -86,15 +86,13 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
-            if (raw_data.size() - data_pos < sizeof(uint32_t)) {
+            data_pos = align_up(data_pos, sizeof(uint32_t));
+
+            if (data_pos > raw_data.size() || raw_data.size() - data_pos < sizeof(uint32_t)) {
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            uint32_t field_size = 0;
-            auto field_size_target = ptr<uint32_t> {&field_size}.reinterpret_as<uint8_t>();
-            auto field_size_source = ptr<const uint8_t> {raw_data.data()}.offset(data_pos);
-            MemCopy(field_size_target, field_size_source, sizeof(field_size));
-            data_pos += sizeof(field_size);
+            const uint32_t field_size = span_read_object<uint32_t>(raw_data, data_pos);
 
             if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
                 throw PropertySerializationException("Wrong ref field raw size", base_type.Name, field_prop->GetName());
@@ -102,12 +100,15 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
 
             const size_t field_data_size = field_size;
 
-            if (raw_data.size() - data_pos < field_data_size) {
+            if (field_data_size != 0) {
+                data_pos = align_up(data_pos, field_prop->GetDataAlignment());
+            }
+
+            if (data_pos > raw_data.size() || raw_data.size() - data_pos < field_data_size) {
                 throw PropertySerializationException("Corrupted ref type property data", base_type.Name, field_prop->GetName());
             }
 
-            field_raw_data = raw_data.subspan(data_pos, field_data_size);
-            data_pos += field_data_size;
+            field_raw_data = span_read_bytes(raw_data, data_pos, field_data_size);
         }
 
         if (!field_raw_data.empty()) {
@@ -192,28 +193,29 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
             size_t data_size = 0;
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
+                data_size = align_up(data_size, sizeof(uint32_t));
                 data_size += sizeof(uint32_t);
 
                 if (!field_is_default[i]) {
+                    auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+                    data_size = align_up(data_size, field_prop->GetDataAlignment());
                     data_size += field_raw_entries[i].size();
                 }
             }
 
-            _cachedRawData.resize(data_size);
+            _cachedRawData.assign(data_size, 0);
+            auto raw_buffer = make_span(_cachedRawData);
             size_t data_pos = 0;
 
             for (size_t i = 1; i <= last_non_default_field; i++) {
                 const uint32_t field_size = !field_is_default[i] ? numeric_cast<uint32_t>(field_raw_entries[i].size()) : 0;
-                auto field_size_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
-                auto field_size_source = ptr<const uint32_t> {&field_size}.reinterpret_as<uint8_t>();
-                MemCopy(field_size_target, field_size_source, sizeof(field_size));
-                data_pos += sizeof(field_size);
+                data_pos = align_up(data_pos, sizeof(uint32_t));
+                span_write_object(raw_buffer, data_pos, field_size);
 
                 if (field_size != 0) {
-                    auto field_data_target = ptr<uint8_t> {_cachedRawData.data()}.offset(data_pos);
-                    auto field_data_source = ptr<const uint8_t> {field_raw_entries[i].data()};
-                    MemCopy(field_data_target, field_data_source, field_size);
-                    data_pos += field_size;
+                    auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
+                    data_pos = align_up(data_pos, field_prop->GetDataAlignment());
+                    span_write_bytes(raw_buffer, data_pos, field_raw_entries[i]);
                 }
             }
 

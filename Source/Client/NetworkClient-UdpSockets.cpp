@@ -229,7 +229,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        span<uint8_t> packet_buf {_packetBuf};
+        auto packet_buf = make_span(_packetBuf);
         const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
@@ -237,7 +237,7 @@ void NetworkClientConnection_UdpSockets::PumpInput()
         }
 
         UdpPacketInfo packet;
-        const_span<uint8_t> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
+        const auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;

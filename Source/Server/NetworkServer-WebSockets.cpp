@@ -261,7 +261,7 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
     const auto& payload = msg->get_payload();
 
     if (!payload.empty()) {
-        ReceiveCallback(string_to_span(payload));
+        ReceiveCallback(make_const_span(payload));
     }
 }
 
