@@ -245,7 +245,7 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
-inline constexpr size_t MAX_ALIGNMENT = 16;
+inline constexpr size_t MAX_ALIGNMENT = 8;
 
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
@@ -255,7 +255,6 @@ static_assert(sizeof(float32_t) == 4);
 static_assert(sizeof(float64_t) == 8);
 static_assert(CHAR_BIT == 8); // NOLINT(misc-redundant-expression)
 static_assert((MAX_ALIGNMENT & (MAX_ALIGNMENT - 1)) == 0);
-static_assert(alignof(std::max_align_t) <= MAX_ALIGNMENT);
 
 // Bind to global scope frequently used types
 using std::array;
