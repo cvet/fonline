@@ -72,13 +72,10 @@ static auto MakeUniqueCsIdentifier(string_view name, unordered_set<string>& used
 static auto EscapeXml(string_view value) -> string;
 static auto EscapeCsStringLiteral(string_view value) -> string;
 static auto TrimString(string value) -> string;
-static auto GetEnvValue(const char* name) noexcept -> const char*;
 static auto ScopeMatches(string_view scope, string_view value) -> bool;
-static auto LooksLikeScopedEnvEntryStart(string_view raw, size_t offset) -> bool;
-static auto CollectScopedEnvValues(const char* raw, string_view assembly_name, string_view target_name) -> vector<string>;
-static auto GetManagedTargetFramework() -> string;
-static auto MakeManagedMsBuildCommand(const char* msbuild_path) -> string;
-static auto GetManagedProjectBaseName() -> string;
+static auto CollectScopedValues(const vector<string>& entries, string_view assembly_name, string_view target_name) -> vector<string>;
+static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string;
+static auto GetManagedProjectBaseName(string_view name_override) -> string;
 static auto IsGeneratedManagedApiFile(const std::filesystem::path& path) -> bool;
 static auto MakeGeneratedManagedApiFileName(string_view target_name, string_view suffix) -> string;
 static auto MakeGeneratedManagedCoreScriptFileName(const std::filesystem::path& source_path) -> string;
@@ -188,27 +185,28 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         }
     }
 
-    const optional<std::filesystem::path> managed_source_dir = FindManagedSourceDir();
+    ptr<const BakingSettings> settings = _context->Settings.as_ptr();
+    const optional<std::filesystem::path> managed_source_dir = FindManagedSourceDir(settings->ManagedScriptSourceDir);
 
     if (!managed_source_dir.has_value()) {
         throw ManagedScriptBakerException("Managed C# source directory not found", "Engine/Source/Scripting/Managed/CoreScripts");
     }
 
-    const std::filesystem::path managed_project_dir = GetManagedProjectDir();
+    const std::filesystem::path managed_project_dir = GetManagedProjectDir(settings->ManagedScriptProjectDir);
     const std::filesystem::path managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
     const auto generated_core_source_files = CopyManagedCoreScriptFiles(*managed_source_dir, managed_project_dir);
 
-    auto assemblies = SplitEnvList(GetEnvValue("FO_MANAGED_ASSEMBLIES"));
+    vector<string> assemblies = settings->ManagedScriptAssemblies;
 
     if (assemblies.empty()) {
         assemblies.emplace_back("FOnline");
     }
 
     const string managed_pack_name = _context->PackName;
-    const string project_name = GetManagedProjectBaseName();
+    const string project_name = GetManagedProjectBaseName(settings->ManagedScriptProjectName);
     const array<string_view, 3> targets {"Server", "Client", "Mapper"};
     const array<string_view, 5> generated_file_suffixes {"Enums", "Types", "Entities", "Events", "Settings"};
-    const bool dry_run = GetEnvValue("FO_MANAGED_SCRIPT_BAKER_DRY_RUN") != nullptr;
+    const bool dry_run = settings->ManagedScriptBakerDryRun;
 
     struct TargetBakeTask
     {
@@ -258,10 +256,10 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         };
 
         for (const string& assembly : assemblies) {
-            for (const std::filesystem::path& source_file : CollectSourceFiles(files, generated_core_source_files, assembly, target)) {
+            for (const std::filesystem::path& source_file : CollectSourceFiles(files, generated_core_source_files, settings->ManagedScriptExtraSources, assembly, target)) {
                 append_source_file(source_file);
             }
-            for (const string& reference : CollectReferences(assembly, target)) {
+            for (const string& reference : CollectReferences(settings->ManagedScriptExtraReferences, assembly, target)) {
                 append_reference(reference);
             }
         }
@@ -286,7 +284,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
     expected_generated_files.emplace(MakeGeneratedManagedUnifiedProjectFileName(project_name));
     expected_generated_files.emplace(MakeGeneratedManagedSolutionFileName(project_name));
-    GenerateUnifiedProjectFile(managed_project_dir, managed_assemblies_output_dir, managed_pack_name, project_name, project_sources, project_references);
+    GenerateUnifiedProjectFile(managed_project_dir, managed_assemblies_output_dir, managed_pack_name, project_name, settings->ManagedScriptTargetFramework, project_sources, project_references);
     GenerateSolutionFile(managed_project_dir, project_name, vector<string> {project_name});
 
     for (const string_view target : targets) {
@@ -326,7 +324,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
             _context->WriteData(task.ResourcePath, const_span<uint8_t> {reinterpret_cast<const uint8_t*>(marker.data()), marker.size()});
         }
         else {
-            const string msbuild_command = MakeManagedMsBuildCommand(GetEnvValue("FO_MANAGED_MSBUILD"));
+            const string msbuild_command = MakeManagedMsBuildCommand(settings->ManagedScriptMsBuild);
             const string output_path = MakeAbsoluteProjectOutputPath(managed_assemblies_output_dir, target);
             const string command = strex("{} -noLogo -nodeReuse:false -m -restore -target:Build -p:Configuration={} -p:Platform=AnyCPU -p:OutputPath=\"{}\" \"{}\"", msbuild_command, target, output_path, project_path.generic_string()).str();
             RemoveManagedOutputAssemblies(managed_assemblies_output_dir, target);
@@ -830,13 +828,12 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
     }
 }
 
-void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references)
+void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references)
 {
     FO_STACK_TRACE_ENTRY();
 
     const string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
     const std::filesystem::path proj_path = project_dir / proj_name;
-    const string target_framework = GetManagedTargetFramework();
 
     std::ostringstream file;
     const array<string_view, 3> targets {"Server", "Client", "Mapper"};
@@ -964,7 +961,7 @@ void ManagedScriptBaker::GenerateSolutionFile(const std::filesystem::path& proje
     std::filesystem::remove(project_dir / strex("{}.sln", solution_name).str(), ec);
 }
 
-auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& generated_core_source_files, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>
+auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& generated_core_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1005,7 +1002,7 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
         add_source(disk_path);
     }
 
-    for (const string& source_path : CollectScopedEnvValues(GetEnvValue("FO_MANAGED_SOURCE"), assembly_name, target_name)) {
+    for (const string& source_path : CollectScopedValues(extra_sources, assembly_name, target_name)) {
         const std::filesystem::path source_file_path = source_path;
 
         if (IsGeneratedManagedArtifactFileName(strex("{}", source_file_path.filename().string()).str())) {
@@ -1022,14 +1019,14 @@ auto ManagedScriptBaker::CollectSourceFiles(const FileCollection& files, const v
     return result;
 }
 
-auto ManagedScriptBaker::CollectReferences(string_view assembly_name, string_view target_name) -> vector<string>
+auto ManagedScriptBaker::CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<string> result;
     unordered_set<string> unique_refs(result.begin(), result.end());
 
-    for (const string& reference : CollectScopedEnvValues(GetEnvValue("FO_MANAGED_REFERENCES"), assembly_name, target_name)) {
+    for (const string& reference : CollectScopedValues(extra_references, assembly_name, target_name)) {
         if (unique_refs.emplace(reference).second) {
             result.emplace_back(reference);
         }
@@ -1039,15 +1036,15 @@ auto ManagedScriptBaker::CollectReferences(string_view assembly_name, string_vie
     return result;
 }
 
-auto ManagedScriptBaker::FindManagedSourceDir() -> optional<std::filesystem::path>
+auto ManagedScriptBaker::FindManagedSourceDir(string_view dir_override) -> optional<std::filesystem::path>
 {
     FO_STACK_TRACE_ENTRY();
 
     vector<std::filesystem::path> candidates;
 
-    if (const auto* env_dir = GetEnvValue("FO_MANAGED_SOURCE_DIR"); env_dir != nullptr && *env_dir != '\0') {
-        candidates.emplace_back(std::filesystem::path(env_dir) / "CoreScripts");
-        candidates.emplace_back(env_dir);
+    if (!dir_override.empty()) {
+        candidates.emplace_back(std::filesystem::path(dir_override) / "CoreScripts");
+        candidates.emplace_back(dir_override);
     }
 
     candidates.emplace_back(std::filesystem::current_path() / "Engine" / "Source" / "Scripting" / "Managed" / "CoreScripts");
@@ -1070,14 +1067,14 @@ auto ManagedScriptBaker::FindManagedSourceDir() -> optional<std::filesystem::pat
     return std::nullopt;
 }
 
-auto ManagedScriptBaker::GetManagedProjectDir() -> std::filesystem::path
+auto ManagedScriptBaker::GetManagedProjectDir(string_view dir_override) -> std::filesystem::path
 {
     FO_STACK_TRACE_ENTRY();
 
     std::filesystem::path project_dir;
 
-    if (const auto* env_dir = GetEnvValue("FO_MANAGED_PROJECT_DIR"); env_dir != nullptr && *env_dir != '\0') {
-        project_dir = env_dir;
+    if (!dir_override.empty()) {
+        project_dir = dir_override;
     }
     else {
         project_dir = std::filesystem::current_path() / "Scripts" / "Managed";
@@ -1105,39 +1102,6 @@ auto ManagedScriptBaker::RunCommand(string_view command, string_view fail_messag
     if (exit_code != 0) {
         throw ManagedScriptBakerException(fail_message, exit_code);
     }
-}
-
-auto ManagedScriptBaker::SplitEnvList(const char* raw) -> vector<string>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw == nullptr || *raw == '\0') {
-        return {};
-    }
-
-    vector<string> result;
-    string token;
-
-    const auto flush_token = [&]() {
-        token = TrimString(std::move(token));
-
-        if (!token.empty()) {
-            result.emplace_back(std::move(token));
-            token.clear();
-        }
-    };
-
-    for (const char c : string_view(raw)) {
-        if (c == ';' || c == ',' || c == '|') {
-            flush_token();
-            continue;
-        }
-
-        token.push_back(c);
-    }
-
-    flush_token();
-    return result;
 }
 
 static auto GetManagedBakeStamp(const BakingContext& context, string_view target_name, const vector<std::filesystem::path>& source_files, const vector<string>& references) -> uint64_t
@@ -1378,13 +1342,6 @@ static auto TrimString(string value) -> string
     return value;
 }
 
-static auto GetEnvValue(const char* name) noexcept -> const char*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return std::getenv(name);
-}
-
 static auto ScopeMatches(string_view scope, string_view value) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -1393,67 +1350,17 @@ static auto ScopeMatches(string_view scope, string_view value) -> bool
     return scope.empty() || scope == "*" || lower_scope == "all" || scope == value;
 }
 
-static auto LooksLikeScopedEnvEntryStart(string_view raw, size_t offset) -> bool
+static auto CollectScopedValues(const vector<string>& entries, string_view assembly_name, string_view target_name) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
-
-    const auto is_hard_separator = [](char c) noexcept { return c == ';' || c == '|' || c == '\\' || c == '/' || c == ':'; };
-
-    while (offset < raw.size() && std::isspace(static_cast<unsigned char>(raw[offset])) != 0) {
-        offset++;
-    }
-
-    const size_t assembly_start = offset;
-
-    while (offset < raw.size() && raw[offset] != ',') {
-        if (is_hard_separator(raw[offset])) {
-            return false;
-        }
-
-        offset++;
-    }
-
-    if (offset == assembly_start || offset >= raw.size() || raw[offset] != ',') {
-        return false;
-    }
-
-    offset++;
-
-    const size_t target_start = offset;
-
-    while (offset < raw.size() && raw[offset] != ',') {
-        if (is_hard_separator(raw[offset])) {
-            return false;
-        }
-
-        offset++;
-    }
-
-    if (offset == target_start || offset >= raw.size() || raw[offset] != ',') {
-        return false;
-    }
-
-    const string target = strex(TrimString(string {raw.substr(target_start, offset - target_start)})).lower().str();
-    return target == "*" || target == "all" || target == "server" || target == "client" || target == "mapper";
-}
-
-static auto CollectScopedEnvValues(const char* raw, string_view assembly_name, string_view target_name) -> vector<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (raw == nullptr || *raw == '\0') {
-        return {};
-    }
 
     vector<string> result;
-    string entry;
-    const string_view raw_view {raw};
 
-    const auto flush_entry = [&]() {
-        entry = TrimString(std::move(entry));
+    for (const string& raw_entry : entries) {
+        string entry = TrimString(raw_entry);
 
         if (entry.empty()) {
-            return;
+            continue;
         }
 
         const size_t assembly_sep = entry.find(',');
@@ -1461,8 +1368,7 @@ static auto CollectScopedEnvValues(const char* raw, string_view assembly_name, s
 
         if (assembly_sep == string::npos || target_sep == string::npos) {
             result.emplace_back(std::move(entry));
-            entry.clear();
-            return;
+            continue;
         }
 
         const string entry_assembly = TrimString(entry.substr(0, assembly_sep));
@@ -1472,38 +1378,16 @@ static auto CollectScopedEnvValues(const char* raw, string_view assembly_name, s
         if (!entry_value.empty() && ScopeMatches(entry_assembly, assembly_name) && ScopeMatches(entry_target, target_name)) {
             result.emplace_back(std::move(entry_value));
         }
-
-        entry.clear();
-    };
-
-    for (size_t i = 0; i < raw_view.size(); i++) {
-        const char c = raw_view[i];
-
-        if (c == ';' || c == '|' || (c == '~' && LooksLikeScopedEnvEntryStart(raw_view, i + 1))) {
-            flush_entry();
-            continue;
-        }
-
-        entry.push_back(c);
     }
 
-    flush_entry();
     return result;
 }
 
-static auto GetManagedTargetFramework() -> string
+static auto MakeManagedMsBuildCommand(string_view msbuild_path) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const char* target_framework = GetEnvValue("FO_MANAGED_TARGET_FRAMEWORK");
-    return target_framework != nullptr && *target_framework != '\0' ? string {target_framework} : string {"net10.0"};
-}
-
-static auto MakeManagedMsBuildCommand(const char* msbuild_path) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (msbuild_path == nullptr || *msbuild_path == '\0') {
+    if (msbuild_path.empty()) {
         return "dotnet msbuild";
     }
 
@@ -1518,20 +1402,18 @@ static auto MakeManagedMsBuildCommand(const char* msbuild_path) -> string
     return strex("\"{}\"", msbuild_path).str();
 }
 
-static auto GetManagedProjectBaseName() -> string
+static auto GetManagedProjectBaseName(string_view name_override) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const char* project_name = GetEnvValue("FO_MANAGED_PROJECT_NAME");
-
-    if (project_name == nullptr || *project_name == '\0') {
-        project_name = FO_NICE_NAME.c_str();
+    if (!name_override.empty()) {
+        return string {name_override};
     }
-    if (project_name == nullptr || *project_name == '\0') {
-        return "FOnline";
+    if (!FO_NICE_NAME.empty()) {
+        return string {FO_NICE_NAME};
     }
 
-    return string {project_name};
+    return "FOnline";
 }
 
 static auto IsGeneratedManagedApiFile(const std::filesystem::path& path) -> bool

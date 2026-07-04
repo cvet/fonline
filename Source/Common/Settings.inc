@@ -60,6 +60,15 @@ FIXED_SETTING(string, Script, DebuggerBindHost, "0.0.0.0"); // Debugger TCP bind
 FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Script namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
+FIXED_SETTING(string, Script, ManagedScriptProjectName); // Managed project base name (empty for the game nice name)
+FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, Script, ManagedScriptMsBuild); // Managed msbuild command override (empty for 'dotnet msbuild')
+FIXED_SETTING(string, Script, ManagedScriptSourceDir); // Managed engine core-scripts directory override (empty for auto-detection)
+FIXED_SETTING(string, Script, ManagedScriptProjectDir); // Managed project directory override (empty for Scripts/Managed)
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
+FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
+FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

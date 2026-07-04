@@ -107,43 +107,6 @@ private:
     optional<string> _oldValue {};
 };
 
-class ScopedUnsetEnvVar final
-{
-public:
-    explicit ScopedUnsetEnvVar(string name) :
-        _name {std::move(name)}
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        if (const char* old_value = std::getenv(_name.c_str()); old_value != nullptr) {
-            _oldValue = old_value;
-        }
-
-        UnsetProcessEnv(_name);
-    }
-
-    ScopedUnsetEnvVar(const ScopedUnsetEnvVar&) = delete;
-    ScopedUnsetEnvVar(ScopedUnsetEnvVar&&) noexcept = delete;
-    auto operator=(const ScopedUnsetEnvVar&) = delete;
-    auto operator=(ScopedUnsetEnvVar&&) noexcept = delete;
-
-    ~ScopedUnsetEnvVar()
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        if (_oldValue.has_value()) {
-            SetProcessEnv(_name, *_oldValue);
-        }
-        else {
-            UnsetProcessEnv(_name);
-        }
-    }
-
-private:
-    string _name {};
-    optional<string> _oldValue {};
-};
-
 class ScopedTempDirectory final
 {
 public:
@@ -307,32 +270,6 @@ static auto MakeManagedGeneratedCs(string_view body) -> string
         .str();
 }
 
-static auto MakeMetadataBlob(const map<string, vector<vector<string>>>& sections) -> vector<uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<uint8_t> metadata;
-    auto writer = DataWriter(metadata);
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
-
-    for (const auto& [section_name, entries] : sections) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-        writer.WritePtr(section_name.data(), section_name.size());
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
-
-        for (const vector<string>& entry : entries) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(entry.size()));
-
-            for (const string& token : entry) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-                writer.WritePtr(token.data(), token.size());
-            }
-        }
-    }
-
-    return metadata;
-}
-
 #endif
 
 TEST_CASE("ManagedScriptBaker")
@@ -385,15 +322,22 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(script_dir / "UnitManaged.Server.gen.csproj", "<Project />\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
-    ScopedEnvVar dry_run {"FO_MANAGED_SCRIPT_BAKER_DRY_RUN", "1"};
-    ScopedEnvVar source_dir {"FO_MANAGED_SOURCE_DIR", managed_source_dir.string()};
-    ScopedEnvVar project_dir {"FO_MANAGED_PROJECT_DIR", script_dir.string()};
-    ScopedEnvVar assemblies {"FO_MANAGED_ASSEMBLIES", "UnitManaged"};
-    ScopedEnvVar sources {"FO_MANAGED_SOURCE", strex("UnitManaged,Server,{};UnitManaged,Client,{};UnitManaged,Mapper,{};UnitManaged,All,{};UnitManaged,All,{}", server_source.string(), client_source.string(), mapper_source.string(), shared_source.string(), tilde_source.string()).str()};
-    ScopedEnvVar references {"FO_MANAGED_REFERENCES", "UnitManaged,Server,System.Xml;UnitManaged,All,System.Core"};
-    ScopedEnvVar project_name {"FO_MANAGED_PROJECT_NAME", "UnitProject"};
 
     TestRig rig;
+    OverrideSetting(rig.Settings.ManagedScriptBakerDryRun, true);
+    OverrideSetting(rig.Settings.ManagedScriptSourceDir, managed_source_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptProjectDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptExtraSources,
+        vector<string> {
+            strex("UnitManaged,Server,{}", server_source.string()).str(),
+            strex("UnitManaged,Client,{}", client_source.string()).str(),
+            strex("UnitManaged,Mapper,{}", mapper_source.string()).str(),
+            strex("UnitManaged,All,{}", shared_source.string()).str(),
+            strex("UnitManaged,All,{}", tilde_source.string()).str(),
+        });
+    OverrideSetting(rig.Settings.ManagedScriptExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
     rig.AddBakedFile("Metadata.fometa-server",
         MakeMetadataBlob({
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
@@ -628,16 +572,16 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
-    ScopedUnsetEnvVar dry_run {"FO_MANAGED_SCRIPT_BAKER_DRY_RUN"};
-    ScopedEnvVar source_dir {"FO_MANAGED_SOURCE_DIR", managed_source_dir.string()};
-    ScopedEnvVar project_dir {"FO_MANAGED_PROJECT_DIR", script_dir.string()};
-    ScopedEnvVar assemblies {"FO_MANAGED_ASSEMBLIES", "UnitManaged"};
-    ScopedEnvVar sources {"FO_MANAGED_SOURCE", strex("UnitManaged,All,{}", shared_source.string()).str()};
-    ScopedEnvVar project_name {"FO_MANAGED_PROJECT_NAME", "UnitProject"};
-    ScopedEnvVar msbuild {"FO_MANAGED_MSBUILD", fake_msbuild.string()};
+    // The fake msbuild helper is a spawned child process; env is the legitimate channel to parameterize it.
     ScopedEnvVar msbuild_root {"FO_FAKE_MSBUILD_ROOT", fake_msbuild_root.string()};
 
     TestRig rig;
+    OverrideSetting(rig.Settings.ManagedScriptSourceDir, managed_source_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptProjectDir, script_dir.string());
+    OverrideSetting(rig.Settings.ManagedScriptAssemblies, vector<string> {"UnitManaged"});
+    OverrideSetting(rig.Settings.ManagedScriptExtraSources, vector<string> {strex("UnitManaged,All,{}", shared_source.string()).str()});
+    OverrideSetting(rig.Settings.ManagedScriptProjectName, "UnitProject");
+    OverrideSetting(rig.Settings.ManagedScriptMsBuild, fake_msbuild.string());
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-client", MakeEmptyMetadataBlob());
     rig.AddBakedFile("Metadata.fometa-mapper", MakeEmptyMetadataBlob());

@@ -66,14 +66,13 @@ public:
 
 private:
     static void GenerateTargetApiFiles(const EngineMetadata& meta, const std::filesystem::path& project_dir, string_view target_name);
-    static void GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references);
+    static void GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references);
     static void GenerateSolutionFile(const std::filesystem::path& project_dir, string_view solution_name, const vector<string>& project_names);
-    static auto CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& generated_core_source_files, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>;
-    static auto CollectReferences(string_view assembly_name, string_view target_name) -> vector<string>;
-    static auto FindManagedSourceDir() -> optional<std::filesystem::path>;
-    static auto GetManagedProjectDir() -> std::filesystem::path;
+    static auto CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& generated_core_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>;
+    static auto CollectReferences(const vector<string>& extra_references, string_view assembly_name, string_view target_name) -> vector<string>;
+    static auto FindManagedSourceDir(string_view dir_override) -> optional<std::filesystem::path>;
+    static auto GetManagedProjectDir(string_view dir_override) -> std::filesystem::path;
     static auto RunCommand(string_view command, string_view fail_message) -> void;
-    static auto SplitEnvList(const char* raw) -> vector<string>;
 };
 
 FO_END_NAMESPACE

@@ -59,9 +59,6 @@ public:
 
 private:
     static auto GetTargetName(EngineSideKind side) -> string_view;
-    static auto SplitEnvList(const char* raw) -> vector<string>;
-    static auto BuildAssemblyPathCandidates(const std::filesystem::path& base_dir, string_view target_name, string_view assembly_name) -> vector<std::filesystem::path>;
-    static auto FindAssemblyPath(string_view target_name, string_view assembly_name) -> optional<std::filesystem::path>;
 
     void InvokeInitializator(void* assembly, const char* method_name);
 

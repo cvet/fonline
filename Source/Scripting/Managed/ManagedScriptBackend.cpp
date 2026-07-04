@@ -297,7 +297,6 @@ static auto MakeManagedHashValue(ptr<const ManagedScriptBackend> backend, const 
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring;
 
 // Assembly loading, runtime configuration and resource cache
-static auto BuildAssemblyResourcePath(string_view target_name, string_view assembly_name) -> string;
 static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view target_name) -> bool;
 static auto CollectAssemblyResources(const FileSystem& resources, string_view target_name) -> vector<ManagedAssemblyResource>;
 static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool;
@@ -310,7 +309,6 @@ static void AddManagedAssemblyCacheByte(uint64_t& hash, uint8_t byte) noexcept;
 static auto MakeManagedAssemblyCacheKey(const vector<ManagedAssemblyResource>& assembly_resources) noexcept -> string;
 static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> assembly_data) -> bool;
 static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& assembly_resources) -> unordered_map<string, std::filesystem::path>;
-static auto CollectLooseAssemblyPaths(const std::filesystem::path& base_dir, string_view target_name) -> vector<std::filesystem::path>;
 static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_view target_name) -> vector<std::filesystem::path>;
 
 // Low-level Mono/string primitives
@@ -4364,13 +4362,6 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
 
 // === Assembly loading, runtime configuration and resource cache ===
 
-static auto BuildAssemblyResourcePath(string_view target_name, string_view assembly_name) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return strex("Assemblies/{}Assemblies/{}.{}.dll", target_name, assembly_name, target_name).str();
-}
-
 static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view target_name) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -4419,10 +4410,6 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
     FO_STACK_TRACE_ENTRY();
 
     vector<std::filesystem::path> candidates;
-
-    if (const auto* env_dir = std::getenv("FO_MANAGED_RUNTIME_DIR"); env_dir != nullptr && *env_dir != '\0') {
-        candidates.emplace_back(env_dir);
-    }
 
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
@@ -4623,50 +4610,6 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
     return restored_paths;
 }
 
-static auto CollectLooseAssemblyPaths(const std::filesystem::path& base_dir, string_view target_name) -> vector<std::filesystem::path>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const array<std::filesystem::path, 3> candidate_dirs {
-        base_dir,
-        base_dir / strex("{}Assemblies", target_name).str(),
-        base_dir / "Assemblies" / strex("{}Assemblies", target_name).str(),
-    };
-
-    vector<std::filesystem::path> result;
-    unordered_set<string> result_keys;
-
-    for (const std::filesystem::path& candidate_dir : candidate_dirs) {
-        std::error_code ec;
-
-        if (!std::filesystem::is_directory(candidate_dir, ec)) {
-            continue;
-        }
-
-        for (std::filesystem::directory_iterator it(candidate_dir, ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
-            if (!it->is_regular_file()) {
-                continue;
-            }
-
-            const string file_name = strex("{}", it->path().filename().string()).str();
-
-            if (!IsManagedEntryAssemblyFileName(file_name, target_name)) {
-                continue;
-            }
-
-            const std::filesystem::path assembly_path = it->path().lexically_normal();
-            const string assembly_key = strex("{}", assembly_path.string()).str();
-
-            if (result_keys.emplace(assembly_key).second) {
-                result.emplace_back(assembly_path);
-            }
-        }
-    }
-
-    std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.string(); });
-    return result;
-}
-
 // Bake-time only: scan the bake output tree for the managed entry assembly a validation engine needs. The managed
 // baker writes <bake_output_dir>/<managed pack>/Assemblies/<Target>Assemblies/<Pack>.<Target>.dll during its own
 // (earlier) bake order; the validators run in later packs whose resource FileSystem does not yet expose that
@@ -4828,80 +4771,6 @@ auto ManagedScriptBackend::GetTargetName(EngineSideKind side) -> string_view
     }
 }
 
-auto ManagedScriptBackend::SplitEnvList(const char* raw) -> vector<string>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw == nullptr || *raw == '\0') {
-        return {};
-    }
-
-    vector<string> result;
-    string token;
-    auto flush_token = [&]() {
-        token.erase(std::remove_if(token.begin(), token.end(), [](char c) { return std::isspace(static_cast<unsigned char>(c)); }), token.end());
-
-        if (!token.empty()) {
-            result.emplace_back(token);
-            token.clear();
-        }
-    };
-
-    for (const char c : string_view(raw)) {
-        if (c == ';' || c == ',' || c == '|') {
-            flush_token();
-            continue;
-        }
-
-        token.push_back(c);
-    }
-
-    flush_token();
-    return result;
-}
-
-auto ManagedScriptBackend::BuildAssemblyPathCandidates(const std::filesystem::path& base_dir, string_view target_name, string_view assembly_name) -> vector<std::filesystem::path>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const string dll_name = strex("{}.{}.dll", assembly_name, target_name).str();
-
-    vector<std::filesystem::path> candidates;
-    candidates.emplace_back(base_dir / dll_name);
-    candidates.emplace_back(base_dir / strex("{}Assemblies", target_name).str() / dll_name);
-    candidates.emplace_back(base_dir / "Assemblies" / strex("{}Assemblies", target_name).str() / dll_name);
-
-    return candidates;
-}
-
-auto ManagedScriptBackend::FindAssemblyPath(string_view target_name, string_view assembly_name) -> optional<std::filesystem::path>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    vector<std::filesystem::path> base_dirs;
-
-    if (const auto* env_dir = std::getenv("FO_MANAGED_ASSEMBLIES_DIR"); env_dir != nullptr && *env_dir != '\0') {
-        base_dirs.emplace_back(env_dir);
-    }
-    else {
-        base_dirs.emplace_back(std::filesystem::current_path());
-
-        if (const auto exe_path = Platform::GetExePath()) {
-            base_dirs.emplace_back(std::filesystem::path(*exe_path).parent_path());
-        }
-    }
-
-    for (const auto& base_dir : base_dirs) {
-        for (const auto& candidate : BuildAssemblyPathCandidates(base_dir, target_name, assembly_name)) {
-            if (std::filesystem::exists(candidate)) {
-                return candidate;
-            }
-        }
-    }
-
-    return std::nullopt;
-}
-
 void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* method_name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -5004,74 +4873,26 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     const auto target_name = GetTargetName(_meta->GetSide());
     RegisterBackend(this, target_name);
 
-    const char* assemblies_env = std::getenv("FO_MANAGED_ASSEMBLIES");
-    const char* assemblies_dir_env = std::getenv("FO_MANAGED_ASSEMBLIES_DIR");
-    const bool has_explicit_assemblies = assemblies_env != nullptr && *assemblies_env != '\0';
-    const bool has_explicit_assemblies_dir = assemblies_dir_env != nullptr && *assemblies_dir_env != '\0';
+    const auto resource_assemblies = CollectAssemblyResources(resources, target_name);
+    const unordered_map<string, std::filesystem::path> restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
 
-    const auto assemblies = SplitEnvList(assemblies_env);
     vector<std::filesystem::path> assembly_paths;
 
-    if (has_explicit_assemblies) {
-        vector<ManagedAssemblyResource> resource_assemblies;
-        unordered_map<string, std::filesystem::path> restored_assembly_paths;
-
-        if (!has_explicit_assemblies_dir) {
-            resource_assemblies = CollectAssemblyResources(resources, target_name);
-            restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
+    for (const ManagedAssemblyResource& resource : resource_assemblies) {
+        if (!resource.IsEntry) {
+            continue;
         }
 
-        for (const string& assembly_name : assemblies) {
-            optional<std::filesystem::path> assembly_path;
-
-            if (has_explicit_assemblies_dir) {
-                assembly_path = FindAssemblyPath(target_name, assembly_name);
-            }
-            else {
-                const string resource_path = BuildAssemblyResourcePath(target_name, assembly_name);
-
-                if (const auto it = restored_assembly_paths.find(resource_path); it != restored_assembly_paths.end()) {
-                    assembly_path = it->second;
-                }
-                else {
-                    assembly_path = FindAssemblyPath(target_name, assembly_name);
-                }
-            }
-
-            if (!assembly_path.has_value()) {
-                throw ScriptSystemException("Can't find Managed assembly, set FO_MANAGED_ASSEMBLIES_DIR if needed", assembly_name, target_name);
-            }
-
-            assembly_paths.emplace_back(*assembly_path);
+        if (const auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
+            assembly_paths.emplace_back(it->second);
         }
     }
-    else if (has_explicit_assemblies_dir) {
-        assembly_paths = CollectLooseAssemblyPaths(assemblies_dir_env, target_name);
 
-        if (assembly_paths.empty()) {
-            throw ScriptSystemException("Can't find Managed assemblies in FO_MANAGED_ASSEMBLIES_DIR", assemblies_dir_env, target_name);
-        }
-    }
-    else {
-        const auto resource_assemblies = CollectAssemblyResources(resources, target_name);
-        const unordered_map<string, std::filesystem::path> restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
-
-        for (const ManagedAssemblyResource& resource : resource_assemblies) {
-            if (!resource.IsEntry) {
-                continue;
-            }
-
-            if (const auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
-                assembly_paths.emplace_back(it->second);
-            }
-        }
-
-        // Bake-time fallback: a validation engine (proto/map/dialog baker) restores managed to reflect over script
-        // funcs, but the assemblies the managed baker just compiled live on disk under the bake output and are not
-        // yet mounted into the resource FileSystem it sees. Scan the bake output tree for the entry assembly.
-        if (assembly_paths.empty() && !bake_output_dir.empty()) {
-            assembly_paths = CollectBakeOutputAssemblyPaths(bake_output_dir, target_name);
-        }
+    // Bake-time fallback: a validation engine (proto/map/dialog baker) restores managed to reflect over script
+    // funcs, but the assemblies the managed baker just compiled live on disk under the bake output and are not
+    // yet mounted into the resource FileSystem it sees. Scan the bake output tree for the entry assembly.
+    if (assembly_paths.empty() && !bake_output_dir.empty()) {
+        assembly_paths = CollectBakeOutputAssemblyPaths(bake_output_dir, target_name);
     }
 
     size_t loaded_count = 0;
@@ -5106,7 +4927,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
         loaded_count++;
     }
 
-    if (loaded_count == 0u && !has_explicit_assemblies && !has_explicit_assemblies_dir) {
+    if (loaded_count == 0u) {
         WriteLog("No Managed assemblies found for target '{}', skip", target_name);
     }
 
