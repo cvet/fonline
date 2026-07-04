@@ -51,7 +51,7 @@ public:
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> Entity*;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
 
-    void RegisterMetadata(EngineMetadata* meta);
+    void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
     void BindRequiredStuff();
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle);

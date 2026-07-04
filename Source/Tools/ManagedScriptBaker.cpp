@@ -105,7 +105,7 @@ static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string;
 static auto MakeCsTypeName(const BaseTypeDesc& type) -> string;
 static auto MakeCallbackDelegateName(const ComplexTypeDesc& type) -> string;
 static auto MakeCsTypeName(const ComplexTypeDesc& type) -> string;
-static auto MakeCsPropertyTypeName(const Property* prop) -> string;
+static auto MakeCsPropertyTypeName(ptr<const Property> prop) -> string;
 static auto JoinCsCommaList(const vector<string>& values) -> string;
 static auto ShouldUseMultilineCsArgumentList(const vector<string>& values, size_t single_line_prefix_length) noexcept -> bool;
 static void AppendCsCallableDeclaration(std::ostringstream& out, string_view indent, string_view declaration_prefix, string_view name, const vector<string>& arg_declarations, string_view suffix);
@@ -122,7 +122,7 @@ static auto MakePropertyInitializer(const string& type_name, optional<string_vie
 static auto IsDynamicManagedRefType(const BaseTypeDesc& type) -> bool;
 static auto CanUseManagedBridge(const BaseTypeDesc& type) -> bool;
 static auto CanUseManagedBridge(const ComplexTypeDesc& type) -> bool;
-static auto CanUseManagedPropertyBridge(const Property* prop) -> bool;
+static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool;
 static auto IsManagedBridgeMethod(const MethodDesc& method) -> bool;
 static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> string_view;
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool;
@@ -132,13 +132,13 @@ static void AppendNativeCallMethodExpression(std::ostringstream& out, string_vie
 static void AppendSingleMutableArgAssignment(std::ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendMutableArgAssignments(std::ostringstream& out, const_span<ArgDesc> args, string_view source_name, size_t source_offset);
 static void AppendProperty(std::ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer);
-static void AppendNativeProperty(std::ostringstream& out, const Property* prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view target_name, string_view setting_name, unordered_set<string>& member_names);
 static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
 static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
 static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
-static void AppendEntityProperties(std::ostringstream& out, const PropertyRegistrator* registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
 static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, string_view target_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
 static void AppendEntityHolderAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name, bool is_static, unordered_set<string>& member_names);
 static void AppendCustomEntityProtoGetters(std::ostringstream& out, const EngineMetadata& meta);
@@ -154,7 +154,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string;
 static void CollectCallbacks(const ComplexTypeDesc& type, unordered_map<string, ComplexTypeDesc>& callbacks);
 static void CollectCallbacks(const vector<ArgDesc>& args, unordered_map<string, ComplexTypeDesc>& callbacks);
 static void CollectCallbacks(const EngineMetadata& meta, unordered_map<string, ComplexTypeDesc>& callbacks);
-static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<const BaseTypeDesc*>;
+static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<ptr<const BaseTypeDesc>>;
 static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, map<string, int32_t>>>;
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>;
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
@@ -411,7 +411,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             out << "\n";
         }
 
-        for (const BaseTypeDesc* type : MakeSortedBaseTypes(meta)) {
+        for (const auto& type : MakeSortedBaseTypes(meta)) {
             if (type->IsStruct && type->StructLayout != nullptr) {
                 out << "    public partial struct " << EscapeCsIdentifier(type->Name) << "\n";
                 out << "    {\n";
@@ -2021,11 +2021,9 @@ static auto MakeCsTypeToken(const ComplexTypeDesc& type) -> string
     throw ManagedScriptBakerException("Unsupported C# complex type kind", numeric_cast<int32_t>(static_cast<std::underlying_type_t<ComplexTypeKind>>(type.Kind)));
 }
 
-static auto MakeCsPropertyTypeName(const Property* prop) -> string
+static auto MakeCsPropertyTypeName(ptr<const Property> prop) -> string
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(prop, "Property is null");
 
     if (prop->IsDict()) {
         if (prop->IsDictOfArray()) {
@@ -2393,11 +2391,9 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
     out << "    }\n\n";
 }
 
-static void AppendPropertyInfoAccessor(std::ostringstream& out, string_view type_name, const PropertyRegistrator* registrator, const map<int32_t, string>& enum_values)
+static void AppendPropertyInfoAccessor(std::ostringstream& out, string_view type_name, ptr<const PropertyRegistrator> registrator, const map<int32_t, string>& enum_values)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(registrator, "Property registrator is null");
 
     const string enum_type = EscapeCsIdentifier(strex("{}Property", type_name).str());
 
@@ -2697,7 +2693,7 @@ static auto CanUseManagedFixedDictionaryPropertyValueBridge(const BaseTypeDesc& 
     return type.IsPrimitive || type.IsEnum || type.IsStruct || type.IsHashedString || type.IsFixedType || type.IsEntityProto;
 }
 
-static auto CanUseManagedPropertyBridge(const Property* prop) -> bool
+static auto CanUseManagedPropertyBridge(ptr<const Property> prop) -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2863,11 +2859,9 @@ static void AppendProperty(std::ostringstream& out, const string& type_name, con
     out << "\n\n";
 }
 
-static void AppendNativeProperty(std::ostringstream& out, const Property* prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(prop, "Property is null");
 
     const string type_name = MakeCsPropertyTypeName(prop);
     const string decl_type = prop->IsNullable() ? type_name + "?" : type_name;
@@ -3330,11 +3324,9 @@ static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& met
     }
 }
 
-static void AppendEntityProperties(std::ostringstream& out, const PropertyRegistrator* registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(registrator, "Property registrator is null");
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
         ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
@@ -3346,7 +3338,7 @@ static void AppendEntityProperties(std::ostringstream& out, const PropertyRegist
             continue;
         }
 
-        string prop_type = MakeCsPropertyTypeName(prop.get());
+        string prop_type = MakeCsPropertyTypeName(prop);
 
         if (prop->IsNullable()) {
             prop_type += "?";
@@ -3354,8 +3346,8 @@ static void AppendEntityProperties(std::ostringstream& out, const PropertyRegist
 
         const string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
 
-        if (allow_native_bridge && CanUseManagedPropertyBridge(prop.get())) {
-            AppendNativeProperty(out, prop.get(), owner_type_name, target_name, is_static, shadows_entity_base, member_names);
+        if (allow_native_bridge && CanUseManagedPropertyBridge(prop)) {
+            AppendNativeProperty(out, prop, owner_type_name, target_name, is_static, shadows_entity_base, member_names);
         }
         else {
             AppendProperty(out, prop_type, prop_name, force_writable || prop->IsMutable(), is_static, shadows_entity_base, member_names);
@@ -3857,7 +3849,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    const BaseTypeDesc* underlying_type = enum_type.EnumUnderlyingType.get();
+    nptr<const BaseTypeDesc> underlying_type = enum_type.EnumUnderlyingType;
 
     if (underlying_type == nullptr) {
         return "int";
@@ -3929,18 +3921,18 @@ static void CollectCallbacks(const EngineMetadata& meta, unordered_map<string, C
     }
 }
 
-static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<const BaseTypeDesc*>
+static auto MakeSortedBaseTypes(const EngineMetadata& meta) -> vector<ptr<const BaseTypeDesc>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<const BaseTypeDesc*> result;
+    vector<ptr<const BaseTypeDesc>> result;
     result.reserve(meta.GetBaseTypes().size());
 
     for (const auto& type : meta.GetBaseTypes() | std::views::values) {
         result.emplace_back(&type);
     }
 
-    std::ranges::sort(result, {}, [](const BaseTypeDesc* type) { return type->Name; });
+    std::ranges::sort(result, {}, [](const auto& type) { return type->Name; });
     return result;
 }
 

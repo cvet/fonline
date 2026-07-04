@@ -47,15 +47,15 @@ void InitManagedScripting(EngineMetadata* meta, const FileSystem& resources, str
     FO_STACK_TRACE_ENTRY();
 
     auto managed_backend = SafeAlloc::MakeUnique<ManagedScriptBackend>();
-    auto* managed_backend_ptr = managed_backend.get();
+    ptr<ManagedScriptBackend> backend = managed_backend;
 
     if (auto* script_sys = dynamic_cast<ScriptSystem*>(meta)) {
         script_sys->RegisterBackend(ScriptSystemBackend::MANAGED_BACKEND_INDEX, std::move(managed_backend));
     }
 
-    managed_backend_ptr->RegisterMetadata(meta);
-    managed_backend_ptr->LoadAssemblies(resources, bake_output_dir);
-    managed_backend_ptr->BindRequiredStuff();
+    backend->RegisterMetadata(meta);
+    backend->LoadAssemblies(resources, bake_output_dir);
+    backend->BindRequiredStuff();
 }
 
 FO_END_NAMESPACE
