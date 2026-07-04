@@ -543,7 +543,7 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
 
         if (auto nullable_func = ResolveInboundRemoteCallImplementation(as_module, *meta, inbound_call)) {
             if (backend->HasGameEngine()) {
-                ptr<BaseEngine> engine = backend->GetGameEngine();
+                auto engine = backend->GetGameEngine();
 
                 // Cross-backend coexistence: the managed backend may already own this inbound handler (e.g. the
                 // client-side C# facade for a fos-declared call, registered with replace). Skip re-registering so

@@ -85,19 +85,6 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     backend->SendMessage(formatted_message);
 }
 
-static void AngelScriptShutdownMessage(const AngelScript::asSMessageInfo* msg, void* param)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const string_view message = msg->message != nullptr ? string_view {msg->message} : string_view {};
-
-    if (message.find("There is an external reference to an object in module") != string_view::npos || message.find("GC cannot destroy an object of type") != string_view::npos || message.find("The builtin type in previous message is named") != string_view::npos) {
-        return;
-    }
-
-    AngelScriptMessage(msg, param);
-}
-
 static void CleanupScriptFuncDesc(ptr<ScriptFuncDesc> func_desc) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -198,9 +185,6 @@ AngelScriptBackend::~AngelScriptBackend()
     _entityMngr.reset();
 
     if (_asEngine) {
-        int32_t as_result = 0;
-        FO_AS_VERIFY(_asEngine->SetMessageCallback(AngelScript::asFUNCTION(AngelScriptShutdownMessage), cast_to_void(_asEngine.get()), AngelScript::asCALL_CDECL));
-
         const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
         FO_STRONG_ASSERT(as_engine_ref_count == 0, "AngelScript engine was not fully released", as_engine_ref_count);
     }
