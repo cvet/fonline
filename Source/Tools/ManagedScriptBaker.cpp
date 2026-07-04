@@ -196,9 +196,9 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
 
     const std::filesystem::path managed_project_dir = GetManagedProjectDir();
     const std::filesystem::path managed_assemblies_output_dir = GetManagedAssembliesOutputDir(*_context);
-    const vector<std::filesystem::path> generated_core_source_files = CopyManagedCoreScriptFiles(*managed_source_dir, managed_project_dir);
+    const auto generated_core_source_files = CopyManagedCoreScriptFiles(*managed_source_dir, managed_project_dir);
 
-    vector<string> assemblies = SplitEnvList(GetEnvValue("FO_MANAGED_ASSEMBLIES"));
+    auto assemblies = SplitEnvList(GetEnvValue("FO_MANAGED_ASSEMBLIES"));
 
     if (assemblies.empty()) {
         assemblies.emplace_back("FOnline");
@@ -339,7 +339,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
             for (const std::filesystem::path& assembly_disk_path : CollectManagedOutputAssemblies(managed_assemblies_output_dir, target)) {
                 const string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
                 const string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
-                const vector<uint8_t> assembly_data = ReadFileBytes(assembly_disk_path);
+                const auto assembly_data = ReadFileBytes(assembly_disk_path);
                 _context->WriteData(resource_path, assembly_data);
 
                 if (output_file_name == assembly_file_name) {
@@ -624,7 +624,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
             for (const EntityEventDesc& event : desc->Events) {
                 const string event_type_name = strex("{}{}Event", type_name, event.Name).str();
-                const vector<string> event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
+                const auto event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
                 const string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
                 const string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
                 const string target_literal = EscapeCsStringLiteral(target_name);
@@ -2149,7 +2149,7 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args) -> vector<strin
     FO_STACK_TRACE_ENTRY();
 
     vector<string> result;
-    const vector<string> arg_names = MakeCsArgumentNames(args);
+    const auto arg_names = MakeCsArgumentNames(args);
     result.reserve(args.size());
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -2262,8 +2262,8 @@ static void AppendRemoteCallerSurface(std::ostringstream& out, const EngineMetad
 
     for (const RemoteCallDesc* call : cs_calls) {
         const string name = string(call->Name.as_str());
-        const vector<string> arg_decls = MakeCsArgumentDeclarations(call->Args);
-        const vector<string> arg_names = MakeCsArgumentNames(call->Args);
+        const auto arg_decls = MakeCsArgumentDeclarations(call->Args);
+        const auto arg_names = MakeCsArgumentNames(call->Args);
         const string args_array = arg_names.empty() ? "new object[0]" : strex("new object[] {{ {} }}", JoinCsCommaList(arg_names)).str();
 
         out << "\n";
@@ -2319,7 +2319,7 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
             continue;
         }
 
-        nptr<const PropertyRegistrator> registrator = meta.GetPropertyRegistrator(type_name);
+        auto registrator = meta.GetPropertyRegistrator(type_name);
 
         if (!registrator) {
             continue;
@@ -2354,7 +2354,7 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
         vector<string> value_types;
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
+            auto prop = registrator->GetPropertyByIndexUnsafe(i);
 
             if (prop->IsDict() || prop->IsArray()) {
                 continue;
@@ -2407,7 +2407,7 @@ static void AppendPropertyInfoAccessor(std::ostringstream& out, string_view type
     out << CS_INDENT << "    {\n";
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-        ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
+        auto prop = registrator->GetPropertyByIndexUnsafe(i);
         const auto enum_value = enum_values.find(numeric_cast<int32_t>(prop->GetRegIndex()));
 
         if (enum_value == enum_values.end()) {
@@ -2783,7 +2783,7 @@ static void AppendSingleMutableArgAssignment(std::ostringstream& out, const_span
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<string> arg_names = MakeCsArgumentNames(args);
+    const auto arg_names = MakeCsArgumentNames(args);
 
     for (size_t i = 0; i < args.size(); i++) {
         const ArgDesc& arg = args[i];
@@ -2801,7 +2801,7 @@ static void AppendMutableArgAssignments(std::ostringstream& out, const_span<ArgD
 {
     FO_STACK_TRACE_ENTRY();
 
-    const vector<string> arg_names = MakeCsArgumentNames(args);
+    const auto arg_names = MakeCsArgumentNames(args);
     size_t source_index = source_offset;
 
     for (size_t i = 0; i < args.size(); i++) {
@@ -3062,7 +3062,7 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
         method_name += "Method";
     }
 
-    const vector<string> arg_declarations = MakeCsArgumentDeclarations(method.Args);
+    const auto arg_declarations = MakeCsArgumentDeclarations(method.Args);
     const string args = JoinCsCommaList(arg_declarations);
     const string ret = MakeCsTypeName(method.Ret);
     const string signature = strex("{}({})", method_name, args).str();
@@ -3329,7 +3329,7 @@ static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRe
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-        ptr<const Property> prop = registrator->GetPropertyByIndexUnsafe(i);
+        auto prop = registrator->GetPropertyByIndexUnsafe(i);
 
         if (prop->IsDisabled() || prop->IsComponentItself()) {
             continue;
@@ -3721,7 +3721,7 @@ static void AppendPropertyGroupGetters(std::ostringstream& out, const EngineMeta
             continue;
         }
 
-        nptr<const PropertyRegistrator> registrator = meta.GetPropertyRegistrator(type_name);
+        auto registrator = meta.GetPropertyRegistrator(type_name);
 
         if (!registrator) {
             continue;
@@ -3849,7 +3849,7 @@ static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<const BaseTypeDesc> underlying_type = enum_type.EnumUnderlyingType;
+    auto underlying_type = enum_type.EnumUnderlyingType;
 
     if (underlying_type == nullptr) {
         return "int";
