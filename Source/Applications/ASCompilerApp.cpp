@@ -164,7 +164,8 @@ int main(int argc, char** argv)
             try {
                 scripts_baker.BakeFiles(res_files.GetAllFiles(), "");
             }
-            catch (const std::exception&) {
+            catch (const std::exception& ex) {
+                WriteLog("AngelScript compile error: {}", ex.what());
                 WriteLog("Scripts compilation failed!");
                 ExitApp(false);
             }

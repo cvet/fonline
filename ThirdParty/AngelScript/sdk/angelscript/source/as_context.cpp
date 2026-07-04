@@ -4692,15 +4692,24 @@ static const void *const dispatch_table[256] = {
 			//                         to use a memory pool to avoid reallocating the memory all the time
 
 			asUINT size = asBC_DWORDARG(l_bc);
+			// (FOnline Patch) A value-type element smaller than a dword is packed in the list buffer at its
+			// exact size, but its per-element asBC_COPY writes a dword-rounded number of bytes, so the copy of
+			// a trailing sub-dword element spills up to three bytes past the dense payload (heap-buffer-overflow
+			// caught by AddressSanitizer). The guard must live here at the allocation site and can never be
+			// retired: asCWriter zeroes the AllocMem size on save and asCReader::SListAdjuster::AdjustAllocMem
+			// recomputes the dense size on every bytecode load, so compile-time padding never survives into
+			// saved bytecode. Skip the pad if it would wrap, keeping a corrupt giant size failing loudly at
+			// allocation instead of silently under-allocating.
+			asUINT allocSize = size <= 0xFFFFFFFFu - 3u ? size + 3u : size;
 			asBYTE **var = (asBYTE**)(l_fp - asBC_SWORDARG0(l_bc));
 #ifndef WIP_16BYTE_ALIGN
-			*var = asNEWARRAY(asBYTE, size);
+			*var = asNEWARRAY(asBYTE, allocSize);
 #else
-			*var = asNEWARRAYALIGNED(asBYTE, size, MAX_TYPE_ALIGNMENT);
+			*var = asNEWARRAYALIGNED(asBYTE, allocSize, MAX_TYPE_ALIGNMENT);
 #endif
 
 			// Clear the buffer for the pointers that will be placed in it
-			memset(*var, 0, size);
+			memset(*var, 0, allocSize);
 		}
 		l_bc += 2;
 		NEXT_INSTRUCTION();

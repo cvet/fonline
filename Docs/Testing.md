@@ -74,6 +74,13 @@ needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
 defect detector.
 
+On MSVC, the `San_Address`/`Debug_San_Address` configs additionally link executables with
+`/STACK:8388608` (`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake`):
+ASan's stack-frame inflation overflows the 1 MiB Windows executable default on recursion
+depths that fit every production configuration, so sanitizer runs get the same 8 MiB
+reserve that Linux runs already have from the default rlimit. Production configs keep the
+1 MiB default.
+
 Vendored third-party libraries are excluded from UBSan's `-fsanitize=function` and
 `-fsanitize=alignment` checks (the rest of `-fsanitize=undefined` still applies to them).
 `DisableLibWarnings` adds `-fno-sanitize=function,alignment` on the

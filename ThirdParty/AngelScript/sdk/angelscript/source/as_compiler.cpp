@@ -4401,14 +4401,6 @@ void asCCompiler::CompileInitList(asCExprValue *var, asCScriptNode *node, asCByt
 	}
 
 	// After all values have been evaluated we know the final size of the buffer
-
-	// (FOnline Patch) A value-type element smaller than a dword is packed at its exact size, but its
-	// per-element asBC_COPY writes a dword-rounded number of bytes; for the final element that copy spills
-	// past the buffer end (heap-buffer-overflow caught by AddressSanitizer). Round the buffer up to a dword
-	// so the last copy stays in bounds. Element offsets are unchanged, so the list factory still reads the
-	// tightly-packed elements by count and simply ignores the trailing padding.
-	bufferSize = (bufferSize + 3u) & ~3u;
-
 	asCExprContext allocExpr(engine);
 	allocExpr.bc.InstrSHORT_DW(asBC_AllocMem, short(bufferVar), bufferSize);
 

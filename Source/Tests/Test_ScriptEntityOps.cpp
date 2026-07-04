@@ -1349,6 +1349,8 @@ namespace EntityOps
         target.SetAsAny(CoverageTargetProperty::ReadOnlyScore, value);
     }
 
+ )" + R"(
+
     int TestCustomComponentAccessors()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -1546,6 +1548,8 @@ namespace EntityOps
         Game.DestroyCritter(cr);
         return 0;
     }
+
+ )" + R"(
 
     int TestCustomEntityHolderAccessors()
     {
