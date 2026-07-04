@@ -80,7 +80,7 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
 \
     protected: \
         template<typename... Args> \
-        exception_name(FO_NAMESPACE string_view_nt derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -95,7 +95,7 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(string_view_nt name, nptr<const StackTraceData> st, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(string_view name, nptr<const StackTraceData> st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
@@ -148,7 +148,7 @@ public:
     [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
-    string_view_nt _name;
+    string _name;
     string _message {};
     string _extendedMessage {};
     vector<string> _params {};
