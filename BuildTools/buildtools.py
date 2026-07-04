@@ -142,6 +142,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-undefined': make_validation_target('linux', 'unit-tests', 'San_Undefined', run_target_name='RunUnitTests'),
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
+	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
