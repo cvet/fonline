@@ -49,8 +49,14 @@ static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
 
 struct Vulkan_Renderer::Context
 {
-    nptr<GlobalSettings> Settings {};
-    nptr<SDL_Window> SdlWindow {};
+    Context(ptr<GlobalSettings> settings, ptr<SDL_Window> sdl_window) :
+        Settings {settings},
+        SdlWindow {sdl_window}
+    {
+    }
+
+    ptr<GlobalSettings> Settings;
+    ptr<SDL_Window> SdlWindow;
     VkInstance Instance {};
     VkPhysicalDevice PhysicalDevice {};
     VkDevice Device {};
@@ -1815,13 +1821,10 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     FO_VERIFY_AND_THROW(!!window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>();
+    _ctx = SafeAlloc::MakeUnique<Context>(&settings, GetSdlWindow(window));
     auto ctx = _ctx.as_ptr();
 
     WriteLog("Used Vulkan rendering");
-
-    ctx->Settings = &settings;
-    ctx->SdlWindow = GetSdlWindow(window);
 
     WriteLog("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
 
