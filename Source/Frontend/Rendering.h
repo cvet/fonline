@@ -575,6 +575,9 @@ public:
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
+
+private:
+    unique_ptr<Context> _ctx {};
 };
 
 #endif
@@ -584,12 +587,15 @@ public:
 class Vulkan_Renderer final : public Renderer
 {
 public:
-    ~Vulkan_Renderer();
+    struct Context;
+
+    Vulkan_Renderer();
+    ~Vulkan_Renderer() override;
 
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32 left, float32 right, float32 bottom, float32 top, float32 nearp, float32 farp) -> mat44 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
     [[nodiscard]] auto GetViewPort() -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
 

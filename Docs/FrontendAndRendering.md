@@ -24,6 +24,7 @@ Read this page together with:
 - `Source/Frontend/Rendering.cpp`
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
+- `Source/Frontend/Rendering-Vulkan.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
@@ -168,6 +169,24 @@ Important behaviors:
 
 Direct3D changes are Windows-specific and should be validated through a Windows embedding-project build/debug flow.
 
+### Vulkan renderer
+
+`Source/Frontend/Rendering-Vulkan.cpp` implements the Vulkan path. It is compiled only when the build enables Vulkan support (`FO_SUPPORT_VULKAN` → `FO_HAVE_VULKAN`, which requires a Vulkan SDK / `find_package(Vulkan)` and is off for headless-only and web builds) and is selected at runtime by `Render.ForceVulkan` (or as an automatic fallback when no other backend is configured).
+
+Design and important behaviors:
+
+- **Single queue, single command buffer, single frame in flight.** Each frame `BeginFrame()` waits for the previous submission with `vkQueueWaitIdle`, flushes deferred resource destruction, (re)acquires a swapchain image, clears it, and begins the render pass; `EndFrame()` ends the pass, submits, and presents. There is no frame pipelining; this keeps the backend simple at the cost of GPU/CPU overlap.
+- **Two fixed descriptor set layouts.** **Set 0 holds uniform buffers** and **set 1 holds combined image samplers** (each layout declares a fixed number of bindings). Per draw, the backend allocates one descriptor set per layout from a per-frame descriptor pool (reset every `BeginFrame()`), and writes uniform data into a single host-visible **bump-allocated** uniform buffer. The binding index used within each set is the effect's reflected binding from the baked `EffectInfo`.
+- **Authored `.fofx` descriptor-set contract.** Because of the two-set layout, every effect's shader **must** declare uniform blocks with `layout(set = 0, binding = N, std140)` and samplers with `layout(set = 1, binding = N)`. An effect that omits the `set` qualifier defaults every resource to set 0, which collides samplers with uniform buffers and produces `VkDescriptorType` mismatch (`VUID-…-layout-07990`) and "descriptor never updated" (`VUID-vkCmdDrawIndexed-None-08114`) validation errors, leading to device loss. Engine core/embedded effects follow this convention; embedding-project effects must follow it too. (OpenGL/Direct3D ignore the `set` qualifier because they bind UBOs and samplers in separate namespaces, so this only surfaces on Vulkan.)
+- **Uniform completeness.** Unlike OpenGL/D3D, where an unbound UBO retains its last value, a per-draw descriptor set must write every uniform block the shader uses. The backend default-initializes any required-but-unset standard buffer (egg, sprite-border, time, random, script, camera, …) to zero before upload so no shader reads an unwritten descriptor.
+- **Surface format.** The swapchain uses `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, verified against `vkGetPhysicalDeviceSurfaceFormatsKHR`. The single render pass is shared by the swapchain framebuffers and all texture render targets, so texture render targets use the same color format for render-pass compatibility. CPU pixel upload/readback swizzles R↔B to match this format.
+- **Orientation.** Render-target textures are reported as not flipped (`IsRenderTargetFlipped() == false`, like Direct3D); the orthographic matrix accounts for Vulkan's Y-down clip space so screen-space output matches the other backends.
+- **Point primitives.** Effect shaders are cross-compiled to HLSL/MSL via spirv-cross, which cannot express `gl_PointSize`, so a `POINT_LIST` topology (which Vulkan requires `PointSize` for) is mapped to `TRIANGLE_LIST`. Point primitives are not used by current content; revisit if real point rendering is needed.
+- **Physical device selection.** The backend prefers a discrete GPU that exposes a graphics+present queue family for the surface and the swapchain extension, instead of blindly taking the first enumerated device.
+- **Validation.** When `Render.RenderDebug` is set (or in a debug build) and the `VK_LAYER_KHRONOS_validation` layer is available, the backend enables it and routes layer messages to the log as `[VkLayer/…]` through a `VK_EXT_debug_utils` messenger. Use this for backend validation; a correct change should run with zero validation errors.
+
+Vulkan changes should be validated on a platform with the Vulkan SDK by running a visible client with `Render.ForceVulkan=True Render.RenderDebug=True` and confirming the log has no `[VkLayer]` errors.
+
 ## Render targets and client bridge
 
 `Source/Client/RenderTarget.h` and `Source/Client/RenderTarget.cpp` are the client-side bridge from high-level drawing code to backend textures.
@@ -227,8 +246,8 @@ When changing frontend or rendering behavior, verify:
 - `Application` init still works for graphical, headless, and test/tool flows.
 - Input changes preserve `InputEvent` invariants and client script event mapping.
 - Touch/gamepad changes are platform-neutral unless clearly guarded.
-- Renderer changes are tested on the affected backend: null/headless, OpenGL/WebGL, or Direct3D.
+- Renderer changes are tested on the affected backend: null/headless, OpenGL/WebGL, Direct3D, or Vulkan.
 - Render-target changes preserve stack push/pop behavior and previous-target restoration.
-- Texture orientation changes account for `IsRenderTargetFlipped()` differences between OpenGL and Direct3D.
-- Effect changes document config parsing, shader files, and script-value buffer implications.
+- Texture orientation changes account for `IsRenderTargetFlipped()` differences between OpenGL (flipped) and Direct3D/Vulkan (not flipped).
+- Effect changes document config parsing, shader files, and script-value buffer implications. On Vulkan, confirm shader resources follow the set-0-UBO / set-1-sampler descriptor-set contract.
 - Web changes cross-link to [WebDebugging.md](WebDebugging.md); Android changes cross-link to [AndroidDebugging.md](AndroidDebugging.md); native attach/debug changes cross-link to [Debugging.md](Debugging.md).
