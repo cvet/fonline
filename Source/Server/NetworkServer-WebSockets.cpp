@@ -60,6 +60,7 @@ class NetworkServerConnection_WebSockets final : public NetworkServerConnection
 {
     using web_server_t = std::conditional_t<Secured, web_sockets_tls, web_sockets_no_tls>;
     using connection_ptr = web_server_t::connection_ptr;
+    using connection_weak_ptr = websocketpp::lib::weak_ptr<typename connection_ptr::element_type>;
     using message_ptr = web_server_t::message_ptr;
 
 public:
@@ -69,6 +70,11 @@ public:
     auto operator=(const NetworkServerConnection_WebSockets&) = delete;
     auto operator=(NetworkServerConnection_WebSockets&&) noexcept = delete;
     ~NetworkServerConnection_WebSockets() override;
+
+    // Wire the websocketpp connection handlers to this wrapper. Must run after the shared_ptr owning
+    // this object exists (weak_from_this() is unusable in the constructor), so it is called from OnOpen
+    // right after allocation - mirrors the Asio transport's post-construction StartAsyncRead().
+    void Start();
 
 private:
     void LogSocketOperationError(string_view operation, const std::error_code& error);
@@ -81,7 +87,11 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    connection_ptr _connection {};
+    // Held weak, never strong: the websocketpp endpoint owns the connection for its whole life and destroys
+    // it (with its io_context-bound asio timers) on the io thread. If this wrapper kept a strong ref it
+    // could outlive the server and destroy the connection after the io_context is gone - a heap use-after-
+    // free on shutdown. Locking the weak ref for each use touches the connection only while it is still alive.
+    connection_weak_ptr _connection {};
 };
 
 template<bool Secured>
@@ -134,11 +144,11 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
 template<bool Secured>
 NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(ptr<ServerNetworkSettings> settings, connection_ptr connection) :
     NetworkServerConnection(settings),
-    _connection {std::move(connection)}
+    _connection {connection}
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto& raw_socket = _connection->get_raw_socket();
+    auto& raw_socket = connection->get_raw_socket();
 
     std::error_code endpoint_error;
     const auto endpoint = raw_socket.remote_endpoint(endpoint_error);
@@ -157,11 +167,54 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
         raw_socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
+}
 
-    _connection->set_message_handler([this](auto&&, auto&& msg) FO_DEFERRED { OnMessage(msg); });
-    _connection->set_fail_handler([this](auto&& hdl) FO_DEFERRED { OnFail(hdl); });
-    _connection->set_close_handler([this](auto&& hdl) FO_DEFERRED { OnClose(hdl); });
-    _connection->set_http_handler([this](auto&& hdl) FO_DEFERRED { OnHttp(hdl); });
+template<bool Secured>
+void NetworkServerConnection_WebSockets<Secured>::Start()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The websocketpp connection outlives this wrapper's owning shared_ptr on the io thread (the endpoint
+    // keeps the connection registered until it finishes closing), so the handlers must not touch a raw
+    // dangling 'this'. Hold the wrapper alive for the duration of each handler via a weak_from_this() lock -
+    // the same lifetime discipline the Asio transport gets from its shared_from_this() read/write handlers.
+    // If the lock fails the wrapper is already gone and the callback is a no-op.
+    const auto connection = _connection.lock();
+
+    if (!connection) {
+        return;
+    }
+
+    const weak_ptr<NetworkServerConnection> weak_self = weak_from_this();
+
+    connection->set_message_handler([weak_self, this](auto&&, auto&& msg) FO_DEFERRED {
+        const auto self = weak_self.lock();
+
+        if (self) {
+            OnMessage(msg);
+        }
+    });
+    connection->set_fail_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
+        const auto self = weak_self.lock();
+
+        if (self) {
+            OnFail(hdl);
+        }
+    });
+    connection->set_close_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
+        const auto self = weak_self.lock();
+
+        if (self) {
+            OnClose(hdl);
+        }
+    });
+    connection->set_http_handler([weak_self, this](auto&& hdl) FO_DEFERRED {
+        const auto self = weak_self.lock();
+
+        if (self) {
+            OnHttp(hdl);
+        }
+    });
 }
 
 template<bool Secured>
@@ -185,8 +238,15 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
     FO_STACK_TRACE_ENTRY();
 
     try {
-        asio::error_code error;
-        _connection->terminate(error);
+        // close() is the thread-safe teardown (it posts to the endpoint's io service); terminate() is the
+        // internal io-thread-only path and must never be called from the engine thread that destroys this
+        // wrapper - doing so races the websocketpp run loop and corrupts connection state / crashes. If the
+        // weak ref no longer locks the endpoint already destroyed the connection - nothing to close.
+        if (const auto connection = _connection.lock()) {
+            std::error_code close_error;
+            connection->close(websocketpp::close::status::going_away, "", close_error);
+            ignore_unused(close_error);
+        }
     }
     catch (const std::exception& ex) {
         ReportExceptionAndContinue(ex);
@@ -241,10 +301,16 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto connection = _connection.lock();
+
+    if (!connection) {
+        return;
+    }
+
     const auto buf = SendCallback();
 
     if (!buf.empty()) {
-        const auto error = _connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
+        const auto error = connection->send(buf.data(), buf.size(), websocketpp::frame::opcode::binary);
 
         if (!error) {
             DispatchImpl();
@@ -261,8 +327,14 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    asio::error_code error;
-    _connection->terminate(error);
+    // Runs on the engine thread, not the websocketpp io thread: use the thread-safe close() (posts to the
+    // io service) rather than the io-thread-only terminate(), which would race the run loop. A dead weak ref
+    // means the endpoint already tore the connection down - nothing to do.
+    if (const auto connection = _connection.lock()) {
+        std::error_code close_error;
+        connection->close(websocketpp::close::status::going_away, "", close_error);
+        ignore_unused(close_error);
+    }
 }
 
 template<bool Secured>
@@ -333,7 +405,9 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            _connectionCallback(SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection));
+            auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
+            ws_connection->Start();
+            _connectionCallback(std::move(ws_connection));
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);

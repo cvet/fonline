@@ -163,6 +163,28 @@ Concrete files include:
 - `NetworkServer-Asio.cpp`
 - `NetworkServer-WebSockets.cpp`
 
+### Async transport connection lifetime & threading
+
+The socket-based server connections (`Asio`, `WebSockets`) run their io loop on a dedicated thread while
+the engine worker pool drives `Dispatch()`/`Disconnect()` on the connection from other threads, so the
+connection wrapper's lifetime must be disciplined:
+
+- **The wrapper must never be dereferenced by an io-thread callback after the engine drops it.** The Asio
+  transport gets this for free by capturing `shared_from_this()` in every async read/write handler. The
+  WebSockets transport wires its persistent websocketpp handlers post-construction (a `Start()` method,
+  because `weak_from_this()` is unusable in the constructor) and each handler locks a `weak_from_this()`
+  before touching the wrapper — a raw `this` capture is a use-after-free.
+- **Cross-thread teardown must use the transport's thread-safe path.** For WebSockets that is
+  `connection->close()` (it posts to the io service), never the io-thread-only `connection->terminate()`.
+- **The wrapper must not extend the underlying connection's lifetime past its owning io_context.** The
+  websocketpp endpoint owns each connection (with its io_context-bound asio timers) and destroys it on the
+  io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
+  surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
+
+`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm, and a real
+websocketpp client that sends a frame then forces a server-side disconnect + shutdown); run it under the
+AddressSanitizer job to guard these lifetime rules.
+
 ## Ordered UDP transport
 
 `Source/Common/NetworkUdp.h` implements an ordered/reliable payload layer over UDP.
