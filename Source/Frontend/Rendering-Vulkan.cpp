@@ -113,10 +113,14 @@ struct Vulkan_Renderer::Context
     // Cached immutable device properties (queried once in Init) to avoid per-draw / per-allocation queries.
     VkDeviceSize MinUniformBufferOffsetAlignment {};
     VkPhysicalDeviceMemoryProperties MemoryProperties {};
+
+    bool FrameCbRecording {}; // Frame command buffer is currently recording (between BeginFrame and Present)
+    bool ImageAvailableWaited {}; // ImageAvailableSemaphore was consumed by a queue submit this frame
 };
 
 class Vulkan_Texture;
 
+static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
 static void RecreateFrameSyncSemaphores(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
@@ -433,6 +437,48 @@ private:
     ptr<Vulkan_Renderer::Context> _ctx;
 };
 
+// Submits the partially recorded frame command buffer and resumes recording. Needed before any
+// immediate staging-queue operation that must observe prior frame commands (e.g. an atlas clear
+// recorded earlier this frame must reach the GPU before an immediate texture upload лands on top).
+static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!ctx->FrameCbRecording) {
+        return;
+    }
+
+    VkResult vk_result = VK_SUCCESS;
+
+    EndCurrentRenderPass(ctx);
+    EndCommandBufferRecording(ctx->CommandBuffer);
+
+    // The first submit of the frame command buffer must wait for the swapchain image acquire,
+    // because the buffer starts with the acquired image's layout transition and clear.
+    constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit_info {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &ctx->CommandBuffer;
+
+    if (!ctx->ImageAvailableWaited) {
+        submit_info.waitSemaphoreCount = 1;
+        submit_info.pWaitSemaphores = &ctx->ImageAvailableSemaphore;
+        submit_info.pWaitDstStageMask = &wait_stage;
+        ctx->ImageAvailableWaited = true;
+    }
+
+    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    VerifyVkResult(vk_result);
+    vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
+    VerifyVkResult(vk_result);
+
+    vk_result = vkResetCommandBuffer(ctx->CommandBuffer, 0);
+    VerifyVkResult(vk_result);
+    BeginCommandBufferRecording(ctx->CommandBuffer);
+    BeginCurrentRenderPass(ctx);
+}
+
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory)
 {
     FO_STACK_TRACE_ENTRY();
@@ -610,6 +656,11 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     FO_VERIFY_AND_THROW(_ctx->Device, "Vulkan device is not initialized");
     FO_VERIFY_AND_THROW(TextureImage, "Vulkan texture image is not created");
 
+    // Clears and draws recorded earlier this frame are still pending in the frame command buffer
+    // while this readback executes immediately; flush them first so the read observes the same
+    // ordering the immediate-mode backends provide.
+    FlushFrameCommandBufferMidFrame(_ctx);
+
     VkResult vk_result = VK_SUCCESS;
     vector<ucolor> tex_region;
     const VkDeviceSize region_size = size.square() * sizeof(ucolor);
@@ -775,6 +826,11 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             VerifyVkResult(vk_result);
         }
     }
+
+    // The engine may clear/draw into this texture earlier in the current frame; those commands sit
+    // in the still-recording frame command buffer while this staging upload executes immediately.
+    // Flush the frame commands first so the GPU order matches the engine's logical order.
+    FlushFrameCommandBufferMidFrame(_ctx);
 
     // Record copy commands using standalone staging command buffer
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
@@ -2343,12 +2399,34 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
         const VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
+        // Explicit external dependencies. The implicit subpass dependencies carry no memory scope,
+        // and this pass both LOADs prior color contents and re-clears a depth attachment that the
+        // previous pass instance stored — without these the color loadOp read is not synchronized
+        // with the pre-pass layout-transition barrier and the depth clear races the previous pass's
+        // storeOp (SYNC-HAZARD-READ-AFTER-WRITE / WRITE-AFTER-WRITE), which on current drivers
+        // manifests as render targets losing all previously accumulated content between passes.
+        VkSubpassDependency dependencies[2] {};
+        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+        dependencies[0].dstSubpass = 0;
+        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+        dependencies[0].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependencies[1].srcSubpass = 0;
+        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
         VkRenderPassCreateInfo rp_info {};
         rp_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         rp_info.attachmentCount = 2;
         rp_info.pAttachments = attachments;
         rp_info.subpassCount = 1;
         rp_info.pSubpasses = &subpass;
+        rp_info.dependencyCount = 2;
+        rp_info.pDependencies = dependencies;
 
         vk_result = vkCreateRenderPass(ctx->Device, &rp_info, nullptr, &ctx->RenderPass);
         VerifyVkResult(vk_result);
@@ -2490,6 +2568,8 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
         VerifyVkResult(vk_result);
     }
 
+    ctx->ImageAvailableWaited = false;
+
     vk_result = vkResetCommandBuffer(ctx->CommandBuffer, 0);
     VerifyVkResult(vk_result);
 
@@ -2513,6 +2593,8 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     ctx->SwapchainImageLayouts[ctx->CurrentSwapchainImageIndex] = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     BeginCurrentRenderPass(ctx);
+
+    ctx->FrameCbRecording = true;
 }
 
 static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
@@ -2540,16 +2622,24 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
     // swapchain image. BeginFrame's first commands against it are a layout transition + vkCmdClearColorImage
     // which run at TRANSFER; later draws run at COLOR_ATTACHMENT_OUTPUT. Cover both so the GPU never
     // touches the image before the presentation engine has released it.
+    ctx->FrameCbRecording = false;
+
+    // A mid-frame flush may have already consumed the acquire semaphore with the frame's first
+    // submit; wait for it here only if this is the first submit of the frame.
     constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.waitSemaphoreCount = 1;
-    submit_info.pWaitSemaphores = &ctx->ImageAvailableSemaphore;
-    submit_info.pWaitDstStageMask = &wait_stage;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &ctx->CommandBuffer;
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = &ctx->RenderCompleteSemaphore;
+
+    if (!ctx->ImageAvailableWaited) {
+        submit_info.waitSemaphoreCount = 1;
+        submit_info.pWaitSemaphores = &ctx->ImageAvailableSemaphore;
+        submit_info.pWaitDstStageMask = &wait_stage;
+        ctx->ImageAvailableWaited = true;
+    }
 
     vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
     VerifyVkResult(vk_result);
@@ -2607,8 +2697,11 @@ static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImage
 
     switch (old_layout) {
     case VK_IMAGE_LAYOUT_UNDEFINED:
+        // First use of an image. For freshly acquired swapchain images the acquire semaphore's wait
+        // scope is TRANSFER | COLOR_ATTACHMENT_OUTPUT (see EndFrame submit), so chain the transition
+        // after those stages; for regular images this only widens the execution dependency.
         img_barrier.srcAccessMask = 0;
-        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         break;
     case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
         img_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -2627,8 +2720,11 @@ static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImage
         src_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         break;
     case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+        // The acquired swapchain image is released by the presentation engine through the
+        // ImageAvailableSemaphore whose wait scope is TRANSFER | COLOR_ATTACHMENT_OUTPUT (see EndFrame
+        // submit). Chain the transition after those stages so it cannot start before the acquire.
         img_barrier.srcAccessMask = 0;
-        src_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        src_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         break;
     default:
         img_barrier.srcAccessMask = 0;
@@ -2650,7 +2746,10 @@ static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImage
         dst_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         break;
     case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-        img_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        // Read is required in the destination scope: the render pass color loadOp=LOAD performs a
+        // VK_ACCESS_COLOR_ATTACHMENT_READ_BIT access in this stage, and without it the previous
+        // contents are not guaranteed visible to the load (drivers may legally return garbage).
+        img_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         dst_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         break;
     case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:

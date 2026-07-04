@@ -186,9 +186,9 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
     const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
     const auto shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
-    const auto shader_defines = strex("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
+    const auto shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
-    const auto shader_defines = strex("precision mediump float;\n").str();
+    const auto shader_defines = strex("precision highp float;\n").str();
 #endif
     const string_view shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
     const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
