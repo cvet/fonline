@@ -121,6 +121,8 @@ struct Vulkan_Renderer::Context
 class Vulkan_Texture;
 
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
+static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
+static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
 static void RecreateFrameSyncSemaphores(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
@@ -1829,6 +1831,13 @@ auto Vulkan_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32
 {
     FO_STACK_TRACE_ENTRY();
 
+    return BuildOrthoMatrix(left, right, bottom, top, nearp, farp);
+}
+
+static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
     const auto& l = left;
     const auto& t = top;
     const auto& r = right;
@@ -2114,16 +2123,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateCommandPool(ctx->Device, &cpi, nullptr, &ctx->CommandPool);
     VerifyVkResult(vk_result);
 
-    ctx->ViewPort = irect32 {{0, 0}, {0, 0}};
-
     // Initialize swapchain for current window size
     int width;
     int height;
     SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
-    ctx->ViewPort = irect32 {{0, 0}, {std::max(width, 1), std::max(height, 1)}};
-    ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
-    ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
-    RecreateSwapchain(ctx, {width, height});
+    RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
+    ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
 
     // Allocate single command buffer (single-threaded rendering)
     VkCommandBufferAllocateInfo cbai {};
@@ -2535,6 +2540,10 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
         // Device is idle here (vkQueueWaitIdle above); clear any stale semaphore signal left by a
         // deferred resize or a failed present before the next acquire/submit cycle.
         RecreateFrameSyncSemaphores(ctx);
+
+        if (!ctx->CurrentRenderTarget) {
+            ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
+        }
     }
 
     vk_result = vkResetDescriptorPool(ctx->Device, ctx->FrameDescriptorPool, 0);
@@ -2935,6 +2944,26 @@ void Vulkan_Renderer::Present()
     EndFrame(ctx);
 }
 
+// Recomputes the letterboxed viewport, logical target size and projection for rendering into the
+// swapchain back buffer. Called when the target switches to the back buffer and when the window or
+// logical screen size changes while the back buffer is the active target (e.g. the server host UI
+// never calls SetRenderTarget, so a post-init resize must refresh these here).
+static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+    const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
+    const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
+    const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
+
+    const auto vp_ox = (back_buf_size.width - fit_width) / 2;
+    const auto vp_oy = (back_buf_size.height - fit_height) / 2;
+    ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
+    ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
+    ctx->ProjMatrix = BuildOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
+}
+
 void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
     FO_STACK_TRACE_ENTRY();
@@ -2956,16 +2985,7 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     ctx->CurrentRenderTarget = tex;
 
     if (!ctx->CurrentRenderTarget) {
-        const auto back_buf_size = ctx->SwapchainSize;
-        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
-        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
-        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
-
-        const auto vp_ox = (back_buf_size.width - fit_width) / 2;
-        const auto vp_oy = (back_buf_size.height - fit_height) / 2;
-        ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-        ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
+        ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
     }
     else {
         auto vk_tex = RenderBackendCast<const Vulkan_Texture>(ctx->CurrentRenderTarget.as_ptr());
@@ -3066,8 +3086,17 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     FO_STACK_TRACE_ENTRY();
 
     auto ctx = _ctx.as_ptr();
-    ctx->ViewPort = irect32 {{0, 0}, {std::max(size.width, 1), std::max(size.height, 1)}};
-    ctx->PendingSwapchainRecreateSize = isize32 {std::max(size.width, 1), std::max(size.height, 1)};
+    const auto clamped_size = isize32 {std::max(size.width, 1), std::max(size.height, 1)};
+    ctx->PendingSwapchainRecreateSize = clamped_size;
+
+    if (!ctx->CurrentRenderTarget) {
+        // The back buffer stays the active target across the resize (the server host UI never calls
+        // SetRenderTarget), so refresh the letterbox/projection here against the new size.
+        ApplySwapchainTargetMetrics(ctx, clamped_size);
+    }
+    else {
+        ctx->ViewPort = irect32 {{0, 0}, clamped_size};
+    }
 }
 
 static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
