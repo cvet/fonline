@@ -4642,7 +4642,7 @@ void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* metho
 
     const ActiveBackendScope active_backend {this};
 
-    auto* domain = GetDomainOrThrow(_domain);
+    auto* domain = GetDomainOrThrow(_domain.get());
 
     if (mono_thread_attach(domain) == nullptr) {
         throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");
@@ -4712,7 +4712,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     FO_VERIFY_AND_THROW(_meta, "Engine metadata is not registered");
     FO_VERIFY_AND_THROW(_scriptSys, "Script system is not available");
 
-    if (_domain == nullptr) {
+    if (!_domain) {
         auto* domain = mono_get_root_domain();
 
         if (domain == nullptr) {
@@ -4728,7 +4728,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
         _domain = domain;
     }
 
-    auto* domain = GetDomainOrThrow(_domain);
+    auto* domain = GetDomainOrThrow(_domain.get());
 
     if (mono_thread_attach(domain) == nullptr) {
         throw ScriptSystemException("Failed to attach native thread to Managed runtime domain");

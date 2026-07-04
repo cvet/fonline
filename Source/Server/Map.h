@@ -164,7 +164,6 @@ public:
     void AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper);
     void SetItem(ptr<Item> item);
     void RemoveItem(ident_t item_id);
-    void RefreshItemMultihex(ptr<Item> item);
     void SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEntity> entity);
     void ChangeViewItem(ptr<Item> item);
     void SetHexManualBlock(mpos hex, bool enable, bool full);

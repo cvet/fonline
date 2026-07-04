@@ -46,19 +46,16 @@ class ManagedScriptBackend final : public ScriptSystemBackend
 public:
     ~ManagedScriptBackend() override;
 
-    void RegisterMetadata(EngineMetadata* meta);
-    void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
-    void BindRequiredStuff();
-    // Take ownership of a managed global script func and register it into the cross-backend func map; the GC
-    // handle keeps its handler delegate alive (freed at backend shutdown).
-    void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle);
-    // Keep a managed inbound remote-call handler delegate alive (its GC handle is freed at backend shutdown).
-    // The handler itself lives in the engine's inbound-remote-call map; only its lifetime is tracked here.
-    void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
-    [[nodiscard]] auto GetDomain() const -> void* { return _domain; }
+    [[nodiscard]] auto GetDomain() const -> void* { return _domain.get_no_const(); }
     [[nodiscard]] auto GetMetadata() const noexcept -> EngineMetadata* { return _meta.get_no_const(); }
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> Entity*;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
+
+    void RegisterMetadata(EngineMetadata* meta);
+    void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
+    void BindRequiredStuff();
+    void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc, uint32_t gc_handle);
+    void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
 
 private:
     static auto GetTargetName(EngineSideKind side) -> string_view;
@@ -70,15 +67,9 @@ private:
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
-    void* _domain {};
+    nptr<void> _domain {};
     vector<nptr<void>> _images {};
-    // Managed global script functions (registered under a marker attribute) so the cross-backend
-    // `ScriptSystem::FindFunc` can find them on behalf of an out-of-engine consumer. The descs are owned here (the
-    // global func map stores non-owning `raw_ptr`s); the GC handles keep each managed handler delegate alive for
-    // the program lifetime.
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
-    // GC handles keeping managed handler delegates alive for the program lifetime: global script funcs (above)
-    // and inbound remote-call handlers (whose handlers live in the engine's inbound-remote-call map).
     vector<uint32_t> _globalFuncGcHandles {};
 };
 

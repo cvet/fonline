@@ -665,61 +665,6 @@ void Map::RemoveItem(ident_t item_id)
     }
 }
 
-void Map::RefreshItemMultihex(ptr<Item> item)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
-
-    const auto hex = item->GetHex();
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
-
-    RecacheHexFlags(field);
-
-    if (item->HasMultihexEntries()) {
-        auto multihex_entries_old = item->GetMultihexEntries().as_ptr();
-
-        for (const auto multihex : *multihex_entries_old) {
-            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
-            vec_remove_unique_value(multihex_field->Items, item);
-            RecacheHexFlags(multihex_field);
-        }
-
-        item->SetMultihexEntries({});
-    }
-
-    if (item->IsNonEmptyMultihexLines() || item->IsNonEmptyMultihexMesh()) {
-        vector<mpos> multihex_entries;
-        const auto multihex_lines = item->GetMultihexLines();
-        const auto multihex_mesh = item->GetMultihexMesh();
-        multihex_entries.reserve(multihex_lines.size() + multihex_mesh.size());
-
-        GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
-            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
-
-            if (vec_safe_add_unique_value(multihex_field->Items, item)) {
-                RecacheHexFlags(multihex_field);
-                multihex_entries.emplace_back(multihex);
-            }
-        });
-
-        for (const auto multihex : multihex_mesh) {
-            if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
-                ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
-
-                if (vec_safe_add_unique_value(multihex_field->Items, item)) {
-                    RecacheHexFlags(multihex_field);
-                    multihex_entries.emplace_back(multihex);
-                }
-            }
-        }
-
-        if (!multihex_entries.empty()) {
-            item->SetMultihexEntries(std::move(multihex_entries));
-        }
-    }
-}
-
 void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
