@@ -2045,8 +2045,8 @@ void MapperEngine::DrawMainPanelImGui()
         }
 
         if (_curMap && IsMapDirty(GetCurMap())) {
-            constexpr string_view dirty_label = "*** Save ***";
-            const auto label_width = ImGui::CalcTextSize(dirty_label.data()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            constexpr string_view_nt dirty_label = "*** Save ***";
+            const auto label_width = ImGui::CalcTextSize(dirty_label.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
             const auto right_x = numeric_cast<float32_t>(MainPanelWindowRect.width) - label_width - ImGui::GetStyle().ItemSpacing.x * 2.0f;
 
             if (ImGui::GetCursorPosX() < right_x) {
@@ -2058,7 +2058,7 @@ void MapperEngine::DrawMainPanelImGui()
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.60f, 0.36f, 0.08f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
 
-            if (ImGui::Button(dirty_label.data())) {
+            if (ImGui::Button(dirty_label.c_str())) {
                 SaveCurrentMap();
             }
 
@@ -2099,16 +2099,16 @@ void MapperEngine::DrawWorkspaceWindowImGui()
         return;
     }
 
-    const auto toggle_visibility = [&](string_view label, string_view tooltip, bool& value) {
+    const auto toggle_visibility = [&](string_view_nt label, string_view_nt tooltip, bool& value) {
         if (value) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
         }
 
-        const auto clicked = ImGui::Button(label.data(), {32.0f, 0.0f});
+        const auto clicked = ImGui::Button(label.c_str(), {32.0f, 0.0f});
 
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("%s", tooltip.data());
+            ImGui::SetTooltip("%s", tooltip.c_str());
         }
 
         if (value) {

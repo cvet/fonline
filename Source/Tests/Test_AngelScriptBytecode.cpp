@@ -1887,8 +1887,8 @@ void GuardedReadAfterEarlyReturn()
         engine->SetUserData(&state);
 
         // Run guarded reads; neither should throw.
-        for (const string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void GuardedReadInThenBranch()", "void GuardedReadAfterEarlyReturn()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -1967,8 +1967,8 @@ void NarrowsCompoundOrAfterReturn()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void NarrowsCompoundAnd()", "void NarrowsCompoundOrAfterReturn()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2127,9 +2127,9 @@ void NullAssignToNarrowedRefParam()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
+        for (const char* decl : {"void NullAssignToNarrowedLocal()", "void NullAssignToCompoundNarrowedLocal()", "void NullAssignToNarrowedRefParam()"}) {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2239,8 +2239,8 @@ void DistinctHandles()
         engine->SetUserData(&state);
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles.
-        for (const string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void SameHandle()", "void DistinctHandles()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2307,8 +2307,8 @@ void TagsDiffer()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void TagsEqual()", "void TagsDiffer()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2373,8 +2373,8 @@ void NullableParameter()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void NullableReturn()", "void NullableParameter()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);

@@ -190,7 +190,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 #else
     const auto shader_defines = strex("precision mediump float;\n").str();
 #endif
-    const string_view shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    const string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
     const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
     for (auto pass = 1; pass <= passes; pass++) {
@@ -216,7 +216,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
         ptr<const char> shader_version_text = shader_version_str.c_str();
         ptr<const char> shader_defines_text = shader_defines.c_str();
-        nptr<const char> shader_defines_ex_text = shader_defines_ex.data();
+        nptr<const char> shader_defines_ex_text = shader_defines_ex.c_str();
         ptr<const char> shader_defines_ex2_text = shader_defines_ex2.c_str();
         ptr<const char> shader_common_text = shader_common_content.c_str();
         ptr<const char> vertex_pass_text = vertex_pass_content.c_str();

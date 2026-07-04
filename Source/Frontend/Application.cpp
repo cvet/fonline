@@ -634,7 +634,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     }
 
-    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().data(); };
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().c_str(); };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
     platform_io.Platform_ClipboardUserData = nullptr;
 
@@ -3003,15 +3003,13 @@ void AppInput::SetClipboardText(string_view text)
     WebRelated::SyncClipboardToSystem(text);
 }
 
-auto AppInput::GetClipboardText() -> string_view
+auto AppInput::GetClipboardText() -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
     nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
     if (nullable_clipboard_text) {
         auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
-            FO_NO_STACK_TRACE_ENTRY();
-
             if (raw_data != nullptr) {
                 ptr<char> data = raw_data;
                 SDL_free(data.get());

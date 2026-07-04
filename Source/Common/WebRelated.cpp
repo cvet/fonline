@@ -318,14 +318,13 @@ extern "C"
 {
     EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
     {
-        FO_NAMESPACE ptr<const char> clipboard_text = FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
-        return clipboard_text.get();
+        return FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
     {
-        const FO_NAMESPACE nptr<const char> text = text;
-        FO_NAMESPACE GetApp() -> Input.SetClipboardText(text ? std::string_view {text.get()} : std::string_view {});
+        const FO_NAMESPACE nptr<const char> text_ptr = text;
+        FO_NAMESPACE GetApp() -> Input.SetClipboardText(text_ptr ? std::string_view {text_ptr.get()} : std::string_view {});
     }
 
     EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
@@ -333,8 +332,8 @@ extern "C"
         using FO_NAMESPACE InputEvent;
         using FO_NAMESPACE KeyCode;
 
-        const FO_NAMESPACE nptr<const char> text = text;
-        std::string paste_text = text ? std::string {text.get()} : std::string {};
+        const FO_NAMESPACE nptr<const char> text_ptr = text;
+        std::string paste_text = text_ptr ? std::string {text_ptr.get()} : std::string {};
 
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(paste_text);
         FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::Text, std::move(paste_text)})}, false);

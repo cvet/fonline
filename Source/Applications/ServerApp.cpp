@@ -606,14 +606,14 @@ int main(int argc, char** argv) // Handled by SDL
                     ImGui::Dummy(ImVec2(16.0f, 0.0f));
                     ImGui::SameLine();
 
-                    const auto layout_button = [&](string_view label, WindowLayoutMode mode) {
+                    const auto layout_button = [&](string_view_nt label, WindowLayoutMode mode) {
                         const bool is_active = (layout_mode == mode);
 
                         if (is_active) {
                             ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
                         }
 
-                        if (ImGui::Button(label.data())) {
+                        if (ImGui::Button(label.c_str())) {
                             if (layout_mode != mode) {
                                 layout_mode = mode;
                                 layout_init_dirty = true;
