@@ -114,8 +114,8 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
 - deep-link URI scheme ← `Auth.UriScheme`
-- stable WiX `UpgradeCode` ← `Windows.MsiUpgradeCode` (required; must never change once an MSI has shipped)
-- Add/Remove Programs icon ← `Windows.Icon` (optional)
+- stable WiX `UpgradeCode` ← `Packaging.MsiUpgradeCode` (required; must never change once an MSI has shipped)
+- Add/Remove Programs icon ← `Packaging.AppIcon` (optional)
 - install directory and MSI base name ← the package nice name
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.

@@ -225,7 +225,7 @@ Packaged Windows binaries can be code-signed at release time so antivirus/SmartS
 self-update flow downloads and executes a runtime DLL, so an unsigned client is the main heuristic trigger).
 Signing is **off by default** (current behavior: unsigned) and tool-agnostic:
 
-- Set `Windows.CodeSigningHook` in the project main config to an **executable script** on the packaging host.
+- Set `Packaging.CodeSigningHook` in the project main config to an **executable script** on the packaging host.
 - During `finalize_output`, before any Zip/Tar/Wix/Raw step, `package.py` calls `<hook> <absolute-pe-path>`
   once for **every `*.exe`/`*.dll`** staged under the package tree — launcher exes (incl. the OpenGL variant),
   the runtime DLLs, and the client-runtime **update payloads** (the downloaded-and-executed DLL). Signing last
