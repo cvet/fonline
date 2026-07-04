@@ -42,25 +42,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static void AddModuleFunc(vector<pair<ScriptFunc<void>, int32_t>>& funcs, ScriptFunc<void> func, int32_t priority)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    funcs.emplace_back(std::move(func), priority);
-    std::ranges::stable_sort(funcs, [](auto&& a, auto&& b) { return a.second < b.second; });
-}
-
-static void RunModuleFuncs(vector<pair<ScriptFunc<void>, int32_t>>& funcs, string_view error)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    for (auto& func : funcs | std::views::keys) {
-        if (!func.Call()) {
-            throw ScriptSystemException(error);
-        }
-    }
-}
-
 DynamicRefTypeInstance::DynamicRefTypeInstance(ptr<const PropertyRegistrator> registrator) noexcept :
     _registrator {registrator},
     _props {std::in_place, _registrator}

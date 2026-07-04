@@ -51,8 +51,8 @@ FO_BEGIN_NAMESPACE
 // object is backend-specific.
 struct RemoteCallWireHooks
 {
-    // Write: produce the raw bytes for the ref-type value at `arg_ptr` (the FuncCallData argument pointer).
-    function<vector<uint8_t>(const BaseTypeDesc&, const void*)> RefTypeToRaw {};
+    // Write: produce the raw bytes for the ref-type value at `arg` (the FuncCallData argument pointer).
+    function<vector<uint8_t>(const BaseTypeDesc&, ptr<void>)> RefTypeToRaw {};
     // Read: create a backend ref-type value from raw bytes and return the FuncCallData argument pointer. The
     // backend owns the created object's lifetime (e.g. via storage captured in the callback).
     function<ptr<void>(const BaseTypeDesc&, span<const uint8_t>)> RawToRefType {};
@@ -81,7 +81,7 @@ private:
 
 // Serialize one simple (non-collection) remote-call value to the wire. Mirrors the format the AngelScript
 // backend has always written; keep byte-compatible.
-void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
+void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks);
 
 // Deserialize one simple (non-collection) remote-call value from the wire; returns the FuncCallData argument
 // pointer (into `storage` for scalars, or — for ref types — a backend object via the hook).

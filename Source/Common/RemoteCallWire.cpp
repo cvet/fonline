@@ -35,12 +35,12 @@
 
 FO_BEGIN_NAMESPACE
 
-void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
+void WriteRemoteCallSimple(DataWriter& writer, ptr<void> value, const BaseTypeDesc& type, const RemoteCallWireHooks& hooks)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (type.IsPrimitive) {
-        VisitBaseTypePrimitive(ptr, type, [&](auto&& v) {
+        VisitBaseTypePrimitive(value.get(), type, [&](auto&& v) {
             using t = std::decay_t<decltype(v)>;
             writer.Write<t>(v);
         });
@@ -48,19 +48,19 @@ void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDe
     else if (type.IsEnum) {
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Enum type has no underlying type to serialize");
         FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type must be integral to serialize");
-        writer.WritePtr(static_cast<const uint8_t*>(ptr), type.Size);
+        writer.WritePtr(value.reinterpret_as<const uint8_t>().get(), type.Size);
     }
     else if (type.IsString) {
-        const auto& str = *cast_from_void<const string*>(ptr);
+        const auto& str = *value.reinterpret_as<const string>();
         writer.Write<int32_t>(numeric_cast<int32_t>(str.length()));
         writer.WritePtr(str.c_str(), str.length());
     }
     else if (type.IsHashedString) {
-        const auto& hstr = *cast_from_void<const hstring*>(ptr);
+        const auto& hstr = *value.reinterpret_as<const hstring>();
         writer.Write<hstring::hash_t>(hstr.as_hash());
     }
     else if (type.IsRefType) {
-        const auto raw_data = hooks.RefTypeToRaw(type, ptr);
+        const auto raw_data = hooks.RefTypeToRaw(type, value);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
         if (!raw_data.empty()) {
@@ -69,7 +69,7 @@ void WriteRemoteCallSimple(DataWriter& writer, const void* ptr, const BaseTypeDe
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            WriteRemoteCallSimple(writer, static_cast<const uint8_t*>(ptr) + field.Offset, field.Type, hooks);
+            WriteRemoteCallSimple(writer, value.reinterpret_as<uint8_t>().offset(field.Offset), field.Type, hooks);
         }
     }
     else {

@@ -3957,16 +3957,17 @@ static auto SerializeManagedRemoteCallArgs(ManagedScriptBackend* backend, const 
     vector<uint8_t> data;
     DataWriter writer(data);
     const RemoteCallWireHooks hooks {
-        .RefTypeToRaw = [](const BaseTypeDesc& type, const void* ptr) -> vector<uint8_t> {
-            // The arg has already been converted to a native ref pointer (a DynamicRefTypeInstance for managed
-            // dynamic ref types); serialize its fields via the shared DynamicRefTypeInstance method.
-            void* ref_obj = ptr != nullptr ? *static_cast<void* const*>(ptr) : nullptr;
+        .RefTypeToRaw = [](const BaseTypeDesc& type, ptr<void> arg) -> vector<uint8_t> {
+            // Two levels of indirection: arg is `&storage.RefTypePtr` — the address of the slot, always valid,
+            // hence ptr. The pointer *stored in* that slot (the DynamicRefTypeInstance for a managed dynamic ref
+            // type) may be null, so it is read as an nptr. If non-null, serialize its fields via the shared method.
+            nptr<void> ref = *arg.reinterpret_as<nptr<void>>();
 
-            if (ref_obj == nullptr) {
+            if (!ref) {
                 return vector<uint8_t> {};
             }
 
-            const span<const uint8_t> serialized = cast_from_void<DynamicRefTypeInstance*>(ref_obj)->GetSerializedRawData(type);
+            const span<const uint8_t> serialized = ref.cast<DynamicRefTypeInstance>()->GetSerializedRawData(type);
             return vector<uint8_t>(serialized.begin(), serialized.end());
         },
     };
