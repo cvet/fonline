@@ -66,9 +66,9 @@ template<typename T>
 
 [[nodiscard]] constexpr auto alignment_for_size(size_t size) noexcept -> size_t
 {
-    static_assert((MAX_ALIGNMENT & (MAX_ALIGNMENT - 1)) == 0);
+    static_assert((MAX_SERIALIZED_ALIGNMENT & (MAX_SERIALIZED_ALIGNMENT - 1)) == 0);
 
-    return size != 0 ? std::min(size & (~size + 1), MAX_ALIGNMENT) : 1;
+    return size != 0 ? std::min(size & (~size + 1), MAX_SERIALIZED_ALIGNMENT) : 1;
 }
 
 // Numeric cast

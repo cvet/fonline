@@ -700,7 +700,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 for (uint32_t i = 0; i < arr_size; i++) {
                     uint32_t ref_data_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
-                    auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_ALIGNMENT);
+                    auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_SERIALIZED_ALIGNMENT);
 
                     auto ref_obj = create_ref_obj(ref_data);
                     arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
@@ -814,7 +814,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 const uint32_t ref_data_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
-                                auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_ALIGNMENT);
+                                auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_SERIALIZED_ALIGNMENT);
                                 auto ref_obj = create_ref_obj(ref_data);
                                 arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
                             }
@@ -941,7 +941,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 const auto read_ref_obj = [&]() -> refcount_ptr<DynamicRefTypeInstance> {
                     const uint32_t ref_data_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
 
-                    auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_ALIGNMENT);
+                    auto ref_data = span_read_aligned_bytes(data_span, data_pos, ref_data_size, MAX_SERIALIZED_ALIGNMENT);
                     return create_ref_obj(ref_data);
                 };
                 const auto read_fixed_type = [&]() -> nptr<Entity> {
@@ -1161,7 +1161,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         size += sizeof(uint32_t);
 
                         if (ref_data.GetSize() != 0) {
-                            size = align_up(size, MAX_ALIGNMENT);
+                            size = align_up(size, MAX_SERIALIZED_ALIGNMENT);
                             size += ref_data.GetSize();
                         }
                     }
@@ -1188,7 +1188,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
                         span_write_aligned_object(buf_span, data_pos, ref_data_size);
 
-                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_ALIGNMENT);
+                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_SERIALIZED_ALIGNMENT);
                     }
 
                     FO_VERIFY_AND_THROW(data_pos == data_size, "Serialized property byte count does not match buffer size");
@@ -1313,7 +1313,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                             data_size += sizeof(uint32_t);
 
                             if (ref_data.GetSize() != 0) {
-                                data_size = align_up(data_size, MAX_ALIGNMENT);
+                                data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
                                 data_size += ref_data.GetSize();
                             }
                         }
@@ -1376,7 +1376,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                                 const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
                                 span_write_aligned_object(buf_span, data_pos, ref_data_size);
 
-                                span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_ALIGNMENT);
+                                span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_SERIALIZED_ALIGNMENT);
                             }
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
@@ -1493,7 +1493,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         data_size += sizeof(uint32_t);
 
                         if (ref_data.GetSize() != 0) {
-                            data_size = align_up(data_size, MAX_ALIGNMENT);
+                            data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
                             data_size += ref_data.GetSize();
                         }
                     }
@@ -1521,7 +1521,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
                         span_write_aligned_object(buf_span, data_pos, ref_data_size);
 
-                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_ALIGNMENT);
+                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_SERIALIZED_ALIGNMENT);
                     }
                     else if (prop->IsBaseTypeProtoReference()) {
                         auto entity = dict->ValueAs<Entity>(value);
@@ -1560,7 +1560,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         size += sizeof(uint32_t);
 
                         if (ref_data.GetSize() != 0) {
-                            size = align_up(size, MAX_ALIGNMENT);
+                            size = align_up(size, MAX_SERIALIZED_ALIGNMENT);
                             size += ref_data.GetSize();
                         }
                     }
@@ -1593,7 +1593,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         const auto ref_data_size = numeric_cast<uint32_t>(ref_data.GetSize());
                         span_write_aligned_object(buf_span, data_pos, ref_data_size);
 
-                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_ALIGNMENT);
+                        span_write_aligned_bytes(buf_span, data_pos, ref_data.GetPtr(), ref_data.GetSize(), MAX_SERIALIZED_ALIGNMENT);
                     }
                     else if (prop->IsBaseTypeProtoReference()) {
                         auto entity = dict->ValueAs<Entity>(value);

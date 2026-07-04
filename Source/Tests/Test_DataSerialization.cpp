@@ -95,7 +95,7 @@ TEST_CASE("DataSerialization")
 
         CHECK(alignment_for_size(0) == 1);
         CHECK(alignment_for_size(12) == 4);
-        CHECK(alignment_for_size(MAX_ALIGNMENT * 2) == MAX_ALIGNMENT);
+        CHECK(alignment_for_size(MAX_SERIALIZED_ALIGNMENT * 2) == MAX_SERIALIZED_ALIGNMENT);
 
         size_t aligned_write_pos = 3;
         span_write_aligned_object<uint32_t>(aligned_writable, aligned_write_pos, 0x11223344u);

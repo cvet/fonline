@@ -2335,7 +2335,7 @@ TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
     CHECK(wide_prop->GetDataAlignment() == sizeof(int64_t));
     CHECK(arr_prop->GetDataAlignment() == sizeof(int32_t));
     CHECK(name_prop->GetDataAlignment() == 1);
-    CHECK(ref_arr_prop->GetDataAlignment() == MAX_ALIGNMENT);
+    CHECK(ref_arr_prop->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
     CHECK(dict_prop->GetDataAlignment() == sizeof(int32_t));
 
     const hstring base_hash = hashes.ToHashedString("base-hash");
@@ -3352,10 +3352,10 @@ TEST_CASE("PropertiesComplexDataInteriorAlignment")
     CHECK(arr_dict_prop->GetDataAlignment() == sizeof(uint32_t));
     CHECK(str_arr_prop->GetDataAlignment() == sizeof(uint32_t));
     CHECK(str_key_dict_prop->GetDataAlignment() == sizeof(int64_t));
-    CHECK(ref_prop->GetDataAlignment() == MAX_ALIGNMENT);
+    CHECK(ref_prop->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
     CHECK(registrator.RegisterProperty({"Common", "hstring=>Mode", "HashKeyDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == sizeof(hstring::hash_t));
     CHECK(registrator.RegisterProperty({"Common", "Mode=>string", "EnumKeyDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == sizeof(uint32_t));
-    CHECK(registrator.RegisterProperty({"Common", "int32=>RouteSnapshot", "RefDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == MAX_ALIGNMENT);
+    CHECK(registrator.RegisterProperty({"Common", "int32=>RouteSnapshot", "RefDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
 
     Properties props(&registrator);
 

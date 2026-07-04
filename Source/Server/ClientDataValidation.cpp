@@ -419,7 +419,7 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
         offset += sizeof(ref_size);
 
         if (ref_size != 0) {
-            SkipAlignmentPadding(owner_name, data, offset, MAX_ALIGNMENT);
+            SkipAlignmentPadding(owner_name, data, offset, MAX_SERIALIZED_ALIGNMENT);
         }
 
         if (data.size() - offset < ref_size) {

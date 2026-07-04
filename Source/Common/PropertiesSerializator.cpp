@@ -1379,7 +1379,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
                     const auto ref_data_size = read_array_size();
 
                     if (ref_data_size != 0) {
-                        align_array_pos(MAX_ALIGNMENT);
+                        align_array_pos(MAX_SERIALIZED_ALIGNMENT);
                     }
 
                     const auto ref_data = take_array_data(ref_data_size);
@@ -1504,7 +1504,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
                             const auto ref_data_size = read_dict_size();
 
                             if (ref_data_size != 0) {
-                                align_dict_pos(MAX_ALIGNMENT);
+                                align_dict_pos(MAX_SERIALIZED_ALIGNMENT);
                             }
 
                             const auto ref_data = take_dict_data(ref_data_size);
@@ -1531,7 +1531,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
                         const auto ref_data_size = read_dict_size();
 
                         if (ref_data_size != 0) {
-                            align_dict_pos(MAX_ALIGNMENT);
+                            align_dict_pos(MAX_SERIALIZED_ALIGNMENT);
                         }
 
                         const auto ref_data = take_dict_data(ref_data_size);
@@ -1752,7 +1752,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<c
                     const auto ref_data_size = read_array_size();
 
                     if (ref_data_size != 0) {
-                        align_array_pos(MAX_ALIGNMENT);
+                        align_array_pos(MAX_SERIALIZED_ALIGNMENT);
                     }
 
                     const auto ref_data = take_array_data(ref_data_size);
@@ -1827,7 +1827,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<c
                         const auto ref_data_size = read_dict_size();
 
                         if (ref_data_size != 0) {
-                            align_dict_pos(MAX_ALIGNMENT);
+                            align_dict_pos(MAX_SERIALIZED_ALIGNMENT);
                         }
 
                         const auto ref_data = take_dict_data(ref_data_size);
@@ -1845,7 +1845,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<c
                     const auto ref_data_size = read_dict_size();
 
                     if (ref_data_size != 0) {
-                        align_dict_pos(MAX_ALIGNMENT);
+                        align_dict_pos(MAX_SERIALIZED_ALIGNMENT);
                     }
 
                     const auto ref_data = take_dict_data(ref_data_size);
@@ -2156,7 +2156,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 data_size += sizeof(uint32_t);
 
                 if (!ref_data.empty()) {
-                    data_size = align_up(data_size, MAX_ALIGNMENT);
+                    data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
                     data_size += ref_data.size();
                 }
 
@@ -2174,7 +2174,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 WriteRawUInt32(data_ptr, data_pos, ref_data_size);
 
                 if (ref_data_size != 0) {
-                    data_pos = align_up(data_pos, MAX_ALIGNMENT);
+                    data_pos = align_up(data_pos, MAX_SERIALIZED_ALIGNMENT);
                     WriteRawSpan(data_ptr, data_pos, ref_data);
                 }
             }
@@ -2252,7 +2252,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                         const size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hash_resolver, name_resolver).size();
 
                         if (ref_data_size != 0) {
-                            data_size = align_up(data_size, MAX_ALIGNMENT);
+                            data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
                             data_size += ref_data_size;
                         }
                     }
@@ -2275,7 +2275,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 const size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, dict_value, hash_resolver, name_resolver).size();
 
                 if (ref_data_size != 0) {
-                    data_size = align_up(data_size, MAX_ALIGNMENT);
+                    data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
                     data_size += ref_data_size;
                 }
             }
@@ -2385,7 +2385,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                         write_uint32(ref_data_size);
 
                         if (ref_data_size != 0) {
-                            data_pos = align_up(data_pos, MAX_ALIGNMENT);
+                            data_pos = align_up(data_pos, MAX_SERIALIZED_ALIGNMENT);
                             WriteRawSpan(data_ptr, data_pos, ref_data);
                         }
                     }
@@ -2411,7 +2411,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
                 write_uint32(ref_data_size);
 
                 if (ref_data_size != 0) {
-                    data_pos = align_up(data_pos, MAX_ALIGNMENT);
+                    data_pos = align_up(data_pos, MAX_SERIALIZED_ALIGNMENT);
                     WriteRawSpan(data_ptr, data_pos, ref_data);
                 }
             }
@@ -2492,7 +2492,7 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
                     AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
                     if (ref_data_size != 0) {
-                        AlignRawBuffer(data, MAX_ALIGNMENT);
+                        AlignRawBuffer(data, MAX_SERIALIZED_ALIGNMENT);
                         AppendRawBytes(data, span<const uint8_t> {ref_data});
                     }
                 }
@@ -2532,7 +2532,7 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
                             AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
                             if (ref_data_size != 0) {
-                                AlignRawBuffer(data, MAX_ALIGNMENT);
+                                AlignRawBuffer(data, MAX_SERIALIZED_ALIGNMENT);
                                 AppendRawBytes(data, span<const uint8_t> {ref_data});
                             }
                         }
@@ -2569,7 +2569,7 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
                     AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
                     if (ref_data_size != 0) {
-                        AlignRawBuffer(data, MAX_ALIGNMENT);
+                        AlignRawBuffer(data, MAX_SERIALIZED_ALIGNMENT);
                         AppendRawBytes(data, span<const uint8_t> {ref_data});
                     }
                 }

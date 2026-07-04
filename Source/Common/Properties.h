@@ -510,6 +510,8 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
+
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Property base size does not match requested value type", prop->GetName(), prop->GetBaseSize(), sizeof(T));
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
@@ -674,6 +676,8 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
+
     FO_STRONG_ASSERT(!prop->IsDisabled(), "Disabled property used in fast value getter", prop->GetName());
     FO_STRONG_ASSERT(prop->GetBaseSize() == sizeof(T), "Property base size mismatch in fast value getter", prop->GetName(), sizeof(T), prop->GetBaseSize());
     FO_STRONG_ASSERT(prop->IsPlainData(), "Property is not plain data in fast value getter", prop->GetName());
@@ -799,6 +803,8 @@ template<typename T>
 void Properties::SetValue(ptr<const Property> prop, T new_value)
 {
     FO_NO_STACK_TRACE_ENTRY();
+
+    static_assert(alignof(T) <= MAX_SERIALIZED_ALIGNMENT, "Property value type is over-aligned for the MAX_SERIALIZED_ALIGNMENT raw-data layout contract");
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(T), "Property base size does not match assigned value type", prop->GetName(), prop->GetBaseSize(), sizeof(T));

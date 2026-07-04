@@ -39,7 +39,8 @@
 FO_BEGIN_NAMESPACE
 
 #if !FO_HAVE_RPMALLOC
-static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_ALIGNMENT);
+// Rpmalloc guarantee 16 byte alignment
+static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_SERIALIZED_ALIGNMENT);
 #endif
 
 // Safe memory allocation

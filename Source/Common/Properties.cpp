@@ -2390,7 +2390,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             prop->_dataAlignment = sizeof(uint32_t);
         }
         else if (prop->_baseType.IsRefType) {
-            prop->_dataAlignment = MAX_ALIGNMENT;
+            prop->_dataAlignment = MAX_SERIALIZED_ALIGNMENT;
         }
         else {
             FO_VERIFY_AND_THROW(prop->_baseType.Size != 0, "Property base type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
@@ -2404,7 +2404,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         size_t value_alignment;
 
         if (prop->_baseType.IsRefType) {
-            value_alignment = MAX_ALIGNMENT;
+            value_alignment = MAX_SERIALIZED_ALIGNMENT;
         }
         else if (prop->_baseType.IsString) {
             value_alignment = sizeof(uint32_t);
@@ -2421,7 +2421,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         prop->_dataAlignment = std::max(key_alignment, value_alignment);
     }
     else if (prop->_baseType.IsRefType) {
-        prop->_dataAlignment = MAX_ALIGNMENT;
+        prop->_dataAlignment = MAX_SERIALIZED_ALIGNMENT;
     }
 
     prop->_propName = tokens[2];
