@@ -53,41 +53,7 @@ namespace SPK
 
 FO_BEGIN_NAMESPACE
 
-class ParticleSystem;
-
-class ParticleManager final
-{
-    friend class ParticleSystem;
-    friend class SPK::FO::SparkQuadRenderer;
-
-public:
-    using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
-
-    explicit ParticleManager(RenderSettings& settings, EffectManager& effect_mngr, IAppRender& render, FileSystem& resources, GameTimer& game_time, TextureLoader tex_loader);
-    ParticleManager(const ParticleManager&) = delete;
-    ParticleManager(ParticleManager&&) noexcept = delete;
-    auto operator=(const ParticleManager&) = delete;
-    auto operator=(ParticleManager&&) noexcept = delete;
-    ~ParticleManager();
-
-    [[nodiscard]] auto CreateParticle(string_view name) -> unique_ptr<ParticleSystem>;
-
-private:
-    struct Impl;
-    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
-
-    unique_ptr<Impl> _impl;
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<EffectManager> _effectMngr;
-    raw_ptr<IAppRender> _render;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<GameTimer> _gameTime;
-    TextureLoader _textureLoader;
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    int32_t _animUpdateThreshold {};
-    mat44 _projMatColMaj {};
-    mat44 _viewMatColMaj {};
-};
+class ParticleManager;
 
 class ParticleSystem final
 {
@@ -98,37 +64,74 @@ public:
     static constexpr float32_t PREWARM_STEP = 0.5f;
 
     ParticleSystem(const ParticleSystem&) = delete;
-    ParticleSystem(ParticleSystem&&) noexcept = default;
+    ParticleSystem(ParticleSystem&&) noexcept;
     auto operator=(const ParticleSystem&) = delete;
     auto operator=(ParticleSystem&&) noexcept = delete;
     ~ParticleSystem();
 
     [[nodiscard]] auto IsActive() const -> bool;
     [[nodiscard]] auto GetElapsedTime() const -> float32_t;
-    [[nodiscard]] auto GetBaseSystem() -> SPK::System*;
+    [[nodiscard]] auto GetBaseSystem() -> nptr<SPK::System>;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
+    [[nodiscard]] auto GetDrawInScene() const -> bool;
     [[nodiscard]] auto NeedForceDraw() const -> bool { return _forceDraw; }
     [[nodiscard]] auto NeedDraw() const -> bool;
 
-    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset);
+    void Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj = false);
     void Prewarm();
     void Respawn();
     void Draw();
-    void SetBaseSystem(SPK::System* system);
+    void SetBaseSystem(nptr<SPK::System> system);
 
 private:
-    explicit ParticleSystem(ParticleManager& particle_mngr);
+    explicit ParticleSystem(ptr<ParticleManager> particle_mngr);
+
+    struct Impl;
 
     [[nodiscard]] auto GetTime() const -> nanotime;
 
-    struct Impl;
-    unique_ptr<Impl> _impl;
-    raw_ptr<ParticleManager> _particleMngr;
-    mat44 _projMat {};
+    unique_nptr<Impl> _impl {};
+    ptr<ParticleManager> _particleMngr;
+    mat44 _projMatrix {};
     vec3 _viewOffset {};
+    bool _tiltInProj {};
     float64_t _elapsedTime {};
     bool _forceDraw {};
     nanotime _lastDrawTime {};
+};
+
+class ParticleManager final
+{
+    friend class ParticleSystem;
+    friend class SPK::FO::SparkQuadRenderer;
+
+public:
+    using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
+
+    explicit ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, TextureLoader tex_loader);
+    ParticleManager(const ParticleManager&) = delete;
+    ParticleManager(ParticleManager&&) noexcept = delete;
+    auto operator=(const ParticleManager&) = delete;
+    auto operator=(ParticleManager&&) noexcept = delete;
+    ~ParticleManager();
+
+    [[nodiscard]] auto CreateParticle(string_view name) -> optional<ParticleSystem>;
+
+private:
+    struct Impl;
+    auto Random(int32_t min_value, int32_t max_value) -> int32_t;
+
+    unique_ptr<Impl> _impl;
+    ptr<RenderSettings> _settings;
+    ptr<EffectManager> _effectMngr;
+    ptr<IAppRender> _render;
+    ptr<FileSystem> _resources;
+    ptr<GameTimer> _gameTime;
+    TextureLoader _textureLoader;
+    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    int32_t _animUpdateThreshold {};
+    mat44 _viewProjMatrix {};
+    mat44 _viewMatrix {};
 };
 
 FO_END_NAMESPACE

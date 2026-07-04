@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection_Interthread(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection_Interthread(const NetworkClientConnection_Interthread&) = delete;
     NetworkClientConnection_Interthread(NetworkClientConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_Interthread&) = delete;
@@ -52,31 +52,29 @@ public:
 
 private:
     InterthreadDataCallback _interthreadSend {};
-    vector<uint8_t> _interthreadReceived {};
-    std::mutex _interthreadReceivedLocker {};
+    mutex _interthreadReceivedLocker {};
+    vector<uint8_t> _interthreadReceived FO_TSA_GUARDED_BY(_interthreadReceivedLocker) {};
     std::atomic_bool _interthreadRequestDisconnect {};
 };
 
-auto NetworkClientConnection::CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Interthread>(settings);
 }
 
-NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientNetworkSettings& settings) :
+NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
     FO_STACK_TRACE_ENTRY();
-
-    _interthreadReceived.clear();
 
     const auto port = numeric_cast<uint16_t>(_settings->ServerPort);
 
     function<InterthreadDataCallback(InterthreadDataCallback)> listener;
 
     {
-        std::scoped_lock locker(InterthreadListenersLocker);
+        scoped_lock locker {InterthreadListenersLocker};
 
         const auto it = InterthreadListeners.find(port);
 
@@ -89,7 +87,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ClientN
 
     _interthreadSend = listener([this](const_span<uint8_t> buf) FO_DEFERRED {
         if (!buf.empty()) {
-            auto locker = std::unique_lock {_interthreadReceivedLocker};
+            scoped_lock locker {_interthreadReceivedLocker};
 
             _interthreadReceived.insert(_interthreadReceived.end(), buf.begin(), buf.end());
         }
@@ -113,7 +111,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
         return false;
     }
 
-    auto locker = std::unique_lock {_interthreadReceivedLocker};
+    scoped_lock locker {_interthreadReceivedLocker};
 
     return for_write ? true : !_interthreadReceived.empty();
 }
@@ -131,9 +129,9 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto locker = std::unique_lock {_interthreadReceivedLocker};
+    scoped_lock locker {_interthreadReceivedLocker};
 
-    FO_RUNTIME_ASSERT(!_interthreadReceived.empty());
+    FO_VERIFY_AND_THROW(!_interthreadReceived.empty(), "Interthread client receive was called without a pending packet", buf.size());
     const auto recv_size = _interthreadReceived.size();
 
     while (buf.size() < recv_size) {

@@ -41,10 +41,45 @@ FO_BEGIN_NAMESPACE
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataReader& reader, const EngineMetadata& meta);
 static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta);
-static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* data, size_t data_size, const EngineMetadata& meta);
-static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const uint8_t*& pdata, const uint8_t* pdata_end, const EngineMetadata& meta);
-static void ValidateInboundArrayPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta);
-static void ValidateInboundDictPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta);
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta);
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta);
+static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
+static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta);
+
+template<typename T>
+static auto ReadTrivialValue(const_span<uint8_t> data) -> T
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static_assert(std::is_standard_layout_v<T>);
+    static_assert(std::is_trivially_copyable_v<T>);
+    FO_VERIFY_AND_THROW(data.size() == sizeof(T), "Trivial value payload size does not match the expected type size");
+
+    T value {};
+
+    if (!data.empty()) {
+        ptr<uint8_t> target = ptr<T> {&value}.template reinterpret_as<uint8_t>();
+        MemCopy(target, data.data(), sizeof(T));
+    }
+
+    return value;
+}
+
+static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(data.size() <= sizeof(int32_t), "Padded int32 payload is wider than a 32-bit integer");
+
+    int32_t value = 0;
+
+    if (!data.empty()) {
+        ptr<uint8_t> target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
+        MemCopy(target, data.data(), data.size());
+    }
+
+    return value;
+}
 
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
@@ -70,7 +105,7 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
     }
 }
 
-void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -79,7 +114,7 @@ void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data,
             throw ClientDataValidationException("Property plain data size mismatch", prop->GetName(), data.size(), prop->GetBaseSize());
         }
 
-        ValidateInboundPlainData(prop->GetBaseType(), data.data(), data.size(), meta);
+        ValidateInboundPlainData(prop->GetBaseType(), data, meta);
         return;
     }
 
@@ -91,9 +126,15 @@ void ValidateInboundPropertyData(const Property* prop, const_span<uint8_t> data,
     const auto& base_type = prop->GetBaseType();
 
     if (prop->IsString()) {
-        if (!strvex(string_view {reinterpret_cast<const char*>(data.data()), data.size()}).is_valid_utf8()) {
+        const string_view str = span_to_string(data);
+
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("Property string is not valid UTF-8", prop->GetName());
         }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("Property string contains NUL character", prop->GetName());
+        }
+
         return;
     }
 
@@ -184,7 +225,7 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsInt) {
-        reader.ReadPtr<uint8_t>(type.Size);
+        (void)reader.ReadBytes(type.Size);
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
@@ -206,14 +247,13 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
     }
     else if (type.IsEnum) {
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required enum underlying type");
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
         // Supported enum underlying types are uint8/uint16/uint32/int32 — none of them are narrow signed,
         // so MemCopy into a zero-initialized int32 gives the correct numeric value for any size.
-        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
+        FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
-        int32_t value = 0;
-        MemCopy(&value, reader.ReadPtr<uint8_t>(type.Size), type.Size);
+        const int32_t value = ReadPaddedInt32(reader.ReadBytes(type.Size));
 
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
@@ -231,10 +271,14 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
         }
 
         const size_t str_size = numeric_cast<size_t>(str_len);
-        const char* str = reader.ReadPtr<char>(str_size);
+        const_span<uint8_t> str_data = reader.ReadBytes(str_size);
+        const string_view str = span_to_string(str_data);
 
-        if (!strvex(string_view {str, str_size}).is_valid_utf8()) {
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("String is not valid UTF-8", type.Name);
+        }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("String contains NUL character", type.Name);
         }
     }
     else if (type.IsHashedString) {
@@ -249,8 +293,8 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, DataRe
     }
     else if (type.IsRefType) {
         const uint32_t raw_size = reader.Read<uint32_t>();
-        const auto* raw_data = reader.ReadPtr<uint8_t>(raw_size);
-        ValidateInboundRefTypeRawData(type.Name, type, {raw_data, raw_size}, meta);
+        const_span<uint8_t> ref_raw_data = reader.ReadBytes(raw_size);
+        ValidateInboundRefTypeRawData(type.Name, type, ref_raw_data, meta);
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
@@ -266,117 +310,120 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(ref_type.IsRefType);
-    FO_RUNTIME_ASSERT(ref_type.RefType);
-    FO_RUNTIME_ASSERT(ref_type.RefType->FieldsRegistrator);
+    FO_VERIFY_AND_THROW(ref_type.IsRefType, "Type is not a reference type");
+    FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type descriptor");
+    FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    const auto* fields_registrator = ref_type.RefType->FieldsRegistrator.get();
-    const auto* pdata = raw_data.data();
-    const auto* pdata_end = raw_data.data() + raw_data.size();
+    auto fields_registrator = ref_type.RefType->FieldsRegistrator.as_ptr();
+    size_t offset = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        const auto* field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        auto field_prop = fields_registrator->GetPropertyByIndexUnsafe(i);
 
-        if (pdata >= pdata_end) {
+        if (offset >= raw_data.size()) {
             // Remaining fields take their default values
             continue;
         }
 
-        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+        if (raw_data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
         }
 
-        uint32_t field_size;
-        MemCopy(&field_size, pdata, sizeof(field_size));
-        pdata += sizeof(field_size);
+        const uint32_t field_size = ReadTrivialValue<uint32_t>(raw_data.subspan(offset, sizeof(uint32_t)));
+        offset += sizeof(field_size);
 
         if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
             throw ClientDataValidationException("Wrong ref field raw size", owner_name, field_prop->GetName(), field_size);
         }
-        if (numeric_cast<size_t>(pdata_end - pdata) < field_size) {
+        if (raw_data.size() - offset < field_size) {
             throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
         }
 
         if (field_size > 0) {
-            ValidateInboundPropertyData(field_prop, {pdata, field_size}, meta);
+            ValidateInboundPropertyData(field_prop, raw_data.subspan(offset, field_size), meta);
         }
-        pdata += field_size;
+        offset += field_size;
     }
 
-    if (pdata != pdata_end) {
+    if (offset != raw_data.size()) {
         throw ClientDataValidationException("Corrupted ref type payload", owner_name);
     }
 }
 
-static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const uint8_t*& pdata, const uint8_t* pdata_end, const EngineMetadata& meta)
+static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
+    FO_VERIFY_AND_THROW(offset <= data.size(), "Packed value read offset is past the end of the data buffer");
+
     if (type.IsString) {
-        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+        if (data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
 
-        uint32_t str_len;
-        MemCopy(&str_len, pdata, sizeof(str_len));
-        pdata += sizeof(str_len);
+        const uint32_t str_len = ReadTrivialValue<uint32_t>(data.subspan(offset, sizeof(uint32_t)));
+        offset += sizeof(str_len);
 
-        if (numeric_cast<size_t>(pdata_end - pdata) < str_len) {
+        if (data.size() - offset < str_len) {
             throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
-        if (!strvex(string_view {reinterpret_cast<const char*>(pdata), str_len}).is_valid_utf8()) {
+
+        const_span<uint8_t> str_data = data.subspan(offset, str_len);
+        const string_view str = span_to_string(str_data);
+
+        if (!strvex(str).is_valid_utf8()) {
             throw ClientDataValidationException("String in packed property data is not valid UTF-8", owner_name);
         }
+        if (str.find('\0') != string_view::npos) {
+            throw ClientDataValidationException("String in packed property data contains NUL character", owner_name);
+        }
 
-        pdata += str_len;
+        offset += str_data.size();
     }
     else if (type.IsRefType) {
-        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+        if (data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
         }
 
-        uint32_t ref_size;
-        MemCopy(&ref_size, pdata, sizeof(ref_size));
-        pdata += sizeof(ref_size);
+        const uint32_t ref_size = ReadTrivialValue<uint32_t>(data.subspan(offset, sizeof(uint32_t)));
+        offset += sizeof(ref_size);
 
-        if (numeric_cast<size_t>(pdata_end - pdata) < ref_size) {
+        if (data.size() - offset < ref_size) {
             throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
         }
 
-        ValidateInboundRefTypeRawData(owner_name, type, {pdata, ref_size}, meta);
-        pdata += ref_size;
+        ValidateInboundRefTypeRawData(owner_name, type, data.subspan(offset, ref_size), meta);
+        offset += ref_size;
     }
     else {
         // Plain primitive or struct — fixed bytes equal to type.Size
         if (type.Size == 0) {
             throw ClientDataValidationException("Zero-sized value in packed property data", owner_name, type.Name);
         }
-        if (numeric_cast<size_t>(pdata_end - pdata) < type.Size) {
+        if (data.size() - offset < type.Size) {
             throw ClientDataValidationException("Corrupted value in packed property data", owner_name, type.Name);
         }
 
-        ValidateInboundPlainData(type, pdata, type.Size, meta);
-        pdata += type.Size;
+        ValidateInboundPlainData(type, data.subspan(offset, type.Size), meta);
+        offset += type.Size;
     }
 }
 
-static void ValidateInboundArrayPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto& base_type = prop->GetBaseType();
-    const auto* pdata = data.data();
-    const auto* pdata_end = data.data() + data.size();
-
-    uint32_t arr_size;
+    uint32_t arr_size = 0;
+    size_t offset = 0;
 
     if (prop->IsArrayOfString() || base_type.IsRefType) {
-        if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+        if (data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted array property data", prop->GetName());
         }
 
-        MemCopy(&arr_size, pdata, sizeof(arr_size));
-        pdata += sizeof(arr_size);
+        arr_size = ReadTrivialValue<uint32_t>(data.subspan(offset, sizeof(uint32_t)));
+        offset += sizeof(arr_size);
     }
     else {
         if (base_type.Size == 0 || data.size() % base_type.Size != 0) {
@@ -387,15 +434,15 @@ static void ValidateInboundArrayPropertyData(const Property* prop, const_span<ui
     }
 
     for (uint32_t i = 0; i < arr_size; i++) {
-        ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
+        ValidateInboundPackedValue(prop->GetName(), base_type, data, offset, meta);
     }
 
-    if (pdata != pdata_end) {
+    if (offset != data.size()) {
         throw ClientDataValidationException("Corrupted array property data", prop->GetName());
     }
 }
 
-static void ValidateInboundDictPropertyData(const Property* prop, const_span<uint8_t> data, const EngineMetadata& meta)
+static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -403,37 +450,35 @@ static void ValidateInboundDictPropertyData(const Property* prop, const_span<uin
     const auto& dict_key_type_raw = prop->GetDictKeyType();
     const auto& dict_key_type = dict_key_type_raw.IsSimpleStruct ? dict_key_type_raw.StructLayout->Fields.front().Type : dict_key_type_raw;
 
-    const auto* pdata = data.data();
-    const auto* pdata_end = data.data() + data.size();
+    size_t offset = 0;
 
-    while (pdata < pdata_end) {
-        ValidateInboundPackedValue(prop->GetName(), dict_key_type, pdata, pdata_end, meta);
+    while (offset < data.size()) {
+        ValidateInboundPackedValue(prop->GetName(), dict_key_type, data, offset, meta);
 
         if (prop->IsDictOfArray()) {
-            if (numeric_cast<size_t>(pdata_end - pdata) < sizeof(uint32_t)) {
+            if (data.size() - offset < sizeof(uint32_t)) {
                 throw ClientDataValidationException("Corrupted dict-of-array property data", prop->GetName());
             }
 
-            uint32_t arr_size;
-            MemCopy(&arr_size, pdata, sizeof(arr_size));
-            pdata += sizeof(arr_size);
+            const uint32_t arr_size = ReadTrivialValue<uint32_t>(data.subspan(offset, sizeof(uint32_t)));
+            offset += sizeof(arr_size);
 
             for (uint32_t i = 0; i < arr_size; i++) {
-                ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
+                ValidateInboundPackedValue(prop->GetName(), base_type, data, offset, meta);
             }
         }
         else {
-            ValidateInboundPackedValue(prop->GetName(), base_type, pdata, pdata_end, meta);
+            ValidateInboundPackedValue(prop->GetName(), base_type, data, offset, meta);
         }
     }
 }
 
-static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* data, size_t data_size, const EngineMetadata& meta)
+static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (data_size != type.Size) {
-        throw ClientDataValidationException("Plain data size mismatch", type.Name, data_size, type.Size);
+    if (data.size() != type.Size) {
+        throw ClientDataValidationException("Plain data size mismatch", type.Name, data.size(), type.Size);
     }
 
     if (type.IsBool) {
@@ -445,16 +490,14 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
     }
     else if (type.IsFloat) {
         if (type.IsSingleFloat) {
-            float32_t value;
-            MemCopy(&value, data, sizeof(value));
+            const float32_t value = ReadTrivialValue<float32_t>(data);
 
             if (!std::isfinite(value)) {
                 throw ClientDataValidationException("Invalid float32 value", type.Name, value);
             }
         }
         else if (type.IsDoubleFloat) {
-            float64_t value;
-            MemCopy(&value, data, sizeof(value));
+            const float64_t value = ReadTrivialValue<float64_t>(data);
 
             if (!std::isfinite(value)) {
                 throw ClientDataValidationException("Invalid float64 value", type.Name, value);
@@ -465,12 +508,11 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
         }
     }
     else if (type.IsEnum) {
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType);
-        FO_RUNTIME_ASSERT(type.EnumUnderlyingType->IsInt);
-        FO_RUNTIME_ASSERT(type.Size <= sizeof(int32_t));
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType, "Missing required enum underlying type");
+        FO_VERIFY_AND_THROW(type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
+        FO_VERIFY_AND_THROW(type.Size <= sizeof(int32_t), "Enum payload is wider than the validation scratch integer", type.Name, type.Size, sizeof(int32_t));
 
-        int32_t value = 0;
-        MemCopy(&value, data, type.Size);
+        const int32_t value = ReadPaddedInt32(data);
 
         bool failed = false;
         const auto hstr = meta.ResolveEnumValueName(type.Name, value, &failed);
@@ -481,8 +523,7 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
         }
     }
     else if (type.IsHashedString || type.IsFixedType || type.IsEntityProto) {
-        hstring::hash_t hash;
-        MemCopy(&hash, data, sizeof(hash));
+        const hstring::hash_t hash = ReadTrivialValue<hstring::hash_t>(data);
         bool failed = false;
         const auto hstr = meta.Hashes.ResolveHash(hash, &failed);
 
@@ -492,16 +533,19 @@ static void ValidateInboundPlainData(const BaseTypeDesc& type, const uint8_t* da
 
         if ((type.IsFixedType || type.IsEntityProto) && hstr) {
             const auto hname = meta.Hashes.ToHashedString(type.Name);
-            const auto* proto = meta.GetProtoEntity(hname, hstr);
+            auto proto = meta.GetProtoEntity(hname, hstr);
 
-            if (proto == nullptr) {
+            if (!proto) {
                 throw ClientDataValidationException("Unknown proto for type", type.Name, hstr);
             }
         }
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            ValidateInboundPlainData(field.Type, data + field.Offset, field.Type.Size, meta);
+            FO_VERIFY_AND_THROW(field.Offset <= data.size(), "Struct field offset is past the end of the data buffer");
+            FO_VERIFY_AND_THROW(data.size() - field.Offset >= field.Type.Size, "Struct field extends past the end of the data buffer");
+
+            ValidateInboundPlainData(field.Type, data.subspan(field.Offset, field.Type.Size), meta);
         }
     }
     else if (type.IsInt) {

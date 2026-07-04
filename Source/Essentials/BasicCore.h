@@ -33,6 +33,8 @@
 
 #pragma once
 
+#include "EngineConfig.gen.h"
+
 // Operating system (passed outside)
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB == 0
 #error "Operating system not specified"
@@ -43,6 +45,9 @@
 
 #if __cplusplus < 202002L
 #error "Invalid __cplusplus version, must be at least C++20 (202002)"
+#endif
+#ifndef __has_feature
+#define __has_feature(x) 0
 #endif
 
 // Standard API
@@ -141,6 +146,33 @@
 #define FO_DISABLE_WARNINGS_POP()
 #endif
 
+// Compiler-specific single-warning suppression helpers
+#if defined(__GNUC__) && !defined(__clang__)
+#define FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning) _Pragma("GCC diagnostic push") FO_GCC_IGNORE_WARNINGS_PUSH_STRINGIFY(GCC diagnostic ignored warning)
+#define FO_GCC_IGNORE_WARNINGS_POP() _Pragma("GCC diagnostic pop")
+#else
+#define FO_GCC_IGNORE_WARNINGS_PUSH(warning)
+#define FO_GCC_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(__clang__)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(x) _Pragma(#x)
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning) _Pragma("clang diagnostic push") FO_CLANG_IGNORE_WARNINGS_PUSH_STRINGIFY(clang diagnostic ignored warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP() _Pragma("clang diagnostic pop")
+#else
+#define FO_CLANG_IGNORE_WARNINGS_PUSH(warning)
+#define FO_CLANG_IGNORE_WARNINGS_POP()
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode) __pragma(warning(push)) __pragma(warning(disable : warning_сode))
+#define FO_MSVC_IGNORE_WARNINGS_POP() __pragma(warning(pop))
+#else
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode)
+#define FO_MSVC_IGNORE_WARNINGS_POP()
+#endif
+
 // Force inline helper
 #if defined(__GNUC__)
 #define FO_FORCE_INLINE __attribute__((always_inline)) inline
@@ -148,6 +180,15 @@
 #define FO_FORCE_INLINE __forceinline
 #else
 #define FO_FORCE_INLINE inline
+#endif
+
+// Prevent inline helper
+#if defined(__GNUC__)
+#define FO_NO_INLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define FO_NO_INLINE __declspec(noinline)
+#else
+#define FO_NO_INLINE
 #endif
 
 // Export symbol
@@ -164,6 +205,20 @@
 #define FO_KEEP_DATA_SYMBOL [[gnu::used]] alignas(uint32_t) static volatile
 #else
 #define FO_KEEP_DATA_SYMBOL alignas(uint32_t) static volatile
+#endif
+
+// Compiler instrumentation
+#if __has_feature(memory_sanitizer) || defined(__SANITIZE_MEMORY__)
+#define FO_MEMORY_SANITIZER 1
+#else
+#define FO_MEMORY_SANITIZER 0
+#endif
+#if __has_feature(thread_sanitizer) || defined(__SANITIZE_THREAD__)
+#define FO_THREAD_SANITIZER 1
+extern "C" void __tsan_acquire(void* addr);
+extern "C" void __tsan_release(void* addr);
+#else
+#define FO_THREAD_SANITIZER 0
 #endif
 
 // Namespace management
@@ -255,6 +310,16 @@ struct fixed_string
 // Generic helpers
 [[noreturn]] extern void ExitApp(bool success) noexcept;
 
+// Always-on assertion for Essentials modules that sit above ExceptionHandling in the include order
+// (e.g. SmartPointers) and therefore cannot use FO_STRONG_ASSERT. Defined in ExceptionHandling.cpp; it
+// produces the same StrongAssertationException report and process exit as FO_STRONG_ASSERT.
+[[noreturn]] extern void ReportStrongAssertAndExit(const char* message, const char* file, int32_t line) noexcept;
+
+#define FO_BASIC_STRONG_ASSERT(expr) \
+    if (!(expr)) [[unlikely]] { \
+        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+    }
+
 extern auto IsRunInDebugger() noexcept -> bool;
 extern auto BreakIntoDebugger() noexcept -> bool;
 
@@ -263,6 +328,24 @@ extern auto ItoA(int64_t num, char buf[64], int32_t base) noexcept -> const char
 template<typename... T>
 FO_FORCE_INLINE constexpr void ignore_unused(const T&... /*unused*/)
 {
+}
+
+FO_FORCE_INLINE void TSanAcquire(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_acquire(addr);
+#else
+    ignore_unused(addr);
+#endif
+}
+
+FO_FORCE_INLINE void TSanRelease(void* addr) noexcept
+{
+#if FO_THREAD_SANITIZER
+    __tsan_release(addr);
+#else
+    ignore_unused(addr);
+#endif
 }
 
 // Explicit copying
@@ -298,7 +381,6 @@ constexpr auto operator""_len(const char* str, size_t size) noexcept -> size_t
 
 // Macro helpers
 #define FO_SCRIPT_API extern
-#define FO_NULLABLE
 #define FO_CONCAT(x, y) FO_CONCAT_INDIRECT(x, y)
 #define FO_CONCAT_INDIRECT(x, y) x##y
 #define FO_STRINGIFY(x) FO_STRINGIFY_INDIRECT(x)
@@ -509,8 +591,7 @@ public:
     {
         if (_refCounter.fetch_sub(1, std::memory_order_release) == 1) {
             std::atomic_thread_fence(std::memory_order_acquire);
-            const auto* ptr = static_cast<const T*>(this);
-            delete ptr;
+            delete static_cast<const T*>(this);
         }
     }
 

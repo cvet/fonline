@@ -46,7 +46,7 @@ constexpr auto PROXY_HTTP = 3;
 class NetworkClientConnection_Sockets final : public NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection_Sockets(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection_Sockets(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection_Sockets(const NetworkClientConnection_Sockets&) = delete;
     NetworkClientConnection_Sockets(NetworkClientConnection_Sockets&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_Sockets&) = delete;
@@ -67,23 +67,27 @@ private:
     uint16_t _gameAddrPort {};
 };
 
-auto NetworkClientConnection::CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>
+auto NetworkClientConnection::CreateSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
     FO_STACK_TRACE_ENTRY();
 
     return SafeAlloc::MakeUnique<NetworkClientConnection_Sockets>(settings);
 }
 
-NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSettings& settings) :
+NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
     FO_STACK_TRACE_ENTRY();
 
-    string_view host = _settings->ServerHost;
-    auto port = numeric_cast<uint16_t>(_settings->ServerPort);
+#if !FO_WEB
+    const string_view host = _settings->ServerHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
-#if FO_WEB
-    port++;
+    WriteLog("Connecting to server '{}:{}'", host, port);
+
+#else
+    const string_view host = _settings->WebSocketHost;
+    const uint16_t port = numeric_cast<uint16_t>(_settings->WebSocketPort);
 
     if (!_settings->SecuredWebSockets) {
         WebRelated::SetWebSocketScheme(false);
@@ -93,8 +97,6 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
         WebRelated::SetWebSocketScheme(true);
         WriteLog("Connecting to server 'wss://{}:{}'", host, port);
     }
-#else
-    WriteLog("Connecting to server '{}:{}'", host, port);
 #endif
 
     if (!net_sockets::startup()) {
@@ -211,12 +213,15 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
         if (b2 == 2) { // User/Password
             send_buf.clear();
-            writer = DataWriter(send_buf);
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
-            writer.WritePtr(_settings->ProxyUser.c_str(), _settings->ProxyUser.length()); // Name
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
-            writer.WritePtr(_settings->ProxyPass.c_str(), _settings->ProxyPass.length()); // Pass
+
+            {
+                auto auth_writer = DataWriter(send_buf);
+                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Subnegotiation version
+                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyUser.length())); // Name length
+                auth_writer.WriteStringBytes(_settings->ProxyUser); // Name
+                auth_writer.Write<uint8_t>(numeric_cast<uint8_t>(_settings->ProxyPass.length())); // Pass length
+                auth_writer.WriteStringBytes(_settings->ProxyPass); // Pass
+            }
 
             recv_buf = send_recv(send_buf);
 
@@ -234,13 +239,16 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
 
         // Connect
         send_buf.clear();
-        writer = DataWriter(send_buf);
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved
-        writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // IP v4 address
-        writer.Write<uint32_t>(_gameAddrIp);
-        writer.Write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
+
+        {
+            auto connect_writer = DataWriter(send_buf);
+            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(5)); // Socks version
+            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // Connect command
+            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(0)); // Reserved
+            connect_writer.Write<uint8_t>(numeric_cast<uint8_t>(1)); // IP v4 address
+            connect_writer.Write<uint32_t>(_gameAddrIp);
+            connect_writer.Write<uint16_t>(net_sockets::host_to_net_u16(_gameAddrPort));
+        }
 
         recv_buf = send_recv(send_buf);
 
@@ -273,8 +281,8 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ClientNetworkSe
     }
     else if (_settings->ProxyType == PROXY_HTTP) {
         const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
-        const auto result = send_recv({reinterpret_cast<const uint8_t*>(request.data()), request.length()});
-        const auto result_str = string(reinterpret_cast<const char*>(result.data()), result.size());
+        const vector<uint8_t> result = send_recv(string_to_span(request));
+        const string result_str {span_to_string(result)};
 
         if (result_str.find(" 200 ") == string::npos) {
             throw NetworkClientException("Proxy connection error", request);
@@ -342,7 +350,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_sock.is_valid());
+    FO_VERIFY_AND_THROW(_sock.is_valid(), "Socket is not valid");
 
     auto len = _sock.receive(buf);
 
@@ -360,7 +368,8 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
 
-        len = _sock.receive({buf.data() + whole_len, buf.size() - whole_len});
+        span<uint8_t> tail {buf.data() + whole_len, buf.size() - whole_len};
+        len = _sock.receive(tail);
 
         if (len < 0) {
             if (net_sockets::last_recv_was_would_block()) {

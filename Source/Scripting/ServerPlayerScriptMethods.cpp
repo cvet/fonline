@@ -37,26 +37,37 @@
 
 FO_BEGIN_NAMESPACE
 
+// SyncScope: requires self; reads connection endpoint only.
 ///@ ExportMethod
-FO_SCRIPT_API string Server_Player_GetHost(Player* self)
+FO_SCRIPT_API string Server_Player_GetHost(ptr<Player> self)
 {
     return string(self->GetConnection()->GetHost());
 }
 
+// SyncScope: requires self; reads connection endpoint only.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Player_GetPort(Player* self)
+FO_SCRIPT_API int32_t Server_Player_GetPort(ptr<Player> self)
 {
     return numeric_cast<int32_t>(self->GetConnection()->GetPort());
 }
 
+// SyncScope: requires self; closes this player's connection.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_Disconnect(Player* self)
+FO_SCRIPT_API void Server_Player_Disconnect(ptr<Player> self)
 {
     self->GetConnection()->GracefulDisconnect();
 }
 
+// SyncScope: requires self; forcibly closes this player's connection.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
+FO_SCRIPT_API void Server_Player_HardDisconnect(ptr<Player> self)
+{
+    self->GetConnection()->HardDisconnect();
+}
+
+// SyncScope: requires self; mutates player name only.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_SetName(ptr<Player> self, string_view name)
 {
     if (name.empty()) {
         throw ScriptException("Player name arg is empty");
@@ -71,22 +82,28 @@ FO_SCRIPT_API void Server_Player_SetName(Player* self, string_view name)
     self->SetName(name);
 }
 
+// SyncScope: requires self + cr when cr is non-null; before linkage callers must explicitly cover both.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
 {
+    ValidateEntityAccess(cr);
+
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
 
+// SyncScope: requires self; returns the controlled critter handle, auto-widened when self is Sync'd.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Player_GetControlledCritter(Player* self)
+FO_SCRIPT_API nptr<Critter> Server_Player_GetControlledCritter(ptr<Player> self)
 {
-    return self->GetControlledCritter();
+    auto controlled_cr = self->GetControlledCritter();
+    return controlled_cr;
 }
 
+// SyncScope: requires self + cr; sends movement state for a critter visible on player's current map.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
+FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    ValidateEntityAccess(cr);
 
     if (cr->GetMapId() == ident_t {}) {
         throw ScriptException("Critter is not on map");
@@ -94,10 +111,12 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
 
     ident_t player_map_id {};
 
-    if (const Critter* controlled_cr = self->GetControlledCritter(); controlled_cr != nullptr) {
+    if (auto nullable_controlled_cr = self->GetControlledCritter()) {
+        auto controlled_cr = nullable_controlled_cr.as_ptr();
         player_map_id = controlled_cr->GetMapId();
     }
-    else if (const ViewMapContext* view_map = self->GetViewMap(); view_map != nullptr) {
+    else if (nptr<const ViewMapContext> nullable_view_map = self->GetViewMap(); nullable_view_map) {
+        auto view_map = nullable_view_map.as_ptr();
         player_map_id = view_map->MapId;
     }
 
@@ -108,15 +127,26 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(Player* self, Critter* cr)
     self->Send_Moving(cr);
 }
 
+// SyncScope: requires self + map + map location; sends load-map data and opens a map view for self.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
+FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos hex)
 {
-    if (self->GetControlledCritter() != nullptr) {
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot view a map for a player that is being destroyed", self->GetId());
+    }
+    if (self->GetControlledCritter()) {
         throw ScriptException("Player controls critter");
     }
+
+    ValidateEntityAccess(map);
+
     if (!map->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hexes args");
     }
+
+    auto loc = map->GetLocation();
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
+    ValidateEntityAccess(loc);
 
     self->SetViewMap(map, hex);
     self->Send_LoadMap(map);
@@ -125,16 +155,18 @@ FO_SCRIPT_API void Server_Player_ViewMap(Player* self, Map* map, mpos hex)
     self->Send_PlaceToGameComplete();
 }
 
+// SyncScope: requires self; clears view-map state, no entity reparent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_ResetViewMap(Player* self)
+FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)
 {
     self->ResetViewMap();
 }
 
+// SyncScope: requires self; clears view-map state and sends unload, no entity reparent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_UnloadMap(Player* self)
+FO_SCRIPT_API void Server_Player_UnloadMap(ptr<Player> self)
 {
-    if (self->GetControlledCritter() != nullptr) {
+    if (auto controlled_cr = self->GetControlledCritter()) {
         throw ScriptException("Player controls critter");
     }
 

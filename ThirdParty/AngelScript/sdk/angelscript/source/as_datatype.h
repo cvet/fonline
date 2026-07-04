@@ -133,6 +133,21 @@ public:
 #ifdef WIP_16BYTE_ALIGN
 	int  GetAlignment()          const;
 #endif
+	// (FOnline Patch) 8-byte VM-stack value alignment. Required alignment (in DWORDs, 1 = 4-byte, 2 = 8-byte)
+	// of this variable's stack slot. `isInlineValue` = the slot holds a value type inline (not on heap / not a
+	// handle/reference). The single authority for stack alignment, shared by the compiler layout
+	// (GetVariableOffset/GetVariableSlot) and the bytecode serializer (asCReader/asCWriter). Returns 1 for every
+	// type until per-type 8-byte alignment is activated, so the alignment-aware layout is byte-identical (inert).
+	// See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
+	int  GetStackAlignmentDWords(bool isInlineValue) const;
+	// (FOnline Patch) Alignment-aware call-argument layout. Size of this parameter's slot in a call argument
+	// block, in DWORDs. On 64-bit targets every argument slot is rounded up to an even DWORD count, so each
+	// argument starts on an 8-byte-aligned stack position (pointers/handles/references and 8-byte primitives
+	// are then always aligned, and stacked argument blocks preserve the frame's 8-byte parity). On 32-bit
+	// targets this returns GetSizeOnStackDWords() unchanged, keeping the historical dense packing. Shared by
+	// the compiler (argument push/fixup offsets, callee parameter offsets), the VM (argument access, cleanup),
+	// asCGeneric/asCContext argument accessors, the native marshallers, and the bytecode serializer.
+	int  GetArgSlotSizeOnStackDWords() const;
 
 	void SetTokenType(eTokenType tt)         {tokenType = tt;}
 	void SetTypeInfo(asCTypeInfo *ti)       {typeInfo = ti;}
@@ -158,6 +173,13 @@ protected:
 	// Behaviour type
 	asCTypeInfo *typeInfo;
 };
+
+// (FOnline Patch) Single source of truth for the natural alignment (bytes) of an init-list buffer element of
+// the given data type and runtime size. Used by the compiler (layout), the bytecode writer/reader (offset
+// canonicalization / re-derivation), DestroySubList (cleanup walk) and the array/dict list factories so they
+// never disagree. 8-byte inline value types (ident_t/hstring/any_t/string, double/int64) land on 8-byte slots;
+// handles/ref keep the historical 4-byte packing (pointer-size-dependent, accessed unaligned).
+asUINT GetListElementAlignment(const asCDataType &dt, asUINT size);
 
 END_AS_NAMESPACE
 

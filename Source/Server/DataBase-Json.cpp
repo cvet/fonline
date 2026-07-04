@@ -5,7 +5,7 @@ FO_DISABLE_WARNINGS_PUSH()
 #include <json.hpp>
 FO_DISABLE_WARNINGS_POP()
 
-#include "WinApiUndef-Include.h"
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -17,10 +17,10 @@ public:
     auto operator=(const DbJson&) = delete;
     auto operator=(DbJson&&) noexcept = delete;
 
-    explicit DbJson(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
+    explicit DbJson(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {storage_dir},
-        _jsonIndent {db_settings.JsonIndent}
+        _jsonIndent {db_settings->JsonIndent}
     {
         fs_create_directories(storage_dir);
         StartCommitThread();
@@ -35,7 +35,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto dir = strex("{}/{}", _storageDir, collection_name).str();
 
@@ -48,7 +48,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
         vector<DataBaseKey> ids;
@@ -99,7 +99,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -127,9 +127,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database insert received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -142,17 +142,17 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t length = 0;
-        auto* json = bson_as_canonical_extended_json(&bson, &length);
+        nptr<char> json_lookup = bson_as_canonical_extended_json(&bson, &length);
 
-        if (json == nullptr) {
+        if (!json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
+        auto json = make_unique_del_ptr(json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(json);
+        const auto pretty_json = nlohmann::json::parse(json.get());
         const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        bson_free(json);
 
         const auto dir = strex(path).extract_dir().str();
 
@@ -169,9 +169,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -191,17 +191,17 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t new_length = 0;
-        auto* new_json = bson_as_canonical_extended_json(&bson, &new_length);
+        nptr<char> new_json_lookup = bson_as_canonical_extended_json(&bson, &new_length);
 
-        if (new_json == nullptr) {
+        if (!new_json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
+        auto new_json = make_unique_del_ptr(new_json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
-        const auto pretty_json = nlohmann::json::parse(new_json);
+        const auto pretty_json = nlohmann::json::parse(new_json.get());
         const auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
-        bson_free(new_json);
 
         const auto dir = strex(path).extract_dir().str();
 
@@ -218,7 +218,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
@@ -239,27 +239,27 @@ private:
                 using T = std::decay_t<decltype(value)>;
 
                 if constexpr (std::is_same_v<T, ident_t>) {
-                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::IntId);
-                    FO_RUNTIME_ASSERT(value != ident_t {});
+                    FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::IntId, "JSON database key expected a numeric identifier but the collection key type differs", value);
+                    FO_VERIFY_AND_THROW(value != ident_t {}, "JSON database key cannot encode an empty identifier");
                     return strex("{}", value).str();
                 }
                 else {
-                    FO_RUNTIME_ASSERT(key_type == DataBaseKeyType::String);
-                    FO_RUNTIME_ASSERT(!value.empty());
+                    FO_VERIFY_AND_THROW(key_type == DataBaseKeyType::String, "JSON database key expected a string identifier but the collection key type differs", value);
+                    FO_VERIFY_AND_THROW(!value.empty(), "JSON database key cannot encode an empty string identifier");
                     return value;
                 }
             },
             key);
     }
 
-    mutable std::mutex _storageLocker {};
+    mutable mutex _storageLocker {};
     string _storageDir {};
     int32_t _jsonIndent {};
 };
 
-auto CreateJsonDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*
+auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeRaw<DbJson>(db_settings, storage_dir, std::move(panic_callback));
+    return SafeAlloc::MakeUnique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

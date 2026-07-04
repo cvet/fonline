@@ -32,13 +32,12 @@
 //
 
 #include "ClientConnection.h"
-#include "NetCommand.h"
 #include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
-ClientConnection::ClientConnection(ClientNetworkSettings& settings) :
-    _settings {&settings},
+ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
+    _settings {settings},
     _netIn(_settings->NetBufferSize),
     _netOut(_settings->NetBufferSize)
 {
@@ -70,7 +69,7 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_handlers.count(msg) == 0);
+    FO_VERIFY_AND_THROW(_handlers.count(msg) == 0, "Duplicate client network message handler registration", msg, _handlers.size());
 
     _handlers.emplace(msg, std::move(handler));
 }
@@ -79,14 +78,7 @@ void ClientConnection::CreateNetworkConnection(bool use_udp)
 {
     FO_STACK_TRACE_ENTRY();
 
-    unique_ptr<NetworkClientConnection> connection;
-
-    if (use_udp) {
-        connection = NetworkClientConnection::CreateUdpSocketsConnection(*_settings);
-    }
-    else {
-        connection = NetworkClientConnection::CreateSocketsConnection(*_settings);
-    }
+    unique_ptr<NetworkClientConnection> connection = use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings);
 
     _connectingOverUdp = use_udp;
     _netConnection = std::move(connection);
@@ -96,7 +88,7 @@ void ClientConnection::Connect()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_netConnection);
+    FO_VERIFY_AND_THROW(!_netConnection, "Net connection is already set");
 
     try {
         // First try interthread communication
@@ -105,13 +97,13 @@ void ClientConnection::Connect()
         bool has_interthread_listener = false;
 
         {
-            std::scoped_lock locker(InterthreadListenersLocker);
+            scoped_lock locker {InterthreadListenersLocker};
 
             has_interthread_listener = InterthreadListeners.count(port) != 0;
         }
 
         if (has_interthread_listener) {
-            _netConnection = NetworkClientConnection::CreateInterthreadConnection(*_settings);
+            _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
@@ -167,22 +159,6 @@ void ClientConnection::Process()
             Disconnect();
         }
     }
-    catch (const UnresolvedHashException& ex) {
-        WriteLog("Connection error: {}", ex.what());
-
-        // The unresolved hash is the exception's first param (see UnresolvedHashException declaration)
-        if (!ex.params().empty()) {
-            const auto& hash_param = ex.params().front();
-            hstring::hash_t hash = 0;
-
-            if (std::from_chars(hash_param.data(), hash_param.data() + hash_param.size(), hash).ec == std::errc {}) {
-                Net_SendUnresolvedHash(hash);
-            }
-        }
-
-        Disconnect();
-        throw;
-    }
     catch (const NetBufferException& ex) {
         WriteLog("Connection error: {}", ex.what());
         Disconnect();
@@ -201,12 +177,14 @@ void ClientConnection::ProcessConnection()
         return;
     }
 
+    auto net_connection = _netConnection.as_ptr();
+
     // Wait for connecting result
-    if (_netConnection->IsConnecting()) {
-        _netConnection->CheckStatus(true);
+    if (net_connection->IsConnecting()) {
+        net_connection->CheckStatus(true);
 
         // Connecting status may change
-        if (_netConnection->IsConnecting()) {
+        if (net_connection->IsConnecting()) {
             return;
         }
     }
@@ -215,7 +193,7 @@ void ClientConnection::ProcessConnection()
     if (!_connectingHandled) {
         _connectingHandled = true;
 
-        if (_netConnection->IsConnected()) {
+        if (net_connection->IsConnected()) {
             Net_SendHandshake();
         }
         else if (TryFallbackToTcp()) {
@@ -242,8 +220,8 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    _netConnection->CheckStatus(false);
-    _netConnection->CheckStatus(true);
+    net_connection->CheckStatus(false);
+    net_connection->CheckStatus(true);
 
     // Receive and send data
     if (ReceiveData()) {
@@ -287,7 +265,7 @@ void ClientConnection::ProcessConnection()
     SendData();
 
     // Handle disconnect
-    if (!_netConnection->IsConnected()) {
+    if (!net_connection->IsConnected()) {
         Disconnect();
     }
 }
@@ -300,7 +278,8 @@ void ClientConnection::Disconnect()
         return;
     }
 
-    _netConnection->Disconnect();
+    auto net_connection = _netConnection.as_ptr();
+    net_connection->Disconnect();
     _netConnection.reset();
 
     _connectingOverUdp = false;
@@ -320,6 +299,13 @@ void ClientConnection::Disconnect()
         _wasHandshake = false;
         _disconnectCallback();
     }
+}
+
+void ClientConnection::FlushPendingData()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SendData();
 }
 
 auto ClientConnection::TryFallbackToTcp() -> bool
@@ -346,12 +332,16 @@ void ClientConnection::SendData()
         if (_netOut.IsEmpty()) {
             break;
         }
-        if (!_netConnection->CheckStatus(true)) {
+
+        FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
+        auto net_connection = _netConnection.as_ptr();
+
+        if (!net_connection->CheckStatus(true)) {
             break;
         }
 
         const auto send_buf = _netOut.GetData();
-        const auto actual_send = _netConnection->SendData(send_buf);
+        const auto actual_send = net_connection->SendData(send_buf);
 
         _netOut.DiscardWriteBuf(actual_send);
         _bytesSend += actual_send;
@@ -362,9 +352,12 @@ auto ClientConnection::ReceiveData() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_netConnection->CheckStatus(false)) {
-        const auto recv_buf = _netConnection->ReceiveData();
-        FO_RUNTIME_ASSERT(!recv_buf.empty());
+    FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
+    auto net_connection = _netConnection.as_ptr();
+
+    if (net_connection->CheckStatus(false)) {
+        const auto recv_buf = net_connection->ReceiveData();
+        FO_VERIFY_AND_THROW(!recv_buf.empty(), "Client connection reported readable network data but returned an empty receive buffer", _bytesReceived, _bytesRealReceived);
 
         _netIn.ShrinkReadBuf();
 
@@ -407,31 +400,6 @@ void ClientConnection::Net_SendHandshake()
     _netOut.EndMsg();
 
     _netOut.SetEncryptKey(encrypt_key);
-}
-
-void ClientConnection::Net_SendUnresolvedHash(hstring::hash_t hash)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Only meaningful on an established (post-handshake, encrypted) connection
-    if (!_netConnection || !_wasHandshake) {
-        return;
-    }
-
-    try {
-        _netOut.StartMsg(NetMessage::UnresolvedHash);
-        _netOut.Write(hash);
-        _netOut.EndMsg();
-
-        SendData();
-
-        if (!_netOut.IsEmpty()) {
-            WriteLog("Couldn't flush unresolved hash {} report before disconnect", hash);
-        }
-    }
-    catch (const std::exception& ex) {
-        WriteLog("Failed to report unresolved hash {}: {}", hash, ex.what());
-    }
 }
 
 void ClientConnection::Net_OnHandshakeAnswer()

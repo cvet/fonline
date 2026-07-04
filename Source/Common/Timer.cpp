@@ -35,68 +35,88 @@
 
 FO_BEGIN_NAMESPACE
 
-GameTimer::GameTimer(TimerSettings& settings) :
-    _settings {&settings}
+GameTimer::GameTimer(ptr<TimerSettings> settings) :
+    _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _frameTime = nanotime::now();
-    _fpsMeasureTime = _frameTime;
+    const auto start_time = nanotime::now();
+    _frameTime.store(start_time, std::memory_order_relaxed);
+    _fpsMeasureTime = start_time;
 }
 
-void GameTimer::SetSynchronizedTime(synctime time) noexcept
+auto GameTimer::IsTimeSynchronized() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_syncTimeLocker};
+
+    return !!_syncTimeBase;
+}
+
+void GameTimer::SetSynchronizedTime(synctime time)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_syncTimeLocker};
 
     _syncTimeBase = time;
     _syncTimeFloor = time;
-    _syncTimeSet = _frameTime;
+    _syncTimeSet = _frameTime.load(std::memory_order_relaxed);
 }
 
-void GameTimer::SetSynchronizedTimeMonotonic(synctime time) noexcept
+void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_syncTimeLocker};
+
+    const auto frame_time = _frameTime.load(std::memory_order_relaxed);
+
     if (!_syncTimeBase) {
-        SetSynchronizedTime(time);
+        _syncTimeBase = time;
+        _syncTimeFloor = time;
+        _syncTimeSet = frame_time;
         return;
     }
 
-    const auto projected_time = _syncTimeBase + (_frameTime - _syncTimeSet);
+    const auto projected_time = _syncTimeBase + (frame_time - _syncTimeSet);
     const auto current_time = projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
     const bool is_frozen = current_time > projected_time;
 
     _syncTimeBase = is_frozen && time < projected_time ? projected_time : time;
     _syncTimeFloor = time > current_time ? time : current_time;
-    _syncTimeSet = _frameTime;
+    _syncTimeSet = frame_time;
 }
 
 void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto prev_frame_time = _frameTime;
+    const auto prev_frame_time = _frameTime.load(std::memory_order_relaxed);
     const auto now_time = nanotime::now();
+    nanotime new_frame_time;
 
     if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
-        const auto dt = (now_time - _frameTime - _debuggingOffset).to_ms<int32_t>();
+        const auto dt = (now_time - prev_frame_time - _debuggingOffset).to_ms<int32_t>();
 
         if (dt > _settings->DeltaTimeCap) {
             _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);
         }
 
-        _frameTime = now_time - _debuggingOffset;
+        new_frame_time = now_time - _debuggingOffset;
     }
     else {
-        _frameTime = now_time;
+        new_frame_time = now_time;
     }
 
-    _frameDeltaTime = _frameTime - prev_frame_time;
+    _frameTime.store(new_frame_time, std::memory_order_relaxed);
+    _frameDeltaTime.store(new_frame_time - prev_frame_time, std::memory_order_relaxed);
 
-    // FPS counter
-    if (_frameTime - _fpsMeasureTime >= std::chrono::seconds {1}) {
-        _fps = _fpsMeasureCounter;
-        _fpsMeasureTime = _frameTime;
+    // FPS counter (main-worker-only state)
+    if (new_frame_time - _fpsMeasureTime >= std::chrono::seconds {1}) {
+        _fps.store(_fpsMeasureCounter, std::memory_order_relaxed);
+        _fpsMeasureTime = new_frame_time;
         _fpsMeasureCounter = 0;
     }
     else {
@@ -108,11 +128,13 @@ auto GameTimer::GetSynchronizedTime() const -> synctime
 {
     FO_STACK_TRACE_ENTRY();
 
+    scoped_lock locker {_syncTimeLocker};
+
     if (!_syncTimeBase) {
         throw TimeNotSyncException("Time is not synchronized yet");
     }
 
-    const auto projected_time = _syncTimeBase + (_frameTime - _syncTimeSet);
+    const auto projected_time = _syncTimeBase + (_frameTime.load(std::memory_order_relaxed) - _syncTimeSet);
     return projected_time < _syncTimeFloor ? _syncTimeFloor : projected_time;
 }
 

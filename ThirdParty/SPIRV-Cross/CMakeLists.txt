@@ -40,7 +40,7 @@ option(SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS "Instead of throwing exceptions asse
 option(SPIRV_CROSS_SHARED "Build the C API as a single shared library." OFF)
 option(SPIRV_CROSS_STATIC "Build the C and C++ API as static libraries." ON)
 option(SPIRV_CROSS_CLI "Build the CLI binary. Requires SPIRV_CROSS_STATIC." ON)
-option(SPIRV_CROSS_ENABLE_TESTS "Enable SPIRV-Cross tests." ON)
+option(SPIRV_CROSS_ENABLE_TESTS "Enable SPIRV-Cross tests." OFF) # (FOnline Patch) tests are pruned from the vendored engine copy.
 
 option(SPIRV_CROSS_ENABLE_GLSL "Enable GLSL support." ON)
 option(SPIRV_CROSS_ENABLE_HLSL "Enable HLSL target support." ON)
@@ -58,7 +58,7 @@ option(SPIRV_CROSS_SANITIZE_UNDEFINED "Sanitize undefined" OFF)
 option(SPIRV_CROSS_NAMESPACE_OVERRIDE "" "Override the namespace used in the C++ API.")
 option(SPIRV_CROSS_FORCE_STL_TYPES "Force use of STL types instead of STL replacements in certain places. Might reduce performance." OFF)
 
-option(SPIRV_CROSS_SKIP_INSTALL "Skips installation targets." OFF)
+option(SPIRV_CROSS_SKIP_INSTALL "Skips installation targets." ON) # (FOnline Patch) install/pkg-config files are pruned from the vendored engine copy.
 
 option(SPIRV_CROSS_WERROR "Fail build on warnings." OFF)
 option(SPIRV_CROSS_MISC_WARNINGS "Misc warnings useful for Travis runs." OFF)

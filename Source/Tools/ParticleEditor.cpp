@@ -41,8 +41,60 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleManager::TextureLoader
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<vector<unique_ptr<RenderTexture>>> loaded_textures_ptr {&loaded_textures};
+
+    return [editor, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
+        const auto file = editor->BakedResources.ReadFile(path);
+        FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
+        auto reader = file.GetReader();
+
+        const auto check_number = reader.GetUInt8();
+        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
+
+        (void)reader.GetLEUInt16();
+        (void)reader.GetLEUInt16();
+        (void)reader.GetUInt8();
+        (void)reader.GetLEInt16();
+        (void)reader.GetLEInt16();
+        (void)reader.GetUInt8();
+        const auto w = reader.GetLEUInt16();
+        const auto h = reader.GetLEUInt16();
+        (void)reader.GetLEInt16();
+        (void)reader.GetLEInt16();
+
+        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
+        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
+
+        auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
+        nptr<const uint8_t> data_ptr = data.data();
+        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
+        tex->UpdateTextureRegion({}, {w, h}, pixels);
+
+        auto nullable_tex = tex.as_nptr();
+        loaded_textures_ptr->emplace_back(std::move(tex));
+
+        return {nullable_tex, {0.0f, 0.0f, 1.0f, 1.0f}};
+    };
+}
+
+static auto CreateParticleEditorParticle(ptr<ParticleManager> particle_mngr, string_view asset_path) -> ParticleSystem
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<ParticleSystem> particle = particle_mngr->CreateParticle(asset_path);
+    FO_VERIFY_AND_THROW(particle, "Failed to create particle system from asset");
+
+    return std::move(*particle);
+}
+
 struct ParticleEditor::Impl
 {
+    Impl(string_view asset_path, ptr<FOEditor> editor);
+
     [[nodiscard]] auto GetEditedSparkSystem() -> SPK::Ref<SPK::System>;
     [[nodiscard]] auto GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>;
     [[nodiscard]] auto GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>;
@@ -109,76 +161,51 @@ struct ParticleEditor::Impl
     void DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set);
     void DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group);
 
-    unique_ptr<EffectManager> EffectMngr {};
-    unique_ptr<GameTimer> GameTime {};
-    unique_ptr<ParticleManager> ParticleMngr {};
-    unique_ptr<ParticleSystem> Particle {};
+    unique_ptr<RenderTexture> RenderTarget;
+    vector<unique_ptr<RenderTexture>> LoadedTextures {};
+    EffectManager EffectMngr;
+    GameTimer GameTime;
+    ParticleManager ParticleMngr;
+    ParticleSystem Particle;
     SPK::Ref<SPK::System> SystemBackup {};
     bool AddingMode {true};
     bool RemovingMode {true};
     bool NamingMode {};
-    vector<unique_ptr<RenderTexture>> LoadedTextures {};
     vector<string> AllEffects {};
     vector<string> AllTextures {};
-    unique_ptr<RenderTexture> RenderTarget {};
     bool Changed {};
 };
 
-ParticleEditor::ParticleEditor(string_view asset_path, FOEditor& editor) :
-    EditorAssetView("Particle Editor", editor, asset_path),
-    _impl {SafeAlloc::MakeUnique<Impl>()}
+ParticleEditor::Impl::Impl(string_view asset_path, ptr<FOEditor> editor) :
+    RenderTarget {GetApp()->Render.CreateTexture({200, 200}, true, true)},
+    EffectMngr {editor->Settings, &editor->BakedResources, &GetApp()->Render},
+    GameTime {editor->Settings},
+    ParticleMngr {editor->Settings, &EffectMngr, &GetApp()->Render, &editor->BakedResources, &GameTime, CreateParticleEditorTextureLoader(editor, LoadedTextures)},
+    Particle {CreateParticleEditorParticle(&ParticleMngr, asset_path)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->EffectMngr = SafeAlloc::MakeUnique<EffectManager>(_editor->Settings, _editor->BakedResources, App->Render);
+    SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(Particle.GetBaseSystem().get()));
+}
 
-    _impl->GameTime = SafeAlloc::MakeUnique<GameTimer>(_editor->Settings);
+ParticleEditor::ParticleEditor(ParticleEditor&&) noexcept = default;
 
-    _impl->ParticleMngr = SafeAlloc::MakeUnique<ParticleManager>(_editor->Settings, *_impl->EffectMngr, App->Render, _editor->BakedResources, *_impl->GameTime, [&editor, this](string_view path) -> pair<RenderTexture*, frect32> {
-        const auto file = editor.BakedResources.ReadFile(path);
-        FO_RUNTIME_ASSERT(file);
-        auto reader = file.GetReader();
-
-        const auto check_number = reader.GetUInt8();
-        FO_RUNTIME_ASSERT(check_number == 42);
-
-        (void)reader.GetLEUInt16();
-        (void)reader.GetLEUInt16();
-        (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetUInt8();
-        const auto w = reader.GetLEUInt16();
-        const auto h = reader.GetLEUInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-
-        const auto* data = reader.GetCurBuf();
-
-        auto tex = App->Render.CreateTexture({w, h}, true, false);
-        tex->UpdateTextureRegion({}, {w, h}, reinterpret_cast<const ucolor*>(data));
-
-        RenderTexture* tex_raw_ptr = tex.get();
-        _impl->LoadedTextures.emplace_back(std::move(tex));
-
-        return {tex_raw_ptr, {0.0f, 0.0f, 1.0f, 1.0f}};
-    });
-
-    _impl->Particle = _impl->ParticleMngr->CreateParticle(asset_path);
-    _impl->SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
-
-    _impl->RenderTarget = App->Render.CreateTexture({200, 200}, true, true);
+ParticleEditor::ParticleEditor(string_view asset_path, ptr<FOEditor> editor) :
+    EditorAssetView("Particle Editor", editor, asset_path),
+    _impl {SafeAlloc::MakeUnique<Impl>(asset_path, editor)}
+{
+    FO_STACK_TRACE_ENTRY();
 
     auto fofx_files = _editor->RawResources.FilterFiles("fofx");
 
     for (const auto& file_header : fofx_files) {
-        _impl->AllEffects.emplace_back(file_header.GetPath());
+        _impl->AllEffects.emplace_back(string(file_header.GetPath()));
     }
 
     auto tex_files = _editor->RawResources.FilterFiles("tga", strex(asset_path).extract_dir());
 
     for (const auto& file_header : tex_files) {
-        _impl->AllTextures.emplace_back(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1));
+        _impl->AllTextures.emplace_back(string(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1)));
     }
 }
 
@@ -190,11 +217,11 @@ void ParticleEditor::OnDraw()
 
     EditorAssetView::OnDraw();
 
-    _impl->GameTime->FrameAdvance(true);
+    _impl->GameTime.FrameAdvance(true);
 
     _impl->Changed = false;
 
-    auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
+    auto&& [draw_width, draw_height] = _impl->Particle.GetDrawSize();
 
     if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
@@ -203,36 +230,41 @@ void ParticleEditor::OnDraw()
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle->GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle.GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
         if (ImGui::Button("Respawn")) {
-            _impl->Particle->Respawn();
+            _impl->Particle.Respawn();
         }
 
         if (_changed) {
             ImGui::SameLine();
             if (ImGui::Button("Discard")) {
                 _changed = _impl->Changed = false;
-                _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
-                _impl->Particle->Respawn();
+                _impl->Particle.SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
+                _impl->Particle.Respawn();
             }
 
             ImGui::SameLine();
             if (ImGui::Button("Save")) {
                 const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
-                FO_RUNTIME_ASSERT(file);
+                FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
 
-                const auto* saver = SPK::IO::IOManager::get().getSaver("xml");
-                FO_RUNTIME_ASSERT(saver);
+                nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
+                FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
+                auto saver = nullable_saver.as_ptr();
 
                 const auto path = std::string(file.GetDiskPath());
 
-                if (saver->save(path, _impl->Particle->GetBaseSystem(), path)) {
+                auto nullable_base_system = _impl->Particle.GetBaseSystem();
+                FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
+                auto base_system = nullable_base_system.as_ptr();
+
+                if (saver->save(path, base_system.get(), path)) {
                     _changed = _impl->Changed = false;
-                    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(_impl->Particle->GetBaseSystem()));
-                    _impl->Particle->Respawn();
+                    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
+                    _impl->Particle.Respawn();
                 }
             }
         }
@@ -240,23 +272,23 @@ void ParticleEditor::OnDraw()
     ImGui::EndChild();
 
     if (ImGui::BeginChild("Hierarchy")) {
-        _impl->DrawGenericSparkObject(_impl->Particle->GetBaseSystem());
+        _impl->DrawGenericSparkObject(_impl->Particle.GetBaseSystem().get());
     }
     ImGui::EndChild();
 
     _changed |= _impl->Changed;
 
     if (_impl->Changed) {
-        _impl->Particle->Respawn();
+        _impl->Particle.Respawn();
     }
 
     const auto frame_width = numeric_cast<float32_t>(draw_width);
     const auto frame_height = numeric_cast<float32_t>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height * (1.0f / _editor->Settings.ModelProjFactor);
+    const auto proj_height = frame_height * (1.0f / _editor->Settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
-    const mat44 proj = App->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+    const mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
     const mat44 world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
 
     vec3 pos_offest;
@@ -265,15 +297,15 @@ void ParticleEditor::OnDraw()
     vec3 view_offset;
     view_offset = vec3();
 
-    _impl->Particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
+    _impl->Particle.Setup(proj, world, pos_offest, _dirAngle, view_offset);
 
-    auto* prev_rt = App->Render.GetRenderTarget();
-    App->Render.SetRenderTarget(_impl->RenderTarget.get());
-    App->Render.ClearRenderTarget(ucolor::clear, true);
-    _impl->Particle->Draw();
-    App->Render.SetRenderTarget(prev_rt);
+    auto prev_rt = GetApp()->Render.GetRenderTarget();
+    GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
+    GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
+    _impl->Particle.Draw();
+    GetApp()->Render.SetRenderTarget(prev_rt);
 
-    auto* draw_list = ImGui::GetWindowDrawList();
+    ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
 
     auto pos = ImGui::GetWindowPos();
     pos.x += 120.0f;
@@ -283,7 +315,7 @@ void ParticleEditor::OnDraw()
 
     draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
     draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
-    if (App->Render.IsRenderTargetFlipped()) {
+    if (GetApp()->Render.IsRenderTargetFlipped()) {
         draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
     }
     else {
@@ -291,8 +323,8 @@ void ParticleEditor::OnDraw()
     }
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
-    if (!_impl->Particle->IsActive() && _autoReplay) {
-        _impl->Particle->Respawn();
+    if (!_impl->Particle.IsActive() && _autoReplay) {
+        _impl->Particle.Respawn();
     }
 }
 
@@ -505,8 +537,8 @@ void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transforma
             ImGui::PopStyleColor();
         }
 
-        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(&obj->getTransform().getLocal()[12]));
-        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(&obj->getTransform().getLocal()[4]));
+        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[12])));
+        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[4])));
 
         if (ImGui::Button("Fix transform")) {
             Changed |= true;
@@ -739,18 +771,19 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
         int32_t index = 0;
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
-            const auto& entry = *it;
-            string name = strex("{}: {} => {}", entry.x, entry.y0, entry.y1);
+            using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
+            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
+            string name = strex("{}: {} => {}", entry->x, entry->y0, entry->y1);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                ImGui::InputFloat("Start", const_cast<float32_t*>(&entry.y0));
-                ImGui::InputFloat("End", const_cast<float32_t*>(&entry.y1));
+            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+                ImGui::InputFloat("Start", &entry->y0);
+                ImGui::InputFloat("End", &entry->y1);
 
                 ImGui::TreePop();
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -796,28 +829,29 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
         int32_t index = 0;
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
-            const auto& entry = *it;
-            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry.x, entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a, entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a);
+            using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
+            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
+            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(&entry)).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                int32_t c1[] = {entry.y0.r, entry.y0.g, entry.y0.b, entry.y0.a};
+            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+                int32_t c1[] = {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
                 ImGui::InputInt4("Start", c1);
-                const_cast<unsigned char&>(entry.y0.r) = numeric_cast<unsigned char>(c1[0]);
-                const_cast<unsigned char&>(entry.y0.g) = numeric_cast<unsigned char>(c1[1]);
-                const_cast<unsigned char&>(entry.y0.b) = numeric_cast<unsigned char>(c1[2]);
-                const_cast<unsigned char&>(entry.y0.a) = numeric_cast<unsigned char>(c1[3]);
-                int32_t c2[] = {entry.y1.r, entry.y1.g, entry.y1.b, entry.y1.a};
+                entry->y0.r = numeric_cast<unsigned char>(c1[0]);
+                entry->y0.g = numeric_cast<unsigned char>(c1[1]);
+                entry->y0.b = numeric_cast<unsigned char>(c1[2]);
+                entry->y0.a = numeric_cast<unsigned char>(c1[3]);
+                int32_t c2[] = {entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a};
                 ImGui::InputInt4("End", c2);
-                const_cast<unsigned char&>(entry.y1.r) = numeric_cast<unsigned char>(c2[0]);
-                const_cast<unsigned char&>(entry.y1.g) = numeric_cast<unsigned char>(c2[1]);
-                const_cast<unsigned char&>(entry.y1.b) = numeric_cast<unsigned char>(c2[2]);
-                const_cast<unsigned char&>(entry.y1.a) = numeric_cast<unsigned char>(c2[3]);
+                entry->y1.r = numeric_cast<unsigned char>(c2[0]);
+                entry->y1.g = numeric_cast<unsigned char>(c2[1]);
+                entry->y1.b = numeric_cast<unsigned char>(c2[2]);
+                entry->y1.a = numeric_cast<unsigned char>(c2[3]);
 
                 ImGui::TreePop();
             }
 
             if (RemovingMode) {
-                if (ImGui::Button(strex("Remove at {}", entry.x).c_str())) {
+                if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
                     delIndex = index;
                 }
             }
@@ -1225,7 +1259,7 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
 
     // Effect
     {
-        auto&& effect_name = obj->GetEffectName();
+        const string_view effect_name = obj->GetEffectName();
 
         int32_t index = -1;
 
@@ -1233,21 +1267,28 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             index = numeric_cast<int32_t>(std::distance(AllEffects.begin(), it));
         }
 
-        vector<const char*> eff_items;
+        const string preview = index >= 0 ? AllEffects[numeric_cast<size_t>(index)] : string(effect_name);
 
-        for (const auto& eff : AllEffects) {
-            eff_items.push_back(eff.c_str());
-        }
+        if (ImGui::BeginCombo("Effect", preview.c_str())) {
+            for (size_t i = 0; i < AllEffects.size(); i++) {
+                const bool selected = index == numeric_cast<int32_t>(i);
 
-        if (ImGui::Combo("Effect", &index, eff_items.data(), numeric_cast<int32_t>(eff_items.size()))) {
-            Changed |= true;
-            obj->SetEffectName(eff_items[index]);
+                if (ImGui::Selectable(AllEffects[i].c_str(), selected)) {
+                    Changed |= true;
+                    obj->SetEffectName(AllEffects[i]);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+
+            ImGui::EndCombo();
         }
     }
 
     // Texture
     {
-        auto&& texture_name = obj->GetTextureName();
+        const string_view texture_name = obj->GetTextureName();
 
         int32_t index = -1;
 
@@ -1255,15 +1296,22 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRend
             index = numeric_cast<int32_t>(std::distance(AllTextures.begin(), it));
         }
 
-        vector<const char*> tex_items;
+        const string preview = index >= 0 ? AllTextures[numeric_cast<size_t>(index)] : string(texture_name);
 
-        for (const auto& tex : AllTextures) {
-            tex_items.push_back(tex.c_str());
-        }
+        if (ImGui::BeginCombo("Texture", preview.c_str())) {
+            for (size_t i = 0; i < AllTextures.size(); i++) {
+                const bool selected = index == numeric_cast<int32_t>(i);
 
-        if (ImGui::Combo("Texture", &index, tex_items.data(), numeric_cast<int32_t>(tex_items.size()))) {
-            Changed |= true;
-            obj->SetTextureName(tex_items[index]);
+                if (ImGui::Selectable(AllTextures[i].c_str(), selected)) {
+                    Changed |= true;
+                    obj->SetTextureName(AllTextures[i]);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+
+            ImGui::EndCombo();
         }
     }
 
@@ -1313,16 +1361,20 @@ void ParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::Ref<S
         }
     }
 
-    vector<const char*> items;
-    items.reserve(names.size());
+    if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
+        for (size_t i = 0; i < names.size(); i++) {
+            const bool selected = index == numeric_cast<int32_t>(i);
 
-    for (const auto& name : names) {
-        items.emplace_back(name.c_str());
-    }
+            if (ImGui::Selectable(names[i].c_str(), selected)) {
+                Changed |= true;
+                set(refs[i]);
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
 
-    if (ImGui::Combo(label, &index, items.data(), numeric_cast<int32_t>(items.size()))) {
-        Changed |= true;
-        set(refs[numeric_cast<size_t>(index)]);
+        ImGui::EndCombo();
     }
 }
 
@@ -1361,16 +1413,20 @@ void ParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK::Ref
         }
     }
 
-    vector<const char*> items;
-    items.reserve(names.size());
+    if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
+        for (size_t i = 0; i < names.size(); i++) {
+            const bool selected = index == numeric_cast<int32_t>(i);
 
-    for (const auto& name : names) {
-        items.emplace_back(name.c_str());
-    }
+            if (ImGui::Selectable(names[i].c_str(), selected)) {
+                Changed |= true;
+                set(refs[i]);
+            }
+            if (selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
 
-    if (ImGui::Combo(label, &index, items.data(), numeric_cast<int32_t>(items.size()))) {
-        Changed |= true;
-        set(refs[numeric_cast<size_t>(index)]);
+        ImGui::EndCombo();
     }
 }
 
@@ -1392,7 +1448,9 @@ auto ParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return Particle && Particle->GetBaseSystem() ? SPK::Ref<SPK::System>(Particle->GetBaseSystem()) : SPK::Ref<SPK::System>();
+    auto base_system = Particle.GetBaseSystem();
+
+    return base_system ? SPK::Ref<SPK::System>(base_system.get()) : SPK::Ref<SPK::System>();
 }
 
 auto ParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>

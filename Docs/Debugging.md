@@ -2,6 +2,8 @@
 
 > Engine-owned documentation. Paths under `../` are relative to the FOnline engine root. Paths under `../../` point to an embedding game project such as Last Frontier when this engine is used as a submodule.
 
+Diagnosing a server that logged a handled invariant violation, deterministically terminated (`FO_STRONG_ASSERT` / `ReportExceptionAndExit`), or left a "stuck-destroying" / un-syncable entity? The error-tier model and the entity-lifecycle exception contracts are in [ExceptionSafety.md](ExceptionSafety.md).
+
 ## Visual Studio Visualizers
 
 For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are included in the generated project automatically.
@@ -91,6 +93,19 @@ The exception callback receives the already-captured `CatchedStackTraceData` and
 
 [../Source/Essentials/BaseLogging.h](../Source/Essentials/BaseLogging.h) and [../Source/Essentials/BaseLogging.cpp](../Source/Essentials/BaseLogging.cpp) own `SafeWriteStackTrace(const StackTraceData&)`, which is used by crash and low-memory paths where normal formatting/logging may be unsafe. Regular exception callbacks use `WriteLogMessage` with the captured `CatchedStackTraceData`; immediate duplicate exception messages are collapsed into a later `...and N more same messages` summary by `Logging.cpp`. Async file writing is still controlled by `SetAsyncLogWriting(true)` once `settings.AsyncLogWrite` is known.
 
+### Crash-to-log guarantee and self-test
+
+Every abnormal death must leave usable diagnostics in the log file, not only on `stderr` (which is discarded for a headless/service process). The paths:
+
+- **Fatal signals** (`SIGSEGV`, `SIGABRT`, `SIGFPE`, `SIGBUS`, `SIGILL`, …) are caught by backward-cpp's signal handler ([../ThirdParty/backward-cpp/backward.hpp](../ThirdParty/backward-cpp/backward.hpp)), which writes `FATAL ERROR!`, a `Crash reason:` line, and a symbolised stack trace through `GetCrashStream()` → `BackwardOStreamBuffer` → `WriteBaseLog`. The header first calls `SuspendAsyncLogWriting()` and everything after is written with `WriteSync` (immediate `flush`), so the report survives even with `Common.AsyncLogWrite` on.
+- **`std::terminate`** (an exception escaping a `noexcept` function or a thread, a rethrow with no handler, a pure-virtual call) is routed through `SignalHandling::terminator()` — an **FOnline patch** that installs `std::set_terminate` on POSIX too (it was Windows-only upstream). It records the failing exception's type + `what()` via `SetCrashTerminationInfo("std::terminate")` (`FormatRuntimeCrashInfo`), prints the report, and `_Exit`s without re-entering the `SIGABRT` handler. Without it, the default POSIX terminate handler prints the exception text to `stderr` only and the log gets a bare `Signal 6 (SIGABRT)`.
+- **Stack overflow** is a `SIGSEGV` on the guard page; the handler needs an **alternate signal stack** (`SA_ONSTACK`) because the thread's own stack is exhausted. backward installs one only on the thread that constructs it (the main thread), so every long-lived worker thread calls `InstallCrashHandlerStackForThisThread()` ([../Source/Essentials/ExceptionHandling.cpp](../Source/Essentials/ExceptionHandling.cpp)) at entry (see `WorkThread::ThreadEntry`) to keep worker-thread overflows diagnosable. Threads created outside the engine (e.g. third-party Asio/SDL threads) do not get one; add the call at their entry if they run engine logic that can recurse deeply.
+- **Caught exceptions** reported through `ReportExceptionAndExit` / `ReportExceptionAndContinue` take the graceful path instead: the exception callback logs the message + `CatchedStackTraceData` via `WriteLogMessage`, plus `Shutdown!` for the fatal variant. No `FATAL ERROR!` header.
+
+`InstallCrashHandlerStackForThisThread()` allocates a per-thread 2 MiB signal stack (lazily committed; touched only during a crash) and is a no-op on non-POSIX targets and under a debugger (where backward does not install its handlers).
+
+**Self-test.** [../Source/Common/DiagnosticSelfTest.cpp](../Source/Common/DiagnosticSelfTest.cpp) deliberately induces a chosen crash class to verify the above end-to-end. It is driven by the `FO_SELFTEST_CRASH` environment variable (not a setting, so it is inert in production and invisible to the config/script surface) and fires once in `InitApp`, after logging + the exception callback + the async-log mode are live. Modes: `main_null_read` / `main_null_write` / `main_wild_write` (SIGSEGV), `main_fpe`, `main_abort`, `main_stack_overflow`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, and `thread_*` counterparts that run the same crash on a worker-style `std::thread`. The embedding project's `Tools/PipelineTests/test_crash_diagnostics_linux.py` exercises these against the Linux headless server.
+
 ### Coverage
 
 `../Source/Tests/Test_StackTrace.cpp` exercises the new API:
@@ -115,7 +130,7 @@ For the MSVC CMake generators, solution-folder grouping is only reliable when a 
 ## Quick Validation
 
 1. Regenerate or open the MSVC solution.
-2. Start a debugger session and inspect `fo::raw_ptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
+2. Start a debugger session and inspect `fo::ptr`, `fo::nptr`, `fo::unique_ptr`, or `fo::refcount_ptr` values in Watch or Locals.
 3. Confirm that expanding the smart pointer opens the pointed object directly.
 4. Capture a stack trace by stepping into `fo::GetStackTrace()` and inspect the resulting `StackTraceData`. Native frames render as raw addresses until symbol resolution runs (via `FormatStackTrace` / `ResolveStackTrace`); pre-resolved script frames are reachable through `ScriptStackTraceLayer::ScriptFrames` in the `ScriptLayers` shared pointer.
 5. Break on `fo::BaseEngineException` and verify that the message, parameters, and embedded stack trace are visible.
@@ -131,7 +146,7 @@ Current `../../.vscode/launch.json` entries use:
 
 These native launch configurations depend on `Prepare :: Launch (Debug)`, which currently bakes resources and builds the debug `LF_Server` binary before attaching the C++ debugger.
 
-The AngelScript debugger requires `Script.DebuggerEnabled = True`. The current `LocalTest` subconfig enables it, while `GameplayTests` disables it.
+The AngelScript debugger requires `AngelScript.DebuggerEnabled = True`. The current `LocalTest` subconfig enables it, while `GameplayTests` disables it.
 
 ## Fast Route Selection
 
@@ -177,7 +192,7 @@ Use the headless workflow first for script, proto, content, and scene-runtime re
 
 1. Reproduce the bug first, then rebake resources after any changes under `../../Scripts/`, `../../Scripts/Tests/`, `../../Scripts/Scenes/`, `Modifiers/`, `Items/`, `Critters/`, `Dialogs/`, `Maps/`, or `../../LastFrontier.fomain`.
 2. Run `Prepare :: Gameplay Tests Launch`, then the platform launch task (`Launch Tests [windows]` or `Launch Tests [linux]`). This starts `LF_ServerHeadless` with `--ApplySubConfig GameplayTests`.
-3. `GameplayTests` now uses suite-level multi-instance execution by default: matched gameplay suites run in dedicated in-process server+client worker threads, with `Testing.MaxParallelSuites` capping how many suites may stay active at once. Worker servers are started one by one to avoid startup fan-out on busy machines, then continue running in parallel after startup succeeds. When `Testing.MaxParallelSuites = 0`, the controller uses `std::thread::hardware_concurrency()` and logs the resolved value at startup. Narrow validation with `Testing.Filter` when a bug maps to an existing gameplay suite or tag. New gameplay test files are only discovered after `Bake Resources` rebakes scripts.
+3. `GameplayTests` now uses suite-level multi-instance execution by default: matched gameplay suites run in dedicated in-process server+client worker threads, with `Testing.RunSuitesInParallel` enabling overlap and `Testing.MaxParallelInstances` capping how many worker instances may stay active at once. Worker servers are started one by one to avoid startup fan-out on busy machines, then continue running in parallel after startup succeeds. When `Testing.MaxParallelInstances = 0`, the controller uses `std::thread::hardware_concurrency()` and logs the resolved value at startup. Narrow validation with `Testing.Filter` when a bug maps to an existing gameplay suite or tag. New gameplay test files are only discovered after `Bake Resources` rebakes scripts.
 4. Watch `TEST` log lines for suite progress, per-suite completion summaries, and the final parallel aggregate, plus `SCENE` log lines for startup-scene and runtime-context issues. Engine and extension threads created through the shared thread helper now inherit the suite thread namespace in logs, for example `TestSuite-Combat::ServerWorker`, which makes parallel output easier to separate even when the code uses direct thread creation instead of `WorkThread`. The default log file for this flow is `LF_ServerHeadless.log` in the workspace root.
 5. Use the regular launch or scene-launch profiles only when the bug depends on the embedded client, rendering, direct input, AngelScript stepping, or startup scene UX.
 6. For engine-side regressions that may also affect gameplay, run `LF_UnitTests` first, then move to the headless gameplay pass if the failure path crosses scripting, baking, or network replication.
@@ -203,7 +218,7 @@ If you need to trace the current debugging flow through the live repository, sta
 Current checks worth running when debugger launch flow, attach assumptions, or troubleshooting guidance changes:
 
 - verify native, AngelScript, and web debugging entries against `../../.vscode/launch.json`, including the AngelScript discovery port `43001`; keep this guide focused on debugger route selection rather than duplicating every launch profile
-- `../../.vscode/tasks.json` and `../../LastFrontier.fomain` confirm the documented split between `LocalTest` debug launches with `Script.DebuggerEnabled = True` and `GameplayTests` runs with `Script.DebuggerEnabled = False`
+- `../../.vscode/tasks.json` and `../../LastFrontier.fomain` confirm the documented split between `LocalTest` debug launches with `AngelScript.DebuggerEnabled = True` and `GameplayTests` runs with `AngelScript.DebuggerEnabled = False`
 - `Docs/Testing.md` remains the reference for the current `LF_ServerHeadless --ApplySubConfig GameplayTests` workflow and `Validation Boundary Test Routing` table used during gameplay bug triage
 - `../../Scripts/Tests/Test_ClientControl.fos`, `../../Scripts/Tests/Test_ClientGui.fos`, and `../../Scripts/Tests/Test_ClientUiText.fos` cover embedded-client interaction, GUI, and UI-text paths that are commonly rechecked when debugging workflows depend on client-visible behavior
 - `Docs/WebDebugging.md` and `Docs/AndroidDebugging.md` confirm the browser and external-device branches of the general debug-path selection table

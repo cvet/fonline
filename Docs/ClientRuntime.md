@@ -35,6 +35,10 @@ Read this page together with:
 - `Source/Client/PlayerView.h`
 - `Source/Client/DefaultSprites.h`
 - `Source/Client/DefaultSprites.cpp`
+- `Source/Client/3dStuff.h`
+- `Source/Client/3dStuff.cpp`
+- `Source/Client/3dAnimation.h`
+- `Source/Client/3dAnimation.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
 - `Source/Client/ParticleSprites.h`
@@ -68,7 +72,7 @@ Major responsibilities:
 A typical client lifetime has these phases:
 
 1. **Application initialization** happens in the frontend layer. `Application` owns the main window, renderer, input, and audio. See [FrontendAndRendering.md](FrontendAndRendering.md).
-2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers.
+2. **Resource filesystem selection** starts through `GetClientResources(GlobalSettings&)` in `Source/Client/Client.cpp`, which builds the client-side `FileSystem` view used by runtime managers. Installed clients may add a higher-priority writable resource overlay above the read-only base resources; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) and [ClientUpdater.md](ClientUpdater.md).
 3. **Engine construction** wires settings, resources, the main application window, generated metadata, script modules, and client managers.
 4. **`OnStart`/script initialization** gives scripts their first client-side entry point. `Source/Tests/Test_ClientEngine.cpp` validates that script module init and loop calls are callable on a self-contained client runtime.
 5. **The main loop** processes frontend input, network packets, scripted loop callbacks, visual effects, video playback, map processing, and rendering-facing updates.
@@ -96,6 +100,8 @@ Important responsibilities:
 
 For protocol format details, use [Networking.md](Networking.md). For client/server handshake validation, see `Source/Tests/Test_ClientServerIntegration.cpp`, especially `ClientAndServerHandshakeOverInterthreadTransport`.
 
+Client-side script continuations scheduled through `ScheduleDelayedCallback()` are processed once per main-loop pass from a snapshot of callbacks already due at the start of that pass. A callback that schedules another zero-delay callback, including `Yield(0)`, resumes on the next pass instead of re-entering immediately. This prevents script wait loops from starving the next network/input tick.
+
 ## Entity and view model
 
 Client-side game objects are not raw server entities. They are view entities that combine Common-layer entity data with client-only rendering, input, and presentation state.
@@ -113,6 +119,14 @@ Primary view types:
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
 
+## Critter model animation
+
+3D critter models use separate body/action and movement animation controllers. `ModelInstance::PlayAnim()` applies
+animation-specific speed (`AnimSpeed`) to the body/action controller, while `RefreshMoveAnimation()` assigns gait and
+movement-speed scaling to the movement controller's track. When both are active, the movement controller advances with
+the model base/link/global speed only; it must not inherit the current body action's `AnimSpeed`, otherwise fast actions
+such as use/pick-up make the leg cycle run too quickly while the critter is moving.
+
 ## `MapView`: map presentation and local spatial state
 
 `MapView` is the largest client view class because it bridges several subsystems:
@@ -129,6 +143,8 @@ Primary view types:
 - mapper mode helpers used by engine tools.
 
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [MapsMovementGeometry.md](MapsMovementGeometry.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [FrontendAndRendering.md](FrontendAndRendering.md).
+
+Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
@@ -151,21 +167,21 @@ These managers are renderer-facing but not renderer-specific. They talk through 
 
 ### Fonts and Inline Color Tags
 
-`FontManager::FormatText()` strips `@color 0xBBGGRR@` / `@color 0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
+`FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.
 
 ## Input and script-facing hooks
 
 `ClientEngine::ProcessInputEvent()` receives frontend `InputEvent` values and raises higher-level script events such as:
 
 - `OnMouseDown`, `OnMouseUp`, `OnMouseMove`;
-- `OnTouchTap`, `OnTouchDoubleTap`, `OnTouchScroll`, `OnTouchZoom`;
+- `OnTouchDown`, `OnTouchMove`, `OnTouchUp` for raw per-finger touch streams, plus `OnTouchTap`, `OnTouchDoubleTap`, `OnTouchScroll`, `OnTouchZoom` for aggregated gestures;
 - `OnKeyDown`, `OnKeyUp`, `OnInputLost`;
 - `OnScreenScroll` and `OnScreenSizeChanged`;
 - map render-stage events such as `OnRenderMap_BeforeTiles`, `OnRenderMap_AfterSprites`, and `OnRenderMap_AfterFlushMap`.
 
 Input semantics originate in `Source/Frontend/Application.h`; game-specific UI behavior should stay in scripts and GUI resources owned by the embedding project.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseClick(pos, button)` sends mouse move/click or wheel events, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseClick(pos, button)` sends mouse move/click or wheel events, `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 

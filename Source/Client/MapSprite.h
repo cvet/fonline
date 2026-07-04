@@ -48,31 +48,36 @@ class MapSpriteList;
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
+    // Flat sprites pre-light
     Tile = 0,
     Tile1 = 1,
     Tile2 = 2,
     Tile3 = 3,
     Tile4 = 4,
-    HexGrid = 5,
-    FlatScenery = 8,
-    Ligth = 9,
-    DeadCritter = 10,
-    FlatItem = 13,
-    Track = 16,
-
-    NormalBegin = 20,
-    Scenery = 23,
-    Item = 26,
-    Critter = 29,
-    Particles = 30,
-    NormalEnd = 32,
-
+    FlatItemPreLight = 6,
+    HexGrid = 8,
+    // Light primitives
+    PreLight = 9,
+    Light = 10,
+    AfterLight = 11,
+    // Flat sprites post-light
+    DeadCritter = 13,
+    FlatItemAfterLight = 16,
+    FlatEnd = 18,
+    // Normal sprites
+    NormalBegin = 19,
+    Item = 22,
+    Critter = 25,
+    Particles = 28,
+    NormalEnd = 31,
+    // Roof sprites
     Roof = 33,
     Roof1 = 34,
     Roof2 = 35,
     Roof3 = 36,
     Roof4 = 37,
     RoofParticles = 38,
+    // Count: 40
     Last = 39,
 };
 
@@ -103,63 +108,74 @@ public:
     [[nodiscard]] auto GetDrawOrder() const noexcept -> DrawOrderType { return _drawOrder; }
     [[nodiscard]] auto GetSortValue() const noexcept -> uint32_t { return _index; }
     [[nodiscard]] auto GetDrawRect() const noexcept -> irect32;
+    [[nodiscard]] auto GetDrawRootPos() const noexcept -> ipos32;
+    [[nodiscard]] auto GetMapRootOffset() const noexcept -> ipos32;
+    [[nodiscard]] auto GetSpriteRootOffset() const noexcept -> ipos32;
     [[nodiscard]] auto GetViewRect() const noexcept -> irect32;
     [[nodiscard]] auto IsHidden() const noexcept -> bool { return _hidden; }
-    [[nodiscard]] auto GetSprite() const noexcept -> const Sprite* { return _pSpr ? *_pSpr.get() : _spr.get(); }
+    [[nodiscard]] auto GetSprite() const noexcept -> nptr<const Sprite> { return _pSpr ? *_pSpr.as_ptr() : _spr; }
     [[nodiscard]] auto GetHex() const noexcept -> mpos { return _hex; }
     [[nodiscard]] auto GetHexOffset() const noexcept -> ipos32 { return _hexOffset; }
-    [[nodiscard]] auto GetPHexOffset() const noexcept -> const ipos32* { return _pHexOffset.get(); }
-    [[nodiscard]] auto GetPSprOffset() const noexcept -> const ipos32* { return _pSprOffset.get(); }
-    [[nodiscard]] auto GetAlpha() const noexcept -> const uint8_t* { return _alpha.get(); }
-    [[nodiscard]] auto GetLight() const noexcept -> const ucolor* { return _light.get(); }
-    [[nodiscard]] auto GetLightRight() const noexcept -> const ucolor* { return _lightRight.get(); }
-    [[nodiscard]] auto GetLightLeft() const noexcept -> const ucolor* { return _lightLeft.get(); }
+    [[nodiscard]] auto GetPHexOffset() const noexcept -> nptr<const ipos32> { return _pHexOffset; }
+    [[nodiscard]] auto GetPSprOffset() const noexcept -> nptr<const ipos32> { return _pSprOffset; }
+    [[nodiscard]] auto GetRootOffset() const noexcept -> ipos32 { return _pRootOffset ? *_pRootOffset.as_ptr() : ipos32 {}; }
+    [[nodiscard]] auto GetAlpha() const noexcept -> nptr<const uint8_t> { return _alpha; }
+    [[nodiscard]] auto GetLight() const noexcept -> nptr<const ucolor> { return _light; }
+    [[nodiscard]] auto GetLightRight() const noexcept -> nptr<const ucolor> { return _lightRight; }
+    [[nodiscard]] auto GetLightLeft() const noexcept -> nptr<const ucolor> { return _lightLeft; }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
-    [[nodiscard]] auto GetDrawEffect() const noexcept -> RenderEffect** { return _drawEffect.get(); }
+    [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
+    [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
     [[nodiscard]] auto GetAngle() const noexcept -> int16_t { return _angle; }
-    [[nodiscard]] auto GetMapProjection() const noexcept -> bool { return _mapProjection; }
+    [[nodiscard]] auto GetMapProjected() const noexcept -> bool { return _mapProjected; }
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
     void SetColor(ucolor color) noexcept;
-    void SetAlpha(const uint8_t* alpha) noexcept;
+    void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
-    void SetLight(CornerType corner, const ucolor* light, msize size) noexcept;
+    void SetLight(CornerType corner, ptr<const ucolor> light, msize size) noexcept;
     void SetHidden(bool hidden) noexcept;
+    void SetElevation(int16_t elevation) noexcept;
     void SetAngle(int16_t angle) noexcept;
-    void SetMapProjection(bool map_projection) noexcept;
-    void CreateExtraChain(MapSprite** mspr);
-    void AddToExtraChain(MapSprite* mspr);
+    void SetMapProjected(bool map_projected) noexcept;
+    void CreateExtraChain(ptr<MapSprite*> mspr);
+    void AddToExtraChain(ptr<MapSprite> mspr);
 
 private:
     void Reset() noexcept;
 
-    raw_ptr<MapSpriteList> _owner {};
+    nptr<MapSpriteList> _owner {};
     uint32_t _drawOrderPos {};
     uint32_t _globalPos {};
     uint32_t _index {};
     DrawOrderType _drawOrder {};
     bool _hidden {};
-    raw_ptr<bool> _validCallback {};
-    raw_ptr<const Sprite> _spr {};
-    raw_ptr<const Sprite*> _pSpr {};
+    nptr<bool> _validCallback {};
+    nptr<const Sprite> _spr {};
+    nptr<const Sprite*> _pSpr {};
     mpos _hex {};
     ipos32 _hexOffset {};
-    raw_ptr<const ipos32> _pHexOffset {};
-    raw_ptr<const ipos32> _pSprOffset {};
-    raw_ptr<const uint8_t> _alpha {};
-    raw_ptr<const ucolor> _light {};
-    raw_ptr<const ucolor> _lightRight {};
-    raw_ptr<const ucolor> _lightLeft {};
+    nptr<const ipos32> _pHexOffset {};
+    nptr<const ipos32> _pSprOffset {};
+    // Static logical-root offset (item proto Offset): the bottom-center→trunk vector. Kept separate from
+    // _pSprOffset (which still positions the bitmap) so the depth/sort anchor can use the logical root, not the
+    // bitmap bottom-center. Null for sprites without one (critters, particles).
+    nptr<const ipos32> _pRootOffset {};
+    nptr<const uint8_t> _alpha {};
+    nptr<const ucolor> _light {};
+    nptr<const ucolor> _lightRight {};
+    nptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
     ucolor _color {};
+    int16_t _elevation {};
     int16_t _angle {};
-    bool _mapProjection {};
-    mutable raw_ptr<RenderEffect*> _drawEffect {};
-    raw_ptr<MapSprite*> _extraChainRoot {};
-    raw_ptr<MapSprite> _extraChainParent {};
-    raw_ptr<MapSprite> _extraChainChild {};
+    bool _mapProjected {};
+    mutable nptr<RenderEffect*> _drawEffect {};
+    nptr<MapSprite*> _extraChainRoot {};
+    nptr<MapSprite> _extraChainParent {};
+    nptr<MapSprite> _extraChainChild {};
 };
 
 class MapSpriteList final
@@ -175,16 +191,16 @@ public:
     ~MapSpriteList() = default;
 
     [[nodiscard]] auto HasActiveSprites() const noexcept { return !_activeSprites.empty(); }
-    [[nodiscard]] auto GetActiveSprites() noexcept -> const vector<unique_ptr<MapSprite>>& { return _activeSprites; }
+    [[nodiscard]] auto GetActiveSprites() const noexcept -> const_span<unique_ptr<MapSprite>> { return _activeSprites; }
     [[nodiscard]] auto GetDrawOrderRange(DrawOrderType from, DrawOrderType to) const -> pair<uint32_t, uint32_t>;
 
-    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, const ipos32* phex_offset, const Sprite* spr, const Sprite** pspr, const ipos32* spr_offset, const uint8_t* alpha, RenderEffect** effect, bool* callback) noexcept -> MapSprite*;
+    auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
 
 private:
     void GrowPool() noexcept;
-    void Invalidate(MapSprite* mspr) noexcept;
+    void Invalidate(ptr<MapSprite> mspr) noexcept;
 
     vector<unique_ptr<MapSprite>> _activeSprites {};
     vector<unique_ptr<MapSprite>> _spritesPool {};
@@ -195,7 +211,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
-///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjection, StopDraw
+///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderHyOffset, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public RefCounted<MapSpriteHolder>
 {
 public:
@@ -215,7 +231,7 @@ public:
     ipos32 Offset {};
     bool IsFlat {};
     bool NoLight {};
-    DrawOrderType DrawOrder {};
+    DrawOrderType DrawOrder {DrawOrderType::Item};
     int32_t DrawOrderHyOffset {};
     CornerType Corner {};
     bool DisableEgg {};
@@ -225,8 +241,8 @@ public:
     bool IsTweakAlpha {};
     uint8_t TweakAlpha {};
     int16_t Angle {};
-    bool MapProjection {};
-    raw_ptr<MapSprite> MSpr {};
+    bool MapProjected {};
+    nptr<MapSprite> MSpr {};
 };
 
 FO_END_NAMESPACE

@@ -33,7 +33,7 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables.inc"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/Platform.cpp"
@@ -56,14 +56,15 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/Compressor.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/WorkThread.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/WorkThread.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Threading.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Threading.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/Logging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/NetSockets.cpp"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApiUndef.inc"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/essentials.natvis>")
 
 AppendList(FO_COMMON_SOURCE
@@ -77,6 +78,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/CacheStorage.h"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ConfigFile.h"
+    "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/DiagnosticSelfTest.h"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.h"
     "${FO_ENGINE_ROOT}/Source/Common/DataSource.cpp"
@@ -103,8 +106,6 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/NetBuffer.h"
     "${FO_ENGINE_ROOT}/Source/Common/NetworkUdp.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/NetworkUdp.h"
-    "${FO_ENGINE_ROOT}/Source/Common/NetCommand.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/NetCommand.h"
     "${FO_ENGINE_ROOT}/Source/Common/PathFinding.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/PathFinding.h"
     "${FO_ENGINE_ROOT}/Source/Common/Properties.cpp"
@@ -117,11 +118,11 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
+    "${FO_ENGINE_ROOT}/Source/Common/Settings.inc"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
-    "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/TimeEventManager.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
@@ -130,10 +131,10 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonGlobalScriptMethods.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/Version-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig-Include.h"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EngineConfig.gen.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
 AppendList(FO_SERVER_BASE_SOURCE
@@ -151,6 +152,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/DataBase.h"
     "${FO_ENGINE_ROOT}/Source/Server/EntityManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/EntityManager.h"
+    "${FO_ENGINE_ROOT}/Source/Server/EntitySync.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/EntitySync.h"
     "${FO_ENGINE_ROOT}/Source/Server/Item.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/Item.h"
     "${FO_ENGINE_ROOT}/Source/Server/ItemManager.cpp"
@@ -177,6 +180,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.h"
+    "${FO_ENGINE_ROOT}/Source/Server/WorkerPool.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/WorkerPool.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerPlayerScriptMethods.cpp"
@@ -262,11 +267,11 @@ AppendList(FO_CLIENT_BASE_SOURCE
 
 AppendList(FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Server.gen.cpp")
 
 AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
 AppendList(FO_EDITOR_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
@@ -289,7 +294,7 @@ AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.gen.cpp")
 
 AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AngelScriptBaker.h"
@@ -318,9 +323,9 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/TextBaker.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.cpp"
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.cpp")
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
+    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
 AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
@@ -332,10 +337,12 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Common/EntityProperties.h"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.h"
-    "${FO_ENGINE_ROOT}/Source/Common/Settings-Include.h"
-    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration-Template.cpp"
-    "${FO_ENGINE_ROOT}/Source/Common/GenericCode-Template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
+    "${FO_ENGINE_ROOT}/Source/Common/Settings.inc"
+    "${FO_ENGINE_ROOT}/Source/Common/MetadataRegistration.template.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/GenericCode.template.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TextPack.h"
+    "${FO_ENGINE_ROOT}/Source/Common/TimeEvents.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/EffectManager.h"
@@ -397,7 +404,6 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExceptionHandling.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FogOfWar.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_NetCommand.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SmartPointers.cpp"
@@ -412,6 +418,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
@@ -437,6 +444,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp"
@@ -448,4 +456,6 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")

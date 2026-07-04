@@ -3,9 +3,9 @@ plugins {
 }
 
 def releaseStoreFile = '$RELEASE_STORE_FILE$'
-def releaseStorePassword = '$RELEASE_STORE_PASSWORD$'
+def releaseStorePassword = System.getenv('FO_ANDROID_RELEASE_STORE_PASSWORD') ?: ''
 def releaseKeyAlias = '$RELEASE_KEY_ALIAS$'
-def releaseKeyPassword = '$RELEASE_KEY_PASSWORD$'
+def releaseKeyPassword = System.getenv('FO_ANDROID_RELEASE_KEY_PASSWORD') ?: ''
 def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
 
 android {

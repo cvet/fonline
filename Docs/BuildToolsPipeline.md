@@ -27,6 +27,7 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
 - `BuildTools/codegen.py`
 - `BuildTools/package.py`
+- `BuildTools/msicreator/createmsi.py`
 
 Important consequences:
 
@@ -108,7 +109,18 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-Start here when platform package layout, package target naming, or package script arguments change.
+`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+
+- product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
+- `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
+- deep-link URI scheme ← `Auth.UriScheme`
+- stable WiX `UpgradeCode` ← `Windows.MsiUpgradeCode` (required; must never change once an MSI has shipped)
+- Add/Remove Programs icon ← `Windows.Icon` (optional)
+- install directory and MSI base name ← the package nice name
+
+The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
+
+Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.
 
 ### `Finalize.cmake`
 
@@ -146,7 +158,7 @@ Use hooks when an embedding project or a later refactor needs to extend stage be
 - New generated metadata/API behavior: `Codegen.cmake` and [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - New script compile or resource bake behavior: `ScriptsAndBaking.cmake`, [BakingPipeline.md](BakingPipeline.md), and [Scripting.md](Scripting.md).
 - New executable/tool entry point: `Applications.cmake` and [Applications.md](Applications.md).
-- New package layout: `Packages.cmake` plus platform docs.
+- New package layout or installer metadata: `Packages.cmake`, `BuildTools/package.py`, `BuildTools/msicreator/createmsi.py`, plus platform docs.
 - Final target organization or verbose diagnostics: `Finalize.cmake`.
 
 ## Validation checklist
@@ -158,6 +170,6 @@ For BuildTools changes:
 3. For source-list changes, verify the affected target builds.
 4. For codegen changes, verify generated files and script API consumers.
 5. For baking changes, run normal and forced bake paths when relevant.
-6. For package changes, run the affected package target and inspect output layout.
+6. For package changes, run the affected package target and inspect output layout; for WiX/MSI changes, also verify the generated installer config/registry values or run the installer build on a host with WiX/wixl.
 7. Run documentation link checks if docs changed.
 8. Run `git diff --check` before reporting completion.

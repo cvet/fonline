@@ -110,6 +110,34 @@ namespace ClientEngineTest
     {
         return ManualCalls;
     }
+
+    int UnitTestMapSpriteHolderRefType()
+    {
+        MapSpriteHolder holder = MapSpriteHolder();
+        if (holder is null) return -1;
+        if (holder.Valid) return -2;
+
+        holder.SprId = 42;
+        if (holder.SprId != 42) return -3;
+
+        holder.NoLight = true;
+        if (!holder.NoLight) return -4;
+
+        holder.Angle = 90;
+        if (holder.Angle != 90) return -5;
+
+        holder.TweakAlpha = 123;
+        if (holder.TweakAlpha != 123) return -6;
+
+        holder.MapProjected = true;
+        if (!holder.MapProjected) return -7;
+
+        MapSpriteHolder same = holder;
+        if (!(holder == same)) return -8;
+
+        holder.StopDraw();
+        return 0;
+    }
 }
 )"},
             },
@@ -146,27 +174,33 @@ namespace ClientEngineTest
         resources.AddCustomSource(std::move(runtime_source));
         return resources;
     }
+
+    static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
+    }
 }
 
 TEST_CASE("ClientEngineStartsAndRegistersEntities")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     CHECK_FALSE(client->IsConnecting());
     CHECK_FALSE(client->IsConnected());
-    CHECK(client->GetCurPlayer() == nullptr);
-    CHECK(client->GetCurLocation() == nullptr);
-    CHECK(client->GetCurMap() == nullptr);
+    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
+    CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
+    CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
     const auto critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
-    const auto* critter_proto = client->GetProtoCritter(critter_pid);
-    REQUIRE(critter_proto != nullptr);
+    auto nullable_critter_proto = client->GetProtoCritter(critter_pid);
+    REQUIRE(static_cast<bool>(nullable_critter_proto));
+    auto critter_proto = nullable_critter_proto.as_ptr();
 
-    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client.get(), ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client.get(), ident_t {1002}, critter_proto);
+    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
 
     REQUIRE(client->GetEntity(player->GetId()) == player.get());
     REQUIRE(client->GetEntity(critter->GetId()) == critter.get());
@@ -176,14 +210,14 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     critter->DestroySelf();
     player->DestroySelf();
 
-    CHECK(client->GetEntity(ident_t {1002}) == nullptr);
-    CHECK(client->GetEntity(ident_t {1001}) == nullptr);
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1002})));
+    CHECK_FALSE(static_cast<bool>(client->GetEntity(ident_t {1001})));
 }
 
 TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 {
     auto settings = MakeClientTestSettings();
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, MakeClientTestResources(), App->MainWindow);
+    auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -210,6 +244,42 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
     CHECK(loop_calls >= 2);
+}
+
+TEST_CASE("ClientEngineScheduledCallbacksDoNotRunNestedZeroDelayInSamePass")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    int32_t callback_count = 0;
+
+    client->ScheduleDelayedCallback(timespan::zero, [&client, &callback_count] {
+        callback_count++;
+
+        client->ScheduleDelayedCallback(timespan::zero, [&callback_count] { callback_count++; });
+    });
+
+    client->ProcessScheduledCallbacks();
+    CHECK(callback_count == 1);
+
+    client->ProcessScheduledCallbacks();
+    CHECK(callback_count == 2);
+}
+
+TEST_CASE("ClientEngineMethodRefTypeOps")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    const auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+
+    int32_t result = 0;
+    REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
+    CHECK(result == 0);
 }
 
 FO_END_NAMESPACE

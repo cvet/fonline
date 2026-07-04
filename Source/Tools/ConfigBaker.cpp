@@ -81,7 +81,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
         const auto client_engine = BakerClientEngine(*_context->BakedFiles);
 
         const auto bake_config = [&](string_view sub_config) -> bool {
-            FO_RUNTIME_ASSERT(_context->Settings->GetAppliedConfigs().size() == 1);
+            FO_VERIFY_AND_THROW(_context->Settings->GetAppliedConfigs().size() == 1, "Config baker expected a single root config before applying bake subconfig", sub_config, _context->Settings->GetAppliedConfigs().size());
             const string config_path = _context->Settings->GetAppliedConfigs().front();
             const string_view config_name = strvex(config_path).extract_file_name();
             const string config_dir = strex(config_path).extract_dir();
@@ -151,7 +151,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             if (settings_errors == 0) {
                 const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-                    _context->WriteData(cfg_name, {reinterpret_cast<const uint8_t*>(cfg_content.data()), cfg_content.size()});
+                    _context->WriteData(cfg_name, string_to_span(cfg_content));
                 };
 
                 write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content);

@@ -1,0 +1,69 @@
+# MapSprite_Contour_2px — entity selection-outline (contour) shader.
+# Where: the entity selection-outline (contour) effect — dilates a sprite's silhouette into a ~2px highlight rim.
+# How: fragment dilates the sprite's opaque silhouette by taking the max texture alpha across the centre plus eight ~2px-offset samples, each clamped to the sprite's own atlas rect (SpriteBorder) so the dilation never bleeds into a neighbouring atlas sprite; it then outputs a flat solid contour colour (read as .bgr to match the offscreen-sprite path) with the dilated alpha, discarding near-zero alpha. Drawn with padding so the sprite is re-drawn on top, leaving only the rim. Depth test Always.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
+[Effect]
+DepthFunc = Always
+SpriteBorderBuf = 1
+
+[VertexShader]
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+
+layout(location = 0) in vec3 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 3) in vec2 InEggData;
+
+layout(location = 0) out vec4 Color;
+layout(location = 1) out vec2 TexCoord;
+layout(location = 2) out vec2 EggFlag;
+
+void main(void)
+{
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
+    Color = InColor;
+    TexCoord = InTexCoord;
+    EggFlag = InEggData;
+}
+
+[FragmentShader]
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+layout(set = 0, binding = 1, std140) uniform SpriteBorderBuf { vec4 SpriteBorder; };
+
+layout(location = 0) in vec4 Color;
+layout(location = 1) in vec2 TexCoord;
+layout(location = 2) in vec2 EggFlag;
+
+layout(location = 0) out vec4 FragColor;
+
+const float AlphaCutoff = 1.0 / 255.0;
+
+// Selection contour: the sprite's opaque silhouette DILATED outward by the padding ring, in the solid contour
+// colour. A fragment is part of the contour if any pixel within ~2px (sampled in eight directions) is opaque;
+// each sample is clamped to the sprite's own atlas rect (SpriteBorder) so the dilation never bleeds into a
+// neighbouring atlas sprite. Drawn through DrawEntitySprite with padding=2; the sprite is then re-drawn on top
+// (padding 0), so only the dilated RIM remains — a true outline, independent of map depth.
+void main(void)
+{
+    vec2 texel = 1.0 / vec2(textureSize(MainTex, 0));
+    vec2 p = texel * 2.0;
+    float a = texture(MainTex, TexCoord).a;
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(p.x, 0.0), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(-p.x, 0.0), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(0.0, p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(0.0, -p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(p.x, p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(p.x, -p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(-p.x, p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+    a = max(a, texture(MainTex, clamp(TexCoord + vec2(-p.x, -p.y), SpriteBorder.xy, SpriteBorder.zw)).a);
+
+    // The offscreen-sprite (DrawSpriteWithEffect) path delivers the vertex colour with R/B swapped relative to the
+    // batch path, so read it as .bgr to honour the colour the caller passed. No *2 brightness scale — that is the
+    // texture-sprite convention; the contour is a flat solid colour.
+    FragColor.rgb = Color.bgr;
+    FragColor.a = a * Color.a;
+    if (FragColor.a <= AlphaCutoff) {
+        discard;
+    }
+}

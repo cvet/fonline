@@ -38,77 +38,79 @@
 #include "CritterView.h"
 #include "Geometry.h"
 #include "MapView.h"
+#include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
 
+static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto nullable_hex_cr = cr.dyn_cast<CritterHexView>();
+
+    if (!nullable_hex_cr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return nullable_hex_cr.as_ptr();
+}
+
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_SetName(CritterView* self, string_view name)
+FO_SCRIPT_API void Client_Critter_SetName(ptr<CritterView> self, string_view name)
 {
     self->SetName(name);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsOffline(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsOffline(ptr<CritterView> self)
 {
     return self->GetControlledByPlayer() && self->GetIsPlayerOffline();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsAlive(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsAlive(ptr<CritterView> self)
 {
     return self->IsAlive();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsKnockout(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsKnockout(ptr<CritterView> self)
 {
     return self->IsKnockout();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsDead(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsDead(ptr<CritterView> self)
 {
     return self->IsDead();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsOnMap(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsOnMap(ptr<CritterView> self)
 {
-    return dynamic_cast<CritterHexView*>(self) != nullptr;
+    auto hex_cr = self.dyn_cast<CritterHexView>();
+    return static_cast<bool>(hex_cr);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsMoving(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsMoving(ptr<CritterView> self)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     return hex_cr->IsMoving();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_GetMovingContext(CritterView* self)
+FO_SCRIPT_API nptr<MovingContext> Client_Critter_GetMovingContext(ptr<CritterView> self)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    return hex_cr->GetMoving();
+    auto hex_cr = RequireHexCritter(self);
+    auto moving = hex_cr->GetMoving();
+    return moving;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsModel(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsModel(ptr<CritterView> self)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
+    auto hex_cr = RequireHexCritter(self);
 
 #if FO_ENABLE_3D
     return hex_cr->IsModel();
@@ -118,87 +120,94 @@ FO_SCRIPT_API bool Client_Critter_IsModel(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsVisible(CritterView* self)
+FO_SCRIPT_API bool Client_Critter_IsVisible(ptr<CritterView> self)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     return hex_cr->IsMapSpriteVisible();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
+FO_SCRIPT_API ipos32 Client_Critter_GetSpriteOffset(ptr<CritterView> self)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto hex_cr = RequireHexCritter(self);
+    return hex_cr->GetSpriteOffset();
+}
 
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
+{
+    auto hex_cr = RequireHexCritter(self);
     return hex_cr->IsAnimAvailable(stateAnim, actionAnim);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(CritterView* self)
+FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+#if FO_ENABLE_3D
+    auto hex_cr = RequireHexCritter(self);
 
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
+    if (!hex_cr->IsModel()) {
+        return {};
     }
 
+    auto nullable_model = hex_cr->GetModel();
+    FO_VERIFY_AND_THROW(nullable_model, "Critter reports model but has no model instance");
+    auto model = nullable_model.as_ptr();
+
+    return model->GetAnimDuration(stateAnim, actionAnim);
+
+#else
+    ignore_unused(self);
+    ignore_unused(stateAnim);
+    ignore_unused(actionAnim);
+
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Client_Critter_IsAnimPlaying(ptr<CritterView> self)
+{
+    auto hex_cr = RequireHexCritter(self);
     return hex_cr->IsAnimPlaying();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_Animate(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, FO_NULLABLE AbstractItem* contextItem = nullptr, bool append = false)
+FO_SCRIPT_API void Client_Critter_Animate(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, nptr<AbstractItem> contextItem = nullptr, bool append = false)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
+    auto hex_cr = RequireHexCritter(self);
 
     if (!append) {
         hex_cr->StopAnim();
     }
 
-    hex_cr->AppendAnim(stateAnim, actionAnim, contextItem);
+    nptr<Entity> context_item = contextItem;
+    hex_cr->AppendAnim(stateAnim, actionAnim, context_item);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_StopAnim(CritterView* self)
+FO_SCRIPT_API void Client_Critter_StopAnim(ptr<CritterView> self)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     hex_cr->StopAnim();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_RefreshView(CritterView* self)
+FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     hex_cr->RefreshView();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, hstring protoId)
 {
+    auto inv_items = self->GetInvItems();
     int32_t result = 0;
 
-    for (const auto& item : self->GetInvItems()) {
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
+
         if (!protoId || item->GetProtoId() == protoId) {
             result += item->GetCount();
         }
@@ -208,11 +217,14 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, hstring protoI
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* proto)
+FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
+    auto inv_items = self->GetInvItems();
     int32_t result = 0;
 
-    for (const auto& item : self->GetInvItems()) {
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
+
         if (item->GetProtoId() == proto->GetProtoId()) {
             result += item->GetCount();
         }
@@ -222,37 +234,45 @@ FO_SCRIPT_API int32_t Client_Critter_CountItem(CritterView* self, ProtoItem* pro
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ident_t itemId)
+FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
-    return self->GetInvItem(itemId);
+    auto item = self->GetInvItem(itemId);
+    return item;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
+FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstring protoId)
 {
-    const auto* proto = self->GetEngine()->GetProtoItem(protoId);
+    auto nullable_proto = self->GetEngine()->GetProtoItem(protoId);
 
-    if (proto == nullptr) {
+    if (!nullable_proto) {
         throw ScriptException("Invalid item proto id arg", protoId);
     }
 
+    auto proto = nullable_proto.as_ptr();
+    auto inv_items = self->GetInvItems();
+
     if (proto->GetStackable()) {
-        for (auto& item : self->GetInvItems()) {
+        for (size_t i = 0; i < inv_items.size(); i++) {
+            auto item = inv_items[i].as_ptr();
+
             if (item->GetProtoId() == protoId) {
-                return item.get();
+                return item;
             }
         }
     }
     else {
-        ItemView* another_slot = nullptr;
+        nptr<ItemView> another_slot;
 
-        for (auto& item : self->GetInvItems()) {
+        for (size_t i = 0; i < inv_items.size(); i++) {
+            auto item = inv_items[i].as_ptr();
+
             if (item->GetProtoId() == protoId) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
+                    return item;
                 }
 
-                another_slot = item.get();
+                another_slot = item;
             }
         }
 
@@ -263,25 +283,31 @@ FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, hs
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ProtoItem* proto)
+FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
+    auto inv_items = self->GetInvItems();
+
     if (proto->GetStackable()) {
-        for (auto& item : self->GetInvItems()) {
+        for (size_t i = 0; i < inv_items.size(); i++) {
+            auto item = inv_items[i].as_ptr();
+
             if (item->GetProtoId() == proto->GetProtoId()) {
-                return item.get();
+                return item;
             }
         }
     }
     else {
-        ItemView* another_slot = nullptr;
+        nptr<ItemView> another_slot;
 
-        for (auto& item : self->GetInvItems()) {
+        for (size_t i = 0; i < inv_items.size(); i++) {
+            auto item = inv_items[i].as_ptr();
+
             if (item->GetProtoId() == proto->GetProtoId()) {
                 if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item.get();
+                    return item;
                 }
 
-                another_slot = item.get();
+                another_slot = item;
             }
         }
 
@@ -292,13 +318,16 @@ FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, Pr
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    auto inv_items = self->GetInvItems();
 
-    for (auto& item : self->GetInvItems()) {
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
+
         if (item->GetValueAsInt(prop) == propertyValue) {
-            return item.get();
+            return item;
         }
     }
 
@@ -306,66 +335,61 @@ FO_SCRIPT_API FO_NULLABLE ItemView* Client_Critter_GetItem(CritterView* self, It
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self)
+FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self)
 {
-    auto& inv_items = self->GetInvItems();
+    auto inv_items = self->GetInvItems();
 
-    vector<ItemView*> items;
+    vector<ptr<ItemView>> items;
     items.reserve(inv_items.size());
 
-    for (auto& item : inv_items) {
-        items.emplace_back(item.get());
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        items.emplace_back(inv_items[i]);
     }
 
-    return items;
+    return MakeScriptHandleVector<ItemView>(items);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
-    auto& inv_items = self->GetInvItems();
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    auto inv_items = self->GetInvItems();
 
-    vector<ItemView*> items;
+    vector<ptr<ItemView>> items;
     items.reserve(inv_items.size());
 
-    for (auto& item : inv_items) {
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
+
         if (item->GetValueAsInt(prop) == propertyValue) {
-            items.emplace_back(item.get());
+            items.emplace_back(item);
         }
     }
 
-    return items;
+    return MakeScriptHandleVector<ItemView>(items);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_GetTextPos(CritterView* self, ipos32& pos)
+FO_SCRIPT_API bool Client_Critter_GetTextPos(ptr<CritterView> self, ipos32& pos)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     return hex_cr->GetNameTextPos(pos);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
+FO_SCRIPT_API void Client_Critter_RunParticle(ptr<CritterView> self, string_view particleName, hstring boneName, float32_t moveX, float32_t moveY, float32_t moveZ)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
+    auto hex_cr = RequireHexCritter(self);
 
 #if FO_ENABLE_3D
-    if (hex_cr->IsModel()) {
-        hex_cr->GetModel()->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
+    if (nptr<ModelInstance> nullable_model = hex_cr->GetModel(); nullable_model) {
+        auto model = nullable_model.as_ptr();
+        model->RunParticle(particleName, boneName, vec3(moveX, moveY, moveZ));
     }
     else
 #endif
     {
+        ignore_unused(hex_cr);
         ignore_unused(particleName);
         ignore_unused(boneName);
         ignore_unused(moveX);
@@ -375,31 +399,29 @@ FO_SCRIPT_API void Client_Critter_RunParticle(CritterView* self, string_view par
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, CritterView*> animCallback)
+FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim, float32_t normalizedTime, ScriptFunc<void, CritterView*> animCallback)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
+    auto hex_cr = RequireHexCritter(self);
 
 #if FO_ENABLE_3D
-    if (hex_cr->IsModel()) {
+    if (nptr<ModelInstance> nullable_model = hex_cr->GetModel(); nullable_model) {
+        auto model = nullable_model.as_ptr();
         ModelAnimationCallback anim_callback;
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
         anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, CritterView*>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
-                animCallback->Call(self);
+                animCallback->Call(self.get());
             }
         };
 
-        hex_cr->GetModel()->AddAnimationCallback(std::move(anim_callback));
+        model->AddAnimationCallback(std::move(anim_callback));
     }
     else
 #endif
     {
+        ignore_unused(hex_cr);
         ignore_unused(stateAnim);
         ignore_unused(actionAnim);
         ignore_unused(normalizedTime);
@@ -408,22 +430,21 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(CritterView* self, CritterStat
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, ipos32& boneOffset)
+FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring boneName, ipos32& boneOffset)
 {
 #if FO_ENABLE_3D
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
+    auto hex_cr = RequireHexCritter(self);
     boneOffset = hex_cr->GetSpriteOffset();
 
     if (!hex_cr->IsModel()) {
         return false;
     }
 
-    const auto bone_pos = hex_cr->GetModel()->GetBonePos(boneName);
+    auto nullable_model = hex_cr->GetModel();
+    FO_VERIFY_AND_THROW(nullable_model, "Critter reports model but has no model instance");
+    auto model = nullable_model.as_ptr();
+
+    const auto bone_pos = model->GetBonePos(boneName);
     if (!bone_pos.has_value()) {
         return false;
     }
@@ -442,78 +463,69 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(CritterView* self, hstring boneName
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, ipos32 hexOffset, int32_t speed)
+FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, ipos32 hexOffset, int32_t speed)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
+    auto hex_cr = RequireHexCritter(self);
+    const int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
     // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
-    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
-    return hex_cr->GetMoving();
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
+    auto moving = hex_cr->GetMoving();
+    return moving;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE MovingContext* Client_Critter_MoveToHex(CritterView* self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
+FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self, mpos hex, int32_t cut, ipos32 hexOffset, int32_t speed)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto hex_cr = RequireHexCritter(self);
+    const int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
+    const int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    // hexOffset is the target's real sub-hex position; with FreeMovement the engine stops at the cut distance from it.
-    const auto ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
-    const auto oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
-
-    self->GetEngine()->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
-    return hex_cr->GetMoving();
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, cut}, speed);
+    auto moving = hex_cr->GetMoving();
+    return moving;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveToDir(CritterView* self, mdir dir, int32_t speed)
+FO_SCRIPT_API void Client_Critter_MoveToDir(ptr<CritterView> self, mdir dir, int32_t speed)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    self->GetEngine()->CritterMoveTo(hex_cr, dir, speed);
+    auto hex_cr = RequireHexCritter(self);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, dir, speed);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_StopMove(CritterView* self)
+FO_SCRIPT_API void Client_Critter_StopMove(ptr<CritterView> self)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
-    }
-
-    self->GetEngine()->CritterMoveTo(hex_cr, mdir {0}, 0);
+    auto hex_cr = RequireHexCritter(self);
+    auto engine = self->GetEngine();
+    engine->CritterMoveTo(hex_cr, mdir {0}, 0);
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(CritterView* self)
+FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(ptr<CritterView> self)
 {
 #if FO_ENABLE_3D
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
 
-    if (hex_cr != nullptr && hex_cr->IsModel()) {
-        float32_t a = 180.0f - hex_cr->GetModel()->GetMoveDirAngle();
-        a = std::fmod(a, 360.0f);
+    if (nullable_hex_cr) {
+        auto hex_cr = nullable_hex_cr.as_ptr();
+        auto nullable_model = hex_cr->GetModel();
 
-        if (a < 0.0f) {
-            a += 360.0f;
+        if (nullable_model) {
+            auto model = nullable_model.as_ptr();
+            float32_t a = 180.0f - model->GetMoveDirAngle();
+            a = std::fmod(a, 360.0f);
+
+            if (a < 0.0f) {
+                a += 360.0f;
+            }
+
+            return iround<int16_t>(a);
         }
-
-        return iround<int16_t>(a);
     }
 #endif
 
@@ -521,54 +533,58 @@ FO_SCRIPT_API int16_t Client_Critter_GetBodyAngle(CritterView* self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_ChangeDir(CritterView* self, mdir dir)
+FO_SCRIPT_API void Client_Critter_ChangeDir(ptr<CritterView> self, mdir dir)
 {
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto hex_cr = RequireHexCritter(self);
+    auto engine = self->GetEngine();
+    engine->CritterLookTo(hex_cr, dir);
+}
 
-    if (hex_cr == nullptr) {
-        throw ScriptException("Critter is not on map");
+///@ ExportMethod
+FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(ptr<CritterView> self)
+{
+    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
+
+    if (!nullable_hex_cr) {
+        return 0xFF;
     }
 
-    self->GetEngine()->CritterLookTo(hex_cr, dir);
+    auto hex_cr = nullable_hex_cr.as_ptr();
+    return hex_cr->GetCurAlpha();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API uint8_t Client_Critter_GetAlpha(CritterView* self)
+FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 {
-    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    auto nullable_hex_cr = self.dyn_cast<CritterHexView>();
 
-    return hex_cr != nullptr ? hex_cr->GetCurAlpha() : 0xFF;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_SetAlpha(CritterView* self, uint8_t alpha)
-{
-    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
-
-    if (hex_cr != nullptr) {
+    if (nullable_hex_cr) {
+        auto hex_cr = nullable_hex_cr.as_ptr();
         hex_cr->SetTargetAlpha(alpha);
     }
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
 {
-    auto* item = self->GetInvItem(itemId);
-    auto* swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
+    auto nullable_item = self->GetInvItem(itemId);
+    nptr<ItemView> nullable_swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
 
-    if (item == nullptr) {
+    if (!nullable_item) {
         throw ScriptException("Item not found");
     }
-    if (swapItemId && swap_item == nullptr) {
+    if (swapItemId && !nullable_swap_item) {
         throw ScriptException("Swap item not found");
     }
 
+    auto item = nullable_item.as_ptr();
     auto old_item = item->CreateRefClone();
-    const auto from_slot = item->GetCritterSlot();
-    auto* map_cr = dynamic_cast<CritterHexView*>(self);
+    const CritterItemSlot from_slot = item->GetCritterSlot();
+    auto nullable_map_cr = self.dyn_cast<CritterHexView>();
 
     if (toSlot == CritterItemSlot::Outside) {
-        if (map_cr != nullptr) {
+        if (nullable_map_cr) {
+            auto map_cr = nullable_map_cr.as_ptr();
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
@@ -577,27 +593,30 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(CritterView* self, ident_t ite
         }
         else {
             self->DeleteInvItem(item);
-            item = nullptr;
         }
     }
     else {
         item->SetCritterSlot(toSlot);
 
-        if (swap_item != nullptr) {
+        if (nullable_swap_item) {
+            auto swap_item = nullable_swap_item.as_ptr();
             swap_item->SetCritterSlot(from_slot);
         }
 
-        if (map_cr != nullptr) {
+        if (nullable_map_cr) {
+            auto map_cr = nullable_map_cr.as_ptr();
             map_cr->Action(CritterAction::MoveItem, static_cast<int32_t>(from_slot), item, true);
 
-            if (swap_item != nullptr) {
+            if (nullable_swap_item) {
+                auto swap_item = nullable_swap_item.as_ptr();
                 map_cr->Action(CritterAction::SwapItems, static_cast<int32_t>(toSlot), swap_item, true);
             }
         }
     }
 
     // Light
-    if (map_cr != nullptr) {
+    if (nullable_map_cr) {
+        auto map_cr = nullable_map_cr.as_ptr();
         map_cr->GetMap()->RebuildFog();
         map_cr->GetMap()->UpdateCritterLightSource(map_cr);
     }

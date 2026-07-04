@@ -7,6 +7,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [GettingStarted.md](GettingStarted.md) — first route through the engine docs.
 - [EmbeddingProject.md](EmbeddingProject.md) — how a game repository should embed and own the engine.
 - [BuildWorkflow.md](BuildWorkflow.md) — build, presets, platform prerequisites, and validation strategy.
+- [ThirdPartyMaintenance.md](ThirdPartyMaintenance.md) — engine vendored dependency update, pruning, version pin, and local patch workflow.
 - [DocumentationExpansionPlan.md](DocumentationExpansionPlan.md) — roadmap for researching the repository and expanding engine documentation.
 - [DocumentationBacklog.md](DocumentationBacklog.md) — planned and verified documentation slices.
 - [DocumentationVerificationReport.md](DocumentationVerificationReport.md) — source-check reports for recently verified slices.
@@ -21,10 +22,12 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [SourceTree.md](SourceTree.md) — source-directory guide for maintainers.
 - [Applications.md](Applications.md) — executable/library entry points and CMake target ownership notes.
 - [Essentials.md](Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
+- [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary and migration rules.
 
 ## Build and generation
 
 - [BuildWorkflow.md](BuildWorkflow.md) — build, presets, platform prerequisites, and validation strategy.
+- [ThirdPartyMaintenance.md](ThirdPartyMaintenance.md) — engine vendored dependency update, pruning, version pin, and local patch workflow.
 - [BuildToolsPipeline.md](BuildToolsPipeline.md) — staged CMake pipeline, hooks, helpers, and change routing.
 - [BakingPipeline.md](BakingPipeline.md) — resource baking, baker classes, script compile adjacency, and validation.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — codegen, metadata registration, generated files, and property contracts.
@@ -33,6 +36,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 ## Runtime model
 
 - [EntityModel.md](EntityModel.md) — entity/property/prototype runtime model, holders, events, and serialization relationships.
+- [ExceptionSafety.md](ExceptionSafety.md) — engine-invariant stability under exceptions: terminate-on-OOM allocation model, the entity-lifecycle throw-as-signal contract, post-mutation `FO_STRONG_ASSERT` policy, and the disposition decision rules.
 - [MapsMovementGeometry.md](MapsMovementGeometry.md) — map coordinates, geometry modes, path finding, line tracing, movement contexts, and map loading.
 - [Networking.md](Networking.md) — network buffers, command packing, client/server transports, and ordered UDP.
 - [Persistence.md](Persistence.md) — server database facade, backend implementations, commit queue, and recovery logs.
@@ -41,12 +45,13 @@ This directory contains maintained documentation for reusable engine behavior. I
 
 - [ClientRuntime.md](ClientRuntime.md) — client lifecycle, server connection, view entities, resources, sprites, render-target bridge, and client tests.
 - [ServerRuntime.md](ServerRuntime.md) — authoritative server lifecycle, managers, entity ownership, networking, persistence, movement, and updater backend.
-- [FrontendAndRendering.md](FrontendAndRendering.md) — application abstraction, windows/input/audio, headless/stub modes, renderers, effects, and platform package boundaries.
+- [FrontendAndRendering.md](FrontendAndRendering.md) — application abstraction, windows/input/audio, headless/stub modes, renderers, the screen-size/resolution + letterbox model (windowed, fullscreen, multi-client virtual windows), effects, and platform package boundaries.
 - [ClientUpdater.md](ClientUpdater.md) — client host/runtime split, runtime ABI, updater protocol, and server-side updater backend.
 - [Debugging.md](Debugging.md) — native debugger support, stack traces, Visual Studio helpers, and client host/runtime validation.
 - [Scripting.md](Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — native `///@ ExportMethod` file map by runtime side and receiver family.
-- [Nullability.md](Nullability.md) — `T?` / `FO_NULLABLE` script/native boundary contract and analyzers.
+- [Nullability.md](Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native boundary contract and analyzers.
+- [SmartPointers.md](SmartPointers.md) — C++ `ptr` / `nptr` / owning-pointer nullability contracts.
 - [Tools.md](Tools.md) — engine tool map: baker, AS compiler, mapper, editor, asset explorer, particle editor, and asset processors.
 - [MapperTools.md](MapperTools.md) — mapper lifecycle, automation, native mapper helpers, and known headless-render workflows.
 - [WebDebugging.md](WebDebugging.md) — WebAssembly target preparation, package layout, and debug workflow.

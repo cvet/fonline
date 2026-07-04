@@ -31,9 +31,42 @@ set(CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE)
 # Disable warnings in third-party libs
 function(DisableLibWarnings)
 	foreach(lib ${ARGV})
+		# -w suppresses ordinary warnings, but Clang 20+ promoted several legacy-C diagnostics to errors BY DEFAULT
+		# (the C23 transition); -w does not downgrade those, so vendored C code (LibreSSL, mongo-c, ...) would fail to
+		# build under clang/clang-cl. Demote that family back to warnings (then -w hides them) so third-party stays
+		# silent on every toolchain.
+		# Every flag below is a C/CXX compiler flag, so it is gated on $<COMPILE_LANGUAGE:C,CXX>. Without that gate the
+		# flags also reach ASM_MASM sources (e.g. AngelScript's as_callfunc_x64_msvc_asm.asm under clang-cl), and the
+		# MASM assembler (llvm-ml) rejects the warning flags with "ignoring unsupported 'w'/'W' option" — a warning that
+		# our own warning-silencing was the sole cause of. Keeping the gate makes vendored ASM assemble cleanly while the
+		# C/CXX warning suppression is unchanged.
 		target_compile_options(${lib} PRIVATE
-			$<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w>
-			$<$<CXX_COMPILER_ID:MSVC>:/W0>)
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>>:-w>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Wno-error=incompatible-pointer-types
+				-Wno-error=incompatible-function-pointer-types
+				-Wno-error=int-conversion
+				-Wno-error=implicit-function-declaration
+				-Wno-error=implicit-int>
+			# UBSan's -fsanitize=function (part of -fsanitize=undefined) flags calls made through a generic /
+			# mismatched function-pointer type as undefined behaviour. Several vendored libraries do this by design
+			# (AngelScript's whole script-call dispatch invokes registered C functions through bool(*)(void*,void*)
+			# and friends; mongo-c/zlib-style C callbacks do the same), so it is a third-party idiom, not a bug in
+			# our code. Exclude vendored libs from this one check on the San_Undefined configs; every other UBSan
+			# check stays active, and the flag is a harmless no-op on non-sanitizer builds.
+			#
+			# -fsanitize=alignment is excluded for the same reason — but ONLY genuine third-party packing remains here:
+			#   * unqlite (the embedded KV DB) is the dominant case: its pager/allocator casts byte buffers to structs
+			#     (Page/lhcell/SyMemBlock/...) at 4-byte-aligned addresses by design (~2.2k UBSan sites); fixing it would
+			#     mean rewriting a 50k-line vendored amalgamation, which we do not own.
+			#   * AngelScript packs pointer-sized asPWORD operands into its asDWORD[] (4-byte) bytecode buffer at 4-byte
+			#     slots by design (asBC_PTRARG/asBC_QWORDARG = `*(asPWORD*)((asDWORD*)bc+1)`, plus the serializer's
+			#     WriteByteCode/ReadByteCode pointer operands), ~136 sites — upstream bytecode encoding, not our patches.
+			# Both are correct on every architecture the engine targets; this is third-party design, not a bug in our
+			# code, so vendored libs are excused from the alignment check. NOTE: the FOnline-side AngelScript value-type
+			# alignment (8-byte value types / primitives / handles on the VM stack, init-list buffers, return slots) was
+			# fixed at the SOURCE — our own code (Engine/Source/...) reports 0 alignment errors with this exclusion off.
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
 
@@ -143,14 +176,18 @@ macro(SetOptionValues)
 	while(optionArgs)
 		ListPopFront(optionArgs optionName optionValue)
 		set(_soptShadow "_FO_OPTION_DEFAULT_${optionName}")
+		get_property(_soptHasCache CACHE ${optionName} PROPERTY VALUE SET)
+		get_property(_soptCacheType CACHE ${optionName} PROPERTY TYPE)
 
 		# Shadow default: if the current cache value differs from the default we last applied, the value
-		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it; otherwise (unset, or
-		# still our default) -> (re)apply the current cmake-file default with FORCE. This keeps the cmake
-		# file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no longer sticks at
-		# an old number) while still honoring real overrides. CMake exposes no -D provenance, so comparing
-		# against the last-applied default is the detection mechanism.
+		# was explicitly overridden (-D / preset cacheVariables / gui) -> keep it. On a first configure,
+		# untyped -D / preset cache entries have no shadow yet, so preserve those as initial overrides too.
+		# Otherwise (unset, or still our default) -> (re)apply the current cmake-file default with FORCE.
+		# This keeps the cmake file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no
+		# longer sticks at an old number) while still honoring real overrides.
 		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
+			set(_soptResolved "${${optionName}}")
+		elseif(_soptHasCache AND _soptCacheType STREQUAL "UNINITIALIZED" AND NOT DEFINED ${_soptShadow})
 			set(_soptResolved "${${optionName}}")
 		else()
 			set(_soptResolved "${optionValue}")
@@ -170,6 +207,8 @@ macro(SetOptionValues)
 	endwhile()
 
 	unset(_soptShadow)
+	unset(_soptHasCache)
+	unset(_soptCacheType)
 	unset(_soptResolved)
 	unset(_soptUpper)
 endmacro()

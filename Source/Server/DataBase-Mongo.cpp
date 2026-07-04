@@ -6,7 +6,7 @@ FO_DISABLE_WARNINGS_PUSH()
 FO_DISABLE_WARNINGS_POP()
 #endif
 
-#include "WinApiUndef-Include.h"
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -19,76 +19,105 @@ public:
     auto operator=(const DbMongo&) = delete;
     auto operator=(DbMongo&&) noexcept = delete;
 
-    explicit DbMongo(DataBaseSettings& db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) :
+    explicit DbMongo(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _escapeDot {db_settings.MongoEscapeChar.empty() ? '\0' : db_settings.MongoEscapeChar.front()}
+        _escapeDot {db_settings->MongoEscapeChar.empty() ? '\0' : db_settings->MongoEscapeChar.front()}
     {
         FO_STACK_TRACE_ENTRY();
 
-        if (db_settings.MongoEscapeChar.length() > 1) {
-            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings.MongoEscapeChar);
+        if (db_settings->MongoEscapeChar.length() > 1) {
+            throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings->MongoEscapeChar);
         }
         if (_escapeDot == '.') {
-            throw DataBaseException("DbMongo escape char can't be '.'", db_settings.MongoEscapeChar);
+            throw DataBaseException("DbMongo escape char can't be '.'", db_settings->MongoEscapeChar);
         }
 
         mongoc_init();
 
         bson_error_t error;
-        auto* mongo_uri = mongoc_uri_new_with_error(string(uri).c_str(), &error);
+        const string uri_text = string(uri);
+        ptr<const char> uri_ptr = uri_text.c_str();
+        nptr<mongoc_uri_t> mongo_uri = mongoc_uri_new_with_error(uri_ptr.get(), &error);
 
-        if (mongo_uri == nullptr) {
+        if (!mongo_uri) {
             throw DataBaseException("DbMongo Failed to parse URI", uri, error.message);
         }
 
-        auto* client = mongoc_client_new_from_uri(mongo_uri);
+        nptr<mongoc_client_t> nullable_client = mongoc_client_new_from_uri(mongo_uri.get());
 
-        if (client == nullptr) {
+        if (!nullable_client) {
+            mongoc_uri_destroy(mongo_uri.get());
             throw DataBaseException("DbMongo Can't create client");
         }
 
-        mongoc_uri_destroy(mongo_uri);
-        mongoc_client_set_appname(client, FO_DEV_NAME.c_str());
+        mongoc_uri_destroy(mongo_uri.get());
+        auto client = nullable_client.as_ptr();
+        ptr<const char> app_name = FO_DEV_NAME.c_str();
+        mongoc_client_set_appname(client.get(), app_name.get());
 
-        auto* database = mongoc_client_get_database(client, string(db_name).c_str());
+        const string db_name_text = string(db_name);
+        ptr<const char> db_name_ptr = db_name_text.c_str();
+        nptr<mongoc_database_t> nullable_database = mongoc_client_get_database(client.get(), db_name_ptr.get());
 
-        if (database == nullptr) {
+        if (!nullable_database) {
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
 
-        mongoc_cursor_t* collections_cursor = mongoc_database_find_collections_with_opts(database, nullptr);
-        const bson_t* collection_doc;
+        auto database = nullable_database.as_ptr();
 
-        while (mongoc_cursor_next(collections_cursor, &collection_doc)) {
-            bson_iter_t collection_iter;
+        {
+            scoped_lock locker {_storageLocker};
 
-            if (bson_iter_init_find(&collection_iter, collection_doc, "name")) {
-                const char* collection_name = bson_iter_utf8(&collection_iter, nullptr);
-                mongoc_collection_t* collection = mongoc_database_get_collection(database, collection_name);
+            nptr<mongoc_cursor_t> collections_cursor = mongoc_database_find_collections_with_opts(database.get(), nullptr);
+            FO_VERIFY_AND_THROW(collections_cursor, "Failed to obtain collections cursor");
+            nptr<const bson_t> nullable_collection_doc;
 
-                if (collection == nullptr) {
-                    throw DataBaseException("DbMongo Can't get collection", collection_name);
+            while (mongoc_cursor_next(collections_cursor.get(), nullable_collection_doc.get_pp())) {
+                FO_VERIFY_AND_THROW(!!nullable_collection_doc, "Cursor returned a null collection document");
+                auto collection_doc = nullable_collection_doc.as_ptr();
+                bson_iter_t collection_iter;
+
+                if (bson_iter_init_find(&collection_iter, collection_doc.get(), "name")) {
+                    nptr<const char> collection_name = bson_iter_utf8(&collection_iter, nullptr);
+
+                    if (!collection_name) {
+                        throw DataBaseException("DbMongo invalid collection name");
+                    }
+
+                    nptr<mongoc_collection_t> collection = mongoc_database_get_collection(database.get(), collection_name.get());
+
+                    if (!collection) {
+                        throw DataBaseException("DbMongo Can't get collection", collection_name.get());
+                    }
+
+                    _collections.emplace(collection_name.get(), collection.as_ptr());
                 }
-
-                _collections.emplace(collection_name, collection);
             }
+
+            if (mongoc_cursor_error(collections_cursor.get(), &error)) {
+                throw DataBaseException("DbMongo Can't retreive collections", error.message);
+            }
+
+            mongoc_cursor_destroy(collections_cursor.get());
         }
 
-        if (mongoc_cursor_error(collections_cursor, &error)) {
-            throw DataBaseException("DbMongo Can't retreive collections", error.message);
-        }
-
-        mongoc_cursor_destroy(collections_cursor);
-
-        const auto* ping = BCON_NEW("ping", BCON_INT32(1));
+        nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
+        FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
 
-        if (!mongoc_client_command_simple(client, "admin", ping, nullptr, &reply, &error)) {
+        if (!mongoc_client_command_simple(client.get(), "admin", ping_ptr.get(), nullptr, &reply, &error)) {
             throw DataBaseException("DbMongo Can't ping database", error.message);
         }
 
-        _client = client;
-        _database = database;
+        {
+            scoped_lock locker {_storageLocker};
+
+            _client = client;
+            _database = database;
+        }
+
         StartCommitThread();
     }
 
@@ -97,6 +126,8 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         StopCommitThread();
+
+        scoped_lock locker {_storageLocker};
 
         for (auto& value : _collections | std::views::values) {
             mongoc_collection_destroy(value.get());
@@ -112,25 +143,28 @@ protected:
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
+        FO_STACK_TRACE_ENTRY();
+
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
             bson_error_t error;
-            auto* collection = mongoc_database_create_collection(_database.get(), collection_name.as_str().c_str(), nullptr, &error);
+            ptr<const char> collection_name_ptr = collection_name.c_str();
+            nptr<mongoc_collection_t> collection = mongoc_database_create_collection(_database.get(), collection_name_ptr.get(), nullptr, &error);
 
-            if (collection == nullptr) {
-                collection = mongoc_database_get_collection(_database.get(), collection_name.as_str().c_str());
+            if (!collection) {
+                collection = mongoc_database_get_collection(_database.get(), collection_name_ptr.get());
             }
 
-            if (collection == nullptr) {
+            if (!collection) {
                 throw DataBaseException("DbMongo Can't create collection", collection_name, error.message);
             }
 
-            _collections.emplace(collection_name.as_str(), collection);
+            _collections.emplace(collection_name.as_str(), collection.as_ptr());
         }
     }
 
@@ -138,33 +172,34 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto key_type = GetCollectionKeyType(collection_name);
 
-        auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            return {};
-        }
+        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
         bson_t filter;
         bson_init(&filter);
 
-        auto* opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
-        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, opts, nullptr);
+        nptr<bson_t> nullable_opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
+        FO_VERIFY_AND_THROW(nullable_opts, "Failed to build query options document");
+        auto opts = make_unique_del_ptr(nullable_opts.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        ptr<const bson_t> opts_ptr = opts.get();
+        nptr<mongoc_cursor_t> cursor = mongoc_collection_find_with_opts(collection.get(), &filter, opts_ptr.get(), nullptr);
 
-        if (cursor == nullptr) {
+        if (!cursor) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
         }
 
         vector<DataBaseKey> ids;
-        const bson_t* document = nullptr;
+        nptr<const bson_t> nullable_document;
 
-        while (mongoc_cursor_next(cursor, &document)) {
+        while (mongoc_cursor_next(cursor.get(), nullable_document.get_pp())) {
+            FO_VERIFY_AND_THROW(!!nullable_document, "Cursor returned a null document");
+            auto document = nullable_document.as_ptr();
             bson_iter_t iter;
 
-            if (!bson_iter_init(&iter, document)) {
+            if (!bson_iter_init(&iter, document.get())) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
             }
             if (!bson_iter_next(&iter)) {
@@ -183,13 +218,13 @@ protected:
                 }
 
                 uint32_t len = 0;
-                const auto* value = bson_iter_utf8(&iter, &len);
+                nptr<const char> value = bson_iter_utf8(&iter, &len);
 
-                if (value == nullptr || len == 0) {
+                if (!value || len == 0) {
                     throw DataBaseException("DbMongo invalid string key", collection_name);
                 }
 
-                ids.emplace_back(string(value, value + len));
+                ids.emplace_back(string(value.get(), len));
             }
             else {
                 throw DataBaseException("DbMongo bson_iter_type", collection_name, bson_iter_type(&iter));
@@ -198,13 +233,12 @@ protected:
 
         bson_error_t error;
 
-        if (mongoc_cursor_error(cursor, &error)) {
+        if (mongoc_cursor_error(cursor.get(), &error)) {
             throw DataBaseException("DbMongo mongoc_cursor_error", collection_name, error.message);
         }
 
-        mongoc_cursor_destroy(cursor);
+        mongoc_cursor_destroy(cursor.get());
         bson_destroy(&filter);
-        bson_destroy(opts);
 
         return ids;
     }
@@ -214,13 +248,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            return {};
-        }
+        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
         bson_t filter;
         bson_init(&filter);
@@ -234,25 +264,26 @@ protected:
             throw DataBaseException("DbMongo bson_append_int32", collection_name, FormatMongoDbKey(id));
         }
 
-        auto* cursor = mongoc_collection_find_with_opts(collection, &filter, &opts, nullptr);
+        nptr<mongoc_cursor_t> cursor = mongoc_collection_find_with_opts(collection.get(), &filter, &opts, nullptr);
 
-        if (cursor == nullptr) {
+        if (!cursor) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name, FormatMongoDbKey(id));
         }
 
-        const bson_t* bson = nullptr;
+        nptr<const bson_t> bson;
 
-        if (!mongoc_cursor_next(cursor, &bson)) {
-            mongoc_cursor_destroy(cursor);
+        if (!mongoc_cursor_next(cursor.get(), bson.get_pp())) {
+            mongoc_cursor_destroy(cursor.get());
             bson_destroy(&filter);
             bson_destroy(&opts);
             return {};
         }
 
+        FO_VERIFY_AND_THROW(!!bson, "Cursor returned a null document");
         AnyData::Document doc;
-        BsonToDocument(bson, doc, _escapeDot);
+        BsonToDocument(bson.as_ptr(), doc, _escapeDot);
 
-        mongoc_cursor_destroy(cursor);
+        mongoc_cursor_destroy(cursor.get());
         bson_destroy(&filter);
         bson_destroy(&opts);
         return doc;
@@ -262,11 +293,11 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database insert received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        auto* collection = GetCollection(collection_name);
+        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
         bson_t insert;
         bson_init(&insert);
@@ -277,7 +308,7 @@ protected:
 
         bson_error_t error;
 
-        if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
+        if (!mongoc_collection_insert(collection.get(), MONGOC_INSERT_NONE, &insert, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_insert", collection_name, id, error.message);
         }
 
@@ -288,15 +319,11 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database update received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Collection not found on update", collection_name, FormatMongoDbKey(id));
-        }
+        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
         bson_t selector;
         bson_init(&selector);
@@ -320,7 +347,7 @@ protected:
 
         bson_error_t error;
 
-        if (!mongoc_collection_update_one(collection, &selector, &update, nullptr, nullptr, &error)) {
+        if (!mongoc_collection_update_one(collection.get(), &selector, &update, nullptr, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_update_one", collection_name, id, error.message);
         }
 
@@ -332,13 +359,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        auto* collection = GetCollection(collection_name);
-
-        if (collection == nullptr) {
-            throw DataBaseException("DbMongo Collection not found on delete", collection_name, FormatMongoDbKey(id));
-        }
+        ptr<mongoc_collection_t> collection = GetCollection(collection_name);
 
         bson_t selector;
         bson_init(&selector);
@@ -347,7 +370,7 @@ protected:
 
         bson_error_t error;
 
-        if (!mongoc_collection_delete_one(collection, &selector, nullptr, nullptr, &error)) {
+        if (!mongoc_collection_delete_one(collection.get(), &selector, nullptr, nullptr, &error)) {
             throw DataBaseException("DbMongo mongoc_collection_delete_one", collection_name, id, error.message);
         }
 
@@ -358,13 +381,15 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        const auto* ping = BCON_NEW("ping", BCON_INT32(1));
+        nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
+        FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
         bson_error_t error;
-        const auto ok = mongoc_client_command_simple(_client.get(), "admin", ping, nullptr, &reply, &error);
-        bson_destroy(const_cast<bson_t*>(ping));
+        const auto ok = mongoc_client_command_simple(_client.get(), "admin", ping_ptr.get(), nullptr, &reply, &error);
 
         if (ok) {
             bson_destroy(&reply);
@@ -377,7 +402,7 @@ protected:
     }
 
 private:
-    auto GetCollection(hstring collection_name) const -> mongoc_collection_t*
+    ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -387,7 +412,7 @@ private:
             throw DataBaseException("DbMongo Collection not found", collection_name);
         }
 
-        return it->second.get_no_const();
+        return it->second;
     }
 
     static auto FormatMongoDbKey(const DataBaseKey& key) -> string
@@ -418,19 +443,22 @@ private:
         return "Unknown";
     }
 
-    static void AppendMongoDbKey(bson_t* bson, const DataBaseKey& key, hstring collection_name)
+    static void AppendMongoDbKey(ptr<bson_t> bson, const DataBaseKey& key, hstring collection_name)
     {
+        FO_STACK_TRACE_ENTRY();
+
         std::visit(
             [&](const auto& value) {
                 using T = std::decay_t<decltype(value)>;
 
                 if constexpr (std::is_same_v<T, ident_t>) {
-                    if (!bson_append_int64(bson, "_id", 3, value.underlying_value())) {
+                    if (!bson_append_int64(bson.get(), "_id", 3, value.underlying_value())) {
                         throw DataBaseException("DbMongo bson_append_int64", collection_name, value);
                     }
                 }
                 else {
-                    if (!bson_append_utf8(bson, "_id", 3, value.c_str(), numeric_cast<int>(value.length()))) {
+                    ptr<const char> key_value = value.c_str();
+                    if (!bson_append_utf8(bson.get(), "_id", 3, key_value.get(), numeric_cast<int32_t>(value.length()))) {
                         throw DataBaseException("DbMongo bson_append_utf8", collection_name, value);
                     }
                 }
@@ -438,16 +466,16 @@ private:
             key);
     }
 
-    raw_ptr<mongoc_client_t> _client {};
-    raw_ptr<mongoc_database_t> _database {};
+    mutable mutex _storageLocker {};
+    nptr<mongoc_client_t> _client FO_TSA_GUARDED_BY(_storageLocker) {};
+    nptr<mongoc_database_t> _database FO_TSA_GUARDED_BY(_storageLocker) {};
+    unordered_map<string, ptr<mongoc_collection_t>> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
     char _escapeDot {};
-    mutable std::mutex _storageLocker {};
-    unordered_map<string, raw_ptr<mongoc_collection_t>> _collections {};
 };
 
-auto CreateMongoDataBase(DataBaseSettings& db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> DataBaseImpl*
+auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeRaw<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
+    return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
 #endif
 

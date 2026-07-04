@@ -42,9 +42,9 @@ FO_BEGIN_NAMESPACE
 class ParticleEditor final : public EditorAssetView
 {
 public:
-    ParticleEditor(string_view asset_path, FOEditor& editor);
+    ParticleEditor(string_view asset_path, ptr<FOEditor> editor);
     ParticleEditor(const ParticleEditor&) = delete;
-    ParticleEditor(ParticleEditor&&) noexcept = default;
+    ParticleEditor(ParticleEditor&&) noexcept;
     auto operator=(const ParticleEditor&) = delete;
     auto operator=(ParticleEditor&&) noexcept = delete;
     ~ParticleEditor() override;

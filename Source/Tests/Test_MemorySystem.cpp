@@ -24,18 +24,20 @@ TEST_CASE("MemorySystem")
 
     SECTION("MemCallocAndReallocPreservePrefix")
     {
-        auto* ptr = static_cast<uint32_t*>(MemCalloc(3, sizeof(uint32_t)));
-        REQUIRE(ptr != nullptr);
-        CHECK(ptr[0] == 0);
-        CHECK(ptr[1] == 0);
-        CHECK(ptr[2] == 0);
+        nptr<uint32_t> nullable_allocated = MemCalloc(3, sizeof(uint32_t)).cast<uint32_t>();
+        REQUIRE(nullable_allocated);
+        auto allocated = nullable_allocated.as_ptr();
+        CHECK(allocated[0] == 0);
+        CHECK(allocated[1] == 0);
+        CHECK(allocated[2] == 0);
 
-        ptr[0] = 11;
-        ptr[1] = 22;
-        ptr[2] = 33;
+        allocated[0] = 11;
+        allocated[1] = 22;
+        allocated[2] = 33;
 
-        auto* grown = static_cast<uint32_t*>(MemRealloc(ptr, sizeof(uint32_t) * 5));
-        REQUIRE(grown != nullptr);
+        nptr<uint32_t> nullable_grown = MemRealloc(allocated, sizeof(uint32_t) * 5).cast<uint32_t>();
+        REQUIRE(nullable_grown);
+        auto grown = nullable_grown.as_ptr();
         CHECK(grown[0] == 11);
         CHECK(grown[1] == 22);
         CHECK(grown[2] == 33);
@@ -56,7 +58,6 @@ TEST_CASE("MemorySystem")
         };
 
         const auto unique_value = SafeAlloc::MakeUnique<TestValue>(123);
-        REQUIRE(unique_value);
         CHECK(unique_value->Value == 123);
 
         const auto shared_value = SafeAlloc::MakeShared<TestValue>(321);
@@ -75,28 +76,26 @@ TEST_CASE("MemorySystem")
     {
         struct TestRefCounted final : RefCounted<TestRefCounted>
         {
-            TestRefCounted(int32_t value_, int32_t* destroyed_) noexcept :
+            TestRefCounted(int32_t value_, ptr<int32_t> destroyed) noexcept :
                 Value {value_},
-                Destroyed {destroyed_}
+                Destroyed {destroyed}
             {
             }
 
             ~TestRefCounted() { ++*Destroyed; }
 
             int32_t Value {};
-            int32_t* Destroyed {};
+            ptr<int32_t> Destroyed;
         };
 
         int32_t destroyed = 0;
 
         {
             auto ptr = SafeAlloc::MakeRefCounted<TestRefCounted>(42, &destroyed);
-            REQUIRE(ptr);
             CHECK(ptr->Value == 42);
 
             {
                 auto copy = ptr;
-                REQUIRE(copy);
                 CHECK(copy->Value == 42);
             }
 

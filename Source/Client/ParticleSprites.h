@@ -45,7 +45,7 @@ class ParticleSpriteFactory;
 class ParticleSprite final : public AtlasSprite
 {
 public:
-    explicit ParticleSprite(SpriteManager& spr_mngr, isize32 size, ipos32 offset, TextureAtlas* atlas, TextureAtlas::SpaceNode* atlas_node, frect32 atlas_rect, ParticleSpriteFactory* factory, unique_ptr<ParticleSystem>&& particle);
+    explicit ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, ptr<TextureAtlas> atlas, ptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, ptr<ParticleSpriteFactory> factory, unique_ptr<ParticleSystem>&& particle, bool draw_in_scene);
     ParticleSprite(const ParticleSprite&) = delete;
     ParticleSprite(ParticleSprite&&) noexcept = default;
     auto operator=(const ParticleSprite&) = delete;
@@ -54,8 +54,8 @@ public:
 
     [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool override;
     [[nodiscard]] auto IsCopyable() const -> bool override { return false; }
-    [[nodiscard]] auto IsDynamicDraw() const -> bool override { return true; }
-    [[nodiscard]] auto GetParticle() -> ParticleSystem* { return _particle.get(); }
+    [[nodiscard]] auto IsDirectDraw() const -> bool override { return _drawInScene; }
+    [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle; }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
     void Prewarm() override;
@@ -65,10 +65,12 @@ public:
     void Stop() override;
     auto Update() -> bool override;
     void DrawToAtlas();
+    void DrawInScene(fpos32 scene_pos, float32_t depth) const override;
 
 private:
-    raw_ptr<ParticleSpriteFactory> _factory {};
-    unique_ptr<ParticleSystem> _particle {};
+    ptr<ParticleSpriteFactory> _factory;
+    bool _drawInScene {};
+    mutable unique_ptr<ParticleSystem> _particle;
 };
 
 class ParticleSpriteFactory : public SpriteFactory
@@ -76,9 +78,9 @@ class ParticleSpriteFactory : public SpriteFactory
     friend class ParticleSprite;
 
 public:
-    ParticleSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver);
+    ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver);
     ParticleSpriteFactory(const ParticleSpriteFactory&) = delete;
-    ParticleSpriteFactory(ParticleSpriteFactory&&) noexcept = default;
+    ParticleSpriteFactory(ParticleSpriteFactory&&) noexcept = delete;
     auto operator=(const ParticleSpriteFactory&) = delete;
     auto operator=(ParticleSpriteFactory&&) noexcept -> ParticleSpriteFactory& = delete;
     ~ParticleSpriteFactory() override = default;
@@ -88,14 +90,14 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto LoadTexture(hstring path) -> pair<RenderTexture*, frect32>;
-    void DrawParticleToAtlas(ParticleSprite* particle_spr);
+    auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    void DrawParticleToAtlas(ptr<ParticleSprite> particle_spr);
 
-    raw_ptr<SpriteManager> _sprMngr;
-    raw_ptr<RenderSettings> _settings;
-    unique_ptr<ParticleManager> _particleMngr {};
+    ptr<SpriteManager> _sprMngr;
+    ptr<RenderSettings> _settings;
+    ParticleManager _particleMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedParticleTextures {};
-    vector<raw_ptr<RenderTarget>> _rtIntermediate {};
+    vector<ptr<RenderTarget>> _rtIntermediate {};
 };
 
 FO_END_NAMESPACE

@@ -1,7 +1,13 @@
+# 2D_Default — textured-sprite shader with the "egg" transparency reveal.
+# Where: engine default for the Font, Iface, Generic, Critter and Rain QuadSprite draw slots (the main textured-sprite shader); includes the "egg" transparency reveal that fades sprites occluding a focal point.
+# How: vertex transforms the sprite by the projection matrix and forwards colour, UV, egg flags and screen position; fragment samples MainTex, multiplies by vertex colour with a 2x brightness scale, and where the egg flag is set scales alpha by a radial falloff around the egg centre so occluding sprites fade out; near-zero alpha is discarded. Depth test LessEqual.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -15,7 +21,7 @@ layout(location = 3) out vec2 ScreenPos;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
     EggFlag = InEggData;
@@ -32,6 +38,8 @@ layout(location = 2) in vec2 EggFlag;
 layout(location = 3) in vec2 ScreenPos;
 
 layout(location = 0) out vec4 FragColor;
+
+const float AlphaDepthCutoff = 1.0 / 255.0;
 
 float GetEggAlpha(vec4 eggData, float transitionStart)
 {
@@ -51,5 +59,8 @@ void main(void)
     }
     if (EggFlag.y > 0.0 && EggData[1].z > 0.0 && EggData[1].w > 0.0) {
         FragColor.a *= GetEggAlpha(EggData[1], transitionStart);
+    }
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
     }
 }

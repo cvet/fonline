@@ -9,7 +9,7 @@ The scripting layer is the contract between the C++ engine runtime and game-auth
 Read this page together with:
 
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) for generated metadata, `///@` annotations, and codegen output.
-- [Nullability.md](Nullability.md) for `T?` and `FO_NULLABLE` contracts across script/native boundaries.
+- [Nullability.md](Nullability.md) for `T?` (script) and `ptr<T>`·`nptr<T>` (native) contracts across script/native boundaries.
 - [EntityModel.md](EntityModel.md) for entity, prototype, property, and holder concepts exposed to scripts.
 - [ServerRuntime.md](ServerRuntime.md) and [ClientRuntime.md](ClientRuntime.md) for runtime events and script callback ownership.
 - [MapperTools.md](MapperTools.md) for mapper-specific script helpers.
@@ -85,6 +85,18 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+### AngelScript backend shutdown
+
+`~AngelScriptBackend()` tears the runtime down in a fixed order: stop the debugger endpoint, run the registered cleanup callbacks, reset the context manager, then reset the backend-owned `_engine` / `_meta` / `_scriptSys` / `_entityMngr` holders. It then calls `ReleaseScriptGlobalsAndReportGC()` **before** `asIScriptEngine::ShutDownAndRelease()` (which asserts the returned engine ref count is `0`), and finally runs the post-cleanup callbacks.
+
+`ReleaseScriptGlobalsAndReportGC()` makes the runtime clean up after itself so embedding games do not need per-system reference cleanup at shutdown:
+
+- It walks every module's global variables and drops the script-side reference each one holds: funcdef-typed globals (function handles / delegates) are `Release()`d, and `asOBJ_REF` object globals (handles, arrays, dictionaries, script classes) go through `ReleaseScriptObject()`; the slot is nulled so the standard module teardown skips it. Value-type object globals store their instance inline and are left to module discard (resetting them early would risk a double-free). AngelScript already releases globals during module discard inside `ShutDownAndRelease()`, but doing it explicitly here — while the engine is fully alive — lets the garbage collector collapse the now-unrooted object graphs in a normal multi-iteration cycle.
+- It then runs `GarbageCollect(asGC_FULL_CYCLE)` repeatedly (up to 8 passes) until `GetGCStatistics()` reports a steady live count, because object destructors can release the last reference to further objects.
+- Any GC objects still alive after that are kept by references the collector cannot reclaim (e.g. a cyclic graph). The method logs a concise `AngelScript shutdown: released N global var(s), M GC object(s) still alive:` line plus a per-type histogram so the surviving types point at the owning system. The subsequent `ShutDownAndRelease()` force-releases them; its AngelScript SDK-only "external reference" / "GC cannot destroy" diagnostics are filtered during this final shutdown phase because they duplicate the survivor summary. Runtime and compilation diagnostics are not filtered. A known residual is *shown* GUI screen graphs from the core scripts, whose cyclic refcount the collector cannot resolve — a separate, GUI-internal issue.
+
+Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
+
 ## Attributes, declarations, and metadata
 
 `Source/Scripting/AngelScript/AngelScriptAttributes.cpp` parses engine-specific script attributes and declaration tags. Important contracts include:
@@ -131,7 +143,11 @@ Native script APIs are grouped by file name:
 
 Each exported function is marked with `///@ ExportMethod` and normally starts with a side/type prefix such as `Server_Map_`, `Client_Game_`, `Common_ImGui_`, or `Mapper_Game_`. Codegen turns these declarations into script-visible method descriptors and backend call wrappers. Trailing C++ default parameters are preserved in metadata and restored in the AngelScript registration declarations, with C++ value-type defaults such as `fpos32 {}` normalized to script expressions such as `fpos()`. Prefer a single exported method with defaults over duplicate overloads that only append optional arguments. See [ScriptMethodsMap.md](ScriptMethodsMap.md) for the per-file map and counts.
 
+For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When native code first needs to extend the current cover, use `EnsureEntitySynced(...)` rather than pairing it with a redundant immediate `ValidateEntityAccess(...)`.
+
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
+
+Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `Game.DrawSpriteRegion` are valid only during render-facing script callbacks (`RenderIface` / GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` draws a normalized `[0, 1]` sub-rectangle of an atlas-backed sprite into a destination rectangle; it is intended for reusable GUI composition such as script-side 9-slice panels, and returns `false` when the sprite cannot provide atlas-region drawing.
 
 ## Core scripts
 

@@ -36,9 +36,9 @@
 
 FO_BEGIN_NAMESPACE
 
-PlayerView::PlayerView(ClientEngine* engine, ident_t id, const Properties* props) :
-    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props, nullptr),
-    PlayerProperties(GetInitRef())
+PlayerView::PlayerView(ptr<ClientEngine> engine, ident_t id, nptr<const Properties> props) :
+    ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props, nullptr),
+    PlayerProperties(*GetInitRef())
 {
     FO_STACK_TRACE_ENTRY();
 }

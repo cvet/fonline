@@ -36,10 +36,11 @@
 
 FO_BEGIN_NAMESPACE
 
-std::mutex InterthreadListenersLocker;
+mutex InterthreadListenersLocker;
 map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
-FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###";
+FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
+                                                    "##############################################################################################################";
 static auto ReadPackagedBuildName() -> string;
 static const string PackagedBuildName = ReadPackagedBuildName();
 bool IsTestingInProgress {};
@@ -149,18 +150,30 @@ void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 
     if (!dir.empty()) {
         const auto dir_ok = fs_create_directories(dir);
-        FO_RUNTIME_ASSERT(dir_ok);
+        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
     }
 
     std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
-    FO_RUNTIME_ASSERT(file);
+    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
+
+    // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
+    // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
+    for (auto& pixel : data) {
+        std::swap(pixel.comp.r, pixel.comp.b);
+    }
 
     const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
         numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
         numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
-    file.write(reinterpret_cast<const char*>(header), static_cast<std::streamsize>(sizeof(header)));
-    file.write(reinterpret_cast<const char*>(data.data()), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
-    FO_RUNTIME_ASSERT(file);
+    ptr<const uint8_t> header_bytes = header;
+    file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
+
+    if (!data.empty()) {
+        nptr<const ucolor> pixels = data.data();
+        file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
+    }
+
+    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
 }
 
 // Dummy symbols for web build to avoid linker errors

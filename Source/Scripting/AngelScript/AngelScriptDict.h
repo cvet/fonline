@@ -57,13 +57,13 @@ class ScriptDict
 public:
     struct ScriptDictComparator
     {
-        explicit ScriptDictComparator(ScriptDict* owner);
-        auto operator()(void* a, void* b) const -> bool;
-        raw_ptr<ScriptDict> Owner;
+        explicit ScriptDictComparator(ptr<ScriptDict> owner);
+        auto operator()(ptr<void> a, ptr<void> b) const -> bool;
+        ptr<ScriptDict> Owner;
     };
 
-    static auto Create(AngelScript::asITypeInfo* ti) -> ScriptDict*;
-    static auto Create(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*;
+    static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptDict>;
+    static auto Create(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) -> refcount_ptr<ScriptDict>;
 
     ScriptDict(ScriptDict&&) noexcept = delete;
     auto operator=(ScriptDict&&) noexcept -> ScriptDict& = delete;
@@ -74,52 +74,62 @@ public:
     void AddRef() const;
     void Release() const;
 
-    auto GetDictObjectType() -> AngelScript::asITypeInfo* { return _typeInfo.get(); }
-    auto GetDictObjectType() const -> const AngelScript::asITypeInfo* { return _typeInfo.get(); }
+    auto GetDictObjectType() -> ptr<AngelScript::asITypeInfo>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _typeInfo;
+    }
+    auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _typeInfo;
+    }
     auto GetDictTypeId() const -> int32_t;
-    auto GetMap() const -> const map<void*, void*, ScriptDictComparator>& { return _data; }
+    auto GetMap() const -> ptr<const map<void*, void*, ScriptDictComparator>> { return &_data; }
     auto IsEmpty() const -> bool;
     auto GetSize() const -> int32_t;
-    auto Get(void* key) -> void*;
-    auto GetOrCreate(void* key) -> void*;
-    auto GetDefault(void* key, void* def_val) -> void*;
-    auto GetKey(int32_t index) -> void*;
-    auto GetValue(int32_t index) -> void*;
-    auto GetKeys() const -> ScriptArray*;
-    auto GetValues() const -> ScriptArray*;
-    auto Exists(void* key) const -> bool;
+    auto Get(ptr<void> key) const -> ptr<void>;
+    auto GetOrCreate(ptr<void> key) -> ptr<void>;
+    auto GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>;
+    auto GetKey(int32_t index) const -> ptr<void>;
+    auto GetValue(int32_t index) const -> ptr<void>;
+    auto GetKeys() const -> refcount_ptr<ScriptArray>;
+    auto GetValues() const -> refcount_ptr<ScriptArray>;
+    auto Exists(ptr<void> key) const -> bool;
 
-    void Set(void* key, void* value);
-    void SetIfNotExist(void* key, void* value);
-    auto Remove(void* key) -> bool;
-    auto RemoveValues(void* value) -> int32_t;
+    void Set(ptr<void> key, ptr<void> value);
+    void SetIfNotExist(ptr<void> key, ptr<void> value);
+    auto Remove(ptr<void> key) -> bool;
+    auto RemoveValues(ptr<void> value) -> int32_t;
     void Clear();
 
     auto GetRefCount() const -> int32_t;
     void SetFlag() const;
     auto GetFlag() const -> bool;
-    void EnumReferences(AngelScript::asIScriptEngine* engine) const;
-    void ReleaseAllHandles(AngelScript::asIScriptEngine* engine);
+    void EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const;
+    void ReleaseAllHandles();
 
 private:
-    explicit ScriptDict(AngelScript::asITypeInfo* ti);
-    explicit ScriptDict(AngelScript::asITypeInfo* ti, void* init_list);
+    explicit ScriptDict(ptr<AngelScript::asITypeInfo> ti);
+    explicit ScriptDict(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list);
     explicit ScriptDict(const ScriptDict& other);
     ~ScriptDict();
 
-    auto PrecacheSubTypeData(int32_t type_id, AngelScript::asITypeInfo* ti) const -> ScriptDictTypeData*;
+    auto PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> nullable_ti) const -> nptr<ScriptDictTypeData>;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32_t _keyTypeId;
     int32_t _valueTypeId;
-    raw_ptr<ScriptDictTypeData> _keyTypeData;
-    raw_ptr<ScriptDictTypeData> _valueTypeData;
+    nptr<ScriptDictTypeData> _keyTypeData;
+    nptr<ScriptDictTypeData> _valueTypeData;
     map<void*, void*, ScriptDictComparator> _data;
-    mutable int32_t _refCount {1};
-    mutable bool _gcFlag {};
+    mutable std::atomic<int32_t> _refCount {1};
+    mutable std::atomic<bool> _gcFlag {};
 };
 
-void RegisterAngelScriptDict(AngelScript::asIScriptEngine* as_engine);
+void RegisterAngelScriptDict(ptr<AngelScript::asIScriptEngine> as_engine);
 
 FO_END_NAMESPACE
 

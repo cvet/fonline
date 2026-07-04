@@ -34,7 +34,7 @@ Not every historical or experimental feature is complete on every platform. Pref
 - [`Source/`](Source/) — engine source code: applications, runtime, scripting, resources, tools, essentials, and tests.
 - [`BuildTools/`](BuildTools/) — CMake modules, code generation, package preparation, workspace generation, and platform helpers.
 - [`Resources/`](Resources/) — engine-owned runtime and build resources.
-- [`ThirdParty/`](ThirdParty/) — vendored third-party dependencies.
+- [`ThirdParty/`](ThirdParty/) — vendored third-party dependencies; update workflow is in [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md).
 - [`Docs/`](Docs/) — maintained user and maintainer documentation.
 - [`PUBLIC_API.md`](PUBLIC_API.md) — public native API notes.
 - [`TUTORIAL.md`](TUTORIAL.md) — tutorial material.
@@ -57,6 +57,7 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/GettingStarted.md](Docs/GettingStarted.md) — first tour for users who want to understand what to open and what to build.
 - [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) — how a game project should own content, scripts, config, extensions, and release policy around the engine.
 - [Docs/BuildWorkflow.md](Docs/BuildWorkflow.md) — build prerequisites, presets, validation, and platform workflow notes.
+- [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md) — engine vendored dependency update, pruning, and local patch workflow.
 - [Docs/BuildToolsPipeline.md](Docs/BuildToolsPipeline.md) — staged CMake pipeline and BuildTools change routing.
 - [Docs/BakingPipeline.md](Docs/BakingPipeline.md) — resource baking pipeline and baker validation.
 - [Docs/GeneratedApiAndMetadata.md](Docs/GeneratedApiAndMetadata.md) — codegen and metadata registration flow.
@@ -76,7 +77,7 @@ See [Docs/EmbeddingProject.md](Docs/EmbeddingProject.md) for the expected projec
 - [Docs/Debugging.md](Docs/Debugging.md) — native debugging, stack traces, Visual Studio helpers, and validation notes.
 - [Docs/Scripting.md](Docs/Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [Docs/ScriptMethodsMap.md](Docs/ScriptMethodsMap.md) — native script method ownership map by runtime side and receiver family.
-- [Docs/Nullability.md](Docs/Nullability.md) — `T?` / `FO_NULLABLE` script/native nullability contract and analyzer workflow.
+- [Docs/Nullability.md](Docs/Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native nullability contract and analyzer workflow.
 - [Docs/Tools.md](Docs/Tools.md) — engine tool map: baker, AS compiler, mapper, editor, asset explorer, particle editor, and asset processors.
 - [Docs/MapperTools.md](Docs/MapperTools.md) — mapper lifecycle, automation, native mapper helpers, and known headless-render workflows.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) — WebAssembly target preparation and debug workflow.

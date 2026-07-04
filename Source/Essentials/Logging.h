@@ -35,6 +35,7 @@
 
 #include "BaseLogging.h"
 #include "BasicCore.h"
+#include "SmartPointers.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -48,10 +49,10 @@ enum class LogType : uint8_t
     Error,
 };
 
-using LogFunc = function<void(LogType, string_view, const CatchedStackTraceData*)>;
+using LogFunc = function<void(LogType, string_view, nptr<const CatchedStackTraceData>)>;
 
 // Write formatted text
-extern void WriteLogMessage(LogType type, string_view message, const CatchedStackTraceData* st = nullptr) noexcept;
+extern void WriteLogMessage(LogType type, string_view message, nptr<const CatchedStackTraceData> st = nullptr) noexcept;
 
 template<typename... Args>
 void WriteLog(std::format_string<Args...>&& format, Args&&... args) noexcept

@@ -66,7 +66,7 @@ class ModelHierarchy;
 struct MeshTexture
 {
     hstring Name {};
-    raw_ptr<RenderTexture> MainTex {};
+    ptr<RenderTexture> MainTex;
     frect32 AtlasOffsetData {};
 };
 
@@ -74,39 +74,41 @@ struct MeshData
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
 
-    raw_ptr<ModelBone> Owner {};
+    ptr<ModelBone> Owner;
     vector<Vertex3D> Vertices {};
     vector<vindex_t> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};
-    vector<raw_ptr<ModelBone>> SkinBones {};
+    vector<nptr<ModelBone>> SkinBones {};
     string EffectName {};
 };
 
 struct MeshInstance
 {
-    raw_ptr<MeshData> Mesh {};
+    ptr<MeshData> Mesh;
     bool Disabled {};
-    raw_ptr<MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};
-    raw_ptr<MeshTexture> DefaultTexures[MODEL_MAX_TEXTURES] {};
-    raw_ptr<MeshTexture> LastTexures[MODEL_MAX_TEXTURES] {};
-    raw_ptr<RenderEffect> CurEffect {};
-    raw_ptr<RenderEffect> DefaultEffect {};
-    raw_ptr<RenderEffect> LastEffect {};
+    nptr<MeshTexture> CurTexures[MODEL_MAX_TEXTURES] {};
+    nptr<MeshTexture> DefaultTexures[MODEL_MAX_TEXTURES] {};
+    nptr<MeshTexture> LastTexures[MODEL_MAX_TEXTURES] {};
+    nptr<RenderEffect> CurEffect {};
+    nptr<RenderEffect> DefaultEffect {};
+    nptr<RenderEffect> LastEffect {};
 };
 
 struct ModelBone
 {
     void Load(DataReader& reader, HashResolver& hash_resolver);
-    void FixAfterLoad(ModelBone* root_bone);
-    auto Find(hstring bone_name) const noexcept -> const ModelBone*;
-    auto Find(hstring bone_name) noexcept -> ModelBone*;
+    void FixAfterLoad(ptr<ModelBone> root_bone);
+    auto Find(hstring bone_name) const noexcept -> nptr<const ModelBone>;
+    auto Find(hstring bone_name) noexcept -> nptr<ModelBone>;
+    [[nodiscard]] auto GetAttachedMesh() const noexcept -> nptr<const MeshData> { return AttachedMesh ? nptr<const MeshData> {&*AttachedMesh} : nullptr; }
+    [[nodiscard]] auto GetAttachedMesh() noexcept -> nptr<MeshData> { return AttachedMesh ? nptr<MeshData> {&*AttachedMesh} : nullptr; }
 
     hstring Name {};
     mat44 TransformationMatrix {};
     mat44 GlobalTransformationMatrix {};
-    unique_ptr<MeshData> AttachedMesh {};
+    optional<MeshData> AttachedMesh {};
     vector<unique_ptr<ModelBone>> Children {};
     mat44 CombinedTransformationMatrix {};
 };
@@ -152,14 +154,14 @@ struct ModelAnimationData
     vector<hstring> DisabledMesh {};
     vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
-    vector<raw_ptr<ModelCutData>> CutInfo {};
+    vector<ptr<ModelCutData>> CutInfo {};
 };
 
 struct ModelParticleSystem
 {
     uint32_t Id {};
-    unique_ptr<ParticleSystem> Particle {};
-    raw_ptr<const ModelBone> Bone {};
+    unique_ptr<ParticleSystem> Particle;
+    ptr<const ModelBone> Bone;
     vec3 Move {};
     float32_t Rot {};
 };
@@ -179,10 +181,10 @@ class ModelManager final
     friend class ModelHierarchy;
 
 public:
-    using TextureLoader = function<pair<RenderTexture*, frect32>(string_view)>;
+    using TextureLoader = function<pair<nptr<RenderTexture>, frect32>(string_view)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, IAppRender& render, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader);
+    ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -191,28 +193,25 @@ public:
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
 
-    [[nodiscard]] auto CreateModel(string_view name) -> unique_ptr<ModelInstance>;
-    [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
-    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
+    [[nodiscard]] auto CreateModel(string_view name) -> unique_nptr<ModelInstance>;
+    [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>;
+    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> nptr<MeshTexture>;
 
     void PreloadModel(string_view name);
 
 private:
-    [[nodiscard]] auto LoadModel(string_view fname) -> ModelBone*;
-    [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
-    [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
+    [[nodiscard]] auto LoadModel(string_view fname) -> nptr<ModelBone>;
+    [[nodiscard]] auto GetInformation(string_view name) -> nptr<ModelInformation>;
+    [[nodiscard]] auto GetHierarchy(string_view name) -> nptr<ModelHierarchy>;
 
-    static auto MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool;
-    static auto MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool;
-
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<FileSystem> _resources;
-    raw_ptr<EffectManager> _effectMngr;
-    raw_ptr<IAppRender> _render;
-    raw_ptr<GameTimer> _gameTime;
-    mutable raw_ptr<HashResolver> _hashResolver;
-    raw_ptr<NameResolver> _nameResolver;
-    raw_ptr<AnimationResolver> _animNameResolver;
+    ptr<RenderSettings> _settings;
+    ptr<FileSystem> _resources;
+    ptr<EffectManager> _effectMngr;
+    ptr<IAppRender> _render;
+    ptr<GameTimer> _gameTime;
+    mutable ptr<HashResolver> _hashResolver;
+    ptr<NameResolver> _nameResolver;
+    ptr<AnimationResolver> _animNameResolver;
     TextureLoader _textureLoader;
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
@@ -227,7 +226,6 @@ private:
     hstring _headBone {};
     unordered_set<hstring> _legBones {};
     uint32_t _linkId {};
-    bool _nonConstHelper {};
 };
 
 class ModelInstance final
@@ -240,7 +238,7 @@ public:
     constexpr static int32_t FRAME_SCALE = 2;
 
     ModelInstance() = delete;
-    ModelInstance(ModelManager& model_mngr, ModelInformation* info);
+    ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info);
     ModelInstance(const ModelInstance&) = delete;
     ModelInstance(ModelInstance&&) noexcept = delete;
     auto operator=(const ModelInstance&) = delete;
@@ -259,16 +257,17 @@ public:
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
     [[nodiscard]] auto GetViewSize() const -> isize32;
-    [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> const ModelBone*;
+    [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
+    [[nodiscard]] auto GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan;
     [[nodiscard]] auto HasBodyRotation() const { return !!_moveAnimController; }
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
     void SetupFrame(isize32 draw_size);
     void StartMeshGeneration();
     void PrewarmParticles();
-    auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32_t* layers, float32_t ntime, ModelAnimFlags flags) -> bool;
+    auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool;
     void SetDir(mdir dir, bool smooth_rotation);
     void SetLookDir(mdir dir);
     void SetMoveDir(mdir dir, bool smooth_rotation);
@@ -277,6 +276,7 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw();
+    void Draw(const mat44& proj, float32_t scale);
     void MoveModel(ipos32 offset);
     void UpdatePose(bool staying_pose, bool moving, int32_t moving_speed);
     void SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init);
@@ -290,40 +290,45 @@ public:
 private:
     struct CombinedMesh
     {
-        raw_ptr<RenderEffect> DrawEffect {};
-        unique_ptr<RenderDrawBuffer> MeshBuf {};
+        nptr<RenderEffect> DrawEffect {};
+        unique_ptr<RenderDrawBuffer> MeshBuf;
         size_t EncapsulatedMeshCount {};
-        vector<raw_ptr<MeshData>> Meshes {};
+        vector<ptr<MeshData>> Meshes {};
         vector<uint32_t> MeshVertices {};
         vector<uint32_t> MeshIndices {};
         vector<int32_t> MeshAnimLayers {};
         size_t CurBoneMatrix {};
-        vector<raw_ptr<ModelBone>> SkinBones {};
+        vector<nptr<ModelBone>> SkinBones {};
         vector<mat44> SkinBoneOffsets {};
-        raw_ptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
+        nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
-    [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
+    [[nodiscard]] auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
+    [[nodiscard]] auto CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool;
+    [[nodiscard]] auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
+    [[nodiscard]] auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float32_t;
+    [[nodiscard]] auto GetMovementSpeed() const -> float32_t;
     [[nodiscard]] auto GetTime() const -> nanotime;
 
     void GenerateCombinedMeshes();
-    void FillCombinedMeshes(const ModelInstance* cur);
-    void CombineMesh(const MeshInstance* mesh_instance, int32_t anim_layer);
-    void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32_t anim_layer);
-    void CutCombinedMeshes(const ModelInstance* cur);
-    void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
+    void FillCombinedMeshes(ptr<const ModelInstance> cur);
+    void CombineMesh(ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
+    void BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
+    void CutCombinedMeshes(ptr<const ModelInstance> cur);
+    void CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut);
     void ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale);
-    void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
-    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles);
+    void UpdateBoneMatrices(ptr<ModelBone> bone, ptr<const mat44> parent_matrix);
+    void DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
 
-    raw_ptr<ModelManager> _modelMngr;
+    ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
     mat44 _frameProj {};
-    mat44 _frameProjColMaj {};
+    mat44 _drawProj {};
     CritterStateAnim _curStateAnim {};
     CritterActionAnim _curActionAnim {};
     vector<unique_ptr<CombinedMesh>> _combinedMeshes {};
@@ -331,9 +336,9 @@ private:
     bool _disableCulling {};
     vector<unique_ptr<MeshInstance>> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
-    raw_ptr<ModelInformation> _modelInfo {};
-    unique_ptr<ModelAnimationController> _bodyAnimController {};
-    unique_ptr<ModelAnimationController> _moveAnimController {};
+    ptr<ModelInformation> _modelInfo;
+    optional<ModelAnimationController> _bodyAnimController {};
+    optional<ModelAnimationController> _moveAnimController {};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
@@ -354,7 +359,7 @@ private:
     float32_t _animPosTime {};
     float32_t _animDuration {};
     bool _allowMeshGeneration {};
-    vector<raw_ptr<ModelCutData>> _allCuts {};
+    vector<ptr<ModelCutData>> _allCuts {};
     function<void(CritterStateAnim&, CritterActionAnim&)> _animInitCallback {};
     bool _isStayingPose {};
     bool _isMoving {};
@@ -370,15 +375,15 @@ private:
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
-    bool _nonConstHelper {};
+    bool _directSceneDraw {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
     // Derived animations
     vector<unique_ptr<ModelInstance>> _children {};
-    raw_ptr<ModelInstance> _parent {};
-    raw_ptr<ModelBone> _parentBone {};
+    nptr<ModelInstance> _parent {};
+    nptr<ModelBone> _parentBone {};
     mat44 _parentMatrix {};
-    vector<raw_ptr<ModelBone>> _linkBones {};
+    vector<ptr<ModelBone>> _linkBones {};
     ModelAnimationData _animLink {};
     bool _childChecker {};
 };
@@ -391,7 +396,7 @@ class ModelInformation final
 
 public:
     ModelInformation() = delete;
-    explicit ModelInformation(ModelManager& model_mngr);
+    explicit ModelInformation(ptr<ModelManager> model_mngr);
     ModelInformation(const ModelInformation&) = delete;
     ModelInformation(ModelInformation&&) noexcept = default;
     auto operator=(const ModelInformation&) = delete;
@@ -438,20 +443,17 @@ private:
     [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
     [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
-    [[nodiscard]] auto ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>;
-    [[nodiscard]] auto ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>;
-    [[nodiscard]] auto ReadBakedModelDescriptionString(DataReader& reader) const -> string;
 
-    [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
-    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t;
-    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32_t* speed) const -> int32_t;
-    [[nodiscard]] auto CreateInstance() -> ModelInstance*;
+    [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
+    [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
+    [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
+    [[nodiscard]] auto CreateInstance() -> unique_ptr<ModelInstance>;
 
-    raw_ptr<ModelManager> _modelMngr;
+    ptr<ModelManager> _modelMngr;
     string _fileName {};
     string _pathName {};
-    raw_ptr<ModelHierarchy> _hierarchy {};
-    unique_ptr<ModelAnimationController> _animController {};
+    nptr<ModelHierarchy> _hierarchy {};
+    optional<ModelAnimationController> _animController {};
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32_t> _animIndexes {};
@@ -461,6 +463,7 @@ private:
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
     bool _shadowDisabled {};
+    bool _disableBackwardAnim {};
     isize32 _drawSize {};
     isize32 _viewSize {};
     hstring _rotationBone {};
@@ -474,7 +477,7 @@ class ModelHierarchy final
 
 public:
     ModelHierarchy() = delete;
-    explicit ModelHierarchy(ModelManager& model_mngr);
+    ModelHierarchy(ptr<ModelManager> model_mngr, string file_name, ptr<ModelBone> root_bone);
     ModelHierarchy(const ModelHierarchy&) = delete;
     ModelHierarchy(ModelHierarchy&&) noexcept = default;
     auto operator=(const ModelHierarchy&) = delete;
@@ -483,15 +486,15 @@ public:
 
 private:
     void SetupBones();
-    void SetupAnimationOutput(ModelAnimationController* anim_controller);
-    auto GetTexture(string_view tex_name) -> MeshTexture*;
-    auto GetEffect(string_view name) -> RenderEffect*;
+    void SetupAnimationOutput(ptr<ModelAnimationController> anim_controller);
+    auto GetTexture(string_view tex_name) -> ptr<MeshTexture>;
+    auto GetEffect(string_view name) -> ptr<RenderEffect>;
 
-    raw_ptr<ModelManager> _modelMngr;
+    ptr<ModelManager> _modelMngr;
     string _fileName {};
-    raw_ptr<ModelBone> _rootBone {};
-    vector<raw_ptr<ModelBone>> _allBones {};
-    vector<raw_ptr<ModelBone>> _allDrawBones {};
+    ptr<ModelBone> _rootBone;
+    vector<ptr<ModelBone>> _allBones {};
+    vector<ptr<ModelBone>> _allDrawBones {};
 };
 
 FO_END_NAMESPACE

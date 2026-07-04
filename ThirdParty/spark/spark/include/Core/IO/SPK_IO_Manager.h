@@ -38,6 +38,7 @@ namespace IO
 	public :
 
 		static IOManager& get();
+		~IOManager(); // (FOnline Patch) Release singleton-owned converters during process shutdown.
 
 		void unregisterAll();
 

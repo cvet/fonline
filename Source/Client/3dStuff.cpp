@@ -46,34 +46,34 @@ void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
     FO_STACK_TRACE_ENTRY();
 
     uint32_t len = 0;
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     Vertices.resize(len);
-    reader.ReadPtr(Vertices.data(), len * sizeof(Vertex3D));
+    reader.ReadObjectArray(span {Vertices});
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     Indices.resize(len);
-    reader.ReadPtr(Indices.data(), len * sizeof(vindex_t));
+    reader.ReadObjectArray(span {Indices});
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     DiffuseTexture.resize(len);
-    reader.ReadPtr(DiffuseTexture.data(), len);
+    reader.ReadStringBytes(DiffuseTexture);
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     SkinBones.resize(len);
     SkinBoneNames.resize(len);
 
     string tmp;
 
     for (uint32_t i = 0, j = len; i < j; i++) {
-        reader.ReadPtr(&len, sizeof(len));
+        len = reader.Read<uint32_t>();
         tmp.resize(len);
-        reader.ReadPtr(tmp.data(), len);
+        reader.ReadStringBytes(tmp);
         SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
     }
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     SkinBoneOffsets.resize(len);
-    reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(mat44));
+    reader.ReadObjectArray(span {SkinBoneOffsets});
 }
 
 void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
@@ -81,25 +81,24 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
     FO_STACK_TRACE_ENTRY();
 
     uint32_t len = 0;
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     string tmp;
     tmp.resize(len);
-    reader.ReadPtr(tmp.data(), len);
+    reader.ReadStringBytes(tmp);
     Name = hash_resolver.ToHashedString(tmp);
 
-    reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
-    reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
+    TransformationMatrix = reader.Read<mat44>();
+    GlobalTransformationMatrix = reader.Read<mat44>();
 
     if (reader.Read<uint8_t>() != 0) {
-        AttachedMesh = SafeAlloc::MakeUnique<MeshData>();
+        AttachedMesh.emplace(this);
         AttachedMesh->Load(reader, hash_resolver);
-        AttachedMesh->Owner = this;
     }
     else {
-        AttachedMesh = nullptr;
+        AttachedMesh.reset();
     }
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < len; i++) {
         auto child = SafeAlloc::MakeUnique<ModelBone>();
@@ -111,14 +110,16 @@ void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
 }
 
 // ReSharper disable once CppMemberFunctionMayBeConst
-void ModelBone::FixAfterLoad(ModelBone* root_bone)
+void ModelBone::FixAfterLoad(ptr<ModelBone> root_bone)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (AttachedMesh) {
         for (size_t i = 0; i < AttachedMesh->SkinBoneNames.size(); i++) {
             if (AttachedMesh->SkinBoneNames[i]) {
-                AttachedMesh->SkinBones[i] = root_bone->Find(AttachedMesh->SkinBoneNames[i]);
+                auto skin_bone = root_bone->Find(AttachedMesh->SkinBoneNames[i]);
+                FO_VERIFY_AND_THROW(skin_bone, "Skin bone was not found in a model", AttachedMesh->SkinBoneNames[i], Name);
+                AttachedMesh->SkinBones[i] = skin_bone.as_ptr();
             }
             else {
                 AttachedMesh->SkinBones[i] = AttachedMesh->Owner;
@@ -126,12 +127,12 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
         }
     }
 
-    for (auto& child : Children) {
-        child->FixAfterLoad(root_bone);
+    for (size_t i = 0; i != Children.size(); ++i) {
+        Children[i]->FixAfterLoad(root_bone);
     }
 }
 
-auto ModelBone::Find(hstring bone_name) const noexcept -> const ModelBone*
+auto ModelBone::Find(hstring bone_name) const noexcept -> nptr<const ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -139,10 +140,10 @@ auto ModelBone::Find(hstring bone_name) const noexcept -> const ModelBone*
         return this;
     }
 
-    for (const auto& child : Children) {
-        const auto* bone = child->Find(bone_name);
+    for (size_t i = 0; i < Children.size(); i++) {
+        const auto bone = Children[i]->Find(bone_name);
 
-        if (bone != nullptr) {
+        if (bone) {
             return bone;
         }
     }
@@ -150,7 +151,7 @@ auto ModelBone::Find(hstring bone_name) const noexcept -> const ModelBone*
     return nullptr;
 }
 
-auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
+auto ModelBone::Find(hstring bone_name) noexcept -> nptr<ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -158,10 +159,10 @@ auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
         return this;
     }
 
-    for (auto& child : Children) {
-        auto* bone = child->Find(bone_name);
+    for (size_t i = 0; i != Children.size(); ++i) {
+        auto bone = Children[i]->Find(bone_name);
 
-        if (bone != nullptr) {
+        if (bone) {
             return bone;
         }
     }
@@ -169,15 +170,15 @@ auto ModelBone::Find(hstring bone_name) noexcept -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, EffectManager& effect_mngr, IAppRender& render, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, TextureLoader tex_loader) :
-    _settings {&settings},
-    _resources {&resources},
-    _effectMngr {&effect_mngr},
-    _render {&render},
-    _gameTime {&game_time},
-    _hashResolver {&hash_resolver},
-    _nameResolver {&name_resolver},
-    _animNameResolver {&anim_name_resolver},
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
+    _settings {settings},
+    _resources {resources},
+    _effectMngr {effect_mngr},
+    _render {render},
+    _gameTime {game_time},
+    _hashResolver {hash_resolver},
+    _nameResolver {name_resolver},
+    _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader))
 {
@@ -190,9 +191,9 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& resources, Effe
         _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
     }
 
-    _headBone = GetBoneHashedString(settings.HeadBone);
+    _headBone = GetBoneHashedString(settings->HeadBone);
 
-    for (const auto& bone_name : settings.LegBones) {
+    for (const auto& bone_name : settings->LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }
 }
@@ -204,16 +205,18 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
     return _hashResolver->ToHashedString(name);
 }
 
-auto ModelManager::LoadModel(string_view fname) -> ModelBone*
+auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
     auto name_hashed = _hashResolver->ToHashedString(fname);
 
-    for (auto& root_bone : _loadedModels) {
+    for (size_t i = 0; i != _loadedModels.size(); ++i) {
+        auto root_bone = _loadedModels[i].as_ptr();
+
         if (root_bone->Name == name_hashed) {
-            return root_bone.get();
+            return root_bone;
         }
     }
 
@@ -231,14 +234,14 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Load file data
     const auto file = _resources->ReadFile(fname);
-    FO_RUNTIME_ASSERT(file);
+    FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
     auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
-    auto reader = DataReader({file.GetBuf(), file.GetSize()});
+    auto reader = DataReader(file.GetDataSpan());
 
     root_bone->Load(reader, *_hashResolver);
-    root_bone->FixAfterLoad(root_bone.get());
+    root_bone->FixAfterLoad(root_bone);
 
     // Load animations
     const auto anim_count = reader.Read<uint32_t>();
@@ -254,10 +257,10 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     // Add to collection
     root_bone->Name = name_hashed;
     _loadedModels.emplace_back(std::move(root_bone));
-    return _loadedModels.back().get();
+    return _loadedModels.back();
 }
 
-auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*
+auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -265,9 +268,11 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     const auto take_first = anim_name == "Base";
     const auto name_hashed = _hashResolver->ToHashedString(anim_fname);
 
-    for (auto& anim : _loadedAnims) {
+    for (size_t i = 0; i != _loadedAnims.size(); ++i) {
+        auto anim = _loadedAnims[i].as_ptr();
+
         if (strex(anim->GetFileName()).compare_ignore_case(anim_fname) && (take_first || strex(anim->GetName()).compare_ignore_case(anim_name))) {
-            return anim.get();
+            return anim;
         }
     }
 
@@ -277,9 +282,9 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     }
 
     // File not processed, load and recheck animations
-    const auto* root_bone = LoadModel(anim_fname);
+    const auto root_bone = LoadModel(anim_fname);
 
-    if (root_bone != nullptr) {
+    if (root_bone) {
         return LoadAnimation(anim_fname, anim_name);
     }
 
@@ -287,11 +292,9 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*
+auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> nptr<MeshTexture>
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     // Skip empty
     if (texture_name.empty()) {
@@ -302,250 +305,106 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     const string tex_path = strex(model_path).extract_dir().combine_path(texture_name);
     auto&& [tex, tex_data] = _textureLoader(tex_path);
 
-    if (tex == nullptr) {
+    if (!tex) {
         return nullptr;
     }
 
-    auto* mesh_tex = SafeAlloc::MakeRaw<MeshTexture>();
-    mesh_tex->Name = _hashResolver->ToHashedString(texture_name);
-    mesh_tex->MainTex = tex;
-    mesh_tex->AtlasOffsetData = tex_data;
+    ptr<MeshTexture> mesh_tex = SafeAlloc::MakeRaw<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex.as_ptr(), tex_data);
 
     return mesh_tex;
 }
 
-auto ModelManager::CreateModel(string_view name) -> unique_ptr<ModelInstance>
+auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* model_info = GetInformation(name);
+    auto model_info = GetInformation(name);
 
-    if (model_info == nullptr) {
+    if (!model_info) {
         return nullptr;
     }
 
-    auto* model = model_info->CreateInstance();
-
-    if (model == nullptr) {
-        return nullptr;
-    }
+    auto model = model_info->CreateInstance();
 
     // Create mesh instances
-    model->_allMeshes.resize(model_info->_hierarchy->_allDrawBones.size());
-    model->_allMeshesDisabled.resize(model->_allMeshes.size());
+    model->_allMeshes.reserve(model_info->_hierarchy->_allDrawBones.size());
+    model->_allMeshesDisabled.resize(model_info->_hierarchy->_allDrawBones.size());
 
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        model->_allMeshes[i] = SafeAlloc::MakeUnique<MeshInstance>();
-        auto* mesh_instance = model->_allMeshes[i].get();
-        auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
-        mesh_instance->Mesh = mesh;
-        const auto* tex_name = !mesh->DiffuseTexture.empty() ? mesh->DiffuseTexture.c_str() : nullptr;
-        mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
-        mesh_instance->CurEffect = mesh_instance->DefaultEffect = (!mesh->EffectName.empty() ? model_info->_hierarchy->GetEffect(mesh->EffectName) : nullptr);
+        auto mesh = model_info->_hierarchy->_allDrawBones[i]->GetAttachedMesh().as_ptr();
+        auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
+        const string_view tex_name = mesh->DiffuseTexture;
+        new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
+        new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
+        model->_allMeshes.emplace_back(std::move(new_mesh_instance));
     }
 
     model->PlayAnim(CritterStateAnim::None, CritterActionAnim::None, nullptr, 0.0f, ModelAnimFlags::Init);
 
-    return unique_ptr<ModelInstance>(model);
+    return model;
 }
 
 void ModelManager::PreloadModel(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* model_info = GetInformation(name);
+    auto model_info = GetInformation(name);
     ignore_unused(model_info);
 }
 
-auto ModelManager::GetInformation(string_view name) -> ModelInformation*
+auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
 {
     FO_STACK_TRACE_ENTRY();
 
     // Try to find instance
-    for (auto& model_info : _allModelInfos) {
+    for (size_t i = 0; i != _allModelInfos.size(); ++i) {
+        auto model_info = _allModelInfos[i].as_ptr();
+
         if (model_info->_fileName == name) {
-            return model_info.get();
+            return model_info;
         }
     }
 
     // Create new instance
-    auto model_info = SafeAlloc::MakeUnique<ModelInformation>(*this);
+    auto model_info = SafeAlloc::MakeUnique<ModelInformation>(this);
 
     if (!model_info->Load(name)) {
         return nullptr;
     }
 
     _allModelInfos.push_back(std::move(model_info));
-    return _allModelInfos.back().get();
+    return _allModelInfos.back();
 }
 
-auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
+auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& model_hierarchy : _hierarchyFiles) {
+    for (size_t i = 0; i != _hierarchyFiles.size(); ++i) {
+        auto model_hierarchy = _hierarchyFiles[i].as_ptr();
+
         if (model_hierarchy->_fileName == name) {
-            return model_hierarchy.get();
+            return model_hierarchy;
         }
     }
 
     // Load
-    auto* root_bone = LoadModel(name);
+    auto root_bone = LoadModel(name);
 
-    if (root_bone == nullptr) {
+    if (!root_bone) {
         WriteLog("Unable to load model hierarchy file '{}'", name);
         return nullptr;
     }
 
-    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(*this);
-    model_hierarchy->_fileName = name;
-    model_hierarchy->_rootBone = root_bone;
+    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone.as_ptr());
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
-    return _hierarchyFiles.back().get();
+    return _hierarchyFiles.back();
 }
 
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept;
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept;
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool;
-
-auto ModelManager::MatrixProject(float32_t objx, float32_t objy, float32_t objz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* winx, float32_t* winy, float32_t* winz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t in[4];
-    in[0] = objx;
-    in[1] = objy;
-    in[2] = objz;
-    in[3] = 1.0f;
-
-    float32_t out[4];
-    MultMatrixVecf(model_matrix, in, out);
-    MultMatrixVecf(proj_matrix, out, in);
-
-    if (in[3] == 0.0f) {
-        return false;
-    }
-
-    in[0] /= in[3];
-    in[1] /= in[3];
-    in[2] /= in[3];
-
-    in[0] = in[0] * 0.5f + 0.5f;
-    in[1] = in[1] * 0.5f + 0.5f;
-    in[2] = in[2] * 0.5f + 0.5f;
-
-    in[0] = in[0] * numeric_cast<float32_t>(viewport[2] + viewport[0]);
-    in[1] = in[1] * numeric_cast<float32_t>(viewport[3] + viewport[1]);
-
-    *winx = in[0];
-    *winy = in[1];
-    *winz = in[2];
-
-    return true;
-}
-
-auto ModelManager::MatrixUnproject(float32_t winx, float32_t winy, float32_t winz, const float32_t model_matrix[16], const float32_t proj_matrix[16], const int32_t viewport[4], float32_t* objx, float32_t* objy, float32_t* objz) -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t final_matrix[16];
-    MultMatricesf(model_matrix, proj_matrix, final_matrix);
-
-    if (!InvertMatrixf(final_matrix, final_matrix)) {
-        return false;
-    }
-
-    float32_t in[4];
-    in[0] = winx;
-    in[1] = winy;
-    in[2] = winz;
-    in[3] = 1.0f;
-
-    in[0] = (in[0] - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]);
-    in[1] = (in[1] - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]);
-
-    in[0] = in[0] * 2 - 1;
-    in[1] = in[1] * 2 - 1;
-    in[2] = in[2] * 2 - 1;
-
-    float32_t out[4];
-    MultMatrixVecf(final_matrix, in, out);
-
-    if (out[3] == 0.0f) {
-        return false;
-    }
-
-    out[0] /= out[3];
-    out[1] /= out[3];
-    out[2] /= out[3];
-    *objx = out[0];
-    *objy = out[1];
-    *objz = out[2];
-
-    return true;
-}
-
-static void MultMatricesf(const float32_t a[16], const float32_t b[16], float32_t r[16]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        for (auto j = 0; j < 4; j++) {
-            r[i * 4 + j] = a[i * 4 + 0] * b[0 * 4 + j] + a[i * 4 + 1] * b[1 * 4 + j] + a[i * 4 + 2] * b[2 * 4 + j] + a[i * 4 + 3] * b[3 * 4 + j];
-        }
-    }
-}
-
-static void MultMatrixVecf(const float32_t matrix[16], const float32_t in[4], float32_t out[4]) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    for (auto i = 0; i < 4; i++) {
-        out[i] = in[0] * matrix[0 * 4 + i] + in[1] * matrix[1 * 4 + i] + in[2] * matrix[2 * 4 + i] + in[3] * matrix[3 * 4 + i];
-    }
-}
-
-static auto InvertMatrixf(const float32_t m[16], float32_t inv_out[16]) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    float32_t inv[16];
-    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10];
-    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10];
-    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9];
-    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9];
-    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10];
-    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10];
-    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9];
-    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9];
-    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6];
-    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6];
-    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5];
-    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5];
-    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6];
-    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6];
-    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5];
-    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5];
-
-    auto det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-
-    if (det == 0.0f) {
-        return false;
-    }
-
-    det = 1.0f / det;
-
-    for (auto i = 0; i < 16; i++) {
-        inv_out[i] = inv[i] * det;
-    }
-
-    return true;
-}
-
-ModelInstance::ModelInstance(ModelManager& model_mngr, ModelInformation* info) :
-    _modelMngr(&model_mngr),
+ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info) :
+    _modelMngr {model_mngr},
     _modelInfo {info}
 {
     FO_STACK_TRACE_ENTRY();
@@ -574,7 +433,6 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    _frameProjColMaj = _frameProj;
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
@@ -583,8 +441,12 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixProject(pos.x, pos.y, pos.z, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!ProjectPoint(pos, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     return {iround<int32_t>(out.x / const_numeric_cast<float32_t>(FRAME_SCALE)), iround<int32_t>(out.y / const_numeric_cast<float32_t>(FRAME_SCALE))};
 }
 
@@ -596,10 +458,50 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
     const auto xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
     const auto yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
     vec3 out {};
-    const auto identity = mat44 {1.0f};
-    ModelManager::MatrixUnproject(xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f, glm::value_ptr(identity), glm::value_ptr(_frameProjColMaj), viewport, &out.x, &out.y, &out.z);
+    const mat44 identity {1.0f};
+
+    if (!UnprojectPoint(vec3 {xf, numeric_cast<float32_t>(_frameSize.height) - yf, 0.0f}, identity, _frameProj, viewport, out)) {
+        return {};
+    }
+
     out.z = 0.0f;
     return out;
+}
+
+auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const glm::vec<4, float32_t, glm::defaultp> clip_pos = proj_matrix * model_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
+
+    if (clip_pos.w == 0.0f) {
+        return false;
+    }
+
+    const vec3 ndc_pos {clip_pos.x / clip_pos.w, clip_pos.y / clip_pos.w, clip_pos.z / clip_pos.w};
+
+    out_pos.x = (ndc_pos.x * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[2]) + numeric_cast<float32_t>(viewport[0]);
+    out_pos.y = (ndc_pos.y * 0.5f + 0.5f) * numeric_cast<float32_t>(viewport[3]) + numeric_cast<float32_t>(viewport[1]);
+    out_pos.z = ndc_pos.z * 0.5f + 0.5f;
+    return true;
+}
+
+auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
+    const float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
+    const float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
+    const mat44 clip_to_model = glm::inverse(proj_matrix * model_matrix);
+    const glm::vec<4, float32_t, glm::defaultp> obj_pos = clip_to_model * glm::vec<4, float32_t, glm::defaultp> {ndc_x, ndc_y, ndc_z, 1.0f};
+
+    if (obj_pos.w == 0.0f) {
+        return false;
+    }
+
+    out_pos = vec3 {obj_pos.x / obj_pos.w, obj_pos.y / obj_pos.w, obj_pos.z / obj_pos.w};
+    return true;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -621,7 +523,7 @@ void ModelInstance::PrewarmParticles()
     }
 }
 
-auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, const int32_t* layers, float32_t ntime, ModelAnimFlags flags) -> bool
+auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -656,7 +558,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     // Check animation changes
     int32_t new_layers[MODEL_LAYERS_COUNT];
 
-    if (layers != nullptr) {
+    if (layers) {
         MemCopy(new_layers, layers, sizeof(_curLayers));
     }
     else {
@@ -700,8 +602,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
         }
 
         // Mark animations as unused
-        for (auto& child : _children) {
-            child->_childChecker = false;
+        for (size_t i = 0; i != _children.size(); ++i) {
+            _children[i]->_childChecker = false;
         }
 
         // Get unused layers and meshes
@@ -718,7 +620,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         unused_layers[j] = true;
                     }
                     for (const auto disabled_mesh_name : link.DisabledMesh) {
-                        for (auto& mesh : _allMeshes) {
+                        for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+                            auto mesh = _allMeshes[mesh_index].as_ptr();
+
                             if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                                 mesh->Disabled = true;
                             }
@@ -733,7 +637,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                 unused_layers[j] = true;
             }
             for (auto disabled_mesh_name : _animLink.DisabledMesh) {
-                for (auto& mesh : _allMeshes) {
+                for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+                    auto mesh = _allMeshes[mesh_index].as_ptr();
+
                     if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                         mesh->Disabled = true;
                     }
@@ -767,13 +673,13 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         }
 
                         if (!available) {
-                            FO_RUNTIME_ASSERT_STR(link.LinkBone, "Particle model link has no target bone");
-                            const auto* to_bone = FindBone(link.LinkBone);
-                            FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Particle model link target bone not found");
+                            FO_VERIFY_AND_THROW(link.LinkBone, "Particle model link has no target bone");
+                            const auto to_bone = FindBone(link.LinkBone);
+                            FO_VERIFY_AND_THROW(to_bone, "Particle model link target bone not found");
 
-                            auto particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
-                            FO_RUNTIME_ASSERT_STR(particle, strex("Particle '{}' not found for model link", link.ChildName));
-                            _modelParticles.push_back({link.Id, std::move(particle), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                            optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
+                            FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
+                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone.as_ptr(), vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -781,7 +687,9 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                     else {
                         bool available = false;
 
-                        for (auto& child : _children) {
+                        for (size_t child_index = 0; child_index != _children.size(); ++child_index) {
+                            auto child = _children[child_index].as_ptr();
+
                             if (child->_animLink.Id == link.Id) {
                                 child->_childChecker = true;
                                 available = true;
@@ -790,13 +698,18 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                         }
 
                         if (!available) {
+                            const auto create_child_model = [this, &link]() -> unique_ptr<ModelInstance> {
+                                unique_nptr<ModelInstance> model = _modelMngr->CreateModel(link.ChildName);
+                                FO_VERIFY_AND_THROW(model, "Child model was not found for a model link", link.ChildName);
+                                return model.take_not_null();
+                            };
+
                             // Link to main bone
                             if (link.LinkBone) {
-                                auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
-                                FO_RUNTIME_ASSERT_STR(to_bone != nullptr, "Model link target bone not found");
+                                auto to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
+                                FO_VERIFY_AND_THROW(to_bone, "Model link target bone not found");
 
-                                auto model = _modelMngr->CreateModel(link.ChildName);
-                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
+                                unique_ptr<ModelInstance> model = create_child_model();
 
                                 mesh_changed = true;
                                 model->_parent = this;
@@ -811,19 +724,18 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                             }
                             // Link all bones
                             else {
-                                auto model = _modelMngr->CreateModel(link.ChildName);
-                                FO_RUNTIME_ASSERT_STR(model, strex("Child model '{}' not found for model link", link.ChildName));
+                                unique_ptr<ModelInstance> model = create_child_model();
 
                                 for (auto& child_bone : model->_modelInfo->_hierarchy->_allBones) {
-                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
+                                    auto root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
 
-                                    if (root_bone != nullptr) {
-                                        model->_linkBones.emplace_back(root_bone);
+                                    if (root_bone) {
+                                        model->_linkBones.emplace_back(root_bone.as_ptr());
                                         model->_linkBones.emplace_back(child_bone);
                                     }
                                 }
 
-                                FO_RUNTIME_ASSERT_STR(!model->_linkBones.empty(), strex("Child model '{}' has no common bones for model link", link.ChildName));
+                                FO_VERIFY_AND_THROW(!model->_linkBones.empty(), "Child model has no common bones for a model link", link.ChildName);
 
                                 mesh_changed = true;
                                 model->_parent = this;
@@ -840,7 +752,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         // Erase unused stuff
         for (auto it = _children.begin(); it != _children.end();) {
-            const auto& child = *it;
+            auto child = it->as_ptr();
 
             if (!child->_childChecker) {
                 mesh_changed = true;
@@ -938,8 +850,8 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     }
 
     // Set animation for children
-    for (auto& child : _children) {
-        if (child->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
+    for (size_t i = 0; i != _children.size(); ++i) {
+        if (_children[i]->PlayAnim(state_anim, action_anim, layers, ntime, flags)) {
             mesh_changed = true;
         }
     }
@@ -1012,8 +924,9 @@ void ModelInstance::RefreshMoveAnimation()
 
     if (_isMoving) {
         const auto angle_diff = GeometryHelper::GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
+        const bool forbid_back = _modelInfo->_disableBackwardAnim;
 
-        if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
+        if (forbid_back || (!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
             action_anim = _isRunning ? CritterActionAnim::Run : CritterActionAnim::Walk;
         }
@@ -1189,8 +1102,8 @@ auto ModelInstance::GetDrawSize() const -> isize32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_frameSize.width % FRAME_SCALE == 0);
-    FO_RUNTIME_ASSERT(_frameSize.height % FRAME_SCALE == 0);
+    FO_VERIFY_AND_THROW(_frameSize.width % FRAME_SCALE == 0, "3D model frame width is not aligned to the frame scale", _frameSize.width, FRAME_SCALE);
+    FO_VERIFY_AND_THROW(_frameSize.height % FRAME_SCALE == 0, "3D model frame height is not aligned to the frame scale", _frameSize.height, FRAME_SCALE);
 
     return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
@@ -1212,6 +1125,13 @@ auto ModelInstance::GetSpeed() const -> float32_t
     FO_STACK_TRACE_ENTRY();
 
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
+}
+
+auto ModelInstance::GetMovementSpeed() const -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
 }
 
 auto ModelInstance::GetTime() const -> nanotime
@@ -1271,7 +1191,9 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     // Textures
     if (clear) {
         // Enable all meshes, set default texture
-        for (auto& mesh : _allMeshes) {
+        for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+            auto mesh = _allMeshes[mesh_index].as_ptr();
+
             mesh->Disabled = false;
 
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
@@ -1283,52 +1205,59 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
     if (!data.TextureInfo.empty()) {
         for (auto&& [tex_name, mesh_name, tex_num] : data.TextureInfo) {
-            MeshTexture* texture = nullptr;
-            FO_RUNTIME_ASSERT_STR(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", tex_num));
+            nptr<MeshTexture> texture = nullptr;
+            FO_VERIFY_AND_THROW(tex_num >= 0 && tex_num < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", tex_num);
 
             // Evaluate texture
             if (strex(tex_name).starts_with("Parent")) { // Parent_MeshName
-                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent texture '{}' requested without parent model", tex_name));
+                FO_VERIFY_AND_THROW(_parent != nullptr, "Parent texture was requested without a parent model", tex_name);
 
-                const auto* parent_mesh_name = tex_name.c_str() + 6;
+                string_view parent_mesh_name = tex_name;
+                parent_mesh_name.remove_prefix(6);
 
-                if (parent_mesh_name[0] == '_') {
-                    parent_mesh_name++;
+                if (!parent_mesh_name.empty() && parent_mesh_name.front() == '_') {
+                    parent_mesh_name.remove_prefix(1);
                 }
 
-                const auto parent_mesh_name_hashed = *parent_mesh_name != 0 ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
+                const auto parent_mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
 
-                for (auto& mesh : _parent->_allMeshes) {
+                for (size_t mesh_index = 0; mesh_index != _parent->_allMeshes.size(); ++mesh_index) {
+                    auto mesh = _parent->_allMeshes[mesh_index].as_ptr();
+
                     if (!parent_mesh_name_hashed || parent_mesh_name_hashed == mesh->Mesh->Owner->Name) {
-                        texture = mesh->CurTexures[tex_num].get();
+                        texture = mesh->CurTexures[tex_num];
                         break;
                     }
                 }
 
-                FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Parent texture '{}' not found", tex_name));
+                FO_VERIFY_AND_THROW(texture, "Parent texture was not found", tex_name);
             }
             else {
                 texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
-            FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Texture '{}' not loaded", tex_name));
+            FO_VERIFY_AND_THROW(texture, "Texture was not loaded", tex_name);
 
             // Assign it
             size_t assigned_meshes = 0;
 
-            for (auto& mesh : _allMeshes) {
+            for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+                auto mesh = _allMeshes[mesh_index].as_ptr();
+
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurTexures[tex_num] = texture;
                     assigned_meshes++;
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Texture '{}' target mesh not found", tex_name));
+            FO_VERIFY_AND_THROW(assigned_meshes != 0, "Texture target mesh was not found", tex_name, mesh_name);
         }
     }
 
     // Effects
     if (clear) {
-        for (auto& mesh : _allMeshes) {
+        for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+            auto mesh = _allMeshes[mesh_index].as_ptr();
+
             mesh->LastEffect = mesh->CurEffect;
             mesh->CurEffect = mesh->DefaultEffect;
         }
@@ -1336,46 +1265,51 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
     if (!data.EffectInfo.empty()) {
         for (const auto& eff_info : data.EffectInfo) {
-            RenderEffect* effect = nullptr;
+            nptr<RenderEffect> effect = nullptr;
 
             // Get effect
             if (strex(std::get<0>(eff_info)).starts_with("Parent")) { // Parent_MeshName
-                FO_RUNTIME_ASSERT_STR(_parent != nullptr, strex("Parent effect '{}' requested without parent model", std::get<0>(eff_info)));
+                FO_VERIFY_AND_THROW(_parent != nullptr, "Parent effect was requested without a parent model", std::get<0>(eff_info));
 
-                const auto* mesh_name = std::get<0>(eff_info).c_str() + 6;
+                string_view parent_mesh_name = std::get<0>(eff_info);
+                parent_mesh_name.remove_prefix(6);
 
-                if (mesh_name[0] == '_') {
-                    mesh_name++;
+                if (!parent_mesh_name.empty() && parent_mesh_name.front() == '_') {
+                    parent_mesh_name.remove_prefix(1);
                 }
 
-                const auto mesh_name_hashed = *mesh_name != 0 ? _modelMngr->GetBoneHashedString(mesh_name) : hstring();
+                const auto mesh_name_hashed = !parent_mesh_name.empty() ? _modelMngr->GetBoneHashedString(parent_mesh_name) : hstring();
 
-                for (auto& mesh : _parent->_allMeshes) {
+                for (size_t mesh_index = 0; mesh_index != _parent->_allMeshes.size(); ++mesh_index) {
+                    auto mesh = _parent->_allMeshes[mesh_index].as_ptr();
+
                     if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
-                        effect = mesh->CurEffect.get();
+                        effect = mesh->CurEffect;
                         break;
                     }
                 }
 
-                FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Parent effect '{}' not found", std::get<0>(eff_info)));
+                FO_VERIFY_AND_THROW(effect, "Parent effect was not found", std::get<0>(eff_info));
             }
             else {
                 effect = _modelInfo->_hierarchy->GetEffect(std::get<0>(eff_info));
             }
-            FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Effect '{}' not loaded", std::get<0>(eff_info)));
+            FO_VERIFY_AND_THROW(effect, "Effect was not loaded", std::get<0>(eff_info));
 
             // Assign it
             const auto mesh_name = std::get<1>(eff_info);
             size_t assigned_meshes = 0;
 
-            for (auto& mesh : _allMeshes) {
+            for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+                auto mesh = _allMeshes[mesh_index].as_ptr();
+
                 if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurEffect = effect;
                     assigned_meshes++;
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(assigned_meshes != 0, strex("Effect '{}' target mesh not found", std::get<0>(eff_info)));
+            FO_VERIFY_AND_THROW(assigned_meshes != 0, "Effect target mesh was not found", std::get<0>(eff_info), mesh_name);
         }
     }
 
@@ -1430,7 +1364,7 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
         RefreshMoveAnimation();
     }
 
-    if (!_modelInfo->_rotationBone) {
+    if (!_modelInfo->_rotationBone || _modelInfo->_disableBackwardAnim) {
         SetLookDir(dir);
     }
 }
@@ -1470,7 +1404,9 @@ void ModelInstance::GenerateCombinedMeshes()
     }
 
     // Clean up buffers
-    for (auto& combined_mesh : _combinedMeshes) {
+    for (size_t i = 0; i != _combinedMeshes.size(); ++i) {
+        auto combined_mesh = _combinedMeshes[i].as_ptr();
+
         combined_mesh->EncapsulatedMeshCount = 0;
         combined_mesh->CurBoneMatrix = 0;
         combined_mesh->Meshes.clear();
@@ -1498,22 +1434,33 @@ void ModelInstance::GenerateCombinedMeshes()
     }
 }
 
-void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
+void ModelInstance::FillCombinedMeshes(ptr<const ModelInstance> cur)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Combine meshes
-    for (const auto& mesh : cur->_allMeshes) {
-        CombineMesh(mesh.get(), cur->_parentBone ? cur->_animLink.Layer : 0);
+    for (size_t i = 0; i < cur->_allMeshes.size(); i++) {
+        CombineMesh(cur->_allMeshes[i], cur->_parentBone ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
-    for (const auto& child : cur->_children) {
-        FillCombinedMeshes(child.get());
+    for (size_t i = 0; i < cur->_children.size(); i++) {
+        FillCombinedMeshes(cur->_children[i]);
     }
 }
 
-void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32_t anim_layer)
+auto ModelInstance::CreateCombinedMesh() -> unique_ptr<CombinedMesh>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return SafeAlloc::MakeUnique<CombinedMesh>(CombinedMesh {
+        .MeshBuf = _modelMngr->_render->CreateDrawBuffer(true),
+        .SkinBones = vector<nptr<ModelBone>>(MODEL_MAX_BONES),
+        .SkinBoneOffsets = vector<mat44>(MODEL_MAX_BONES),
+    });
+}
+
+void ModelInstance::CombineMesh(ptr<const MeshInstance> mesh_instance, int32_t anim_layer)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1524,26 +1471,22 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int32_t anim_
 
     // Try to encapsulate mesh instance to current combined mesh
     for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-        if (CanBatchCombinedMesh(_combinedMeshes[i].get(), mesh_instance)) {
-            BatchCombinedMesh(_combinedMeshes[i].get(), mesh_instance, anim_layer);
+        if (CanBatchCombinedMesh(_combinedMeshes[i], mesh_instance)) {
+            BatchCombinedMesh(_combinedMeshes[i], mesh_instance, anim_layer);
             return;
         }
     }
 
     // Create new combined mesh
     if (_actualCombinedMeshesCount >= _combinedMeshes.size()) {
-        auto combined_mesh = SafeAlloc::MakeUnique<CombinedMesh>();
-        combined_mesh->MeshBuf = _modelMngr->_render->CreateDrawBuffer(true);
-        combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
-        combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
-        _combinedMeshes.emplace_back(std::move(combined_mesh));
+        _combinedMeshes.emplace_back(CreateCombinedMesh());
     }
 
-    BatchCombinedMesh(_combinedMeshes[_actualCombinedMeshesCount].get(), mesh_instance, anim_layer);
+    BatchCombinedMesh(_combinedMeshes[_actualCombinedMeshesCount], mesh_instance, anim_layer);
     _actualCombinedMeshesCount++;
 }
 
-auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool
+auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1561,13 +1504,11 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
     return combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() <= combined_mesh->SkinBones.size();
 }
 
-void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int32_t anim_layer)
+void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance, int32_t anim_layer)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_NON_CONST_METHOD_HINT();
-
-    const auto& mesh_data = mesh_instance->Mesh;
+    ptr<MeshData> mesh_data = mesh_instance->Mesh.get_no_const();
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
     const auto vertices_old_size = vertices.size();
@@ -1626,7 +1567,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Fix texture coords
     if (mesh_instance->CurTexures[0]) {
-        const auto* mesh_tex = mesh_instance->CurTexures[0].get();
+        auto mesh_tex = mesh_instance->CurTexures[0].as_ptr();
 
         for (auto i = vertices_old_size, j = vertices.size(); i < j; i++) {
             vertices[i].TexCoord[0] = (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData.width) + mesh_tex->AtlasOffsetData.x;
@@ -1641,15 +1582,15 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
 }
 
-void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
+void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
 {
     FO_STACK_TRACE_ENTRY();
 
     // Cut meshes
     if (!cur->_allCuts.empty()) {
-        for (const auto& cut : cur->_allCuts) {
+        for (ptr<const ModelCutData> cut : cur->_allCuts) {
             for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-                CutCombinedMesh(_combinedMeshes[i].get(), cut.get());
+                CutCombinedMesh(_combinedMeshes[i], cut);
             }
         }
 
@@ -1657,8 +1598,8 @@ void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
     }
 
     // Fill child
-    for (const auto& child : cur->_children) {
-        CutCombinedMeshes(child.get());
+    for (size_t i = 0; i < cur->_children.size(); i++) {
+        CutCombinedMeshes(cur->_children[i]);
     }
 }
 
@@ -1720,11 +1661,9 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
     return 0;
 }
 
-void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut)
+void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_NON_CONST_METHOD_HINT();
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
@@ -1874,27 +1813,27 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
     // Unskin
     if (cut->UnskinBone1 && cut->UnskinBone2) {
         // Find unskin bones
-        ModelBone* unskin_bone1 = nullptr;
+        nptr<ModelBone> unskin_bone1;
         float32_t unskin_bone1_index = 0.0f;
-        ModelBone* unskin_bone2 = nullptr;
+        nptr<ModelBone> unskin_bone2;
         float32_t unskin_bone2_index = 0.0f;
 
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone1) {
-                unskin_bone1 = combined_mesh->SkinBones[i].get();
+                unskin_bone1 = combined_mesh->SkinBones[i];
                 unskin_bone1_index = numeric_cast<float32_t>(i);
             }
             if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone2) {
-                unskin_bone2 = combined_mesh->SkinBones[i].get();
+                unskin_bone2 = combined_mesh->SkinBones[i];
                 unskin_bone2_index = numeric_cast<float32_t>(i);
             }
-            if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
+            if (unskin_bone1 && unskin_bone2) {
                 break;
             }
         }
 
         // Unskin
-        if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
+        if (unskin_bone1 && unskin_bone2) {
             // Process meshes
             size_t v_pos = 0;
             size_t v_count = 0;
@@ -1947,7 +1886,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
                         }
 
                         // Skip equal influence side
-                        bool influence_side = unskin_bone1->Find(combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name) != nullptr;
+                        bool influence_side = !!unskin_bone1->Find(combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
 
                         if (v_side == influence_side) {
                             continue;
@@ -1986,6 +1925,24 @@ void ModelInstance::Draw()
 {
     FO_STACK_TRACE_ENTRY();
 
+    DrawFrame(_frameProj, const_numeric_cast<float32_t>(FRAME_SCALE), false, true);
+}
+
+void ModelInstance::Draw(const mat44& proj, float32_t scale)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DrawFrame(proj, scale, true, true);
+}
+
+void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_scene, bool draw_particles)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _drawProj = proj;
+    _directSceneDraw = direct_scene;
+    const auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
+
     const auto time = GetTime();
     const auto dt = 0.001f * (time - _lastDrawTime).to_ms<float32_t>();
 
@@ -1995,15 +1952,17 @@ void ModelInstance::Draw()
     // Move animation
     const auto w = _frameSize.width / FRAME_SCALE;
     const auto h = _frameSize.height / FRAME_SCALE;
-    ProcessAnimation(dt, {w / 2, h - h / 4}, const_numeric_cast<float32_t>(FRAME_SCALE));
+    ProcessAnimation(dt, {w / 2, h - h / 4}, scale);
 
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-            DrawCombinedMesh(_combinedMeshes[i].get(), _shadowDisabled || _modelInfo->_shadowDisabled);
+            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
         }
     }
 
-    DrawAllParticles();
+    if (draw_particles) {
+        DrawAllParticles();
+    }
 }
 
 void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
@@ -2012,12 +1971,13 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
     // Update world matrix, only for root
     if (!_parentBone) {
-        const auto pos3d = Convert2dTo3d(pos);
+        const vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
         const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
         const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
         const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
+        const mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
 
-        _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
+        _parentMatrix = mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -2037,7 +1997,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         _bodyAnimController->AdvanceTime(elapsed * GetSpeed());
 
         if ((_isMoving || _turnAnimPlaying) && _moveAnimController) {
-            _moveAnimController->AdvanceTime(elapsed * GetSpeed());
+            _moveAnimController->AdvanceTime(elapsed * GetMovementSpeed());
 
             if (_turnAnimPlaying && !_moveAnimController->GetTrackEnable(_curMoveTrack)) {
                 _turnAnimPlaying = false;
@@ -2063,7 +2023,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 
     // Update matrices
-    UpdateBoneMatrices(_modelInfo->_hierarchy->_rootBone.get(), &_parentMatrix);
+    UpdateBoneMatrices(_modelInfo->_hierarchy->_rootBone, &_parentMatrix);
 
     // Update linked matrices
     if (_parentBone && !_linkBones.empty()) {
@@ -2075,18 +2035,23 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 
     // Update world matrices for children
-    for (auto& child : _children) {
+    for (size_t i = 0; i != _children.size(); ++i) {
+        auto child = _children[i].as_ptr();
+
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
     }
 
-    // Particles
     for (auto& model_particle : _modelParticles) {
+        const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
+        const vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
+        const bool tilt_in_proj = _directSceneDraw;
+
         if (model_particle.Id == 0) {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot, view_offset, tilt_in_proj);
         }
         else {
-            model_particle.Particle->Setup(_frameProj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, _moveOffset);
+            model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
     }
 
@@ -2100,8 +2065,8 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 
     // Move child animations
-    for (auto& child : _children) {
-        child->ProcessAnimation(elapsed, pos, 1.0f);
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
     }
 
     // Animation callbacks
@@ -2119,7 +2084,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     }
 }
 
-void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix)
+void ModelInstance::UpdateBoneMatrices(ptr<ModelBone> bone, ptr<const mat44> parent_matrix)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2137,36 +2102,50 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 
     // Update child
     for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it) {
-        UpdateBoneMatrices(it->get(), &bone->CombinedTransformationMatrix);
+        UpdateBoneMatrices(*it, &bone->CombinedTransformationMatrix);
     }
 }
 
-void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled)
+void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect.get() : _modelMngr->_effectMngr->Effects.SkinnedModel.get();
+    nptr<RenderEffect> nullable_effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect : _modelMngr->_effectMngr->Effects.SkinnedModel;
+    FO_VERIFY_AND_THROW(nullable_effect, "Combined mesh has no draw effect");
+    auto effect = nullable_effect.as_ptr();
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
-    MemCopy(proj_buf->ProjMatrix, glm::value_ptr(_frameProjColMaj), 16 * sizeof(float32_t));
+    ptr<float32_t> proj_matrix = proj_buf->ProjMatrix;
+    ptr<const float32_t> draw_projection_values = glm::value_ptr(_drawProj);
+    MemCopy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
 
-    effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex : nullptr;
+    effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex.as_nptr() : nullptr;
 
     auto& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
-    auto* wm = model_buf->WorldMatrices;
+    constexpr size_t MATRIX_VALUE_COUNT = 16;
+    constexpr size_t WORLD_MATRIX_VALUE_COUNT = MODEL_MAX_BONES * MATRIX_VALUE_COUNT;
+    ptr<float32_t> world_matrices_values = model_buf->WorldMatrices;
+    span<float32_t> world_matrices {world_matrices_values.get(), WORLD_MATRIX_VALUE_COUNT};
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
-        MemCopy(wm, glm::value_ptr(m), 16 * sizeof(float32_t));
-        wm += 16;
+        const size_t matrix_offset = i * MATRIX_VALUE_COUNT;
+        span<float32_t> world_matrix = world_matrices.subspan(matrix_offset, MATRIX_VALUE_COUNT);
+        ptr<const float32_t> source_matrix_values = glm::value_ptr(m);
+        const_span<float32_t> source_matrix {source_matrix_values.get(), MATRIX_VALUE_COUNT};
+        std::ranges::copy(source_matrix, world_matrix.begin());
     }
 
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
-    MemCopy(model_buf->GroundPosition, &_groundPos, 3 * sizeof(float32_t));
+    ptr<float32_t> ground_position = model_buf->GroundPosition;
+    ptr<const float32_t> ground_position_values = glm::value_ptr(_groundPos);
+    MemCopy(ground_position, ground_position_values, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
-    MemCopy(model_buf->LightColor, &_modelMngr->_lightColor, 4 * sizeof(float32_t));
+    ptr<float32_t> light_color = model_buf->LightColor;
+    ptr<const float32_t> light_color_values = glm::value_ptr(_modelMngr->_lightColor);
+    MemCopy(light_color, light_color_values, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
         auto& custom_tex_buf = effect->ModelTexBuf = RenderEffect::ModelTexBuffer();
@@ -2174,8 +2153,12 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
         for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
             if (combined_mesh->Textures[i]) {
                 effect->ModelTex[i] = combined_mesh->Textures[i]->MainTex;
-                MemCopy(&custom_tex_buf->TexAtlasOffset[i * 4 * sizeof(float32_t)], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
-                MemCopy(&custom_tex_buf->TexSize[i * 4 * sizeof(float32_t)], combined_mesh->Textures[i]->MainTex->SizeData, 4 * sizeof(float32_t));
+                const size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
+                MemCopy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
+
+                ptr<float32_t> texture_size = &custom_tex_buf->TexSize[texture_uniform_offset];
+                ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
+                MemCopy(texture_size, texture_size_data, 4 * sizeof(float32_t));
             }
             else {
                 effect->ModelTex[i] = nullptr;
@@ -2191,10 +2174,10 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_di
     }
 
     effect->DisableCulling = _disableCulling;
-    effect->DisableShadow = shadow_disabled;
+    effect->DisableShadow = shadow_disabled || _directSceneDraw;
 
     combined_mesh->MeshBuf->Upload(effect->GetUsage());
-    effect->DrawBuffer(combined_mesh->MeshBuf.get());
+    effect->DrawBuffer(combined_mesh->MeshBuf);
 }
 
 void ModelInstance::DrawAllParticles()
@@ -2205,22 +2188,22 @@ void ModelInstance::DrawAllParticles()
         model_particle.Particle->Draw();
     }
 
-    for (auto& child : _children) {
-        child->DrawAllParticles();
+    for (size_t i = 0; i != _children.size(); ++i) {
+        _children[i]->DrawAllParticles();
     }
 }
 
-auto ModelInstance::FindBone(hstring bone_name) const noexcept -> const ModelBone*
+auto ModelInstance::FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
+    auto bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
 
-    if (bone == nullptr) {
-        for (const auto& child : _children) {
-            bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
+    if (!bone) {
+        for (size_t i = 0; i < _children.size(); i++) {
+            bone = _children[i]->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
 
-            if (bone != nullptr) {
+            if (bone) {
                 break;
             }
         }
@@ -2233,9 +2216,9 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto* bone = FindBone(bone_name);
+    const auto bone = FindBone(bone_name);
 
-    if (bone == nullptr) {
+    if (!bone) {
         return std::nullopt;
     }
 
@@ -2260,19 +2243,43 @@ auto ModelInstance::GetAnimDuration() const -> timespan
     return std::chrono::milliseconds(iround<int32_t>(_animDuration * 1000.0f));
 }
 
+auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_bodyAnimController) {
+        return {};
+    }
+
+    float32_t speed = 1.0f;
+    const auto anim_index = _modelInfo->GetAnimationIndex(state_anim, action_anim, &speed);
+
+    if (anim_index < 0) {
+        return {};
+    }
+
+    auto duration = _bodyAnimController->GetAnimationDuration(anim_index);
+
+    if (speed > 0.0f) {
+        duration /= speed;
+    }
+
+    return std::chrono::milliseconds(iround<int32_t>(duration * 1000.0f));
+}
+
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (const auto* to_bone = FindBone(bone_name)) {
-        if (auto particle = _modelMngr->_particleMngr.CreateParticle(particle_name)) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, std::move(particle), to_bone, move, _lookDirAngle});
+    if (auto to_bone = FindBone(bone_name)) {
+        if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
+            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone.as_ptr(), move, _lookDirAngle});
         }
     }
 }
 
-ModelInformation::ModelInformation(ModelManager& model_mngr) :
-    _modelMngr {&model_mngr}
+ModelInformation::ModelInformation(ptr<ModelManager> model_mngr) :
+    _modelMngr {model_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2301,15 +2308,15 @@ auto ModelInformation::Load(string_view name) -> bool
             return false;
         }
 
-        auto reader = DataReader({fo3d.GetBuf(), fo3d.GetSize()});
-        FO_RUNTIME_ASSERT(LoadBaked(name, reader));
+        auto reader = DataReader(fo3d.GetDataSpan());
+        FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
         return true;
     }
 
     // Load just model
-    auto* hierarchy = _modelMngr->GetHierarchy(name);
+    auto hierarchy = _modelMngr->GetHierarchy(name);
 
-    if (hierarchy == nullptr) {
+    if (!hierarchy) {
         return false;
     }
 
@@ -2324,8 +2331,9 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string model = ReadBakedModelDescriptionString(reader);
+    const string model = reader.ReadString();
     const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
+    _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
 
     const int32_t draw_width = reader.Read<int32_t>();
@@ -2333,8 +2341,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const int32_t view_width = reader.Read<int32_t>();
     const int32_t view_height = reader.Read<int32_t>();
 
-    FO_RUNTIME_ASSERT_STR((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), strex("Invalid DrawSize in baked model description '{}'", name));
-    FO_RUNTIME_ASSERT_STR((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), strex("Invalid ViewSize in baked model description '{}'", name));
+    FO_VERIFY_AND_THROW((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), "Baked model description contains invalid DrawSize", name, draw_width, draw_height);
+    FO_VERIFY_AND_THROW((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), "Baked model description contains invalid ViewSize", name, view_width, view_height);
 
     if (draw_width != 0 && draw_height != 0) {
         _drawSize.width = draw_width;
@@ -2345,7 +2353,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         _viewSize.height = view_height;
     }
 
-    const string rotation_bone = ReadBakedModelDescriptionString(reader);
+    const string rotation_bone = reader.ReadString();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
 
     BakedModelDescriptionLink default_link = ReadBakedModelDescriptionLink(reader);
@@ -2356,8 +2364,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     for (uint32_t i = 0; i < links_count; i++) {
         BakedModelDescriptionLink link = ReadBakedModelDescriptionLink(reader);
-        FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range in baked model description '{}'", link.Data.Layer, name));
-        FO_RUNTIME_ASSERT_STR(link.Data.LayerValue != 0, strex("Model link layer value is zero in baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Baked model description contains a model link layer out of range", link.Data.Layer, name);
+        FO_VERIFY_AND_THROW(link.Data.LayerValue != 0, "Baked model description contains a model link with zero layer value", name);
         links.emplace_back(std::move(link));
     }
 
@@ -2375,7 +2383,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         const int32_t state_anim = reader.Read<int32_t>();
         const int32_t action_anim = reader.Read<int32_t>();
         const float32_t speed = reader.Read<float32_t>();
-        FO_RUNTIME_ASSERT_STR(speed > 0.0f, strex("Animation speed for ({}, {}) in baked model description '{}' must be positive", state_anim, action_anim, name));
+        FO_VERIFY_AND_THROW(speed > 0.0f, "Baked model description contains a non-positive animation speed", state_anim, action_anim, name, speed);
         _animSpeed.emplace(std::make_pair(static_cast<CritterStateAnim>(state_anim), static_cast<CritterActionAnim>(action_anim)), speed);
     }
 
@@ -2384,7 +2392,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     for (uint32_t i = 0; i < anim_layer_values_count; i++) {
         const BakedModelDescriptionAnimLayerValue value = ReadBakedModelDescriptionAnimLayerValue(reader);
         const auto index = std::make_pair(static_cast<CritterStateAnim>(value.StateAnim), static_cast<CritterActionAnim>(value.ActionAnim));
-        FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range in baked model description '{}'", value.Layer, name));
+        FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Baked model description contains an animation layer out of range", value.Layer, name);
 
         if (_animLayerValues.count(index) == 0) {
             _animLayerValues.emplace(index, vector<pair<int32_t, int32_t>>());
@@ -2396,7 +2404,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const uint32_t fast_transition_bones_count = reader.Read<uint32_t>();
 
     for (uint32_t i = 0; i < fast_transition_bones_count; i++) {
-        const string bone_name = ReadBakedModelDescriptionString(reader);
+        const string bone_name = reader.ReadString();
         _fastTransitionBones.insert(_modelMngr->GetBoneHashedString(bone_name));
     }
 
@@ -2418,25 +2426,27 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     reader.VerifyEnd();
 
-    FO_RUNTIME_ASSERT_STR(!model.empty(), strex("'Model' section not found in baked model description '{}'", name));
+    FO_VERIFY_AND_THROW(!model.empty(), "Baked model description has no Model section", name);
 
-    ModelHierarchy* hierarchy = _modelMngr->GetHierarchy(model);
-    FO_RUNTIME_ASSERT_STR(hierarchy != nullptr, strex("Model hierarchy '{}' not found for baked model description '{}'", model, name));
-    FO_RUNTIME_ASSERT_STR(!hierarchy->_allDrawBones.empty(), strex("Model hierarchy '{}' has no drawable meshes for baked model description '{}'", model, name));
+    auto nullable_hierarchy = _modelMngr->GetHierarchy(model);
+    FO_VERIFY_AND_THROW(nullable_hierarchy, "Model hierarchy was not found for a baked model description", model, name);
+    auto hierarchy = nullable_hierarchy.as_ptr();
+    FO_VERIFY_AND_THROW(!hierarchy->_allDrawBones.empty(), "Model hierarchy has no drawable meshes for a baked model description", model, name);
 
     _fileName = name;
     _hierarchy = hierarchy;
-    FO_RUNTIME_ASSERT_STR(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, strex("Rotation bone '{}' not found in baked model description '{}'", rotation_bone, name));
+    FO_VERIFY_AND_THROW(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
-        FO_RUNTIME_ASSERT_STR(_hierarchy->_rootBone->Find(bone_name) != nullptr, strex("Fast transition bone not found in baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(_hierarchy->_rootBone->Find(bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
     const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
-        ModelHierarchy* area = _modelMngr->GetHierarchy(raw_cut.FileName);
-        FO_RUNTIME_ASSERT_STR(area != nullptr, strex("Cut file '{}' not found", raw_cut.FileName));
+        auto nullable_area = _modelMngr->GetHierarchy(raw_cut.FileName);
+        FO_VERIFY_AND_THROW(nullable_area, "Cut file was not found", raw_cut.FileName);
+        auto area = nullable_area.as_ptr();
 
-        auto* cut = SafeAlloc::MakeRaw<ModelCutData>();
+        ptr<ModelCutData> cut = SafeAlloc::MakeRaw<ModelCutData>();
         link.CutInfo.emplace_back(cut);
         cut->Layers = raw_cut.Layers;
         cut->UnskinBone1 = !raw_cut.UnskinBone1.empty() ? _modelMngr->GetBoneHashedString(raw_cut.UnskinBone1) : hstring {};
@@ -2449,32 +2459,32 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
             unskin_shape_name = _modelMngr->GetBoneHashedString(raw_cut.UnskinShape);
             bool unskin_shape_found = false;
 
-            for (raw_ptr<ModelBone> bone : area->_allDrawBones) {
+            for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if (unskin_shape_name == bone->Name) {
-                    cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
+                    cut->UnskinShape = CreateCutShape(bone->GetAttachedMesh().as_ptr());
                     unskin_shape_found = true;
                     break;
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(unskin_shape_found, strex("Unskin shape '{}' not found in cut file '{}'", raw_cut.UnskinShape, raw_cut.FileName));
+            FO_VERIFY_AND_THROW(unskin_shape_found, "Unskin shape was not found in a cut file", raw_cut.UnskinShape, raw_cut.FileName);
         }
 
         for (const string& shape : raw_cut.Shapes) {
             const hstring shape_name = !shape.empty() ? _modelMngr->GetBoneHashedString(shape) : hstring {};
             bool shape_found = false;
 
-            for (raw_ptr<ModelBone> bone : area->_allDrawBones) {
+            for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
-                    cut->Shapes.emplace_back(CreateCutShape(bone->AttachedMesh.get()));
+                    cut->Shapes.emplace_back(CreateCutShape(bone->GetAttachedMesh().as_ptr()));
                     shape_found = true;
                 }
             }
 
-            FO_RUNTIME_ASSERT_STR(shape_found, strex("Cut shape '{}' not found in cut file '{}'", !shape.empty() ? shape : string {"All"}, raw_cut.FileName));
+            FO_VERIFY_AND_THROW(shape_found, "Cut shape was not found in a cut file", !shape.empty() ? shape : string {"All"}, raw_cut.FileName);
         }
 
-        FO_RUNTIME_ASSERT_STR(!cut->Shapes.empty(), strex("Cut file '{}' produced no cut shapes", raw_cut.FileName));
+        FO_VERIFY_AND_THROW(!cut->Shapes.empty(), "Cut file produced no cut shapes", raw_cut.FileName);
     };
 
     _animDataDefault = std::move(default_link.Data);
@@ -2496,7 +2506,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     }
 
     if (!anim_entries.empty()) {
-        _animController = SafeAlloc::MakeUnique<ModelAnimationController>(2);
+        _animController.emplace(2);
     }
 
     if (_animController) {
@@ -2518,40 +2528,40 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             const bool reversed = anim_entry.Name.starts_with('~');
             const string anim_name = reversed ? anim_entry.Name.substr(1) : anim_entry.Name;
-            ModelAnimation* anim = _modelMngr->LoadAnimation(anim_path, anim_name);
-            FO_RUNTIME_ASSERT_STR(anim != nullptr, strex("Animation '{}' not found in '{}' for baked model description '{}'", anim_entry.Name, anim_path, name));
+            auto anim = _modelMngr->LoadAnimation(anim_path, anim_name);
+            FO_VERIFY_AND_THROW(anim, "Animation was not found for a baked model description", anim_entry.Name, anim_path, name);
 
-            const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
+            const int32_t anim_index = _animController->RegisterAnimation(anim.as_ptr(), reversed);
             _animIndexes.emplace(anim_pair, anim_index);
         }
 
         const int32_t anim_count = _animController->GetAnimationsCount();
-        FO_RUNTIME_ASSERT_STR(anim_count != 0, strex("No animations registered for baked model description '{}'", name));
+        FO_VERIFY_AND_THROW(anim_count != 0, "No animations registered for a baked model description", name);
 
         for (int32_t i = 0; i < anim_count; i++) {
-            const vector<vector<hstring>>& bones_hierarchy = _animController->GetAnimationBones(i);
+            const_span<vector<hstring>> bones_hierarchy = _animController->GetAnimationBones(i);
 
             for (const vector<hstring>& bone_hierarchy : bones_hierarchy) {
-                FO_RUNTIME_ASSERT(!bone_hierarchy.empty());
-                ModelBone* bone = _hierarchy->_rootBone.get();
+                FO_VERIFY_AND_THROW(!bone_hierarchy.empty(), "Baked model animation contains an empty bone hierarchy", name, i, bones_hierarchy.size());
+                ptr<ModelBone> bone = _hierarchy->_rootBone;
 
                 for (size_t b = 1; b < bone_hierarchy.size(); b++) {
-                    ModelBone* child = bone->Find(bone_hierarchy[b]);
+                    auto child = bone->Find(bone_hierarchy[b]);
 
-                    if (child == nullptr) {
+                    if (!child) {
                         auto new_child = SafeAlloc::MakeUnique<ModelBone>();
-                        child = new_child.get();
+                        child = new_child;
                         new_child->Name = bone_hierarchy[b];
                         bone->Children.emplace_back(std::move(new_child));
                     }
 
-                    bone = child;
+                    bone = child.as_ptr();
                 }
             }
         }
 
         _animController->SetInterpolation(!disable_animation_interpolation);
-        _hierarchy->SetupAnimationOutput(_animController.get());
+        _hierarchy->SetupAnimationOutput(&*_animController);
     }
 
     return true;
@@ -2564,11 +2574,11 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     BakedModelDescriptionLink link;
     link.Data.Layer = reader.Read<int32_t>();
     link.Data.LayerValue = reader.Read<int32_t>();
-    FO_RUNTIME_ASSERT_STR(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Model link layer {} is out of range", link.Data.Layer));
+    FO_VERIFY_AND_THROW(link.Data.Layer >= 0 && link.Data.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Model link layer is out of range", link.Data.Layer);
 
-    const string link_bone = ReadBakedModelDescriptionString(reader);
+    const string link_bone = reader.ReadString();
     link.Data.LinkBone = !link_bone.empty() ? _modelMngr->GetBoneHashedString(link_bone) : hstring {};
-    link.Data.ChildName = ReadBakedModelDescriptionString(reader);
+    link.Data.ChildName = reader.ReadString();
     link.Data.IsParticles = reader.Read<uint8_t>() != 0;
     link.Data.RotX = reader.Read<float32_t>();
     link.Data.RotY = reader.Read<float32_t>();
@@ -2580,18 +2590,18 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.ScaleY = reader.Read<float32_t>();
     link.Data.ScaleZ = reader.Read<float32_t>();
     link.Data.SpeedAjust = reader.Read<float32_t>();
-    FO_RUNTIME_ASSERT_STR(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
-    link.Data.DisabledLayer = ReadBakedModelDescriptionInt32Vector(reader);
+    FO_VERIFY_AND_THROW(link.Data.SpeedAjust >= 0.0f, "Model link speed adjust is negative");
+    link.Data.DisabledLayer = reader.ReadSizedObjectVector<int32_t>();
 
     for (const int32_t disabled_layer : link.Data.DisabledLayer) {
-        FO_RUNTIME_ASSERT_STR(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Disabled model layer {} is out of range", disabled_layer));
+        FO_VERIFY_AND_THROW(disabled_layer >= 0 && disabled_layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Disabled model layer is out of range", disabled_layer);
     }
 
     const uint32_t disabled_mesh_count = reader.Read<uint32_t>();
     link.Data.DisabledMesh.reserve(disabled_mesh_count);
 
     for (uint32_t i = 0; i < disabled_mesh_count; i++) {
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        const string mesh_name = reader.ReadString();
         link.Data.DisabledMesh.emplace_back(!mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
@@ -2599,10 +2609,10 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.TextureInfo.reserve(texture_count);
 
     for (uint32_t i = 0; i < texture_count; i++) {
-        string texture_name = ReadBakedModelDescriptionString(reader);
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        string texture_name = reader.ReadString();
+        const string mesh_name = reader.ReadString();
         const int32_t texture_index = reader.Read<int32_t>();
-        FO_RUNTIME_ASSERT_STR(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), strex("Texture index {} is out of range", texture_index));
+        FO_VERIFY_AND_THROW(texture_index >= 0 && texture_index < numeric_cast<int32_t>(MODEL_MAX_TEXTURES), "Texture index is out of range", texture_index);
         link.Data.TextureInfo.emplace_back(std::move(texture_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {}, texture_index);
     }
 
@@ -2610,8 +2620,8 @@ auto ModelInformation::ReadBakedModelDescriptionLink(DataReader& reader) const -
     link.Data.EffectInfo.reserve(effect_count);
 
     for (uint32_t i = 0; i < effect_count; i++) {
-        string effect_name = ReadBakedModelDescriptionString(reader);
-        const string mesh_name = ReadBakedModelDescriptionString(reader);
+        string effect_name = reader.ReadString();
+        const string mesh_name = reader.ReadString();
         link.Data.EffectInfo.emplace_back(std::move(effect_name), !mesh_name.empty() ? _modelMngr->GetBoneHashedString(mesh_name) : hstring {});
     }
 
@@ -2630,12 +2640,12 @@ auto ModelInformation::ReadBakedModelDescriptionCutInfo(DataReader& reader) cons
     FO_STACK_TRACE_ENTRY();
 
     BakedModelDescriptionCutInfo cut;
-    cut.FileName = ReadBakedModelDescriptionString(reader);
-    cut.Layers = ReadBakedModelDescriptionInt32Vector(reader);
-    cut.Shapes = ReadBakedModelDescriptionStringVector(reader);
-    cut.UnskinBone1 = ReadBakedModelDescriptionString(reader);
-    cut.UnskinBone2 = ReadBakedModelDescriptionString(reader);
-    cut.UnskinShape = ReadBakedModelDescriptionString(reader);
+    cut.FileName = reader.ReadString();
+    cut.Layers = reader.ReadSizedObjectVector<int32_t>();
+    cut.Shapes = reader.ReadStringVector();
+    cut.UnskinBone1 = reader.ReadString();
+    cut.UnskinBone2 = reader.ReadString();
+    cut.UnskinShape = reader.ReadString();
     cut.RevertUnskinShape = reader.Read<uint8_t>() != 0;
     return cut;
 }
@@ -2647,8 +2657,8 @@ auto ModelInformation::ReadBakedModelDescriptionAnimEntry(DataReader& reader) co
     BakedModelDescriptionAnimEntry anim_entry;
     anim_entry.StateAnim = reader.Read<int32_t>();
     anim_entry.ActionAnim = reader.Read<int32_t>();
-    anim_entry.FileName = ReadBakedModelDescriptionString(reader);
-    anim_entry.Name = ReadBakedModelDescriptionString(reader);
+    anim_entry.FileName = reader.ReadString();
+    anim_entry.Name = reader.ReadString();
     return anim_entry;
 }
 
@@ -2661,48 +2671,11 @@ auto ModelInformation::ReadBakedModelDescriptionAnimLayerValue(DataReader& reade
     value.ActionAnim = reader.Read<int32_t>();
     value.Layer = reader.Read<int32_t>();
     value.LayerValue = reader.Read<int32_t>();
-    FO_RUNTIME_ASSERT_STR(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), strex("Animation layer {} is out of range", value.Layer));
+    FO_VERIFY_AND_THROW(value.Layer >= 0 && value.Layer < numeric_cast<int32_t>(MODEL_LAYERS_COUNT), "Animation layer is out of range", value.Layer);
     return value;
 }
 
-auto ModelInformation::ReadBakedModelDescriptionStringVector(DataReader& reader) const -> vector<string>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t count = reader.Read<uint32_t>();
-    vector<string> values;
-    values.reserve(count);
-
-    for (uint32_t i = 0; i < count; i++) {
-        values.emplace_back(ReadBakedModelDescriptionString(reader));
-    }
-
-    return values;
-}
-
-auto ModelInformation::ReadBakedModelDescriptionInt32Vector(DataReader& reader) const -> vector<int32_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t count = reader.Read<uint32_t>();
-    vector<int32_t> values;
-    values.resize(count);
-    reader.ReadPtr(values.data(), values.size() * sizeof(values[0]));
-    return values;
-}
-
-auto ModelInformation::ReadBakedModelDescriptionString(DataReader& reader) const -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const uint32_t len = reader.Read<uint32_t>();
-    string value;
-    value.resize(len);
-    reader.ReadPtr(value.data(), len);
-    return value;
-}
-
-auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, float32_t* speed) -> int32_t
+auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2733,7 +2706,7 @@ auto ModelInformation::GetAnimationIndex(CritterStateAnim& state_anim, CritterAc
     return anim_index;
 }
 
-auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, float32_t* speed) const -> int32_t
+auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2746,7 +2719,7 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
 
     const auto index = std::make_pair(state_anim, action_anim);
 
-    if (speed != nullptr) {
+    if (speed) {
         const auto it = _animSpeed.find(index);
 
         if (it != _animSpeed.end()) {
@@ -2764,33 +2737,32 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
     return -1;
 }
 
-auto ModelInformation::CreateInstance() -> ModelInstance*
+auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_hierarchy != nullptr);
-    FO_RUNTIME_ASSERT_STR(_drawSize.width > 0 && _drawSize.height > 0, strex("Invalid draw size for model '{}'", _fileName));
-    FO_RUNTIME_ASSERT_STR(_viewSize.width > 0 && _viewSize.height > 0, strex("Invalid view size for model '{}'", _fileName));
+    FO_VERIFY_AND_THROW(_hierarchy != nullptr, "Missing required hierarchy");
+    FO_VERIFY_AND_THROW(_drawSize.width > 0 && _drawSize.height > 0, "Model has invalid draw size", _fileName, _drawSize);
+    FO_VERIFY_AND_THROW(_viewSize.width > 0 && _viewSize.height > 0, "Model has invalid view size", _fileName, _viewSize);
 
-    auto* model = SafeAlloc::MakeRaw<ModelInstance>(*_modelMngr, this);
+    auto model = SafeAlloc::MakeUnique<ModelInstance>(_modelMngr, this);
 
     if (_animController) {
-        model->_bodyAnimController = _animController->Copy();
+        model->_bodyAnimController.emplace(_animController->Copy());
 
         if (_rotationBone) {
-            model->_moveAnimController = _animController->Copy();
+            model->_moveAnimController.emplace(_animController->Copy());
         }
     }
 
     return model;
 }
 
-auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape
+auto ModelInformation::CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(mesh != nullptr);
-    FO_RUNTIME_ASSERT_STR(!mesh->Vertices.empty(), "Cut mesh has no vertices");
+    FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Cut mesh has no vertices");
 
     ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
@@ -2846,20 +2818,22 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
     return shape;
 }
 
-ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) :
-    _modelMngr {&model_mngr}
+ModelHierarchy::ModelHierarchy(ptr<ModelManager> model_mngr, string file_name, ptr<ModelBone> root_bone) :
+    _modelMngr {model_mngr},
+    _fileName {std::move(file_name)},
+    _rootBone {root_bone}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-static void SetupBonesExt(multimap<uint32_t, ModelBone*>& bones, ModelBone* bone, uint32_t depth)
+static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, ptr<ModelBone> bone, uint32_t depth)
 {
     FO_STACK_TRACE_ENTRY();
 
     bones.emplace(depth, bone);
 
-    for (auto& child : bone->Children) {
-        SetupBonesExt(bones, child.get(), depth + 1);
+    for (size_t i = 0; i != bone->Children.size(); ++i) {
+        SetupBonesExt(bones, bone->Children[i], depth + 1);
     }
 }
 
@@ -2867,10 +2841,10 @@ void ModelHierarchy::SetupBones()
 {
     FO_STACK_TRACE_ENTRY();
 
-    multimap<uint32_t, ModelBone*> bones;
-    SetupBonesExt(bones, _rootBone.get(), 0);
+    multimap<uint32_t, ptr<ModelBone>> bones;
+    SetupBonesExt(bones, _rootBone, 0);
 
-    for (auto* bone : bones | std::views::values) {
+    for (ptr<ModelBone> bone : bones | std::views::values) {
         _allBones.emplace_back(bone);
 
         if (bone->AttachedMesh) {
@@ -2879,44 +2853,44 @@ void ModelHierarchy::SetupBones()
     }
 }
 
-static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, ModelBone* bone)
+static void SetupAnimationOutputExt(ptr<ModelAnimationController> anim_controller, ptr<ModelBone> bone)
 {
     FO_STACK_TRACE_ENTRY();
 
     anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 
-    for (auto& it : bone->Children) {
-        SetupAnimationOutputExt(anim_controller, it.get());
+    for (size_t i = 0; i != bone->Children.size(); ++i) {
+        SetupAnimationOutputExt(anim_controller, bone->Children[i]);
     }
 }
 
-void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_controller)
+void ModelHierarchy::SetupAnimationOutput(ptr<ModelAnimationController> anim_controller)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetupAnimationOutputExt(anim_controller, _rootBone.get());
+    SetupAnimationOutputExt(anim_controller, _rootBone);
 }
 
-auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
+auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT_STR(!tex_name.empty(), strex("Empty texture name for model '{}'", _fileName));
-    auto* texture = _modelMngr->LoadTexture(tex_name, _fileName);
-    FO_RUNTIME_ASSERT_STR(texture != nullptr, strex("Can't load texture '{}' for model '{}'", tex_name, _fileName));
+    FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
+    auto nullable_texture = _modelMngr->LoadTexture(tex_name, _fileName);
+    FO_VERIFY_AND_THROW(nullable_texture, "Model texture could not be loaded", tex_name, _fileName);
 
-    return texture;
+    return nullable_texture.as_ptr();
 }
 
-auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
+auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT_STR(!name.empty(), strex("Empty effect name for model '{}'", _fileName));
-    auto* effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
-    FO_RUNTIME_ASSERT_STR(effect != nullptr, strex("Can't load effect '{}' for model '{}'", name, _fileName));
+    FO_VERIFY_AND_THROW(!name.empty(), "Model effect request has an empty effect name", _fileName);
+    auto nullable_effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
+    FO_VERIFY_AND_THROW(nullable_effect, "Model effect could not be loaded", name, _fileName);
 
-    return effect;
+    return nullable_effect.as_ptr();
 }
 
 FO_END_NAMESPACE

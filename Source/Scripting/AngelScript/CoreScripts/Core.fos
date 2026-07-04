@@ -1,31 +1,6 @@
 namespace Core // Sort -10
 {
 
-// Internal server commands
-#define COMMAND_EXIT         (1)
-#define COMMAND_MYINFO       (2)
-#define COMMAND_GAMEINFO     (3)
-#define COMMAND_CRITID       (4)
-#define COMMAND_MOVECRIT     (5)
-#define COMMAND_DISCONCRIT   (7)
-#define COMMAND_TOGLOBAL     (8)
-#define COMMAND_PROPERTY     (10)
-#define COMMAND_ADDITEM      (12)
-#define COMMAND_ADDITEM_SELF (14)
-#define COMMAND_ADDNPC       (15)
-#define COMMAND_ADDLOCATION  (16)
-#define COMMAND_RUNSCRIPT    (20)
-#define COMMAND_REGENMAP     (25)
-#define COMMAND_LOG          (37)
-
-// Client lighting
-#define MAX_LIGHT_VALUE        (10000)
-#define MAX_LIGHT_HEX          (200)
-#define MAX_LIGHT_ALPHA        (255)
-#define LIGHT_DISABLE_DIR(dir) (1 << Math::Clamp(dir, 0, 7))
-#define LIGHT_GLOBAL           (0x40)
-#define LIGHT_INVERSE          (0x80)
-
 // Invariant check: when the condition is false the invariant is broken, so throw
 // with the given message (plus optional context values, forwarded to the
 // exception). Unlike a bare error throw, a `verify` documents a contract the

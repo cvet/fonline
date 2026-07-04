@@ -53,16 +53,16 @@ namespace SPK::FO
     class SparkRenderBuffer final : public RenderBuffer
     {
     public:
-        SparkRenderBuffer(size_t vertices, FO_NAMESPACE IAppRender& render);
+        SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render);
 
         void PositionAtStart();
         void SetNextVertex(const Vector3D& pos, const Color& color);
         void SetNextTexCoord(float32_t tu, float32_t tv);
-        void Render(size_t vertices, RenderEffect* effect) const;
+        void Render(size_t vertices, ptr<RenderEffect> effect) const;
 
     private:
-        mutable unique_ptr<RenderDrawBuffer> _renderBuf {};
-        raw_ptr<FO_NAMESPACE IAppRender> _render {};
+        mutable unique_ptr<RenderDrawBuffer> _renderBuf;
+        nptr<FO_NAMESPACE IAppRender> _render {};
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
     };
@@ -74,6 +74,7 @@ namespace SPK::FO
         SPK_START_DESCRIPTION
         SPK_PARENT_ATTRIBUTES(Renderer)
         SPK_ATTRIBUTE("draw size", ATTRIBUTE_TYPE_INT32S)
+        SPK_ATTRIBUTE("draw in scene", ATTRIBUTE_TYPE_BOOL)
         SPK_ATTRIBUTE("effect", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("blend mode", ATTRIBUTE_TYPE_STRING)
         SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
@@ -90,17 +91,20 @@ namespace SPK::FO
         static auto Create() -> Ref<SparkQuadRenderer>;
         ~SparkQuadRenderer() override = default;
 
-        void Setup(string_view path, ParticleManager& particle_mngr);
+        void Setup(string_view path, ptr<ParticleManager> particle_mngr);
 
         auto GetDrawWidth() const -> int32_t;
         auto GetDrawHeight() const -> int32_t;
         void SetDrawSize(int32_t width, int32_t height);
 
-        auto GetEffectName() const -> const string&;
-        void SetEffectName(const string& effect_name);
+        auto GetDrawInScene() const -> bool;
+        void SetDrawInScene(bool draw_in_scene);
 
-        auto GetTextureName() const -> const string&;
-        void SetTextureName(const string& tex_name);
+        auto GetEffectName() const -> string_view;
+        void SetEffectName(string_view effect_name);
+
+        auto GetTextureName() const -> string_view;
+        void SetTextureName(string_view tex_name);
 
     private:
         SparkQuadRenderer() :
@@ -110,23 +114,24 @@ namespace SPK::FO
         explicit SparkQuadRenderer(bool needs_dataset);
         SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
 
-        void AddPosAndColor(const Particle& particle, SparkRenderBuffer& render_buffer) const;
-        void AddTexture2D(const Particle& particle, SparkRenderBuffer& render_buffer) const;
-        void AddTexture2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const;
+        void AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
+        void AddTexture2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
+        void AddTexture2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
 
-        void Render2D(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D or no texture
-        void Render2DRot(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D or no texture and rotation
-        void Render2DAtlas(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D atlas
-        void Render2DAtlasRot(const Particle& particle, SparkRenderBuffer& render_buffer) const; // Rendering for particles with texture 2D atlas and rotation
+        void Render2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D or no texture
+        void Render2DRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D or no texture and rotation
+        void Render2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas
+        void Render2DAtlasRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas and rotation
 
         string _path {};
-        raw_ptr<ParticleManager> _particleMngr {};
-        mutable raw_ptr<RenderEffect> _effect {};
-        raw_ptr<RenderTexture> _texture {};
+        nptr<ParticleManager> _particleMngr {};
+        mutable nptr<RenderEffect> _effect {};
+        nptr<RenderTexture> _texture {};
         frect32 _textureAtlasOffset {};
 
         int32_t _drawWidth {};
         int32_t _drawHeight {};
+        bool _drawInScene {};
 
         string _effectName {};
         string _textureName {};
@@ -134,7 +139,7 @@ namespace SPK::FO
         mutable mat44 _modelView {};
         mutable mat44 _invModelView {};
 
-        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, SparkRenderBuffer& renderBuffer) const;
+        using RenderParticleFunc = void (SparkQuadRenderer::*)(const Particle&, ptr<SparkRenderBuffer> renderBuffer) const;
         mutable RenderParticleFunc _renderParticle {};
 
     private:

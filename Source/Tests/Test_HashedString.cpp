@@ -55,7 +55,7 @@ TEST_CASE("HashedString")
         CHECK(static_cast<bool>(hs));
         CHECK(hs.as_hash() != 0);
         CHECK(hs.as_uint64() == hs.as_hash());
-        CHECK(hs.as_hash() == hashing_ex::hash(hs.as_str().data(), hs.as_str().length()));
+        CHECK(hs.as_hash() == HashStorage::DefaultHash(string_to_span(hs.as_str())));
         CHECK(hs.as_str() == "EssentialsTest");
 
         const auto resolved = storage.ResolveHash(hs.as_hash());
@@ -107,6 +107,39 @@ TEST_CASE("HashedString")
         const auto hs = storage.ToHashedString("known");
         CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
         CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("unknown", 7)), HashResolveException);
+    }
+
+    SECTION("ResolveHashFailureHandler")
+    {
+        HashStorage storage {};
+
+        hstring::hash_t reported_hash = 0;
+        int32_t reports = 0;
+
+        storage.SetResolveHashFailureHandler([&reported_hash, &reports](hstring::hash_t hash) {
+            reported_hash = hash;
+            reports++;
+        });
+
+        const auto no_throw_unresolved_hash = hashing_ex::hash("unknown", 7);
+        bool failed = false;
+        CHECK_FALSE(static_cast<bool>(storage.ResolveHash(no_throw_unresolved_hash, &failed)));
+        CHECK(failed);
+        CHECK(reported_hash == no_throw_unresolved_hash);
+        CHECK(reports == 1);
+
+        const auto hs = storage.ToHashedString("known");
+        CHECK_NOTHROW(storage.ResolveHash(hs.as_hash()));
+        CHECK(reports == 1);
+
+        const auto throwing_unresolved_hash = hashing_ex::hash("unknown_throwing", 16);
+        CHECK_THROWS_AS(storage.ResolveHash(throwing_unresolved_hash), HashResolveException);
+        CHECK(reported_hash == throwing_unresolved_hash);
+        CHECK(reports == 2);
+
+        storage.SetResolveHashFailureHandler({});
+        CHECK_THROWS_AS(storage.ResolveHash(hashing_ex::hash("missing", 7)), HashResolveException);
+        CHECK(reports == 2);
     }
 
     SECTION("ResolveHashNoThrowNullFailed")

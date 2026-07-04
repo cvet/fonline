@@ -38,6 +38,7 @@
 
 #include "AngelScriptArray.h"
 #include "AngelScriptDict.h"
+#include "AngelScriptHelpers.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -68,90 +69,126 @@ namespace
     {
     public:
         explicit BytecodeStream(vector<asBYTE>& buf) :
-            _buf {buf}
+            _buf {BufferPtr(buf)}
         {
+            FO_NO_STACK_TRACE_ENTRY();
         }
 
-        auto Read(void* ptr, asUINT size) -> int override
+        auto Read(void* raw_data, asUINT size) -> int override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            if (_readPos + size > _buf.size()) {
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            if (_readPos + size > _buf->size()) {
                 return -1;
             }
 
-            MemCopy(ptr, _buf.data() + _readPos, size);
+            ptr<void> target = raw_data;
+            ptr<const asBYTE> source = &_buf->at(_readPos);
+            MemCopy(target, source, size);
             _readPos += size;
             return 0;
         }
 
-        auto Write(const void* ptr, asUINT size) -> int override
+        auto Write(const void* raw_data, asUINT size) -> int override
         {
-            if (ptr == nullptr || size == 0) {
+            if (size == 0) {
                 return 0;
             }
 
-            _buf.resize(_writePos + size);
-            MemCopy(_buf.data() + _writePos, ptr, size);
+            if (raw_data == nullptr) {
+                return 0;
+            }
+
+            _buf->resize(_writePos + size);
+            ptr<asBYTE> target = &_buf->at(_writePos);
+            ptr<const void> source = raw_data;
+            MemCopy(target, source, size);
             _writePos += size;
             return 0;
         }
 
     private:
-        vector<asBYTE>& _buf;
+        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &buf;
+        }
+
+        ptr<vector<asBYTE>> _buf;
         size_t _readPos {};
         size_t _writePos {};
     };
 
-    static auto GetTrackerState(asIScriptEngine* engine) -> ResourceTrackerState&
+    static auto GetTrackerState(ptr<asIScriptEngine> engine) -> ptr<ResourceTrackerState>
     {
-        auto* state = static_cast<ResourceTrackerState*>(engine->GetUserData());
-        FO_RUNTIME_ASSERT(state != nullptr);
-        return *state;
+        nptr<ResourceTrackerState> nullable_tracker_state = cast_from_void<ResourceTrackerState*>(engine->GetUserData());
+        FO_VERIFY_AND_THROW(nullable_tracker_state, "Script engine has no resource tracker state attached");
+        return nullable_tracker_state.as_ptr();
     }
 
-    static auto GetActiveEngine() -> asIScriptEngine*
+    static auto GetActiveEngine() -> ptr<asIScriptEngine>
     {
-        auto* ctx = asGetActiveContext();
-        FO_RUNTIME_ASSERT(ctx != nullptr);
-        auto* engine = ctx->GetEngine();
-        FO_RUNTIME_ASSERT(engine != nullptr);
-        return engine;
+        nptr<asIScriptContext> ctx = asGetActiveContext();
+        FO_VERIFY_AND_THROW(ctx, "Missing required context");
+        nptr<asIScriptEngine> nullable_active_engine = ctx->GetEngine();
+        FO_VERIFY_AND_THROW(nullable_active_engine, "Active script context has no engine");
+        return nullable_active_engine.as_ptr();
+    }
+
+    static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        engine->ShutDownAndRelease();
+    }
+
+    static auto MakeScriptEngine() -> unique_del_ptr<asIScriptEngine>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<asIScriptEngine> nullable_engine = asCreateScriptEngine();
+        REQUIRE(nullable_engine);
+        return make_unique_del_ptr(nullable_engine.as_ptr(), ReleaseScriptEngine);
     }
 
     static auto AcquireResource() -> int
     {
-        auto& state = GetTrackerState(GetActiveEngine());
-        const int id = ++state.NextId;
-        state.ActiveRefs[id] = 1;
+        auto state = GetTrackerState(GetActiveEngine());
+        const int id = ++state->NextId;
+        state->ActiveRefs[id] = 1;
         return id;
     }
 
     static void ReleaseResource(int id)
     {
-        auto& state = GetTrackerState(GetActiveEngine());
-        const auto it = state.ActiveRefs.find(id);
+        auto state = GetTrackerState(GetActiveEngine());
+        const auto it = state->ActiveRefs.find(id);
 
-        if (it == state.ActiveRefs.end() || it->second == 0) {
-            state.DoubleFreeCount++;
+        if (it == state->ActiveRefs.end() || it->second == 0) {
+            state->DoubleFreeCount++;
             return;
         }
 
         it->second--;
         if (it->second == 0) {
-            state.ActiveRefs.erase(it);
+            state->ActiveRefs.erase(it);
         }
     }
 
     static void ObserveResource(int id)
     {
-        auto& state = GetTrackerState(GetActiveEngine());
-        if (state.FirstObservedId == 0) {
-            state.FirstObservedId = id;
+        auto state = GetTrackerState(GetActiveEngine());
+        if (state->FirstObservedId == 0) {
+            state->FirstObservedId = id;
         }
-        state.LastObservedId = id;
+        state->LastObservedId = id;
     }
 
     // PtrSizedVal is a value type whose size equals sizeof(void*), simulating hstring.
@@ -190,15 +227,25 @@ namespace
 
     static void IncrementGlobalCounter()
     {
-        auto& state = GetTrackerState(GetActiveEngine());
-        state.GlobalCounter++;
+        auto state = GetTrackerState(GetActiveEngine());
+        state->GlobalCounter++;
     }
 
     static void MessageCallback(const asSMessageInfo* msg, void* param)
     {
-        static_cast<void>(param);
+        ignore_unused(param);
 
-        if (msg->section == nullptr || msg->section[0] == '\0') {
+        ptr<const asSMessageInfo> message = msg;
+        nptr<const char> nullable_section = message->section;
+
+        if (!nullable_section) {
+            return;
+        }
+
+        auto section = nullable_section.as_ptr();
+        const string_view section_name {section.get()};
+
+        if (section_name.empty()) {
             return;
         }
 
@@ -206,16 +253,38 @@ namespace
         // "Redundant '?'" diagnostic that fires when `T? x = nonNullExpr;`
         // could be `T x = nonNullExpr;` instead) are emitted by intentional
         // test fixtures and should not abort the suite.
-        if (msg->type != asMSGTYPE_ERROR) {
+        if (message->type != asMSGTYPE_ERROR) {
             return;
         }
 
-        const auto section = msg->section != nullptr ? msg->section : "<unknown>";
-        const auto text = msg->message != nullptr ? msg->message : "<no message>";
-        FAIL(section << ':' << msg->row << ' ' << text);
+        const nptr<const char> text = message->message;
+        FAIL(section_name << ':' << message->row << ' ' << (text ? text.get() : "<no message>"));
     }
 
-    static void RegisterTestApi(asIScriptEngine* engine)
+    struct MsgCapture
+    {
+        vector<string> Errors {};
+        vector<string> Warnings {};
+    };
+
+    static void CaptureMessageCallback(const asSMessageInfo* msg, void* param)
+    {
+        ptr<const asSMessageInfo> message = msg;
+        nptr<MsgCapture> nullable_self = cast_from_void<MsgCapture*>(param);
+        FO_VERIFY_AND_THROW(nullable_self, "Message callback param must carry capture state");
+        auto self = nullable_self.as_ptr();
+        const nptr<const char> text = message->message;
+        const string message_text = text ? string {text.get()} : string {"<no message>"};
+
+        if (message->type == asMSGTYPE_ERROR) {
+            self->Errors.emplace_back(message_text);
+        }
+        else if (message->type == asMSGTYPE_WARNING) {
+            self->Warnings.emplace_back(message_text);
+        }
+    }
+
+    static void RegisterTestApi(ptr<asIScriptEngine> engine)
     {
         CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
         CHECK(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true) >= 0);
@@ -224,47 +293,48 @@ namespace
         CHECK(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_COPY_CONSTRUCT, 2) >= 0);
         CHECK(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
         CHECK(engine->SetMessageCallback(asFUNCTION(MessageCallback), nullptr, asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int AcquireResource()", asFUNCTION(AcquireResource), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void ReleaseResource(int)", asFUNCTION(ReleaseResource), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void ObserveResource(int)", asFUNCTION(ObserveResource), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int AcquireResource()", FO_SCRIPT_FUNC(AcquireResource), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void ReleaseResource(int)", FO_SCRIPT_FUNC(ReleaseResource), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void ObserveResource(int)", FO_SCRIPT_FUNC(ObserveResource), FO_SCRIPT_FUNC_CONV) >= 0);
 
         // Register pointer-sized value type (like hstring)
         // POD with APP_CLASS + APP_CLASS_ALLINTS: engine handles construct/destruct/copy automatically
         CHECK(engine->RegisterObjectType("PtrSizedVal", sizeof(PtrSizedVal), asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
-        CHECK(engine->RegisterObjectMethod("PtrSizedVal", "bool opEquals(const PtrSizedVal &in) const", asFUNCTION(PtrSizedVal_OpEquals), asCALL_CDECL_OBJFIRST) >= 0);
-        CHECK(engine->RegisterGlobalFunction("PtrSizedVal CreatePtrSizedVal(int)", asFUNCTION(PtrSizedVal_CreateFromInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int GetPtrSizedValInt(const PtrSizedVal &in)", asFUNCTION(PtrSizedVal_GetInt), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterObjectMethod("PtrSizedVal", "bool opEquals(const PtrSizedVal &in) const", FO_SCRIPT_FUNC_THIS(PtrSizedVal_OpEquals), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("PtrSizedVal CreatePtrSizedVal(int)", FO_SCRIPT_FUNC(PtrSizedVal_CreateFromInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int GetPtrSizedValInt(const PtrSizedVal &in)", FO_SCRIPT_FUNC(PtrSizedVal_GetInt), FO_SCRIPT_FUNC_CONV) >= 0);
 
         // Register global variable (exercises PGA/LDG/PshG4/CpyGtoV4/CpyVtoG4/SetG4 instructions)
         GlobalInt = 0;
         CHECK(engine->RegisterGlobalProperty("int GlobalInt", &GlobalInt) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void SetGlobalInt(int)", asFUNCTION(SetGlobalInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("int GetGlobalInt()", asFUNCTION(GetGlobalInt), asCALL_CDECL) >= 0);
-        CHECK(engine->RegisterGlobalFunction("void IncrementGlobalCounter()", asFUNCTION(IncrementGlobalCounter), asCALL_CDECL) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void SetGlobalInt(int)", FO_SCRIPT_FUNC(SetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("int GetGlobalInt()", FO_SCRIPT_FUNC(GetGlobalInt), FO_SCRIPT_FUNC_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("void IncrementGlobalCounter()", FO_SCRIPT_FUNC(IncrementGlobalCounter), FO_SCRIPT_FUNC_CONV) >= 0);
     }
 
-    static auto RunScenario(asIScriptModule* module, ResourceTrackerState& state) -> ScenarioMetrics
+    static auto RunScenario(ptr<asIScriptModule> module, ResourceTrackerState& state) -> ScenarioMetrics
     {
-        auto* engine = module->GetEngine();
+        nptr<asIScriptEngine> engine = module->GetEngine();
         engine->SetUserData(&state);
 
-        auto* func = module->GetFunctionByDecl("void RunScenario()");
-        REQUIRE(func != nullptr);
+        nptr<asIScriptFunction> nullable_func = module->GetFunctionByDecl("void RunScenario()");
+        REQUIRE(nullable_func);
 
-        auto* ctx = engine->CreateContext();
-        REQUIRE(ctx != nullptr);
+        nptr<asIScriptContext> ctx = engine->CreateContext();
+        REQUIRE(ctx);
 
-        CHECK(ctx->Prepare(func) >= 0);
+        auto func = nullable_func.as_ptr();
+        CHECK(ctx->Prepare(func.get()) >= 0);
         const auto exec_result = ctx->Execute();
         if (exec_result != asEXECUTION_FINISHED) {
-            const char* section = nullptr;
+            nptr<const char> section;
             int column = 0;
-            const auto line = ctx->GetExceptionLineNumber(&column, &section);
-            const auto* exception_func = ctx->GetExceptionFunction();
-            const auto* exception_decl = exception_func != nullptr ? exception_func->GetDeclaration() : "<unknown>";
-            const auto* exception_text = ctx->GetExceptionString();
+            const auto line = ctx->GetExceptionLineNumber(&column, section.get_pp());
+            nptr<const asIScriptFunction> exception_func = ctx->GetExceptionFunction();
+            nptr<const char> exception_text = ctx->GetExceptionString();
+            const string_view exception_decl = exception_func ? string_view {exception_func->GetDeclaration()} : string_view {"<unknown>"};
 
-            FAIL("Execute failed: result=" << exec_result << ", section=" << (section != nullptr ? section : "<unknown>") << ", line=" << line << ", column=" << column << ", function=" << exception_decl << ", exception=" << (exception_text != nullptr ? exception_text : "<none>") << ", first_observed=" << state.FirstObservedId << ", last_observed=" << state.LastObservedId);
+            FAIL("Execute failed: result=" << exec_result << ", section=" << (section ? section.get() : "<unknown>") << ", line=" << line << ", column=" << column << ", function=" << exception_decl << ", exception=" << (exception_text ? exception_text.get() : "<none>") << ", first_observed=" << state.FirstObservedId << ", last_observed=" << state.LastObservedId);
         }
         ctx->Release();
 
@@ -480,22 +550,22 @@ void RunScenario()
 }
 )";
 
-    static auto BuildModule(asIScriptEngine* engine, const string& module_name) -> asIScriptModule*
+    static auto BuildModule(ptr<asIScriptEngine> engine, const string& module_name) -> ptr<asIScriptModule>
     {
-        auto* module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
-        CHECK(module->AddScriptSection("bytecode_test", TestScript.data(), numeric_cast<unsigned>(TestScript.size())) >= 0);
-        CHECK(module->Build() >= 0);
-        return module;
+        nptr<asIScriptModule> nullable_built_module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
+        REQUIRE(nullable_built_module);
+        CHECK(nullable_built_module->AddScriptSection("bytecode_test", TestScript.data(), numeric_cast<unsigned>(TestScript.size())) >= 0);
+        CHECK(nullable_built_module->Build() >= 0);
+        return nullable_built_module.as_ptr();
     }
 
-    static auto BuildModuleFromScript(asIScriptEngine* engine, const string& module_name, string_view script) -> asIScriptModule*
+    static auto BuildModuleFromScript(ptr<asIScriptEngine> engine, const string& module_name, string_view script) -> ptr<asIScriptModule>
     {
-        auto* module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
-        CHECK(module->AddScriptSection("bytecode_test", script.data(), numeric_cast<unsigned>(script.size())) >= 0);
-        CHECK(module->Build() >= 0);
-        return module;
+        nptr<asIScriptModule> nullable_built_module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
+        REQUIRE(nullable_built_module);
+        CHECK(nullable_built_module->AddScriptSection("bytecode_test", script.data(), numeric_cast<unsigned>(script.size())) >= 0);
+        CHECK(nullable_built_module->Build() >= 0);
+        return nullable_built_module.as_ptr();
     }
 }
 
@@ -503,15 +573,11 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 {
     SECTION("SaveLoadPreservesGeneratedScriptCopyBehavior")
     {
-        unique_del_ptr<asIScriptEngine> build_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                          if (engine != nullptr) {
-                                                              engine->ShutDownAndRelease();
-                                                          }
-                                                      }};
-        REQUIRE(build_engine);
+        auto build_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto* build_module = BuildModule(build_engine.get(), "BuildModule");
+        auto build_module = BuildModule(build_engine.get(), "BuildModule");
 
         ResourceTrackerState build_state {};
         const auto build_metrics = RunScenario(build_module, build_state);
@@ -521,21 +587,17 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         CHECK(build_module->SaveByteCode(&writer) >= 0);
         REQUIRE_FALSE(bytecode.empty());
 
-        unique_del_ptr<asIScriptEngine> load_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                         if (engine != nullptr) {
-                                                             engine->ShutDownAndRelease();
-                                                         }
-                                                     }};
-        REQUIRE(load_engine);
+        auto load_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        auto* load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
-        REQUIRE(load_module != nullptr);
+        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module, load_state);
+        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
 
         CHECK(build_metrics.FirstObservedId == 200);
         CHECK(build_metrics.LastObservedId == 100);
@@ -556,15 +618,11 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         // on 32-bit it would be 4 bytes (1 DWORD). The portable bytecode format normalizes
         // stack layouts to handle this difference.
 
-        unique_del_ptr<asIScriptEngine> build_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                          if (engine != nullptr) {
-                                                              engine->ShutDownAndRelease();
-                                                          }
-                                                      }};
-        REQUIRE(build_engine);
+        auto build_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto* build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", PortableFormatTestScript);
+        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", PortableFormatTestScript);
 
         ResourceTrackerState build_state {};
         const auto build_metrics = RunScenario(build_module, build_state);
@@ -584,22 +642,18 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         REQUIRE_FALSE(bytecode.empty());
 
         // Load in fresh engine
-        unique_del_ptr<asIScriptEngine> load_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                         if (engine != nullptr) {
-                                                             engine->ShutDownAndRelease();
-                                                         }
-                                                     }};
-        REQUIRE(load_engine);
+        auto load_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        auto* load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
-        REQUIRE(load_module != nullptr);
+        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module, load_state);
+        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
@@ -613,12 +667,8 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         // `T?` opts a handle into nullability; bare `T` rejects null at runtime.
         // The compiler emits asBC_RefCpyChk for non-nullable destinations and the VM throws
         // a null pointer access exception when the source handle is null.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableScript = R"(
@@ -646,8 +696,8 @@ void AssignNullToNonNullable()
 }
 )";
 
-        auto* module = engine->GetModule("NullableModule", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("NullableModule", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("nullable_test", NullableScript.data(), numeric_cast<unsigned>(NullableScript.size())) >= 0);
         CHECK(module->Build() >= 0);
 
@@ -656,11 +706,11 @@ void AssignNullToNonNullable()
 
         // Nullable: assignment of null must succeed and the variable observes as null.
         {
-            auto* func = module->GetFunctionByDecl("void AssignNullToNullable()");
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void AssignNullToNullable()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -671,16 +721,16 @@ void AssignNullToNonNullable()
         // "Null assignment to non-nullable handle" exception before ObserveResource(-999) runs.
         {
             state.LastObservedId = 0;
-            auto* func = module->GetFunctionByDecl("void AssignNullToNonNullable()");
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void AssignNullToNonNullable()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_EXCEPTION);
-            const auto* ex = ctx->GetExceptionString();
-            REQUIRE(ex != nullptr);
-            CHECK(string_view {ex} == "Null assignment to non-nullable handle");
+            nptr<const char> ex = ctx->GetExceptionString();
+            REQUIRE(ex);
+            CHECK(string_view {ex.get()} == "Null assignment to non-nullable handle");
             // The sentinel ObserveResource(-999) must NOT have been reached.
             CHECK(state.LastObservedId != -999);
             ctx->Release();
@@ -700,29 +750,15 @@ void AssignNullToNonNullable()
         // The third shape is allowed: `T x = nullableExpr;` inside an
         // `if (nullableExpr != null)` guard, because smart-cast narrows the
         // source to non-nullable.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("RejectModule", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("RejectModule", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("reject", source, std::strlen(source));
             return module->Build();
         };
@@ -860,38 +896,20 @@ void AssignNullToNonNullable()
         // and weakens the type information. Emit a warning (not an error)
         // so existing scripts keep building while authors clean up; the
         // warning carries the would-be replacement type in the message.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource MakeNonNull()", asFUNCTION(+[]() -> void* {
+            engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
             }),
-                asCALL_CDECL);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("RedundantNullableMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+                FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("RedundantNullableMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("redundant_nullable", source, std::strlen(source));
             return module->Build();
         };
@@ -984,34 +1002,25 @@ void AssignNullToNonNullable()
         // reference) aliases storage whose non-null invariant is enforced on
         // every write, so widening it to `T?` IS redundant and must warn - just
         // like a handle returned by value (a temporary).
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         // Backing slot for the `GetByRef()` accessor. The function is never
         // executed (these are build-only fixtures), so the stored handle value
         // is irrelevant - only the AS signature matters.
         static void* g_resourceCell = nullptr;
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource MakeNonNull()", asFUNCTION(+[]() -> void* {
+            engine->RegisterGlobalFunction("Resource MakeNonNull()", FO_SCRIPT_FUNC(+[]() -> void* {
                 static int sentinel = 0;
                 return &sentinel;
             }),
-                asCALL_CDECL);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
+                FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
             // Mimics `array[i]`: returns a (non-temporary) NON-const reference to
             // a handle cell of a non-nullable element type - enforced non-null,
             // so widening it to `T?` is redundant.
-            engine->RegisterGlobalFunction("Resource@& GetByRef()", asFUNCTION(+[]() -> void* { return &g_resourceCell; }), asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource@& GetByRef()", FO_SCRIPT_FUNC(+[]() -> void* { return &g_resourceCell; }), FO_SCRIPT_FUNC_CONV);
             // Real array+dict so the const-handle-reference shape can be tested
             // faithfully: `dict<K,V>` is registered `const T2& get(...)`, which
             // for a handle value type yields a const ref to a *mutable* handle -
@@ -1019,19 +1028,10 @@ void AssignNullToNonNullable()
             // decl (there `const T@` means handle-to-const, a different type).
             RegisterAngelScriptArray(engine.get());
             RegisterAngelScriptDict(engine.get());
-            engine->RegisterGlobalFunction("bool Cond()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("runtime_nullable_shapes", source, std::strlen(source));
             return module->Build();
         };
@@ -1144,29 +1144,15 @@ void AssignNullToNonNullable()
         // non-nullable handle must be a compile error. Without this guard the
         // implicit conversion silently strips nullability and the caller
         // crashes at runtime with `asBC_RefCpyChk`.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("ReturnNullableMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("ReturnNullableMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("return_nullable", source, std::strlen(source));
             return module->Build();
         };
@@ -1221,34 +1207,16 @@ void AssignNullToNonNullable()
         // author should guard first. The compiler emits a warning (not an
         // error - the runtime still traps the null access) and smart-cast must
         // suppress it once an `if`-guard narrows the handle to `T`.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("DerefNullableMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("DerefNullableMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("deref_nullable", source, std::strlen(source));
             return module->Build();
         };
@@ -1340,36 +1308,18 @@ void AssignNullToNonNullable()
         // dereferences `x` only when it was proven non-null, so no warning. The
         // narrowing is order-sensitive - dereferencing before the check still
         // warns.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "bool IsReady()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL_OBJLAST);
-            engine->RegisterObjectMethod("Resource", "bool get_Ready() const property", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("bool Cond()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("AndOrNarrowMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterObjectMethod("Resource", "bool IsReady()", FO_SCRIPT_FUNC_THIS(+[](void*) -> bool { return true; }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterObjectMethod("Resource", "bool get_Ready() const property", FO_SCRIPT_FUNC_THIS(+[](void*) -> bool { return true; }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("bool Cond()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("AndOrNarrowMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("andor_narrow", source, std::strlen(source));
             return module->Build();
         };
@@ -1580,36 +1530,18 @@ void AssignNullToNonNullable()
         // the guarded branch is dead code. The compiler emits a warning (not an
         // error). A genuinely nullable handle compared to null must NOT warn, and
         // a handle already narrowed to non-null SHOULD warn on a second check.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             // Non-nullable return type: the *static* type is non-nullable, but a
             // call result is a temporary (compile-only here, never invoked).
-            engine->RegisterGlobalFunction("Resource@ MakeSure()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            auto* module = engine->GetModule("RedundantNullCmpMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterGlobalFunction("Resource@ MakeSure()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            nptr<asIScriptModule> module = engine->GetModule("RedundantNullCmpMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("redundant_null_cmp", source, std::strlen(source));
             return module->Build();
         };
@@ -1717,44 +1649,26 @@ void AssignNullToNonNullable()
         // the scope WITHOUT an explicit `return`, so the subsequent dereference
         // produces no warning. The control case (a normal void call in the
         // guard) does not narrow, so the dereference still warns.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("void Fatal()", asFUNCTION(+[]() { }), asCALL_CDECL);
-            engine->RegisterGlobalFunction("void NormalVoid()", asFUNCTION(+[]() { }), asCALL_CDECL);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("void Fatal()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
+            engine->RegisterGlobalFunction("void NormalVoid()", FO_SCRIPT_FUNC(+[]() { }), FO_SCRIPT_FUNC_CONV);
             // Mark Fatal() as no-return.
             for (asUINT i = 0, count = engine->GetGlobalFunctionCount(); i < count; i++) {
-                asIScriptFunction* func = engine->GetGlobalFunctionByIndex(i);
-                if (func != nullptr && string_view(func->GetName()) == "Fatal") {
+                nptr<asIScriptFunction> func = engine->GetGlobalFunctionByIndex(i);
+                if (func && string_view(func->GetName()) == "Fatal") {
                     func->SetNoReturn();
                     CHECK(func->IsNoReturn());
                 }
             }
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-                else if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("NoReturnMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("NoReturnMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("noreturn", source, std::strlen(source));
             return module->Build();
         };
@@ -1831,30 +1745,16 @@ void AssignNullToNonNullable()
         // `a == null || b == null` (De Morgan). This is what lets the
         // `verify(cond, message)` macro (expanding to `if (!(cond)) throw(...)`)
         // keep narrowing.
-        struct MsgCapture
-        {
-            vector<string> Warnings;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterObjectMethod("Resource", "void Touch()", asFUNCTION(+[]() { }), asCALL_CDECL_OBJLAST);
-            engine->RegisterGlobalFunction("Resource? MakeMaybe()", asFUNCTION(+[]() -> void* { return nullptr; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_WARNING) {
-                    self->Warnings.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("NegGuardMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterObjectMethod("Resource", "void Touch()", FO_SCRIPT_FUNC_THIS(+[](void*) { }), FO_SCRIPT_FUNC_THIS_CONV);
+            engine->RegisterGlobalFunction("Resource? MakeMaybe()", FO_SCRIPT_FUNC(+[]() -> void* { return nullptr; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("NegGuardMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("neg_guard", source, std::strlen(source));
             return module->Build();
         };
@@ -1929,12 +1829,8 @@ void AssignNullToNonNullable()
         // and `x != null && ...` narrow a `T?` local to `T` for the rest of the
         // guarded region. The body would otherwise need an explicit cast or Assert
         // to dereference the variable; smart-cast lets it be used as `T`.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view SmartCastScript = R"(
@@ -1978,8 +1874,8 @@ void GuardedReadAfterEarlyReturn()
 }
 )";
 
-        auto* module = engine->GetModule("SmartCastModule", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("SmartCastModule", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("smartcast", SmartCastScript.data(), numeric_cast<unsigned>(SmartCastScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
@@ -1991,12 +1887,12 @@ void GuardedReadAfterEarlyReturn()
         engine->SetUserData(&state);
 
         // Run guarded reads; neither should throw.
-        for (const auto* decl : {"void GuardedReadInThenBranch()", "void GuardedReadAfterEarlyReturn()"}) {
-            auto* func = module->GetFunctionByDecl(decl);
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+        for (const string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -2017,12 +1913,8 @@ void GuardedReadAfterEarlyReturn()
         // `if (x == null) { <recover>; return; }` shapes â€" production
         // callers benefit from a named recovery action over a generic
         // Assert.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view CompoundSmartCastScript = R"(
@@ -2063,8 +1955,8 @@ void NarrowsCompoundOrAfterReturn()
 }
 )";
 
-        auto* module = engine->GetModule("CompoundSmartCast", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("CompoundSmartCast", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("compound_smartcast", CompoundSmartCastScript.data(), numeric_cast<unsigned>(CompoundSmartCastScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
@@ -2075,12 +1967,12 @@ void NarrowsCompoundOrAfterReturn()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const auto* decl : {"void NarrowsCompoundAnd()", "void NarrowsCompoundOrAfterReturn()"}) {
-            auto* func = module->GetFunctionByDecl(decl);
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+        for (const string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -2096,29 +1988,15 @@ void NarrowsCompoundOrAfterReturn()
         // narrowed local is reassigned. The new value's static type is again
         // `T?`, so the next `T x = local;` must be rejected at compile time
         // (with `asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE` on).
-        struct MsgCapture
-        {
-            vector<string> Errors;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("InvalidateMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("InvalidateMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("invalidate", source, std::strlen(source));
             return module->Build();
         };
@@ -2148,6 +2026,127 @@ void NarrowsCompoundOrAfterReturn()
             }
         }
         CHECK(found);
+
+        // A `null` literal reassignment drops the narrowing the same way - and the
+        // write itself must compile: it goes through the declared nullable type
+        // (read-time narrowing must not turn it into a non-nullable null write).
+        {
+            MsgCapture null_cap;
+            const auto null_r = buildScript(R"(
+                Resource? GetMaybe() { return null; }
+                void NarrowingResetsAfterNullAssign()
+                {
+                    Resource? g = GetMaybe();
+                    if (g != null) {
+                        Resource a = g;        // OK - narrowed.
+                        g = null;              // Un-narrowing write: legal.
+                        Resource b = g;        // Must fail - g is `Resource?` again.
+                    }
+                }
+            )",
+                null_cap);
+            CHECK(null_r < 0);
+            bool found_bind_error = false;
+            for (const auto& e : null_cap.Errors) {
+                if (e.find("Cannot assign nullable") != string::npos) {
+                    found_bind_error = true;
+                }
+                // The null write itself must not be rejected.
+                CHECK(e.find("Cannot assign 'null'") == string::npos);
+            }
+            CHECK(found_bind_error);
+        }
+    }
+
+    SECTION("NullAssignmentToNarrowedNullableUnNarrows")
+    {
+        // A write goes through the variable's *declared* type: an active smart-cast
+        // narrowing is a read-time refinement only. `x = null;` on a declared-nullable
+        // local (or `&` parameter) inside its own `x != null` guard is a legal
+        // un-narrowing write compiled as a plain REFCPY. Regression: the copy
+        // instruction used to be chosen from the narrowed (non-nullable) view, which
+        // emitted asBC_RefCpyChk and threw "Null assignment to non-nullable handle"
+        // on every execution of the branch.
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
+        RegisterTestApi(engine.get());
+        // The `Resource? &` inout-parameter flavor needs unsafe references, same as the
+        // game backend (AngelScriptBackend.cpp) which enables them for all scripts.
+        CHECK(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true) >= 0);
+
+        static constexpr string_view UnNarrowScript = R"(
+class Resource
+{
+    int Id;
+    Resource() { Id = AcquireResource(); }
+    ~Resource() { if (Id != 0) ReleaseResource(Id); }
+}
+
+// Local flavor: simple guard.
+void NullAssignToNarrowedLocal()
+{
+    Resource? slot = Resource();
+    if (slot != null) {
+        slot = null;
+    }
+    ObserveResource(slot == null ? 1 : 0);
+}
+
+// Local flavor: compound `&&` guard with a member read - the deferred-attack
+// "target died during hit delay" shape that hit this defect in production.
+void NullAssignToCompoundNarrowedLocal()
+{
+    Resource? slot = Resource();
+    if (slot != null && slot.Id > 0) {
+        slot = null;
+    }
+    ObserveResource(slot == null ? 1 : 0);
+}
+
+// Ref-parameter flavor: the callee clears the caller's slot through `&`.
+void ClearSlot(Resource? & slot)
+{
+    if (slot != null) {
+        slot = null;
+    }
+}
+
+void NullAssignToNarrowedRefParam()
+{
+    Resource? slot = Resource();
+    ClearSlot(slot);
+    ObserveResource(slot == null ? 1 : 0);
+}
+)";
+
+        nptr<asIScriptModule> module = engine->GetModule("UnNarrowModule", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
+        REQUIRE(module->AddScriptSection("un_narrow", UnNarrowScript.data(), numeric_cast<unsigned>(UnNarrowScript.size())) >= 0);
+        REQUIRE(module->Build() >= 0);
+
+        ResourceTrackerState state {};
+        engine->SetUserData(&state);
+
+        for (const string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
+            state.LastObservedId = 0;
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
+            const auto result = ctx->Execute();
+            UNSCOPED_INFO(decl);
+            if (result == asEXECUTION_EXCEPTION) {
+                UNSCOPED_INFO(ctx->GetExceptionString());
+            }
+            CHECK(result == asEXECUTION_FINISHED);
+            ctx->Release();
+            // The branch body ran to completion and the slot observes as null.
+            CHECK(state.LastObservedId == 1);
+        }
+
+        engine->SetUserData(nullptr);
+        CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
     }
 
     SECTION("SmartCastDoesNotNarrowMixedAndOr")
@@ -2157,30 +2156,16 @@ void NarrowsCompoundOrAfterReturn()
         // detector keeps both narrow-lists empty for such conditions; the
         // user is expected to split the if. Verify the build rejects the
         // un-guarded read so the analyzer stays conservative.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->SetEngineProperty(asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->RegisterGlobalFunction("bool Flag()", asFUNCTION(+[]() -> bool { return true; }), asCALL_CDECL);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("MixedMod", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->RegisterGlobalFunction("bool Flag()", FO_SCRIPT_FUNC(+[]() -> bool { return true; }), FO_SCRIPT_FUNC_CONV);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("MixedMod", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("mixed", source, std::strlen(source));
             return module->Build();
         };
@@ -2214,12 +2199,8 @@ void NarrowsCompoundOrAfterReturn()
         // and `!=` between two handles fall back to handle-identity
         // comparison (asBC_CmpPtr), identical in semantics to `is` / `!is`.
         // This lets the project drop `is` / `!is` from the style guide.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view IdentityScript = R"(
@@ -2245,8 +2226,8 @@ void DistinctHandles()
 }
 )";
 
-        auto* module = engine->GetModule("Identity", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("Identity", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("identity", IdentityScript.data(), numeric_cast<unsigned>(IdentityScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
@@ -2258,12 +2239,12 @@ void DistinctHandles()
         engine->SetUserData(&state);
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles.
-        for (const auto* decl : {"void SameHandle()", "void DistinctHandles()"}) {
-            auto* func = module->GetFunctionByDecl(decl);
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+        for (const string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -2281,12 +2262,8 @@ void DistinctHandles()
         // overloaded version still wins over the identity fallback. This
         // is what makes `Critter == Critter` an id-based comparison in
         // production code while `Gui::Screen == Gui::Screen` is identity.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view OpEqualsScript = R"(
@@ -2318,8 +2295,8 @@ void TagsDiffer()
 }
 )";
 
-        auto* module = engine->GetModule("OpEquals", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("OpEquals", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("op_equals", OpEqualsScript.data(), numeric_cast<unsigned>(OpEqualsScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
@@ -2330,12 +2307,12 @@ void TagsDiffer()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const auto* decl : {"void TagsEqual()", "void TagsDiffer()"}) {
-            auto* func = module->GetFunctionByDecl(decl);
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+        for (const string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -2354,12 +2331,8 @@ void TagsDiffer()
         // handle that the body and the caller can assign null to without a
         // runtime exception. Funcdef and array shapes are exercised by the
         // gameplay test suite where the array add-on is registered.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableShapesScript = R"(
@@ -2388,8 +2361,8 @@ void NullableParameter()
 }
 )";
 
-        auto* module = engine->GetModule("NullableShapes", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("NullableShapes", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("nullable_shapes", NullableShapesScript.data(), numeric_cast<unsigned>(NullableShapesScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
@@ -2400,12 +2373,12 @@ void NullableParameter()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const auto* decl : {"void NullableReturn()", "void NullableParameter()"}) {
-            auto* func = module->GetFunctionByDecl(decl);
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+        for (const string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             const auto result = ctx->Execute();
             CHECK(result == asEXECUTION_FINISHED);
             ctx->Release();
@@ -2424,28 +2397,14 @@ void NullableParameter()
         // pre-strict-mode bug. The compile-time check must reject this even
         // before runtime, because the field would otherwise initialize a
         // non-nullable slot to null at constructor time.
-        struct MsgCapture
-        {
-            vector<string> Errors;
-        };
         const auto buildScript = [](const char* source, MsgCapture& capture) -> int {
-            unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                        if (e != nullptr) {
-                                                            e->ShutDownAndRelease();
-                                                        }
-                                                    }};
-            REQUIRE(engine);
+            auto engine = MakeScriptEngine();
+            REQUIRE(nptr<asIScriptEngine> {engine});
             engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true);
             engine->RegisterObjectType("Resource", 0, asOBJ_REF | asOBJ_NOCOUNT);
-            engine->SetMessageCallback(asFUNCTION(+[](const asSMessageInfo* msg, void* param) {
-                auto* self = static_cast<MsgCapture*>(param);
-                if (msg->type == asMSGTYPE_ERROR) {
-                    self->Errors.emplace_back(msg->message);
-                }
-            }),
-                &capture, asCALL_CDECL);
-            auto* module = engine->GetModule("FieldNull", asGM_ALWAYS_CREATE);
-            REQUIRE(module != nullptr);
+            engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
+            nptr<asIScriptModule> module = engine->GetModule("FieldNull", asGM_ALWAYS_CREATE);
+            REQUIRE(module);
             module->AddScriptSection("field_null", source, std::strlen(source));
             return module->Build();
         };
@@ -2478,12 +2437,8 @@ void NullableParameter()
         // instantiate it via `Holder()` instead of bare `Holder h;` to
         // avoid value-vs-handle-default-construct ambiguity in the test
         // harness).
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view NullableFieldScript = R"(
@@ -2512,19 +2467,19 @@ void Run()
 }
 )";
 
-        auto* module = engine->GetModule("FieldNullable", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("FieldNullable", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("field_nullable", NullableFieldScript.data(), numeric_cast<unsigned>(NullableFieldScript.size())) >= 0);
         CHECK(module->Build() >= 0);
 
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        auto* func = module->GetFunctionByDecl("void Run()");
-        REQUIRE(func != nullptr);
-        auto* ctx = engine->CreateContext();
-        REQUIRE(ctx != nullptr);
-        CHECK(ctx->Prepare(func) >= 0);
+        nptr<asIScriptFunction> func = module->GetFunctionByDecl("void Run()");
+        REQUIRE(func);
+        nptr<asIScriptContext> ctx = engine->CreateContext();
+        REQUIRE(ctx);
+        CHECK(ctx->Prepare(func.get()) >= 0);
         CHECK(ctx->Execute() == asEXECUTION_FINISHED);
         ctx->Release();
         CHECK(state.LastObservedId == 33);
@@ -2547,12 +2502,8 @@ void Run()
         //     null, the callee branches on it normally.
         //
         // Document the contract by exercising both shapes.
-        unique_del_ptr<asIScriptEngine> engine {asCreateScriptEngine(), [](asIScriptEngine* e) {
-                                                    if (e != nullptr) {
-                                                        e->ShutDownAndRelease();
-                                                    }
-                                                }};
-        REQUIRE(engine);
+        auto engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {engine});
         RegisterTestApi(engine.get());
 
         static constexpr string_view ParamNullScript = R"(
@@ -2592,8 +2543,8 @@ void CallCalleeNullableWithNull()
 }
 )";
 
-        auto* module = engine->GetModule("ParamNull", asGM_ALWAYS_CREATE);
-        REQUIRE(module != nullptr);
+        nptr<asIScriptModule> module = engine->GetModule("ParamNull", asGM_ALWAYS_CREATE);
+        REQUIRE(module);
         CHECK(module->AddScriptSection("param_null", ParamNullScript.data(), numeric_cast<unsigned>(ParamNullScript.size())) >= 0);
         CHECK(module->Build() >= 0);
 
@@ -2602,15 +2553,15 @@ void CallCalleeNullableWithNull()
 
         // Callee's `Resource local = r;` slot must throw when r is null.
         {
-            auto* func = module->GetFunctionByDecl("void CallCalleeWithNullThroughLocal()");
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void CallCalleeWithNullThroughLocal()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             CHECK(ctx->Execute() == asEXECUTION_EXCEPTION);
-            const auto* ex = ctx->GetExceptionString();
-            REQUIRE(ex != nullptr);
-            CHECK(string_view {ex} == "Null assignment to non-nullable handle");
+            nptr<const char> ex = ctx->GetExceptionString();
+            REQUIRE(ex);
+            CHECK(string_view {ex.get()} == "Null assignment to non-nullable handle");
             CHECK(state.LastObservedId != -998);
             CHECK(state.LastObservedId != -997);
             ctx->Release();
@@ -2619,11 +2570,11 @@ void CallCalleeNullableWithNull()
         // Nullable param accepts null cleanly.
         {
             state.LastObservedId = 0;
-            auto* func = module->GetFunctionByDecl("void CallCalleeNullableWithNull()");
-            REQUIRE(func != nullptr);
-            auto* ctx = engine->CreateContext();
-            REQUIRE(ctx != nullptr);
-            CHECK(ctx->Prepare(func) >= 0);
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void CallCalleeNullableWithNull()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
             CHECK(ctx->Execute() == asEXECUTION_FINISHED);
             CHECK(state.LastObservedId == 41);
             ctx->Release();
@@ -2640,15 +2591,11 @@ void CallCalleeNullableWithNull()
         // past multiple pointer-sized stack items were miscalculated, causing crashes.
         // The fix guards the REFCPY shortcut with offset == 1 (reader) / offset == AS_PTR_SIZE (writer).
 
-        unique_del_ptr<asIScriptEngine> build_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                          if (engine != nullptr) {
-                                                              engine->ShutDownAndRelease();
-                                                          }
-                                                      }};
-        REQUIRE(build_engine);
+        auto build_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {build_engine});
         RegisterTestApi(build_engine.get());
 
-        auto* build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", GetRefOffsetTestScript);
+        auto build_module = BuildModuleFromScript(build_engine.get(), "BuildModule", GetRefOffsetTestScript);
 
         ResourceTrackerState build_state {};
         const auto build_metrics = RunScenario(build_module, build_state);
@@ -2668,28 +2615,70 @@ void CallCalleeNullableWithNull()
 
         // Load in fresh engine (same platform, but exercises the full save/load path
         // including AdjustGetOffset normalization and denormalization)
-        unique_del_ptr<asIScriptEngine> load_engine {asCreateScriptEngine(), [](asIScriptEngine* engine) {
-                                                         if (engine != nullptr) {
-                                                             engine->ShutDownAndRelease();
-                                                         }
-                                                     }};
-        REQUIRE(load_engine);
+        auto load_engine = MakeScriptEngine();
+        REQUIRE(nptr<asIScriptEngine> {load_engine});
         RegisterTestApi(load_engine.get());
 
-        auto* load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
-        REQUIRE(load_module != nullptr);
+        nptr<asIScriptModule> load_module = load_engine->GetModule("LoadModule", asGM_ALWAYS_CREATE);
+        REQUIRE(load_module);
         BytecodeStream reader {bytecode};
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module, load_state);
+        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
         CHECK(load_metrics.DoubleFreeCount == build_metrics.DoubleFreeCount);
         CHECK(load_metrics.LeakedCount == build_metrics.LeakedCount);
     }
+}
+
+TEST_CASE("AngelScriptInitListSubDwordValueType", "[angelscript][bytecode]")
+{
+    // Regression for the init-list buffer overflow with a value type smaller than a
+    // dword (FOnline Patch in as_compiler.cpp's CompileListConstructor). The compiler
+    // sized the list buffer as count(4) + sum of EXACT element sizes, but each
+    // value-type element is written with asBC_COPY using the dword-rounded size; for a
+    // sub-dword element the final copy spilled past the buffer end — a heap-buffer-
+    // overflow caught by AddressSanitizer. The fix rounds the buffer up to a dword.
+    //
+    // A 2-byte value type with 3 elements yields a 4 + 3*2 = 10-byte buffer; the last
+    // element's dword-rounded (4-byte) copy lands at offset 8..11 and previously
+    // overflowed at offset 10..11.
+    using namespace AngelScript;
+
+    auto engine = MakeScriptEngine();
+    RegisterTestApi(engine.get());
+    RegisterAngelScriptArray(engine.get());
+
+    // 2-byte POD value type (sub-dword) — the trigger condition for the overflow.
+    CHECK(engine->RegisterObjectType("Word2", 2, asOBJ_VALUE | asOBJ_POD | asOBJ_APP_CLASS | asOBJ_APP_CLASS_ALLINTS) >= 0);
+
+    static constexpr string_view InitListScript = R"(
+int RunInitList()
+{
+    array<Word2> a = {Word2(), Word2(), Word2()};
+    array<Word2> b = {Word2(), Word2(), Word2(), Word2(), Word2()};
+    return int(a.length()) + int(b.length());
+}
+)";
+
+    auto* module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
+    REQUIRE(module != nullptr);
+    CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
+    REQUIRE(module->Build() >= 0);
+
+    auto* func = module->GetFunctionByDecl("int RunInitList()");
+    REQUIRE(func != nullptr);
+
+    auto* ctx = engine->CreateContext();
+    REQUIRE(ctx != nullptr);
+    CHECK(ctx->Prepare(func) >= 0);
+    REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
+    CHECK(ctx->GetReturnDWord() == 8U);
+    ctx->Release();
 }
 
 FO_END_NAMESPACE

@@ -17,8 +17,8 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `BuildTools/codegen.py`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
-- `Source/Common/MetadataRegistration-Template.cpp`
-- `Source/Common/GenericCode-Template.cpp`
+- `Source/Common/MetadataRegistration.template.cpp`
+- `Source/Common/GenericCode.template.cpp`
 - `Source/Common/Properties.h`
 - `Source/Common/Properties.cpp`
 - `Source/Common/Entity.h`
@@ -44,6 +44,7 @@ Important command arguments include:
 - `-internalcfg` — internal config capacity (`FO_INTERNAL_CONFIG_CAPACITY`).
 - `-meta` — metadata source entries from `FO_SOURCE_META_FILES` and `FO_MONO_SOURCE`.
 - `-commonheader` — extra common headers from `FO_ADDED_COMMON_HEADERS`.
+- `-enginedefine` — repeatable `NAME=VALUE` engine value/shape configuration macro (`FO_GEOMETRY`, `FO_MAP_*`, `FO_EFFECT_*`, `FO_MODEL_*`, `FO_USE_NAMESPACE`, `FO_NO_*`, `FO_MAIN_CONFIG`, ...), resolved to a literal at configure time and emitted into `EngineConfig.gen.h` instead of being passed as a `-D` compiler define. Feature/backend toggles (`FO_ENABLE_3D`, `FO_*_SCRIPTING`) and per-config `FO_DEBUG` stay compiler-side — they gate whole files/headers before any engine header is included.
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
 
@@ -52,16 +53,16 @@ The stage creates normal and forced code-generation command targets and appends 
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `Version-Include.h`
-- `EmbeddedResources-Include.h`
-- `InternalConfig-Include.h`
-- `MetadataRegistration-Server.cpp`
-- `MetadataRegistration-Client.cpp`
-- `MetadataRegistration-Mapper.cpp`
-- `MetadataRegistration-ServerStub.cpp`
-- `MetadataRegistration-ClientStub.cpp`
-- `MetadataRegistration-MapperStub.cpp`
-- `GenericCode-Common.cpp`
+- `EngineConfig.gen.h` — two-section header: the engine configuration macros (consumed at the top of `Source/Essentials/BasicCore.h`) and the typed build/version constants `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH` (re-included by `Source/Common/Common.h` with `FO_ENGINE_CONFIG_CONSTANTS` defined, after `fo::string_view_nt` exists). Replaces the former `Version-Include.h`.
+- `EmbeddedResources.gen.inc`
+- `InternalConfig.gen.inc`
+- `MetadataRegistration-Server.gen.cpp`
+- `MetadataRegistration-Client.gen.cpp`
+- `MetadataRegistration-Mapper.gen.cpp`
+- `MetadataRegistration-ServerStub.gen.cpp`
+- `MetadataRegistration-ClientStub.gen.cpp`
+- `MetadataRegistration-MapperStub.gen.cpp`
+- `GenericCode-Common.gen.cpp`
 
 These file names are useful for understanding build flow, but changes should usually be made in templates, annotations, metadata sources, or generator scripts rather than in generated output.
 
@@ -78,15 +79,16 @@ Hand-authored declarations live in `Source/Common/MetadataRegistration.h`:
 - `RegisterDynamicMetadata()`
 - `ReadMetadataBin()`
 
-`Source/Common/MetadataRegistration-Template.cpp` is the template used to generate side-specific registration files. It contains code-generation markers such as `///@ CodeGen RegisterHelpers` and `///@ CodeGen Register`.
+`Source/Common/MetadataRegistration.template.cpp` is the template used to generate side-specific registration files. It contains code-generation markers such as `///@ CodeGen RegisterHelpers` and `///@ CodeGen Register`.
 
-`Source/Common/GenericCode-Template.cpp` is the template for generated common code.
+`Source/Common/GenericCode.template.cpp` is the template for generated common code.
 
 ## Engine hook tags
 
 Project/native extension code can mark selected C++ functions with `///@ EngineHook`. `BuildTools/codegen.py` validates hook names and emits no-op stubs for hooks that the embedding project does not implement. Current hook names recognized by the generator are:
 
 - `ApplicationInitHook(AppInitFlags, GlobalSettings&)`
+- `ApplicationShutdownHook()`
 - `ServerInitHook(ServerEngine*)`
 - `ClientInitHook(ClientEngine*)`
 - `ClientStartupSettingsHook(GlobalSettings&, int32_t clientIndex, bool embedded)`
@@ -97,6 +99,8 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 - `CheckItemVisibilityHook(...)`
 
 `ClientStartupSettingsHook` is called by app entry points immediately before constructing a client engine. Use it for project-owned startup setting adjustments; do not use it as a gameplay authority bypass.
+
+`ApplicationShutdownHook` is a native lifecycle hook for project-owned process integrations that must be stopped before a client runtime DLL is unloaded. It is intentionally not part of the compatibility hash because it does not change script metadata, saved data, or the network contract.
 
 ## Dynamic metadata
 
@@ -113,6 +117,8 @@ Project/native extension code can mark selected C++ functions with `///@ EngineH
 - migration rules
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
+
+Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializator` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 
 ## Properties and generated contracts
 
@@ -156,8 +162,8 @@ If a generated script API change is involved, inspect AngelScript-related tests 
 
 - CMake generator arguments/output list: `BuildTools/cmake/stages/Codegen.cmake`.
 - Generator script behavior: `BuildTools/codegen.py`.
-- Static metadata registration template: `Source/Common/MetadataRegistration-Template.cpp`.
-- Generated common code template: `Source/Common/GenericCode-Template.cpp`.
+- Static metadata registration template: `Source/Common/MetadataRegistration.template.cpp`.
+- Generated common code template: `Source/Common/GenericCode.template.cpp`.
 - Runtime dynamic metadata reader/registrar: `Source/Common/MetadataRegistration.cpp`.
 - Property model: `Source/Common/Properties.*` and entity/prototype metadata code.
 - Metadata resource baking: `Source/Tools/MetadataBaker.*` and [BakingPipeline.md](BakingPipeline.md).

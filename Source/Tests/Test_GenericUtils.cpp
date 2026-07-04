@@ -41,12 +41,12 @@ TEST_CASE("GenericUtils")
 {
     SECTION("WyHash")
     {
-        const auto* data = reinterpret_cast<const uint8_t*>("abcdefg");
-        const auto* data2 = reinterpret_cast<const uint8_t*>("abcdefh");
+        const ptr<const uint8_t> data = reinterpret_cast<const uint8_t*>("abcdefg");
+        const ptr<const uint8_t> data2 = reinterpret_cast<const uint8_t*>("abcdefh");
 
-        CHECK(hashing_ex::hash(data, 4) != 0);
-        CHECK(hashing_ex::hash(data, 4) != hashing_ex::hash(data, 5));
-        CHECK(hashing_ex::hash(data, 7) != hashing_ex::hash(data2, 7));
+        CHECK(hashing_ex::hash(data.get(), 4) != 0);
+        CHECK(hashing_ex::hash(data.get(), 4) != hashing_ex::hash(data.get(), 5));
+        CHECK(hashing_ex::hash(data.get(), 7) != hashing_ex::hash(data2.get(), 7));
     }
 
     SECTION("StdRandom")

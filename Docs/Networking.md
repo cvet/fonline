@@ -1,8 +1,8 @@
 # Networking
 
-This document explains the reusable engine networking layers: message buffers, debug/hash handling, legacy net commands, client/server connection abstractions, and the ordered UDP transport.
+This document explains the reusable engine networking layers: message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
 
-Use it when changing `Source/Common/NetBuffer.*`, `NetCommand.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
+Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
 
 ## Ownership model
 
@@ -14,8 +14,6 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 
 - `Source/Common/NetBuffer.h`
 - `Source/Common/NetBuffer.cpp`
-- `Source/Common/NetCommand.h`
-- `Source/Common/NetCommand.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Client/NetworkClient.h`
@@ -64,6 +62,17 @@ Important constants:
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
 
+## Inbound hardening (untrusted client → server)
+
+The server treats all inbound bytes as hostile. Two layers guard against resource-exhaustion and malformed input:
+
+- **Length-before-allocation rule.** Any client-declared length/count must be validated against the bytes actually remaining in the buffer *before* a `resize()`. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message can no longer amplify into a multi-GB allocation. Hand-rolled reads that pop a size and then `resize()` (e.g. the server's remote-call payload read) must apply the same `GetUnreadSize()` precheck. A declared value can never legitimately exceed the unread bytes, so this never rejects a conforming client and therefore does **not** require a compatibility-version bump.
+- **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
+- **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
+- **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
+
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, and enum/hash/proto resolution. It does not cap maximum string length or element count, so length/flood ceilings live in the buffer/transport layer above.
+
 ## Hashes
 
 Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
@@ -72,41 +81,18 @@ When changing hash serialization, inspect both generated metadata/hash registrat
 
 ### Unresolved hash recovery
 
-Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. When `NetInBuffer::ReadHashedString` fails to resolve an incoming hash it throws `UnresolvedHashException` (declared in `NetBuffer.h`), a `NetBufferException` subclass that carries the raw `hstring::hash_t`. Catch the derived type before the base where the failed hash must be recovered.
+Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
 
 The engine recovers from this instead of looping on the disconnect:
 
-1. `ClientConnection::Process` catches the exception and immediately sends the failing hash to the server in a `NetMessage::UnresolvedHash` message with a single non-blocking `SendData()` flush. `Process` runs on the main loop, so it must not stall: the report is tiny and the connection was just live, so it lands in the kernel send buffer (delivered by the graceful close) without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client then drops the connection, rethrows so the host's recreate/reconnect flow re-establishes it, and keeps no state and writes nothing to disk.
-2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
+1. `ClientEngine` registers a `HashStorage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
+2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. If a transport reports the close before the server worker reaches already-delivered input, the server checks a hard-disconnected connection for a pending `UnresolvedHash` before cleanup. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
 3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
 4. Clients feed each received string through `HashResolver::ToHashedString`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
 
 The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `HashStorage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
 
 This is a serialized contract change: `NetMessage::HashList` (server→client) and `NetMessage::UnresolvedHash` (client→server) were added, so the central compatibility marker in `Source/Common/Common.h` is bumped accordingly.
-
-## Net commands
-
-`Source/Common/NetCommand.h` contains legacy/admin-style command IDs and `PackNetCommand()`:
-
-- `CMD_EXIT`
-- `CMD_MYINFO`
-- `CMD_GAMEINFO`
-- `CMD_MOVECRIT`
-- `CMD_DISCONCRIT`
-- `CMD_TOGLOBAL`
-- `CMD_PROPERTY`
-- `CMD_ADDITEM`
-- `CMD_ADDITEM_SELF`
-- `CMD_ADDNPC`
-- `CMD_ADDLOCATION`
-- `CMD_RUNSCRIPT`
-- `CMD_REGENMAP`
-- `CMD_LOG`
-
-`PackNetCommand()` converts command text into an outgoing network buffer using a log callback and hash resolver.
-
-Treat command IDs as wire-level compatibility points. If they change, update server/client handling and tests together.
 
 ## Client connection abstraction
 
@@ -157,6 +143,18 @@ The client runtime should depend on the abstract connection interface where poss
 - `StartAsioServer()` when `FO_HAVE_ASIO` is enabled;
 - `StartWebSocketsServer()` when `FO_HAVE_WEB_SOCKETS` is enabled;
 - `CreateDummyConnection()` for tests/special paths.
+
+The listen ports and the client connect endpoint are configured per transport:
+
+- **TCP** listens on `Network.ServerPort`; **UDP** on `Network.ServerPort + Network.UdpPortOffset`.
+- **WebSocket(S)** listens on `Network.WebSocketPort`.
+- The client connects plain TCP/UDP to `ClientNetwork.ServerHost`:`Network.ServerPort`, and
+  WebSocket(S) to `ClientNetwork.WebSocketHost`:`Network.WebSocketPort` — so the WebSocket endpoint
+  can keep a hostname (for its TLS certificate) while the TCP/UDP endpoint can be a raw IP, letting a
+  native client connect without DNS resolution.
+
+Each endpoint is configured explicitly: the WebSocket host and port are independent settings, not
+derived from `ServerHost` / `ServerPort`.
 
 Concrete files include:
 
@@ -251,7 +249,6 @@ Relevant tests include:
 ## Change routing
 
 - Binary framing/encryption/hash serialization: `Source/Common/NetBuffer.*`.
-- Text/admin command packing: `Source/Common/NetCommand.*`.
 - Ordered UDP behavior: `Source/Common/NetworkUdp.*`.
 - Client transport abstraction and implementations: `Source/Client/NetworkClient*`.
 - Server transport abstraction and implementations: `Source/Server/NetworkServer*`.

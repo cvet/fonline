@@ -1,7 +1,13 @@
+# 2D_Default — minimal 2D textured-sprite shader with egg (transparency-cutout) support.
+# Where: the EMBEDDED bootstrap copy of the 2D textured-sprite shader, compiled into the binary so the renderer can draw before external resource packs are mounted (a minimal sprite shader; the live Core/2D_Default.fofx is the full one).
+# How: samples MainTex, multiplies it by the per-vertex colour (RGB doubled, alpha multiplied), and where the egg flags are set fades alpha by a radial falloff computed from screen position against the egg ellipses in EggData; fragments below a tiny alpha cutoff are discarded.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -15,7 +21,7 @@ layout(location = 3) out vec2 ScreenPos;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
     EggFlag = InEggData;
@@ -32,6 +38,8 @@ layout(location = 2) in vec2 EggFlag;
 layout(location = 3) in vec2 ScreenPos;
 
 layout(location = 0) out vec4 FragColor;
+
+const float AlphaDepthCutoff = 1.0 / 255.0;
 
 float GetEggAlpha(vec4 eggData, float transitionStart)
 {
@@ -51,5 +59,8 @@ void main(void)
     }
     if (EggFlag.y > 0.0 && EggData[1].z > 0.0 && EggData[1].w > 0.0) {
         FragColor.a *= GetEggAlpha(EggData[1], transitionStart);
+    }
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
     }
 }

@@ -36,6 +36,8 @@
 #include "BasicCore.h"
 #include "Containers.h"
 #include "ExceptionHandling.h"
+#include "SmartPointers.h"
+#include "Threading.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -50,14 +52,28 @@ struct hstring
     };
 
     constexpr hstring() noexcept = default;
-    constexpr explicit hstring(const entry* static_storage_entry) noexcept :
+    constexpr explicit hstring(ptr<const entry> static_storage_entry) noexcept :
         _entry {static_storage_entry}
     {
     }
-    constexpr hstring(const hstring&) noexcept = default;
-    constexpr hstring(hstring&&) noexcept = default;
-    constexpr auto operator=(const hstring&) noexcept -> hstring& = default;
-    constexpr auto operator=(hstring&&) noexcept -> hstring& = default;
+    constexpr hstring(const hstring& other) noexcept :
+        _entry {other._entry}
+    {
+    }
+    constexpr hstring(hstring&& other) noexcept :
+        _entry {other._entry}
+    {
+    }
+    constexpr auto operator=(const hstring& other) noexcept -> hstring&
+    {
+        _entry = other._entry;
+        return *this;
+    }
+    constexpr auto operator=(hstring&& other) noexcept -> hstring&
+    {
+        _entry = other._entry;
+        return *this;
+    }
     ~hstring() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
@@ -68,15 +84,17 @@ struct hstring
     [[nodiscard]] constexpr auto as_hash() const noexcept -> hash_t { return _entry->Hash; }
     [[nodiscard]] constexpr auto as_int64() const noexcept -> int64_t { return std::bit_cast<int64_t>(_entry->Hash); }
     [[nodiscard]] constexpr auto as_uint64() const noexcept -> uint64_t { return _entry->Hash; }
-    [[nodiscard]] constexpr auto as_str() const noexcept -> const string& { return _entry->Str; }
+    [[nodiscard]] auto as_str() const noexcept -> string_view { return _entry->Str; }
+    [[nodiscard]] auto as_str_ptr() const noexcept -> ptr<const string> { return &_entry->Str; }
     [[nodiscard]] constexpr auto c_str() const noexcept -> const char* { return _entry->Str.c_str(); }
 
 private:
     static entry _zeroEntry;
 
-    const entry* _entry {&_zeroEntry};
+    ptr<const entry> _entry {&_zeroEntry};
 };
 static_assert(sizeof(hstring::hash_t) == 8);
+static_assert(sizeof(hstring) == sizeof(const hstring::entry*));
 static_assert(std::is_standard_layout_v<hstring>);
 FO_DECLARE_TYPE_HASHER_EXT(FO_NAMESPACE hstring, v.as_hash());
 
@@ -100,25 +118,32 @@ class HashResolver
 public:
     [[nodiscard]] virtual auto ToHashedString(string_view s) -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring = 0;
     virtual ~HashResolver() = default;
 };
 
 class HashStorage : public HashResolver
 {
 public:
-    using HashFunc = uint64_t (*)(const void* data, size_t len);
+    using HashFunc = uint64_t (*)(const_span<uint8_t> data);
+    using ResolveHashFailureHandler = function<void(hstring::hash_t hash)>;
 
-    explicit HashStorage(HashFunc hash_func = hashing_ex::hash);
+    static auto DefaultHash(const_span<uint8_t> data) noexcept -> uint64_t;
+    explicit HashStorage(HashFunc hash_func = DefaultHash);
     auto CheckHashedString(string_view s) const noexcept -> bool;
     auto ToHashedString(string_view s) -> hstring override;
     auto ResolveHash(hstring::hash_t h) const -> hstring override;
-    auto ResolveHash(hstring::hash_t h, bool* failed) const noexcept -> hstring override;
+    auto ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring override;
+    void SetResolveHashFailureHandler(ResolveHashFailureHandler handler);
 
 private:
+    void HandleResolveHashFailure(hstring::hash_t h) const noexcept;
+
     HashFunc _hashFunc;
-    unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
-    mutable std::shared_mutex _hashStorageLocker {};
+    mutable shared_mutex _hashStorageLocker {};
+    unordered_map<hstring::hash_t, unique_ptr<hstring::entry>> _hashStorage FO_TSA_GUARDED_BY(_hashStorageLocker) {};
+    mutable shared_mutex _resolveHashFailureHandlerLocker {};
+    ResolveHashFailureHandler _resolveHashFailureHandler FO_TSA_GUARDED_BY(_resolveHashFailureHandlerLocker) {};
 };
 
 FO_END_NAMESPACE

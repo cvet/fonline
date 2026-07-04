@@ -20,6 +20,7 @@ EXCLUDED_SOURCE_FRAGMENTS = (
     "/ThirdParty/",
     "/GeneratedSource/",
     "/Applications/",
+    "/Tests/",
 )
 
 SOURCE_FILE_EXTENSIONS = {
@@ -510,6 +511,8 @@ def collect_gcc_report(args: argparse.Namespace) -> dict[str, FileCoverage]:
         str(extracted_info),
         "*/ThirdParty/*",
         "*/GeneratedSource/*",
+        "*/Applications/*",
+        "*/Tests/*",
         "--output-file",
         str(filtered_info),
     ], cwd=args.workspace_root)

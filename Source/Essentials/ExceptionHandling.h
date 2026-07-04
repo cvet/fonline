@@ -35,6 +35,7 @@
 
 #include "BasicCore.h"
 #include "Containers.h"
+#include "SmartPointers.h"
 #include "StackTrace.h"
 
 FO_BEGIN_NAMESPACE
@@ -46,8 +47,7 @@ using ExceptionCallback = function<void(string_view message, const CatchedStackT
 extern void ReportExceptionAndContinue(const std::exception& ex) noexcept;
 extern void SetExceptionCallback(ExceptionCallback callback) noexcept;
 extern auto GetExceptionCallback() noexcept -> ExceptionCallback;
-[[noreturn]] extern void ReportStrongAssertAndExit(string_view message, const char* file, int32_t line) noexcept;
-extern void ReportVerifyFailed(string_view message, const char* file, int32_t line) noexcept;
+extern void InstallCrashHandlerStackForThisThread() noexcept;
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)
 
@@ -61,12 +61,12 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
         ~exception_name() override = default; \
         template<typename... Args> \
         explicit exception_name(FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, static_cast<const FO_NAMESPACE StackTraceData*>(nullptr), message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {}, message, std::forward<Args>(args)...) \
         { \
         } \
         template<typename... Args> \
         exception_name(const FO_NAMESPACE StackTraceData& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, &st, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {&st}, message, std::forward<Args>(args)...) \
         { \
         } \
         exception_name(const exception_name& other) noexcept : \
@@ -80,7 +80,7 @@ extern void ReportVerifyFailed(string_view message, const char* file, int32_t li
 \
     protected: \
         template<typename... Args> \
-        exception_name(const char* derived_name, const FO_NAMESPACE StackTraceData* st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
+        exception_name(FO_NAMESPACE string_view derived_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
             base_exception_name(derived_name, st, message, std::forward<Args>(args)...) \
         { \
         } \
@@ -95,11 +95,11 @@ public:
     ~BaseEngineException() override = default;
 
     template<typename... Args>
-    explicit BaseEngineException(const char* name, const StackTraceData* st, string_view message, Args&&... args) noexcept :
+    explicit BaseEngineException(string_view name, nptr<const StackTraceData> st, string_view message, Args&&... args) noexcept :
         _name {name}
     {
         try {
-            _extendedMessage = _name;
+            _extendedMessage.assign(_name);
             _extendedMessage.append(": ");
             _extendedMessage.append(message);
             _message = message;
@@ -115,7 +115,7 @@ public:
             // Do nothing
         }
 
-        if (st != nullptr) {
+        if (st) {
             _stackTrace = *st;
         }
         else {
@@ -141,58 +141,81 @@ public:
 
     BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name; }
-    [[nodiscard]] auto name() const noexcept -> const char* { return _name; }
-    [[nodiscard]] auto message() const noexcept -> const string& { return _message; }
-    [[nodiscard]] auto params() const noexcept -> const vector<string>& { return _params; }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.data(); }
+    [[nodiscard]] auto name() const noexcept -> const char* { return _name.data(); }
+    [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
+    [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
     [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
-    const char* _name;
+    string_view _name;
     string _message {};
     string _extendedMessage {};
     vector<string> _params {};
     StackTraceData _stackTrace {};
 };
 
-#if !FO_NO_EXTRA_ASSERTS
-#define FO_RUNTIME_ASSERT(expr) \
+#define FO_VERIFY_AND_THROW(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        throw FO_NAMESPACE AssertationException(#expr, __FILE__, __LINE__); \
+        throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
     }
-#define FO_RUNTIME_ASSERT_STR(expr, str) \
+
+#define FO_VERIFY_AND_CONTINUE(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        throw FO_NAMESPACE AssertationException(str, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
     }
-#define FO_RUNTIME_VERIFY(expr) \
+
+#define FO_VERIFY_AND_RETURN(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
+        return; \
     }
-#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...) \
+
+#define FO_VERIFY_AND_RETURN_VALUE(expr, ret, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportVerifyFailed(#expr, __FILE__, __LINE__); \
-        return __VA_ARGS__; \
+        try { \
+            throw FO_NAMESPACE VerificationException(__VA_ARGS__); \
+        } \
+        catch (const FO_NAMESPACE VerificationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndContinue(caught_ex); \
+        } \
+        return ret; \
     }
-#define FO_STRONG_ASSERT(expr) \
+
+#define FO_STRONG_ASSERT(expr, ...) \
     if (!(expr)) [[unlikely]] { \
-        FO_NAMESPACE ReportStrongAssertAndExit(#expr, __FILE__, __LINE__); \
+        try { \
+            throw FO_NAMESPACE StrongAssertationException(__VA_ARGS__, __FILE__, __LINE__); \
+        } \
+        catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
+            FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+        } \
     }
-#else
-#define FO_RUNTIME_ASSERT(expr)
-#define FO_RUNTIME_ASSERT_STR(expr, str)
-#define FO_RUNTIME_VERIFY(expr, ...)
-#define FO_RUNTIME_VERIFY_AND_RETURN(expr, ...)
-#define FO_STRONG_ASSERT(expr)
-#endif
 
 #define FO_UNREACHABLE_PLACE() throw FO_NAMESPACE UnreachablePlaceException(__FILE__, __LINE__)
-#define FO_UNKNOWN_EXCEPTION() FO_NAMESPACE ReportStrongAssertAndExit("Unknown exception", __FILE__, __LINE__)
+
+#define FO_UNKNOWN_EXCEPTION() \
+    try { \
+        throw FO_NAMESPACE StrongAssertationException("Unknown exception", __FILE__, __LINE__); \
+    } \
+    catch (const FO_NAMESPACE StrongAssertationException& caught_ex) { \
+        FO_NAMESPACE ReportExceptionAndExit(caught_ex); \
+    }
 
 // Common exceptions
 FO_DECLARE_EXCEPTION(GenericException);
-FO_DECLARE_EXCEPTION(AssertationException);
+FO_DECLARE_EXCEPTION(VerificationException);
 FO_DECLARE_EXCEPTION(StrongAssertationException);
-FO_DECLARE_EXCEPTION(VerifyFailedException);
 FO_DECLARE_EXCEPTION(UnreachablePlaceException);
 FO_DECLARE_EXCEPTION(NotSupportedException);
 FO_DECLARE_EXCEPTION(NotImplementedException);

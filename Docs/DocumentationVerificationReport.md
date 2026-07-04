@@ -66,7 +66,7 @@ Scope:
 
 Source areas checked:
 
-- `Source/Common/NetBuffer.*`, `Source/Common/NetCommand.*`, and `Source/Common/NetworkUdp.*` for message framing, hash/debug-hash serialization, admin command packing, and ordered UDP behavior.
+- `Source/Common/NetBuffer.*` and `Source/Common/NetworkUdp.*` for message framing, hash/debug-hash serialization, and ordered UDP behavior.
 - `Source/Client/NetworkClient*` and `Source/Server/NetworkServer*` for transport-neutral client/server abstractions plus interthread, socket, UDP, ASIO, and WebSocket implementations.
 - `Source/Server/Server.*`, `Source/Server/EntityManager.*`, `MapManager.*`, `CritterManager.*`, `ItemManager.*`, `Player.*`, `Critter.*`, `Map.*`, `Location.*`, `Item.*`, `ClientDataValidation.*`, and `UpdaterBackend.*` for authoritative server runtime ownership, entity/session flow, validation, managers, movement, persistence handoff, and updater hosting.
 - `Source/Tests/Test_NetworkUdp.cpp`, `Source/Tests/Test_NetworkClient.cpp`, `Source/Tests/Test_NetworkServer.cpp`, `Source/Tests/Test_ServerEngine.cpp`, `Source/Tests/Test_ServerItems.cpp`, `Source/Tests/Test_ServerMapOperations.cpp`, `Source/Tests/Test_ServerAdvancedOps.cpp`, `Source/Tests/Test_ServerScriptMethods.cpp`, `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp` for the current validation surfaces named by the promoted pages.
@@ -75,7 +75,7 @@ Results:
 
 - Added a `Source paths inspected` section to `Docs/Networking.md` and replaced its generic integration-test wording with the concrete current `Source/Tests/Test_ClientServerIntegration.cpp` reference.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `NetBuffer`, `NetOutBuffer`, `NetInBuffer`, `PackNetCommand`, `NetworkClientConnection`, `NetworkServerConnection`, `NetworkServer`, `UdpOrderedChannel`, UDP packet helpers, `ServerEngine`, server init/job methods, server events, `EntityManager`, `MapManager`, `CritterManager`, `ItemManager`, `Player`, inbound `Process_*` handlers, client-data validation functions, movement helpers, and `UpdaterBackend`.
+- Symbol spot checks found the documented owners and APIs in current source, including `NetBuffer`, `NetOutBuffer`, `NetInBuffer`, `NetworkClientConnection`, `NetworkServerConnection`, `NetworkServer`, `UdpOrderedChannel`, UDP packet helpers, `ServerEngine`, server init/job methods, server events, `EntityManager`, `MapManager`, `CritterManager`, `ItemManager`, `Player`, inbound `Process_*` handlers, client-data validation functions, movement helpers, and `UpdaterBackend`.
 - Current focused test inventory observed for this slice: three `Source/Tests/Test_Network*.cpp` files, five `Source/Tests/Test_Server*.cpp` files, plus `Source/Tests/Test_ClientServerIntegration.cpp`, `Source/Tests/Test_ClientDataValidation.cpp`, and `Source/Tests/Test_DataBase.cpp`.
 - Promoted in `Docs/DocumentationBacklog.md`: `Networking.md` and `ServerRuntime.md` from `drafted` to `verified`.
 
@@ -94,9 +94,9 @@ Scope:
 Source areas checked:
 
 - `Source/Applications/ClientApp.cpp` and `Source/Applications/ClientLib.cpp` for host/runtime loading, fallback, staged binary promotion, reload results, and platform gating.
-- `Source/Client/ClientRuntimeApi.*`, `Source/Client/Updater.*`, `Source/Common/Common.h`, and `Source/Common/Settings-Include.h` for runtime ABI, updater protocol versioning, update targets, disk hashing/cache behavior, and updater settings.
+- `Source/Client/ClientRuntimeApi.*`, `Source/Client/Updater.*`, `Source/Frontend/ApplicationInit.cpp`, `Source/Essentials/DiskFileSystem.*`, `Source/Essentials/Platform.*`, `Source/Common/Common.h`, and `Source/Common/Settings.inc` for runtime ABI, updater protocol versioning, update targets, installed-client writable paths, disk hashing/cache behavior, and updater settings.
 - `Source/Server/UpdaterBackend.*` and `Source/Server/Server.cpp` for server-side descriptor generation, file serving, target-specific binaries, and `UpdateFileMaxPortionSize` use.
-- `BuildTools/cmake/stages/Applications.cmake` and `BuildTools/package.py` for client host/library build gates and runtime binary packaging/staging.
+- `BuildTools/cmake/stages/Applications.cmake`, `BuildTools/package.py`, and `BuildTools/msicreator/createmsi.py` for client host/library build gates, runtime binary packaging/staging, and Windows MSI installer metadata.
 - `Source/Tests/Test_ClientRuntimeApi.cpp` for runtime ABI coverage. Embedding-project updater pipeline tests are project-owned supplemental checks and are not engine documentation dependencies.
 
 Results:
@@ -104,7 +104,7 @@ Results:
 - Added a `Source paths inspected` section to `Docs/ClientUpdater.md`.
 - Replaced obsolete package-entry wording with the current `build_runtime_update_target_name` owner in `BuildTools/package.py`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `GetClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
+- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs_make_writable_path`, `Platform::GetUserDataBase`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
 - Promoted in `Docs/DocumentationBacklog.md`: `ClientUpdater.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -179,7 +179,7 @@ Source areas checked:
 
 - `BuildTools/Init.cmake`, all current `BuildTools/cmake/stages/*.cmake`, `BuildTools/cmake/helpers/*.cmake`, `BuildTools/codegen.py`, and `BuildTools/package.py` for staged build/generation/package ownership.
 - `Source/Applications/BakerApp.cpp`, `Source/Applications/BakerLib.cpp`, `Source/Tools/Baker.*`, all current `Source/Tools/*Baker.*` implementations, `BuildTools/cmake/stages/ScriptsAndBaking.cmake`, and baker tests for baking behavior.
-- `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/cmake/stages/EngineSources.cmake`, metadata helpers/state, `BuildTools/codegen.py`, `Source/Common/MetadataRegistration.*`, `Source/Common/MetadataRegistration-Template.cpp`, `Source/Common/GenericCode-Template.cpp`, `Source/Common/Properties.*`, `Source/Common/Entity.*`, `Source/Tools/MetadataBaker.*`, metadata/property tests, and `PUBLIC_API.md` for generated API and metadata behavior.
+- `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/cmake/stages/EngineSources.cmake`, metadata helpers/state, `BuildTools/codegen.py`, `Source/Common/MetadataRegistration.*`, `Source/Common/MetadataRegistration.template.cpp`, `Source/Common/GenericCode.template.cpp`, `Source/Common/Properties.*`, `Source/Common/Entity.*`, `Source/Tools/MetadataBaker.*`, metadata/property tests, and `PUBLIC_API.md` for generated API and metadata behavior.
 
 Results:
 
@@ -215,7 +215,7 @@ Results:
 - Corrected stale nullability workflow wording: current nullable appliers preserve author-chosen markers and remove redundant guards; they do not own automatic contract inference.
 - Replaced stale parent docs routes in `Nullability.md` with current engine docs and the current `Source/Tests/README.md` testing source of truth.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `ScriptSystem`, `ScriptSystemBackend`, `RegisterBackend`, `MapScriptTypes`, `InitModules`, `FindFunc`, `CheckFunc`, `CallFunc`, `CallAdminFunc`, `NativeDataProvider`, `CheckArgNotNull`, `CheckReturnNotNull`, `InitAngelScriptScripting`, `CompileAngelScript`, `AngelScriptBackend`, `RegisterMetadata`, `CompileTextScripts`, `LoadBinaryScripts`, `StripNullableTypeSuffix`, `FO_NULLABLE`, and `is_validated_pointer_meta_type`.
+- Symbol spot checks found the documented owners and APIs in current source, including `ScriptSystem`, `ScriptSystemBackend`, `RegisterBackend`, `MapScriptTypes`, `InitModules`, `FindFunc`, `CheckFunc`, `CallFunc`, `CallAdminFunc`, `NativeDataProvider`, `CheckArgNotNull`, `CheckReturnNotNull`, `InitAngelScriptScripting`, `CompileAngelScript`, `AngelScriptBackend`, `RegisterMetadata`, `CompileTextScripts`, `LoadBinaryScripts`, `StripNullableTypeSuffix`, and `is_validated_pointer_meta_type`.
 - Promoted in `Docs/DocumentationBacklog.md`: `Scripting.md`, `ScriptMethodsMap.md`, and `Nullability.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -263,7 +263,7 @@ Scope:
 Source areas checked:
 
 - `Source/Essentials/*.h`, `Source/Essentials/*.cpp`, `BuildTools/cmake/stages/EngineSources.cmake`, and essentials tests for the low-level foundation page.
-- `Source/Common/ConfigFile.*`, `Settings.*`, `Settings-Include.h`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`, `Source/Essentials/DiskFileSystem.*`, `Source/Client/ResourceManager.*`, baker/config consumers, BuildTools generation/baking/package stages, and focused config/data-source/cache/filesystem tests for configuration/data-source routing.
+- `Source/Common/ConfigFile.*`, `Settings.*`, `Settings.inc`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`, `Source/Essentials/DiskFileSystem.*`, `Source/Client/ResourceManager.*`, baker/config consumers, BuildTools generation/baking/package stages, and focused config/data-source/cache/filesystem tests for configuration/data-source routing.
 - `Source/Applications/TestingApp.cpp`, all 79 current `Source/Tests/Test_*.cpp` files, `FO_TESTS_SOURCE` in `BuildTools/cmake/stages/EngineSources.cmake`, generated test/coverage target wiring in `BuildTools/cmake/stages/Applications.cmake`, coverage setup in `BuildTools/cmake/stages/Init.cmake`, `BuildTools/codecoverage.py`, and validator wrappers for the test-suite page.
 - `../AGENTS.md`, `README.md`, `Docs/README.md`, `Docs/DocumentationBacklog.md`, `Docs/DocumentationExpansionPlan.md`, `Docs/DocumentationResearchTemplate.md`, and this report for documentation-maintenance workflow.
 

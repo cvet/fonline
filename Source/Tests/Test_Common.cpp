@@ -42,7 +42,7 @@ TEST_CASE("CommonEvents")
     SECTION("DispatchAndManualUnsubscribe")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         EventUnsubscriber unsubscriber;
         int32_t sum = 0;
 
@@ -64,7 +64,7 @@ TEST_CASE("CommonEvents")
     SECTION("DestructorUnsubscribes")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         int32_t calls = 0;
 
         {
@@ -82,7 +82,7 @@ TEST_CASE("CommonEvents")
     SECTION("MoveKeepsSubscriptionOwnership")
     {
         EventObserver<int32_t> observer;
-        EventDispatcher<int32_t> dispatch(observer);
+        EventDispatcher<int32_t> dispatch(&observer);
         int32_t calls = 0;
 
         EventUnsubscriber original;
@@ -135,8 +135,14 @@ TEST_CASE("CommonUtilities")
         input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
         REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
 
-        CHECK(stored_pixels[0] == pixels[0].rgba);
-        CHECK(stored_pixels[1] == pixels[1].rgba);
+        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
+        const auto to_bgra = [](ucolor c) -> uint32_t {
+            std::swap(c.comp.r, c.comp.b);
+            return c.rgba;
+        };
+
+        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
+        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
 
         input.close();
 

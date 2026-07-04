@@ -33,80 +33,121 @@
 
 #include "Common.h"
 
+#include "EntitySync.h"
 #include "FileSystem.h"
 #include "Geometry.h"
 #include "NetworkServer.h"
+#include "Platform.h"
 #include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "Server.h"
-#include "WinApi-Include.h"
+
+// SystemCall spawns a subprocess (CreateProcessW). This file is server-only, so the process-spawning code is
+// never compiled into the client binary — keep it that way to avoid antivirus heuristics flagging the client.
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
-///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring protoId, bool forPlayer)
+static auto RequireCurrentSyncContext(ptr<ServerEngine> server) -> ptr<SyncContext>
 {
-    return server->CreateCritter(protoId, forPlayer);
+    FO_STACK_TRACE_ENTRY();
+
+    auto nullable_ctx = server->GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(nullable_ctx, "Missing script execution context");
+
+    return nullable_ctx.as_ptr();
 }
 
+// SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer)
+FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
 {
-    return server->CreateCritter(proto->GetProtoId(), forPlayer);
+    auto cr = server->CreateCritter(protoId, forPlayer);
+    return cr;
 }
 
+// SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer)
 {
-    const auto* proto = server->GetProtoCritter(protoId);
+    auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer);
+    return cr;
+}
 
-    if (proto == nullptr) {
+// SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
+///@ ExportMethod
+FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+{
+    auto nullable_proto = server->GetProtoCritter(protoId);
+
+    if (!nullable_proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    Properties props_ = proto->GetProperties().Copy();
+    auto proto = nullable_proto.as_ptr();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    return server->CreateCritter(protoId, forPlayer, &props_);
+    nptr<const Properties> props_ptr = &props_;
+    auto cr = server->CreateCritter(protoId, forPlayer, props_ptr);
+    return cr;
 }
 
+// SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_CreateCritter(ServerEngine* server, ProtoCritter* proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
+FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, ptr<ProtoCritter> proto, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
-    Properties props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    return server->CreateCritter(proto->GetProtoId(), forPlayer, &props_);
+    nptr<const Properties> props_ptr = &props_;
+    auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer, props_ptr);
+    return cr;
 }
 
+// SyncScope: database/registry load only; returned critter must be covered before cross-entity use.
 ///@ ExportMethod
-FO_SCRIPT_API Critter* Server_Game_LoadCritter(ServerEngine* server, ident_t crId, bool forPlayer)
+FO_SCRIPT_API ptr<Critter> Server_Game_LoadCritter(ptr<ServerEngine> server, ident_t crId, bool forPlayer)
 {
-    return server->LoadCritter(crId, forPlayer);
+    auto cr = server->LoadCritter(crId, forPlayer);
+    return cr;
 }
 
+// SyncScope: requires cr + current parent map; unload mutates critter simulation state.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_UnloadCritter(ServerEngine* server, Critter* cr)
+FO_SCRIPT_API void Server_Game_UnloadCritter(ptr<ServerEngine> server, ptr<Critter> cr)
 {
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(cr->GetParentRaw());
+
     server->UnloadCritter(cr);
 }
 
+// SyncScope: unloaded-record operation only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ServerEngine* server, ident_t crId)
+FO_SCRIPT_API void Server_Game_DestroyUnloadedCritter(ptr<ServerEngine> server, ident_t crId)
 {
     server->DestroyUnloadedCritter(crId);
 }
 
+// SyncScope: requires cr1 + cr2; reads same-map placement from the covered critters.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1, Critter* cr2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Critter> cr1, ptr<Critter> cr2)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr1);
+    ValidateEntityAccess(cr2);
 
     if (cr1->GetMapId() != cr2->GetMapId()) {
         throw ScriptException("Critters different maps");
@@ -120,10 +161,14 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr1
     return multihex < dist ? dist - multihex : 0;
 }
 
+// SyncScope: requires item1 + item2; reads same-map placement from the covered items.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1, Item* item2)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item> item1, ptr<Item> item2)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item1);
+    ValidateEntityAccess(item2);
 
     if (item1->GetMapId() != item2->GetMapId()) {
         throw ScriptException("Items different maps");
@@ -132,14 +177,17 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item1,
         throw ScriptException("Items not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(item1->GetHex(), item2->GetHex());
-    return dist;
+    return GeometryHelper::GetDistance(item1->GetHex(), item2->GetHex());
 }
 
+// SyncScope: requires cr + item; reads same-map placement from the covered entities.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Critter> cr, ptr<Item> item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(item);
 
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Critter/Item different maps");
@@ -153,10 +201,14 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
     return multihex < dist ? dist - multihex : 0;
 }
 
+// SyncScope: requires item + cr; reads same-map placement from the covered entities.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> cr)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(cr);
 
     if (cr->GetMapId() != item->GetMapId()) {
         throw ScriptException("Item/Critter different maps");
@@ -170,10 +222,13 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, 
     return multihex < dist ? dist - multihex : 0;
 }
 
+// SyncScope: requires cr; reads critter placement from the covered critter.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Critter> cr, mpos hex)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
 
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
@@ -184,10 +239,13 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Critter* cr,
     return multihex < dist ? dist - multihex : 0;
 }
 
+// SyncScope: requires cr; reads critter placement from the covered critter.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Critter* cr)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, mpos hex, ptr<Critter> cr)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
 
     if (!cr->GetMapId()) {
         throw ScriptException("Critter not on map");
@@ -198,108 +256,160 @@ FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Cr
     return multihex < dist ? dist - multihex : 0;
 }
 
+// SyncScope: requires item; reads item placement from the covered item.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, Item* item, mpos hex)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, ptr<Item> item, mpos hex)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item);
 
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(item->GetHex(), hex);
-    return dist;
+    return GeometryHelper::GetDistance(item->GetHex(), hex);
 }
 
+// SyncScope: requires item; reads item placement from the covered item.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_GetDistance(ServerEngine* server, mpos hex, Item* item)
+FO_SCRIPT_API int32_t Server_Game_GetDistance(ptr<ServerEngine> server, mpos hex, ptr<Item> item)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(item);
 
     if (!item->GetMapId()) {
         throw ScriptException("Item not on map");
     }
 
-    const auto dist = GeometryHelper::GetDistance(item->GetHex(), hex);
-    return dist;
+    return GeometryHelper::GetDistance(item->GetHex(), hex);
 }
 
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_GetItem(ServerEngine* server, ident_t itemId)
+// SyncScope: registry lookup only; returned item handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t itemId)
 {
     if (!itemId) {
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = server->EntityMngr.GetItem(itemId);
-    if (item == nullptr || item->IsDestroyed()) {
-        return nullptr;
-    }
-
-    return item;
+    auto item = server->EntityMngr.GetItem(itemId);
+    return ReleaseNullableScriptOwnership(std::move(item));
 }
 
+// SyncScope: requires item + current item parent + destination critter.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Critter* toCr)
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Critter> toCr)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCr);
+
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCr);
 }
 
+// SyncScope: requires item + current item parent + destination critter.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Critter* toCr)
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Critter> toCr)
 {
-    if (count <= 0) {
-        return nullptr;
-    }
-
-    return server->ItemMngr.MoveItem(item, count, toCr);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Map* toMap, mpos toHex)
-{
-    if (!toMap->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid hexex args");
-    }
-
-    return server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Map* toMap, mpos toHex)
-{
-    if (!toMap->GetSize().is_valid_pos(toHex)) {
-        throw ScriptException("Invalid hexex args");
-    }
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCr);
 
     if (count <= 0) {
         return nullptr;
     }
 
-    return server->ItemMngr.MoveItem(item, count, toMap, toHex);
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toCr);
+    return moved_item;
 }
 
+// SyncScope: requires item + current item parent + destination map.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, Item* toCont, any_t stackId = any_t {})
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Map> toMap, mpos toHex)
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toMap);
+
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
+        throw ScriptException("Invalid hexex args");
+    }
+
+    auto moved_item = server->ItemMngr.MoveItem(item, item->GetCount(), toMap, toHex);
+    return moved_item;
+}
+
+// SyncScope: requires item + current item parent + destination map.
+///@ ExportMethod
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Map> toMap, mpos toHex)
+{
+    if (!toMap->GetSize().is_valid_pos(toHex)) {
+        throw ScriptException("Invalid hexex args");
+    }
+
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toMap);
+
+    if (count <= 0) {
+        return nullptr;
+    }
+
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toMap, toHex);
+    return moved_item;
+}
+
+// SyncScope: requires item + current item parent + destination container item.
+///@ ExportMethod
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, ptr<Item> toCont, any_t stackId = any_t {})
+{
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCont);
+
     return server->ItemMngr.MoveItem(item, item->GetCount(), toCont, stackId);
 }
 
+// SyncScope: requires item + current item parent + destination container item.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Item* Server_Game_MoveItem(ServerEngine* server, Item* item, int32_t count, Item* toCont, any_t stackId = any_t {})
+FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item> item, int32_t count, ptr<Item> toCont, any_t stackId = any_t {})
 {
+    ValidateEntityAccess(item);
+    ValidateEntityAccess(item->GetParentRaw());
+    ValidateEntityAccess(toCont);
+
     if (count <= 0) {
         return nullptr;
     }
 
-    return server->ItemMngr.MoveItem(item, count, toCont, stackId);
+    auto moved_item = server->ItemMngr.MoveItem(item, count, toCont, stackId);
+    return moved_item;
 }
 
+// SyncScope: requires destination critter + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Critter* toCr)
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Critter> toCr)
 {
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
+    ValidateEntityAccess(toCr);
+
+    for (nptr<Item> nullable_item : items) {
+        ValidateEntityAccess(nullable_item);
+
+        if (nullable_item) {
+            ValidateEntityAccess(nullable_item->GetParentRaw());
+        }
+    }
+
+    for (nptr<Item> nullable_item : items) {
+        if (!nullable_item) {
+            continue;
+        }
+
+        auto item = nullable_item.as_ptr();
+
+        if (item->IsDestroyed()) {
             continue;
         }
 
@@ -307,15 +417,28 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
     }
 }
 
+// SyncScope: requires destination map + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Map* toMap, mpos toHex)
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Map> toMap, mpos toHex)
 {
+    ValidateEntityAccess(toMap);
+
+    for (auto* item : items) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+    }
+
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
+    for (nptr<Item> nullable_item : items) {
+        if (!nullable_item) {
+            continue;
+        }
+
+        auto item = nullable_item.as_ptr();
+        if (item->IsDestroyed()) {
             continue;
         }
 
@@ -323,11 +446,28 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
     }
 }
 
+// SyncScope: requires destination container item + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<Item*> items, Item* toCont, any_t stackId = any_t {})
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Item> toCont, any_t stackId = any_t {})
 {
-    for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed()) {
+    ValidateEntityAccess(toCont);
+
+    for (nptr<Item> nullable_item : items) {
+        ValidateEntityAccess(nullable_item);
+
+        if (nullable_item) {
+            ValidateEntityAccess(nullable_item->GetParentRaw());
+        }
+    }
+
+    for (nptr<Item> nullable_item : items) {
+        if (!nullable_item) {
+            continue;
+        }
+
+        auto item = nullable_item.as_ptr();
+
+        if (item->IsDestroyed()) {
             continue;
         }
 
@@ -335,55 +475,123 @@ FO_SCRIPT_API void Server_Game_MoveItems(ServerEngine* server, readonly_vector<I
     }
 }
 
+// SyncScope: requires entity + current parent when present; destroys the entity subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, ident_t id)
+FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t id)
 {
-    if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
+    auto nullable_entity = server->EntityMngr.GetEntity(id);
+
+    if (nullable_entity) {
+        auto entity = nullable_entity.as_ptr();
+        ValidateEntityAccess(entity);
+        ValidateEntityAccess(entity->GetParentRaw());
+
         server->EntityMngr.DestroyEntity(entity);
     }
 }
 
+// SyncScope: requires entity + current parent when entity is non-null; destroys the entity subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntity(ServerEngine* server, FO_NULLABLE ServerEntity* entity)
+FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
-    if (entity != nullptr) {
-        server->EntityMngr.DestroyEntity(entity);
+    if (entity) {
+        ValidateEntityAccess(entity);
+        ValidateEntityAccess(entity->GetParentRaw());
+
+        server->EntityMngr.DestroyEntity(entity.as_ptr());
     }
 }
 
+// SyncScope: requires every resolved entity + current parent when present; destroys each subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_vector<ident_t> ids)
+FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<ident_t> ids)
 {
-    for (const auto id : ids) {
-        if (auto* entity = server->EntityMngr.GetEntity(id); entity != nullptr) {
+    for (const ident_t id : ids) {
+        auto nullable_entity = server->EntityMngr.GetEntity(id);
+
+        if (nullable_entity) {
+            auto entity = nullable_entity.as_ptr();
+            ValidateEntityAccess(entity);
+            ValidateEntityAccess(entity->GetParentRaw());
+
             server->EntityMngr.DestroyEntity(entity);
         }
     }
 }
 
+// SyncScope: requires every non-null entity + current parent when present; destroys each subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntities(ServerEngine* server, readonly_vector<ServerEntity*> entities)
+FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<ServerEntity*> entities)
 {
-    for (auto* entity : entities) {
-        if (entity != nullptr) {
-            server->EntityMngr.DestroyEntity(entity);
+    for (nptr<ServerEntity> entity : entities) {
+        if (entity) {
+            ValidateEntityAccess(entity);
+            ValidateEntityAccess(entity->GetParentRaw());
+
+            server->EntityMngr.DestroyEntity(entity.as_ptr());
         }
     }
 }
 
+// SyncScope: requires item + current item parent when item is non-null; destroys the item subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, FO_NULLABLE Item* item)
+FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item)
 {
-    if (item != nullptr) {
+    if (item) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
+        server->ItemMngr.DestroyItem(item.as_ptr());
+    }
+}
+
+// SyncScope: requires item + current item parent when item is non-null; full-count destroy removes the item subtree.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> item, int32_t count)
+{
+    if (item && count > 0) {
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
+        auto item_ref = item.as_ptr();
+        const auto cur_count = item_ref->GetCount();
+
+        if (count >= cur_count) {
+            server->ItemMngr.DestroyItem(item_ref);
+        }
+        else {
+            item_ref->SetCount(cur_count - count);
+        }
+    }
+}
+
+// SyncScope: requires resolved item + current item parent when present; destroys the item subtree.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId)
+{
+    auto nullable_item = server->EntityMngr.GetItem(itemId);
+
+    if (nullable_item) {
+        auto item = nullable_item.as_ptr();
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
         server->ItemMngr.DestroyItem(item);
     }
 }
 
+// SyncScope: requires resolved item + current item parent when present; full-count destroy removes the item subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int32_t count)
+FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId, int32_t count)
 {
-    if (item != nullptr && count > 0) {
-        const auto cur_count = item->GetCount();
+    auto nullable_item = server->EntityMngr.GetItem(itemId);
+
+    if (nullable_item && count > 0) {
+        auto item = nullable_item.as_ptr();
+        ValidateEntityAccess(item);
+        ValidateEntityAccess(item->GetParentRaw());
+
+        const int32_t cur_count = item->GetCount();
 
         if (count >= cur_count) {
             server->ItemMngr.DestroyItem(item);
@@ -394,266 +602,321 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, Item* item, int
     }
 }
 
+// SyncScope: requires every non-null item + current item parent; destroys each item subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId)
+FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<Item*> items)
 {
-    auto* item = server->EntityMngr.GetItem(itemId);
+    for (nptr<Item> item : items) {
+        if (item) {
+            ValidateEntityAccess(item);
+            ValidateEntityAccess(item->GetParentRaw());
 
-    if (item != nullptr) {
-        server->ItemMngr.DestroyItem(item);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItem(ServerEngine* server, ident_t itemId, int32_t count)
-{
-    auto* item = server->EntityMngr.GetItem(itemId);
-
-    if (item != nullptr && count > 0) {
-        const auto cur_count = item->GetCount();
-
-        if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
-        }
-        else {
-            item->SetCount(cur_count - count);
+            server->ItemMngr.DestroyItem(item.as_ptr());
         }
     }
 }
 
+// SyncScope: requires every resolved item + current item parent; destroys each item subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vector<Item*> items)
+FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<ident_t> itemIds)
 {
-    for (auto* item : items) {
-        if (item != nullptr) {
-            server->ItemMngr.DestroyItem(item);
-        }
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItems(ServerEngine* server, readonly_vector<ident_t> itemIds)
-{
-    for (const auto item_id : itemIds) {
+    for (const ident_t item_id : itemIds) {
         if (item_id) {
-            auto* item = server->EntityMngr.GetItem(item_id);
+            auto nullable_item = server->EntityMngr.GetItem(item_id);
 
-            if (item != nullptr) {
+            if (nullable_item) {
+                auto item = nullable_item.as_ptr();
+                ValidateEntityAccess(item);
+                ValidateEntityAccess(item->GetParentRaw());
+
                 server->ItemMngr.DestroyItem(item);
             }
         }
     }
 }
 
+// SyncScope: requires cr + current source map when cr is non-null and not player-controlled.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, Critter* cr)
+FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Critter> cr)
 {
-    if (cr != nullptr && !cr->GetControlledByPlayer()) {
-        server->CrMngr.DestroyCritter(cr);
+    if (cr && !cr->GetControlledByPlayer()) {
+        ValidateEntityAccess(cr);
+        ValidateEntityAccess(cr->GetParentRaw());
+
+        server->CrMngr.DestroyCritter(cr.as_ptr());
     }
 }
 
+// SyncScope: requires resolved cr + current source map when present and not player-controlled.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritter(ServerEngine* server, ident_t crId)
+FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t crId)
 {
     if (crId) {
-        if (Critter* cr = server->EntityMngr.GetCritter(crId); cr != nullptr && !cr->GetControlledByPlayer()) {
-            server->CrMngr.DestroyCritter(cr);
+        auto nullable_cr = server->EntityMngr.GetCritter(crId);
+
+        if (nullable_cr && !nullable_cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(nullable_cr);
+            ValidateEntityAccess(nullable_cr->GetParentRaw());
+
+            server->CrMngr.DestroyCritter(nullable_cr.as_ptr());
         }
     }
 }
 
+// SyncScope: requires every non-null cr + current source map when not player-controlled.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_vector<Critter*> critters)
+FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<Critter*> critters)
 {
-    for (auto* cr : critters) {
-        if (cr != nullptr && !cr->GetControlledByPlayer()) {
-            server->CrMngr.DestroyCritter(cr);
+    for (nptr<Critter> cr : critters) {
+        if (cr && !cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(cr);
+            ValidateEntityAccess(cr->GetParentRaw());
+
+            server->CrMngr.DestroyCritter(cr.as_ptr());
         }
     }
 }
 
+// SyncScope: requires every resolved cr + current source map when not player-controlled.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritters(ServerEngine* server, readonly_vector<ident_t> critterIds)
+FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<ident_t> critterIds)
 {
-    for (const auto id : critterIds) {
+    for (const ident_t id : critterIds) {
         if (id) {
-            if (Critter* cr = server->EntityMngr.GetCritter(id); cr != nullptr && !cr->GetControlledByPlayer()) {
+            auto nullable_cr = server->EntityMngr.GetCritter(id);
+
+            if (nullable_cr && !nullable_cr->GetControlledByPlayer()) {
+                auto cr = nullable_cr.as_ptr();
+                ValidateEntityAccess(cr);
+                ValidateEntityAccess(cr->GetParentRaw());
+
                 server->CrMngr.DestroyCritter(cr);
             }
         }
     }
 }
 
+// SyncScope: creates a new location in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId)
 {
-    auto* loc = server->MapMngr.CreateLocation(protoId);
-    FO_RUNTIME_ASSERT(loc);
+    auto loc = server->MapMngr.CreateLocation(protoId);
     return loc;
 }
 
+// SyncScope: creates a new location in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto)
 {
-    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId());
-    FO_RUNTIME_ASSERT(loc);
+    auto loc = server->MapMngr.CreateLocation(proto->GetProtoId());
     return loc;
 }
 
+// SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids)
 {
-    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids);
-    FO_RUNTIME_ASSERT(loc);
+    auto loc = server->MapMngr.CreateLocation(protoId, map_pids);
     return loc;
 }
 
+// SyncScope: creates a new location in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
-    const auto* proto = server->GetProtoLocation(protoId);
+    auto nullable_proto = server->GetProtoLocation(protoId);
 
-    if (proto == nullptr) {
+    if (!nullable_proto) {
         throw ScriptException("Invalid location proto id arg", protoId);
     }
 
-    auto props_ = proto->GetProperties().Copy();
+    auto proto = nullable_proto.as_ptr();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    auto* loc = server->MapMngr.CreateLocation(protoId, {}, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    nptr<const Properties> props_ptr = &props_;
+    auto loc = server->MapMngr.CreateLocation(protoId, {}, props_ptr);
     return loc;
 }
 
+// SyncScope: creates a new location in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, ProtoLocation* proto, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, ptr<ProtoLocation> proto, readonly_map<LocationProperty, any_t> props)
 {
-    auto props_ = proto->GetProperties().Copy();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    auto* loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    nptr<const Properties> props_ptr = &props_;
+    auto loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, props_ptr);
     return loc;
 }
 
+// SyncScope: creates a new location/maps in the current context; returned location is covered by registration self-sync.
 ///@ ExportMethod
-FO_SCRIPT_API Location* Server_Game_CreateLocation(ServerEngine* server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
+FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
 {
-    const auto* proto = server->GetProtoLocation(protoId);
+    auto nullable_proto = server->GetProtoLocation(protoId);
 
-    if (proto == nullptr) {
+    if (!nullable_proto) {
         throw ScriptException("Invalid location proto id arg", protoId);
     }
 
-    auto props_ = proto->GetProperties().Copy();
+    auto proto = nullable_proto.as_ptr();
+    Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    auto* loc = server->MapMngr.CreateLocation(protoId, map_pids, &props_);
-    FO_RUNTIME_ASSERT(loc);
+    nptr<const Properties> props_ptr = &props_;
+    auto loc = server->MapMngr.CreateLocation(protoId, map_pids, props_ptr);
     return loc;
 }
 
+// SyncScope: requires loc when non-null; destroy cascade self-syncs covered child maps/entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, FO_NULLABLE Location* loc)
+FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, nptr<Location> loc)
 {
-    if (loc != nullptr) {
+    if (loc) {
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(loc->GetParentRaw());
+
+        server->MapMngr.DestroyLocation(loc.as_ptr());
+    }
+}
+
+// SyncScope: requires resolved loc when present; destroy cascade self-syncs covered child maps/entities.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t locId)
+{
+    auto nullable_loc = server->EntityMngr.GetLocation(locId);
+
+    if (nullable_loc) {
+        auto loc = nullable_loc.as_ptr();
+        ValidateEntityAccess(loc);
+        ValidateEntityAccess(loc->GetParentRaw());
+
         server->MapMngr.DestroyLocation(loc);
     }
 }
 
+// SyncScope: requires map + parent location when map is non-null; destroy cascade self-syncs covered child entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyLocation(ServerEngine* server, ident_t locId)
+FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, nptr<Map> map)
 {
-    auto* loc = server->EntityMngr.GetLocation(locId);
+    if (map) {
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(map->GetParentRaw());
 
-    if (loc != nullptr) {
-        server->MapMngr.DestroyLocation(loc);
+        server->MapMngr.DestroyMap(map.as_ptr());
     }
 }
 
+// SyncScope: requires resolved map + parent location when present; destroy cascade self-syncs covered child entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, FO_NULLABLE Map* map)
+FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, ident_t mapId)
 {
-    if (map != nullptr) {
+    auto nullable_map = server->EntityMngr.GetMap(mapId);
+
+    if (nullable_map) {
+        auto map = nullable_map.as_ptr();
+        ValidateEntityAccess(map);
+        ValidateEntityAccess(map->GetParentRaw());
+
         server->MapMngr.DestroyMap(map);
     }
 }
 
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyMap(ServerEngine* server, ident_t mapId)
-{
-    auto* map = server->EntityMngr.GetMap(mapId);
-
-    if (map != nullptr) {
-        server->MapMngr.DestroyMap(map);
-    }
-}
-
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Critter* Server_Game_GetCritter(ServerEngine* server, ident_t crId)
+// SyncScope: registry lookup only; returned critter handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Critter> Server_Game_GetCritter(ptr<ServerEngine> server, ident_t crId)
 {
     if (!crId) {
         return nullptr;
     }
 
-    return server->EntityMngr.GetCritter(crId);
+    auto cr = server->EntityMngr.GetCritter(crId);
+    return ReleaseNullableScriptOwnership(std::move(cr));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ServerEngine* server, CritterFindType findType)
+// SyncScope: registry lookup only; returned entity handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server, ident_t entityId)
 {
-    vector<Critter*> critters;
-    critters.reserve(server->EntityMngr.GetCritters().size());
+    if (!entityId) {
+        return nullptr;
+    }
 
-    for (auto& cr : server->EntityMngr.GetCritters() | std::views::values) {
-        if (cr->CheckFind(findType)) {
-            critters.emplace_back(cr.get());
+    auto entity = server->EntityMngr.GetEntity(entityId);
+    return ReleaseNullableScriptOwnership(std::move(entity));
+}
+
+// SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
+{
+    vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
+    vector<refcount_ptr<Critter>> result;
+    result.reserve(critters.size());
+
+    for (size_t i = 0; i != critters.size(); i++) {
+        if (critters[i]->CheckFind(findType)) {
+            result.emplace_back(std::move(critters[i]));
         }
     }
 
-    return critters;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
+// SyncScope: no existing entity cover required; creates a disconnected unlogined player session.
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_CreateUnloginedPlayer(ServerEngine* server)
+FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> server)
 {
-    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings);
-    return server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+    shared_ptr<NetworkServerConnection> dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
+    return player;
 }
 
+// SyncScope: requires unloginedPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_LoginPlayerToNewRecord(ServerEngine* server, Player* unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    return server->LoginPlayerToNewRecord(unloginedPlayer);
+    auto player = server->LoginPlayerToNewRecord(unloginedPlayer);
+    return player.as_ptr();
 }
 
+// SyncScope: requires unloginedPlayer; login mutates that player/session record.
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_LoginPlayerToTempSession(ServerEngine* server, Player* unloginedPlayer)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine> server, ptr<Player> unloginedPlayer)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
 
-    return server->LoginPlayerToTempSession(unloginedPlayer);
+    auto player = server->LoginPlayerToTempSession(unloginedPlayer);
+    return player.as_ptr();
 }
 
+// SyncScope: requires unloginedPlayer; login mutates that player/session record and database-backed player id.
 ///@ ExportMethod
-FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* server, Player* unloginedPlayer, ident_t playerId)
+FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
 {
+    ValidateEntityAccess(unloginedPlayer);
+
     if (unloginedPlayer->GetLogined()) {
         throw ScriptException("Player is already logined");
     }
@@ -661,256 +924,305 @@ FO_SCRIPT_API Player* Server_Game_LoginPlayerToExistentRecord(ServerEngine* serv
         throw ScriptException("Player id arg is zero");
     }
 
-    return server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+    auto player = server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
+    return player.as_ptr();
 }
 
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Player* Server_Game_GetPlayer(ServerEngine* server, ident_t playerId)
+// SyncScope: registry lookup only; returned player handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident_t playerId)
 {
     if (!playerId) {
         return nullptr;
     }
 
-    return server->EntityMngr.GetPlayer(playerId);
+    auto player = server->EntityMngr.GetPlayer(playerId);
+    return ReleaseNullableScriptOwnership(std::move(player));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetGlobalMapCritters(ServerEngine* server, CritterFindType findType)
+// SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t mapId)
 {
-    return server->CrMngr.GetGlobalMapCritters(findType);
+    auto map = server->EntityMngr.GetMap(mapId);
+    return ReleaseNullableScriptOwnership(std::move(map));
 }
 
+// SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ident_t mapId)
+FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, hstring mapPid, int32_t skipCount = 0)
 {
-    return server->EntityMngr.GetMap(mapId);
+    auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
+    return ReleaseNullableScriptOwnership(std::move(map));
 }
 
+// SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, hstring mapPid, int32_t skipCount = 0)
+FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMap> mapProto, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetMapByPid(mapPid, skipCount);
+    ptr<const ProtoMap> map_proto = mapProto;
+    auto map = server->MapMngr.GetMapByPid(map_proto->GetProtoId(), skipCount);
+    return ReleaseNullableScriptOwnership(std::move(map));
 }
 
+// SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Game_GetMap(ServerEngine* server, ProtoMap* mapProto, int32_t skipCount = 0)
+FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server)
 {
-    return server->MapMngr.GetMapByPid(mapProto->GetProtoId(), skipCount);
+    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    return MakeScriptRefHandleVectorAs<Map, Map>(maps);
 }
 
+// SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server)
+FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
 {
-    vector<Map*> maps;
-    maps.reserve(server->EntityMngr.GetLocationsCount());
-
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
-        maps.emplace_back(map.get());
-    }
-
-    return maps;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, hstring pid)
-{
-    vector<Map*> maps;
+    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    vector<ptr<Map>> result;
 
     if (!pid) {
-        maps.reserve(server->EntityMngr.GetLocationsCount());
+        result.reserve(maps.size());
     }
 
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
+    for (size_t i = 0; i != maps.size(); i++) {
+        auto map = maps[i].as_ptr();
+
         if (!pid || pid == map->GetProtoId()) {
-            maps.emplace_back(map.get());
+            result.emplace_back(map);
         }
     }
 
-    return maps;
+    return MakeScriptHandleVector<Map>(result);
 }
 
+// SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ServerEngine* server, ProtoMap* proto)
+FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
 {
-    vector<Map*> maps;
+    nptr<const ProtoMap> proto_lookup = proto;
+    vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
+    vector<ptr<Map>> result;
 
-    if (proto == nullptr) {
-        maps.reserve(server->EntityMngr.GetLocationsCount());
+    if (!proto_lookup) {
+        result.reserve(maps.size());
+
+        for (size_t i = 0; i != maps.size(); i++) {
+            result.emplace_back(maps[i]);
+        }
+
+        return MakeScriptHandleVector<Map>(result);
     }
 
-    for (auto& map : server->EntityMngr.GetMaps() | std::views::values) {
-        if (proto == nullptr || proto->GetProtoId() == map->GetProtoId()) {
-            maps.emplace_back(map.get());
+    auto proto_ptr = proto_lookup.as_ptr();
+
+    for (size_t i = 0; i != maps.size(); i++) {
+        auto map = maps[i].as_ptr();
+
+        if (proto_ptr->GetProtoId() == map->GetProtoId()) {
+            result.emplace_back(map);
         }
     }
 
-    return maps;
+    return MakeScriptHandleVector<Map>(result);
 }
 
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ident_t locId)
+// SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ident_t locId)
 {
-    return server->EntityMngr.GetLocation(locId);
+    auto loc = server->EntityMngr.GetLocation(locId);
+    return ReleaseNullableScriptOwnership(std::move(loc));
 }
 
+// SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, hstring locPid, int32_t skipCount = 0)
+FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, hstring locPid, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetLocationByPid(locPid, skipCount);
+    auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
+    return ReleaseNullableScriptOwnership(std::move(loc));
 }
 
+// SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, ProtoLocation* locProto, int32_t skipCount = 0)
+FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ptr<ProtoLocation> locProto, int32_t skipCount = 0)
 {
-    return server->MapMngr.GetLocationByPid(locProto->GetProtoId(), skipCount);
+    ptr<const ProtoLocation> loc_proto = locProto;
+    auto loc = server->MapMngr.GetLocationByPid(loc_proto->GetProtoId(), skipCount);
+    return ReleaseNullableScriptOwnership(std::move(loc));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Location* Server_Game_GetLocation(ServerEngine* server, LocationProperty property, int32_t propertyValue)
+// SyncScope: registry scan only; returned location handle is not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    ptr<const Property> prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
 
-    for (auto& loc : server->EntityMngr.GetLocations() | std::views::values) {
-        if (loc->GetValueAsInt(prop) == propertyValue) {
-            return loc.get();
+    for (size_t i = 0; i != locs.size(); i++) {
+        if (locs[i]->GetValueAsInt(prop) == propertyValue) {
+            return ReleaseScriptOwnership(std::move(locs[i]));
         }
     }
 
     return nullptr;
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server)
+// SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server)
 {
-    auto& locs = server->EntityMngr.GetLocations();
-
-    vector<Location*> result;
+    vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> result;
     result.reserve(locs.size());
 
-    for (auto& loc : locs | std::views::values) {
-        result.emplace_back(loc.get());
+    for (size_t i = 0; i != locs.size(); i++) {
+        result.emplace_back(std::move(locs[i]));
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, hstring pid)
+// SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, hstring pid)
 {
-    auto& locs = server->EntityMngr.GetLocations();
-    vector<Location*> result;
+    vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> result;
 
     if (!pid) {
         result.reserve(locs.size());
     }
 
-    for (auto& loc : locs | std::views::values) {
-        if (!pid || pid == loc->GetProtoId()) {
-            result.emplace_back(loc.get());
+    for (size_t i = 0; i != locs.size(); i++) {
+        if (!pid || pid == locs[i]->GetProtoId()) {
+            result.emplace_back(std::move(locs[i]));
         }
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, ProtoLocation* proto)
+// SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, nptr<ProtoLocation> proto)
 {
-    auto& locs = server->EntityMngr.GetLocations();
-    vector<Location*> result;
+    nptr<const ProtoLocation> proto_lookup = proto;
+    vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> result;
 
-    if (proto == nullptr) {
+    if (!proto_lookup) {
         result.reserve(locs.size());
+
+        for (size_t i = 0; i != locs.size(); i++) {
+            result.emplace_back(std::move(locs[i]));
+        }
+
+        return ReleaseScriptOwnershipVector(std::move(result));
     }
 
-    for (auto& loc : locs | std::views::values) {
-        if (proto == nullptr || proto->GetProtoId() == loc->GetProtoId()) {
-            result.emplace_back(loc.get());
+    auto proto_ptr = proto_lookup.as_ptr();
+
+    for (size_t i = 0; i != locs.size(); i++) {
+        if (proto_ptr->GetProtoId() == locs[i]->GetProtoId()) {
+            result.emplace_back(std::move(locs[i]));
         }
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ServerEngine* server, LocationProperty property, int32_t propertyValue)
+// SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
 {
-    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
-    auto& locs = server->EntityMngr.GetLocations();
-
-    vector<Location*> result;
+    ptr<const Property> prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
+    vector<refcount_ptr<Location>> result;
     result.reserve(locs.size());
 
-    for (auto& loc : locs | std::views::values) {
-        if (loc->GetValueAsInt(prop) == propertyValue) {
-            result.emplace_back(loc.get());
+    for (size_t i = 0; i != locs.size(); i++) {
+        if (locs[i]->GetValueAsInt(prop) == propertyValue) {
+            result.emplace_back(std::move(locs[i]));
         }
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, hstring pid)
+// SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, hstring pid)
 {
-    auto& items = server->EntityMngr.GetItems();
-    vector<Item*> result;
+    vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
+    vector<refcount_ptr<Item>> result;
 
     if (!pid) {
         result.reserve(items.size());
     }
 
-    for (auto& item : items | std::views::values) {
-        if (!pid || pid == item->GetProtoId()) {
-            result.emplace_back(item.get());
+    for (size_t i = 0; i != items.size(); i++) {
+        if (!pid || pid == items[i]->GetProtoId()) {
+            result.emplace_back(std::move(items[i]));
         }
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ServerEngine* server, ProtoItem* proto)
+// SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, nptr<ProtoItem> proto)
 {
-    auto& items = server->EntityMngr.GetItems();
-    vector<Item*> result;
+    nptr<const ProtoItem> proto_lookup = proto;
+    vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
+    vector<refcount_ptr<Item>> result;
 
-    if (proto == nullptr) {
+    if (!proto_lookup) {
         result.reserve(items.size());
+
+        for (size_t i = 0; i != items.size(); i++) {
+            result.emplace_back(std::move(items[i]));
+        }
+
+        return ReleaseScriptOwnershipVector(std::move(result));
     }
 
-    for (auto& item : items | std::views::values) {
-        if (proto == nullptr || proto->GetProtoId() == item->GetProtoId()) {
-            result.emplace_back(item.get());
+    auto proto_ptr = proto_lookup.as_ptr();
+
+    for (size_t i = 0; i != items.size(); i++) {
+        if (proto_ptr->GetProtoId() == items[i]->GetProtoId()) {
+            result.emplace_back(std::move(items[i]));
         }
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ServerEngine* server)
+// SyncScope: registry scan only; returned player handles are not covered for later reads/mutations.
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ptr<ServerEngine> server)
 {
-    auto& players = server->EntityMngr.GetPlayers();
-
-    vector<Player*> result;
+    vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
+    vector<refcount_ptr<Player>> result;
     result.reserve(players.size());
 
-    for (auto& player : players | std::views::values) {
-        result.emplace_back(player.get());
+    for (size_t i = 0; i != players.size(); i++) {
+        result.emplace_back(std::move(players[i]));
     }
 
-    return result;
+    return ReleaseScriptOwnershipVector(std::move(result));
 }
 
+// SyncScope: database registry read only; no live player cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(ServerEngine* server)
+FO_SCRIPT_API vector<ident_t> Server_Game_GetRegisteredPlayerIds(ptr<ServerEngine> server)
 {
     return server->DbStorage.GetAllIntIds(server->PlayersCollectionName);
 }
 
+// SyncScope: database collection scan only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server, hstring collectionName)
+FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ptr<ServerEngine> server, hstring collectionName)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -919,8 +1231,9 @@ FO_SCRIPT_API vector<ident_t> Server_Game_DbGetAllRecordIds(ServerEngine* server
     return server->DbStorage.GetAllIntIds(collectionName);
 }
 
+// SyncScope: database collection scan only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server, hstring collectionName)
+FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ptr<ServerEngine> server, hstring collectionName)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -929,14 +1242,18 @@ FO_SCRIPT_API vector<string> Server_Game_DbGetAllRecordKeys(ServerEngine* server
     return server->DbStorage.GetAllStringIds(collectionName);
 }
 
+// SyncScope: requires entity for type/id read; database lookup itself does not cover a live entity.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_DbHasEntity(ServerEngine* server, ServerEntity* entity)
+FO_SCRIPT_API bool Server_Game_DbHasEntity(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
+    ValidateEntityAccess(entity);
+
     return server->DbStorage.Valid(entity->GetTypeNamePlural(), entity->GetId());
 }
 
+// SyncScope: database lookup only; does not touch live player entity cover.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* server, ident_t playerId)
+FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ptr<ServerEngine> server, ident_t playerId)
 {
     if (!playerId) {
         throw ScriptException("Player id arg is zero");
@@ -952,8 +1269,9 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetPlayerData(ServerEngine* serv
     return result;
 }
 
+// SyncScope: database record lookup only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, ident_t id)
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -965,8 +1283,9 @@ FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collect
     return server->DbStorage.Valid(collectionName, id);
 }
 
+// SyncScope: database record lookup only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collectionName, string_view id)
+FO_SCRIPT_API bool Server_Game_DbHasRecord(ptr<ServerEngine> server, hstring collectionName, string_view id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -978,8 +1297,9 @@ FO_SCRIPT_API bool Server_Game_DbHasRecord(ServerEngine* server, hstring collect
     return server->DbStorage.Valid(collectionName, string(id));
 }
 
+// SyncScope: database record read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, ident_t id)
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -998,8 +1318,9 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, 
     return result;
 }
 
+// SyncScope: database record read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, hstring collectionName, string_view id)
+FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ptr<ServerEngine> server, hstring collectionName, string_view id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1018,8 +1339,9 @@ FO_SCRIPT_API map<string, string> Server_Game_DbGetRecord(ServerEngine* server, 
     return result;
 }
 
+// SyncScope: database record insert only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id, readonly_map<string, string> keyValues)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1054,8 +1376,9 @@ FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring coll
     server->DbStorage.Insert(collectionName, id, doc);
 }
 
+// SyncScope: database record insert only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
+FO_SCRIPT_API void Server_Game_DbInsertRecord(ptr<ServerEngine> server, hstring collectionName, string_view id, readonly_map<string, string> keyValues)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1093,7 +1416,7 @@ FO_SCRIPT_API void Server_Game_DbInsertRecord(ServerEngine* server, hstring coll
 namespace
 {
     template<typename T>
-    static void ValidateAndUpdateRecord(ServerEngine* server, hstring collectionName, const auto& id, string_view key, const T& value)
+    static void ValidateAndUpdateRecord(ptr<ServerEngine> server_ptr, hstring collectionName, const auto& id, string_view key, const T& value)
     {
         if (!collectionName) {
             throw ScriptException("Collection name arg is empty");
@@ -1120,69 +1443,78 @@ namespace
             }
         }
 
-        if (!server->DbStorage.Valid(collectionName, id)) {
+        if (!server_ptr->DbStorage.Valid(collectionName, id)) {
             throw ScriptException("Record not found");
         }
 
         if constexpr (std::is_same_v<T, string_view>) {
-            server->DbStorage.Update(collectionName, id, key, string(value));
+            server_ptr->DbStorage.Update(collectionName, id, key, string(value));
         }
         else {
-            server->DbStorage.Update(collectionName, id, key, value);
+            server_ptr->DbStorage.Update(collectionName, id, key, value);
         }
     }
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, ident_t id, string_view key, string_view value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ptr<ServerEngine> server, hstring collectionName, ident_t id, string_view key, string_view value)
 {
     ValidateAndUpdateRecord(server, collectionName, id, key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ServerEngine* server, hstring collectionName, string_view id, string_view key, string_view value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordString(ptr<ServerEngine> server, hstring collectionName, string_view id, string_view key, string_view value)
 {
     ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, int64_t value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ptr<ServerEngine> server, hstring collectionName, ident_t id, string_view key, int64_t value)
 {
     ValidateAndUpdateRecord(server, collectionName, id, key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ServerEngine* server, hstring collectionName, string_view id, string_view key, int64_t value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordInt64(ptr<ServerEngine> server, hstring collectionName, string_view id, string_view key, int64_t value)
 {
     ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, ident_t id, string_view key, float64_t value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ptr<ServerEngine> server, hstring collectionName, ident_t id, string_view key, float64_t value)
 {
     ValidateAndUpdateRecord(server, collectionName, id, key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ServerEngine* server, hstring collectionName, string_view id, string_view key, float64_t value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordFloat64(ptr<ServerEngine> server, hstring collectionName, string_view id, string_view key, float64_t value)
 {
     ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, ident_t id, string_view key, bool value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ptr<ServerEngine> server, hstring collectionName, ident_t id, string_view key, bool value)
 {
     ValidateAndUpdateRecord(server, collectionName, id, key, value);
 }
 
+// SyncScope: database record update only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ServerEngine* server, hstring collectionName, string_view id, string_view key, bool value)
+FO_SCRIPT_API void Server_Game_DbUpdateRecordBool(ptr<ServerEngine> server, hstring collectionName, string_view id, string_view key, bool value)
 {
     ValidateAndUpdateRecord(server, collectionName, string(id), key, value);
 }
 
+// SyncScope: database record remove only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, ident_t id)
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ptr<ServerEngine> server, hstring collectionName, ident_t id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1196,8 +1528,9 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring coll
     }
 }
 
+// SyncScope: database record remove only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring collectionName, string_view id)
+FO_SCRIPT_API void Server_Game_DbRemoveRecord(ptr<ServerEngine> server, hstring collectionName, string_view id)
 {
     if (!collectionName) {
         throw ScriptException("Collection name arg is empty");
@@ -1211,93 +1544,120 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ServerEngine* server, hstring coll
     }
 }
 
+// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server)
+FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server)
 {
-    return server->CrMngr.GetNonPlayerCritters();
+    vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
+    return MakeScriptRefHandleVectorAs<Critter, Critter>(npcs);
 }
 
+// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, hstring pid)
+FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid)
 {
-    vector<Critter*> result;
+    vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
+    vector<ptr<Critter>> result;
+    result.reserve(npcs.size());
 
-    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
-        if (!cr->IsDestroyed() && (!pid || pid == cr->GetProtoId())) {
+    for (size_t i = 0; i != npcs.size(); i++) {
+        auto cr = npcs[i].as_ptr();
+
+        if (!pid || pid == cr->GetProtoId()) {
             result.emplace_back(cr);
         }
     }
 
-    return result;
+    return MakeScriptHandleVector<Critter>(result);
 }
 
+// SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ServerEngine* server, ProtoCritter* proto)
+FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, ptr<ProtoCritter> proto)
 {
-    vector<Critter*> result;
+    vector<ptr<Critter>> result;
+    vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
+    result.reserve(npcs.size());
 
-    for (auto* cr : server->CrMngr.GetNonPlayerCritters()) {
-        if (!cr->IsDestroyed() && (proto == nullptr || proto->GetProtoId() == cr->GetProtoId())) {
+    for (size_t i = 0; i != npcs.size(); i++) {
+        auto cr = npcs[i].as_ptr();
+
+        if (proto->GetProtoId() == cr->GetProtoId()) {
             result.emplace_back(cr);
         }
     }
 
-    return result;
+    return MakeScriptHandleVector<Critter>(result);
 }
 
+// SyncScope: requires Game.Lock singleton; mutates global synchronized time, not a live entity.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SetSynchronizedTime(ServerEngine* server, synctime time)
+FO_SCRIPT_API void Server_Game_SetSynchronizedTime(ptr<ServerEngine> server, synctime time)
 {
     server->GameTime.SetSynchronizedTime(time);
     server->SetSynchronizedTime(time);
 }
 
+// SyncScope: requires cr and usedItem when non-null; staticItem is static map data, not a live entity cover.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ServerEngine* server, FO_NULLABLE Critter* cr, StaticItem* staticItem, FO_NULLABLE Item* usedItem, any_t param)
+FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, nptr<Critter> cr, ptr<StaticItem> staticItem, nptr<Item> usedItem, any_t param)
 {
     ignore_unused(server);
+
+    ValidateEntityAccess(cr);
+    ValidateEntityAccess(usedItem);
+
+    nptr<Item> used_item = usedItem;
 
     if (!staticItem->StaticScriptFunc) {
         return false;
     }
 
-    return staticItem->StaticScriptFunc.Call(cr, staticItem, usedItem, param) && staticItem->StaticScriptFunc.GetResult();
+    return staticItem->StaticScriptFunc.Call(cr.get(), staticItem.get(), used_item.get(), param) && staticItem->StaticScriptFunc.GetResult();
 }
 
+// SyncScope: static proto-map read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ServerEngine* server, ProtoMap* proto)
+FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {
-    auto* static_map = server->MapMngr.GetStaticMap(proto);
-    return vec_transform(static_map->StaticItems, [](auto&& item) -> StaticItem* { return item.get(); });
+    auto static_map = server->MapMngr.GetStaticMap(proto);
+    const vector<ptr<StaticItem>>& static_items = static_map->StaticItems;
+    return MakeScriptHandleVector<StaticItem>(static_items);
 }
 
+// SyncScope: static proto-map read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ServerEngine* server, ProtoMap* proto)
+FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {
-    FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(proto);
-
-    const auto* static_map = server->MapMngr.GetStaticMap(proto);
-    vector<ProtoCritter*> proto_critters;
+    auto static_map = server->MapMngr.GetStaticMap(proto);
+    vector<ptr<const ProtoCritter>> proto_critters;
     proto_critters.reserve(static_map->CritterBillets.size());
 
     for (const pair<ident_t, refcount_ptr<Critter>>& billet : static_map->CritterBillets) {
-        FO_RUNTIME_ASSERT(billet.second);
-        const auto* proto_cr = dynamic_cast<const ProtoCritter*>(billet.second->GetProto());
-        FO_RUNTIME_ASSERT(proto_cr);
-        proto_critters.emplace_back(const_cast<ProtoCritter*>(proto_cr));
+        auto proto_cr = billet.second->GetProto().dyn_cast<const ProtoCritter>();
+        FO_VERIFY_AND_THROW(proto_cr, "Missing required prototype critter");
+        proto_critters.emplace_back(proto_cr.as_ptr());
     }
 
-    return proto_critters;
+    return MakeMutableScriptHandleVector<ProtoCritter>(proto_critters);
 }
 
+// SyncScope: language-pack read only; no entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Game_IsTextPresent(ServerEngine* server, TextPackKey textKey)
+FO_SCRIPT_API bool Server_Game_IsTextPresent(ptr<ServerEngine> server, TextPackKey textKey)
 {
     return server->GetLangPack().IsTextPresent(textKey);
 }
 
+// SyncScope: language-pack read only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetTextCount(ptr<ServerEngine> server, TextPackKey textKey)
+{
+    return numeric_cast<int32_t>(server->GetLangPack().GetTextCount(textKey));
+}
+
+// Server-only on purpose: the subprocess-spawning Win32 path (CreateProcessW with a hidden window + pipe
+// capture) must not land in the client binary, where antivirus heuristics would flag it.
 static auto SystemCall(string_view command, const function<void(string_view)>& log_callback) -> int32_t
 {
     const auto print_log = [&log_callback](string& log, bool last_call) {
@@ -1360,6 +1720,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
     string log;
 
+    bool process_done = false;
+
     while (true) {
         while (true) {
             DWORD bytes = 0;
@@ -1379,8 +1741,15 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
             }
         }
 
-        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+        // Drain once more AFTER the process has exited: a fast command (e.g. `echo`) can write its
+        // whole output and terminate between the last peek and this check, leaving it buffered in the
+        // pipe. Breaking immediately on exit would lose that final output.
+        if (process_done) {
             break;
+        }
+
+        if (::WaitForSingleObject(pi.hProcess, 1) != WAIT_TIMEOUT) {
+            process_done = true;
         }
     }
 
@@ -1397,31 +1766,34 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
     return std::bit_cast<int32_t>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
-    FILE* in = popen(string(command).c_str(), "r");
+    const string command_str = string(command);
+    ptr<const char> command_cstr = command_str.c_str();
+    nptr<FILE> in = popen(command_cstr.get(), "r");
 
-    if (in == nullptr) {
+    if (!in) {
         return -1;
     }
 
     string log;
     char buf[4096];
 
-    while (fgets(buf, sizeof(buf), in)) {
+    while (fgets(buf, sizeof(buf), in.get())) {
         log += buf;
         print_log(log, false);
     }
 
     print_log(log, true);
 
-    return pclose(in);
+    return pclose(in.get());
 
 #else
     return 1;
 #endif
 }
 
+// SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_view command)
 {
     ignore_unused(server);
 
@@ -1429,8 +1801,9 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view c
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
 }
 
+// SyncScope: external process call only; requires no entity cover but must not run under unrelated entity locks.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view command, string& output)
+FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_view command, string& output)
 {
     ignore_unused(server);
 
@@ -1442,6 +1815,162 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ServerEngine* server, string_view c
         }
         output += line;
     });
+}
+
+// SyncScope: replaces current cover with entity plus engine auto-widen partners.
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    const array<nptr<ServerEntity>, 1> entities {entity};
+    ctx->SyncEntities(entities);
+}
+
+// SyncScope: replaces current cover with both entities plus engine auto-widen partners.
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    const array<nptr<ServerEntity>, 2> entities {entity1, entity2};
+    ctx->SyncEntities(entities);
+}
+
+// SyncScope: replaces current cover with all entities plus engine auto-widen partners.
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    const array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
+    ctx->SyncEntities(entities);
+}
+
+// SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners.
+///@ ExportMethod Async
+FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<ServerEntity*> entities)
+{
+    vector<nptr<ServerEntity>> non_null;
+    non_null.reserve(entities.size());
+
+    for (nptr<ServerEntity> entity : entities) {
+        if (!entity) {
+            throw ScriptException("Entity in array arg is null");
+        }
+
+        non_null.emplace_back(entity);
+    }
+
+    auto ctx = RequireCurrentSyncContext(server);
+    ctx->SyncEntities(non_null);
+}
+
+// SyncScope: requires entity to be already covered by the current scope; adds its own lock without replacing cover.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncEnsure(ptr<ServerEngine> server, ptr<ServerEntity> entity)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    ctx->EnsureEntitySynced(entity);
+}
+
+// SyncScope: releases the current entity cover; singleton Game.Lock bucket is preserved.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    ctx->Release();
+}
+
+// SyncScope: returns current held cover; does not change cover.
+///@ ExportMethod
+FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    vector<ptr<ServerEntity>> held_entities = ctx->GetHeldEntities();
+    return MakeScriptHandleVector<ServerEntity>(held_entities);
+}
+
+// SyncScope: sync-safe probe; returns whether entity is covered without emitting diagnostics.
+///@ ExportMethod
+FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    ignore_unused(ctx);
+    return IsEntityAccessValid(entity, false);
+}
+
+// SyncScope: locks the Game singleton bucket; do not call Game.Sync while this lock is held.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    ctx->LockSingleton(server->GetEntityLock().get());
+}
+
+// SyncScope: unlocks the Game singleton bucket; entity cover is unchanged.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
+{
+    auto ctx = RequireCurrentSyncContext(server);
+    ctx->UnlockSingleton(server->GetEntityLock().get());
+}
+
+// SyncScope: process metric read only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API int64_t Server_Game_GetProcessMemoryUsage(ptr<ServerEngine> server)
+{
+    ignore_unused(server);
+
+    return static_cast<int64_t>(Platform::GetProcessMemoryUsage());
+}
+
+// SyncScope: allocator metric read only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API int64_t Server_Game_GetAllocatorMemoryUsage(ptr<ServerEngine> server)
+{
+    ignore_unused(server);
+
+    return static_cast<int64_t>(AllocatorGetInUseBytes());
+}
+
+// SyncScope: registry count only; no entity cover is required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetEntityRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetEntitiesCount());
+}
+
+// SyncScope: registry count only; no entity cover required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetPlayerRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetPlayersCount());
+}
+
+// SyncScope: registry count only; no entity cover required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetLocationRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetLocationsCount());
+}
+
+// SyncScope: registry count only; no entity cover required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetMapRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetMapsCount());
+}
+
+// SyncScope: registry count only; no entity cover required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetCritterRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetCrittersCount());
+}
+
+// SyncScope: registry count only; no entity cover required.
+///@ ExportMethod
+FO_SCRIPT_API int32_t Server_Game_GetItemRegistryCount(ptr<ServerEngine> server)
+{
+    return static_cast<int32_t>(server->EntityMngr.GetItemsCount());
 }
 
 FO_END_NAMESPACE

@@ -39,11 +39,6 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(NetBufferException);
 FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
-// Thrown when an incoming hashed string can't be resolved against the local hash storage.
-// Convention: pass the unresolved hash as the second constructor argument (right after the message),
-// so it is recoverable as the first exception param — params().front() — formatted as an unsigned
-// decimal, without a dedicated field. See NetInBuffer::ReadHashedString and the client report flow.
-FO_DECLARE_EXCEPTION_EXT(UnresolvedHashException, NetBufferException);
 
 class NetBuffer
 {
@@ -58,7 +53,7 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t> { return {_bufData.data(), _bufEndPos}; }
+    [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
     void SetEncryptKey(uint32_t seed);
@@ -67,7 +62,7 @@ public:
 
 protected:
     auto EncryptKey(int32_t move) noexcept -> uint8_t;
-    void CopyBuf(const void* from, void* to, uint8_t crypt_key, size_t len) const noexcept;
+    void CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, size_t len) const noexcept;
 
     vector<uint8_t> _bufData {};
     size_t _defaultBufLen {};
@@ -91,9 +86,10 @@ public:
     ~NetOutBuffer() override = default;
 
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _bufEndPos == 0; }
+    [[nodiscard]] auto IsMsgStarted() const noexcept -> bool { return _msgStarted; }
 
     void Push(const_span<uint8_t> buf);
-    void Push(const void* buf, size_t len);
+    void Push(nptr<const void> buf, size_t len);
     void DiscardWriteBuf(size_t len);
 
     template<typename T>
@@ -108,6 +104,7 @@ public:
     void Write(const T& value)
     {
         const auto len = numeric_cast<uint32_t>(value.length());
+
         Push(&len, sizeof(len));
         Push(value.data(), len);
     }
@@ -119,7 +116,7 @@ public:
         WriteHashedString(value);
     }
 
-    void WritePropsData(vector<const uint8_t*>* props_data, const vector<uint32_t>* props_data_sizes);
+    void WritePropsData(const vector<nptr<const uint8_t>>& props_data, const vector<uint32_t>& props_data_sizes);
 
     void StartMsg(NetMessage msg);
     void EndMsg();
@@ -145,12 +142,14 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
+    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
+    void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
-    void Pop(void* buf, size_t len);
+    void Pop(nptr<void> buf, size_t len);
     void ResetBuf() noexcept override;
 
     template<typename T>
@@ -169,6 +168,15 @@ public:
         string result;
         uint32_t len = 0;
         Pop(&len, sizeof(len));
+
+        // A declared string can never be longer than the bytes still buffered; reject before allocating
+        const auto unread = GetUnreadSize();
+
+        if (len > unread) {
+            ResetBuf();
+            throw NetBufferException("String length exceeds remaining buffer", len, unread);
+        }
+
         result.resize(len);
         Pop(result.data(), len);
         return result;
@@ -189,6 +197,7 @@ private:
     [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
 
     size_t _bufReadPos {};
+    size_t _maxMsgLen {};
 };
 
 FO_END_NAMESPACE

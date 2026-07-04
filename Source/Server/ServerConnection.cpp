@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ServerConnection::OutBufAccessor::OutBufAccessor(ServerConnection* owner, optional<NetMessage> msg) :
+ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, optional<NetMessage> msg) :
     _owner {owner},
     _outBuf {&_owner->_outBuf},
     _msg {msg}
@@ -54,7 +54,7 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_outBuf != nullptr) {
+    if (_outBuf) {
         if (!_isStackUnwinding) {
             if (_msg) {
                 try {
@@ -77,7 +77,7 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
     }
 }
 
-ServerConnection::InBufAccessor::InBufAccessor(ServerConnection* owner) :
+ServerConnection::InBufAccessor::InBufAccessor(ptr<ServerConnection> owner) :
     _owner {owner}
 {
     FO_STACK_TRACE_ENTRY();
@@ -96,7 +96,7 @@ void ServerConnection::InBufAccessor::Lock()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!_inBuf);
+    FO_VERIFY_AND_THROW(!_inBuf, "In buf is already set");
     _owner->_inBufLocker.lock();
     _inBuf = &_owner->_inBuf;
 }
@@ -105,14 +105,14 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_inBuf != nullptr) {
+    if (_inBuf) {
         _owner->_inBufLocker.unlock();
         _inBuf = nullptr;
     }
 }
 
-ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<NetworkServerConnection> net_connection) :
-    _settings {&settings},
+ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection) :
+    _settings {settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings->NetBufferSize),
     _outBuf(_settings->NetBufferSize)
@@ -121,8 +121,16 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 
     auto send = [this]() FO_DEFERRED -> const_span<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
-    auto disconnect = [this]() FO_DEFERRED { WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort()); };
+    auto disconnect = [this]() FO_DEFERRED {
+        WriteLog("Closed connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+        AsyncReceiveData({});
+    };
+
     _netConnection->SetAsyncCallbacks(send, receive, disconnect);
+
+    if (_settings->MaxMessageSize != 0) {
+        _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
+    }
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
 }
@@ -130,6 +138,12 @@ ServerConnection::ServerConnection(ServerNetworkSettings& settings, shared_ptr<N
 ServerConnection::~ServerConnection()
 {
     FO_STACK_TRACE_ENTRY();
+
+    safe_call([this] {
+        scoped_lock locker {_inBufLocker};
+
+        _dataArrivedCallback = {};
+    });
 
     _netConnection->Disconnect();
 }
@@ -265,11 +279,11 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_updateFileTransfer.PendingFileIndex);
-    FO_RUNTIME_ASSERT(max_portion_size != 0);
+    FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
+    FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
     const auto offset = _updateFileTransfer.PortionIndex * max_portion_size;
-    FO_RUNTIME_ASSERT(offset <= file_size);
+    FO_VERIFY_AND_THROW(offset <= file_size, "Updater file transfer portion offset is outside the file bounds", _updateFileTransfer.PendingFileIndex.value(), _updateFileTransfer.PortionIndex, max_portion_size, offset, file_size);
 
     const auto remaining_size = file_size - offset;
     const auto portion_size = std::min(remaining_size, max_portion_size);
@@ -296,7 +310,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_outBufLocker);
+    scoped_lock locker {_outBufLocker};
 
     if (_outBuf.IsEmpty()) {
         return {};
@@ -313,7 +327,7 @@ auto ServerConnection::AsyncSendData() -> const_span<uint8_t>
 
     _outBuf.DiscardWriteBuf(raw_buf.size());
 
-    FO_RUNTIME_ASSERT(!_sendBuf.empty());
+    FO_VERIFY_AND_THROW(!_sendBuf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->DisableZlibCompression);
     return _sendBuf;
 }
 
@@ -321,9 +335,21 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::scoped_lock locker(_inBufLocker);
+    DataArrivedCallback callback;
 
-    _inBuf.AddData(buf);
+    {
+        scoped_lock locker {_inBufLocker};
+
+        if (!buf.empty()) {
+            _inBuf.AddData(buf);
+        }
+
+        callback = _dataArrivedCallback;
+    }
+
+    if (callback) {
+        callback();
+    }
 }
 
 void ServerConnection::HardDisconnect()
@@ -340,6 +366,17 @@ void ServerConnection::GracefulDisconnect()
     _gracefulDisconnected = true;
 
     WriteMsg(NetMessage::Disconnect);
+}
+
+void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Same lock as AsyncReceiveData: that runs on the network thread and may read this callback
+    // concurrently, so the assignment must be synchronized to avoid a torn std::function move.
+    scoped_lock locker {_inBufLocker};
+
+    _dataArrivedCallback = std::move(callback);
 }
 
 FO_END_NAMESPACE

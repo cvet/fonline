@@ -53,7 +53,7 @@ public:
     class SpaceNode final
     {
     public:
-        SpaceNode(SpaceNode* parent, ipos32 pos, isize32 size);
+        SpaceNode(nptr<SpaceNode> parent, ipos32 pos, isize32 size);
         SpaceNode(const SpaceNode&) = delete;
         SpaceNode(SpaceNode&&) noexcept = default;
         auto operator=(const SpaceNode&) = delete;
@@ -62,54 +62,54 @@ public:
 
         [[nodiscard]] auto IsBusyRecursively() const noexcept -> bool;
 
-        auto FindPosition(isize32 size) -> SpaceNode*;
+        auto FindPosition(isize32 size) -> nptr<SpaceNode>;
         void Free() noexcept;
 
-        raw_ptr<SpaceNode> Parent {};
+        nptr<SpaceNode> Parent {};
         ipos32 Pos {};
         isize32 Size {};
         bool Busy {};
         vector<unique_ptr<SpaceNode>> Children {};
     };
 
-    explicit TextureAtlas(AtlasType type, RenderTarget* rt) noexcept;
+    explicit TextureAtlas(AtlasType type, ptr<RenderTarget> rt) noexcept;
     TextureAtlas(const TextureAtlas&) = delete;
-    TextureAtlas(TextureAtlas&&) noexcept = default;
+    TextureAtlas(TextureAtlas&&) noexcept = delete;
     auto operator=(const TextureAtlas&) = delete;
-    auto operator=(TextureAtlas&&) noexcept -> TextureAtlas& = default;
+    auto operator=(TextureAtlas&&) noexcept -> TextureAtlas& = delete;
     ~TextureAtlas() = default;
 
     [[nodiscard]] auto GetType() const noexcept -> AtlasType { return _type; }
     [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _rt->GetSize(); }
-    [[nodiscard]] auto GetRenderTarget() const noexcept -> const RenderTarget* { return _rt.get(); }
-    [[nodiscard]] auto GetRenderTarget() noexcept -> RenderTarget* { return _rt.get(); }
-    [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _rt->GetTexture(); }
-    [[nodiscard]] auto GetTexture() noexcept -> RenderTexture* { return _rt->GetTexture(); }
-    [[nodiscard]] auto GetLayout() noexcept -> SpaceNode* { return _rootNode.get(); }
+    [[nodiscard]] auto GetRenderTarget() const noexcept -> ptr<const RenderTarget> { return _rt; }
+    [[nodiscard]] auto GetRenderTarget() noexcept -> ptr<RenderTarget> { return _rt; }
+    [[nodiscard]] auto GetTexture() const noexcept -> ptr<const RenderTexture> { return _rt->GetTexture(); }
+    [[nodiscard]] auto GetTexture() noexcept -> ptr<RenderTexture> { return _rt->GetTexture(); }
+    [[nodiscard]] auto GetLayout() noexcept -> ptr<SpaceNode> { return &_rootNode; }
 
 private:
     AtlasType _type;
-    raw_ptr<RenderTarget> _rt;
-    unique_ptr<SpaceNode> _rootNode;
+    ptr<RenderTarget> _rt;
+    SpaceNode _rootNode;
 };
 
 class TextureAtlasManager
 {
 public:
-    TextureAtlasManager(RenderSettings& settings, RenderTargetManager& rt_mngr);
+    TextureAtlasManager(ptr<RenderSettings> settings, ptr<RenderTargetManager> rt_mngr);
     TextureAtlasManager(const TextureAtlasManager&) = delete;
     TextureAtlasManager(TextureAtlasManager&&) noexcept = default;
     auto operator=(const TextureAtlasManager&) = delete;
     auto operator=(TextureAtlasManager&&) noexcept -> TextureAtlasManager& = delete;
     ~TextureAtlasManager() = default;
 
-    auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> TextureAtlas*;
-    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<TextureAtlas*, TextureAtlas::SpaceNode*, ipos32>;
+    auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;
+    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, ptr<TextureAtlas::SpaceNode>, ipos32>;
     void DumpAtlases() const;
 
 private:
-    raw_ptr<RenderSettings> _settings;
-    raw_ptr<RenderTargetManager> _rtMngr;
+    ptr<RenderSettings> _settings;
+    ptr<RenderTargetManager> _rtMngr;
     vector<unique_ptr<TextureAtlas>> _allAtlases {};
 };
 

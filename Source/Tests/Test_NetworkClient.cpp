@@ -45,7 +45,7 @@ namespace
     {
     public:
         explicit ThrowingNetworkClientConnection(ClientNetworkSettings& settings) :
-            NetworkClientConnection(settings)
+            NetworkClientConnection(SettingsPtr(settings))
         {
         }
 
@@ -105,6 +105,13 @@ namespace
         void DisconnectImpl() noexcept override { _disconnectCount++; }
 
     private:
+        static auto SettingsPtr(ClientNetworkSettings& settings) noexcept -> ptr<ClientNetworkSettings>
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return &settings;
+        }
+
         bool _throwOnCheck {};
         bool _throwOnSend {};
         bool _throwOnReceive {};
@@ -147,8 +154,7 @@ TEST_CASE("NetworkClientInterthreadSendReceiveAndDisconnect")
 
     const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(settings);
-    REQUIRE(conn != nullptr);
+    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
 
     CHECK_FALSE(conn->IsConnecting());
@@ -199,8 +205,7 @@ TEST_CASE("NetworkClientInterthreadHandlesServerDisconnect")
 
     const auto cleanup = scope_exit([port]() noexcept { safe_call([port] { InterthreadListeners.erase(port); }); });
 
-    auto conn = NetworkClientConnection::CreateInterthreadConnection(settings);
-    REQUIRE(conn != nullptr);
+    auto conn = NetworkClientConnection::CreateInterthreadConnection(&settings);
     REQUIRE(server_send_to_client);
 
     server_send_to_client({});

@@ -44,6 +44,13 @@
 
 #include "as_config.h"
 
+// (FOnline Patch) On the modern-threads branch the counter itself is std::atomic, so every access
+// (including get/set) is a proper atomic operation instead of a plain read/write racing with the
+// concurrent increments.
+#if defined(AS_MODERN_THREADS)
+#include <atomic>
+#endif
+
 BEGIN_AS_NAMESPACE
 
 class asCAtomic
@@ -61,7 +68,11 @@ public:
 	asDWORD atomicDec();
 
 protected:
+#if defined(AS_MODERN_THREADS) // (FOnline Patch)
+	std::atomic<asDWORD> value;
+#else
 	asDWORD value;
+#endif
 };
 
 END_AS_NAMESPACE

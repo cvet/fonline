@@ -4,6 +4,8 @@ This document explains the reusable runtime entity model: entity type descriptor
 
 Use it when changing `Source/Common/Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `PropertiesSerializator.*`, `ProtoManager.*`, metadata annotations, or code that persists/synchronizes entity state.
 
+For how entity create/destroy/register stays consistent when an exception is thrown mid-operation — the terminate-on-OOM allocation model, the lifecycle throw-as-signal contract, and the post-mutation `FO_STRONG_ASSERT` policy — see [ExceptionSafety.md](ExceptionSafety.md).
+
 ## Ownership model
 
 The engine owns the entity runtime and metadata/property mechanics. An embedding game project owns concrete prototype files, content IDs, scripts, and gameplay rules that use those mechanics.
@@ -79,6 +81,8 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 
 The generated wrapper classes are thin over `Properties`; the real storage, type information, sync/persistence flags, callbacks, and serialization decisions live in `Property`, `Properties`, and `PropertyRegistrator`.
 
+Server-side AngelScript property getters copy non-virtual raw property data through `Properties::CopyRawData()` before converting it to script values. `Properties` serializes only the raw buffer copy/write window; property setter and post-setter callbacks run outside that storage lock so event dispatch, reparenting, and destruction do not inherit a property-buffer lock.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:
@@ -108,6 +112,8 @@ A `Properties` instance can have base properties. This is used heavily by protot
 - `RemoveSyncedOverlayEntries()` and related overlay helpers keep replicated state compact.
 
 This means a runtime entity is not simply a flat map from property name to value. When debugging, inspect whether the value is coming from base properties, own POD/complex storage, or overlay data.
+
+Proto-derived overlays keep the dense property index lazy: small overlays use a linear scan over their sorted entries, and `_overlayEntryIndex` is built only after the overlay entry count reaches the engine threshold. This avoids allocating an index sized to every registered property for the common low-entry overlay case while keeping dense lookup for larger overlays.
 
 ## Prototypes
 
@@ -162,6 +168,10 @@ Entity state is serialized through property data, not by hand-copying entity fie
 - raw binary property snapshots: `Entity::StoreData()` / `RestoreData()` and `Properties::StoreData()` / `RestoreData()`;
 - full property data: `Properties::StoreAllData()` / `RestoreAllData()`;
 - text/document conversion: `Properties::SaveToText()`, `ApplyFromText()`, and `PropertiesSerializator.*`.
+
+When text/document loading converts numeric property values, the serializer rejects values that do not fit the target primitive width instead of wrapping or producing infinity.
+
+The binary restore paths (`RestoreData`, `RestoreAllData`) likewise validate the snapshot against the registrator layout before copying: property indices outside the registrator table, oversized blocks, and out-of-bounds POD `(start_pos, len)` sections are rejected with a throw rather than written, so a corrupted or hostile snapshot fails closed instead of overflowing the property storage.
 
 Persistence backends store `AnyData::Document` records. For database commit/recovery details, see [Persistence.md](Persistence.md).
 

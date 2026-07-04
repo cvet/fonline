@@ -36,7 +36,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, istringstream* sstr) -> bool
+static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, nptr<istringstream> sstr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -48,7 +48,7 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
 
     auto last = line.find('}', first);
 
-    if (last == string::npos && allow_multiline && sstr != nullptr) {
+    if (last == string::npos && allow_multiline && sstr) {
         string additional_line;
 
         while (last == string::npos && std::getline(*sstr, additional_line, '\n')) {
@@ -102,20 +102,20 @@ auto TextPackKey::Parse(HashResolver& hash_resolver, string_view str, TextPackKe
     return true;
 }
 
-TextPack::TextPack(HashResolver& hash_resolver) :
-    _hashResolver {&hash_resolver}
+TextPack::TextPack(ptr<HashResolver> hash_resolver) :
+    _hashResolver {hash_resolver}
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-auto TextPack::GetText(TextPackKey key) const -> const string&
+auto TextPack::GetText(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
     return GetText(key, 0);
 }
 
-auto TextPack::GetText(TextPackKey key, size_t skip) const -> const string&
+auto TextPack::GetText(TextPackKey key, size_t skip) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -136,7 +136,7 @@ auto TextPack::IsTextPresent(TextPackKey key) const -> bool
     return GetTextCount(key) != 0;
 }
 
-auto TextPack::GetStr(TextPackKey key) const -> const string&
+auto TextPack::GetStr(TextPackKey key) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -163,7 +163,7 @@ auto TextPack::GetStr(TextPackKey key) const -> const string&
     return it->second;
 }
 
-auto TextPack::GetStr(TextPackKey key, size_t skip) const -> const string&
+auto TextPack::GetStr(TextPackKey key, size_t skip) const -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -226,7 +226,7 @@ auto TextPack::GetBinaryData() const -> vector<uint8_t>
         WriteKeyPart(writer, key.Key2);
         WriteKeyPart(writer, key.Key3);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
-        writer.WritePtr(str.data(), str.length());
+        writer.WriteStringBytes(str);
     }
 
     return data;
@@ -259,7 +259,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
         if (str_len != 0) {
             str.resize(str_len);
-            reader.ReadPtr(str.data(), str_len);
+            reader.ReadStringBytes(str);
         }
         else {
             str.resize(0);
@@ -341,11 +341,11 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
         const auto file_name = text_file.GetNameNoExt();
 
         const auto name_triplet = strvex(file_name).split('.');
-        FO_RUNTIME_ASSERT(name_triplet.size() == 3);
+        FO_VERIFY_AND_THROW(name_triplet.size() == 3, "Baked text filename must contain pack prefix, text pack name and language suffix", text_file_header.GetPath(), file_name, name_triplet.size());
         const auto& pack_name_str = name_triplet[1];
         const auto& lang_name = name_triplet[2];
-        FO_RUNTIME_ASSERT(!pack_name_str.empty());
-        FO_RUNTIME_ASSERT(!lang_name.empty());
+        FO_VERIFY_AND_THROW(!pack_name_str.empty(), "Baked text filename has an empty text pack name segment", text_file_header.GetPath(), file_name);
+        FO_VERIFY_AND_THROW(!lang_name.empty(), "Baked text filename has an empty language segment", text_file_header.GetPath(), file_name);
 
         if (!language.empty() && lang_name != language) {
             continue;
@@ -422,7 +422,7 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(!bake_languages.empty());
+    FO_VERIFY_AND_THROW(!bake_languages.empty(), "Text pack normalization cannot choose a base language because BakeLanguages is empty", lang_packs.size());
 
     // Add default language
     if (lang_packs.empty() || lang_packs.front().first != bake_languages.front()) {
@@ -469,12 +469,12 @@ void TextPack::FixPacks(const_span<string> bake_languages, vector<pair<string, m
             }
         }
 
-        FO_RUNTIME_ASSERT(lang_pack.size() == base_lang_pack.size());
+        FO_VERIFY_AND_THROW(lang_pack.size() == base_lang_pack.size(), "Normalized language pack set does not match the base language pack set", lang_packs[i].first, lang_pack.size(), base_lang_pack.size());
 
         // Normalize texts to the base language
         for (auto&& [pack_name, text_pack] : lang_pack) {
             const auto it = base_lang_pack.find(pack_name);
-            FO_RUNTIME_ASSERT(it != base_lang_pack.end());
+            FO_VERIFY_AND_THROW(it != base_lang_pack.end(), "Lookup failed in base lang pack");
             text_pack.FixStr(it->second);
         }
     }
@@ -491,11 +491,11 @@ void TextPack::WriteKeyPart(DataWriter& writer, hstring part) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto& str = part.as_str();
+    const string_view str = part.as_str();
     writer.Write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
     if (!str.empty()) {
-        writer.WritePtr(str.data(), str.length());
+        writer.WriteStringBytes(str);
     }
 }
 
@@ -511,7 +511,7 @@ auto TextPack::ReadKeyPart(DataReader& reader) -> hstring
 
     string str;
     str.resize(str_len);
-    reader.ReadPtr(str.data(), str_len);
+    reader.ReadStringBytes(str);
     return MakeKeyPart(str);
 }
 

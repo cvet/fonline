@@ -1,7 +1,13 @@
+# 2D_WithoutEgg — plain textured-sprite shader with no egg reveal.
+# Where: textured-sprite shader without the egg reveal; available alternate (the engine binds 2D_Default / 2D_NoDepth to the live sprite slots).
+# How: vertex transforms the sprite and forwards colour and UV only; fragment samples MainTex, multiplies by vertex colour with a 2x brightness scale, and discards near-zero alpha — no egg flags, screen position or radial falloff. Depth test LessEqual.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -13,7 +19,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }
@@ -26,9 +32,14 @@ layout(location = 1) in vec2 TexCoord;
 
 layout(location = 0) out vec4 FragColor;
 
+const float AlphaDepthCutoff = 1.0 / 255.0;
+
 void main(void)
 {
     vec4 texColor = texture(MainTex, TexCoord);
     FragColor.rgb = (texColor.rgb * Color.rgb) * 2.0;
     FragColor.a = texColor.a * Color.a;
+    if (FragColor.a <= AlphaDepthCutoff) {
+        discard;
+    }
 }

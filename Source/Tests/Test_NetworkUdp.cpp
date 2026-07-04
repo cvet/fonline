@@ -61,6 +61,21 @@ namespace
         return data.size() == s.size() && std::equal(data.begin(), data.end(), reinterpret_cast<const uint8_t*>(s.data()));
     }
 
+    auto BytesTail(const vector<uint8_t>& data, size_t offset) -> const_span<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(offset <= data.size(), "Tail offset past end of buffer");
+
+        const size_t size = data.size() - offset;
+
+        if (size == 0) {
+            return {};
+        }
+
+        return {&data[offset], size};
+    }
+
     auto FeedAll(const vector<vector<uint8_t>>& wire, UdpOrderedChannel& receiver) -> int32_t
     {
         int32_t parsed = 0;
@@ -274,7 +289,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         CHECK_FALSE(sender.CanAcceptPayload());
 
         // Try sending more — nothing should fit until window opens.
-        const auto leftover = const_span<uint8_t> {data.data() + consumed_first, data.size() - consumed_first};
+        const auto leftover = BytesTail(data, consumed_first);
         vector<vector<uint8_t>> wire_blocked;
         const auto consumed_blocked = sender.PrepareOutput(leftover, wire_blocked, BumpTime(base_time, 5));
         CHECK(consumed_blocked == 0);

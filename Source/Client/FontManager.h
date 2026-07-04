@@ -72,7 +72,7 @@ enum class FontFlag : uint32_t
     AlignRight = 0x0010, // Right-align each line within the rect
     AlignBottom = 0x0020, // Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from "skip from top" to "skip from bottom"
     KeepTail = 0x0040, // When the text block is taller than the rect, render its tail (skip the leading overflowing lines)
-    NoColorize = 0x0080, // Strip inline color tags (@color 0x...@ / @color@), but render text with the base color as-is
+    NoColorize = 0x0080, // Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is
     Justify = 0x0100, // Justify each line: distribute extra spaces between words to fill the rect width
     Bordered = 0x0200, // Render glyphs from the bordered/outlined font texture variant instead of the regular one
 };
@@ -92,24 +92,24 @@ class FontManager final
 {
 public:
     FontManager() = delete;
-    explicit FontManager(SpriteManager& spr_mngr);
+    explicit FontManager(ptr<SpriteManager> spr_mngr);
     FontManager(const FontManager&) = delete;
     FontManager(FontManager&&) noexcept = delete;
     auto operator=(const FontManager&) = delete;
     auto operator=(FontManager&&) noexcept = delete;
     ~FontManager() = default;
 
-    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType font) const -> int32_t;
-    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType font) const -> int32_t;
-    [[nodiscard]] auto GetLineHeight(FontType font) const -> int32_t;
+    [[nodiscard]] auto GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t;
+    [[nodiscard]] auto GetLineHeight(FontType num_font) const -> int32_t;
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
-    [[nodiscard]] auto HaveLetter(FontType font, uint32_t letter) const -> bool;
+    [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
     void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded);
     void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type);
-    void SetFontEffect(FontType font, RenderEffect* effect);
+    void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
-    auto SplitLines(irect32 rect, string_view cstr, FontType font) -> vector<string>;
+    auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
     void ClearFonts();
     void FrameUpdate();
 
@@ -133,9 +133,9 @@ private:
             frect32 TexBorderedPos {};
         };
 
-        raw_ptr<RenderEffect> DrawEffect {};
-        raw_ptr<RenderTexture> FontTex {};
-        raw_ptr<RenderTexture> FontTexBordered {};
+        nptr<RenderEffect> DrawEffect {};
+        nptr<RenderTexture> FontTex {};
+        nptr<RenderTexture> FontTexBordered {};
         unordered_map<uint32_t, Letter> Letters {};
         int32_t SpaceWidth {};
         int32_t LineHeight {};
@@ -148,7 +148,7 @@ private:
     struct FontFormatInfo
     {
         TextFormat Format {};
-        raw_ptr<const FontData> CurFont {};
+        nptr<const FontData> CurFont {};
         irect32 Rect {};
         string Text {};
         int32_t LinesAll {1};
@@ -165,19 +165,20 @@ private:
         uint64_t LastUsedFrame {};
     };
 
-    [[nodiscard]] auto GetFont(FontType font) -> FontData*;
-    [[nodiscard]] auto GetFont(FontType font) const -> const FontData*;
+    [[nodiscard]] auto GetFont(FontType font) -> ptr<FontData>;
+    [[nodiscard]] auto GetFont(FontType font) const -> ptr<const FontData>;
 
+    void StoreFont(int32_t index, FontData&& font_data);
     void BuildFont(int32_t index);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
     [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
     [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
-    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> const FontFormatInfo*;
+    auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;
 
     static constexpr string_view InlineColorTagPrefix = "@color";
 
-    raw_ptr<SpriteManager> _sprMngr;
-    vector<unique_ptr<FontData>> _allFonts {};
+    ptr<SpriteManager> _sprMngr;
+    vector<optional<FontData>> _allFonts {};
     uint64_t _frameIndex {1};
     mutable unordered_map<uint64_t, unique_ptr<FontFormatInfo>> _formatCache {};
 };

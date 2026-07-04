@@ -47,18 +47,30 @@ class RenderTarget
     friend class RenderTargetManager;
 
 public:
-    [[nodiscard]] auto GetTexture() const noexcept -> const RenderTexture* { return _texture.get(); }
-    [[nodiscard]] auto GetTexture() noexcept -> RenderTexture* { return _texture.get(); }
-    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
-    [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> RenderEffect* { return _customDrawEffect.get(); }
+    RenderTarget(isize32 size, unique_ptr<RenderTexture> texture);
 
-    void SetCustomDrawEffect(RenderEffect* effect) const noexcept { _customDrawEffect = effect; }
+    [[nodiscard]] auto GetTexture() const noexcept -> ptr<const RenderTexture>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _texture;
+    }
+    [[nodiscard]] auto GetTexture() noexcept -> ptr<RenderTexture>
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        return _texture;
+    }
+    [[nodiscard]] auto GetSize() const noexcept -> isize32 { return _size; }
+    [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> nptr<RenderEffect> { return _customDrawEffect; }
+
+    void SetCustomDrawEffect(nptr<RenderEffect> effect) const noexcept { _customDrawEffect = effect; }
     void ClearLastPixelPicks() const noexcept { _lastPixelPicks.clear(); }
 
 private:
-    unique_ptr<RenderTexture> _texture {};
-    isize32 _size {};
-    mutable raw_ptr<RenderEffect> _customDrawEffect {};
+    unique_ptr<RenderTexture> _texture;
+    isize32 _size;
+    mutable nptr<RenderEffect> _customDrawEffect {};
     mutable vector<tuple<ipos32, ucolor>> _lastPixelPicks {};
 };
 
@@ -67,35 +79,35 @@ class RenderTargetManager
 public:
     using FlushCallback = function<void()>;
 
-    RenderTargetManager(IAppRender& render, FlushCallback flush);
+    RenderTargetManager(ptr<IAppRender> render, FlushCallback flush);
     RenderTargetManager(const RenderTargetManager&) = delete;
     RenderTargetManager(RenderTargetManager&&) noexcept = default;
     auto operator=(const RenderTargetManager&) = delete;
     auto operator=(RenderTargetManager&&) noexcept -> RenderTargetManager& = delete;
     ~RenderTargetManager() = default;
 
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> RenderTarget*;
-    [[nodiscard]] auto GetRenderTargetPixel(const RenderTarget* rt, ipos32 pos) const -> ucolor;
-    [[nodiscard]] auto GetRenderTargetStack() -> const vector<raw_ptr<RenderTarget>>&;
-    [[nodiscard]] auto GetCurrentRenderTarget() const -> const RenderTarget*;
-    [[nodiscard]] auto GetCurrentRenderTarget() -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> ptr<RenderTarget>;
+    [[nodiscard]] auto GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor;
+    [[nodiscard]] auto GetRenderTargetStack() const -> const_span<ptr<RenderTarget>>;
+    [[nodiscard]] auto GetCurrentRenderTarget() const -> nptr<const RenderTarget>;
+    [[nodiscard]] auto GetCurrentRenderTarget() -> nptr<RenderTarget>;
 
-    void PushRenderTarget(RenderTarget* rt);
+    void PushRenderTarget(ptr<RenderTarget> rt);
     void PopRenderTarget();
     void ClearCurrentRenderTarget(ucolor color, bool with_depth = false);
-    void DeleteRenderTarget(RenderTarget* rt);
-    void ResizeRenderTarget(RenderTarget* rt, isize32 size);
+    void DeleteRenderTarget(nptr<RenderTarget> nullable_rt);
+    void ResizeRenderTarget(ptr<RenderTarget> rt, isize32 size);
 
     void ClearStack();
     void DumpTextures() const;
 
 private:
-    void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
+    auto CreateRenderTargetTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>;
 
-    raw_ptr<IAppRender> _render;
+    ptr<IAppRender> _render;
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
-    vector<raw_ptr<RenderTarget>> _rtStack {};
+    vector<ptr<RenderTarget>> _rtStack {};
     bool _nonConstHelper {};
 };
 

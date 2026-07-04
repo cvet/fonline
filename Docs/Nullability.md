@@ -64,19 +64,23 @@ void OnCritterDamaged(Critter cr, Critter attacker, int32 damage) { ... }
 
 Because the AngelScript front-end now tracks the per-type nullable bit, the AS engine itself enforces null contracts on handle writes at runtime (see «Runtime enforcement» below). `validate_nullable.py` still enforces the static convention that an `[[Event]]` / `[[*RemoteCall]]` handler matches its declaration argument-by-argument — the AS engine has no way to know two unrelated declarations are supposed to share a contract.
 
-## Engine side: `FO_NULLABLE` macro
+## Engine side: `ptr<T>` / `nptr<T>` and raw-pointer nullability
 
-Native methods declared with `///@ ExportMethod` in [../Source/Scripting/](../Source/Scripting/) use the inverse-of-pointer-default macro `FO_NULLABLE`. The owning method files are mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md). Defined as empty in [../Source/Essentials/BasicCore.h](../Source/Essentials/BasicCore.h), it documents the nullability contract that codegen emits into the AS-side metadata.
+Native methods declared with `///@ ExportMethod` in [../Source/Scripting/](../Source/Scripting/) express scalar pointer nullability through the smart-pointer vocabulary: a non-null entity/engine pointer is `ptr<T>`, a nullable one is `nptr<T>` (see [SmartPointers.md](SmartPointers.md), "Script binding boundary"). **Raw pointers are nullable by default** — there is no non-null marker for a raw pointer; the raw-pointer ABI shapes that stay raw (script-visible container element types (`vector<T*>`), `///@ EngineHook` callbacks, and process argv) are all treated as nullable, and a non-null contract on a scalar pointer is expressed by spelling it `ptr<T>`. Codegen emits the same AS-side nullable metadata whether a scalar param is spelled `nptr<T>` or a raw `T*`, and emits the not-null check only for `ptr<T>` (and the validated entity/ref meta-types listed under [The `verify` macro](#the-verify-macro)). The owning method files are mapped in [ScriptMethodsMap.md](ScriptMethodsMap.md). (The former empty `FO_NULLABLE` marker macro has been removed; pointer nullability is now carried entirely by the `ptr<T>` / `nptr<T>` / raw-`T*` spelling.)
+
+For native C++ code outside exported script signatures, use the pointer vocabulary in [SmartPointers.md](SmartPointers.md): `ptr<T>` for borrowed non-null values, `nptr<T>` for borrowed nullable values, and the matching `unique_*` / `refcount_*` owning forms. `nptr<T>`, `unique_nptr<T>`, and `refcount_nptr<T>` are separate nullable wrapper types; the remaining migration work is tightening nullable operations on the non-null spellings.
+
+**Prefer the non-null spelling; reach for `nptr<T>` only when absence is a real, handled state.** A nullable wrapper is dead weight when every caller already passes non-null, a function never returns null, or a member is always set before use — convert those to `ptr<T>` / `unique_ptr<T>` / `refcount_ptr<T>`. In particular, do **not** make a raw `pointer + size` buffer parameter nullable just so the degenerate empty case may pass `nullptr` — take a non-null `const_span<uint8_t>` / `span<uint8_t>` (the engine's standard byte-buffer vocabulary) and let `.empty()` handle the zero-length case. This both removes the spurious nullability and deletes the `nptr<T> x = nullptr; if (!c.empty()) x = c.data(); f(x, c.size())` boilerplate at every call site (`f(c)`). Conversely, leave `nptr<T>` in place where the `nptr`→`verify`→`.as_ptr()` narrow is the legitimate result of a fallible cast/lookup, where a data member has a real transient-null window between construction and assignment, or where a defensive boundary helper deliberately accepts a nullable and asserts.
 
 ```cpp
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Critter_GetMap(Critter* self)
+FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
 {
-    return self->GetEngine()->EntityMngr.GetMap(self->GetMapId());
+    return self->GetEngine()->EntityMngr.GetMap(self->GetMapId()).as_nptr();
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter* cr)
+FO_SCRIPT_API void Server_Player_SwitchCritter(ptr<Player> self, nptr<Critter> cr)
 {
     self->GetEngine()->SwitchPlayerCritter(self, cr);
 }
@@ -84,7 +88,7 @@ FO_SCRIPT_API void Server_Player_SwitchCritter(Player* self, FO_NULLABLE Critter
 
 The `self` (first parameter — `this` receiver) and the implicit `engine` parameter for global methods are **never** marked: AS validates `this` before dispatch.
 
-If an exported method gives a pointer argument the default value `nullptr`, mark that argument `FO_NULLABLE`; codegen records the default as script `null`, and the nullability marker keeps the generated native-call validation aligned with the callable signature.
+If an exported method gives a pointer argument the default value `nullptr`, spell that argument `nptr<T>` (or leave it a raw `T*`) so it is nullable; codegen records the default as script `null`, and the nullable spelling keeps the generated native-call validation aligned with the callable signature. A non-null `ptr<T>` argument cannot default to `nullptr`.
 
 ### Component accessors are non-nullable and throw; probe with `Has<Component>`
 
@@ -163,7 +167,9 @@ There are now two complementary runtime gates:
 
 The AngelScript compiler emits a new `asBC_RefCpyChk` bytecode (defined in [../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h](../ThirdParty/AngelScript/sdk/angelscript/include/angelscript.h), handler in [../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_context.cpp)) whenever the destination of a handle write is **non-nullable** (`T` without `?`) and the destination is **user-declared** (not a compiler-generated temporary). It is a drop-in REFCPY variant that raises a *Null assignment to non-nullable handle* exception when the source handle is null. Emission sites are `PerformAssignment` and `CompileInitializationWithAssignment` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp); `T?` declarations fall back to the original `asBC_REFCPY` and accept null silently.
 
-The temp guard matters because `PerformAssignment` is reused for argument-setup slots whose type is inherited from a native parameter (no `?` syntax on the AS side). Nullability of those slots is owned by the native-boundary check below — letting the AS-level check skip temporaries keeps `func(null)` working for `FO_NULLABLE` natives.
+The non-nullable test is keyed off the **declared** type of the destination, not a smart-cast narrowed view of it: a declared-nullable local or `&` parameter that is currently narrowed (see [Smart-cast](#smart-cast-flow-sensitive-narrowing)) is still a `REFCPY` destination, so `x = null;` inside the narrowing guard is a legal *un-narrowing* write, not a null write into a non-nullable slot. `PerformAssignment` restores the declared nullability on the lvalue before choosing the copy instruction and then invalidates the narrowing, so the next read sees `T?` again. (Before this fix the instruction was chosen from the narrowed type, which compiled the branch into an always-throwing `asBC_RefCpyChk` — the *"Null assignment to non-nullable handle"* ScriptExceptions from `Combat::DeferredAttackHit` and cursor handling were this defect.)
+
+The temp guard matters because `PerformAssignment` is reused for argument-setup slots whose type is inherited from a native parameter (no `?` syntax on the AS side). Nullability of those slots is owned by the native-boundary check below — letting the AS-level check skip temporaries keeps `func(null)` working for nullable (`nptr<T>` / raw `T*`) natives.
 
 This means **script-to-script assignments** of null to a non-nullable handle still throw, even when the value originates from another script function rather than a native call.
 
@@ -178,13 +184,15 @@ MethodDesc::Call(call)
   → NativeDataProvider::CheckReturnNotNull(call, "...", "...")                                  // for non-nullable entity return
 ```
 
-Doing it at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered — the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. The check has no per-call lookup cost beyond a single pointer compare.
+Array parameters and returns are not blanket-scanned at this boundary. Script arrays can intentionally contain null handle cells (for sparse grids, nullable-element arrays, or caller-owned filtering), and the native export metadata currently has no per-element nullability bit that can distinguish `array<T>` from `array<T?>` for generated C++ wrappers. If a particular API requires non-null elements, enforce that invariant in the API-specific producer/consumer and document it there; do not rely on a global codegen check that would reject legitimate nullable arrays.
+
+Doing scalar checks at the `MethodDesc::Call` boundary means **every** caller of an `///@ ExportMethod` is covered — the AS-to-native bridge, native test harnesses, future Mono-backend dispatch, anyone. Scalar checks cost a single pointer compare.
 
 Violation surface: `ScriptException`, propagated to the calling AngelScript context. Three distinct messages:
 
 - *"Null assignment to non-nullable handle"* — raised by `asBC_RefCpyChk` (the new AS-side check on bare-handle writes). Distinct from the generic null-deref so stack traces clearly point at the bad assignment rather than a downstream method call.
 - *"Null pointer access"* — the original AS message, raised by `asBC_CHKREF` / `asBC_ChkRefS` / `asBC_ChkNullV` / `asBC_ChkNullS` for dereferences, indexing, and method calls on a null handle.
-- Native-boundary checks emit the method name, parameter name, and type via the codegen-generated `NativeDataProvider::Check{Arg,Return}NotNull`.
+- Native-boundary scalar checks emit the method name, parameter name when applicable, and type via the codegen-generated `NativeDataProvider::CheckArgNotNull` / `CheckReturnNotNull`.
 
 ### Compile-time guarantees
 
@@ -199,7 +207,7 @@ In addition to the runtime `asBC_RefCpyChk`, the AS front-end raises two compile
 
 3. **Redundant `?` on local initializer is warned about.** When the destination is declared `T?` but the initializer is statically a non-nullable handle (the source type cannot produce `null`), the front-end emits:
    *"Redundant '?': initializer of type 'T' cannot be null; declare destination as 'T' instead"*.
-   This catches stale `T?` annotations left behind after an API tightened its return type (e.g. `FO_NULLABLE Critter*` → `Critter*`), and the `if (cr == null)` dead branch that usually follows. Emitted from `CompileInitialization` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). The diagnostic is a *warning* (compilation succeeds) so existing scripts keep building while authors clean up; the message names both the current source type and the bare destination spelling so the fix is a one-character drop. Like the deref (#4) and redundant-comparison (#5) checks it **trusts the static non-nullability of the source**, including a *non-const handle reference*: reading an `arr[i]` cell of a non-nullable element array, or a non-nullable `T` field/local by reference, aliases storage whose non-null invariant is enforced on every write, so `T? x = arr[i]` is flagged exactly as `arr[i] != null` is by #5. Two source shapes are exempted, because a non-null static type does **not** guarantee a non-null value there:
+   This catches stale `T?` annotations left behind after an API tightened its return type (e.g. `nptr<Critter>` → `ptr<Critter>`), and the `if (cr == null)` dead branch that usually follows. Emitted from `CompileInitialization` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp). The diagnostic is a *warning* (compilation succeeds) so existing scripts keep building while authors clean up; the message names both the current source type and the bare destination spelling so the fix is a one-character drop. Like the deref (#4) and redundant-comparison (#5) checks it **trusts the static non-nullability of the source**, including a *non-const handle reference*: reading an `arr[i]` cell of a non-nullable element array, or a non-nullable `T` field/local by reference, aliases storage whose non-null invariant is enforced on every write, so `T? x = arr[i]` is flagged exactly as `arr[i] != null` is by #5. Two source shapes are exempted, because a non-null static type does **not** guarantee a non-null value there:
    - `cast<T>(...)` and `cond ? a : b` — a failed reference cast yields null, and ternary branch types may differ (use `cast<T?>` when the cast can fail).
    - a **const handle reference `T@const&`** — `dict.get(key, default)` substitutes its (possibly null) default and yields null on a missing key, so the `?` on `T? v = someDict.get(k, null)` is genuinely needed, not redundant.
 
@@ -213,9 +221,9 @@ In addition to the runtime `asBC_RefCpyChk`, the AS front-end raises two compile
    - A **throwing getter** (`Chosen`, `CurMap`, a `item.Weapon` component getter, `Game.GetProtoModifier(...)`) returns non-null and *throws* when absent, so `getter() != null` is a footgun — it throws before the comparison. Use the matching `Has*` / `Check*` probe (`HasChosen`, `item.HasWeapon`, `Game.CheckProtoModifier(...)`).
    - A **fallible reference cast** `cast<T>(x)` is non-null-typed but yields null on a failed downcast — write `cast<T?>(x)` so the result is `T?` and the `!= null` is a legitimate check (see [Reference casts](#reference-casts-castx)).
    - A **proto / fixed-type property handle** that may be unset (`UsableOn.TargetItem`, `Harvested.SmallBag`, `Weapon.Ammo`) — declare the `///@ Property` with the `Nullable` flag so its getter is registered `@?` (see [Nullable property handles](#nullable-property-handles)).
-   - A native return that can be null but is missing `FO_NULLABLE`, or a genuinely-non-null source where the check is truly dead — add `FO_NULLABLE` / remove the check respectively.
+   - A native return that can be null but is spelled non-null `ptr<T>`, or a genuinely-non-null source where the check is truly dead — spell it `nptr<T>` / remove the check respectively.
 
-   Both named operands and temporaries are checked, so binding a fallible value to a local does **not** silence the warning — only spelling the source nullable (`cast<T?>`, `Nullable` flag, `FO_NULLABLE`) does. That is deliberate: it forces the *type* to tell the truth instead of relying on a hidden runtime-null.
+   Both named operands and temporaries are checked, so binding a fallible value to a local does **not** silence the warning — only spelling the source nullable (`cast<T?>`, `Nullable` flag, `nptr<T>`) does. That is deliberate: it forces the *type* to tell the truth instead of relying on a hidden runtime-null.
 
 **Conditional expressions propagate nullability.** A `cond ? a : b` result is typed `T?` when either branch is statically nullable (or a `null` literal). `CompileCondition` (FOnline patch in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp)) captures this before the branch-type unification can drop the flag, then re-applies it to the result handle. This lets the assignment (#2), deref (#4), and redundant-comparison (#5) checks treat `Entity x = cond ? a? : b` as a nullable source and flag it at compile time, instead of leaving it solely to the runtime `asBC_RefCpyChk`. The redundant-`?` exemption for ternaries in #3 still stands: a ternary whose branches are *statically* non-null can still yield null at runtime through a failed reference cast in one branch, so `T? x = cond ? a : b` is not reported as a redundant `?`. (The change is compile-time diagnostics only — it does not alter emitted bytecode, since the runtime `asBC_RefCpyChk` is keyed off the assignment *destination*, so no compatibility-version bump is required.)
 
@@ -274,10 +282,16 @@ if (a == null || b == null) {
 }
 Item ai = a; Item bi = b;                    // OK — both narrowed after early return
 
-// 4) Assignment invalidates the narrowing on that local
+// 4) Assignment invalidates the narrowing on that local. The write itself goes
+//    through the DECLARED type — narrowing is a read-time refinement only — so
+//    `x = null;` inside the guard is a legal un-narrowing write (plain REFCPY),
+//    not a null write into a non-nullable slot.
 if (x != null) {
     x = GetMaybeNull();           // x becomes nullable again
     Item y = x;                   // compile-time error here
+}
+if (x != null && x.IsBroken()) {
+    x = null;                     // OK — drops the narrowed view, x is `Item?` again
 }
 
 // 5) `&&` / `||` short-circuit narrows every later operand in the chain (any
@@ -318,7 +332,9 @@ A reference cast can fail at runtime: `cast<T>(expr)` yields `null` when `expr` 
 
 A bare `cast<T>(x)` keeps the non-nullable "this cast is known to succeed" contract (like a `static_cast`): you may chain `cast<T>(x).Member` directly, but `cast<T>(x) != null` is flagged redundant (#5) — switch to `cast<T?>(x)` there. The `?` is honored by `CompileConversion` in [../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp](../ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp), which applies `to.IsNullable()` to the cast result (including the early-return path where an implicit conversion already produced the target type).
 
-`cast<T?>(x)` also covers a **same-type** read that is statically non-null but can be null at runtime: a member field declared `array<T>` keeps the element type `T`, yet `resize`/grid growth default-initializes new cells to **null**. Reading such a cell into a non-nullable `T` (`T v = field[i];`) throws `Null pointer access`, and writing `T? v = field[i];` is flagged a redundant widening (#3) because the element type is non-null. Spell the read `cast<T?>(field[i])` — it is both null-safe and exempt from #3. (A nullable-element field `array<T?>` / `T?[]` does **not** parse as a member field in this fork, so the cast at the read site is the working pattern; a single `T?` field such as `Critter? Target` is fine.)
+`cast<T?>(x)` also covers a **same-type** read that is statically non-null but can be null at runtime: a legacy/sparse field declared `array<T>` keeps the element type `T`, yet `resize`/grid growth can leave empty handle cells as **null**. Reading such a cell into a non-nullable `T` (`T v = field[i];`) throws `Null pointer access`, and writing `T? v = field[i];` is flagged a redundant widening (#3) because the element type is non-null. Prefer declaring nullable-element storage as `array<T?>` / `T?[]` when the array is allowed to contain holes; when working with an existing `array<T>` sparse container, spell the read `cast<T?>(field[i])` so the source type tells the truth.
+
+For API parameters, native returns, and sync/lock scopes, null-element policy belongs to that specific API contract. Use nullable-element arrays when null is meaningful; otherwise validate at the producer or at the API entry point that owns the invariant.
 
 ### Nullable property handles
 
@@ -331,6 +347,8 @@ A `///@ Property` whose type is a proto or fixed-type **handle** (`ProtoItem`, `
 ```
 
 The flag is parsed in [../Source/Common/Properties.cpp](../Source/Common/Properties.cpp) (`_isNullable`) and consumed by the entity getter registration in [../Source/Scripting/AngelScript/AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp) (`@?`); [`MetadataBaker`](../Source/Tools/MetadataBaker.cpp) accepts `Nullable` only on FixedType / Proto entity properties. Without it, `proto.Field != null` is flagged redundant (#5) even though the field can legitimately be unset — reach for the flag rather than deleting the check. (Spelling the type `ItemBag?` in the tag does **not** work — nullability of a stored property is a flag, not a `?` suffix.)
+
+For a **`Mutable`** nullable handle property the **setter** parameter is registered nullable too (`@?+`), matching the getter — see the `set_handle_str` branch in [AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp). This is load-bearing, not cosmetic: AngelScript derives a virtual property's static type from the **setter parameter** whenever a setter exists (only getter-only / read-only properties fall back to the getter's return type — see `FindPropertyAccessor` in `as_compiler.cpp`). A non-nullable setter parameter alongside an `@?` getter would make `T? local = obj.MutableNullableProp` read as a *non-nullable* handle and wrongly trip the redundant-`?` warning (#3) — while `T local = obj.MutableNullableProp` (no `?`) still errors via the getter's nullable return — leaving the read with no warning-free spelling. Keeping the setter parameter nullable resolves both spellings consistently.
 
 ### The `verify` macro
 
@@ -369,9 +387,9 @@ The macro is **variadic**: `verify(cond, message, ctx...)` forwards `message` an
 - an entity relative (`Abstract<Entity>`, `Proto<Entity>`, `Static<Entity>` — currently `AbstractItem`, `ProtoCritter`, `ProtoItem`, `ProtoLocation`, `ProtoMap`, `StaticItem`),
 - a `///@ ExportRefType` class (`MovingContext`, `MapSpriteHolder`, `SpritePattern`, `VideoPlayback`, `ScriptImGui`).
 
-On the C++ engine side the matching pointer spellings (`Critter*`/`CritterView*`, `Map*`/`MapView*`, `ProtoItem*`, `StaticItem*`, `MovingContext*`, …) are all in scope. The membership test lives in `is_validated_pointer_meta_type(...)` in [../BuildTools/codegen.py](../BuildTools/codegen.py); the [validate_nullable.py](#tooling) walker mirrors it by parsing `///@ ExportEntity` / `///@ ExportRefType` headers at runtime.
+On the C++ engine side the matching pointer spellings (`Critter*`/`CritterView*`, `Map*`/`MapView*`, `ProtoItem*`, `StaticItem*`, `MovingContext*`, …) are all in scope. The membership test lives in `is_validated_pointer_meta_type(...)` in [../BuildTools/codegen.py](../BuildTools/codegen.py), which is now the sole arbiter: with no `FO_NULLABLE` marker, codegen treats every exported scalar pointer that is *not* a validated entity/ref meta-type (i.e. a raw `T*` or `nptr<T>`) as nullable.
 
-Marking `?` / `FO_NULLABLE` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, …) is the only misuse [validate_nullable.py](#tooling) flags — those types have no `null` representation, so the marker is meaningless.
+Marking `?` on a primitive value type (`int`, `bool`, `mpos`, `hstring`, …) is a misuse [validate_nullable.py](#tooling) flags — those types have no `null` representation, so the marker is meaningless.
 
 **Out of scope:** script-to-script parameter passing. The `asBC_RefCpyChk` instruction covers handle **assignments** and **initializations**; AS argument passing typically uses copy-on-call patterns that bypass REFCPY. Static analysis (`validate_nullable.py`) plus the native-boundary check still cover the common case where a script value flows through an engine call.
 
@@ -387,47 +405,44 @@ Native API registrations (`RegisterObjectType`, `RegisterFuncdef`, `RegisterObje
 
 ## Tooling
 
-Five Python tools in [Tools/NullableEstimate/](../../Tools/NullableEstimate/):
+Four Python tools in [Tools/NullableEstimate/](../../Tools/NullableEstimate/):
 
 | Tool | Purpose |
 |------|---------|
 | `apply_nullables.py` | Scans `.fos` and strips dead defensive null guards on entity-pointer params that are NOT marked `?` — codegen / convention guarantees them non-null. Does **not** add or remove `?` markers; the author owns placement. Idempotent. |
-| `apply_native_nullable.py` | Walks `///@ ExportMethod` declarations in `../Source/Scripting/*ScriptMethods.cpp` and strips dead defensive `if (param == nullptr) throw ...;` guards on entity-pointer params that are NOT marked `FO_NULLABLE` — codegen emits `NativeDataProvider::CheckArgNotNull` for those. Does **not** add or remove `FO_NULLABLE` markers; the author owns placement. Idempotent. |
 | `apply_local_nullables.py` | Promotes local variable declarations `T name = expr;` — where `name` is later null-checked in the same function body — to `T? name = expr;`. The author already proves intent with the null-check; the type just needs to agree. Idempotent. Skips primitives and enums. |
-| `validate_nullable.py` | Read-only placement check. Five layers: (1) `FO_NULLABLE` must sit inside an `///@ ExportMethod` signature and target a pointer, (2) script `?` must target a handle-able ref type, (3) explicit `@` on `asOBJ_IMPLICIT_HANDLE` types is rejected because the engine will reject the build anyway, (4) a local declaration whose name is null-checked below must already be `?`, (5) a `T?` local must not be dereferenced (`name.X` / `name[i]`) before *some* null-check — crashes at runtime with *"Null pointer access"* otherwise. |
+| `validate_nullable.py` | Read-only placement check for the **script `?` side**. Four layers: (1) script `?` must target a handle-able ref type (`int?`/`bool?`/`mpos?` etc. are rejected), (2) explicit `@` on `asOBJ_IMPLICIT_HANDLE` types is rejected because the engine will reject the build anyway, (3) a local declaration whose name is null-checked below must already be `?`, (4) a `T?` local must not be dereferenced (`name.X` / `name[i]`) before *some* null-check — crashes at runtime with *"Null pointer access"* otherwise. It also cross-checks that every `[[Event]]` / `[[*RemoteCall]]` handler matches its `///@ Event` / `///@ RemoteCall` declaration argument-by-argument. There is no native marker to validate — raw pointers are nullable by default and non-null is `ptr<T>`. |
 | `estimate_nullables.py` | Read-only coverage report — counts function/parameter/return shapes across `.fos`. |
 
 The applier tools accept `--check` (exit non-zero if dead defensive guards still exist) or `--dry-run` (preview without writing). `validate_nullable.py` is always read-only. CI uses these check modes to fail PRs that drift.
 
 ### Why marker placement stays explicit
 
-Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere → mark return; no defensive throw + no dereference → mark param). The heuristics produced churn against a curated codebase: a one-liner `void TransferToMap(Critter* self, Map* map, mpos hex) { ... transfer(self, map, hex, ...); }` would round-trip to `FO_NULLABLE Map* map` because the body only forwards the pointer — but the contract is non-null. Author intent is the source of truth; the analyzer's job is now only to delete dead guards that codegen has made redundant.
+Earlier revisions of the analyzers tried to infer marker placement from body shape (`return nullptr;` somewhere → mark the type nullable; no defensive throw + no dereference → mark param). The heuristics produced churn against a curated codebase: a one-liner that only forwards a pointer would round-trip to a nullable spelling because the body never dereferences it — but the contract is non-null. Author intent is the source of truth (spell `ptr<T>` / `nptr<T>` on native exports, `T?` on script handles); the applier's job is only to delete dead guards that codegen / the runtime null checks have made redundant.
 
 ## Workflows
 
 ### VS Code tasks ([.vscode/tasks.json](../../.vscode/tasks.json))
 
-Generators (modify code) — run after editing scripts or native exports:
+Generators (modify code) — run after editing scripts:
 - `Generate :: Nullable Markers (Scripts)` → `apply_nullables.py`
-- `Generate :: Nullable Markers (Engine)` → `apply_native_nullable.py`
-- `Generate and Format All` → bundles both, then formatter pass
+- `Generate and Format All` → bundles the script applier, then formatter pass
 
 Analyzers (check-only, exit non-zero on drift) — run before committing or in CI:
 - `Analyze :: Nullable Markers (Scripts)` → `apply_nullables.py --check`
-- `Analyze :: Nullable Markers (Engine)` → `apply_native_nullable.py --check`
 - `Analyze :: Nullable Placement` → `validate_nullable.py`
 - `Analyze :: Nullable Coverage` → `estimate_nullables.py`
-- `Analyze All` → bundles all four
+- `Analyze :: Smart Pointer Audit` → the native smart-pointer vocabulary gate (see [SmartPointers.md](SmartPointers.md))
+- `Analyze All` → bundles the four
 
 ### CI
 
-`.github/workflows/ci.yml` (`analyze` job) runs the script and engine appliers in `--check` mode plus `validate_nullable.py` on every push and PR. Drift in either the script `?` markers, the native `FO_NULLABLE` annotations, or a misplaced marker (outside an `///@ ExportMethod` or on a non-entity type) fails the run with a hint pointing to the generator task to fix it.
+`.github/workflows/ci.yml` (and `smoke-tests.yml`) run the script applier in `--check` mode plus `validate_nullable.py` on every push and PR. Drift in the script `?` markers, or a misplaced marker (a `?` on a non-handle type, or an `[[Event]]` / `[[*RemoteCall]]` handler that disagrees with its declaration), fails the run with a hint pointing to the generator task to fix it.
 
 ### Manual
 
 ```bash
 python Tools/NullableEstimate/apply_nullables.py          # apply script-side markers
-python Tools/NullableEstimate/apply_native_nullable.py    # apply engine-side markers
 python Tools/NullableEstimate/validate_nullable.py        # check placement
 python Tools/NullableEstimate/estimate_nullables.py       # report only
 ```
@@ -438,7 +453,7 @@ Append `--check` to either applier to verify idempotency without writing files.
 
 When you write a new script function or native export:
 
-1. Choose the nullable contract explicitly in the declaration (`T?` for script, `FO_NULLABLE` for native exported pointers) when the function meaningfully accepts or returns null.
+1. Choose the nullable contract explicitly in the declaration (`T?` for script handles; `nptr<T>` for nullable native exported pointers, `ptr<T>` for non-null) when the function meaningfully accepts or returns null.
 2. Run the nullable applier/check tasks to remove dead defensive guards for non-null contracts and to verify idempotency.
 3. Run `validate_nullable.py` to catch misplaced markers or primitive/value-type misuse.
 
@@ -449,4 +464,5 @@ The current appliers do not own contract inference: they preserve author-chosen 
 - [Scripting.md](Scripting.md) — overall engine scripting runtime, AngelScript backend, and method-export organization.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — current `///@ ExportMethod` file map and ownership boundaries.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — generated metadata/API flow that must stay aligned with script-visible contracts.
+- [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary.
 - [../Source/Tests/README.md](../Source/Tests/README.md) — current test-suite source of truth until a dedicated engine `Docs/Testing.md` page exists.

@@ -1,7 +1,12 @@
+# ImGui_Default — Dear ImGui draw shader for debug/editor UI.
+# Where: the engine Dear ImGui draw shader (debug/editor UI); the default for the ImGui usage (the ImGuiDefaultEffect setting points here). It is an EMBEDDED bootstrap effect compiled into the binary.
+# How: vertex transforms the 2D position (z forced to 0) and forwards colour and UV; fragment outputs vertex colour multiplied by the MainTex sample — the standard ImGui textured-vertex blend with no extra processing.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -13,7 +18,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }

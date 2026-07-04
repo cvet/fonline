@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(NetworkClientException);
 class NetworkClientConnection
 {
 public:
-    explicit NetworkClientConnection(ClientNetworkSettings& settings);
+    explicit NetworkClientConnection(ptr<ClientNetworkSettings> settings);
     NetworkClientConnection(const NetworkClientConnection&) = delete;
     NetworkClientConnection(NetworkClientConnection&&) noexcept = delete;
     auto operator=(const NetworkClientConnection&) = delete;
@@ -61,9 +61,9 @@ public:
     auto ReceiveData() -> const_span<uint8_t>;
     void Disconnect() noexcept;
 
-    [[nodiscard]] static auto CreateInterthreadConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
-    [[nodiscard]] static auto CreateSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
-    [[nodiscard]] static auto CreateUdpSocketsConnection(ClientNetworkSettings& settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
+    [[nodiscard]] static auto CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>;
 
 protected:
     virtual auto CheckStatusImpl(bool for_write) -> bool = 0;
@@ -71,7 +71,7 @@ protected:
     virtual auto ReceiveDataImpl(vector<uint8_t>& buf) -> size_t = 0;
     virtual void DisconnectImpl() noexcept = 0;
 
-    raw_ptr<ClientNetworkSettings> _settings;
+    ptr<ClientNetworkSettings> _settings;
     bool _isConnecting {};
     bool _isConnected {};
 

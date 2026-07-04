@@ -44,37 +44,42 @@ FO_DECLARE_EXCEPTION(TimeNotSyncException);
 class GameTimer final
 {
 public:
-    explicit GameTimer(TimerSettings& settings);
+    explicit GameTimer(ptr<TimerSettings> settings);
     GameTimer(const GameTimer&) = delete;
-    GameTimer(GameTimer&&) noexcept = default;
+    GameTimer(GameTimer&&) noexcept = delete;
     auto operator=(const GameTimer&) = delete;
     auto operator=(GameTimer&&) noexcept = delete;
     ~GameTimer() = default;
 
-    [[nodiscard]] auto GetFrameTime() const noexcept -> nanotime { return _frameTime; }
-    [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime; }
-    [[nodiscard]] auto IsTimeSynchronized() const noexcept -> bool { return !!_syncTimeBase; }
+    [[nodiscard]] auto GetFrameTime() const noexcept -> nanotime { return _frameTime.load(std::memory_order_relaxed); }
+    [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime.load(std::memory_order_relaxed); }
+    [[nodiscard]] auto IsTimeSynchronized() const -> bool;
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
-    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps; }
+    [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps.load(std::memory_order_relaxed); }
 
-    void SetSynchronizedTime(synctime time) noexcept;
-    void SetSynchronizedTimeMonotonic(synctime time) noexcept;
+    void SetSynchronizedTime(synctime time);
+    void SetSynchronizedTimeMonotonic(synctime time);
     void FrameAdvance(bool clamp_to_cap);
 
 private:
-    raw_ptr<TimerSettings> _settings;
+    ptr<TimerSettings> _settings;
 
-    nanotime _frameTime {};
-    timespan _frameDeltaTime {};
-    timespan _debuggingOffset {};
+    // Advanced on the main worker (FrameAdvance) but read from WorkerPool/network threads (entity
+    // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race.
+    std::atomic<nanotime> _frameTime {};
+    std::atomic<timespan> _frameDeltaTime {};
+    timespan _debuggingOffset {}; // main-worker only
 
-    synctime _syncTimeBase {};
-    synctime _syncTimeFloor {};
-    nanotime _syncTimeSet {};
+    // The synchronized-time projection reads this triple together, so it needs a consistent snapshot
+    // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic).
+    mutable mutex _syncTimeLocker {};
+    synctime _syncTimeBase FO_TSA_GUARDED_BY(_syncTimeLocker) {};
+    synctime _syncTimeFloor FO_TSA_GUARDED_BY(_syncTimeLocker) {};
+    nanotime _syncTimeSet FO_TSA_GUARDED_BY(_syncTimeLocker) {};
 
-    int32_t _fps {};
-    nanotime _fpsMeasureTime {};
-    int32_t _fpsMeasureCounter {};
+    std::atomic<int32_t> _fps {};
+    nanotime _fpsMeasureTime {}; // main-worker only
+    int32_t _fpsMeasureCounter {}; // main-worker only
 };
 
 FO_END_NAMESPACE

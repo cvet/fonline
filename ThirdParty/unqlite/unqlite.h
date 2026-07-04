@@ -7,18 +7,18 @@
 #endif 
 /*
  * Symisc UnQLite: An Embeddable NoSQL (Post Modern) Database Engine.
- * Copyright (C) 2012-2018, Symisc Systems http://unqlite.org/
- * Version 1.1.9
+ * Copyright (C) 2012-2026, Symisc Systems https://unqlite.symisc.net/
+ * Version 1.2.1
  * For information on licensing, redistribution of this file, and for a DISCLAIMER OF ALL WARRANTIES
  * please contact Symisc Systems via:
  *       legal@symisc.net
  *       licensing@symisc.net
  *       contact@symisc.net
  * or visit:
- *      http://unqlite.org/licensing.html
+ *      https://unqlite.symisc.net/licensing.html
  */
 /*
- * Copyright (C) 2012, 2018 Symisc Systems, S.U.A.R.L [M.I.A.G Mrad Chems Eddine <chm@symisc.net>].
+ * Copyright (C) 2012, 2026 Symisc Systems, S.U.A.R.L [M.I.A.G Mrad Chems Eddine <chm@symisc.net>].
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,18 +53,18 @@
  * [unqlite_lib_copyright()] for more information.
  */
 /*
- * The UNQLITE_VERSION C preprocessor macroevaluates to a string literal
+ * The UNQLITE_VERSION C preprocessor macro evaluates to a string literal
  * that is the unqlite version in the format "X.Y.Z" where X is the major
  * version number and Y is the minor version number and Z is the release
  * number.
  */
-#define UNQLITE_VERSION "1.1.9"
+#define UNQLITE_VERSION "1.2.1"
 /*
  * The UNQLITE_VERSION_NUMBER C preprocessor macro resolves to an integer
  * with the value (X*1000000 + Y*1000 + Z) where X, Y, and Z are the same
  * numbers used in [UNQLITE_VERSION].
  */
-#define UNQLITE_VERSION_NUMBER 1001009
+#define UNQLITE_VERSION_NUMBER 1002001
 /*
  * The UNQLITE_SIG C preprocessor macro evaluates to a string
  * literal which is the public signature of the unqlite engine.
@@ -72,24 +72,24 @@
  * generated Server MIME header as follows:
  *   Server: YourWebServer/x.x unqlite/x.x.x \r\n
  */
-#define UNQLITE_SIG "unqlite/1.1.9"
+#define UNQLITE_SIG "unqlite/1.2.1"
 /*
  * UnQLite identification in the Symisc source tree:
  * Each particular check-in of a particular software released
  * by symisc systems have an unique identifier associated with it.
  * This macro hold the one associated with unqlite.
  */
-#define UNQLITE_IDENT "unqlite:b172a1e2c3f62fb35c8e1fb2795121f82356cad6"
+#define UNQLITE_IDENT "unqlite:29c173b1-ac2c-4b49-93ba-e600619e304e"
 /*
  * Copyright notice.
  * If you have any questions about the licensing situation, please
- * visit http://unqlite.org/licensing.html
+ * visit https://unqlite.symisc.net/licensing.html
  * or contact Symisc Systems via:
  *   legal@symisc.net
  *   licensing@symisc.net
  *   contact@symisc.net
  */
-#define UNQLITE_COPYRIGHT "Copyright (C) Symisc Systems, S.U.A.R.L [Mrad Chems Eddine <chm@symisc.net>] 2012-2018, http://unqlite.org/"
+#define UNQLITE_COPYRIGHT "Copyright (C) Symisc Systems, S.U.A.R.L [Mrad Chems Eddine <chm@symisc.net>] 2012-2026, https://unqlite.symisc.net/"
 
 /* Forward declaration to public objects */
 typedef struct unqlite_io_methods unqlite_io_methods;
@@ -385,7 +385,7 @@ typedef sxi64 unqlite_int64;
  * return value indicates failure.
  * For a full discussion on the configuration verbs and their expected 
  * parameters, please refer to this page:
- *      http://unqlite.org/c_api/unqlite_config.html
+ *      https://unqlite.symisc.net/c_api/unqlite_config.html
  */
 #define UNQLITE_CONFIG_JX9_ERR_LOG         1  /* TWO ARGUMENTS: const char **pzBuf, int *pLen */
 #define UNQLITE_CONFIG_MAX_PAGE_CACHE      2  /* ONE ARGUMENT: int nMaxPage */
@@ -403,12 +403,12 @@ typedef sxi64 unqlite_int64;
  * Each options require a variable number of arguments.
  * The [unqlite_vm_config()] interface will return UNQLITE_OK on success, any other return
  * value indicates failure.
- * There are many options but the most importants are: UNQLITE_VM_CONFIG_OUTPUT which install
+ * There are many options but the most important are: UNQLITE_VM_CONFIG_OUTPUT which install
  * a VM output consumer callback, UNQLITE_VM_CONFIG_HTTP_REQUEST which parse and register
  * a HTTP request and UNQLITE_VM_CONFIG_ARGV_ENTRY which populate the $argv array.
  * For a full discussion on the configuration verbs and their expected parameters, please
  * refer to this page:
- *      http://unqlite.org/c_api/unqlite_vm_config.html
+ *      https://unqlite.symisc.net/c_api/unqlite_vm_config.html
  */
 #define UNQLITE_VM_CONFIG_OUTPUT           1  /* TWO ARGUMENTS: int (*xConsumer)(const void *pOut, unsigned int nLen, void *pUserData), void *pUserData */
 #define UNQLITE_VM_CONFIG_IMPORT_PATH      2  /* ONE ARGUMENT: const char *zIncludePath */
@@ -434,7 +434,7 @@ typedef sxi64 unqlite_int64;
  * value indicates failure.
  * For a full discussion on the configuration verbs and their expected parameters, please
  * refer to this page:
- *      http://unqlite.org/c_api/unqlite_kv_config.html
+ *      https://unqlite.symisc.net/c_api/unqlite_kv_config.html
  */
 #define UNQLITE_KV_CONFIG_HASH_FUNC  1 /* ONE ARGUMENT: unsigned int (*xHash)(const void *,unsigned int) */
 #define UNQLITE_KV_CONFIG_CMP_FUNC   2 /* ONE ARGUMENT: int (*xCmp)(const void *,const void *,unsigned int) */
@@ -460,7 +460,7 @@ typedef sxi64 unqlite_int64;
  * or [unqlite_init()] and before [unqlite_lib_shutdown()] then it will return UNQLITE_LOCKED.
  * For a full discussion on the configuration verbs and their expected parameters, please
  * refer to this page:
- *      http://unqlite.org/c_api/unqlite_lib.html
+ *      https://unqlite.symisc.net/c_api/unqlite_lib.html
  */
 #define UNQLITE_LIB_CONFIG_USER_MALLOC            1 /* ONE ARGUMENT: const SyMemMethods *pMemMethods */ 
 #define UNQLITE_LIB_CONFIG_MEM_ERR_CALLBACK       2 /* TWO ARGUMENTS: int (*xMemError)(void *), void *pUserData */
@@ -655,14 +655,14 @@ struct unqlite_vfs {
 typedef sxu64 pgno;
 /*
  * A database disk page is represented by an instance
- * of the follwoing structure.
+ * of the following structure.
  */
 typedef struct unqlite_page unqlite_page;
 struct unqlite_page
 {
   unsigned char *zData;       /* Content of this page */
   void *pUserData;            /* Extra content */
-  pgno pgno;                  /* Page number for this page */
+  pgno iPage;                 /* Page number for this page */
 };
 /*
  * UnQLite handle to the underlying Key/Value Storage Engine (See below).
@@ -787,9 +787,9 @@ struct unqlite_kv_methods
 #define UNQLITE_JOURNAL_FILE_SUFFIX "_unqlite_journal"
 #endif
 /*
- * Call Context - Error Message Serverity Level.
+ * Call Context - Error Message Severity Level.
  *
- * The following constans are the allowed severity level that can
+ * The following constants are the allowed severity level that can
  * passed as the second argument to the [unqlite_context_throw_error()] or
  * [unqlite_context_throw_error_format()] interfaces.
  * Refer to the official documentation for additional information.

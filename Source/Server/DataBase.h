@@ -85,7 +85,7 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
+    friend auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 public:
     using Collection = DataBaseCollection;
@@ -115,12 +115,12 @@ public:
     void DrawGui();
 
 private:
-    explicit DataBase(DataBaseImpl* impl);
+    explicit DataBase(unique_ptr<DataBaseImpl> impl);
 
-    unique_ptr<DataBaseImpl> _impl;
+    unique_nptr<DataBaseImpl> _impl {};
 };
 
-extern auto ConnectToDataBase(DataBaseSettings& db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
+extern auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 class DataBaseImpl
 {
@@ -140,7 +140,7 @@ public:
         [[nodiscard]] auto GetPath() const noexcept -> string_view { return _path; }
         [[nodiscard]] auto GetLinesCount() const noexcept -> size_t { return _content.size(); }
         [[nodiscard]] auto GetTextSize() const noexcept -> size_t { return _textSize; }
-        [[nodiscard]] auto GetContent() const noexcept -> const vector<string>& { return _content; }
+        [[nodiscard]] auto GetContent() const noexcept -> const_span<string> { return _content; }
 
         auto Truncate() noexcept -> bool;
         auto Append(string_view text) noexcept -> bool;
@@ -154,7 +154,7 @@ public:
         vector<string> _content {};
     };
 
-    explicit DataBaseImpl(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback);
+    explicit DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback);
     DataBaseImpl(const DataBaseImpl&) = delete;
     DataBaseImpl(DataBaseImpl&&) noexcept = delete;
     auto operator=(const DataBaseImpl&) = delete;
@@ -223,44 +223,44 @@ private:
     void ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const;
     void StartPanic(string_view message);
 
-    raw_ptr<DataBaseSettings> _settings;
-    mutable std::mutex _stateLocker {};
-    std::thread _commitThread {};
-    std::condition_variable _commitThreadSignal {};
-    std::condition_variable _commitThreadDoneSignal {};
-    bool _commitThreadStopRequested {};
-    bool _commitThreadActive {};
-    deque<shared_ptr<CommitOperationData>> _pendingCommitOperations {};
-    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers {};
+    ptr<DataBaseSettings> _settings;
+    mutable mutex _stateLocker {};
+    thread _commitThread {};
+    std::condition_variable_any _commitThreadSignal {};
+    std::condition_variable_any _commitThreadDoneSignal {};
+    bool _commitThreadStopRequested FO_TSA_GUARDED_BY(_stateLocker) {};
+    bool _commitThreadActive FO_TSA_GUARDED_BY(_stateLocker) {};
+    deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
+    mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};
     bool _opLogEnabled {};
-    unique_ptr<RecoveryLogHandle> _pendingChangesLog {};
-    unique_ptr<RecoveryLogHandle> _committedChangesLog {};
+    optional<RecoveryLogHandle> _pendingChangesLog {};
+    optional<RecoveryLogHandle> _committedChangesLog {};
     size_t _pendingChangesPanicThreshold {};
     timespan _panicShutdownTimeout {};
     timespan _reconnectRetryPeriod {};
     nanotime _reconnectRetryTime {};
     DataBasePanicCallback _panicCallback {};
-    mutable std::mutex _dbRequestsMetricLocker {};
-    mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets {vector<DbRequestsPerMinuteBucket>(60)};
+    mutable mutex _dbRequestsMetricLocker {};
+    mutable vector<DbRequestsPerMinuteBucket> _dbRequestsPerMinuteBuckets FO_TSA_GUARDED_BY(_dbRequestsMetricLocker) {vector<DbRequestsPerMinuteBucket>(60)};
     mutable std::atomic_size_t _dbRequestsPerMinute {};
     unordered_map<string, hstring> _collectionNames {};
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };
 
-auto CreateJsonDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*;
+auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #if FO_HAVE_UNQLITE
-auto CreateUnQLiteDataBase(DataBaseSettings& db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> DataBaseImpl*;
+auto CreateUnQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #endif
 #if FO_HAVE_MONGO
-auto CreateMongoDataBase(DataBaseSettings& db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> DataBaseImpl*;
+auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 #endif
-auto CreateMemoryDataBase(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) -> DataBaseImpl*;
+auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
 
-void DocumentToBson(const AnyData::Document& doc, bson_t* bson, char escape_dot = 0);
-void BsonToDocument(const bson_t* bson, AnyData::Document& doc, char escape_dot = 0);
+void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot = 0);
+void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot = 0);
 auto GetDbKeyType(const DataBaseKey& key) noexcept -> DataBaseKeyType;
 
 FO_END_NAMESPACE

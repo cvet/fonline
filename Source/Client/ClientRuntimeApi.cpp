@@ -94,4 +94,20 @@ auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string
     return result.RequestedCompatibilityVersion != nullptr && string_view(result.RequestedCompatibilityVersion) == compatibility_version;
 }
 
+auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    switch (kind) {
+    case ClientRuntimeResultKind::Shutdown:
+        return "Shutdown";
+    case ClientRuntimeResultKind::ReloadRequested:
+        return "ReloadRequested";
+    case ClientRuntimeResultKind::FatalError:
+        return "FatalError";
+    default:
+        return "Unknown";
+    }
+}
+
 FO_END_NAMESPACE

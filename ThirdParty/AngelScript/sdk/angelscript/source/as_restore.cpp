@@ -687,7 +687,9 @@ void asCReader::ReadUsedFunctions()
 		error = true;
 		return;
 	}
-	memset(usedFunctions.AddressOf(), 0, sizeof(asCScriptFunction *)*count);
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when count is 0 (UBSan nonnull-arg)
+	if( count > 0 )
+		memset(usedFunctions.AddressOf(), 0, sizeof(asCScriptFunction *)*count);
 
 	for( asUINT n = 0; n < usedFunctions.GetLength(); n++ )
 	{
@@ -1084,7 +1086,9 @@ void asCReader::ReadFunctionSignature(asCScriptFunction *func, asCObjectType **p
 		error = true;
 		return;
 	}
-	memset(func->inOutFlags.AddressOf(), 0, sizeof(asETypeModifiers)*func->inOutFlags.GetLength());
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when there are no params (UBSan nonnull-arg)
+	if( func->inOutFlags.GetLength() > 0 )
+		memset(func->inOutFlags.AddressOf(), 0, sizeof(asETypeModifiers)*func->inOutFlags.GetLength());
 	if (func->parameterTypes.GetLength() > 0)
 	{
 		count = ReadEncodedUInt();
@@ -3452,10 +3456,11 @@ int asCReader::SListAdjuster::AdjustOffset(int offset)
 				else
 					size = nextdt.GetSizeInMemoryBytes();
 
-				// Align the offset to 4 bytes boundary
-				if( size >= 4 && (maxOffset & 0x3) )
+				// Align the offset to the element's natural alignment (>=4 bytes; (FOnline Patch) 8 for 8-byte values)
+				const asUINT nextAlign = GetListElementAlignment(nextdt, size);
+				if( size >= 4 && (maxOffset % nextAlign) != 0 )
 				{
-					maxOffset += 4 - (maxOffset & 0x3);
+					maxOffset += nextAlign - (maxOffset % nextAlign);
 					lastAdjustedOffset = maxOffset;
 				}
 
@@ -3493,15 +3498,18 @@ int asCReader::SListAdjuster::AdjustOffset(int offset)
 			else
 				size = dt.GetSizeInMemoryBytes();
 
+			// (FOnline Patch) align inline 8-byte value types / 8-byte primitives to their natural alignment
+			const asUINT elemAlign = GetListElementAlignment(dt, size);
+
 			// If values are skipped, the offset needs to be incremented
 			while( nextOffset <= offset )
 			{
 				if( repeatCount > 0 )
 					repeatCount--;
 
-				// Align the offset to 4 bytes boundary
-				if( size >= 4 && (maxOffset & 0x3) )
-					maxOffset += 4 - (maxOffset & 0x3);
+				// Align the offset to the element's natural alignment (>=4 bytes)
+				if( size >= 4 && (maxOffset % elemAlign) != 0 )
+					maxOffset += elemAlign - (maxOffset % elemAlign);
 
 				lastAdjustedOffset = maxOffset;
 				nextOffset += 1;
@@ -3634,8 +3642,8 @@ void asCReader::CalculateStackNeeded(asCScriptFunction *func)
 
 						// Calculate the actual size of arguments for this function call
 						stackInc = -(called->GetSpaceNeededForArguments() + // size of fixed arguments
-							(numArgs - int(called->parameterTypes.GetLength()))*called->parameterTypes[called->parameterTypes.GetLength()-1].GetSizeOnStackDWords() + // size of dynamic arguments
-							1); // argument count
+							(numArgs - int(called->parameterTypes.GetLength()))*called->parameterTypes[called->parameterTypes.GetLength()-1].GetArgSlotSizeOnStackDWords() + // size of dynamic arguments // (FOnline Patch)
+							(AS_PTR_SIZE == 2 ? 2 : 1)); // argument count // (FOnline Patch) even variadic count slot
 					}
 					else
 						stackInc = -called->GetSpaceNeededForArguments();
@@ -3772,13 +3780,15 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 		else
 		{
 			asASSERT( func->parameterTypes[n].IsPrimitive() );
-			offset += func->parameterTypes[n].GetSizeOnStackDWords();
+			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 
 	// Build look-up table with the adjustments for each stack position
 	adjustNegativeStackByPos.SetLength(offset);
-	memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when offset is 0 (UBSan nonnull-arg)
+	if( adjustNegativeStackByPos.GetLength() > 0 )
+		memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
 	for( n = 0; n < adjustments.GetLength(); n+=2 )
 	{
 		int pos    = adjustments[n];
@@ -3799,7 +3809,18 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 			continue;
 
 		asCDataType t = func->scriptData->variables[n]->type;
-		if (!t.IsObject() && !t.IsObjectHandle())
+
+		// (FOnline Patch) Track the highest positive offset across ALL locals that the alignment pass below may
+		// pad (8-byte value types AND 8-byte primitives), so adjustByPos/padByPos are sized to cover them. Only
+		// object/handle locals contribute a pointer-size EXPANSION; primitives keep their size but still need a
+		// slot in adjustByPos for the alignment pad accumulation.
+		const bool isObj = t.IsObject() || t.IsObjectHandle();
+		const bool inlineValueHP = t.GetTypeInfo() && (t.GetTypeInfo()->GetFlags() & asOBJ_VALUE) && !func->scriptData->variables[n]->onHeap;
+		const int alignDwHP = t.GetStackAlignmentDWords(inlineValueHP);
+		if ((isObj || alignDwHP > 1) && func->scriptData->variables[n]->stackOffset > highestPos)
+			highestPos = func->scriptData->variables[n]->stackOffset;
+
+		if (!isObj)
 			continue;
 
 		// Determing the size of the variable currently occupies on the stack
@@ -3810,9 +3831,6 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 		// Check if type has a different size than stored
 		if (size > 1)
 		{
-			if (func->scriptData->variables[n]->stackOffset > highestPos)
-				highestPos = func->scriptData->variables[n]->stackOffset;
-
 			adjustments.PushLast(func->scriptData->variables[n]->stackOffset);
 			adjustments.PushLast(size - 1);
 		}
@@ -3839,6 +3857,81 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 	{
 		adjust += adjustByPos[i];
 		adjustByPos[i] = adjust;
+	}
+
+	// (FOnline Patch) 8-byte value alignment: second pass that folds alignment padding for value-type stack
+	// slots into adjustByPos (canonical -> runtime). Padding is sequential (depends on the running runtime
+	// offset), so walk the value-inline locals in ascending canonical offset, compute each pad against the
+	// expansion + pads accumulated below it, and prefix-sum. INERT when every GetStackAlignmentDWords returns 1
+	// (no padding) -> byte-identical to the historical layout. Mirrored by asCWriter::CalculateAdjustmentByPos.
+	// See Docs/Plans/2026-06-26-angelscript-8byte-alignment-research.md.
+	{
+		asCArray<int> alignOffsets; // canonical stackOffset of value-inline locals needing >1 dword alignment
+		asCArray<int> alignDwords;  // required alignment (in dwords) for each
+		for (n = 0; n < func->scriptData->variables.GetLength(); n++)
+		{
+			if (func->scriptData->variables[n]->stackOffset <= 0)
+				continue;
+			asCDataType t = func->scriptData->variables[n]->type;
+			// (FOnline Patch) include inline 8-byte value types AND 8-byte built-in primitives (int64/double);
+			// both are carried by value on the stack and need an aligned slot. Handles/references stay 1/AS_PTR_SIZE.
+			const bool inlineValue = t.GetTypeInfo() && (t.GetTypeInfo()->GetFlags() & asOBJ_VALUE) && !func->scriptData->variables[n]->onHeap;
+			const int alignDw = t.GetStackAlignmentDWords(inlineValue);
+			if (alignDw <= 1)
+				continue;
+			alignOffsets.PushLast(func->scriptData->variables[n]->stackOffset);
+			alignDwords.PushLast(alignDw);
+		}
+
+		if (alignOffsets.GetLength() > 0)
+		{
+			// Insertion sort by canonical offset ascending (lists are tiny)
+			for (asUINT i = 1; i < alignOffsets.GetLength(); i++)
+			{
+				const int ov = alignOffsets[i];
+				const int av = alignDwords[i];
+				int j = (int)i - 1;
+				while (j >= 0 && alignOffsets[j] > ov)
+				{
+					alignOffsets[j+1] = alignOffsets[j];
+					alignDwords[j+1] = alignDwords[j];
+					j--;
+				}
+				alignOffsets[j+1] = ov;
+				alignDwords[j+1] = av;
+			}
+
+			asCArray<int> padByPos;
+			padByPos.SetLength(adjustByPos.GetLength());
+			memset(padByPos.AddressOf(), 0, padByPos.GetLength()*sizeof(int));
+
+			int cumPad = 0;
+			int prevOffset = -1;
+			for (asUINT i = 0; i < alignOffsets.GetLength(); i++)
+			{
+				const int off = alignOffsets[i];
+				const int alignDw = alignDwords[i];
+				if (off == prevOffset)
+					continue; // same position in a different scope -> already padded
+				prevOffset = off;
+				// Runtime base (last dword) of this variable without its own pad
+				const int runtimeBase = off + adjustByPos[off] + cumPad;
+				const int rem = runtimeBase % alignDw;
+				if (rem != 0)
+				{
+					const int pad = alignDw - rem;
+					padByPos[off] += pad;
+					cumPad += pad;
+				}
+			}
+
+			int padAccum = 0;
+			for (asUINT i = 0; i < adjustByPos.GetLength(); i++)
+			{
+				padAccum += padByPos[i];
+				adjustByPos[i] += padAccum;
+			}
+		}
 	}
 }
 
@@ -3943,7 +4036,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset++;
+		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -3963,13 +4056,13 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additiona 32bit integer with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += 1;
+				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 		}
 		else
 		{
 			// Enums or built-in primitives are passed by value
 			asASSERT( calledFunc->parameterTypes[p].IsPrimitive() );
-			currOffset += calledFunc->parameterTypes[p].GetSizeOnStackDWords();
+			currOffset += calledFunc->parameterTypes[p].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
@@ -3994,13 +4087,13 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += 1;
+					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 			}
 			else
 			{
 				// built-in primitives or enums are passed by value
 				asASSERT(variadicType.IsPrimitive());
-				currOffset += variadicType.GetSizeOnStackDWords();
+				currOffset += variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}
@@ -4990,13 +5083,15 @@ void asCWriter::CalculateAdjustmentByPos(asCScriptFunction *func)
 		else
 		{
 			asASSERT( func->parameterTypes[n].IsPrimitive() );
-			offset += func->parameterTypes[n].GetSizeOnStackDWords();
+			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 
 	// Build look-up table with the adjustments for each stack position
 	adjustNegativeStackByPos.SetLength(offset);
-	memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
+	// (FOnline Patch) AddressOf() is null for an empty array; skip memset when offset is 0 (UBSan nonnull-arg)
+	if( adjustNegativeStackByPos.GetLength() > 0 )
+		memset(adjustNegativeStackByPos.AddressOf(), 0, adjustNegativeStackByPos.GetLength()*sizeof(int));
 	for( n = 0; n < adjustments.GetLength(); n+=2 )
 	{
 		int pos    = adjustments[n];
@@ -5046,12 +5141,95 @@ void asCWriter::CalculateAdjustmentByPos(asCScriptFunction *func)
 
 		adjustStackByPos[pos] = adjust;
 	}
-	// Accumulate adjustments 
+	// Accumulate adjustments
 	int adjust = adjustStackByPos[0];
 	for (asUINT i = 1; i < adjustStackByPos.GetLength(); i++)
 	{
 		adjust += adjustStackByPos[i];
 		adjustStackByPos[i] = adjust;
+	}
+
+	// (FOnline Patch) 8-byte value alignment: strip the host alignment padding so the canonical stored form is
+	// pad-free (the reader re-pads for its own bitness; pointer-dependent padding is not portable). The pad is
+	// NOT recoverable from already-aligned host offsets (algebraically tautological), so REPLICATE
+	// asCCompiler::GetVariableOffset's alignment-aware walk over the recorded positive-offset slots to recover
+	// each pad, self-check it against the recorded offset, then subtract the cumulative pad. INERT when every
+	// GetStackAlignmentDWords returns 1. Mirrors the reader pad pass in asCReader::CalculateAdjustmentByPos.
+	{
+		asCArray<int> slotOffset;
+		asCArray<asCDataType> slotType;
+		asCArray<bool> slotOnHeap;
+		for (n = 0; n < func->scriptData->variables.GetLength(); n++)
+		{
+			const int so = func->scriptData->variables[n]->stackOffset;
+			if (so <= 0)
+				continue;
+			bool seen = false;
+			for (asUINT k = 0; k < slotOffset.GetLength(); k++)
+				if (slotOffset[k] == so) { seen = true; break; }
+			if (seen)
+				continue;
+			slotOffset.PushLast(so);
+			slotType.PushLast(func->scriptData->variables[n]->type);
+			slotOnHeap.PushLast(func->scriptData->variables[n]->onHeap);
+		}
+		// Insertion sort by offset ascending (== compiler slot/allocation order; lists are tiny)
+		for (asUINT i = 1; i < slotOffset.GetLength(); i++)
+		{
+			const int o = slotOffset[i];
+			const asCDataType t = slotType[i];
+			const bool h = slotOnHeap[i];
+			int j = (int)i - 1;
+			while (j >= 0 && slotOffset[j] > o)
+			{
+				slotOffset[j+1] = slotOffset[j];
+				slotType[j+1] = slotType[j];
+				slotOnHeap[j+1] = slotOnHeap[j];
+				j--;
+			}
+			slotOffset[j+1] = o;
+			slotType[j+1] = t;
+			slotOnHeap[j+1] = h;
+		}
+
+		asCArray<int> padByPos;
+		padByPos.SetLength(adjustStackByPos.GetLength());
+		if (padByPos.GetLength() > 0)
+			memset(padByPos.AddressOf(), 0, padByPos.GetLength()*sizeof(int));
+		bool anyPad = false;
+		int varOffset = 1;
+		for (asUINT i = 0; i < slotOffset.GetLength(); i++)
+		{
+			const bool inlineValue = !slotOnHeap[i] && slotType[i].IsObject();
+			const int size = inlineValue ? slotType[i].GetSizeInMemoryDWords() : slotType[i].GetSizeOnStackDWords();
+			const int alignDw = slotType[i].GetStackAlignmentDWords(inlineValue);
+			int pad = 0;
+			if (alignDw > 1 && size > 0)
+			{
+				const int rem = (varOffset + size - 1) % alignDw;
+				if (rem != 0)
+					pad = alignDw - rem;
+			}
+			varOffset += pad;
+			// Self-check: the replicated layout must reproduce the offset the compiler stored
+			asASSERT(varOffset + size - 1 == slotOffset[i]);
+			if (pad > 0 && slotOffset[i] < (int)padByPos.GetLength())
+			{
+				padByPos[slotOffset[i]] = pad;
+				anyPad = true;
+			}
+			varOffset += size;
+		}
+
+		if (anyPad)
+		{
+			int pacc = 0;
+			for (asUINT i = 0; i < adjustStackByPos.GetLength(); i++)
+			{
+				pacc += padByPos[i];
+				adjustStackByPos[i] -= pacc;
+			}
+		}
 	}
 
 	// Compute the sequence number of each bytecode instruction in order to update the jump offsets
@@ -5167,7 +5345,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 						calledFunc = CastToFuncdefType(func->parameterTypes[v].GetTypeInfo())->funcdef;
 						break;
 					}
-					paramPos -= func->parameterTypes[v].GetSizeOnStackDWords();
+					paramPos -= func->parameterTypes[v].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 				}
 			}
 			break;
@@ -5206,7 +5384,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			numPtrs++;
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset++;
+		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -5221,13 +5399,13 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additional 32bit int with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += 1;
+				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 		}
 		else
 		{
 			// built-in primitives or enums are passed by value
 			asASSERT( calledFunc->parameterTypes[p].IsPrimitive() );
-			currOffset += calledFunc->parameterTypes[p].GetSizeOnStackDWords();
+			currOffset += calledFunc->parameterTypes[p].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 		}
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
@@ -5247,13 +5425,13 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += 1;
+					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
 			}
 			else
 			{
 				// built-in primitives or enums are passed by value
 				asASSERT(variadicType.IsPrimitive());
-				currOffset += variadicType.GetSizeOnStackDWords();
+				currOffset += variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 			}
 		}
 	}
@@ -5880,15 +6058,19 @@ int asCWriter::SListAdjuster::AdjustOffset(int offset, asCObjectType *listPatter
 				else
 					size = dt.GetSizeInMemoryBytes();
 
+				// (FOnline Patch) Track byte positions with the element's natural alignment, matching the
+				// compiler's list layout and the reader's re-derivation, so skipped-value detection stays in
+				// sync for 8-byte value types.
+				const asUINT elemAlign = GetListElementAlignment(dt, size);
+
 				int count = 0;
 				while( nextOffset <= offset )
 				{
 					count++;
 					nextOffset += size;
 
-					// Align the offset on 4 byte boundaries
-					if( size >= 4 && (nextOffset & 0x3) )
-						nextOffset += 4 - (nextOffset & 0x3);
+					if( size >= 4 && (nextOffset % elemAlign) != 0 )
+						nextOffset += elemAlign - (nextOffset % elemAlign);
 				}
 
 				if( --count > 0 )

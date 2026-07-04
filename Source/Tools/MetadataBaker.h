@@ -69,21 +69,29 @@ private:
         vector<string_view> Tokens {};
     };
 
+    struct RefTypeFieldState
+    {
+        string Name {};
+        string Type {};
+        vector<string> Flags {};
+    };
+
     struct RefTypeState
     {
         string Target {};
         string SourceFile {};
         size_t LineNumber {};
-        vector<pair<string, string>> Fields {};
+        vector<RefTypeFieldState> Fields {};
     };
 
     struct TagsParsingContext
     {
-        unique_ptr<EngineMetadata> Meta {};
+        EngineMetadata Meta {[] { }};
         unordered_set<string> OtherEntityTypes {};
         unordered_map<string, unordered_map<string, string>> ComponentScopes {};
         unordered_map<string, RefTypeState> RefTypes {};
         vector<string> RefTypeRegistrationOrder {};
+        vector<unique_ptr<string>> NormalizedLines {};
         unordered_map<string, vector<CodeGenTagDesc>> CodeGenTags {};
         map<string, vector<vector<string>>> ResultTags {};
         string_view Target {};

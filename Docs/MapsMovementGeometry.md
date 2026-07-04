@@ -60,6 +60,8 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
+`mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
 ## Geometry helper responsibilities
 
 `GeometryHelper` is a static utility class. It owns coordinate projection and directional math such as:
@@ -101,6 +103,8 @@ Important `FindPathInput` fields:
 - `CheckHex` — callback returning block/defer status.
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
+
+Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
 
 ### FreeMovement end offset
 

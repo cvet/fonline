@@ -35,149 +35,251 @@
 
 #include "ScriptSystem.h"
 #include "Server.h"
+#include "TimeEvents.h"
 
 FO_BEGIN_NAMESPACE
 
+// SyncScope: requires self; reads persistence flag only.
 ///@ ExportMethod
-FO_SCRIPT_API bool Server_Entity_IsPersistent(ServerEntity* self)
+FO_SCRIPT_API bool Server_Entity_IsPersistent(ptr<ServerEntity> self)
 {
     return self->IsPersistent();
 }
 
+// SyncScope: requires self; persistence cascade may self-sync covered child entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Entity_MakePersistent(ServerEntity* self, bool persistent)
+FO_SCRIPT_API void Server_Entity_MakePersistent(ptr<ServerEntity> self, bool persistent)
 {
     self->GetEngine()->EntityMngr.MakePersistent(self, persistent, true);
 }
 
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFunc<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*> func)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, {});
 }
 
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, vector<any_t> {std::move(data)});
 }
 
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, to_vector(data));
 }
 
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, {});
+}
+
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, any_t data)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, vector<any_t> {std::move(data)});
+}
+
+// SyncScope: requires self to schedule; fired handler later gets dispatcher cover for self.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, {}, to_vector(data));
+}
+
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*> func)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, {});
 }
 
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
 }
 
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ServerEntity* self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
 {
     return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
 }
 
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, {});
+}
+
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, any_t data)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, vector<any_t> {std::move(data)});
+}
+
+// SyncScope: requires self to schedule repeating event; fired handler later gets dispatcher cover for self.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API uint32_t Server_Entity_StartTimeEvent(ptr<ServerEntity> self, timespan delay, timespan repeat, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    return self->GetEngine()->TimeEventMngr.StartTimeEvent(self, std::move(func), delay, repeat, to_vector(data));
+}
+
+// SyncScope: requires self; counts events bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*> func)
 {
     return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
 }
 
+// SyncScope: requires self; counts events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, any_t> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, any_t> func)
 {
     return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
 }
 
+// SyncScope: requires self; counts events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func)
 {
     return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
 }
 
+// SyncScope: requires self; counts events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ServerEntity* self, uint32_t id)
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func)
+{
+    return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, func.GetName(), {}));
+}
+
+// SyncScope: requires self; counts events bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API int32_t Server_Entity_CountTimeEvent(ptr<ServerEntity> self, uint32_t id)
 {
     return numeric_cast<int32_t>(self->GetEngine()->TimeEventMngr.CountTimeEvent(self, {}, id));
 }
 
+// SyncScope: requires self; stops events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_StopTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*> func)
+FO_SCRIPT_API void Server_Entity_StopTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*> func)
 {
     self->GetEngine()->TimeEventMngr.StopTimeEvent(self, func.GetName(), {});
 }
 
+// SyncScope: requires self; stops events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_StopTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, any_t> func)
+FO_SCRIPT_API void Server_Entity_StopTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, any_t> func)
 {
     self->GetEngine()->TimeEventMngr.StopTimeEvent(self, func.GetName(), {});
 }
 
+// SyncScope: requires self; stops events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_StopTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func)
+FO_SCRIPT_API void Server_Entity_StopTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func)
 {
     self->GetEngine()->TimeEventMngr.StopTimeEvent(self, func.GetName(), {});
 }
 
+// SyncScope: requires self; stops events bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_StopTimeEvent(ServerEntity* self, uint32_t id)
+FO_SCRIPT_API void Server_Entity_StopTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func)
+{
+    self->GetEngine()->TimeEventMngr.StopTimeEvent(self, func.GetName(), {});
+}
+
+// SyncScope: requires self; stops event bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API void Server_Entity_StopTimeEvent(ptr<ServerEntity> self, uint32_t id)
 {
     self->GetEngine()->TimeEventMngr.StopTimeEvent(self, {}, id);
 }
 
+// SyncScope: requires self; updates repeat for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*> func, timespan repeat)
+FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*> func, timespan repeat)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// SyncScope: requires self; updates repeat for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, any_t> func, timespan repeat)
+FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, any_t> func, timespan repeat)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// SyncScope: requires self; updates repeat for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, timespan repeat)
+FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, timespan repeat)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, repeat, std::nullopt);
 }
 
+// SyncScope: requires self; updates repeat for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ServerEntity* self, uint32_t id, timespan repeat)
+FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, timespan repeat)
+{
+    self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, repeat, std::nullopt);
+}
+
+// SyncScope: requires self; updates repeat for event bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API void Server_Entity_RepeatTimeEvent(ptr<ServerEntity> self, uint32_t id, timespan repeat)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, {}, id, repeat, std::nullopt);
 }
 
+// SyncScope: requires self; updates data for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_SetTimeEventData(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, any_t> func, any_t data)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
 }
 
+// SyncScope: requires self; updates data for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_SetTimeEventData(ServerEntity* self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>> func, readonly_vector<any_t> data)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, {}, to_vector(data));
 }
 
+// SyncScope: requires self; updates data for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_SetTimeEventData(ServerEntity* self, uint32_t id, any_t data)
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, any_t data)
+{
+    self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, {}, vector<any_t> {std::move(data)});
+}
+
+// SyncScope: requires self; updates data for event bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*> func, readonly_vector<any_t> data)
+{
+    self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, func.GetName(), {}, {}, to_vector(data));
+}
+
+// SyncScope: requires self; updates data for event bound to self, no cover change.
+///@ ExportMethod TimeEventRelated
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, uint32_t id, any_t data)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, {}, id, {}, vector<any_t> {std::move(data)});
 }
 
+// SyncScope: requires self; updates data for event bound to self, no cover change.
 ///@ ExportMethod TimeEventRelated
-FO_SCRIPT_API void Server_Entity_SetTimeEventData(ServerEntity* self, uint32_t id, readonly_vector<any_t> data)
+FO_SCRIPT_API void Server_Entity_SetTimeEventData(ptr<ServerEntity> self, uint32_t id, readonly_vector<any_t> data)
 {
     self->GetEngine()->TimeEventMngr.ModifyTimeEvent(self, {}, id, {}, to_vector(data));
 }

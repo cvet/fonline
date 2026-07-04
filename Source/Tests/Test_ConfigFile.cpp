@@ -205,7 +205,7 @@ TEST_CASE("ConfigFile")
     {
         const string source = "[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n";
         ConfigFile config {"Items.fopro", source};
-        vector<map<string_view, string_view>*> sections = config.GetSections("ProtoItem");
+        vector<ptr<map<string_view, string_view>>> sections = config.GetSections("ProtoItem");
 
         REQUIRE(sections.size() == 2);
         CHECK(sections[0]->at("$Name") == "One");
@@ -216,7 +216,7 @@ TEST_CASE("ConfigFile")
     {
         string source = "[ProtoItem]\n$Name = One\nName = Base\nName += Two\n";
         ConfigFile config {"Items.fopro", source};
-        vector<map<string_view, string_view>*> sections = config.GetSections("ProtoItem");
+        vector<ptr<map<string_view, string_view>>> sections = config.GetSections("ProtoItem");
 
         source.assign("broken");
 
@@ -253,7 +253,7 @@ TEST_CASE("ConfigFile")
         CHECK(config.HasSection("ProtoItem"));
         CHECK(config.GetAsStr("ProtoItem", "$Name") == "One");
         CHECK(config.GetSections("ProtoItem").size() == 1);
-        CHECK(config.GetSections().size() == 2);
+        CHECK(config.GetSections()->size() == 2);
     }
 
     SECTION("CollectsContentWhenStoppingAfterFirstSection")
@@ -265,7 +265,7 @@ TEST_CASE("ConfigFile")
         CHECK(config.HasSection("ShaderCommon"));
         CHECK_FALSE(config.HasSection("VertexShader"));
         CHECK(config.GetSections("ShaderCommon").size() == 1);
-        CHECK(config.GetSections().size() == 2);
+        CHECK(config.GetSections()->size() == 2);
         CHECK(config.GetSectionContent("ShaderCommon") == "line_1 line_2\n");
     }
 
@@ -273,17 +273,17 @@ TEST_CASE("ConfigFile")
     {
         ConfigFile config {"Items.fopro", "[ProtoItem]\n$Name = One\n"};
 
-        const auto* existing_section = config.GetSectionKeyValues("ProtoItem");
-        const auto* missing_section = config.GetSectionKeyValues("Missing");
-        vector<map<string_view, string_view>*> missing_sections = config.GetSections("Missing");
-        auto& all_sections = config.GetSections();
+        const auto existing_section = config.GetSectionKeyValues("ProtoItem");
+        const auto missing_section = config.GetSectionKeyValues("Missing");
+        vector<ptr<map<string_view, string_view>>> missing_sections = config.GetSections("Missing");
+        auto all_sections = config.GetSections();
 
-        REQUIRE(existing_section != nullptr);
+        REQUIRE(static_cast<bool>(existing_section));
         CHECK(existing_section->at("$Name") == "One");
-        CHECK(missing_section == nullptr);
+        CHECK_FALSE(static_cast<bool>(missing_section));
         CHECK(missing_sections.empty());
-        CHECK(all_sections.size() == 2);
-        CHECK(all_sections.begin()->first.empty());
+        CHECK(all_sections->size() == 2);
+        CHECK(all_sections->begin()->first.empty());
         CHECK(config.HasKey("ProtoItem", "$Name"));
         CHECK_FALSE(config.HasKey("ProtoItem", "Missing"));
         CHECK_FALSE(config.HasKey("Missing", "$Name"));
@@ -293,7 +293,7 @@ TEST_CASE("ConfigFile")
     {
         ConfigFile config {"Effect.fofx", "[VertexShader]\nvoid main1() {}\n[VertexShader]\nvoid main2() {}\n", ConfigFileOption::CollectContent};
 
-        vector<map<string_view, string_view>*> sections = config.GetSections("VertexShader");
+        vector<ptr<map<string_view, string_view>>> sections = config.GetSections("VertexShader");
 
         REQUIRE(sections.size() == 2);
         CHECK(sections[0]->at(string_view {}) == "void main1() {}\n");
@@ -323,9 +323,9 @@ TEST_CASE("ConfigFile")
     {
         const string source = "[Good]\n   = Ignored\n\t+= IgnoredToo\nKey = Value\n";
         ConfigFile config {"Test.cfg", source};
-        const auto* section = config.GetSectionKeyValues("Good");
+        const auto section = config.GetSectionKeyValues("Good");
 
-        REQUIRE(section != nullptr);
+        REQUIRE(static_cast<bool>(section));
         CHECK(section->size() == 1);
         CHECK_FALSE(config.HasKey("Good", string_view {}));
         CHECK(config.GetAsStr("Good", "Key") == "Value");
@@ -336,7 +336,7 @@ TEST_CASE("ConfigFile")
     BENCHMARK("ParseLargeConfig")
     {
         ConfigFile config {"Bench.fopro", benchmark_input};
-        return numeric_cast<int32_t>(config.GetSections().size());
+        return numeric_cast<int32_t>(config.GetSections()->size());
     };
 }
 

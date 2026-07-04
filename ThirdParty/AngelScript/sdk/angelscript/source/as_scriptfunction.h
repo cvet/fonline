@@ -45,6 +45,7 @@
 #include "as_array.h"
 #include "as_datatype.h"
 #include "as_atomic.h"
+#include <atomic> // (FOnline Patch): for the atomic GC flag below
 
 BEGIN_AS_NAMESPACE
 
@@ -315,7 +316,7 @@ public:
 
 	mutable asCAtomic            externalRefCount; // Used for external referneces
 	        asCAtomic            internalRefCount; // Used for internal references
-	mutable bool                 gcFlag;
+	mutable std::atomic<bool>    gcFlag; // (FOnline Patch): atomic so concurrent AddRef/Release from parallel script events don't data-race on this GC hint
 	asCScriptEngine             *engine;
 	asCModule                   *module;
 

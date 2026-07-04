@@ -59,7 +59,7 @@ public:
     using MessageCallback = function<void()>;
 
     ClientConnection() = delete;
-    explicit ClientConnection(ClientNetworkSettings& settings);
+    explicit ClientConnection(ptr<ClientNetworkSettings> settings);
     ClientConnection(const ClientConnection&) = delete;
     ClientConnection(ClientConnection&&) noexcept = delete;
     auto operator=(const ClientConnection&) = delete;
@@ -78,9 +78,10 @@ public:
     void Connect();
     void Process();
     void Disconnect();
+    void FlushPendingData();
 
-    raw_ptr<NetInBuffer> InBuf {&_netIn};
-    raw_ptr<NetOutBuffer> OutBuf {&_netOut};
+    ptr<NetInBuffer> InBuf {&_netIn};
+    ptr<NetOutBuffer> OutBuf {&_netOut};
 
 private:
     void CreateNetworkConnection(bool use_udp);
@@ -90,12 +91,11 @@ private:
     auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
-    void Net_SendUnresolvedHash(hstring::hash_t hash); // Send and flush immediately.
     void Net_OnHandshakeAnswer();
     void Net_OnPing();
 
-    raw_ptr<ClientNetworkSettings> _settings;
-    unique_ptr<NetworkClientConnection> _netConnection {};
+    ptr<ClientNetworkSettings> _settings;
+    unique_nptr<NetworkClientConnection> _netConnection {};
     bool _connectingOverUdp {};
     bool _connectingHandled {};
     bool _udpFallbackTried {};

@@ -1,4 +1,10 @@
+# Flush_Fog — composites the fog-of-war buffer into the frame as a darkening overlay.
+# Where: engine default for the FlushFog slot (composites the fog-of-war render target into the final frame).
+# How: samples the fog target where red is fog coverage and green/blue/alpha carry overlay colour; emits a black veil whose alpha is 1 minus the clamped fog (floored by FogBlackout), and where overlay coverage exists blends the overlay tint with its own softened alpha; fully transparent fragments are discarded.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthWrite = False
 
 [ShaderCommon]
 const float FogBlackout = 0.5;
@@ -6,7 +12,7 @@ const float OverlayBlackout = 0.4;
 const float OverlayAroundShining = 0.4;
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -17,7 +23,7 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     TexCoord = InTexCoord;
 }
 

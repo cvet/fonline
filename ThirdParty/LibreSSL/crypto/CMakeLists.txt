@@ -79,10 +79,6 @@ if(HOST_ASM_ELF_X86_64)
 	add_definitions(-DOPENSSL_BN_ASM_MONT)
 	add_definitions(-DOPENSSL_BN_ASM_MONT5)
 	set(CRYPTO_SRC ${CRYPTO_SRC} ${ASM_X86_64_ELF_SRC})
-
-	# Upstream sha{1,256,512}_amd64_generic.S omit the .note.GNU-stack section, causing the linker to mark the
-	# resulting executables/libraries as needing an executable stack. Force the assembler to emit the marker.
-	set_source_files_properties(${ASM_X86_64_ELF_SRC} PROPERTIES COMPILE_OPTIONS "-Wa,--noexecstack") #! (FOnline Patch)
 endif()
 
 if(HOST_ASM_MACOSX_X86_64)

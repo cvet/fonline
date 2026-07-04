@@ -33,7 +33,12 @@
 
 #include "BaseLogging.h"
 #include "GlobalData.h"
-#include "WinApi-Include.h"
+
+#if FO_WINDOWS
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -43,7 +48,7 @@ static void StartAsyncWorker();
 static void StopAsyncWorker() noexcept;
 static void AsyncWorkerLoop() noexcept;
 static void WriteSync(string_view message) noexcept;
-[[maybe_unused]] static void FlushLogAtExit();
+static void FlushLogAtExit();
 
 struct BaseLoggingData
 {
@@ -52,6 +57,8 @@ struct BaseLoggingData
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         const auto result = std::at_quick_exit(FlushLogAtExit);
         ignore_unused(result);
+#else
+        ignore_unused(FlushLogAtExit);
 #endif
 
 #if FO_WINDOWS
@@ -79,8 +86,12 @@ struct BaseLoggingData
 };
 FO_GLOBAL_DATA(BaseLoggingData, BaseLogging);
 
-extern void LogToFile(string_view path)
+extern void LogToFile(string_view path, bool append)
 {
+    if (build_condition<FO_WEB>()) {
+        return;
+    }
+
     bool open_failed = false;
 
     {
@@ -90,7 +101,8 @@ extern void LogToFile(string_view path)
             BaseLogging->LogFileHandle.close();
         }
 
-        BaseLogging->LogFileHandle.open(std::string(path), std::ios::out | std::ios::binary | std::ios::trunc);
+        const auto open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
+        BaseLogging->LogFileHandle.open(std::string(path), open_mode);
 
         if (!BaseLogging->LogFileHandle) {
             open_failed = true;
@@ -104,11 +116,22 @@ extern void LogToFile(string_view path)
 
 extern void SetAsyncLogWriting(bool enabled)
 {
+    if (build_condition<FO_WEB>()) {
+        return;
+    }
+
     if (enabled) {
         StartAsyncWorker();
     }
     else {
         StopAsyncWorker();
+    }
+}
+
+extern void SuspendAsyncLogWriting() noexcept
+{
+    if (BaseLogging != nullptr) {
+        BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
     }
 }
 
@@ -180,10 +203,6 @@ extern void WriteBaseLog(string_view message, const CatchedStackTraceData* st) n
 
 static void StartAsyncWorker()
 {
-    if (build_condition<FO_WEB>()) {
-        return;
-    }
-
     if (BaseLogging->AsyncWorker.joinable()) {
         return;
     }
@@ -200,10 +219,6 @@ static void StartAsyncWorker()
 
 static void StopAsyncWorker() noexcept
 {
-    if (build_condition<FO_WEB>()) {
-        return;
-    }
-
     if (!BaseLogging->AsyncWorker.joinable()) {
         BaseLogging->AsyncEnabled.store(false, std::memory_order_release);
         return;
@@ -236,7 +251,9 @@ static void AsyncWorkerLoop() noexcept
             {
                 std::unique_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
-                BaseLogging->AsyncSignal.wait(queue_lock, [] { return BaseLogging->AsyncFinish || !BaseLogging->AsyncQueue.empty() || BaseLogging->AsyncDroppedCount != 0; });
+                while (!BaseLogging->AsyncFinish && BaseLogging->AsyncQueue.empty() && BaseLogging->AsyncDroppedCount == 0) {
+                    BaseLogging->AsyncSignal.wait(queue_lock);
+                }
 
                 drained.swap(BaseLogging->AsyncQueue);
                 drained_drop_count = BaseLogging->AsyncDroppedCount;
@@ -291,6 +308,7 @@ static void WriteSync(string_view message) noexcept
         std::scoped_lock locker {BaseLogging->LogLocker};
 
         if (BaseLogging->LogFileHandle) {
+            BaseLogging->LogFileHandle.seekp(0, std::ios::end);
             BaseLogging->LogFileHandle << message;
             BaseLogging->LogFileHandle.flush();
         }
@@ -309,11 +327,11 @@ static void FlushLogAtExit()
         StopAsyncWorker();
 
         if (BaseLogging->LogLocker.try_lock()) {
-            std::scoped_lock locker {std::adopt_lock, BaseLogging->LogLocker};
-
             if (BaseLogging->LogFileHandle) {
                 BaseLogging->LogFileHandle.close();
             }
+
+            BaseLogging->LogLocker.unlock();
         }
     }
 }
@@ -380,7 +398,7 @@ extern void SafeWriteStackTrace(const StackTraceData& st) noexcept
 
         for (uint32_t i = 0; i < st.NativeFrameCount; i++) {
             WriteBaseLog("- [Native] 0x");
-            const auto addr = std::bit_cast<uintptr_t>(st.NativeFrames[i]);
+            const NativeStackFrameAddress addr = st.NativeFrames[i];
             WriteBaseLog(ItoA(static_cast<int64_t>(addr), itoa_buf, 16));
             WriteBaseLog("\n");
         }

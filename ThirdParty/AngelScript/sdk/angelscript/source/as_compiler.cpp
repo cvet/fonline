@@ -667,22 +667,28 @@ int asCCompiler::CompileFactory(asCBuilder *in_builder, asCScriptCode *in_script
 	int offset = (int)outFunc->GetSpaceNeededForArguments();
 	for( int a = int(outFunc->parameterTypes.GetLength()) - 1; a >= 0; a-- )
 	{
+		// (FOnline Patch) walk the alignment-aware argument slots and re-create the same padded layout for the
+		// constructor call: pad odd-sized slots before pushing the value so the value sits at the slot base
+		const int slotSize = outFunc->parameterTypes[a].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
+
 		if( !outFunc->parameterTypes[a].IsPrimitive() ||
 			outFunc->parameterTypes[a].IsReference() )
 		{
-			offset -= AS_PTR_SIZE;
+			offset -= slotSize;
 			byteCode.InstrSHORT(asBC_PshVPtr, short(-offset));
 		}
 		else
 		{
 			if( outFunc->parameterTypes[a].GetSizeOnStackDWords() == 2 )
 			{
-				offset -= 2;
+				offset -= slotSize;
 				byteCode.InstrSHORT(asBC_PshV8, short(-offset));
 			}
 			else
 			{
-				offset -= 1;
+				offset -= slotSize;
+				if( slotSize > 1 )
+					byteCode.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) argument slot padding
 				byteCode.InstrSHORT(asBC_PshV4, short(-offset));
 			}
 		}
@@ -748,7 +754,7 @@ void asCCompiler::FinalizeFunction()
 		}
 
 		// Move to next parameter
-		stackPos -= type.GetSizeOnStackDWords();
+		stackPos -= type.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 	// Add the return type too at the end if it returns on the stack, which is when it uses a hidden parameter
 	if (outFunc->DoesReturnOnStack())
@@ -881,7 +887,7 @@ int asCCompiler::SetupParametersAndReturnVariable(asCArray<asCString> &parameter
 			vs.DeclareVariable("", type, stackPos, onHeap);
 
 		// Move to next parameter
-		stackPos -= type.GetSizeOnStackDWords();
+		stackPos -= type.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 
 	for( n = asUINT(vs.variables.GetLength()); n-- > 0; )
@@ -2153,6 +2159,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 					return -1;
 				}
 
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
+
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
 
@@ -2374,6 +2385,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			{
 				asCByteCode tmpBC(engine);
 
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
+
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
 
@@ -2443,6 +2459,11 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			if( paramType->GetTokenType() == ttQuestion )
 			{
 				asCByteCode tmpBC(engine);
+
+				// (FOnline Patch) even argument slots: the '?' slot is 3 DWORDs of data padded to 4; the pad is
+				// pushed first (above the type id), and together they keep the stack parity even while the
+				// argument expression below them evaluates (nested calls stay on an 8-byte-aligned stack).
+				tmpBC.InstrDWORD(asBC_PshC4, 0);
 
 				// Place the type id on the stack as a hidden parameter
 				tmpBC.InstrDWORD(asBC_TYPEID, engine->GetTypeIdFromDataType(param));
@@ -2551,13 +2572,23 @@ int asCCompiler::PrepareArgument(asCDataType *paramType, asCExprContext *ctx, as
 			// Implicitly convert primitives to the parameter type
 			ImplicitConversion(ctx, dt, node, asIC_IMPLICIT_CONV);
 
+			// (FOnline Patch) even argument slots: a 1-DWORD by-value argument occupies a 2-DWORD slot; push the
+			// pad right before the value so the value lands at the 8-byte-aligned slot base. Emitting the pad
+			// after the expression evaluated keeps the stack parity even during the evaluation, so any nested
+			// call inside the argument expression still runs on an 8-byte-aligned stack.
+			const bool padArgSlot = dt.GetArgSlotSizeOnStackDWords() > dt.GetSizeOnStackDWords();
+
 			if( ctx->type.isVariable )
 			{
+				if( padArgSlot )
+					ctx->bc.InstrDWORD(asBC_PshC4, 0);
 				PushVariableOnStack(ctx, dt.IsReference());
 			}
 			else if( ctx->type.isConstant )
 			{
 				ConvertToVariable(ctx);
+				if( padArgSlot )
+					ctx->bc.InstrDWORD(asBC_PshC4, 0);
 				PushVariableOnStack(ctx, dt.IsReference());
 			}
 		}
@@ -2689,7 +2720,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 		offset += AS_PTR_SIZE;
 
 	if (descr->IsVariadic())
-		offset += 1;
+		offset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 
 #ifdef AS_DEBUG
 	// If the function being called is the opAssign or copy constructor for the same type
@@ -2796,7 +2827,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 			args[n]->type.isTemporary = false;
 		}
 
-		offset += descr->parameterTypes[realParamIdx].GetSizeOnStackDWords();
+		offset += descr->parameterTypes[realParamIdx].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 	}
 }
 
@@ -3769,6 +3800,9 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 							if (builder->GetFunctionDescription(funcs[0])->IsVariadic())
 							{
 								// Argument count
+								#if AS_PTR_SIZE == 2
+								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
+#endif
 								ctx.bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 							}
 
@@ -3869,7 +3903,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		// The `?` is then redundant - the local is widened to nullable for no
 		// reason and any subsequent `if (x == null)` check is dead code.
 		// Catches stale `T?` declarations left behind after an API tightened
-		// its return type from `FO_NULLABLE T*` to `T*`, or after a refactor
+		// its return type from `nptr<T>` to `ptr<T>`, or after a refactor
 		// extracted a previously-nullable expression into a non-nullable one.
 		// This trusts the static nullability of the source much like the deref
 		// (ttDot) and redundant-null-comparison checks do: reading a non-const
@@ -3884,7 +3918,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 		//     lookup substitutes its (possibly null) default and yields null on a
 		//     missing key, so its non-null element type does not make the read
 		//     non-null. A genuinely-non-null source must instead spell itself so
-		//     (`cast<T?>`, the `Nullable` property flag, `FO_NULLABLE`, ...).
+		//     (`cast<T?>`, the `Nullable` property flag, `nptr<T>`, ...).
 		const bool rhsIsConstHandleRef = expr->type.dataType.IsObjectHandle() &&
 			expr->type.dataType.IsReference() &&
 			expr->type.dataType.IsReadOnly() &&
@@ -4367,6 +4401,14 @@ void asCCompiler::CompileInitList(asCExprValue *var, asCScriptNode *node, asCByt
 	}
 
 	// After all values have been evaluated we know the final size of the buffer
+
+	// (FOnline Patch) A value-type element smaller than a dword is packed at its exact size, but its
+	// per-element asBC_COPY writes a dword-rounded number of bytes; for the final element that copy spills
+	// past the buffer end (heap-buffer-overflow caught by AddressSanitizer). Round the buffer up to a dword
+	// so the last copy stays in bounds. Element offsets are unchanged, so the list factory still reads the
+	// tightly-packed elements by count and simply ignores the trailing padding.
+	bufferSize = (bufferSize + 3u) & ~3u;
+
 	asCExprContext allocExpr(engine);
 	allocExpr.bc.InstrSHORT_DW(asBC_AllocMem, short(bufferVar), bufferSize);
 
@@ -4711,9 +4753,15 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 			else
 				size = AS_PTR_SIZE*4;
 
-			// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-			if( size >= 4 && (bufferSize & 0x3) )
-				bufferSize += 4 - (bufferSize & 0x3);
+			// (FOnline Patch) Align the element on its natural alignment in the list buffer (8 bytes for 8-byte
+			// inline value types such as ident_t/hstring/any_t/string and 8-byte primitives, 4 bytes otherwise).
+			// Shared with the writer/reader serializer and the list factories via GetListElementAlignment so the
+			// compile-and-run layout matches the loaded layout. Smaller types stay 4-byte packed.
+			{
+				const asUINT listElemAlign = GetListElementAlignment(dt, size);
+				if( size >= 4 && (bufferSize % listElemAlign) != 0 )
+					bufferSize += listElemAlign - (bufferSize % listElemAlign);
+			}
 
 			// Compile the lvalue
 			lctx.bc.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
@@ -4838,9 +4886,11 @@ int asCCompiler::CompileInitListElement(asSListPatternNode *&patternNode, asCScr
 					}
 					else if( func )
 					{
-						// Values on the list must be aligned to 32bit boundaries, except if the type is smaller than 32bit.
-						if( bufferSize & 0x3 )
-							bufferSize += 4 - (bufferSize & 0x3);
+						// (FOnline Patch) Align the default-constructed value-type element on its natural alignment
+						// (8 for 8-byte value types), matching GetListElementAlignment used everywhere else.
+						const asUINT listElemAlign = GetListElementAlignment(dt, (asUINT)dt.GetSizeInMemoryBytes());
+						if( (bufferSize % listElemAlign) != 0 )
+							bufferSize += listElemAlign - (bufferSize % listElemAlign);
 
 						// Call the constructor as a normal function
 						bcInit.InstrSHORT_DW(asBC_PshListElmnt, bufferVar, bufferSize);
@@ -7227,25 +7277,33 @@ int asCCompiler::GetVariableOffset(int varIndex)
 	// Start at 1 as offset 0 is reserved for the this pointer (or first argument for global functions)
 	int varOffset = 1;
 
-	// Skip lower variables
-	for( int n = 0; n < varIndex; n++ )
+	// (FOnline Patch) Single alignment-aware layout walk (mirrored in GetVariableSlot and the bytecode
+	// serializer). Pad each variable so its slot meets GetStackAlignmentDWords. Inert (no padding) until
+	// 8-byte value alignment is activated, so the layout stays byte-identical to the historical packing.
+	for( int n = 0; n <= varIndex && n < (int)variableAllocations.GetLength(); n++ )
 	{
-		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
-			varOffset += variableAllocations[n].GetSizeInMemoryDWords();
-		else
-			varOffset += variableAllocations[n].GetSizeOnStackDWords();
-	}
+		const bool inlineValue = !variableIsOnHeap[n] && variableAllocations[n].IsObject();
+		const int size = inlineValue ? variableAllocations[n].GetSizeInMemoryDWords()
+		                             : variableAllocations[n].GetSizeOnStackDWords();
+		const int alignDw = variableAllocations[n].GetStackAlignmentDWords(inlineValue);
 
-	if( varIndex < (int)variableAllocations.GetLength() )
-	{
-		// For variables larger than 1 dword the returned offset should be to the last dword
-		int size;
-		if( !variableIsOnHeap[varIndex] && variableAllocations[varIndex].IsObject() )
-			size = variableAllocations[varIndex].GetSizeInMemoryDWords();
-		else
-			size = variableAllocations[varIndex].GetSizeOnStackDWords();
-		if( size > 1 )
-			varOffset += size-1;
+		// Pad so the variable's last dword (its access offset, i.e. the base of the slot) is a multiple of alignDw
+		if( alignDw > 1 && size > 0 )
+		{
+			const int rem = (varOffset + size - 1) % alignDw;
+			if( rem != 0 )
+				varOffset += alignDw - rem;
+		}
+
+		if( n == varIndex )
+		{
+			// For variables larger than 1 dword the returned offset should be to the last dword
+			if( size > 1 )
+				varOffset += size - 1;
+			return varOffset;
+		}
+
+		varOffset += size;
 	}
 
 	return varOffset;
@@ -7257,10 +7315,21 @@ int asCCompiler::GetVariableSlot(int offset)
 	int varOffset = 1;
 	for( asUINT n = 0; n < variableAllocations.GetLength(); n++ )
 	{
-		if( !variableIsOnHeap[n] && variableAllocations[n].IsObject() )
-			varOffset += -1 + variableAllocations[n].GetSizeInMemoryDWords();
-		else
-			varOffset += -1 + variableAllocations[n].GetSizeOnStackDWords();
+		// (FOnline Patch) Mirror the alignment padding applied in GetVariableOffset so offset->slot inversion
+		// stays consistent. Inert until 8-byte value alignment is activated.
+		const bool inlineValue = !variableIsOnHeap[n] && variableAllocations[n].IsObject();
+		const int size = inlineValue ? variableAllocations[n].GetSizeInMemoryDWords()
+		                             : variableAllocations[n].GetSizeOnStackDWords();
+		const int alignDw = variableAllocations[n].GetStackAlignmentDWords(inlineValue);
+
+		if( alignDw > 1 && size > 0 )
+		{
+			const int rem = (varOffset + size - 1) % alignDw;
+			if( rem != 0 )
+				varOffset += alignDw - rem;
+		}
+
+		varOffset += size - 1;
 
 		if( varOffset == offset )
 			return n;
@@ -7522,12 +7591,21 @@ int asCCompiler::PerformAssignment(asCExprValue *lvalue, asCExprValue *rvalue, a
 		return -1;
 	}
 
-	// (FOnline Patch) Invalidate any smart-cast narrowing on this lvalue:
-	// once the local is reassigned, the old guard no longer covers the new
-	// value. The next read will see the variable's declared (nullable) type
-	// again and re-issue the guard if needed.
+	// (FOnline Patch) A smart-cast narrowing is a read-time refinement only; the write
+	// itself goes through the variable's declared type. If this lvalue was compiled under
+	// an active narrowing (the nullable bit was cleared off its declared-nullable type),
+	// restore that bit so the copy-instruction choice and the null-write guards below
+	// treat `x = null;` as a legal un-narrowing write into a nullable slot instead of a
+	// guaranteed-throwing asBC_RefCpyChk write into a non-nullable one. Then invalidate
+	// the narrowing: the old guard no longer covers the new value, so the next read sees
+	// the declared (nullable) type again and must re-issue the guard.
 	if (lvalue->isVariable)
+	{
+		if (lvalue->dataType.IsObjectHandle() && !lvalue->dataType.IsNullable() && GetNarrowedTypeForLocal(lvalue->stackOffset) != 0)
+			lvalue->dataType.MakeNullable(true);
+
 		InvalidateNarrowingForLocal(lvalue->stackOffset);
+	}
 
 	if( lvalue->dataType.IsPrimitive() )
 	{
@@ -16738,6 +16816,9 @@ int asCCompiler::MakeFunctionCall(asCExprContext *ctx, int funcId, asCObjectType
 	if (descr->IsVariadic())
 	{
 		// Argument count
+		#if AS_PTR_SIZE == 2
+		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
+#endif
 		ctx->bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 	}
 
@@ -18802,13 +18883,13 @@ void asCCompiler::PerformFunctionCall(int funcId, asCExprContext *ctx, bool isCo
 		{
 			// Compute the additional space used for the variadic args
 			asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];
-			int sizeOfVariadicArg = variadicType.GetSizeOnStackDWords();
+			int sizeOfVariadicArg = variadicType.GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
 
 			// GetSpaceNeededForArguments already added one variadic arg for the ..., but there might not actually be any
 			argSize -= sizeOfVariadicArg;
 
 			// Add 1 for the arg count
-			argSize++;
+			argSize += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
 
 			// Add the actual space used for the variadic args
 			argSize += sizeOfVariadicArg * (args->GetLength() - descr->parameterTypes.GetLength() + 1);

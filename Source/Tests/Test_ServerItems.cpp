@@ -156,10 +156,8 @@ namespace ServerItemsTest
         return resources;
     }
 
-    static auto WaitForStart(ServerEngine* server) -> string
+    static auto WaitForStart(ptr<ServerEngine> server) -> string
     {
-        FO_RUNTIME_ASSERT(server);
-
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -174,26 +172,29 @@ namespace ServerItemsTest
         return "ServerEngine startup timed out";
     }
 
-    static auto CreateLoggedPlayer(ServerEngine* server, string_view name) -> Player*
+    static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
     {
-        FO_RUNTIME_ASSERT(server);
-
-        auto* unlogined_player = server->CreateUnloginedPlayer(NetworkServer::CreateDummyConnection(server->Settings));
-
-        if (unlogined_player == nullptr) {
-            return nullptr;
-        }
+        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
 
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
-        return server->LoginPlayerToNewRecord(unlogined_player);
+        auto nullable_player = server->LoginPlayerToNewRecord(unlogined_player);
+        FO_VERIFY_AND_THROW(!!nullable_player, "Player login to new record failed");
+
+        return nullable_player.as_ptr();
+    }
+
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
 TEST_CASE("ServerItemCreationAndDestruction")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -203,7 +204,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -214,18 +215,19 @@ TEST_CASE("ServerItemCreationAndDestruction")
     const auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     const auto item_pid = fn("TestItem");
-    REQUIRE(server->GetProtoItem(item_pid) != nullptr);
+    REQUIRE(static_cast<bool>(server->GetProtoItem(item_pid)));
 
     const auto initial_item_count = server->EntityMngr.GetItemsCount();
     const auto initial_entity_count = server->EntityMngr.GetEntitiesCount();
 
     // Create item
-    auto* item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
-    REQUIRE(item != nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
 
     const auto item_id = item->GetId();
     CHECK(item->GetProtoId() == item_pid);
-    CHECK(server->EntityMngr.GetItem(item_id) == item);
+    auto nullable_item = server->EntityMngr.GetItem(item_id);
+    REQUIRE(nullable_item);
+    CHECK(nullable_item.as_ptr() == item);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > initial_entity_count);
 
@@ -239,26 +241,25 @@ TEST_CASE("ServerItemCreationAndDestruction")
     CHECK(last_item_id == item_id.underlying_value());
 
     // Create second item
-    auto* item2 = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
-    REQUIRE(item2 != nullptr);
+    auto item2 = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     CHECK(item2->GetId() != item_id);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 2);
 
     // Destroy items
     const auto item2_id = item2->GetId();
     server->ItemMngr.DestroyItem(item2);
-    CHECK(server->EntityMngr.GetItem(item2_id) == nullptr);
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(item2_id)));
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 1);
 
     server->ItemMngr.DestroyItem(item);
-    CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(item_id)));
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count);
 }
 
 TEST_CASE("ServerItemAddedToCritterInventory")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -268,7 +269,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -282,32 +283,31 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     const auto item_pid = fn("TestItem");
 
     // Create critter
-    auto* cr = server->CreateCritter(critter_pid, false);
-    REQUIRE(cr != nullptr);
+    auto cr = server->CreateCritter(critter_pid, false);
     CHECK_FALSE(cr->HasItems());
 
     // Add item to critter inventory via pid
-    auto* item = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
-    REQUIRE(item != nullptr);
+    auto item = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
+    REQUIRE(static_cast<bool>(item));
     CHECK(cr->HasItems());
 
-    auto inv_items = cr->GetInvItems();
+    vector<ptr<Item>> inv_items = cr->GetInvItems();
     CHECK_FALSE(inv_items.empty());
 
     const auto item_id = item->GetId();
     CHECK(cr->GetInvItem(item_id) == item);
 
     // Add second item
-    auto* item2 = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
-    REQUIRE(item2 != nullptr);
+    auto item2 = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
+    REQUIRE(static_cast<bool>(item2));
 
-    auto inv_items2 = cr->GetInvItems();
+    vector<ptr<Item>> inv_items2 = cr->GetInvItems();
     CHECK(inv_items2.size() >= 2);
 
     // Check via script
     auto cr_item_count_func = server->FindFunc<int64_t, Critter*>(fn("ServerItemsTest::GetCritterItemCount"));
     REQUIRE(cr_item_count_func);
-    REQUIRE(cr_item_count_func.Call(cr));
+    REQUIRE(cr_item_count_func.Call(cr.get()));
     CHECK(cr_item_count_func.GetResult() >= 2);
 
     // SubItemCritter removes by pid/count
@@ -328,7 +328,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
 TEST_CASE("ServerCritterLifecycleOperations")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -338,7 +338,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -353,12 +353,9 @@ TEST_CASE("ServerCritterLifecycleOperations")
     // Create multiple critters
     const auto cr_count_before = server->EntityMngr.GetCrittersCount();
 
-    auto* cr1 = server->CreateCritter(critter_pid, false);
-    auto* cr2 = server->CreateCritter(critter_pid, false);
-    auto* cr3 = server->CreateCritter(critter_pid, true);
-    REQUIRE(cr1 != nullptr);
-    REQUIRE(cr2 != nullptr);
-    REQUIRE(cr3 != nullptr);
+    auto cr1 = server->CreateCritter(critter_pid, false);
+    auto cr2 = server->CreateCritter(critter_pid, false);
+    auto cr3 = server->CreateCritter(critter_pid, true);
 
     CHECK(server->EntityMngr.GetCrittersCount() == cr_count_before + 3);
 
@@ -373,22 +370,26 @@ TEST_CASE("ServerCritterLifecycleOperations")
     CHECK(cr3->GetControlledByPlayer());
 
     // Entity lookup
-    CHECK(server->EntityMngr.GetEntity(cr1->GetId()) != nullptr);
-    CHECK(server->EntityMngr.GetCritter(cr1->GetId()) == cr1);
-    CHECK(server->EntityMngr.GetCritter(cr2->GetId()) == cr2);
-    CHECK(server->EntityMngr.GetCritter(cr3->GetId()) == cr3);
+    CHECK(static_cast<bool>(server->EntityMngr.GetEntity(cr1->GetId())));
+    auto nullable_cr1 = server->EntityMngr.GetCritter(cr1->GetId());
+    auto nullable_cr2 = server->EntityMngr.GetCritter(cr2->GetId());
+    auto nullable_cr3 = server->EntityMngr.GetCritter(cr3->GetId());
+    REQUIRE(nullable_cr1);
+    REQUIRE(nullable_cr2);
+    REQUIRE(nullable_cr3);
+    CHECK(nullable_cr1.as_ptr() == cr1);
+    CHECK(nullable_cr2.as_ptr() == cr2);
+    CHECK(nullable_cr3.as_ptr() == cr3);
 
     // Script alive/dead check
     auto is_alive_func = server->FindFunc<bool, Critter*>(fn("ServerItemsTest::TestCritterIsAlive"));
     REQUIRE(is_alive_func);
-    REQUIRE(is_alive_func.Call(cr1));
+    REQUIRE(is_alive_func.Call(cr1.get()));
     CHECK(is_alive_func.GetResult() == true);
 
     // Player login allocates persistent ids through the entity manager
-    auto* player1 = CreateLoggedPlayer(server.get(), "TestPlayer1");
-    auto* player2 = CreateLoggedPlayer(server.get(), "TestPlayer2");
-    REQUIRE(player1 != nullptr);
-    REQUIRE(player2 != nullptr);
+    auto player1 = CreateLoggedPlayer(server, "TestPlayer1");
+    auto player2 = CreateLoggedPlayer(server, "TestPlayer2");
     CHECK(player1->GetId() != ident_t {});
     CHECK(player2->GetId() != ident_t {});
     CHECK(player1->GetId() != player2->GetId());
@@ -396,7 +397,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
     // Unload player critter
     const auto cr3_id = cr3->GetId();
     server->UnloadCritter(cr3);
-    CHECK(server->EntityMngr.GetCritter(cr3_id) == nullptr);
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr3_id)));
 
     // Health info contains something
     const auto health = server->GetHealthInfo();
@@ -412,7 +413,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
 TEST_CASE("ServerEntityManagerQueries")
 {
     auto settings = MakeSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, MakeResources());
+    auto server = MakeServerEngine(settings);
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -422,7 +423,7 @@ TEST_CASE("ServerEntityManagerQueries")
         });
     });
 
-    const auto startup_error = WaitForStart(server.get());
+    const auto startup_error = WaitForStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
@@ -441,47 +442,45 @@ TEST_CASE("ServerEntityManagerQueries")
     CHECK(server->EntityMngr.GetPlayersCount() == 0);
 
     // Entities collection
-    const auto& entities = server->EntityMngr.GetEntities();
+    const vector<refcount_ptr<ServerEntity>> entities = server->EntityMngr.GetEntities();
     const auto entities_before = entities.size();
 
     // Items collection access
-    const auto& items = server->EntityMngr.GetItems();
+    const vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
     const auto items_before = items.size();
 
-    auto* item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
-    REQUIRE(item != nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
     CHECK(server->EntityMngr.GetItems().size() == items_before + 1);
 
     // Critters collection access
-    const auto& critters = server->EntityMngr.GetCritters();
+    const vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
     const auto cr_before = critters.size();
 
-    auto* cr = server->CreateCritter(critter_pid, false);
-    REQUIRE(cr != nullptr);
+    auto cr = server->CreateCritter(critter_pid, false);
     CHECK(server->EntityMngr.GetCritters().size() == cr_before + 1);
 
     // Locations collection (should be empty in this test)
-    const auto& locations = server->EntityMngr.GetLocations();
+    const vector<refcount_ptr<Location>> locations = server->EntityMngr.GetLocations();
     CHECK(locations.empty());
 
     // Maps collection (should be empty)
-    const auto& maps = server->EntityMngr.GetMaps();
+    const vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
     CHECK(maps.empty());
 
     // Players collection (no players connected)
-    const auto& players = server->EntityMngr.GetPlayers();
+    const vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
     CHECK(players.empty());
 
     // Entities grew after creating item and critter
     CHECK(server->EntityMngr.GetEntities().size() >= entities_before + 2);
 
     // Non-existent entity returns null
-    CHECK(server->EntityMngr.GetEntity(ident_t {999999}) == nullptr);
-    CHECK(server->EntityMngr.GetCritter(ident_t {999999}) == nullptr);
-    CHECK(server->EntityMngr.GetItem(ident_t {999999}) == nullptr);
-    CHECK(server->EntityMngr.GetLocation(ident_t {999999}) == nullptr);
-    CHECK(server->EntityMngr.GetMap(ident_t {999999}) == nullptr);
-    CHECK(server->EntityMngr.GetPlayer(ident_t {999999}) == nullptr);
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetEntity(ident_t {999999})));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(ident_t {999999})));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(ident_t {999999})));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(ident_t {999999})));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetMap(ident_t {999999})));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetPlayer(ident_t {999999})));
 
     // Cleanup
     server->ItemMngr.DestroyItem(item);

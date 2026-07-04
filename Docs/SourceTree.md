@@ -33,7 +33,7 @@ Shared runtime code used by client/server/tools/scripts. Key areas include:
 - Engine base and shared setup: `EngineBase.*`, `Common.*`.
 - Entities/properties/prototypes: `Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `ProtoManager.*`.
 - Maps and movement: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
-- Networking primitives: `NetBuffer.*`, `NetCommand.*`, `NetworkUdp.*`.
+- Networking primitives: `NetBuffer.*`, `NetworkUdp.*`.
 - Config/data access: `ConfigFile.*`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`.
 - Script bridge: `ScriptSystem.*`.
 

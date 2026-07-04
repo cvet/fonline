@@ -154,6 +154,11 @@ namespace ClientServerIntegrationClient
     {
         return DisconnectedCalls;
     }
+
+    string UnitTestReadCritterModelName(Critter cr)
+    {
+        return cr.ModelName.str;
+    }
 }
 )"},
                 {"Scripts/ClientServerIntegrationClientShared.fos", R"(
@@ -248,10 +253,18 @@ namespace ClientServerIntegrationClient
         return resources;
     }
 
-    static auto WaitForServerStart(ServerEngine* server) -> string
+    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        FO_RUNTIME_ASSERT(server);
+        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+    }
 
+    static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
+    {
+        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, MakeClientTestResources(), &GetApp()->MainWindow);
+    }
+
+    static auto WaitForServerStart(ptr<ServerEngine> server) -> string
+    {
         for (int32_t i = 0; i < 6000; i++) {
             if (server->IsStarted()) {
                 return {};
@@ -266,12 +279,10 @@ namespace ClientServerIntegrationClient
         return "ServerEngine startup timed out";
     }
 
-    static auto GetServerConnectionCount(ServerEngine* server) -> size_t
+    static auto GetServerConnectionCount(ptr<ServerEngine> server) -> size_t
     {
-        FO_RUNTIME_ASSERT(server);
-
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-        const auto unlock = scope_exit([server]() noexcept { safe_call([server] { server->Unlock(); }); });
+        const auto unlock = scope_exit([server]() noexcept { safe_call([server] { server.get_no_const()->Unlock(); }); });
 
         const auto health_info = server->GetHealthInfo();
         constexpr string_view prefix {"Connections: "};
@@ -290,15 +301,10 @@ namespace ClientServerIntegrationClient
         return value;
     }
 
-    static auto WaitForConnected(ClientEngine* client, ServerEngine* server) -> bool
+    static auto WaitForServerConnectionCount(ptr<ServerEngine> server, size_t expected_connections) -> bool
     {
-        FO_RUNTIME_ASSERT(client);
-        FO_RUNTIME_ASSERT(server);
-
         for (int32_t i = 0; i < 2000; i++) {
-            client->MainLoop();
-
-            if (client->IsConnected() && client->GetCurPlayer() != nullptr && GetServerConnectionCount(server) == 1) {
+            if (GetServerConnectionCount(server) == expected_connections) {
                 return true;
             }
 
@@ -308,15 +314,47 @@ namespace ClientServerIntegrationClient
         return false;
     }
 
-    static auto WaitForDisconnected(ClientEngine* client, ServerEngine* server) -> bool
+    static auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
-        FO_RUNTIME_ASSERT(client);
-        FO_RUNTIME_ASSERT(server);
-
         for (int32_t i = 0; i < 2000; i++) {
             client->MainLoop();
 
-            if (!client->IsConnecting() && !client->IsConnected() && client->GetCurPlayer() == nullptr && GetServerConnectionCount(server) == 0) {
+            if (client->IsConnected() && client->GetCurPlayer() && GetServerConnectionCount(server) == expected_connections) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
+    static auto WaitForDisconnected(ptr<ClientEngine> client, ptr<ServerEngine> server) -> bool
+    {
+        for (int32_t i = 0; i < 2000; i++) {
+            client->MainLoop();
+
+            if (!client->IsConnecting() && !client->IsConnected() && !client->GetCurPlayer() && GetServerConnectionCount(server) == 0) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
+    static auto WaitForLearnedHash(ptr<ClientEngine> client, hstring::hash_t hash, string_view expected_string) -> bool
+    {
+        constexpr int32_t max_attempts = 15000;
+
+        for (int32_t i = 0; i < max_attempts; i++) {
+            client->MainLoop();
+
+            bool failed = false;
+            const hstring resolved = client->Hashes.ResolveHash(hash, &failed);
+
+            if (!failed && string_view {resolved.as_str()} == expected_string) {
                 return true;
             }
 
@@ -336,14 +374,11 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
-        safe_call([&client] {
-            client->Disconnect();
-            client->Shutdown();
-        });
+        safe_call([&client] { client->Shutdown(); });
 
         safe_call([&server] {
             if (server->IsStarted()) {
@@ -352,14 +387,14 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.get());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    CHECK(GetServerConnectionCount(server.get()) == 0);
+    CHECK(GetServerConnectionCount(server) == 0);
     CHECK_FALSE(client->IsConnecting());
     CHECK_FALSE(client->IsConnected());
-    CHECK(client->GetCurPlayer() == nullptr);
+    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
 
     const auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
@@ -380,14 +415,14 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
 
     client->Connect();
 
-    REQUIRE(WaitForConnected(client.get(), server.get()));
+    REQUIRE(WaitForConnected(client, server));
 
     CHECK(client->IsConnected());
     CHECK_FALSE(client->IsConnecting());
-    REQUIRE(client->GetCurPlayer() != nullptr);
-    CHECK(client->GetConnection().GetBytesSend() > 0);
-    CHECK(client->GetConnection().GetBytesReceived() > 0);
-    CHECK(GetServerConnectionCount(server.get()) == 1);
+    REQUIRE(static_cast<bool>(client->GetCurPlayer()));
+    CHECK(client->GetConnection()->GetBytesSend() > 0);
+    CHECK(client->GetConnection()->GetBytesReceived() > 0);
+    CHECK(GetServerConnectionCount(server) == 1);
 
     REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectingCalls"), connecting_calls));
     REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetConnectedCalls"), connected_calls));
@@ -401,18 +436,18 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
 
     client->Disconnect();
 
-    REQUIRE(WaitForDisconnected(client.get(), server.get()));
+    REQUIRE(WaitForDisconnected(client, server));
 
     CHECK_FALSE(client->IsConnecting());
     CHECK_FALSE(client->IsConnected());
-    CHECK(client->GetCurPlayer() == nullptr);
-    CHECK(GetServerConnectionCount(server.get()) == 0);
+    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
+    CHECK(GetServerConnectionCount(server) == 0);
 
     REQUIRE(client->CallFunc(get_client_func_name("ClientServerIntegrationClient::UnitTestGetDisconnectedCalls"), disconnected_calls));
     CHECK(disconnected_calls >= 1);
 }
 
-TEST_CASE("ClientReportsUnresolvedHashServerDisconnectsAndTeachesOnReconnect")
+TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;
 
@@ -421,8 +456,61 @@ TEST_CASE("ClientReportsUnresolvedHashServerDisconnectsAndTeachesOnReconnect")
     auto server_settings = MakeServerTestSettings(port);
     auto client_settings = MakeClientTestSettings(port);
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, MakeServerTestResources());
-    auto client = SafeAlloc::MakeRefCounted<ClientEngine>(client_settings, MakeClientTestResources(), App->MainWindow);
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+    bool client_shutdown = false;
+    int32_t shutdown_disconnected_calls = 0;
+
+    const auto shutdown = scope_exit([&server, &client, &client_shutdown]() noexcept {
+        safe_call([&client, &client_shutdown] {
+            if (!client_shutdown) {
+                client->Shutdown();
+            }
+        });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    Entity::EventCallbackData shutdown_disconnect_observer;
+    shutdown_disconnect_observer.Callback = [&shutdown_disconnected_calls](FuncCallData&) {
+        shutdown_disconnected_calls++;
+        return Entity::EventResult::ContinueChain;
+    };
+    shutdown_disconnect_observer.SubscriptionPtr = reinterpret_cast<uintptr_t>(&shutdown_disconnected_calls);
+    client->OnDisconnected.Subscribe(std::move(shutdown_disconnect_observer));
+
+    client->Shutdown();
+    client_shutdown = true;
+
+    CHECK_FALSE(client->IsConnecting());
+    CHECK_FALSE(client->IsConnected());
+    CHECK_FALSE(static_cast<bool>(client->GetCurPlayer()));
+    CHECK(shutdown_disconnected_calls == 1);
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
+TEST_CASE("ClientAndServerInterthreadConnectionKeepsProcessingAfterHandshake")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
 
     const auto shutdown = scope_exit([&server, &client]() noexcept {
         safe_call([&client] {
@@ -437,46 +525,148 @@ TEST_CASE("ClientReportsUnresolvedHashServerDisconnectsAndTeachesOnReconnect")
         });
     });
 
-    const auto startup_error = WaitForServerStart(server.get());
+    const auto startup_error = WaitForServerStart(server);
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
     client->Connect();
-    REQUIRE(WaitForConnected(client.get(), server.get()));
+    REQUIRE(WaitForConnected(client, server));
 
-    // A string the server knows but the client doesn't — mimics a runtime hstring the client can't resolve
-    const auto reported = server->Hashes.ToHashedString("integration_test_only_hash");
+    const auto bytes_received_after_handshake = client->GetConnection()->GetBytesReceived();
 
-    {
-        bool failed = false;
-        (void)client->Hashes.ResolveHash(reported.as_hash(), &failed);
-        REQUIRE(failed); // The client genuinely can't resolve it yet
-    }
+    bool received_post_handshake_packet = false;
 
-    // Send the exact wire message ClientConnection emits when it hits an unresolved hash
-    client->GetConnection().OutBuf->StartMsg(NetMessage::UnresolvedHash);
-    client->GetConnection().OutBuf->Write<hstring::hash_t>(reported.as_hash());
-    client->GetConnection().OutBuf->EndMsg();
-
-    // The server logs the report and drops the connection on receipt
-    REQUIRE(WaitForDisconnected(client.get(), server.get()));
-    CHECK_FALSE(client->IsConnected());
-    CHECK(GetServerConnectionCount(server.get()) == 0);
-
-    // On reconnect the server sends back the resolved string, so the client learns it
-    client->Connect();
-    REQUIRE(WaitForConnected(client.get(), server.get()));
-
-    // Pump a few frames so the post-InitData HashList message is processed
-    for (int32_t i = 0; i < 50; i++) {
+    for (int32_t i = 0; i < 1000; i++) {
         client->MainLoop();
+
+        if (client->GetConnection()->GetBytesReceived() > bytes_received_after_handshake) {
+            received_post_handshake_packet = true;
+            break;
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
 
+    CHECK(received_post_handshake_packet);
+}
+
+TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    // A string the server knows but the client doesn't РІР‚вЂќ mimics a runtime hstring the client can't resolve
+    const auto reported = server->Hashes.ToHashedString("integration_test_only_hash");
+
+    // Send the exact wire message ClientEngine emits when it hits an unresolved hash
+    client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
+    client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
+    client->GetConnection()->OutBuf->EndMsg();
+
+    REQUIRE(WaitForLearnedHash(client, reported.as_hash(), "integration_test_only_hash"));
+    CHECK(client->IsConnected());
+    CHECK(GetServerConnectionCount(server) == 1);
+
+    auto second_client = MakeClientEngine(client_settings);
+    const auto shutdown_second_client = scope_exit([&second_client]() noexcept { safe_call([&second_client] { second_client->Shutdown(); }); });
+
+    second_client->Connect();
+    REQUIRE(WaitForConnected(second_client, server, 2));
+    REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
+    CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    // Linux debug stack traces for the expected script exception below can outlive the default ping window.
+    BakerTests::OverrideSetting(server_settings.ClientPingTime, 120000);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    // A server-only runtime hstring that is not read through NetInBuffer, matching lazy property/script resolves
+    const auto reported = server->Hashes.ToHashedString("integration_test_lazy_hash");
+
+    auto nullable_critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
+    REQUIRE(static_cast<bool>(nullable_critter_registrator));
+
+    auto critter_registrator = nullable_critter_registrator.as_ptr();
+    auto critter_props = Properties(critter_registrator);
+    auto nullable_model_name_prop = nullable_critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
+    REQUIRE(static_cast<bool>(nullable_model_name_prop));
+    auto model_name_prop = nullable_model_name_prop.as_ptr();
+
+    const hstring::hash_t unresolved_hash = reported.as_hash();
+    critter_props.SetRawData(model_name_prop, {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
+
+    auto nullable_proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));
+    REQUIRE(static_cast<bool>(nullable_proto));
+
+    auto proto = nullable_proto.as_ptr();
+    nptr<const Properties> critter_props_ptr = &critter_props;
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
+    const auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+
+    // Trigger the same client unresolved-hash reporter without forcing a slow script exception.
     bool failed = false;
-    const auto resolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
-    CHECK_FALSE(failed);
-    CHECK(resolved.as_str() == "integration_test_only_hash");
+    const hstring unresolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
+    CHECK(failed);
+    CHECK_FALSE(static_cast<bool>(unresolved));
+
+    REQUIRE(WaitForLearnedHash(client, reported.as_hash(), "integration_test_lazy_hash"));
+    CHECK(client->IsConnected());
+    CHECK(GetServerConnectionCount(server) == 1);
+
+    string model_name;
+    REQUIRE(client->CallFunc<string, CritterView*>(get_client_func_name("ClientServerIntegrationClient::UnitTestReadCritterModelName"), critter.get(), model_name));
+    CHECK(model_name == "integration_test_lazy_hash");
 }
 
 FO_END_NAMESPACE

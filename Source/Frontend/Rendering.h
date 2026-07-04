@@ -46,6 +46,8 @@ using WindowInternalHandle = void;
 
 constexpr size_t EFFECT_MAX_PASSES = FO_EFFECT_MAX_PASSES;
 constexpr size_t EFFECT_SCRIPT_VALUES = FO_EFFECT_SCRIPT_VALUES;
+constexpr float32_t ORTHO_DEPTH_DEFAULT_NEAR = -10.0f;
+constexpr float32_t ORTHO_DEPTH_DEFAULT_FAR = 10.0f;
 
 #if FO_ENABLE_3D
 constexpr size_t MODEL_LAYERS_COUNT = FO_MODEL_LAYERS_COUNT;
@@ -125,6 +127,18 @@ enum class BlendEquationType : uint8_t
     Min,
 };
 
+enum class DepthFuncType : uint8_t
+{
+    Always, // Default (zero-init): write depth, never reject — opaque geometry
+    Never,
+    Less,
+    LessEqual,
+    Equal,
+    GreaterEqual,
+    Greater,
+    NotEqual,
+};
+
 struct Vertex2D
 {
     float32_t PosX {};
@@ -167,7 +181,7 @@ public:
     [[nodiscard]] virtual auto GetTexturePixel(ipos32 pos) const -> ucolor = 0;
     [[nodiscard]] virtual auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> = 0;
 
-    virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const ucolor* data, bool use_dest_pitch = false) = 0;
+    virtual void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch = false) = 0;
 
     const isize32 Size;
     const float32_t SizeData[4]; // Width, Height, TexelWidth, TexelHeight
@@ -217,9 +231,9 @@ public:
     // the comment lists the corresponding GLSL declaration and which channel
     // holds what; producers cited in parentheses.
 
-    // GLSL: uniform ProjBuf { mat4 ProjectionMatrix; };
-    // Column-major 4x4 view-projection matrix.
-    // (Renderer::ProjectionMatrixColMaj for 2D, 3dStuff::_frameProjColMaj for 3D.)
+    // GLSL: uniform ProjBuf { mat4 ProjMatrix; };
+    // Column-major 4x4 view-proj matrix.
+    // (Renderer::ProjMatrix for 2D, ModelInstance frame/direct projections for 3D.)
     struct ProjBuffer
     {
         float32_t ProjMatrix[16] {};
@@ -366,7 +380,7 @@ public:
     auto operator=(RenderEffect&&) noexcept = delete;
     virtual ~RenderEffect() = default;
 
-    [[nodiscard]] auto GetName() const -> const string& { return _name; }
+    [[nodiscard]] auto GetName() const -> string_view { return _name; }
     [[nodiscard]] auto GetUsage() const -> EffectUsage { return _usage; }
     [[nodiscard]] auto GetPassCount() const -> size_t { return _passCount; }
 
@@ -388,14 +402,14 @@ public:
     [[nodiscard]] auto IsNeedModelAnimBuf() const -> bool { return _needModelAnimBuf; }
 #endif
 
-    [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
+    [[nodiscard]] auto CanBatch(ptr<const RenderEffect> other) const -> bool;
 
     // Input data
-    raw_ptr<const RenderTexture> MainTex {};
-    raw_ptr<const RenderTexture> IndoorMaskTex {};
+    nptr<const RenderTexture> MainTex {};
+    nptr<const RenderTexture> IndoorMaskTex {};
     bool DisableBlending {};
 #if FO_ENABLE_3D
-    raw_ptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
+    nptr<RenderTexture> ModelTex[MODEL_MAX_TEXTURES] {};
     bool DisableShadow {};
     bool DisableCulling {};
     size_t MatrixCount {};
@@ -415,7 +429,7 @@ public:
     optional<ModelAnimBuffer> ModelAnimBuf {};
 #endif
 
-    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, const RenderTexture* custom_tex = nullptr) = 0;
+    virtual void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, nptr<const RenderTexture> custom_tex = nullptr) = 0;
 
 protected:
     RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);
@@ -446,6 +460,7 @@ protected:
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
     bool _depthWrite[EFFECT_MAX_PASSES] {};
+    DepthFuncType _depthFunc[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
     bool _isShadow[EFFECT_MAX_PASSES] {};
 #endif
@@ -481,13 +496,15 @@ public:
     [[nodiscard]] virtual auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> = 0;
-    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 = 0;
-    [[nodiscard]] virtual auto GetViewPort() -> irect32 = 0;
+    [[nodiscard]] virtual auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 = 0;
+    [[nodiscard]] virtual auto GetProjMatrix() const -> mat44 = 0;
+    [[nodiscard]] virtual auto GetViewPort() const -> irect32 = 0;
     [[nodiscard]] virtual auto IsRenderTargetFlipped() const -> bool = 0;
 
-    virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
+    virtual void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) = 0;
     virtual void Present() = 0;
-    virtual void SetRenderTarget(RenderTexture* tex) = 0;
+    virtual void SetRenderTarget(nptr<RenderTexture> tex) = 0;
+    virtual void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept = 0;
     virtual void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(irect32 rect) = 0;
     virtual void DisableScissor() = 0;
@@ -500,13 +517,15 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> irect32 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override;
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override { return mat44 {1.0f}; }
 
-    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
     void Present() override;
-    void SetRenderTarget(RenderTexture* tex) override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t /*nearp*/, float32_t /*farp*/) noexcept override { }
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
@@ -514,7 +533,7 @@ public:
 
 private:
     irect32 _viewPortRect {};
-    raw_ptr<RenderTexture> _currentRenderTarget {};
+    nptr<RenderTexture> _currentRenderTarget {};
     bool _scissorEnabled {};
     irect32 _scissorRect {};
 };
@@ -533,20 +552,22 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> irect32 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return true; }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
     void Present() override;
-    void SetRenderTarget(RenderTexture* tex) override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
 
 private:
-    unique_ptr<Context> _ctx {};
+    unique_nptr<Context> _ctx {};
 };
 
 #endif
@@ -564,20 +585,22 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> irect32 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
     void Present() override;
-    void SetRenderTarget(RenderTexture* tex) override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
 
 private:
-    unique_ptr<Context> _ctx {};
+    unique_nptr<Context> _ctx {};
 };
 
 #endif
@@ -595,20 +618,22 @@ public:
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
-    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44 override;
-    [[nodiscard]] auto GetViewPort() -> irect32 override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
     [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
 
-    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
     void Present() override;
-    void SetRenderTarget(RenderTexture* tex) override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
     void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
     void EnableScissor(irect32 rect) override;
     void DisableScissor() override;
     void OnResizeWindow(isize32 size) override;
 
 private:
-    unique_ptr<Context> _ctx {};
+    unique_nptr<Context> _ctx {};
 };
 
 #endif

@@ -54,6 +54,29 @@ TEST_CASE("RawCopyBaker")
         CHECK_FALSE(rig.Outputs.contains("Data/config.json"));
     }
 
+    SECTION("SkipsExplicitTargetWithUnsupportedExtension")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Data/config.json", "{\"enabled\":true}\n", 10);
+        rig.AddSourceFile("Data/readme.txt", "skip\n", 11);
+
+        RawCopyBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Data/readme.txt");
+
+        CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("SkipsMissingExplicitTarget")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Data/config.json", "{\"enabled\":true}\n", 10);
+
+        RawCopyBaker baker(rig.MakeContext());
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Data/missing.json");
+
+        CHECK(rig.Outputs.empty());
+    }
+
     SECTION("BakeCheckerCanSkipCopy")
     {
         TestRig rig;
@@ -63,6 +86,23 @@ TEST_CASE("RawCopyBaker")
         baker.BakeFiles(rig.GetAllSourceFiles(), "");
 
         CHECK(rig.Outputs.empty());
+    }
+
+    SECTION("BakeCheckerCanSkipExplicitTarget")
+    {
+        TestRig rig;
+        rig.AddSourceFile("Data/config.json", "{\"enabled\":true}\n", 10);
+
+        vector<pair<string, uint64_t>> checks;
+        RawCopyBaker baker(rig.MakeContext("TestPack", [&checks](string_view path, uint64_t write_time) {
+            checks.emplace_back(string(path), write_time);
+            return false;
+        }));
+        baker.BakeFiles(rig.GetAllSourceFiles(), "Data/config.json");
+
+        CHECK(rig.Outputs.empty());
+        REQUIRE(checks.size() == 1);
+        CHECK(checks.front() == pair<string, uint64_t> {"Data/config.json", 10});
     }
 }
 

@@ -21,9 +21,11 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 - [Docs/ConfigurationAndDataSources.md](Docs/ConfigurationAndDataSources.md) - config parsing, settings, data sources, file lookup, and caches.
 - [Docs/Testing.md](Docs/Testing.md) - test-suite inventory, generated test targets, coverage, and validation routing.
 - [Docs/DocumentationMaintenance.md](Docs/DocumentationMaintenance.md) - source-grounded docs maintenance workflow.
+- [Docs/ThirdPartyMaintenance.md](Docs/ThirdPartyMaintenance.md) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/ClientUpdater.md](Docs/ClientUpdater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
 - [Docs/Debugging.md](Docs/Debugging.md) - stack traces, debugger helpers, native debugging, and validation notes.
-- [Docs/Nullability.md](Docs/Nullability.md) - `T?` / `FO_NULLABLE` script/native boundary contract.
+- [Docs/Nullability.md](Docs/Nullability.md) - `T?` script / `ptr<T>`·`nptr<T>` native boundary contract.
+- [Docs/SmartPointers.md](Docs/SmartPointers.md) - native smart-pointer vocabulary (`ptr<T>`/`nptr<T>` borrows, `unique_*`/`refcount_*` owners, engine-own `shared_ptr`/`weak_ptr`), raw-pointer allowlist, and audit expectations.
 - [Docs/MapperTools.md](Docs/MapperTools.md) - mapper automation and native mapper helper integration points.
 - [Docs/WebDebugging.md](Docs/WebDebugging.md) - web target build/debug workflow.
 - [Docs/AndroidDebugging.md](Docs/AndroidDebugging.md) - Android target build/debug workflow.
@@ -49,9 +51,12 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
+- Use the engine smart-pointer vocabulary from `Source/Essentials/SmartPointers.h` — `ptr<T>`/`nptr<T>` for borrows, `unique_*`/`refcount_*` for owners, engine-own `shared_ptr`/`weak_ptr` via `SafeAlloc::MakeShared()` — instead of `std::` smart pointers or bare raw `T*`. Raw pointers remain only at the documented ABI/low-level allowlist boundaries; inside a function, bind them to wrappers before ordinary engine work and unwrap with `.get()` only at the final handoff. See [Docs/SmartPointers.md](Docs/SmartPointers.md); embedding projects may gate this with an audit tool (Last Frontier: `Tools/SmartPointerAudit/`).
 - Prefer `static` free functions for file-local helpers instead of unnamed namespaces.
+- Gate conditional compilation on our own (`FO_*` / project) macros with `#if FOO` / `#if !FOO`, never `#ifdef` / `#ifndef`: every such macro is mandatorily `#define`d to `0` or `1`, so its definedness must never carry meaning — only its value does.
 - Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
 - Use `ignore_unused(...)` only for variables/objects; for an intentionally ignored function-call result, write `(void)FunctionCall(...)`.
 - For C++ string/text construction and parsing, prefer existing engine helpers such as `strex` and `strvex` when they make formatting or token handling clearer. If the helper surface is missing a repeated string-formatting operation, add a reusable helper in the appropriate engine utility layer instead of open-coding ad hoc parsing/formatting at call sites.
+- Include layering: non-Essentials engine code must consume Essentials modules through `Common.h`, not by including individual `Source/Essentials/*.h` headers directly. STL headers are centralized through `BasicCore.h`; add or adjust standard-library includes there instead of including `<...>` headers from higher layers.
 - Keep docs reusable: describe engine behavior first; mention Last Frontier only as an embedding-project example, never as an engine-doc dependency or validation owner.
 - Keep `README.md` human-oriented and `AGENTS.md` AI-oriented. `CLAUDE.md` is intentionally only a pointer to `@AGENTS.md`.

@@ -75,7 +75,7 @@ public:
         string Value {};
     };
 
-    explicit Impl(const AngelScriptBackend* backend, DebuggerEndpointServer* owner);
+    explicit Impl(ptr<const AngelScriptBackend> backend);
 
     Impl(const Impl&) = delete;
     auto operator=(const Impl&) = delete;
@@ -94,8 +94,8 @@ public:
     void RequestSingleStep(DebuggerStepMode mode);
     auto ConsumeSingleStepRequest() -> DebuggerStepMode;
     void SetBreakpoints(string_view source_path, const vector<uint32_t>& lines);
-    void SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason);
-    void ProcessLine(AngelScript::asIScriptContext* ctx);
+    void SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason);
+    void ProcessLine(ptr<AngelScript::asIScriptContext> ctx);
     auto HasBreakpoint(string_view source_path, uint32_t line) const -> bool;
     void EmitEvent(string_view event_name, string_view body_json = "{}");
     void Stop() noexcept;
@@ -120,7 +120,18 @@ private:
     void HandleTcpClient(tcp_socket client_sock);
     void RunDiscoveryResponder();
 
-    raw_ptr<DebuggerEndpointServer> _owner {};
+    static void AngelScriptLine(AngelScript::asIScriptContext* raw_ctx, void* param)
+    {
+        FO_NO_STACK_TRACE_ENTRY();
+
+        FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
+        ptr<AngelScript::asIScriptContext> ctx = raw_ctx;
+        nptr<DebuggerEndpointServer::Impl> nullable_debugger = cast_from_void<DebuggerEndpointServer::Impl*>(param);
+        FO_VERIFY_AND_THROW(!!nullable_debugger, "Missing debugger line callback user data");
+        auto debugger = nullable_debugger.as_ptr();
+        debugger->ProcessLine(ctx);
+    }
+
     string _endpoint {};
     string _instanceId {};
     string _host {};
@@ -132,39 +143,36 @@ private:
     std::atomic_bool _pauseStartPending {false};
     std::atomic_bool _singleStepRequested {false};
     std::atomic<DebuggerStepMode> _singleStepMode {DebuggerStepMode::In};
-    raw_ptr<AngelScript::asIScriptContext> _pausedContext {};
-    raw_ptr<AngelScript::asIScriptContext> _pausedRootContext {};
+    nptr<AngelScript::asIScriptContext> _pausedContext {};
+    nptr<AngelScript::asIScriptContext> _pausedRootContext {};
     std::atomic_bool _clientConnected {false};
     std::atomic_bool _hasAnyBreakpoints {false};
     std::atomic_bool _stopped {false};
-    std::thread _thread {};
-    std::thread _discoveryThread {};
-    std::shared_mutex _clientIoLocker {};
-    mutable std::mutex _stackTraceLocker {};
-    StackTraceData _lastStackTrace {};
-    vector<vector<LocalVariableInfo>> _lastLocalsByFrame {};
-    string _lastStoppedSourcePath {};
-    uint32_t _lastStoppedSourceLine {};
-    string _lastStoppedFunction {};
-    bool _hasLastStoppedLocation {};
-    mutable std::mutex _breakpointsLocker {};
-    unordered_map<string, unordered_set<uint32_t>> _lineBreakpoints {};
+    thread _thread {};
+    thread _discovery {};
+    shared_mutex _clientIoLocker {};
+    mutable mutex _stackTraceLocker {};
+    StackTraceData _lastStackTrace FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    vector<vector<LocalVariableInfo>> _lastLocalsByFrame FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    string _lastStoppedSourcePath FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    uint32_t _lastStoppedSourceLine FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    string _lastStoppedFunction FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    bool _hasLastStoppedLocation FO_TSA_GUARDED_BY(_stackTraceLocker) {};
+    mutable mutex _breakpointsLocker {};
+    unordered_map<string, unordered_set<uint32_t>> _lineBreakpoints FO_TSA_GUARDED_BY(_breakpointsLocker) {};
     tcp_server _tcpServer {};
     tcp_socket _activeClientSock {};
     udp_socket _discoverySocket {};
 };
 
-DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEndpointServer* owner) :
-    _owner {owner}
+DebuggerEndpointServer::Impl::Impl(ptr<const AngelScriptBackend> backend)
 {
     FO_STACK_TRACE_ENTRY();
-
-    FO_RUNTIME_ASSERT(_owner);
 
     _bindHost = "0.0.0.0";
 
     if (backend->HasGameEngine()) {
-        const string host = backend->GetGameEngine()->Settings.DebuggerBindHost;
+        const string host = backend->GetGameEngine()->Settings->DebuggerBindHost;
 
         if (!host.empty()) {
             _bindHost = host;
@@ -190,7 +198,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
     }
 
     const bool sockets_startup = net_sockets::startup();
-    FO_RUNTIME_ASSERT(sockets_startup);
+    FO_VERIFY_AND_THROW(sockets_startup, "Socket subsystem startup failed");
 
     constexpr uint16_t base_port = ANGELSCRIPT_DEBUGGER_TCP_BASE_PORT;
     constexpr uint16_t span = ANGELSCRIPT_DEBUGGER_TCP_PORT_SPAN;
@@ -217,7 +225,7 @@ DebuggerEndpointServer::Impl::Impl(const AngelScriptBackend* backend, DebuggerEn
     }
 
     _thread = run_thread("Debugger", [this]() { this->Run(); });
-    _discoveryThread = run_thread("DebuggerDiscovery", [this]() { this->RunDiscoveryResponder(); });
+    _discovery = run_thread("DebuggerDiscovery", [this]() { this->RunDiscoveryResponder(); });
 }
 
 DebuggerEndpointServer::Impl::~Impl()
@@ -272,47 +280,47 @@ void DebuggerEndpointServer::Impl::SetBreakpoints(string_view source_path, const
 
     const string key = strvex(source_path).extract_file_name().str();
 
-    std::scoped_lock locker {_breakpointsLocker};
+    scoped_lock locker {_breakpointsLocker};
 
     if (lines.empty()) {
         _lineBreakpoints.erase(key);
     }
     else {
-        auto& source_breakpoints = _lineBreakpoints[key];
-        source_breakpoints.clear();
+        ptr<unordered_set<uint32_t>> source_breakpoints = &_lineBreakpoints[key];
+        source_breakpoints->clear();
 
         for (const uint32_t line : lines) {
-            source_breakpoints.emplace(line);
+            source_breakpoints->emplace(line);
         }
     }
 
     _hasAnyBreakpoints = !_lineBreakpoints.empty();
 }
 
-void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason)
+void DebuggerEndpointServer::Impl::SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
-    FO_RUNTIME_ASSERT(ctx_ext);
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     if (reason == AngelScriptContextSetupReason::Create) {
         int32_t as_result = 0;
-        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), cast_to_void(_owner.get()), AngelScript::asCALL_CDECL));
+        FO_AS_VERIFY(ctx->SetLineCallback(asFUNCTION(AngelScriptLine), cast_to_void(this), AngelScript::asCALL_CDECL));
         ctx_ext->StepState = SafeAlloc::MakeShared<DebuggerStepState>();
     }
     else if (reason == AngelScriptContextSetupReason::Request) {
-        if (ctx_ext->Parent != nullptr) {
-            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
-            FO_RUNTIME_ASSERT(parent_ctx_ext);
+        if (ctx_ext->Parent) {
+            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.as_ptr());
+            FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::In ? DebuggerStepMode::In : DebuggerStepMode::None;
         }
     }
     else if (reason == AngelScriptContextSetupReason::Return) {
-        if (ctx_ext->Parent != nullptr) {
-            auto* parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.get());
-            FO_RUNTIME_ASSERT(parent_ctx_ext);
+        if (ctx_ext->Parent) {
+            auto parent_ctx_ext = AngelScriptContextExtendedData::Get(ctx_ext->Parent.as_ptr());
+            FO_VERIFY_AND_THROW(parent_ctx_ext, "Parent context extended data is null");
 
             if (ctx_ext->StepState->Mode == DebuggerStepMode::None) {
                 parent_ctx_ext->StepState->Mode = parent_ctx_ext->StepState->Mode == DebuggerStepMode::Out ? DebuggerStepMode::Out : DebuggerStepMode::None;
@@ -327,7 +335,7 @@ void DebuggerEndpointServer::Impl::SetupContext(AngelScript::asIScriptContext* c
     }
 }
 
-void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ctx)
+void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext> ctx)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -335,24 +343,25 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
         return;
     }
 
-    auto* ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
 
-    if (ctx_ext == nullptr) {
+    if (!ctx_ext) {
         return;
     }
 
     const auto resolve_debug_location = [&]() {
         const uint32_t ctx_line = numeric_cast<uint32_t>(ctx->GetLineNumber());
-        const auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(ctx->GetEngine()->GetUserData(5));
-        const auto& orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt);
-        const uint32_t orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt);
+        ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+        nptr<const Preprocessor::LineNumberTranslator> lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(5));
+        const string_view orig_file = Preprocessor::ResolveOriginalFile(ctx_line, lnt.get());
+        const uint32_t orig_line = Preprocessor::ResolveOriginalLine(ctx_line, lnt.get());
         const uint32_t debugger_line = orig_line > 0 ? numeric_cast<uint32_t>(orig_line - 1) : 0u;
         return std::make_pair(string {orig_file}, debugger_line);
     };
 
     const auto get_function_name = [&]() -> string_view {
-        const auto* current_func = ctx->GetFunction();
-        return current_func != nullptr ? string_view {current_func->GetName()} : string_view {};
+        nptr<const AngelScript::asIScriptFunction> current_func = ctx->GetFunction();
+        return current_func ? string_view {current_func->GetName()} : string_view {};
     };
 
     const auto emit_stopped = [&](string_view reason, string_view text, string_view source_path, uint32_t source_line, string_view function_name) {
@@ -377,7 +386,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     };
 
     const auto capture_stack_trace = [&](string_view source_path, uint32_t source_line, string_view function_name) {
-        std::scoped_lock locker {_stackTraceLocker};
+        scoped_lock locker {_stackTraceLocker};
 
         _lastStackTrace = GetStackTrace();
         _lastStoppedSourcePath = string {source_path};
@@ -392,52 +401,54 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
         for (uint32_t stack_level = 0; stack_level < callstack_size; stack_level++) {
             const AngelScript::asUINT as_stack_level = numeric_cast<AngelScript::asUINT>(stack_level);
             const int32_t vars_count = ctx->GetVarCount(as_stack_level);
-            auto& frame_vars = _lastLocalsByFrame[numeric_cast<size_t>(stack_level)];
-            frame_vars.reserve(vars_count > 0 ? numeric_cast<size_t>(vars_count) : 0);
+            ptr<vector<LocalVariableInfo>> frame_vars = &_lastLocalsByFrame[numeric_cast<size_t>(stack_level)];
+            frame_vars->reserve(vars_count > 0 ? numeric_cast<size_t>(vars_count) : 0);
 
             for (int32_t var_index = 0; var_index < vars_count; var_index++) {
                 const AngelScript::asUINT as_var_index = numeric_cast<AngelScript::asUINT>(var_index);
-                const char* var_name = nullptr;
+                nptr<const char> var_name;
                 int var_type_id = 0;
                 AngelScript::asETypeModifiers type_modifiers = AngelScript::asTM_NONE;
                 bool is_var_on_heap = false;
                 int stack_offset = 0;
-                ctx->GetVar(as_var_index, as_stack_level, &var_name, &var_type_id, &type_modifiers, &is_var_on_heap, &stack_offset);
+                ctx->GetVar(as_var_index, as_stack_level, var_name.get_pp(), &var_type_id, &type_modifiers, &is_var_on_heap, &stack_offset);
                 ignore_unused(type_modifiers);
                 ignore_unused(is_var_on_heap);
                 ignore_unused(stack_offset);
-                const auto* var_decl = ctx->GetVarDeclaration(as_var_index, as_stack_level, true);
-                auto* var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level, false, false);
+                const nptr<const char> var_decl = ctx->GetVarDeclaration(as_var_index, as_stack_level, true);
+                nptr<void> nullable_var_addr = ctx->GetAddressOfVar(as_var_index, as_stack_level, false, false);
 
                 LocalVariableInfo var;
-                var.Name = var_name != nullptr && *var_name != '\0' ? string {var_name} : strex("var{}", var_index).str();
-                var.Type = var_decl != nullptr ? string {var_decl} : string {};
+                var.Name = var_name && *var_name != '\0' ? string {var_name.get()} : strex("var{}", var_index).str();
+                var.Type = var_decl ? string {var_decl.get()} : string {};
 
-                if (var_addr != nullptr) {
+                if (nullable_var_addr) {
                     const bool is_handle = (var_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
                     const int32_t base_type_id = var_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
 
                     if (is_handle) {
-                        const auto* obj = *static_cast<void**>(var_addr);
-                        var.Value = obj != nullptr ? GetScriptObjectInfo(obj, base_type_id) : string {"null"};
+                        auto nullable_obj = NativeDataProvider::ReadHandleSlot(nullable_var_addr.as_ptr());
+                        var.Value = nullable_obj ? GetScriptObjectInfo(nullable_obj.as_ptr(), base_type_id) : string {"null"};
                     }
                     else {
-                        var.Value = GetScriptObjectInfo(var_addr, base_type_id);
+                        var.Value = GetScriptObjectInfo(nullable_var_addr.as_ptr(), base_type_id);
                     }
                 }
                 else {
                     var.Value = "<unavailable>";
                 }
 
-                frame_vars.emplace_back(std::move(var));
+                frame_vars->emplace_back(std::move(var));
             }
         }
     };
 
-    auto* step_state = ctx_ext->StepState.get();
+    nptr<DebuggerStepState> nullable_step_state = ctx_ext->StepState.get();
+    FO_VERIFY_AND_THROW(!!nullable_step_state, "Missing debugger step state for context");
+    auto step_state = nullable_step_state.as_ptr();
 
     if (ConsumePauseStart()) {
-        const auto& [source_path, source_line] = resolve_debug_location();
+        const auto [source_path, source_line] = resolve_debug_location();
 
         step_state->LastStoppedDepth = ctx->GetCallstackSize();
         step_state->HasLastStoppedDepth = true;
@@ -456,7 +467,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
     }
 
     if (HasAnyBreakpoints()) {
-        const auto& [source_path, source_line] = resolve_debug_location();
+        const auto [source_path, source_line] = resolve_debug_location();
 
         if (HasBreakpoint(source_path, source_line)) {
             step_state->LastStoppedDepth = ctx->GetCallstackSize();
@@ -508,7 +519,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
             step_state->BaseSourceLine = step_state->BreakpointSourceLine;
         }
         else {
-            const auto& [source_path, source_line] = resolve_debug_location();
+            const auto [source_path, source_line] = resolve_debug_location();
             step_state->BaseSourcePath = source_path;
             step_state->BaseSourceLine = source_line;
         }
@@ -516,7 +527,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(AngelScript::asIScriptContext* ct
 
     if (step_state->Mode != DebuggerStepMode::None) {
         const uint32_t depth = ctx->GetCallstackSize();
-        const auto& [source_path, source_line] = resolve_debug_location();
+        const auto [source_path, source_line] = resolve_debug_location();
         const bool has_moved_from_base_location = !step_state->BaseSourcePath.has_value() || step_state->BaseSourceLine != source_line || step_state->BaseSourcePath != source_path;
 
         const bool should_stop = [&]() -> bool {
@@ -562,7 +573,7 @@ auto DebuggerEndpointServer::Impl::HasBreakpoint(string_view source_path, uint32
 
     const string key = strvex(source_path).extract_file_name().str();
 
-    std::scoped_lock locker {_breakpointsLocker};
+    scoped_lock locker {_breakpointsLocker};
 
     const auto it = _lineBreakpoints.find(key);
 
@@ -594,7 +605,7 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
     _singleStepRequested = false;
 
     {
-        std::scoped_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
         _activeClientSock.close();
     }
 
@@ -604,8 +615,8 @@ void DebuggerEndpointServer::Impl::Stop() noexcept
     if (_thread.joinable()) {
         _thread.join();
     }
-    if (_discoveryThread.joinable()) {
-        _discoveryThread.join();
+    if (_discovery.joinable()) {
+        _discovery.join();
     }
 }
 
@@ -670,14 +681,13 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::shared_lock locker {_clientIoLocker};
+    shared_lock locker {_clientIoLocker};
 
     if (!_activeClientSock.can_write(ANGELSCRIPT_DEBUGGER_IO_POLL_TIMEOUT)) {
         return false;
     }
 
-    const auto bytes = span<const uint8_t>(reinterpret_cast<const uint8_t*>(message.data()), message.size());
-    return _activeClientSock.send(bytes) > 0;
+    return _activeClientSock.send(string_to_span(message)) > 0;
 }
 
 auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> RequestResult
@@ -803,7 +813,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             uint32_t stopped_line {};
 
             {
-                std::scoped_lock locker {_stackTraceLocker};
+                scoped_lock locker {_stackTraceLocker};
 
                 frames = _lastStackTrace;
                 has_stopped_location = _hasLastStoppedLocation;
@@ -848,13 +858,13 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
                     continue;
                 }
 
-                const auto& entry = script_frames[numeric_cast<size_t>(logical_raw_index)];
+                ptr<const StackTraceFrame> entry = &script_frames[numeric_cast<size_t>(logical_raw_index)];
 
                 nlohmann::json frame;
                 frame["id"] = i + 1;
-                frame["name"] = !entry.Function.empty() ? entry.Function : std::string {"frame"};
-                frame["source"] = entry.File;
-                frame["line"] = entry.Line > 0 ? entry.Line - 1 : 0u;
+                frame["name"] = !entry->Function.empty() ? entry->Function : std::string {"frame"};
+                frame["source"] = entry->File;
+                frame["line"] = entry->Line > 0 ? entry->Line - 1 : 0u;
                 body["stackFrames"].push_back(std::move(frame));
             }
 
@@ -886,7 +896,7 @@ auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> Reques
             vector<LocalVariableInfo> frame_vars;
 
             {
-                std::scoped_lock locker {_stackTraceLocker};
+                scoped_lock locker {_stackTraceLocker};
 
                 const int32_t frames_count = numeric_cast<int32_t>(_lastLocalsByFrame.size());
 
@@ -978,13 +988,13 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
     bool handshake_sent = false;
 
     {
-        std::unique_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
         _activeClientSock = std::move(client_sock);
         _clientConnected = _activeClientSock.is_valid();
     }
 
     const auto clear_active_client = scope_exit([&]() noexcept {
-        std::unique_lock locker {_clientIoLocker};
+        scoped_lock locker {_clientIoLocker};
 
         _activeClientSock.close();
         _clientConnected = false;
@@ -999,7 +1009,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
         int32_t read_size {};
 
         {
-            std::shared_lock locker {_clientIoLocker};
+            shared_lock locker {_clientIoLocker};
 
             if (!_activeClientSock.is_valid()) {
                 break;
@@ -1016,7 +1026,7 @@ void DebuggerEndpointServer::Impl::HandleTcpClient(tcp_socket client_sock)
             break;
         }
 
-        pending.append(reinterpret_cast<const char*>(read_buf.data()), reinterpret_cast<const char*>(read_buf.data()) + read_size);
+        pending.append(span_to_string({read_buf.data(), numeric_cast<size_t>(read_size)}));
 
         for (;;) {
             const size_t line_end = pending.find('\n');
@@ -1096,20 +1106,19 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
             continue;
         }
 
-        const string_view request = string_view(reinterpret_cast<const char*>(read_buf.data()), numeric_cast<size_t>(read_size));
+        const string_view request = span_to_string({read_buf.data(), numeric_cast<size_t>(read_size)});
 
         if (!strvex(request).starts_with(ANGELSCRIPT_DEBUGGER_DISCOVERY_PROBE)) {
             continue;
         }
 
         const string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
-        const auto bytes = span<const uint8_t>(reinterpret_cast<const uint8_t*>(response.data()), response.size());
-        _discoverySocket.send_to(remote_host, remote_port, bytes);
+        _discoverySocket.send_to(remote_host, remote_port, string_to_span(response));
     }
 }
 
-DebuggerEndpointServer::DebuggerEndpointServer(const AngelScriptBackend* backend) :
-    _impl {SafeAlloc::MakeUnique<Impl>(backend, this)}
+DebuggerEndpointServer::DebuggerEndpointServer(ptr<const AngelScriptBackend> backend) :
+    _impl {SafeAlloc::MakeUnique<Impl>(backend)}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -1128,7 +1137,7 @@ auto DebuggerEndpointServer::IsPaused() const noexcept -> bool
     return _impl->IsPaused();
 }
 
-void DebuggerEndpointServer::SetupContext(AngelScript::asIScriptContext* ctx, AngelScriptContextSetupReason reason)
+void DebuggerEndpointServer::SetupContext(ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1147,15 +1156,6 @@ void DebuggerEndpointServer::Stop()
     FO_NO_STACK_TRACE_ENTRY();
 
     _impl->Stop();
-}
-
-void DebuggerEndpointServer::AngelScriptLine(AngelScript::asIScriptContext* ctx, void* param)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto* debugger = cast_from_void<DebuggerEndpointServer*>(param);
-    FO_RUNTIME_ASSERT(debugger);
-    debugger->_impl->ProcessLine(ctx);
 }
 
 FO_END_NAMESPACE

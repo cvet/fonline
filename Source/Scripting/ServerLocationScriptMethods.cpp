@@ -33,12 +33,14 @@
 
 #include "Common.h"
 
+#include "ScriptSystem.h"
 #include "Server.h"
 
 FO_BEGIN_NAMESPACE
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, Map*, bool> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, Location*, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -51,8 +53,9 @@ FO_SCRIPT_API void Server_Location_SetupScript(Location* self, ScriptFunc<void, 
     self->SetInitScript(initFunc.GetName().first);
 }
 
+// SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
+FO_SCRIPT_API void Server_Location_SetupScriptEx(ptr<Location> self, hstring initFunc)
 {
     if (!ScriptHelpers::CallInitScript(self->GetEngine(), self, initFunc, true)) {
         throw ScriptException("Call init failed", initFunc);
@@ -61,75 +64,99 @@ FO_SCRIPT_API void Server_Location_SetupScriptEx(Location* self, hstring initFun
     self->SetInitScript(initFunc);
 }
 
+// SyncScope: requires self; creates and attaches a child map under the location cover.
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, hstring mapPid)
+FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, hstring mapPid)
 {
-    Map* map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
+    }
+
+    auto map = self->GetEngine()->MapMngr.CreateMap(mapPid, self);
     return map;
 }
 
+// SyncScope: requires self; creates and attaches a child map under the location cover.
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_AddMap(Location* self, ProtoMap* mapProto)
+FO_SCRIPT_API ptr<Map> Server_Location_AddMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    Map* map = self->GetEngine()->MapMngr.CreateMap(mapProto->GetProtoId(), self);
+    ptr<const ProtoMap> map_proto_ptr = mapProto;
+
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot add a map to a location that is being destroyed", self->GetId());
+    }
+
+    auto map = self->GetEngine()->MapMngr.CreateMap(map_proto_ptr->GetProtoId(), self);
     return map;
 }
 
+// SyncScope: requires self; counts child maps covered by the location cover.
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Server_Location_GetMapCount(Location* self)
+FO_SCRIPT_API int32_t Server_Location_GetMapCount(ptr<Location> self)
 {
     return numeric_cast<int32_t>(self->GetMapsCount());
 }
 
+// SyncScope: requires self; returned map is covered by self while the location cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, hstring mapPid)
+FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, hstring mapPid)
 {
-    for (auto& map : self->GetMaps()) {
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    for (ptr<Map> map : maps) {
         if (map->GetProtoId() == mapPid) {
-            return map.get();
+            return map;
         }
     }
 
     return nullptr;
 }
 
+// SyncScope: requires self; returned map is covered by self while the location cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API FO_NULLABLE Map* Server_Location_GetMap(Location* self, ProtoMap* mapProto)
+FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap> mapProto)
 {
-    for (auto& map : self->GetMaps()) {
-        if (map->GetProtoId() == mapProto->GetProtoId()) {
-            return map.get();
+    ptr<const ProtoMap> map_proto_ptr = mapProto;
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    for (ptr<Map> map : maps) {
+        if (map->GetProtoId() == map_proto_ptr->GetProtoId()) {
+            return map;
         }
     }
 
     return nullptr;
 }
 
+// SyncScope: requires self; returned map is covered by self while the location cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API Map* Server_Location_GetMapByIndex(Location* self, int32_t index)
+FO_SCRIPT_API ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
-    auto maps = self->GetMaps();
+    auto map = self->GetMapByIndex(index).as_ptr();
+    return map;
+}
 
-    if (index < 0 || index >= numeric_cast<int32_t>(maps.size())) {
-        throw ScriptException("Invalid index arg", index);
+// SyncScope: requires self; returned maps are covered by self while the location cover remains.
+///@ ExportMethod
+FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(ptr<Location> self)
+{
+    vector<ptr<Map>> maps = self->GetMaps();
+
+    return MakeScriptHandleVector<Map>(maps);
+}
+
+// SyncScope: requires self; regenerates all child maps covered by the location cover.
+///@ ExportMethod
+FO_SCRIPT_API void Server_Location_Regenerate(ptr<Location> self)
+{
+    if (self->IsDestroying()) {
+        throw ScriptException("Cannot regenerate a location that is being destroyed", self->GetId());
     }
 
-    return maps[index].get();
-}
+    vector<ptr<Map>> maps = self->GetMaps();
 
-///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(Location* self)
-{
-    auto maps = self->GetMaps();
-    vector<Map*> result = vec_transform(maps, [](auto&& map) -> Map* { return map.get(); });
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API void Server_Location_Regenerate(Location* self)
-{
-    for (auto& map : self->GetMaps()) {
-        self->GetEngine()->MapMngr.RegenerateMap(map.get());
+    for (ptr<Map> map : maps) {
+        self->GetEngine()->MapMngr.RegenerateMap(map);
     }
 }
 

@@ -7,7 +7,7 @@ FO_BEGIN_NAMESPACE
 class DbMemory final : public DataBaseImpl
 {
 public:
-    explicit DbMemory(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) :
+    explicit DbMemory(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback))
     {
         StartCommitThread();
@@ -26,7 +26,7 @@ protected:
     {
         ignore_unused(key_type);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         _collections.try_emplace(collection_name);
     }
@@ -35,7 +35,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
@@ -54,7 +54,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         const auto& collection = _collections.at(collection_name);
 
@@ -66,12 +66,12 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database insert received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
-        FO_RUNTIME_ASSERT(!collection.count(id));
+        FO_VERIFY_AND_THROW(!collection.count(id), "Memory database collection already contains the inserted record id", collection_name, id);
 
         collection.emplace(id, doc.Copy());
     }
@@ -80,9 +80,9 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(!doc.Empty());
+        FO_VERIFY_AND_THROW(!doc.Empty(), "Memory database update received an empty document", collection_name, id);
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
 
@@ -101,7 +101,7 @@ protected:
     {
         FO_STACK_TRACE_ENTRY();
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
         auto& collection = _collections.at(collection_name);
 
@@ -122,17 +122,20 @@ protected:
 
         constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
-        const auto info_row = [](const char* key, string_view value) {
+        const auto info_row = [](string_view key, string_view value) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(key);
+            ImGuiTextUnformatted(key);
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(value.data(), value.data() + value.size());
+            ImGuiTextUnformatted(value);
         };
 
-        std::scoped_lock locker {_storageLocker};
+        scoped_lock locker {_storageLocker};
 
-        if (ImGui::TreeNode(strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).c_str())) {
+        const string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
+        ptr<const char> memory_docs_label_cstr = memory_docs_label.c_str();
+
+        if (ImGui::TreeNode(memory_docs_label_cstr.get())) {
             if (_collections.empty()) {
                 ImGui::TextUnformatted("No memory collections");
             }
@@ -140,17 +143,23 @@ protected:
             for (auto&& [collection_name, collection] : _collections) {
                 ImGui::PushID(static_cast<const void*>(&collection));
 
-                if (ImGui::TreeNode(strex("{} ({})", collection_name.as_str(), collection.size()).c_str())) {
+                const string collection_label = strex("{} ({})", collection_name.as_str(), collection.size()).str();
+                ptr<const char> collection_label_cstr = collection_label.c_str();
+
+                if (ImGui::TreeNode(collection_label_cstr.get())) {
                     for (auto&& [id, doc] : collection) {
                         ImGui::PushID(static_cast<const void*>(&doc));
 
-                        if (ImGui::TreeNode(strex("{} ({} keys)", id, doc.Size()).c_str())) {
+                        const string doc_label = strex("{} ({} keys)", id, doc.Size()).str();
+                        ptr<const char> doc_label_cstr = doc_label.c_str();
+
+                        if (ImGui::TreeNode(doc_label_cstr.get())) {
                             if (ImGui::BeginTable("##DocFields", 2, TABLE_FLAGS)) {
                                 ImGui::TableSetupColumn("Key", ImGuiTableColumnFlags_WidthFixed, 220.0f);
                                 ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
 
                                 for (auto&& [doc_key, doc_value] : doc) {
-                                    info_row(doc_key.c_str(), AnyData::ValueToString(doc_value));
+                                    info_row(doc_key, AnyData::ValueToString(doc_value));
                                 }
 
                                 ImGui::EndTable();
@@ -173,13 +182,13 @@ protected:
     }
 
 private:
-    mutable std::mutex _storageLocker {};
-    DataBase::Collections _collections {};
+    mutable mutex _storageLocker {};
+    DataBase::Collections _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
-auto CreateMemoryDataBase(DataBaseSettings& db_settings, DataBasePanicCallback panic_callback) -> DataBaseImpl*
+auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeRaw<DbMemory>(db_settings, std::move(panic_callback));
+    return SafeAlloc::MakeUnique<DbMemory>(db_settings, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

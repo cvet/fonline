@@ -65,12 +65,12 @@ static auto MakeRemoteCall(EngineMetadata& meta, std::initializer_list<ArgDesc> 
 
 static auto MakeRefTypeRawData(EngineMetadata& meta, string_view ref_type_name, const AnyData::Value& value) -> vector<uint8_t>
 {
-    PropertyRegistrator registrator("ClientDataValidationEntity", EngineSideKind::ServerSide, meta.Hashes, meta);
-    const auto* prop = registrator.RegisterProperty({"Common", ref_type_name, "Value"});
+    PropertyRegistrator registrator("ClientDataValidationEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+    auto prop = registrator.RegisterProperty({"Common", ref_type_name, "Value"});
     Properties props(&registrator);
-    PropertiesSerializator::LoadPropertyFromValue(&props, prop, value, meta.Hashes, meta);
+    PropertiesSerializator::LoadPropertyFromValue(&props, prop.get(), value, meta.Hashes, meta);
 
-    const auto raw_data = props.GetRawData(prop);
+    const auto raw_data = props.GetRawData(prop.get());
     return {raw_data.begin(), raw_data.end()};
 }
 
@@ -79,7 +79,7 @@ static void WriteRefTypePayload(DataWriter& writer, const vector<uint8_t>& raw_d
     writer.Write<uint32_t>(numeric_cast<uint32_t>(raw_data.size()));
 
     if (!raw_data.empty()) {
-        writer.WritePtr(raw_data.data(), raw_data.size());
+        writer.WriteBytes({raw_data.data(), raw_data.size()});
     }
 }
 
@@ -124,7 +124,7 @@ TEST_CASE("ClientDataValidation")
         const uint8_t true_bool = 1;
 
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WritePtr(text.data(), text.length());
+        writer.WriteStringBytes(text);
         writer.Write<int32_t>(1);
         writer.Write<float32_t>(42.0f);
         writer.Write<hstring::hash_t>(known_hash.as_hash());
@@ -150,7 +150,21 @@ TEST_CASE("ClientDataValidation")
         const uint8_t bytes[] = {0xC3, 0x28};
 
         writer.Write<int32_t>(2);
-        writer.WritePtr(bytes, std::size(bytes));
+        writer.WriteBytes({bytes, std::size(bytes)});
+
+        CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
+    }
+
+    SECTION("Rejects strings with embedded NUL")
+    {
+        // 'a','b','\0','c' is valid UTF-8 but an embedded NUL is never legitimate client text
+        const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type)});
+        vector<uint8_t> data;
+        DataWriter writer(data);
+        const uint8_t bytes[] = {'a', 'b', 0x00, 'c'};
+
+        writer.Write<int32_t>(4);
+        writer.WriteBytes({bytes, std::size(bytes)});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -213,7 +227,9 @@ TEST_CASE("ClientDataValidation")
 
         writer.Write<int32_t>(2);
         writer.Write<float32_t>(1.0f);
-        writer.Write<float32_t>(std::numeric_limits<float32_t>::infinity());
+        // Build the IEEE-754 +inf bit pattern via bit_cast: numeric_limits::infinity() is flagged as UB under
+        // the engine's /fp:fast (-Wnan-infinity-disabled), but this test must feed a real non-finite float.
+        writer.Write<float32_t>(std::bit_cast<float32_t>(uint32_t {0x7F800000}));
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
@@ -397,10 +413,99 @@ TEST_CASE("ClientDataValidation")
         writer.Write<int32_t>(2);
         WriteRefTypePayload(writer, full_raw);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(full_raw.size()));
-        writer.WritePtr(full_raw.data(), full_raw.size() - 1);
+        writer.WriteBytes({full_raw.data(), full_raw.size() - 1});
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }
+}
+
+TEST_CASE("ClientDataValidationFuzz")
+{
+    // Broad fuzz over the untrusted remote-call validator: build one valid payload that drives the whole
+    // recursive parser (string, int array, enum, struct fields, and a ref-type sub-buffer), then feed
+    // thousands of bit-flipped / truncated variants through ValidateInboundRemoteCallData. However the wire
+    // is mangled, the validator must either accept or throw a known engine exception — never read out of
+    // bounds (ASan), trip UB (UBSan), or hang. A deterministic LCG keeps the run reproducible. Every element
+    // type consumes bytes, so a corrupted collection count can only exhaust the reader, never spin forever.
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterEnumGroup("TestEnum", "int32", {{"None", 0}, {"Value", 1}});
+    meta.RegisterValueType("TestStruct");
+    meta.RegisterValueTypeLayout("TestStruct", {{"Number", "float32"}, {"Flag", "bool"}});
+    meta.RegisterRefType("TestRefType");
+    meta.RegisterRefTypeLayout("TestRefType", {{"Numbers", "int32[]"}, {"Label", "string"}, {"Mode", "TestEnum"}});
+
+    const BaseTypeDesc& string_type = meta.GetBaseType("string");
+    const BaseTypeDesc& enum_type = meta.GetBaseType("TestEnum");
+    const BaseTypeDesc& int_type = meta.GetBaseType("int32");
+    const BaseTypeDesc& struct_type = meta.GetBaseType("TestStruct");
+    const BaseTypeDesc& ref_type = meta.GetBaseType("TestRefType");
+
+    const RemoteCallDesc call = MakeRemoteCall(meta, {MakeSimpleArg(string_type, "text"), MakeArrayArg(int_type, "numbers"), MakeSimpleArg(enum_type, "mode"), MakeSimpleArg(struct_type, "packed"), MakeSimpleArg(ref_type, "snapshot")});
+
+    const auto build_valid = [&]() {
+        AnyData::Array numbers;
+        numbers.EmplaceBack(int64_t {10});
+        numbers.EmplaceBack(int64_t {20});
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Numbers", AnyData::Value {std::move(numbers)});
+        snapshot.Emplace("Label", AnyData::Value {string {"alpha"}});
+        snapshot.Emplace("Mode", AnyData::Value {string {"Value"}});
+        const auto ref_raw = MakeRefTypeRawData(meta, "TestRefType", AnyData::Value {std::move(snapshot)});
+
+        vector<uint8_t> data;
+        DataWriter writer(data);
+        const string text = "hello";
+        writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
+        writer.WritePtr(text.data(), text.length());
+        writer.Write<int32_t>(3); // int array element count
+        writer.Write<int32_t>(1);
+        writer.Write<int32_t>(2);
+        writer.Write<int32_t>(3);
+        writer.Write<int32_t>(1); // enum value "Value"
+        writer.Write<float32_t>(2.5f); // struct Number
+        writer.Write<uint8_t>(uint8_t {1}); // struct Flag
+        WriteRefTypePayload(writer, ref_raw);
+        return data;
+    };
+
+    const auto valid = build_valid();
+    CHECK_NOTHROW(ValidateInboundRemoteCallData(call, valid, meta));
+
+    uint32_t rng = 0xABCDEF01;
+    const auto next = [&rng]() {
+        rng = rng * 1664525U + 1013904223U;
+        return rng;
+    };
+
+    constexpr int iterations = 4000;
+    int accepted = 0;
+    int rejected = 0;
+
+    for (int iter = 0; iter < iterations; iter++) {
+        vector<uint8_t> data = valid;
+
+        if (iter % 5 == 0 && !data.empty()) {
+            data.resize(next() % data.size()); // truncate
+        }
+        if (!data.empty()) {
+            const int flips = static_cast<int>(next() % 3) + 1;
+            for (int f = 0; f < flips; f++) {
+                data[next() % data.size()] ^= static_cast<uint8_t>(1U << (next() % 8));
+            }
+        }
+
+        try {
+            ValidateInboundRemoteCallData(call, data, meta);
+            accepted++;
+        }
+        catch (const std::exception&) {
+            rejected++;
+        }
+    }
+
+    CHECK(rejected > 0); // corruption is actually detected
+    CHECK(accepted + rejected == iterations);
 }
 
 FO_END_NAMESPACE

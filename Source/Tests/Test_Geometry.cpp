@@ -41,6 +41,28 @@
 
 FO_BEGIN_NAMESPACE
 
+TEST_CASE("Matrix convention")
+{
+    SECTION("mat44 uses GLM column-major storage and column-vector multiplication")
+    {
+        const mat44 matrix = glm::translate(mat44 {1.0f}, vec3 {2.0f, 3.0f, 4.0f});
+        const glm::vec<4, float32_t, glm::defaultp> pos {10.0f, 20.0f, 30.0f, 1.0f};
+        const glm::vec<4, float32_t, glm::defaultp> transformed = matrix * pos;
+        const float32_t* matrix_data = glm::value_ptr(matrix);
+
+        CHECK(matrix[3][0] == 2.0f);
+        CHECK(matrix[3][1] == 3.0f);
+        CHECK(matrix[3][2] == 4.0f);
+        CHECK(matrix_data[12] == 2.0f);
+        CHECK(matrix_data[13] == 3.0f);
+        CHECK(matrix_data[14] == 4.0f);
+        CHECK(transformed.x == 12.0f);
+        CHECK(transformed.y == 23.0f);
+        CHECK(transformed.z == 34.0f);
+        CHECK(transformed.w == 1.0f);
+    }
+}
+
 TEST_CASE("GeometryHelper")
 {
     // GetDistance
@@ -87,6 +109,20 @@ TEST_CASE("GeometryHelper")
     ipos32 ihex {5, 5};
     GeometryHelper::MoveHexByDirUnsafe(ihex, hdir::SouthEast);
     CHECK(map_size.is_valid_pos(ihex));
+
+    for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+        const hdir hex_dir = hdir(dir_value);
+        const mdir dir = hex_dir;
+        const mdir reverse_dir = dir.reverse();
+
+        CHECK(dir.hex() == hex_dir);
+        CHECK(reverse_dir.reverse().hex() == hex_dir);
+
+        ipos32 roundtrip_hex {5, 5};
+        GeometryHelper::MoveHexByDirUnsafe(roundtrip_hex, dir);
+        GeometryHelper::MoveHexByDirUnsafe(roundtrip_hex, reverse_dir);
+        CHECK(roundtrip_hex == ipos32 {5, 5});
+    }
 
     // MoveHexAroundAway
     constexpr ipos32 ihex3 {5, 5};
@@ -135,7 +171,9 @@ TEST_CASE("GeometryHelper")
     GeometryHelper::ForEachMultihexLines(invalid_and_odd, start, map_size, [&](mpos) { skipped_count++; });
     CHECK(skipped_count == 4);
 
-    vector<uint8_t> reverse_path = {2, 1, 5, 1};
+    const uint8_t south_east_dir = numeric_cast<uint8_t>(hdir::SouthEast.value());
+    const uint8_t north_west_dir = numeric_cast<uint8_t>(mdir(hdir::SouthEast).reverse().hex().value());
+    vector<uint8_t> reverse_path = {south_east_dir, 1, north_west_dir, 1};
     int32_t reverse_count = 0;
     GeometryHelper::ForEachMultihexLines(reverse_path, start, map_size, [&](mpos pos) {
         CHECK(pos != start);
@@ -145,8 +183,8 @@ TEST_CASE("GeometryHelper")
 
     // HexesInRadius
     CHECK(GeometryHelper::HexesInRadius(0) == 1);
-    CHECK(GeometryHelper::HexesInRadius(1) == 7);
-    CHECK(GeometryHelper::HexesInRadius(2) == 19);
+    CHECK(GeometryHelper::HexesInRadius(1) == 1 + GameSettings::MAP_DIR_COUNT);
+    CHECK(GeometryHelper::HexesInRadius(2) == 1 + GameSettings::MAP_DIR_COUNT * 3);
 }
 
 TEST_CASE("GetHexPos and GetHexPosCoord")
@@ -389,6 +427,196 @@ TEST_CASE("GetHexPos and GetHexPosCoord")
                 }
             }
         }
+    }
+}
+
+TEST_CASE("Map camera world projection")
+{
+    const int32_t coords[] = {-50, -5, 0, 1, 7, 50};
+
+    SECTION("ProjectWorldToMap of GetHexWorldPos reproduces GetHexPos at ground level")
+    {
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                const ipos32 legacy = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                const vec3 world = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, ipos32 {});
+                const vec3 projected = GeometryHelper::ProjectWorldToMap(world);
+                INFO("rx=" << rx << " ry=" << ry);
+                CHECK(is_float_equal(projected.x, numeric_cast<float32_t>(legacy.x)));
+                CHECK(is_float_equal(projected.y, numeric_cast<float32_t>(legacy.y)));
+            }
+        }
+    }
+
+    SECTION("mpos overload matches ipos32 overload")
+    {
+        for (int16_t rx = 0; rx < 10; rx++) {
+            for (int16_t ry = 0; ry < 10; ry++) {
+                const vec3 from_mpos = GeometryHelper::GetHexWorldPos(mpos {rx, ry}, ipos32 {});
+                const vec3 from_ipos = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, ipos32 {});
+                CHECK(is_float_equal(from_mpos.x, from_ipos.x));
+                CHECK(is_float_equal(from_mpos.y, from_ipos.y));
+                CHECK(is_float_equal(from_mpos.z, from_ipos.z));
+            }
+        }
+    }
+
+    SECTION("Elevation raises the sprite on screen and brings it nearer the camera")
+    {
+        const vec3 ground = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, ipos32 {}, 0.0f));
+        const vec3 raised = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, ipos32 {}, 100.0f));
+        // Higher elevation appears higher on screen (smaller Y in the Y-down map convention).
+        CHECK(raised.y < ground.y);
+        // Higher elevation is nearer the camera (larger depth), so it draws on top.
+        CHECK(raised.z > ground.z);
+        // X is unaffected by elevation.
+        CHECK(is_float_equal(raised.x, ground.x));
+    }
+
+    SECTION("Hex offset moves the projected world position along the ground plane")
+    {
+        const ipos32 offset {17, 23};
+        const vec3 base = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, ipos32 {}, 0.0f));
+        const vec3 moved = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {3, 3}, offset, 0.0f));
+        const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+        const float32_t expected_depth_delta = numeric_cast<float32_t>(offset.y) * std::cos(angle_rad) / std::sin(angle_rad);
+
+        CHECK(is_float_equal(moved.x, base.x + numeric_cast<float32_t>(offset.x)));
+        CHECK(is_float_equal(moved.y, base.y + numeric_cast<float32_t>(offset.y)));
+        CHECK(is_float_equal(moved.z, base.z + expected_depth_delta));
+    }
+
+    SECTION("ProjectMapYToGroundDepth matches projected horizontal ground")
+    {
+        const ipos32 offsets[] = {{0, 0}, {17, 23}, {-11, 7}};
+        const float32_t elevations[] = {0.0f, 12.0f, 100.0f};
+
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                for (const ipos32 offset : offsets) {
+                    for (const float32_t elevation : elevations) {
+                        const vec3 projected = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, offset, elevation));
+                        const float32_t ground_depth = GeometryHelper::ProjectMapYToGroundDepth(projected.y, elevation);
+                        INFO("rx=" << rx << " ry=" << ry << " ox=" << offset.x << " oy=" << offset.y << " elevation=" << elevation);
+                        CHECK(is_float_equal(ground_depth, projected.z));
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("ProjectMapYToVerticalDepth matches projected standing plane")
+    {
+        const ipos32 offsets[] = {{0, 0}, {17, 23}, {-11, 7}};
+        const float32_t elevations[] = {0.0f, 12.0f, 100.0f};
+        const float32_t screen_offsets_y[] = {-150.0f, -32.0f, 0.0f, 12.0f};
+        const float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
+        const float32_t cos_a = std::cos(angle_rad);
+
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                for (const ipos32 offset : offsets) {
+                    for (const float32_t elevation : elevations) {
+                        const vec3 anchor_world = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, offset, elevation);
+                        const vec3 anchor_proj = GeometryHelper::ProjectWorldToMap(anchor_world);
+
+                        for (const float32_t screen_offset_y : screen_offsets_y) {
+                            const vec3 world = {anchor_world.x, anchor_world.y - screen_offset_y / cos_a, anchor_world.z};
+                            const vec3 projected = GeometryHelper::ProjectWorldToMap(world);
+                            const float32_t vertical_depth = GeometryHelper::ProjectMapYToVerticalDepth(projected.y, anchor_proj.y, anchor_proj.z);
+                            INFO("rx=" << rx << " ry=" << ry << " ox=" << offset.x << " oy=" << offset.y << " elevation=" << elevation << " sy=" << screen_offset_y);
+                            CHECK(is_float_equal(projected.y, anchor_proj.y + screen_offset_y));
+                            CHECK(is_float_equal(vertical_depth, projected.z));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    SECTION("Southward hexes are nearer the camera than northward hexes (painter order)")
+    {
+        const vec3 north = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 0}, ipos32 {}));
+        const vec3 south = GeometryHelper::ProjectWorldToMap(GeometryHelper::GetHexWorldPos(ipos32 {0, 10}, ipos32 {}));
+        // Larger hex.y maps further down-screen and nearer the camera, matching the legacy painter's order.
+        CHECK(south.y > north.y);
+        CHECK(south.z > north.z);
+    }
+
+    SECTION("MakeMapCameraView reproduces ProjectWorldToMap and GetHexPos (scroll 0, zoom 1)")
+    {
+        const mat44 view = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+
+        for (int32_t rx : coords) {
+            for (int32_t ry : coords) {
+                const vec3 world = GeometryHelper::GetHexWorldPos(ipos32 {rx, ry}, ipos32 {});
+                const vec3 ref = GeometryHelper::ProjectWorldToMap(world);
+                const ipos32 legacy = GeometryHelper::GetHexPos(ipos32 {rx, ry});
+                const glm::vec4 clip = view * glm::vec4 {world.x, world.y, world.z, 1.0f};
+                INFO("rx=" << rx << " ry=" << ry);
+                // The matrix agrees with the reference projection (and so with legacy GetHexPos) pixel-for-pixel.
+                CHECK(is_float_equal(clip.x, ref.x));
+                CHECK(is_float_equal(clip.y, ref.y));
+                CHECK(is_float_equal(clip.z, ref.z));
+                CHECK(is_float_equal(clip.x, numeric_cast<float32_t>(legacy.x)));
+                CHECK(is_float_equal(clip.y, numeric_cast<float32_t>(legacy.y)));
+            }
+        }
+    }
+
+    SECTION("MakeMapCameraView folds in scroll (translate) then zoom (scale); depth unchanged")
+    {
+        const fpos32 scroll {123.0f, -45.0f};
+        const float32_t zoom = 1.5f;
+        const mat44 view = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, scroll, zoom);
+        const vec3 world = GeometryHelper::GetHexWorldPos(ipos32 {7, 3}, ipos32 {});
+        const vec3 ref = GeometryHelper::ProjectWorldToMap(world);
+        const glm::vec4 clip = view * glm::vec4 {world.x, world.y, world.z, 1.0f};
+        // Matches MapView::MapPosToScreenPos: screen = (mapPixel - scroll) * zoom; depth is independent.
+        CHECK(is_float_equal(clip.x, (ref.x - scroll.x) * zoom));
+        CHECK(is_float_equal(clip.y, (ref.y - scroll.y) * zoom));
+        CHECK(is_float_equal(clip.z, ref.z));
+    }
+
+    SECTION("MakeMapAnchoredProj moves the local origin to the requested map anchor")
+    {
+        const mat44 anchored = GeometryHelper::MakeMapAnchoredProj(mat44 {1.0f}, mat44 {1.0f}, fpos32 {12.0f, 34.0f}, 56.0f);
+        const glm::vec4 origin = anchored * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
+
+        CHECK(is_float_equal(origin.x, 12.0f));
+        CHECK(is_float_equal(origin.y, 34.0f));
+        CHECK(is_float_equal(origin.z, 56.0f));
+    }
+
+    SECTION("MakeMapCameraView yaw leaves the vertical (up) axis projection invariant")
+    {
+        // Yaw rotates the world about the vertical, so a point on the up axis projects to the same screen point
+        // and depth at any yaw (walls/models stay vertical on screen while the ground orbits beneath the camera).
+        const glm::vec4 up {0.0f, 100.0f, 0.0f, 1.0f};
+        const mat44 view0 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+        const glm::vec4 ref = view0 * up;
+
+        for (float32_t yaw : {30.0f, 90.0f, 137.0f, 270.0f}) {
+            const mat44 view = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, yaw, fpos32 {0.0f, 0.0f}, 1.0f);
+            const glm::vec4 p = view * up;
+            INFO("yaw=" << yaw);
+            CHECK(is_float_equal(p.x, ref.x));
+            CHECK(is_float_equal(p.y, ref.y));
+            CHECK(is_float_equal(p.z, ref.z));
+        }
+    }
+
+    SECTION("MakeMapCameraView yaw 90 deg maps the +X ground axis onto the -Z ground axis")
+    {
+        // Orbiting 90 deg about the vertical sends the +X ground direction to -Z, so projecting +X at yaw 90
+        // equals projecting -Z at yaw 0 — i.e. the camera really rotated around the scene.
+        const mat44 view0 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+        const mat44 view90 = GeometryHelper::MakeMapCameraView(GameSettings::MAP_CAMERA_ANGLE, 90.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+        const glm::vec4 a = view90 * glm::vec4 {50.0f, 0.0f, 0.0f, 1.0f};
+        const glm::vec4 b = view0 * glm::vec4 {0.0f, 0.0f, -50.0f, 1.0f};
+        CHECK(is_float_equal(a.x, b.x));
+        CHECK(is_float_equal(a.y, b.y));
+        CHECK(is_float_equal(a.z, b.z));
     }
 }
 

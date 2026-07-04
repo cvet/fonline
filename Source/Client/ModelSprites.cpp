@@ -32,12 +32,14 @@
 //
 
 #include "ModelSprites.h"
+#include "Application.h"
+#include "Geometry.h"
 
 #if FO_ENABLE_3D
 
 FO_BEGIN_NAMESPACE
 
-ModelSprite::ModelSprite(SpriteManager& spr_mngr, ModelSpriteFactory* factory, unique_ptr<ModelInstance>&& model, AtlasType atlas_type) :
+ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> factory, unique_ptr<ModelInstance> model, AtlasType atlas_type) :
     AtlasSprite(spr_mngr, {}, {}, {}, {}, {}, {}),
     _factory {factory},
     _model {std::move(model)},
@@ -68,6 +70,13 @@ auto ModelSprite::GetViewSize() const -> optional<irect32>
     auto&& [view_width, view_height] = _model->GetViewSize();
 
     return irect32 {0, -_offset.y + view_height / 8, view_width, view_height};
+}
+
+auto ModelSprite::IsDirectDraw() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _factory->_settings->ModelDirectDraw;
 }
 
 void ModelSprite::Prewarm()
@@ -105,7 +114,7 @@ auto ModelSprite::Update() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_model->NeedForceDraw() || _model->NeedDraw()) {
+    if (_model->NeedForceDraw() || (!IsDirectDraw() && _model->NeedDraw())) {
         DrawToAtlas();
     }
 
@@ -116,8 +125,8 @@ void ModelSprite::SetSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(size.width > 0);
-    FO_RUNTIME_ASSERT(size.height > 0);
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
     if (size == _size) {
         return;
@@ -133,7 +142,7 @@ void ModelSprite::SetSize(isize32 size)
     _size = size;
     _offset.y = numeric_cast<int16_t>(size.height / 4);
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr().FindAtlasPlace(_atlasType, _size);
+    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, _size);
 
     _atlas = atlas;
     _atlasNode = atlas_node;
@@ -150,45 +159,62 @@ void ModelSprite::DrawToAtlas()
     _factory->DrawModelToAtlas(this);
 }
 
-ModelSpriteFactory::ModelSpriteFactory(SpriteManager& spr_mngr, RenderSettings& settings, EffectManager& effect_mngr, GameTimer& game_time, HashResolver& hash_resolver, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) :
-    _sprMngr {&spr_mngr}
+void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr.GetResources(), effect_mngr, spr_mngr.GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
-        [this, &hash_resolver](string_view path) FO_DEFERRED { return LoadTexture(hash_resolver.ToHashedString(path)); });
+    const auto& settings = *_factory->_settings;
+    const mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
+    const mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
+    const mat44 proj_base = scene_ortho * cam_view;
+    const mat44 proj = GeometryHelper::MakeMapAnchoredProj(proj_base, scene_ortho, scene_pos, depth);
+
+    _model->Draw(proj, settings.ModelProjFactor);
+}
+
+ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver) :
+    _sprMngr {spr_mngr},
+    _settings {settings}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), effect_mngr, &spr_mngr->GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
+        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); });
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto model = _modelMngr->CreateModel(path);
+    unique_nptr<ModelInstance> nullable_model = _modelMngr->CreateModel(path);
 
-    if (!model) {
+    if (!nullable_model) {
         return nullptr;
     }
 
+    auto model = nullable_model.as_ptr();
     const auto draw_size = model->GetDrawSize();
-    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(*_sprMngr, this, std::move(model), atlas_type);
+    auto model_owner = nullable_model.take_not_null();
+
+    auto model_spr = SafeAlloc::MakeShared<ModelSprite>(_sprMngr, this, std::move(model_owner), atlas_type);
     model_spr->SetSize(draw_size);
 
     return model_spr;
 }
 
-auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, frect32>
+auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto result = pair<RenderTexture*, frect32>();
+    auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (const auto it = _loadedMeshTextures.find(path); it == _loadedMeshTextures.end()) {
-        auto any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
-        auto atlas_spr = dynamic_ptr_cast<AtlasSprite>(std::move(any_spr));
+        shared_ptr<Sprite> any_spr = _sprMngr->LoadSprite(path, AtlasType::MeshTextures);
+        auto atlas_spr = any_spr.dyn_cast<AtlasSprite>();
 
         if (atlas_spr) {
             _loadedMeshTextures[path] = atlas_spr;
-            result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
+            result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
         }
         else {
             BreakIntoDebugger();
@@ -197,33 +223,29 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<RenderTexture*, frect
         }
     }
     else if (auto& atlas_spr = it->second) {
-        result = pair {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
+        result = {atlas_spr->GetAtlas()->GetTexture(), atlas_spr->GetAtlasRect()};
     }
 
     return result;
 }
 
-void ModelSpriteFactory::DrawModelToAtlas(ModelSprite* model_spr)
+void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(_modelMngr);
-
     // Find place for render
     const auto frame_size = isize32 {model_spr->_size.width * ModelInstance::FRAME_SCALE, model_spr->_size.height * ModelInstance::FRAME_SCALE};
-    RenderTarget* rt_model = nullptr;
-
-    for (auto& rt : _rtIntermediate) {
-        if (rt->GetTexture()->Size == frame_size) {
-            rt_model = rt.get();
-            break;
+    const ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
+        for (ptr<RenderTarget> rt : _rtIntermediate) {
+            if (rt->GetTexture()->Size == frame_size) {
+                return rt;
+            }
         }
-    }
 
-    if (rt_model == nullptr) {
-        rt_model = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
-        _rtIntermediate.emplace_back(rt_model);
-    }
+        auto rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
+        _rtIntermediate.emplace_back(rt);
+        return rt;
+    }();
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);

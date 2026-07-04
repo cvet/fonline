@@ -44,8 +44,8 @@ RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(Size.width > 0);
-    FO_RUNTIME_ASSERT(Size.height > 0);
+    FO_VERIFY_AND_THROW(Size.width > 0, "Size width must be positive", Size.width);
+    FO_VERIFY_AND_THROW(Size.height > 0, "Size height must be positive", Size.height);
 }
 
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
@@ -60,7 +60,7 @@ void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
         Vertices.resize(VertCount + std::max(vcount, const_numeric_cast<size_t>(1024)));
 
         if constexpr (sizeof(vindex_t) == 2) {
-            FO_RUNTIME_ASSERT(Vertices.size() <= 0xFFFF);
+            FO_VERIFY_AND_THROW(Vertices.size() <= 0xFFFF, "Render draw buffer vertex index type cannot address the allocated vertex buffer", Vertices.size(), 0xFFFF);
         }
     }
     if (IndCount + icount >= Indices.size()) {
@@ -76,15 +76,15 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
     const auto fofx_content = loader(name);
     const auto fofx = ConfigFile(name, fofx_content, ConfigFileOption::CollectContent);
-    FO_RUNTIME_ASSERT(fofx.HasSection("Effect"));
+    FO_VERIFY_AND_THROW(fofx.HasSection("Effect"), "FOFX file does not contain the required Effect section", name);
 
     const auto passes = fofx.GetAsInt("Effect", "Passes", 1);
-    FO_RUNTIME_ASSERT(passes >= 1);
-    FO_RUNTIME_ASSERT(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES));
+    FO_VERIFY_AND_THROW(passes >= 1, "FOFX effect must declare at least one render pass", name, passes);
+    FO_VERIFY_AND_THROW(passes <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES), "FOFX effect declares more render passes than the renderer supports", name, passes, EFFECT_MAX_PASSES);
 
 #if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetAsInt("Effect", "ShadowPass", -1);
-    FO_RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)));
+    FO_VERIFY_AND_THROW(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= const_numeric_cast<int32_t>(EFFECT_MAX_PASSES)), "FOFX shadow pass index is outside the supported pass range", name, shadow_pass, EFFECT_MAX_PASSES);
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
@@ -156,25 +156,57 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
         throw GenericException("Unknown blend equation type", s);
     };
 
+    static auto get_depth_func = [](string_view s) -> DepthFuncType {
+        if (s == "Always") {
+            return DepthFuncType::Always;
+        }
+        if (s == "Never") {
+            return DepthFuncType::Never;
+        }
+        if (s == "Less") {
+            return DepthFuncType::Less;
+        }
+        if (s == "LessEqual") {
+            return DepthFuncType::LessEqual;
+        }
+        if (s == "Equal") {
+            return DepthFuncType::Equal;
+        }
+        if (s == "GreaterEqual") {
+            return DepthFuncType::GreaterEqual;
+        }
+        if (s == "Greater") {
+            return DepthFuncType::Greater;
+        }
+        if (s == "NotEqual") {
+            return DepthFuncType::NotEqual;
+        }
+
+        throw GenericException("Unknown depth func type", s);
+    };
+
     const auto blend_func_default = fofx.GetAsStr("Effect", "BlendFunc", "SrcAlpha InvSrcAlpha");
     const auto blend_equation_default = fofx.GetAsStr("Effect", "BlendEquation", "FuncAdd");
     const auto depth_write_default = fofx.GetAsStr("Effect", "DepthWrite", "True");
+    const auto depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
 
     for (size_t pass = 0; pass < _passCount; pass++) {
         const string pass_str = strex("_Pass{}", pass + 1);
 
-        auto blend_func = strvex(fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)).split(' ');
-        FO_RUNTIME_ASSERT(blend_func.size() == 2);
+        const string blend_func_value {fofx.GetAsStr("Effect", strex("BlendFunc{}", pass_str), blend_func_default)};
+        auto blend_func = strvex(blend_func_value).split(' ');
+        FO_VERIFY_AND_THROW(blend_func.size() == 2, "FOFX blend function must contain source and destination factors", name, pass + 1, blend_func.size(), blend_func_value);
 
         _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
         _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetAsStr("Effect", strex("BlendEquation{}", pass_str), blend_equation_default));
 
         _depthWrite[pass] = strvex(fofx.GetAsStr("Effect", strex("DepthWrite{}", pass_str), depth_write_default)).to_bool();
+        _depthFunc[pass] = get_depth_func(fofx.GetAsStr("Effect", strex("DepthFunc{}", pass_str), depth_func_default));
 
         const auto pass_info_content = loader(strex("{}.fofx-{}-info", strex(name).erase_file_extension(), pass + 1));
         const auto pass_info = ConfigFile(name, pass_info_content);
-        FO_RUNTIME_ASSERT(pass_info.HasSection("EffectInfo"));
+        FO_VERIFY_AND_THROW(pass_info.HasSection("EffectInfo"), "FOFX pass EffectInfo section is missing");
 
         _posMainTex[pass] = pass_info.GetAsInt("EffectInfo", "MainTex", -1);
         _needMainTex |= _posMainTex[pass] != -1;
@@ -215,7 +247,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     }
 }
 
-auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
+auto RenderEffect::CanBatch(ptr<const RenderEffect> other) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 

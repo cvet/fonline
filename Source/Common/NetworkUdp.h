@@ -55,6 +55,7 @@ struct UdpTransportOptions
     uint32_t ResendTimeoutMs {};
     uint32_t ConnectRetryMs {};
     uint32_t Redundancy {};
+    uint32_t MaxReorderAhead {}; // Max packets buffered ahead of the next expected sequence (0 = unlimited)
 };
 
 struct UdpPacketInfo

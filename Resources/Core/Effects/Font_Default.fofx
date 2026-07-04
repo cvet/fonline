@@ -1,7 +1,12 @@
+# Font_Default — glyph/text quad shader.
+# Where: glyph/text quad shader; available alternate (the engine actually binds 2D_Default to the Font slot, this is kept for parity).
+# How: vertex transforms the 2D quad position (z forced to 0) and forwards colour and UV; fragment samples MainTex, multiplies rgb by vertex colour with a 2x brightness scale, and multiplies the texture alpha by vertex alpha for the glyph coverage.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -13,7 +18,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }

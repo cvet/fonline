@@ -54,6 +54,7 @@
 #include "ServerConnection.h"
 #include "Settings.h"
 #include "UpdaterBackend.h"
+#include "WorkerPool.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -66,7 +67,7 @@ class ServerEngine final : public BaseEngine, public EntityManagerApi
     friend class ServerScriptSystem;
 
 public:
-    explicit ServerEngine(GlobalSettings& settings, FileSystem&& resources);
+    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources);
 
     ServerEngine(const ServerEngine&) = delete;
     ServerEngine(ServerEngine&&) noexcept = delete;
@@ -74,41 +75,63 @@ public:
     auto operator=(ServerEngine&&) noexcept = delete;
     ~ServerEngine() override;
 
-    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return this; }
-
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
     [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
+    [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
+    [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
+    [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
+    [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
 
     void Shutdown() override;
+    void FlushExactSyncTime();
 
-    auto CreateCustomInnerEntity(Entity* holder, hstring entry, hstring pid) -> Entity* override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
-    auto CreateCustomEntity(hstring type_name, hstring pid) -> Entity* override { return EntityMngr.CreateCustomEntity(type_name, pid); }
-    auto GetCustomEntity(hstring type_name, ident_t id) -> Entity* override { return EntityMngr.GetCustomEntity(type_name, id); }
-    void DestroyEntity(Entity* entity) override { EntityMngr.DestroyEntity(entity); }
+    void LockForPropertyAccess() noexcept override;
+    void UnlockForPropertyAccess() noexcept override;
+    void LockForPropertyAccessShared() noexcept override;
+    void UnlockForPropertyAccessShared() noexcept override;
+
+    void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
+
+    auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
+    auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
+    auto GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<Entity> override
+    {
+        auto custom_entity = EntityMngr.GetCustomEntity(type_name, id);
+
+        if (!custom_entity) {
+            return nullptr;
+        }
+
+        auto custom_entity_holder = std::move(custom_entity).take_not_null();
+        refcount_ptr<Entity> entity = std::move(custom_entity_holder);
+        return std::move(entity);
+    }
+    void DestroyEntity(ptr<Entity> entity) override { EntityMngr.DestroyEntity(entity); }
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
     void DrawGui();
 
-    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> Player*;
-    auto LoginPlayerToNewRecord(Player* unlogined_player) -> Player*;
-    auto LoginPlayerToExistentRecord(Player* unlogined_player, ident_t player_id) -> Player*;
-    auto LoginPlayerToTempSession(Player* unlogined_player) -> Player*;
+    auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>;
 
-    auto CreateCritter(hstring pid, bool for_player, const Properties* props = nullptr) -> Critter*;
-    auto LoadCritter(ident_t cr_id, bool for_player) -> Critter*;
-    void UnloadCritter(Critter* cr);
-    void UnloadCritterInnerEntities(Critter* cr);
-    void SwitchPlayerCritter(Player* player, Critter* cr);
+    auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
+    void UnloadCritter(ptr<Critter> cr);
+    void UnloadCritterInnerEntities(ptr<Critter> cr);
+    void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullable_cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
-    void StartCritterMoving(Critter* cr, refcount_ptr<MovingContext> moving, const Player* initiator);
-    void StartCritterMoving(Critter* cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, const Player* initiator);
-    void StopCritterMoving(Critter* cr, MovingState reason, function<void()> customSend = nullptr);
-    void ChangeCritterMovingSpeed(Critter* cr, uint16_t speed);
+    void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator);
+    void StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator);
+    void StopCritterMoving(ptr<Critter> cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
+    void ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -119,60 +142,64 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, uint8_t /*command*/);
+    FO_ENTITY_EVENT(OnPlayerLogin, ptr<Player> /*player*/, nptr<Player> /*unloginedPlayer*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogin, Player* /*player*/, FO_NULLABLE Player* /*unloginedPlayer*/);
+    FO_ENTITY_EVENT(OnPlayerLogout, ptr<Player> /*player*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
+    FO_ENTITY_EVENT(OnPlayerCritterSwitched, ptr<Player> /*player*/, ptr<Critter> /*cr*/, ptr<Critter> /*prevCr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerCritterSwitched, Player* /*player*/, Critter* /*cr*/, Critter* /*prevCr*/);
+    FO_ENTITY_EVENT(OnPlayerMoveCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, int32_t& /*speed*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerMoveCritter, Player* /*player*/, Critter* /*cr*/, int32_t& /*speed*/);
+    FO_ENTITY_EVENT(OnPlayerDirCritter, ptr<Player> /*player*/, ptr<Critter> /*cr*/, mdir& /*dir*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnPlayerDirCritter, Player* /*player*/, Critter* /*cr*/, mdir& /*dir*/);
+    FO_ENTITY_EVENT(OnCritterMoved, ptr<Critter> /*cr*/, mpos /*oldHex*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterMoved, Critter* /*cr*/, mpos /*oldHex*/);
+    FO_ENTITY_EVENT(OnCritterStartMoving, ptr<Critter> /*cr*/, bool /*wasMoving*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterStartMoving, Critter* /*cr*/, bool /*wasMoving*/);
+    FO_ENTITY_EVENT(OnCritterStopMoving, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterStopMoving, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterTransfer, ptr<Critter> /*cr*/, nptr<Map> /*prevMap*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterTransfer, Critter* /*cr*/, FO_NULLABLE Map* /*prevMap*/);
+    FO_ENTITY_EVENT(OnGlobalMapCritterIn, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnGlobalMapCritterOut, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnLocationInit, ptr<Location> /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnLocationFinish, ptr<Location> /*location*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnLocationFinish, Location* /*location*/);
+    FO_ENTITY_EVENT(OnMapInit, ptr<Map> /*map*/, bool /*firstTime*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapInit, Map* /*map*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnMapFinish, ptr<Map> /*map*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapFinish, Map* /*map*/);
+    FO_ENTITY_EVENT(OnMapCritterIn, ptr<Map> /*map*/, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnMapCritterOut, ptr<Map> /*map*/, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterInit, ptr<Critter> /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnCritterFinish, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterLoad, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterLoad, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterUnload, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterUnload, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterSendInitialInfo, ptr<Critter> /*cr*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterSendInitialInfo, Critter* /*cr*/);
+    FO_ENTITY_EVENT(OnCritterItemMoved, ptr<Critter> /*cr*/, ptr<Item> /*item*/, CritterItemSlot /*fromSlot*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnCritterItemMoved, Critter* /*cr*/, Item* /*item*/, CritterItemSlot /*fromSlot*/);
+    FO_ENTITY_EVENT(OnItemInit, ptr<Item> /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
+    FO_ENTITY_EVENT(OnItemFinish, ptr<Item> /*item*/);
     ///@ ExportEvent
-    FO_ENTITY_EVENT(OnItemFinish, Item* /*item*/);
-    ///@ ExportEvent
-    FO_ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, mdir /*dir*/);
+    FO_ENTITY_EVENT(OnStaticItemWalk, ptr<StaticItem> /*item*/, ptr<Critter> /*cr*/, bool /*isIn*/, mdir /*dir*/);
 
+private:
+    std::atomic_bool _started {false};
+    std::atomic_bool _startingError {false};
+    std::atomic_bool _shutdownInProgress {false};
+
+public:
     EntityManager EntityMngr;
     MapManager MapMngr;
     CritterManager CrMngr;
@@ -187,6 +214,15 @@ public:
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
 
+    struct ConnRateState
+    {
+        int64_t WindowSec {};
+        int32_t Count {};
+    };
+
+    static auto ShouldAcceptConnection(size_t cur_connections, size_t cur_players, int32_t max_connections, int32_t max_players) noexcept -> bool;
+    static auto EvaluateConnectionRate(ConnRateState& state, int64_t now_sec, int32_t rate_per_sec) noexcept -> bool;
+
 private:
     struct ServerStats
     {
@@ -195,69 +231,72 @@ private:
 
         size_t MaxOnline {};
         size_t CurOnline {};
+        size_t RejectedConnections {};
+        size_t RejectedByRate {};
 
-        size_t LoopsCount {};
-        timespan LoopLastTime {};
-        timespan LoopMinTime {};
-        timespan LoopMaxTime {};
+        uint64_t JobsTotal {};
+        uint64_t JobsPerSecond {};
+        uint64_t JobsPerMinute {};
+        nanotime JobCounterBegin {};
+        uint64_t JobCounterBeginTotal {};
+        deque<pair<nanotime, uint64_t>> JobTimeStamps {};
 
-        deque<pair<nanotime, timespan>> LoopTimeStamps {};
-        timespan LoopWholeAvgTime {};
-        timespan LoopAvgTime {};
-
-        nanotime LoopCounterBegin {};
-        size_t LoopCounter {};
-        size_t LoopsPerSecond {};
+        optional<Platform::CpuUsageSnapshot> LastCpuUsageSnapshot {};
+        nanotime LastCpuUsageSampleTime {};
+        bool CpuUsageAvailable {};
+        float32_t CpuSystemLoad {};
+        float32_t CpuProcessLoad {};
+        float32_t CpuProcessCoreLoad {};
+        vector<float32_t> CpuCoreLoads {};
     };
 
     void SyncPoint();
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
-    void ProcessUnloginedPlayer(Player* unlogined_player);
-    void ProcessPlayer(Player* player);
-    void ProcessConnection(ServerConnection* connection);
-    void HandleOutboundRemoteCall(hstring name, Entity* caller, const_span<uint8_t> data) override;
+    void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
+    void ProcessPlayer(ptr<Player> player);
+    void ProcessConnection(ptr<ServerConnection> connection);
+    void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
 
     void LoadReportedHashes();
-    void RegisterClientReportedHash(ServerConnection* connection, hstring::hash_t hash);
-    void SendAllReportedHashes(ServerConnection* connection);
+    void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);
+    void ProcessPendingUnresolvedHash(ptr<ServerConnection> connection);
+    void SendAllReportedHashes(ptr<ServerConnection> connection);
     void BroadcastReportedString(string_view reported_string);
 
-    void Process_Handshake(ServerConnection* connection);
-    void Process_Ping(ServerConnection* connection);
-    void Process_UnresolvedHash(ServerConnection* connection);
-    void Process_Move(Player* player);
-    void Process_StopMove(Player* player);
-    void Process_Dir(Player* player);
-    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player);
-    void Process_Property(Player* player);
-    void Process_RemoteCall(Player* player);
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
-    void OnSaveEntityValue(Entity* entity, const Property* prop);
+    void Process_Handshake(ptr<ServerConnection> connection);
+    void Process_Ping(ptr<ServerConnection> connection);
+    void Process_UnresolvedHash(ptr<ServerConnection> connection);
+    void Process_Move(ptr<Player> player);
+    void Process_StopMove(ptr<Player> player);
+    void Process_Dir(ptr<Player> player);
+    void Process_Property(ptr<Player> player);
+    void Process_RemoteCall(ptr<Player> player);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
-    void OnSendCustomEntityValue(Entity* entity, const Property* prop);
+    void OnSaveEntityValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSaveSynchronizedTime(ptr<Entity> entity, ptr<const Property> prop);
 
-    void OnSetCritterLookDistance(Entity* entity, const Property* prop);
-    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
-    void OnSetItemHidden(Entity* entity, const Property* prop);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop);
-    void OnSetItemMultihexLines(Entity* entity, const Property* prop);
+    void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendCritterValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
-    void ProcessCritterMoving(Critter* cr);
-    void ProcessCritterMovingBySteps(Critter* cr, Map* map);
-    auto ReconcileCritterStopPosition(Player* player, Critter* cr, Map* map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(Player* player, Critter* cr, Map* map, mpos target_hex, int32_t max_hex_distance) -> bool;
-    auto MoveCritterToStopHex(Critter* cr, Map* map, mpos target_hex) -> bool;
-    void SendCritterInitialInfo(Critter* cr, Critter* prev_cr);
+    void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value);
+    void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
+    void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
-    void LogToClients(string_view str);
-    void DispatchLogToClients();
+    void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
+    auto ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
+    auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
+    void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullable_prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
@@ -274,47 +313,57 @@ private:
     auto InitDoneJob() -> std::optional<timespan>;
     auto SyncPointJob() -> std::optional<timespan>;
     auto FrameTimeJob() -> std::optional<timespan>;
-    auto ScriptSystemJob() -> std::optional<timespan>;
-    auto UnloginedPlayersJob() -> std::optional<timespan>;
-    auto PlayersJob() -> std::optional<timespan>;
-    auto CrittersJob() -> std::optional<timespan>;
-    auto TimeEventsJob() -> std::optional<timespan>;
-    auto LogDispatchJob() -> std::optional<timespan>;
-    auto LoopJob() -> std::optional<timespan>;
+    void UpdateJobStats(nanotime cur_time);
+    void UpdateCpuStats(nanotime cur_time);
+    auto CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t;
+
+    void OnTimeEventSchedule(refcount_ptr<Entity> entity, uint32_t event_id, timespan delay);
+    auto TimeEventJob(ptr<Entity> entity, uint32_t event_id) -> std::optional<timespan>;
+    void OnTimeEventCancel(uint32_t event_id);
+    void OnPlayerConnected(ptr<Player> unlogined_player);
+    auto UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::optional<timespan>;
+    void OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_player);
+    auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
+    auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
+    auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
+    void CountServerStatsJob() noexcept;
 
     WorkThread _starter {"ServerStarter"};
     WorkThread _mainWorker {"ServerWorker"};
     WorkThread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
+    optional<WorkerPool> _workerPool {};
+    std::atomic<uint64_t> _completedServerStatsJobs {};
 
-    std::mutex _syncLocker {};
-    std::condition_variable _syncWaitSignal {};
-    std::condition_variable _syncRunSignal {};
-    int32_t _syncRequest {};
-    bool _syncPointReady {};
+    synctime _persistedSyncTimeMark {};
+    static constexpr auto SyncTimePersistLead = std::chrono::seconds {10};
 
-    std::atomic_bool _started {};
-    std::atomic_bool _startingError {};
-    std::atomic_bool _shutdownInProgress {};
-    FrameBalancer _loopBalancer {};
+    EntityLock _ownedLock {};
+    mutable ptr<EntityLock> _entityLock {&_ownedLock};
+
+    mutex _syncLocker {};
+    std::condition_variable_any _syncWaitSignal {};
+    std::condition_variable_any _syncRunSignal {};
+    int32_t _syncRequest FO_TSA_GUARDED_BY(_syncLocker) {};
+    bool _syncPointReady FO_TSA_GUARDED_BY(_syncLocker) {};
+
+    std::atomic<size_t> _rejectedConnections {};
+    std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
-    unique_ptr<UpdaterBackend> _updaterBackend {};
-    vector<refcount_ptr<Player>> _logClients {};
-    vector<string> _logLines {};
-    TextPack _defaultLang {Hashes};
+    optional<UpdaterBackend> _updaterBackend {};
+    TextPack _defaultLang {ptr<HashResolver> {&Hashes}};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
-    vector<refcount_ptr<Player>> _unloginedPlayers {};
-    mutable std::mutex _unloginedPlayersLocker {};
+    mutable mutex _unloginedPlayersLocker {};
+    vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};
+    mutable mutex _connRateLocker {};
+    unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 
-    // Strings behind hashes that clients reported as unresolvable. Stored raw (not registered) and broadcast
-    // to all clients so they can resolve these hashes too. Accessed only from the main worker (handshake
-    // processing) plus one-time load at init, so it needs no extra locking.
-    unordered_set<string> _reportedStrings {};
-    // Reported hashes the server itself can't resolve either; kept in memory to log each one once per session.
-    unordered_set<hstring::hash_t> _unresolvableReportedHashes {};
+    mutable mutex _reportedHashesLocker {};
+    unordered_set<string> _reportedStrings FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
+    unordered_set<hstring::hash_t> _unresolvableReportedHashes FO_TSA_GUARDED_BY(_reportedHashesLocker) {};
 
-    EventDispatcher<> _willFinishDispatcher {OnWillFinish};
-    EventDispatcher<> _didFinishDispatcher {OnDidFinish};
+    EventDispatcher<> _willFinishDispatcher {&OnWillFinish};
+    EventDispatcher<> _didFinishDispatcher {&OnDidFinish};
 };
 
 FO_END_NAMESPACE

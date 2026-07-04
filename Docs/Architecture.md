@@ -56,7 +56,7 @@ See [Applications.md](Applications.md) for the application map.
 - `Properties.h`, `EntityProperties.h`, `EntityProtos.h`, `ProtoManager.h` — property/prototype model.
 - `ScriptSystem.h` / `ScriptSystem.cpp` — script engine abstraction used by runtime sides and tools.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
-- `NetBuffer.h`, `NetCommand.h`, `NetworkUdp.h` — common networking primitives.
+- `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.

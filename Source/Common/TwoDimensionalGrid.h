@@ -45,8 +45,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_VERIFY_AND_RETURN(size.width >= 0);
-        FO_RUNTIME_VERIFY_AND_RETURN(size.height >= 0);
+        FO_VERIFY_AND_RETURN(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
+        FO_VERIFY_AND_RETURN(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
 
         _size = size;
     }
@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] auto GetSize() const noexcept -> TSize { return _size; }
     [[nodiscard]] virtual auto GetCellForReading(TPos pos) const noexcept -> const TCell& = 0;
-    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> TCell& = 0;
+    [[nodiscard]] virtual auto GetCellForWriting(TPos pos) -> ptr<TCell> = 0;
 
     virtual void Resize(TSize size) = 0;
 
@@ -83,6 +83,15 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
+        // TEMP DIAG (grid _cells race hunt 2026-06-29): a read must never overlap a write from another thread
+        // (the map lock is supposed to serialize all grid access). If it does, this is the segfault root.
+        const std::thread::id writer = _writerThreadDiag.load(std::memory_order_acquire);
+        FO_STRONG_ASSERT(writer == std::thread::id {} || writer == std::this_thread::get_id(), "Concurrent grid write during read (map lock did not serialize grid access)");
+
+        // Mark a reader active for the duration of the find so a concurrent GetCellForWriting names its stack.
+        const std::thread::id prev_reader = _readerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
+        auto restore_reader = scope_exit([this, prev_reader]() noexcept { _readerThreadDiag.store(prev_reader, std::memory_order_release); });
+
         if (!base::_size.is_valid_pos(pos)) {
             return _emptyCell;
         }
@@ -97,19 +106,28 @@ public:
         }
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        // TEMP DIAG (grid _cells race hunt 2026-06-29): mark this grid as being written by this thread for the
+        // whole call; a concurrent grid access from another thread then asserts (see GetCellForReading). Also
+        // assert here (the writer's stack) if another thread is mid-read — to name the unserialized mutator.
+        const std::thread::id concurrent_reader = _readerThreadDiag.load(std::memory_order_acquire);
+        FO_STRONG_ASSERT(concurrent_reader == std::thread::id {} || concurrent_reader == std::this_thread::get_id(), "Concurrent grid read during write (map lock did not serialize grid access)");
+        const std::thread::id prev_writer = _writerThreadDiag.exchange(std::this_thread::get_id(), std::memory_order_acq_rel);
+        FO_STRONG_ASSERT(prev_writer == std::thread::id {} || prev_writer == std::this_thread::get_id(), "Concurrent grid write during write (map lock did not serialize grid access)");
+        auto restore_writer = scope_exit([this, prev_writer]() noexcept { _writerThreadDiag.store(prev_writer, std::memory_order_release); });
+
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         const auto it = _cells.find(pos);
 
         if (it == _cells.end()) {
-            return _cells.emplace(pos, TCell {}).first->second;
+            return &(_cells.emplace(pos, TCell {}).first->second);
         }
         else {
-            return it->second;
+            return &it->second;
         }
     }
 
@@ -117,8 +135,8 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;
@@ -141,6 +159,11 @@ public:
 private:
     unordered_map<TPos, TCell> _cells {};
     const TCell _emptyCell {};
+    // TEMP DIAG (grid _cells race hunt 2026-06-29): marks the thread currently inside GetCellForWriting so a
+    // concurrent reader/writer from another thread (the map lock failing to serialize grid access) surfaces as
+    // a deterministic assert with both stacks instead of a segfault inside the _cells rehash.
+    mutable std::atomic<std::thread::id> _writerThreadDiag {};
+    mutable std::atomic<std::thread::id> _readerThreadDiag {};
 };
 
 template<typename TCell, pos_type TPos, size_type TSize>
@@ -176,35 +199,35 @@ public:
         return *cell;
     }
 
-    [[nodiscard]] auto GetCellForWriting(TPos pos) -> TCell& override
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(base::_size.is_valid_pos(pos));
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         const auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
         auto& cell = _preallocatedCells[index];
 
         if (!cell) {
-            cell = SafeAlloc::MakeUnique<TCell>();
+            cell.emplace();
         }
 
-        return *cell;
+        return &*cell;
     }
 
     void Resize(TSize size) override
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_RUNTIME_ASSERT(size.width >= 0);
-        FO_RUNTIME_ASSERT(size.height >= 0);
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
         const auto prev_width = base::_size.width;
         const auto prev_height = base::_size.height;
 
         base::_size = size;
 
-        vector<unique_ptr<TCell>> new_cells;
+        vector<optional<TCell>> new_cells;
         const auto new_count = numeric_cast<size_t>(numeric_cast<int64_t>(base::_size.width) * base::_size.height);
         new_cells.resize(new_count);
 
@@ -222,7 +245,7 @@ public:
     }
 
 private:
-    vector<unique_ptr<TCell>> _preallocatedCells {};
+    vector<optional<TCell>> _preallocatedCells {};
     const TCell _emptyCell {};
 };
 

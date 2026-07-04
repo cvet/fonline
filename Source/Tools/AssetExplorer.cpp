@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-AssetExplorer::AssetExplorer(FOEditor& editor) :
+AssetExplorer::AssetExplorer(ptr<FOEditor> editor) :
     EditorView("Asset Explorer", editor)
 {
     FO_STACK_TRACE_ENTRY();
@@ -48,7 +48,7 @@ void AssetExplorer::OnPreDraw()
     FO_STACK_TRACE_ENTRY();
 
     ImGui::SetNextWindowPos({0.0f, 0.0f}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({300.0f, numeric_cast<float32_t>(App->MainWindow.GetSize().height)}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({300.0f, numeric_cast<float32_t>(GetApp()->MainWindow.GetSize().height)}, ImGuiCond_Always);
 }
 
 void AssetExplorer::OnDraw()
@@ -56,7 +56,7 @@ void AssetExplorer::OnDraw()
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx("Opened", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
-        for (const auto* asset_view : _editor->GetAssetViews()) {
+        for (const auto& asset_view : _editor->GetAssetViews()) {
             ImGui::SetNextItemOpen(false);
             if (ImGui::TreeNodeEx(asset_view->GetAssetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
                 _editor->OpenAsset(asset_view->GetAssetPath());
@@ -91,8 +91,10 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
 
         for (const auto& file_header : files) {
             ImGui::SetNextItemOpen(false);
-            if (ImGui::TreeNodeEx(file_header.GetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
-                _editor->OpenAsset(file_header.GetPath());
+            const string file_path = string(file_header.GetPath());
+
+            if (ImGui::TreeNodeEx(file_path.c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                _editor->OpenAsset(file_path);
                 ImGui::TreePop();
             }
         }

@@ -40,6 +40,7 @@
 
 FO_BEGIN_NAMESPACE
 
+class EntityLock;
 class ServerEngine;
 
 class ServerEntity : public Entity
@@ -52,21 +53,52 @@ public:
     ServerEntity(ServerEntity&&) noexcept = delete;
     auto operator=(const ServerEntity&) = delete;
     auto operator=(ServerEntity&&) noexcept = delete;
-    ~ServerEntity() override = default;
+    ~ServerEntity() override;
 
-    [[nodiscard]] auto GetId() const noexcept -> ident_t override { return _id; }
-    [[nodiscard]] auto GetEngine() const noexcept -> const ServerEngine* { return _engine.get(); }
-    [[nodiscard]] auto GetEngine() noexcept -> ServerEngine* { return _engine.get(); }
-    [[nodiscard]] auto IsInitCalled() const noexcept -> bool { return _initCalled; }
-    [[nodiscard]] auto IsPersistent() const noexcept -> bool { return _isPersistent; }
+    [[nodiscard]] auto GetId() const noexcept -> ident_t override;
+    [[nodiscard]] auto GetEngine() const noexcept -> ptr<const ServerEngine>;
+    [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine>;
+    [[nodiscard]] auto IsInitCalled() const noexcept -> bool;
+    [[nodiscard]] auto IsPersistent() const noexcept -> bool;
     [[nodiscard]] auto IsExplicitlyPersistent() const noexcept -> bool;
+    [[nodiscard]] auto GetEntityLock() const noexcept -> nptr<EntityLock>;
 
-    void SetInitCalled() noexcept { _initCalled = true; }
+    void ValidateAccess() const override;
+
+    [[nodiscard]] auto GetParent() -> refcount_nptr<ServerEntity>;
+    [[nodiscard]] auto GetParent() const -> refcount_nptr<const ServerEntity>;
+
+    template<typename T>
+    [[nodiscard]] auto GetParent() -> refcount_nptr<T>
+    {
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+        return nptr<ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<T>().try_hold_ref();
+    }
+    template<typename T>
+    [[nodiscard]] auto GetParent() const -> refcount_nptr<const T>
+    {
+        FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+        return nptr<const ServerEntity>(_parent.load(std::memory_order_acquire)).dyn_cast<const T>().try_hold_ref();
+    }
+
+    // Unchecked parent accessor — for the lock machinery only.
+    [[nodiscard]] auto GetParentRaw() const noexcept -> refcount_nptr<ServerEntity>;
+
+    // Return the entity that should be auto-widened into the SyncContext alongside this one,
+    // outside of the parent-chain.
+    [[nodiscard]] virtual auto GetSyncWidenEntity() noexcept -> nptr<ServerEntity>;
+    [[nodiscard]] virtual auto GetSyncWidenEntity() const noexcept -> nptr<const ServerEntity>;
+
+    void SetInitCalled() noexcept;
+    void SetEntityLock(nptr<EntityLock> lock) noexcept;
+    void SetParent(nptr<ServerEntity> parent) noexcept;
 
 protected:
-    ServerEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props) noexcept;
+    ServerEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props) noexcept;
 
-    raw_ptr<ServerEngine> _engine;
+    auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
+
+    ptr<ServerEngine> _engine;
 
 private:
     void SetId(ident_t id) noexcept; // Invoked by EntityManager
@@ -76,30 +108,34 @@ private:
     ident_t _id;
     bool _initCalled {};
     bool _isPersistent {};
+    mutable nptr<EntityLock> _entityLock {};
+    std::atomic<ServerEntity*> _parent {};
 };
 
 class CustomEntity : public ServerEntity, public EntityProperties
 {
 public:
-    CustomEntity(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const Properties* props, const Properties* base_props = nullptr) noexcept :
+    CustomEntity(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, nptr<const Properties> props, nptr<const Properties> base_props = nullptr) noexcept :
         ServerEntity(engine, id, registrator, props, base_props),
-        EntityProperties(GetInitRef())
+        EntityProperties(*GetInitRef())
     {
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _propsRef->GetRegistrator()->GetTypeName(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 class CustomEntityWithProto : public CustomEntity, public EntityWithProto
 {
 public:
-    CustomEntityWithProto(ServerEngine* engine, ident_t id, const PropertyRegistrator* registrator, const ProtoEntity* proto) noexcept :
-        CustomEntity(engine, id, registrator, &proto->GetProperties(), &proto->GetProperties()),
+    CustomEntityWithProto(ptr<ServerEngine> engine, ident_t id, ptr<const PropertyRegistrator> registrator, ptr<const ProtoEntity> proto) noexcept :
+        CustomEntity(engine, id, registrator, proto->GetProperties(), proto->GetProperties()),
         EntityWithProto(proto)
     {
+        FO_VALIDATE_ENTITY(NONE);
     }
 
-    [[nodiscard]] auto GetName() const noexcept -> string_view override { return _proto->GetName(); }
+    [[nodiscard]] auto GetName() const noexcept -> string_view override;
 };
 
 FO_END_NAMESPACE

@@ -43,7 +43,7 @@ class NetworkServer_UdpSockets;
 class NetworkServerConnection_UdpSockets final : public NetworkServerConnection
 {
 public:
-    explicit NetworkServerConnection_UdpSockets(ServerNetworkSettings& settings, string host, uint16_t port, uint32_t session_id);
+    explicit NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id);
     NetworkServerConnection_UdpSockets(const NetworkServerConnection_UdpSockets&) = delete;
     NetworkServerConnection_UdpSockets(NetworkServerConnection_UdpSockets&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_UdpSockets&) = delete;
@@ -73,7 +73,7 @@ private:
 class NetworkServer_UdpSockets final : public NetworkServer
 {
 public:
-    explicit NetworkServer_UdpSockets(ServerNetworkSettings& settings, NewConnectionCallback callback);
+    explicit NetworkServer_UdpSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback);
     NetworkServer_UdpSockets(const NetworkServer_UdpSockets&) = delete;
     NetworkServer_UdpSockets(NetworkServer_UdpSockets&&) noexcept = delete;
     auto operator=(const NetworkServer_UdpSockets&) = delete;
@@ -83,39 +83,39 @@ public:
     void Shutdown() override;
 
 private:
-    [[nodiscard]] auto GenerateSessionId() -> uint32_t;
+    [[nodiscard]] uint32_t GenerateSessionId() FO_TSA_REQUIRES(_connectionsLocker);
     [[nodiscard]] auto MakeEndpointKey(string_view host, uint16_t port) const -> string;
     void Run();
     void ProcessIncomingPackets();
     void HandleConnectPacket(string host, uint16_t port, const UdpPacketInfo& packet);
     void TickConnections(nanotime now);
 
-    raw_ptr<ServerNetworkSettings> _settings;
+    ptr<ServerNetworkSettings> _settings;
     NewConnectionCallback _connectionCallback {};
     udp_socket _socket {};
     std::atomic_bool _stopped {};
-    std::thread _runThread {};
-    std::mutex _connectionsLocker {};
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
-    unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions {};
-    unordered_map<string, uint32_t> _endpointToSession {};
+    thread _runThread {};
+    mutex _connectionsLocker {};
+    std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_connectionsLocker) {MakeSeededRandomGenerator()};
+    unordered_map<uint32_t, shared_ptr<NetworkServerConnection_UdpSockets>> _sessions FO_TSA_GUARDED_BY(_connectionsLocker) {};
+    unordered_map<string, uint32_t> _endpointToSession FO_TSA_GUARDED_BY(_connectionsLocker) {};
     vector<uint8_t> _packetBuf {};
 };
 
-auto NetworkServer::StartUdpSocketsServer(ServerNetworkSettings& settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
+auto NetworkServer::StartUdpSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen UDP connections on port {}", settings.ServerPort + settings.UdpPortOffset);
+    WriteLog("Listen UDP connections on port {}", settings->ServerPort + settings->UdpPortOffset);
 
-    if (settings.RejectUdpConnections) {
+    if (settings->RejectUdpConnections) {
         WriteLog(LogType::Warning, "UDP connect packets are rejected, clients will fall back to TCP after timeout");
     }
 
     return SafeAlloc::MakeUnique<NetworkServer_UdpSockets>(settings, std::move(callback));
 }
 
-NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ServerNetworkSettings& settings, string host, uint16_t port, uint32_t session_id) :
+NetworkServerConnection_UdpSockets::NetworkServerConnection_UdpSockets(ptr<ServerNetworkSettings> settings, string host, uint16_t port, uint32_t session_id) :
     NetworkServerConnection(settings),
     _channel(MakeOptions())
 {
@@ -222,6 +222,7 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     options.ResendTimeoutMs = numeric_cast<uint32_t>(std::max(_settings->UdpResendTimeout, 1));
     options.ConnectRetryMs = numeric_cast<uint32_t>(std::max(_settings->UdpConnectRetry, 1));
     options.Redundancy = numeric_cast<uint32_t>(std::max(_settings->UdpRedundancy, 0));
+    options.MaxReorderAhead = numeric_cast<uint32_t>(std::max(_settings->MaxUdpReorderAhead, 0));
     return options;
 }
 
@@ -242,8 +243,8 @@ void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const v
     }
 }
 
-NetworkServer_UdpSockets::NetworkServer_UdpSockets(ServerNetworkSettings& settings, NewConnectionCallback callback) :
-    _settings {&settings},
+NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
+    _settings {settings},
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -273,7 +274,7 @@ void NetworkServer_UdpSockets::Shutdown()
     }
 }
 
-auto NetworkServer_UdpSockets::GenerateSessionId() -> uint32_t
+uint32_t NetworkServer_UdpSockets::GenerateSessionId()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -318,15 +319,18 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        const auto received = _socket.receive_from({_packetBuf.data(), _packetBuf.size()}, host, port);
+        span<uint8_t> packet_buf {_packetBuf};
+        const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
             break;
         }
 
         UdpPacketInfo packet;
+        FO_STRONG_ASSERT(numeric_cast<size_t>(received) <= _packetBuf.size(), "Received byte count exceeds the packet buffer size");
+        const_span<uint8_t> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
 
-        if (!TryParseUdpPacket({_packetBuf.data(), numeric_cast<size_t>(received)}, packet)) {
+        if (!TryParseUdpPacket(received_packet, packet)) {
             continue;
         }
 
@@ -343,7 +347,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
         shared_ptr<NetworkServerConnection_UdpSockets> connection;
 
         {
-            std::scoped_lock locker(_connectionsLocker);
+            scoped_lock locker {_connectionsLocker};
             const auto it = _sessions.find(packet.SessionId);
 
             if (it != _sessions.end()) {
@@ -365,7 +369,7 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
     bool is_new_connection = false;
 
     {
-        std::scoped_lock locker(_connectionsLocker);
+        scoped_lock locker {_connectionsLocker};
 
         const auto endpoint_key = MakeEndpointKey(host, port);
         const auto endpoint_it = _endpointToSession.find(endpoint_key);
@@ -378,14 +382,14 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
             }
         }
 
-        if (connection == nullptr) {
+        if (!connection) {
             auto session_id = GenerateSessionId();
 
             while (session_id == 0 || _sessions.count(session_id) != 0) {
                 session_id = GenerateSessionId();
             }
 
-            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(*_settings, host, port, session_id);
+            connection = SafeAlloc::MakeShared<NetworkServerConnection_UdpSockets>(_settings, host, port, session_id);
             _sessions.emplace(session_id, connection);
             _endpointToSession.emplace(endpoint_key, session_id);
             is_new_connection = true;
@@ -407,7 +411,7 @@ void NetworkServer_UdpSockets::TickConnections(nanotime now)
     vector<shared_ptr<NetworkServerConnection_UdpSockets>> connections;
 
     {
-        std::scoped_lock locker(_connectionsLocker);
+        scoped_lock locker {_connectionsLocker};
 
         for (const auto& [_, connection] : _sessions) {
             connections.emplace_back(connection);
@@ -420,7 +424,7 @@ void NetworkServer_UdpSockets::TickConnections(nanotime now)
         }
     }
 
-    std::scoped_lock locker(_connectionsLocker);
+    scoped_lock locker {_connectionsLocker};
 
     for (auto it = _sessions.begin(); it != _sessions.end();) {
         if (!it->second->IsDisconnected() || it->second->HasPendingDisconnect()) {

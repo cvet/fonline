@@ -29,9 +29,13 @@ Read this page together with:
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
 - `Source/Client/SpriteManager.h`
+- `Source/Client/SpriteManager.cpp`
+- `Source/Common/Geometry.h`
+- `Source/Common/Geometry.cpp`
 - `Source/Client/EffectManager.h`
 - `BuildTools/cmake/stages/Packages.cmake`
 - `Source/Tests/Test_Rendering.cpp`
+- `Source/Tests/Test_Geometry.cpp`
 
 ## Layer map
 
@@ -42,6 +46,17 @@ The frontend/rendering split has three layers:
 3. **Client drawing layer** (`SpriteManager`, `RenderTargetManager`, `EffectManager`, `MapView`) builds engine/game drawing operations on top of the renderer abstraction.
 
 This keeps most client code renderer-agnostic. The client asks for sprites, effects, draw buffers, render targets, and input events; the selected backend decides how those are implemented.
+
+## Matrix convention
+
+Engine render math uses one matrix convention:
+
+- `mat44` is the GLM matrix type defined in `Source/Common/Common.h`.
+- Storage is column-major. Direct indexing is `matrix[column][row]`; translation is `matrix[3].xyz`; `glm::value_ptr(matrix)` can be copied into uniform buffers without transposing.
+- Algebra uses column vectors. Compose transforms as `clip = Proj * View * Model * vec4(position, 1.0)`.
+- Shader code follows the same convention with `ProjMatrix * vec4(...)`. Backend-specific differences belong inside the matrix constructors and shader cross-compilation path, not in ad-hoc row/column transposes at call sites.
+
+Use `RowMajor`/`ColumnMajor` naming only for explicit boundary conversion with external data formats. Internal renderer, model, particle, and geometry code should name matrices by role (`ProjMatrix`, `ViewMatrix`, `ViewProjMatrix`, `WorldMatrix`) rather than by storage order.
 
 ## Application initialization
 
@@ -80,6 +95,7 @@ Window responsibilities include:
 
 - size, screen size, position, display rect, focus, fullscreen state;
 - minimize, blink, always-on-top, title, input grabbing, and destruction;
+- distinguishing real OS windows from **virtual** windows (`IsVirtual()`) — host-composited embedded windows used by the multi-client host, whose render size is their own per-window virtual size rather than the shared logical screen size;
 - resolving a native `WindowInternalHandle` for render backends;
 - resolving a `HeadlessWindowStub` in headless/stub contexts.
 
@@ -95,7 +111,13 @@ Input responsibilities include:
 - gamepad state;
 - normalization of mouse, keyboard, wheel, touch tap, touch double-tap, touch scroll, and touch zoom events.
 
+Mouse button input preserves the concrete platform button id when mapping to script-facing `MouseButton`
+values (`Left`, `Right`, `Middle`, `Ext0`/`Ext1`, ...); unknown native buttons are ignored rather than
+falling back to a primary click.
+
 The client turns these lower-level events into script events in `ClientEngine::ProcessInputEvent()`.
+
+SDL mouse-motion events are the primary source for `InputEvent::MouseMoveEvent`. On backends where SDL exposes global mouse coordinates (Windows, macOS, X11, and the whitelisted OS/2 drivers), `Application::BeginFrame()` also polls global mouse state while the app remains focused. If no SDL motion event arrived in that frame and the global position changed, the frontend synthesizes a mouse-move event from the global position. This keeps the game cursor and edge-scroll state updating when the OS pointer has moved outside the client window instead of freezing at the last in-window event. The same host-to-active-window translation path is used for this synthetic event, so embedded virtual clients still receive local logical coordinates through their display rect and aspect-fit mapping.
 
 ### `AppAudio` / `IAppAudio`
 
@@ -124,7 +146,7 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 - `EffectUsage` — effect category used when loading/compiling effects.
 - `RenderPrimitiveType` — primitive topology used by draw buffers.
 - `BlendFuncType` and `BlendEquationType` — blend-state configuration read from effect config.
-- `Vertex2D` and `Vertex3D` — vertex layouts used by sprite and model paths. For primitive batches uploaded through `SpriteManager::DrawPoints`, `PosX/PosY` are the draw-area-local pixel coordinates (with the `draw_area` scroll offset subtracted), and `TexU/TexV` carry `PrimitivePoint::TexUV + draw_area.xy` — that is, `DrawPoints` adds the draw-area top-left to whatever the caller authored. The intended idiom for world-stable per-fragment effects (dither, noise, gradient mapping) is to author the **same constant** `TexUV` on every vertex of a primitive batch — the absolute map-origin-anchored pixel position of the screen-anchor hex `_screenRawHex`. The fragment shader then reconstructs each fragment's true absolute world pixel position as `gl_FragCoord.xy + InTexCoord`. Because every vertex carries the same constant, varying interpolation is degenerate (no barycentric rounding can crawl the noise), and the rasterizer's per-pixel `gl_FragCoord` provides the spatial variation. This is robust against camera scroll, camera zoom, fan-triangle deformation from smooth sprite movement, and the `from_hex.x` parity sensitivity of `GeometryHelper::GetHexOffset` on offset-row hexagonal grids. `MapView::LightFanToPrimitves` authors it via `GeometryHelper::GetHexOffset(mpos(0, 0), _screenRawHex)`. Existing primitive shaders ignore `InTexCoord` and are unaffected.
+- `Vertex2D` and `Vertex3D` — vertex layouts used by sprite and model paths. For primitive batches uploaded through `SpriteManager::DrawPoints`, `PosX/PosY` are the draw-area-local pixel coordinates (with the `draw_area` scroll offset subtracted), and `TexU/TexV` carry `PrimitivePoint::TexUV + draw_area.xy` — that is, `DrawPoints` adds the draw-area top-left to whatever the caller authored. The intended idiom for world-stable per-fragment effects (dither, noise, gradient mapping) is to author the **same constant** `TexUV` on every vertex of a primitive batch — the absolute map-origin-anchored pixel position of the screen-anchor hex `_screenRawHex`. The fragment shader then reconstructs each fragment's true absolute world pixel position as `gl_FragCoord.xy + InTexCoord`. Because every vertex carries the same constant, varying interpolation is degenerate (no barycentric rounding can crawl the noise), and the rasterizer's per-pixel `gl_FragCoord` provides the spatial variation. This is robust against camera scroll, camera zoom, fan-triangle deformation from smooth sprite movement, and the `from_hex.x` parity sensitivity of `GeometryHelper::GetHexOffset` on offset-row hexagonal grids. `MapView::LightFanToPrimitves` authors it via `GeometryHelper::GetHexOffset(mpos(0, 0), _screenRawHex)`. `Primitive_Light.fofx` consumes it (`worldPixel = gl_FragCoord.xy + InTexCoord`) to jitter the light's edge taper with world-stable noise; other primitive shaders ignore `InTexCoord` and are unaffected. The light fan also carries the **normalized radial distance** in `PrimitivePoint::PointPosZ` (`LightFanToPrimitves`' `rim_dell`: 0 at the center, ~1 at the rim) → `InPosition.z`; `Primitive_Light.fofx` reads it as `Rim` and `smoothstep`s the outer band (`EdgeTaperStart`..1.0) to zero so brightness rises gently *from zero* at the rim instead of ending in a hard constant-slope edge (which is very visible when the light moves).
 - `RenderTexture` — backend texture/render-target resource.
 - `RenderDrawBuffer` — vertex/index storage uploaded to the backend.
 - `RenderEffect` — shader/effect object plus standard uniform/script-value buffers.
@@ -205,6 +227,43 @@ Vulkan changes should be validated on a platform with the Vulkan SDK by running 
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
+Model-attached SPARK particle systems keep already spawned particles in their simulation space while the emitter follows the model attachment point. A non-identity root transform in the particle resource selects the position-plus-facing path instead of inheriting the full bone matrix; this keeps lingering particles world-stable during model movement while new particles spawn at the current attachment point. The model movement offset is subtracted in particle model space before camera rotation and projection so the setup-time positive offset and draw-time negative offset cancel for newly emitted particles.
+
+## Screen size, resolution, and letterboxing
+
+Two distinct sizes drive client rendering:
+
+- **Logical screen size** — `Settings.View.ScreenWidth/ScreenHeight`. This is the coordinate space the game renders in: the main render target `_rtMain` (`SpriteManager`), the projection matrix, and the GUI/ImGui display size all use it.
+- **Backbuffer (framebuffer) size** — the actual output surface: the OS window's pixel size in windowed mode, the monitor size in fullscreen, or an embedded client's virtual render texture in the multi-client host.
+
+The game always renders into `_rtMain` at the logical size; the final blit (`Renderer::SetRenderTarget(nullptr)` in the backends) then **stretches/upscales `_rtMain` with aspect ratio preserved** into the backbuffer (centered, with bars only when the aspects differ). This is deliberate: fullscreen must scale the chosen logical resolution up to the monitor without non-proportional distortion. When the two sizes are equal the blit is 1:1 with no bars. Accordingly `_rtMain` is sized to `GetScreenSize()` and is resized on the screen-size-changed event. Dispatchers are semantic: `OnScreenSizeChanged` fires only when the logical screen size changes, while `OnWindowSizeChanged` fires when the physical/host window changes.
+
+Script offscreen surfaces (`Game.ActivateOffscreenSurface` / `Game.PresentOffscreenSurface`) also operate in the logical screen coordinate space, because scripts draw them while `_rtMain` is active. Pooled offscreen render targets must therefore be created at `SpriteManager::GetScreenSize()` and resized when the logical resolution changes before they are reused; otherwise effects such as monitor-noise GUI composition can clip content that moves outside the old resolution.
+
+### Windowed
+
+Window pixel size and logical screen size are kept equal. Resizing the OS window raises `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED`; while the main window is not fullscreen, that event writes `Settings.ScreenWidth/Height` from the new pixel size, fires `OnWindowSizeChanged`, and fires `OnScreenSizeChanged` only when those settings actually changed. `Game.SetResolution(w, h)` first updates the logical size through `SetScreenSize`, then resizes the OS window only when the client is neither fullscreen nor virtual; the following OS-window resize is treated as a window-size event only if it reports the same logical size, avoiding a second GUI/map screen-size refresh for the same resolution change.
+
+### Fullscreen (borderless desktop)
+
+The window uses `SDL_SetWindowFullscreenMode(window, nullptr)`, so the framebuffer is always the monitor size and cannot be resized to a sub-monitor resolution. A "resolution" in fullscreen is the **logical** render size: `Game.SetResolution` changes the logical size (`SetScreenSize`), and the backbuffer blit stretches/upscales that logical render to the monitor **with aspect ratio preserved**. Fullscreen startup, fullscreen toggles, and fullscreen `SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED` events update the renderer/backbuffer only; they must not overwrite `Settings.ScreenWidth/Height` or fire `OnScreenSizeChanged`, otherwise the selected logical resolution collapses to the monitor size and there is nothing left to stretch. `AppWindow::ToggleFullscreen()` marks the transition before calling SDL because SDL can queue the pixel-size event while the OS/window flags still appear to be in the previous mode. This is not a non-proportional stretch; bars are expected only when the selected logical aspect differs from the monitor aspect.
+
+SDL documents that `SDL_SetWindowSize` has no effect while a window is fullscreen or maximized, so the engine must not rely on that call changing the live fullscreen framebuffer. For native non-virtual clients, `Game.SetResolution` still records the requested size as the pending windowed size while fullscreen. When the client leaves fullscreen, `SpriteManager::ToggleFullscreen()` applies that pending size to the restored window and then re-centers the window using the accumulated resolution delta. This preserves both rules: fullscreen presents as aspect-preserving stretch to the monitor, and returning to windowed mode uses the last selected resolution as the OS window size.
+
+### Embedded clients in the multi-client host (virtual windows)
+
+`ServerApp` can host several embedded clients (the `Single`/`Tile`/`Cascade` layouts, `Spawn Client`). Each embedded client is its **own engine instance** with its **own `GlobalSettings`** and a **virtual** `AppWindow` (`IsVirtual()`). A virtual window:
+
+- keeps physical virtual-window size (`_virtualSize`, `GetSize()`) separate from logical client resolution (`_virtualScreenSize`, `GetScreenSize()`);
+- renders game content into `_rtMain` at the logical size, then aspect-fits that render target into `_virtualRenderTex` at the physical virtual-window size;
+- is composited by the host: `ServerApp` draws the client's virtual render texture aspect-fitted and centered into a per-client display rect (`SetDisplayRect`), and maps input back through that rect, `_virtualSize`, and the same aspect-fit content rect used for rendering so black bars do not skew client-local mouse coordinates.
+
+Because each embedded engine owns its settings, a resolution change must update the **owning engine's** settings, not the host's. Virtual `AppWindow::SetScreenSize`/`GetScreenSize` store the logical size in `_virtualScreenSize`, while `SpriteManager::SetScreenSize` mirrors the new size into the embedded engine's own `Settings.ScreenWidth/Height` before the screen-size-changed handlers run. `SetResolution` skips `SetWindowSize` for virtual windows, and `SetScreenSize` does not mutate `_virtualSize`, so changing a client resolution no longer resizes the virtual render texture or the host layout. A standalone client has a single engine where the engine's settings and `App->Settings` are the same instance, so the real window handles it directly.
+
+GUI screens re-center on a resolution change through the client's `OnScreenSizeChanged` handler → `Gui::Callback_OnResolutionChanged()`, which re-runs each screen's layout against the current `Settings.View.ScreenWidth/Height` (a screen with `Anchor: None` is centered against the parent/screen size). This is why both `_rtMain`/`GetScreenSize()` **and** the engine's own settings must reflect the new logical size: the render target controls what is drawn, the settings control where the GUI lays it out.
+
+Local-map viewports recenter instantly on the chosen critter when their screen size actually changes. This keeps the player anchored after resolution changes in standalone clients, fullscreen logical-resolution changes, and embedded virtual clients. `MapView` must derive that size from the logical client screen size, not from the physical OS window/backbuffer size; fullscreen scaling is handled by the final render-target blit.
+
 ## Effects and shader data
 
 `RenderEffect` owns standard buffers used by render paths:
@@ -221,6 +280,50 @@ Vulkan changes should be validated on a platform with the Vulkan SDK by running 
 - backend shader loading/drawing in `Rendering-OpenGL.cpp` or `Rendering-Direct3D.cpp`;
 - client effect selection/update code in `EffectManager`;
 - map/client draw sequencing in `MapView` or `SpriteManager`.
+
+### Minimal-profile base effects
+
+The engine ships a fixed set of base effects under `Resources/Core/Effects/` (loaded as the default for each draw slot by the `LOAD_DEFAULT_EFFECT` table in `Source/Client/EffectManager.cpp`) plus a few bootstrap effects under `Resources/Embedded/Effects/` (compiled into the binary so the renderer can draw before external resource packs are mounted). Each `.fofx` opens with a top-of-file `#` comment header stating what the effect does, which slot uses it, and how it works.
+
+These base shaders are deliberately written for the **lowest Direct3D feature level** (down to feature level 9_x): no `gl_FragCoord` / position-semantic reads, no screen-space derivatives (`dFdx`/`dFdy`/`fwidth`), and no dynamic array/vector indexing — only constructs that compile and run on the weakest supported hardware. The cross-compiler still emits HLSL Shader Model 4.0, GLSL 330, GLSL ES 300 and Metal for every effect (`Source/Tools/EffectBaker.cpp`), but the *source* must avoid features that fail on the lowest runtime profile. Keep an engine base effect minimal; that is what its header's `Profile: minimal` line records.
+
+Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults.
+
+An **embedding project that targets richer hardware** keeps its own advanced-profile copies in a resource pack that bakes *after* `Core`/`Embedded` under the same resource name, so the project copy shadows the engine base at runtime while the engine keeps the minimal fallback. The richer copy is free to use `gl_FragCoord`, derivatives, per-fragment lighting, and similar; the engine base is not.
+
+## Per-effect depth state and the shared map depth buffer
+
+Effects carry per-pass depth state parsed from the `.fofx` `[Effect]` block:
+
+- `DepthWrite` (default `True`) → `RenderEffect::_depthWrite[pass]` (depth write mask).
+- `DepthFunc` (default `Always`) → `RenderEffect::_depthFunc[pass]` (`DepthFuncType`: `Always`/`Never`/`Less`/`LessEqual`/`Equal`/`GreaterEqual`/`Greater`/`NotEqual`). Both `Rendering-OpenGL.cpp` and `Rendering-Direct3D.cpp` translate it (`ConvertDepthFunc`) and the backends diverge in NDC-Z (`[-1,1]` GL/GL-ES vs `[0,1]` D3D), so depth-dependent effects must be validated on both.
+
+The map render target (`MapView::_rtMap`) is created `with_depth`, giving the world one shared depth buffer. `EffectUsage::QuadSprite` and `EffectUsage::Model` effects participate in it (depth state is a hardware no-op on targets without a depth attachment — UI, light, flush-to-screen):
+
+- Screen-space quads (GUI, fonts, render-target blits, and non-map sprite effects) initialize `Vertex2D::PosZ` to `0.0f`; map sprites may start from the same atlas data, but `SpriteManager` overwrites their Z before flushing them into `_rtMap`.
+- Standing map sprites (`Item`/`Critter`) use `DepthFunc = LessEqual` with depth writes (`2D_Default.fofx` / `2D_WithoutEgg.fofx`): they both **test against and write** the shared depth buffer, so they occlude each other and the direct-draw particles / 3D models by real depth. Their per-vertex depth is the vertical-billboard proxy (`get_map_sprite_proj` → `GetHexWorldPos`/`ProjectWorldToMap`, anchored on the sprite root; the `MapView::InitView` view layout reproduces `GetHexPos.y` exactly, so the rendered screen position and the depth basis agree). **The depth/sort anchor is the object's LOGICAL root, not the bitmap bottom-center.** For an item the proto `Offset` is the bottom-center→root vector (a tree's trunk): it still positions the bitmap through `MapSprite::_pSprOffset` (so the visual, lighting and `MeasureMapBorders` are unchanged), but it is *also* kept as a separate static root offset (`HexView::_rootOffset` → `MapSprite::_pRootOffset`) that the depth proxy subtracts — in `GetMapRootOffset()` for `sprite_proj.z` and from `scene_pos_y` for the per-vertex reference — so a tall sprite anchors on its trunk instead of `Offset` pixels below it. Without this, the tree's depth anchored at the bitmap bottom (too far south/near) and it wrongly occluded a critter standing in front of it. Critters carry no proto `Offset` (their root comes from the sprite anchor), so their `_rootOffset` is zero. They are the **only** map sprite layer that participates in the depth buffer; every flat/background layer (floor tiles, roofs, flat ground overlays) is painter-only and depth-inert — neither writes nor tests (see below). `MapSprite` receives critter/item `Elevation`; positive elevation shifts the sprite upward in screen Y and increases the same world-Z depth. `MapSprite::HexOffset` plus runtime sprite/tweak offsets are projected along the ground plane before depth is computed, so sub-hex movement changes both screen position and 3D depth continuously; viewport-only `field.Offset` is not part of world depth. The intrinsic `Sprite::Offset` is different: it defines which pixel inside the atlas quad is the logical root on the ground, so vertical depth and direct-to-scene anchors use that root instead of assuming the bitmap's lower center. Floor tile layers (`DrawOrderType::Tile..Tile4`) and flat ground overlays (`FlatItemPreLight`/`HexGrid` pre-light, and `DeadCritter`/`FlatItemAfterLight` post-light — the layers below `NormalBegin`) are upright background sprites: they keep their atlas-provided screen-space XY/UV and **never touch the shared depth buffer**. The no-depth effect is chosen at the **entity level**, never per-draw — picking it inside `SpriteManager::DrawSprites` would split the sprite batch, so it is forbidden there. Tiles and roofs resolve `Effects.Tile` / `Effects.Roof`; flat items resolve `Effects.Flat` (`ItemHexView::Init`, by `GetDrawFlatten()`) — all three → `2D_NoDepth.fofx`. Item draw order is decided by `GetDrawFlatten()`, never by `IsScenery`/`IsWall`: upright → `Item` (the default), flat → `FlatItemPreLight` if `GetStatic()` (drawn pre-light) else `FlatItemAfterLight` (post-light). The former `Scenery`/`Item` (and `FlatScenery`/`FlatItem`) layers were merged, so upright items on one hex no longer force scenery behind items by class — they draw in **add order** (the `MapSprite::_globalPos` tiebreaker once `_drawOrderPos` ties on the merged layer + hex). (Dead critters drawn flattened keep `Effects.Critter` and still write depth; revisit if a corpse ever clips a standing critter.) All of these (`DepthWrite = False` + `DepthFunc = Always`) are drawn before the standing sprites and fully painter-sorted, so they cannot z-fight (coplanar layers), seam (abutting sprites), or clip a standing sprite's feet / a 3D model — they need no per-vertex depth, no ground-plane projection, and no per-layer bias. Standing sprite layers (`Item`, `Critter`) keep atlas XY/UV but write per-vertex `PosZ` through `GeometryHelper::ProjectMapYToVerticalDepth`, so they behave like vertical planes standing on their ground anchor; they carry no draw-order depth bias, because one would pull the vertical plane toward the camera and move the particle-occlusion line off the logical root point. The only remaining depth-bias user is the direct-draw path (particles / 3D models replayed at the end of each sprite pass): `SpriteManager` divides a half-pixel depth budget (`MAP_LAYER_DEPTH_BIAS`) by `DrawOrderType::Last + 1` and gives each direct-draw sprite a single such step above its world depth, keeping it below the subpixel snapping threshold (see *Direct-to-scene sprites*). Both `Core` and `Embedded` `2D_Default.fofx` must project the full `InPosition.xyz`; if an override flattens to `InPosition.xy, 0.0`, particles have no useful scene depth to test against. `2D_Default.fofx` and `2D_WithoutEgg.fofx` discard fragments whose final alpha is at or below `1/255` (after egg alpha), so fully transparent sprite texels do not populate the depth buffer and clip in-scene particles behind the empty parts of the atlas quad.
+- Roof tiles (`IsRoofTile`) are ordinary floor tiles given a fixed positive `Elevation` (`Geometry.MapRoofElevation`): the projection raises their screen position onto the building's wall tops (the engine still auto-hides the roof group whose `RoofNum` the camera is inside). A roof is just a tile lifted in screen Y — the flat tile/roof sub-hex XY anchor now lives on the `BaseTile` prototype's `Offset`, not on the former per-side `Geometry.MapTileOffs*`/`MapRoofOffs*` settings (removed); the roof-particle and mapper tile-preview paths read the same `Elevation` instead of the old 2D roof offset. The **roof draw-order range (`Roof..Last`) is rendered as a separate trailing pass** (`MapView::DrawSpritesWithFog` splits at `below_roof = Roof-1` and draws `[Roof..Last]` last, via `DrawFoggedSpriteRange`): everything below it — including the direct-draw 3D models / in-scene particles each sprite pass replays at its end — is drawn first. Like floor tiles, roofs do not touch the depth buffer (`Effects.Roof` → `2D_NoDepth.fofx`, `DepthWrite = False` + `DepthFunc = Always`): being drawn last and never depth-tested, the roof layer always paints on top of the building regardless of the scene depth buffer, and being depth-write-free it never clips anything drawn after it.
+- Particle effects (`Particles_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other.
+- Model effects (`3D_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = True`: direct-to-scene models write real mesh depth into `_rtMap`, so particles and later direct geometry can test against the model surface instead of the old model atlas quad.
+- `OnRenderMap_AfterSpritesAndFog` fires after the sprite/fog map pass and before the map target is flushed. Scripts that need entity debug markers should iterate the relevant visible `Item`/`Critter` objects, combine `Map.GetHexMapPos(entity.Hex)`, `entity.GetSpriteOffset()`, and `entity.Elevation`, then subtract the event draw-area origin; this keeps selection/filtering in scripts without depending on transient sprite instances.
+- **Entity contours/outlines are script-driven, not native.** There is no engine contour pass; an embedding-project script (Last Frontier: `ContourPipeline.fos`, compiled for `CLIENT` and `MAPPER`) keeps a cache of entities whose `Contour` colour property is non-zero and, on `OnRenderMap_AfterSprites`, draws each via `Map.DrawEntitySprite(entity, contourEffectSubtype, colour, padding)` (a dilated silhouette in the contour effect, then the sprite on top so only the rim shows). The mapper's selection outline uses the same path — it sets the selected entity's `Contour` property (the property is registered for the mapper because `Client` entity registration includes the mapper target) rather than any native call.
+
+## Direct-to-scene sprites
+
+A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight into the current scene render target** (with the shared depth buffer) instead of being batched as an atlas quad. Because such a sprite uses its own shader (not the sprite batch's), drawing it at its interleaved draw-order position would split the sprite batch around every one. Instead `SpriteManager::DrawSprites` **collects** direct-draw sprites during the batch loop and replays them in a single `Sprite::DrawInScene(scene_pos, depth)` pass (a `const` method, like `FillData`) *after* the whole sprite batch is flushed — so the batch stays intact. Opaque sprites write depth (`DepthFunc = Always`, `DepthWrite = True`) and direct-draw transparents only test it (`LessEqual`, `DepthWrite = False`), so scene occlusion comes from the shared depth buffer. Direct-draw anchors use the projected `hex + HexOffset + SpriteOffset/TweakOffset + Elevation` map position, deliberately excluding viewport-only `field.Offset`, and keep only a single computed anchor-bias step instead of inheriting their late draw order; otherwise `DrawOrderType::Particles` would become depth-closer than critters/scenery before the particle geometry itself is even considered.
+
+`ParticleSprite` supports **two render types**, chosen per particle system by the `SparkQuadRenderer` `draw in scene` `.fopts` attribute (`ATTRIBUTE_TYPE_BOOL`, default false — alongside `draw size`):
+
+- **Atlas type** (default, `draw in scene` absent/false): `Update()` renders the Spark system to an offscreen atlas (`ParticleSpriteFactory::DrawParticleToAtlas`); the sprite is then drawn as a flat batched quad. `IsDirectDraw()==false`.
+- **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`, `Update()` is a no-op, and `DrawInScene` renders the system directly into `_rtMap` through the map view-proj so particles depth-sort against scene geometry instead of being baked to a flat sprite.
+
+`ParticleSprite::Play()` respawns its `ParticleSystem` before starting updates, so one-shot SPARK systems can be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+
+The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
+
+`ModelSprite` can also use the direct-to-scene path for visible map rendering when `Render.ModelDirectDraw` is enabled. With the default `false` value, map models stay on the cached atlas-sprite path: `ModelSprite::Update()` refreshes the model atlas and the sprite batch draws the atlas quad. With `Render.ModelDirectDraw = true`, `ModelSprite::DrawInScene` builds the same shared map view-proj basis as scene particles, bakes the map sprite's logical root (`scene_pos` + raw scene depth) into the proj, and calls `ModelInstance::DrawInScene`. The model animation/skinning path is reused, but the old atlas-only camera tilt is skipped so the shared map VP owns the tilt once. `DrawToAtlas` is retained for preview and hit-test data. Model-bone SPARK particles use the active direct-scene proj with `tilt_in_proj`, so attached transparent particles render in the same world-space map frame and test against shared depth. Direct scene draws still disable the old model shadow pass because its shader math is atlas-space and needs a separate world-space rewrite.
+
+**World scale.** `Render.ModelProjFactor` is the screen px per 3D world unit (= `32` = `MAP_HEX_WIDTH`), i.e. **1 world unit = 1 hex = 1 m** — the single metric shared by 3D models and in-scene particles. So a scene-type system that emits within a radius of N units spans N hexes on the ground, matching direct-to-scene 3D models authored to the same scale.
 
 ## Platform packages and BuildTools relationship
 

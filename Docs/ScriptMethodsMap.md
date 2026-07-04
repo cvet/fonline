@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **874** `///@ ExportMethod` declarations across these files.
+The current set contains **932** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -52,7 +52,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonGlobalScriptMethods.cpp`
 
-- Exported methods: 73
+- Exported methods: 76
 - Prefix: `Common_Game_*`
 - Ownership: cross-side global helpers that do not require authoritative server-only state or client-only rendering state.
 - Typical responsibilities:
@@ -80,7 +80,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerGlobalScriptMethods.cpp`
 
-- Exported methods: 105
+- Exported methods: 122
 - Prefix: `Server_Game_*`
 - Ownership: authoritative game/server global operations.
 - Typical responsibilities:
@@ -93,7 +93,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
-- Exported methods: 24
+- Exported methods: 35
 - Prefix: `Server_Entity_*`
 - Ownership: server-side base entity operations.
 - Typical responsibilities:
@@ -151,7 +151,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-- Exported methods: 9
+- Exported methods: 11
 - Prefix: `Server_Player_*`
 - Ownership: connected player/session operations.
 - Typical responsibilities:
@@ -166,7 +166,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientGlobalScriptMethods.cpp`
 
-- Exported methods: 100
+- Exported methods: 104
 - Prefix: `Client_Game_*`
 - Ownership: client-side global/runtime/frontend helpers.
 - Typical responsibilities:
@@ -181,7 +181,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientEntityScriptMethods.cpp`
 
-- Exported methods: 22
+- Exported methods: 33
 - Prefix: `Client_Entity_*`
 - Ownership: client-side base entity time-event helpers.
 - Typical responsibilities:
@@ -191,12 +191,12 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientCritterScriptMethods.cpp`
 
-- Exported methods: 34
+- Exported methods: 38
 - Prefix: `Client_Critter_*`
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
   - display name, online/alive/movement/model/visibility state;
-  - animation availability/playback/stop/refresh;
+  - animation availability/playback/stop/refresh and per-`(state, action)` clip duration (`GetModelAnimDuration`, real cycle length from the model bakers, used to derive footstep spacing);
   - inventory queries on visible client-side critters;
   - text position, particles, animation callbacks, bone positions;
   - local movement helpers.
@@ -218,7 +218,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ClientItemScriptMethods.cpp`
 
-- Exported methods: 15
+- Exported methods: 16
 - Prefix: `Client_Item_*`
 - Ownership: client-side visible item/view operations.
 - Typical responsibilities:
@@ -253,13 +253,15 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/MapperGlobalScriptMethods.cpp`
 
-- Exported methods: 44
+- Exported methods: 50
 - Prefix: `Mapper_Game_*`
 - Ownership: mapper/editor automation.
 - Typical responsibilities:
+  - create a blank map (`NewMap` / `NewMapFromText`, wrapping the internal `LoadMapFromText`);
   - add/delete/move/select entities;
+  - set any per-instance entity property by name/text (`SetEntityProperty`, via the inspector apply path);
   - add tiles;
-  - load/unload/save/show maps;
+  - load/unload/save/show maps, plus a sandboxed save into a sub-directory (`SaveMapToPath`);
   - query loaded map files;
   - resize maps;
   - manage mapper tabs and tab pid filters.
@@ -272,7 +274,7 @@ Use this checklist before editing a `*ScriptMethods.cpp` file:
 1. Identify the side that owns the state: common utility, server authority, client view/frontend, or mapper editor.
 2. Identify the receiver family: global/game, entity, critter, map, item, location, player, ImGui, or another registered type.
 3. Add `///@ ExportMethod` and `FO_SCRIPT_API` in the owning file. Use trailing C++ default parameters for optional suffix arguments instead of duplicating overloads whose bodies only supply fallback values. Codegen normalizes engine value-type defaults such as `isize32 {}` or `ucolor {}` into AngelScript defaults such as `isize()` or `ucolor()`.
-4. Apply `FO_NULLABLE` only when a pointer parameter/return genuinely accepts or returns null; see [Nullability.md](Nullability.md).
+4. Spell a scalar pointer parameter/return `nptr<T>` only when it genuinely accepts or returns null; otherwise use the non-null `ptr<T>`. See [Nullability.md](Nullability.md).
 5. Regenerate code so method descriptors and wrappers reflect the new signature.
 6. Add or update the smallest relevant script method tests.
 7. Update this page if a file is added/removed or a group meaning changes.

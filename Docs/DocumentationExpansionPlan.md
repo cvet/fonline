@@ -259,8 +259,8 @@ High-value source areas to document:
 
 **Research:**
 - `Source/Common/MetadataRegistration.*`
-- `Source/Common/MetadataRegistration-Template.cpp`
-- `Source/Common/GenericCode-Template.cpp`
+- `Source/Common/MetadataRegistration.template.cpp`
+- `Source/Common/GenericCode.template.cpp`
 - `Source/Common/Properties.*`
 - `BuildTools/cmake/stages/Codegen.cmake`
 - `PUBLIC_API.md`
@@ -347,7 +347,6 @@ High-value source areas to document:
 
 **Research:**
 - `Source/Common/NetBuffer.*`
-- `Source/Common/NetCommand.*`
 - `Source/Common/NetworkUdp.*`
 - `Source/Client/NetworkClient*.cpp`
 - `Source/Server/NetworkServer*.cpp`

@@ -1,10 +1,16 @@
+# Flush_Light — additively composites the accumulated light buffer over the scene.
+# Where: engine default for the FlushLight slot (additive composite of the light render target).
+# How: two passes, both blending DstColor One; pass 1 modulates the framebuffer by the light's alpha (greyscale mask) and pass 2 adds the light's RGB colour, with zero-alpha texels discarded in each pass.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
+DepthWrite = False
 Passes = 2
 BlendFunc_Pass1 = DstColor One
 BlendFunc_Pass2 = DstColor One
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -15,7 +21,7 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition.xy, 0.0, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition.xy, 0.0, 1.0);
     TexCoord = InTexCoord;
 }
 

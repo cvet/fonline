@@ -44,53 +44,53 @@ void ModelAnimation::Load(DataReader& reader, HashResolver& hash_resolver)
     string tmp;
     uint32_t len = 0;
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     _animFileName.resize(len);
-    reader.ReadPtr(_animFileName.data(), len);
-    reader.ReadPtr(&len, sizeof(len));
+    reader.ReadStringBytes(_animFileName);
+    len = reader.Read<uint32_t>();
     _animName.resize(len);
-    reader.ReadPtr(_animName.data(), len);
-    reader.ReadPtr(&_duration, sizeof(_duration));
-    reader.ReadPtr(&len, sizeof(len));
+    reader.ReadStringBytes(_animName);
+    _duration = reader.Read<float32_t>();
+    len = reader.Read<uint32_t>();
 
     _bonesHierarchy.resize(len);
 
     for (uint32_t i = 0, j = len; i < j; i++) {
-        reader.ReadPtr(&len, sizeof(len));
+        len = reader.Read<uint32_t>();
         _bonesHierarchy[i].resize(len);
 
         for (uint32_t k = 0, l = len; k < l; k++) {
-            reader.ReadPtr(&len, sizeof(len));
+            len = reader.Read<uint32_t>();
             tmp.resize(len);
-            reader.ReadPtr(tmp.data(), len);
+            reader.ReadStringBytes(tmp);
             _bonesHierarchy[i][k] = hash_resolver.ToHashedString(tmp);
         }
     }
 
-    reader.ReadPtr(&len, sizeof(len));
+    len = reader.Read<uint32_t>();
     _boneOutputs.resize(len);
 
     for (uint32_t i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
-        reader.ReadPtr(&len, sizeof(len));
+        len = reader.Read<uint32_t>();
         tmp.resize(len);
-        reader.ReadPtr(tmp.data(), len);
+        reader.ReadStringBytes(tmp);
         o.BoneName = hash_resolver.ToHashedString(tmp);
-        reader.ReadPtr(&len, sizeof(len));
+        len = reader.Read<uint32_t>();
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);
-        reader.ReadPtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
-        reader.ReadPtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
-        reader.ReadPtr(&len, sizeof(len));
+        reader.ReadObjectArray(span {o.ScaleTime});
+        reader.ReadObjectArray(span {o.ScaleValue});
+        len = reader.Read<uint32_t>();
         o.RotationTime.resize(len);
         o.RotationValue.resize(len);
-        reader.ReadPtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
-        reader.ReadPtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
-        reader.ReadPtr(&len, sizeof(len));
+        reader.ReadObjectArray(span {o.RotationTime});
+        reader.ReadObjectArray(span {o.RotationValue});
+        len = reader.Read<uint32_t>();
         o.TranslationTime.resize(len);
         o.TranslationValue.resize(len);
-        reader.ReadPtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
-        reader.ReadPtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
+        reader.ReadObjectArray(span {o.TranslationTime});
+        reader.ReadObjectArray(span {o.TranslationValue});
     }
 }
 
@@ -98,25 +98,25 @@ ModelAnimationController::ModelAnimationController(int32_t track_count)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track_count >= 0);
+    FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
 
     if (track_count != 0) {
-        _anims = SafeAlloc::MakeShared<vector<pair<ModelAnimation*, bool>>>();
+        _anims = SafeAlloc::MakeShared<vector<pair<ptr<ModelAnimation>, bool>>>();
         _outputs = SafeAlloc::MakeShared<vector<Output>>();
         _tracks.resize(track_count);
     }
 }
 
-auto ModelAnimationController::Copy() const -> unique_ptr<ModelAnimationController>
+auto ModelAnimationController::Copy() const -> ModelAnimationController
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto clone = SafeAlloc::MakeUnique<ModelAnimationController>(0);
-    clone->_anims = _anims;
-    clone->_outputs = _outputs;
-    clone->_tracks.resize(_tracks.size());
-    clone->_eventsTime = 0.0f;
-    clone->_interpolationDisabled = _interpolationDisabled;
+    ModelAnimationController clone {0};
+    clone._anims = _anims;
+    clone._outputs = _outputs;
+    clone._tracks.resize(_tracks.size());
+    clone._eventsTime = 0.0f;
+    clone._interpolationDisabled = _interpolationDisabled;
     return clone;
 }
 
@@ -134,7 +134,7 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
     o.Translation.resize(_tracks.size());
 }
 
-auto ModelAnimationController::RegisterAnimation(ModelAnimation* animation, bool reversed) -> int32_t
+auto ModelAnimationController::RegisterAnimation(ptr<ModelAnimation> animation, bool reversed) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -142,12 +142,12 @@ auto ModelAnimationController::RegisterAnimation(ModelAnimation* animation, bool
     return numeric_cast<int32_t>(_anims->size() - 1);
 }
 
-auto ModelAnimationController::GetAnimationBones(int32_t index) const -> const vector<vector<hstring>>&
+auto ModelAnimationController::GetAnimationBones(int32_t index) const -> const_span<vector<hstring>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", index, _anims->size());
 
     return (*_anims)[index].first->GetBonesHierarchy();
 }
@@ -156,8 +156,8 @@ auto ModelAnimationController::GetAnimationDuration(int32_t index) const -> floa
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(index >= 0);
-    FO_RUNTIME_ASSERT(index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(index >= 0, "Index is negative", index);
+    FO_VERIFY_AND_THROW(index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", index, _anims->size());
 
     return (*_anims)[index].first->GetDuration();
 }
@@ -166,8 +166,8 @@ auto ModelAnimationController::GetTrackEnable(int32_t track) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Enabled;
 }
@@ -176,8 +176,8 @@ auto ModelAnimationController::GetTrackSpeed(int32_t track) const -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Speed;
 }
@@ -186,8 +186,8 @@ auto ModelAnimationController::GetTrackPosition(int32_t track) const -> float32_
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     return _tracks[track].Position;
 }
@@ -199,28 +199,28 @@ auto ModelAnimationController::GetAnimationsCount() const -> int32_t
     return numeric_cast<int32_t>(_anims->size());
 }
 
-void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_index, const unordered_set<hstring>* allowed_bones)
+void ModelAnimationController::SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
-    FO_RUNTIME_ASSERT(anim_index >= 0);
-    FO_RUNTIME_ASSERT(anim_index < numeric_cast<int32_t>(_anims->size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
+    FO_VERIFY_AND_THROW(anim_index >= 0, "Animation index is negative", anim_index);
+    FO_VERIFY_AND_THROW(anim_index < numeric_cast<int32_t>(_anims->size()), "Animation index is outside animation table bounds", anim_index, _anims->size());
 
-    const auto* anim = (*_anims)[anim_index].first;
+    ptr<const ModelAnimation> anim = (*_anims)[anim_index].first;
     const auto reversed = (*_anims)[anim_index].second;
 
     _tracks[track].Anim = anim;
     _tracks[track].Reversed = reversed;
-    const auto& outputs = anim->GetBoneOutputs();
+    const_span<ModelAnimation::BoneOutput> outputs = anim->GetBoneOutputs();
     _tracks[track].AnimOutput.resize(outputs.size());
 
     for (size_t i = 0; i < outputs.size(); i++) {
         const auto link_name = outputs[i].BoneName;
-        Output* output = nullptr;
+        nptr<Output> output = nullptr;
 
-        if (allowed_bones == nullptr || allowed_bones->count(link_name) != 0) {
+        if (!allowed_bones || allowed_bones->count(link_name) != 0) {
             for (auto& o : *_outputs) {
                 if (o.BoneName == link_name) {
                     output = &o;
@@ -237,8 +237,8 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(skip_track >= 0);
-    FO_RUNTIME_ASSERT(skip_track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(skip_track >= 0, "Skip track is negative", skip_track);
+    FO_VERIFY_AND_THROW(skip_track < numeric_cast<int32_t>(_tracks.size()), "Skipped animation track index is outside track table bounds", skip_track, _tracks.size());
 
     // Turn off fast transition bones on other tracks
     for (auto bone_name : bone_names) {
@@ -272,8 +272,8 @@ void ModelAnimationController::AddEventEnable(int32_t track, bool enable, float3
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Enable, .ValueTo = enable ? 1.0f : -1.0f, .StartTime = start_time, .SmoothTime = 0.0f});
 }
@@ -282,8 +282,8 @@ void ModelAnimationController::AddEventSpeed(int32_t track, float32_t speed, flo
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Speed, .ValueTo = speed, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -292,8 +292,8 @@ void ModelAnimationController::AddEventWeight(int32_t track, float32_t weight, f
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Events.emplace_back(Track::Event {.Type = Track::EventType::Weight, .ValueTo = weight, .StartTime = start_time, .SmoothTime = smooth_time});
 }
@@ -302,8 +302,8 @@ void ModelAnimationController::SetTrackEnable(int32_t track, bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Enabled = enable;
 }
@@ -312,8 +312,8 @@ void ModelAnimationController::SetTrackPosition(int32_t track, float32_t positio
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Position = position;
 }
@@ -322,8 +322,8 @@ void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(track >= 0);
-    FO_RUNTIME_ASSERT(track < numeric_cast<int32_t>(_tracks.size()));
+    FO_VERIFY_AND_THROW(track >= 0, "Track is negative", track);
+    FO_VERIFY_AND_THROW(track < numeric_cast<int32_t>(_tracks.size()), "Animation track index is outside track table bounds", track, _tracks.size());
 
     _tracks[track].Speed = speed;
 }
@@ -343,41 +343,41 @@ void ModelAnimationController::AdvanceTime(float32_t time)
 
     for (auto& track : _tracks) {
         for (auto it = track.Events.begin(); it != track.Events.end();) {
-            auto& event = *it;
+            ptr<Track::Event> event = &*it;
 
-            if (_eventsTime >= event.StartTime) {
+            if (_eventsTime >= event->StartTime) {
                 bool erase = false;
                 float32_t value;
 
-                if (_eventsTime < event.StartTime + event.SmoothTime) {
-                    FO_RUNTIME_ASSERT(event.SmoothTime > 0.0f);
+                if (_eventsTime < event->StartTime + event->SmoothTime) {
+                    FO_VERIFY_AND_THROW(event->SmoothTime > 0.0f, "Event smooth time must be positive");
 
-                    if (!event.ValueFrom.has_value()) {
-                        if (event.Type == Track::EventType::Speed) {
-                            event.ValueFrom = track.Speed;
+                    if (!event->ValueFrom.has_value()) {
+                        if (event->Type == Track::EventType::Speed) {
+                            event->ValueFrom = track.Speed;
                         }
-                        else if (event.Type == Track::EventType::Weight) {
-                            event.ValueFrom = track.Weight;
+                        else if (event->Type == Track::EventType::Weight) {
+                            event->ValueFrom = track.Weight;
                         }
                         else {
-                            event.ValueFrom = 0.0f;
+                            event->ValueFrom = 0.0f;
                         }
                     }
 
-                    value = lerp(event.ValueFrom.value(), event.ValueTo, (_eventsTime - event.StartTime) / event.SmoothTime);
+                    value = lerp(event->ValueFrom.value(), event->ValueTo, (_eventsTime - event->StartTime) / event->SmoothTime);
                 }
                 else {
                     erase = true;
-                    value = event.ValueTo;
+                    value = event->ValueTo;
                 }
 
-                if (event.Type == Track::EventType::Enable) {
+                if (event->Type == Track::EventType::Enable) {
                     track.Enabled = value > 0.0f;
                 }
-                else if (event.Type == Track::EventType::Speed) {
+                else if (event->Type == Track::EventType::Speed) {
                     track.Speed = value;
                 }
-                else if (event.Type == Track::EventType::Weight) {
+                else if (event->Type == Track::EventType::Weight) {
                     track.Weight = value;
                 }
 
@@ -408,7 +408,7 @@ void ModelAnimationController::AdvanceTime(float32_t time)
             continue;
         }
 
-        const auto& anim_outputs = track.Anim->GetBoneOutputs();
+        const_span<ModelAnimation::BoneOutput> anim_outputs = track.Anim->GetBoneOutputs();
 
         for (size_t j = 0; j < anim_outputs.size(); j++) {
             if (!track.AnimOutput[j]) {

@@ -14,7 +14,7 @@ TEST_CASE("TwoDimensionalGrid")
         CHECK(grid.GetSize() == isize32 {3, 3});
         CHECK(grid.GetCellForReading({1, 1}) == 0);
 
-        grid.GetCellForWriting({1, 1}) = 42;
+        *grid.GetCellForWriting({1, 1}) = 42;
 
         CHECK(grid.GetCellForReading({1, 1}) == 42);
         CHECK(grid.GetCellForReading({2, 2}) == 0);
@@ -25,9 +25,9 @@ TEST_CASE("TwoDimensionalGrid")
     {
         DynamicTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{4, 4}};
 
-        grid.GetCellForWriting({3, 0}) = 30;
-        grid.GetCellForWriting({0, 3}) = 40;
-        grid.GetCellForWriting({1, 1}) = 11;
+        *grid.GetCellForWriting({3, 0}) = 30;
+        *grid.GetCellForWriting({0, 3}) = 40;
+        *grid.GetCellForWriting({1, 1}) = 11;
 
         grid.Resize({2, 4});
         grid.Resize({4, 4});
@@ -47,8 +47,8 @@ TEST_CASE("TwoDimensionalGrid")
     {
         StaticTwoDimensionalGrid<int32_t, ipos32, isize32> grid {{3, 3}};
 
-        grid.GetCellForWriting({0, 0}) = 7;
-        grid.GetCellForWriting({2, 2}) = 9;
+        *grid.GetCellForWriting({0, 0}) = 7;
+        *grid.GetCellForWriting({2, 2}) = 9;
 
         grid.Resize({4, 4});
         CHECK(grid.GetCellForReading({0, 0}) == 7);

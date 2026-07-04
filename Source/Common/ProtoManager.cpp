@@ -38,8 +38,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ProtoManager::ProtoManager(EngineMetadata& meta) :
-    _meta {&meta},
+ProtoManager::ProtoManager(ptr<EngineMetadata> meta) :
+    _meta {meta},
     _migrationRuleName {_meta->Hashes.ToHashedString("Proto")},
     _itemTypeName {_meta->Hashes.ToHashedString(ProtoItem::ENTITY_TYPE_NAME)},
     _crTypeName {_meta->Hashes.ToHashedString(ProtoCritter::ENTITY_TYPE_NAME)},
@@ -49,65 +49,63 @@ ProtoManager::ProtoManager(EngineMetadata& meta) :
     FO_STACK_TRACE_ENTRY();
 }
 
-void ProtoManager::AddProto(hstring type_name, const refcount_ptr<ProtoEntity>& proto)
+void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    FO_RUNTIME_ASSERT(proto);
+    auto proto_borrow = proto.as_nptr();
 
-    if (const auto* loc = dynamic_cast<const ProtoLocation*>(proto.get()); loc != nullptr) {
-        _locProtos[proto->GetProtoId()] = loc;
+    if (auto nullable_loc = proto_borrow.dyn_cast<ProtoLocation>()) {
+        auto loc = nullable_loc.as_ptr();
+        _locProtos.insert_or_assign(proto->GetProtoId(), loc);
     }
-    else if (const auto* map = dynamic_cast<const ProtoMap*>(proto.get()); map != nullptr) {
-        _mapProtos[proto->GetProtoId()] = map;
+    else if (nptr<ProtoMap> nullable_map = proto_borrow.dyn_cast<ProtoMap>(); nullable_map) {
+        auto map = nullable_map.as_ptr();
+        _mapProtos.insert_or_assign(proto->GetProtoId(), map);
     }
-    else if (const auto* cr = dynamic_cast<const ProtoCritter*>(proto.get()); cr != nullptr) {
-        _crProtos[proto->GetProtoId()] = cr;
+    else if (nptr<ProtoCritter> nullable_cr = proto_borrow.dyn_cast<ProtoCritter>(); nullable_cr) {
+        auto cr = nullable_cr.as_ptr();
+        _crProtos.insert_or_assign(proto->GetProtoId(), cr);
     }
-    else if (const auto* item = dynamic_cast<const ProtoItem*>(proto.get()); item != nullptr) {
-        _itemProtos[proto->GetProtoId()] = item;
+    else if (nptr<ProtoItem> nullable_item = proto_borrow.dyn_cast<ProtoItem>(); nullable_item) {
+        auto item = nullable_item.as_ptr();
+        _itemProtos.insert_or_assign(proto->GetProtoId(), item);
     }
 
-    const auto it = _protos[type_name].emplace(proto->GetProtoId(), proto);
-    FO_RUNTIME_ASSERT(it.second);
+    const hstring proto_id = proto->GetProtoId();
+    const auto it = _protos[type_name].emplace(proto_id, std::move(proto));
+    FO_VERIFY_AND_THROW(it.second, "Duplicate prototype id", type_name, proto_id);
 }
 
-auto ProtoManager::CreateProto(hstring type_name, hstring pid, const Properties* props) -> ProtoEntity*
+auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Properties> props) -> ptr<ProtoEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
     const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
-        const auto* registrator = _meta->GetPropertyRegistrator(type_name);
-        FO_RUNTIME_ASSERT(registrator);
+        auto nullable_registrator = _meta->GetPropertyRegistrator(type_name);
+        FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
+        auto registrator = nullable_registrator.as_ptr();
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
-            _locProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
-            _mapProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
-            _crProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            auto proto = SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
-            _itemProtos.emplace(pid, proto.get());
-            return proto;
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
         }
         else {
             return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);
         }
     };
 
-    auto proto = create_proto();
+    refcount_ptr<ProtoEntity> proto = create_proto();
     AddProto(type_name, proto);
-    return proto.get();
+    return proto;
 }
 
 void ProtoManager::LoadFromResources(const FileSystem& resources)
@@ -132,7 +130,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
 
     for (const auto& proto_file_header : proto_files) {
         const auto proto_file = File::Load(proto_file_header);
-        auto reader = DataReader({proto_file.GetBuf(), proto_file.GetSize()});
+        auto reader = DataReader(proto_file.GetDataSpan());
 
         // Hashes
         {
@@ -142,7 +140,7 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
             for (uint32_t i = 0; i < hashes_count; i++) {
                 const auto str_len = reader.Read<uint32_t>();
                 str.resize(str_len);
-                reader.ReadPtr(str.data(), str.length());
+                reader.ReadStringBytes(str);
                 const auto hstr = _meta->Hashes.ToHashedString(str);
                 ignore_unused(hstr);
             }
@@ -157,22 +155,27 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
                 const auto protos_count = reader.Read<uint32_t>();
 
                 const auto type_name_len = reader.Read<uint16_t>();
-                const auto type_name_str = string(reader.ReadPtr<char>(type_name_len), type_name_len);
+                string type_name_str;
+                type_name_str.resize(type_name_len);
+                reader.ReadStringBytes(type_name_str);
                 const auto type_name = _meta->Hashes.ToHashedString(type_name_str);
 
-                FO_RUNTIME_ASSERT(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name));
+                FO_VERIFY_AND_THROW(_meta->IsValidEntityType(type_name) || _meta->IsFixedType(type_name), "Proto file references unknown entity or fixed type");
 
                 for (uint32_t j = 0; j < protos_count; j++) {
                     const auto proto_name_len = reader.Read<uint16_t>();
-                    const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
+                    string proto_name;
+                    proto_name.resize(proto_name_len);
+                    reader.ReadStringBytes(proto_name);
                     const auto proto_id = _meta->Hashes.ToHashedString(proto_name);
 
-                    auto* proto = CreateProto(type_name, proto_id, nullptr);
+                    auto proto = CreateProto(type_name, proto_id, nullptr);
 
                     const auto data_size = reader.Read<uint32_t>();
                     props_data.resize(data_size);
-                    reader.ReadPtr<uint8_t>(props_data.data(), data_size);
-                    proto->GetPropertiesForEdit().RestoreAllData(props_data);
+                    span<uint8_t> props_data_span = props_data;
+                    reader.ReadBytes(props_data_span);
+                    proto->GetPropertiesForEdit()->RestoreAllData(props_data);
                 }
             }
         }
@@ -181,59 +184,59 @@ void ProtoManager::LoadFromResources(const FileSystem& resources)
     }
 }
 
-auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept -> const ProtoItem*
+auto ProtoManager::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>
 {
     FO_STACK_TRACE_ENTRY();
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _itemTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _itemProtos.find(proto_id); it != _itemProtos.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;
 }
 
-auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept -> const ProtoCritter*
+auto ProtoManager::GetProtoCritter(hstring proto_id) const noexcept -> nptr<const ProtoCritter>
 {
     FO_STACK_TRACE_ENTRY();
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _crTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _crProtos.find(proto_id); it != _crProtos.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;
 }
 
-auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept -> const ProtoMap*
+auto ProtoManager::GetProtoMap(hstring proto_id) const noexcept -> nptr<const ProtoMap>
 {
     FO_STACK_TRACE_ENTRY();
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _mapTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _mapProtos.find(proto_id); it != _mapProtos.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;
 }
 
-auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept -> const ProtoLocation*
+auto ProtoManager::GetProtoLocation(hstring proto_id) const noexcept -> nptr<const ProtoLocation>
 {
     FO_STACK_TRACE_ENTRY();
 
     proto_id = _meta->CheckMigrationRule(_migrationRuleName, _locTypeName, proto_id).value_or(proto_id);
 
     if (const auto it = _locProtos.find(proto_id); it != _locProtos.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;
 }
 
-auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> const ProtoEntity*
+auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noexcept -> nptr<const ProtoEntity>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -246,7 +249,7 @@ auto ProtoManager::GetProtoEntity(hstring type_name, hstring proto_id) const noe
     }
 
     if (const auto it = it_type->second.find(proto_id); it != it_type->second.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;

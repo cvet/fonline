@@ -1,9 +1,15 @@
+# Particles_AlphaAdd — additively blended particles masked by texture alpha.
+# Where: a particle-system blend shader.
+# How: BlendFunc SrcAlpha One (additive accumulation); the fragment keeps the per-particle vertex colour RGB and scales its alpha by the texture's alpha channel only, so the texture acts purely as an opacity mask and contributes no colour.
+# Profile: minimal — targets the lowest D3D feature level (no gl_FragCoord/derivative/dynamic-indexing features) so it runs on the weakest hardware; embedding projects override with richer copies where needed.
+
 [Effect]
 BlendFunc = SrcAlpha One
 DepthWrite = False
+DepthFunc = LessEqual
 
 [VertexShader]
-layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjectionMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -14,7 +20,7 @@ layout(location = 1) out vec2 TexCoord;
 
 void main(void)
 {
-    gl_Position = ProjectionMatrix * vec4(InPosition, 1.0);
+    gl_Position = ProjMatrix * vec4(InPosition, 1.0);
     Color = InColor;
     TexCoord = InTexCoord;
 }

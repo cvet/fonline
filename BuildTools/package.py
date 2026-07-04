@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import glob
 import io
+import json
 import os
+import re
 import shutil
 import stat
 import struct
@@ -27,6 +29,8 @@ PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')
 INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
 INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
+ANDROID_RELEASE_STORE_PASSWORD_ENV = 'FO_ANDROID_RELEASE_STORE_PASSWORD'
+ANDROID_RELEASE_KEY_PASSWORD_ENV = 'FO_ANDROID_RELEASE_KEY_PASSWORD'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -161,9 +165,9 @@ def patch_pe_pdb_path(file_path: str | Path, new_pdb_name: str) -> bool:
 	debug_offset: int | None = None
 	for i in range(num_sections):
 		section_offset = section_table_offset + i * 40
-		vsize, vaddr, _, raw_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
+		vsize, vaddr, _, raw_data_ptr = struct.unpack_from('<IIII', content, section_offset + 8)
 		if vaddr <= debug_rva < vaddr + vsize:
-			debug_offset = raw_ptr + (debug_rva - vaddr)
+			debug_offset = raw_data_ptr + (debug_rva - vaddr)
 			break
 	if debug_offset is None:
 		return False
@@ -798,7 +802,7 @@ class Packager:
 				bin_name = self.args.devname + '_' + self.args.target + variant.role + ('Lib' if is_lib else '')
 				log('Setup', arch, bin_name, variant.log_name())
 
-				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
+				bin_out_name = bin_name + self.build_output_variant_suffix(variant, is_windows=True) if self.args.target != 'Client' else self.args.nicename + ('_' + variant.role if variant.role else '') + self.build_output_variant_suffix(variant, is_windows=True) + client_postfix_suffix
 				bin_path = self.resolve_binary_input_dir(arch, variant, bin_name)
 				bin_ext = '.dll' if is_lib else '.exe'
 				log('Binary input', bin_path)
@@ -809,7 +813,7 @@ class Packager:
 					excluded_companions.add(self.build_client_runtime_alias_name(variant) + '.dll')
 
 				if self.args.target == 'Client' and not is_lib:
-					runtime_input_name = self.build_client_runtime_input_name()
+					runtime_input_name = self.build_client_runtime_input_name(variant)
 					runtime_alias_name = self.build_client_runtime_alias_name(variant)
 					runtime_out_name = bin_out_name
 					runtime_dll_path = self.package_platform_binary(bin_path, runtime_input_name, runtime_out_name, '.dll', additional_config_data, excluded_companions={runtime_alias_name + '.dll'})
@@ -922,6 +926,7 @@ class Packager:
 			'--preload',
 			os.path.join(self.target_output_path, self.client_res_dir).replace('\\', '/') + '@' + self.client_res_dir,
 			'--js-output=' + os.path.join(self.target_output_path, 'Resources.js').replace('\\', '/'),
+			'--lz4',
 		]
 		log('Call emscripten packager:')
 		for arg in packager_args:
@@ -1059,9 +1064,7 @@ class Packager:
 		patch_file(app_build_gradle, '$VERSION_NAME$', version_name)
 		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
 		patch_file(app_build_gradle, '$RELEASE_STORE_FILE$', escape_groovy_string(release_store_file))
-		patch_file(app_build_gradle, '$RELEASE_STORE_PASSWORD$', escape_groovy_string(release_store_password))
 		patch_file(app_build_gradle, '$RELEASE_KEY_ALIAS$', escape_groovy_string(release_key_alias))
-		patch_file(app_build_gradle, '$RELEASE_KEY_PASSWORD$', escape_groovy_string(release_key_password))
 		patch_file(os.path.join(self.target_output_path, 'app', 'proguard-rules.pro'), '$PACKAGE$', package_name)
 		self.patch_android_activity(package_name)
 
@@ -1100,6 +1103,10 @@ class Packager:
 			if android_home:
 				gradle_env['ANDROID_HOME'] = android_home
 				gradle_env['ANDROID_SDK_ROOT'] = android_home
+			if release_store_password:
+				gradle_env[ANDROID_RELEASE_STORE_PASSWORD_ENV] = release_store_password
+			if release_key_password:
+				gradle_env[ANDROID_RELEASE_KEY_PASSWORD_ENV] = release_key_password
 
 			gradle_user_home = os.path.join(
 				os.path.dirname(self.output_path),
@@ -1133,7 +1140,45 @@ class Packager:
 	def package_ios(self) -> None:
 		assert False, 'iOS packaging is not supported in this repository state'
 
+	def sign_windows_binaries(self) -> None:
+		# Optional release-time code signing of the staged Windows PE artifacts: launcher exes, runtime DLLs, and
+		# the client-runtime update payloads (the downloaded-and-executed DLL is what makes signing matter for
+		# antivirus reputation — see the H1 finding in the project's client-AV audit). Runs before any
+		# archiving/installer step so every downstream artifact (Zip/Wix/Raw) carries the signature, and after
+		# all binary patching so the signature covers the final bytes. Tool-agnostic by design:
+		# Windows.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
+		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
+		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
+		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
+		# unsigned.
+		if self.args.platform != 'Windows':
+			return
+
+		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.CodeSigningHook', ''))
+		if not hook:
+			log('Code signing: skipped (Windows.CodeSigningHook not set)')
+			return
+
+		assert os.path.isfile(hook), 'Windows.CodeSigningHook script not found: ' + hook
+
+		binaries = sorted({
+			str(path)
+			for pattern in ('*.exe', '*.dll')
+			for path in Path(self.target_output_path).rglob(pattern)
+		})
+		if not binaries:
+			log('Code signing: no .exe/.dll found under', self.target_output_path)
+			return
+
+		log('Code signing', len(binaries), 'Windows binaries via', hook)
+		for binary in binaries:
+			result = subprocess.call([hook, binary])
+			assert result == 0, 'Windows.CodeSigningHook failed (exit ' + str(result) + ') for: ' + binary
+		log('Code signing: done')
+
 	def finalize_output(self) -> None:
+		self.sign_windows_binaries()
+
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
 			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level)
@@ -1154,8 +1199,119 @@ class Packager:
 		if self.has_pack('Root'):
 			shutil.copytree(self.target_output_path, self.output_path, dirs_exist_ok=True)
 
+		if self.has_pack('Wix'):
+			self.make_wix_installer()
+
 		if not self.has_pack('Raw'):
 			shutil.rmtree(self.target_output_path, True)
+
+	def resolve_game_version(self) -> str:
+		# Resolve Common.GameVersion to a concrete value. The main config commonly points it at a file
+		# (e.g. `Common.GameVersion = $FILE{VERSION}`); foconfig keeps directives verbatim, so resolve the
+		# `$FILE{...}` indirection here relative to the main config directory.
+		raw = self.fomain.mainSection().getStr('Common.GameVersion', '0.0.0').strip()
+		file_match = re.match(r'^\$FILE\{(.+)\}$', raw)
+		if file_match:
+			version_path = self.resolve_config_relative_path(file_match.group(1).strip())
+			assert os.path.isfile(version_path), 'Common.GameVersion $FILE not found: ' + version_path
+			with open(version_path, 'r', encoding='utf-8-sig') as version_file:
+				raw = version_file.read().strip()
+		return raw
+
+	def ensure_msi_toolset(self) -> None:
+		# The MSI is required when the Wix pack is requested, so verify the toolset up front and fail with a
+		# clear message instead of a cryptic subprocess error. The host OS decides the toolset: WiX
+		# (candle/light) on Windows, GNOME wixl elsewhere — matching msicreator/createmsi.py. On
+		# Debian/Ubuntu wixl ships in its own "wixl" apt package (the "msitools" package carries only
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl).
+		if os.name == 'nt':
+			missing = [tool for tool in ('candle', 'light') if shutil.which(tool) is None]
+			assert not missing, 'Wix pack requires the WiX Toolset (' + ', '.join(missing) + ' not found on PATH)'
+		else:
+			assert shutil.which('wixl') is not None, 'Wix pack requires the "wixl" toolset on PATH (install the "wixl" package, e.g. apt-get install wixl)'
+
+	def make_wix_installer(self) -> None:
+		# Build a Windows MSI from the just-staged client payload (self.target_output_path) and register
+		# the deep-link URI scheme so site login works without the client editing the registry at
+		# runtime (installer-time registration is the AV-friendly path; the runtime self-register in
+		# SourceExt/DeepLink.cpp stays as the fallback for the portable/zip/Steam builds). The MSI is a
+		# required artifact: a missing toolset or a generator/build error fails the package. All
+		# game-specific values come from the project config, so the engine packager stays game-agnostic.
+		assert self.args.platform == 'Windows' and self.args.target == 'Client', 'Wix pack is only valid for the Windows Client target'
+
+		self.ensure_msi_toolset()
+
+		scheme = self.fomain.mainSection().getStr('Auth.UriScheme', '').strip()
+		assert scheme, 'Wix pack requires Auth.UriScheme to register the deep-link URI scheme'
+
+		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
+
+		upgrade_code = self.fomain.mainSection().getStr('Windows.MsiUpgradeCode', '').strip()
+		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Windows.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
+		upgrade_code = upgrade_code.upper()
+
+		version = self.resolve_game_version()
+		assert re.match(r'^\d+(\.\d+){1,3}$', version), 'Wix pack requires a numeric Common.GameVersion (x.y.z[.w]), got: ' + version
+
+		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.Icon', ''))
+		if icon_path:
+			assert os.path.isfile(icon_path), 'Windows.Icon file not found: ' + icon_path
+
+		exe_name = self.args.nicename + '.exe'
+		command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name
+		registry_entries = [
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': 'URL:%s Protocol' % scheme, 'key_path': 'yes'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': 'URL Protocol', 'type': 'string', 'value': '', 'key_path': 'no'},
+			{'root': 'HKCU', 'key': 'Software\\Classes\\%s\\shell\\open\\command' % scheme, 'action': 'createAndRemoveOnUninstall',
+			 'name': '', 'type': 'string', 'value': command_value, 'key_path': 'no'},
+		]
+
+		staged_dir = os.path.basename(self.target_output_path)
+		work_dir = os.path.dirname(self.target_output_path)
+		config: dict[str, object] = {
+			'product_name': game_name,
+			'manufacturer': game_name,
+			'name': game_name,
+			'name_base': self.args.nicename,
+			'version': version,
+			'comments': game_name + ' game client',
+			'installdir': self.args.nicename,
+			'license_file': '',
+			'upgrade_guid': upgrade_code,
+			'major_upgrade': {'AllowSameVersionUpgrades': 'yes', 'DowngradeErrorMessage': 'A newer version is already installed.'},
+			'arch': 64,
+			'registry_entries': registry_entries,
+			'startmenu_shortcut': exe_name,
+			'desktop_shortcut': exe_name,
+			'parts': [{'id': 'MainProgram', 'title': game_name, 'description': 'Game client', 'staged_dir': staged_dir}],
+		}
+		if icon_path:
+			config['addremove_icon'] = icon_path
+
+		config_path = os.path.join(work_dir, self.args.nicename + '.wix.json')
+		with open(config_path, 'w', encoding='utf-8') as config_file:
+			json.dump(config, config_file)
+
+		# Drop the installed-build marker into the staged payload so the MSI-installed client uses
+		# the per-user writable data dir (cache/logs/self-update overlay) instead of the read-only
+		# install dir. Added only for the MSI and removed afterwards, so the sibling Raw/Zip
+		# portable artifacts (already finalized earlier in finalize_output) stay portable.
+		marker_path = os.path.join(self.target_output_path, 'INSTALLED')
+		try:
+			with open(marker_path, 'w', encoding='utf-8') as marker_file:
+				marker_file.write('installed\n')
+
+			createmsi = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'msicreator', 'createmsi.py')
+			log('Wix: building MSI installer', config_path)
+			# createmsi.py requires a bare json filename (no path segment) and resolves it plus the staged
+			# payload relative to its working directory, so invoke it with the basename and cwd=work_dir.
+			subprocess.run([sys.executable, createmsi, os.path.basename(config_path)], cwd=work_dir, check=True)
+			log('Wix: MSI built (registers %s:// URI scheme, Start Menu + Desktop shortcuts, installs writable-data marker)' % scheme)
+		finally:
+			if os.path.exists(marker_path):
+				os.remove(marker_path)
 
 	def run(self) -> None:
 		log(f'Make {self.args.target} ({self.args.config}) for {self.args.platform}')

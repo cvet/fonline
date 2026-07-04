@@ -47,6 +47,21 @@ static void InitProtoTestMetadata(EngineMetadata& meta)
     meta.RegisterEntityType("Location", true, false, true, true, true);
 }
 
+static auto GetTestRegistrator(EngineMetadata& meta, hstring type_name) -> ptr<const PropertyRegistrator>
+{
+    auto nullable_registrator = meta.GetPropertyRegistrator(type_name);
+    REQUIRE(static_cast<bool>(nullable_registrator));
+    return nullable_registrator.as_ptr();
+}
+
+template<typename TActual, typename TExpected>
+static auto IsSameProtoPtr(const TActual& actual, const TExpected& expected) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return actual == expected;
+}
+
 TEST_CASE("ProtoManager")
 {
     SECTION("BuiltInProtoLookupsAcceptEntityAndProtoTypeNames")
@@ -61,28 +76,28 @@ TEST_CASE("ProtoManager")
         const hstring knife_pid = meta.Hashes.ToHashedString("Knife");
         const hstring raider_pid = meta.Hashes.ToHashedString("Raider");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, meta.GetPropertyRegistrator(item_type));
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, meta.GetPropertyRegistrator(critter_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
+        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(raider_pid, GetTestRegistrator(meta, critter_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(critter_type, critter_proto);
 
-        REQUIRE(meta.GetProtoItem(knife_pid) == item_proto.get());
-        REQUIRE(meta.GetProtoCritter(raider_pid) == critter_proto.get());
+        REQUIRE(IsSameProtoPtr(meta.GetProtoItem(knife_pid), item_proto.get()));
+        REQUIRE(IsSameProtoPtr(meta.GetProtoCritter(raider_pid), critter_proto.get()));
 
-        CHECK(meta.GetProtoEntity(item_type, knife_pid) == item_proto.get());
-        CHECK(meta.GetProtoEntity(proto_item_type, knife_pid) == item_proto.get());
-        CHECK(meta.GetProtoEntity(critter_type, raider_pid) == critter_proto.get());
-        CHECK(meta.GetProtoEntity(proto_critter_type, raider_pid) == critter_proto.get());
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(critter_type, raider_pid), critter_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_critter_type, raider_pid), critter_proto.get()));
 
         const auto& item_protos = meta.GetProtoEntities(proto_item_type);
         const auto& critter_protos = meta.GetProtoEntities(proto_critter_type);
 
         REQUIRE(item_protos.size() == 1);
         REQUIRE(critter_protos.size() == 1);
-        CHECK(item_protos.at(knife_pid).get() == item_proto.get());
-        CHECK(critter_protos.at(raider_pid).get() == critter_proto.get());
-        CHECK(meta.GetProtoItems().at(knife_pid) == item_proto.get());
-        CHECK(meta.GetProtoCritters().at(raider_pid) == critter_proto.get());
+        CHECK(IsSameProtoPtr(item_protos.at(knife_pid).get(), item_proto.get()));
+        CHECK(IsSameProtoPtr(critter_protos.at(raider_pid).get(), critter_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoItems().at(knife_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoCritters().at(raider_pid), critter_proto.get()));
     }
 
     SECTION("MigrationRulesRedirectProtoLookups")
@@ -101,9 +116,9 @@ TEST_CASE("ProtoManager")
         const hstring rest_stop_day_pid = meta.Hashes.ToHashedString("RestStop_Day");
         const hstring rest_stop_day_time_pid = meta.Hashes.ToHashedString("RestStop_DayTime");
 
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, meta.GetPropertyRegistrator(item_type));
-        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, meta.GetPropertyRegistrator(map_type));
-        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, meta.GetPropertyRegistrator(location_type));
+        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(knife_pid, GetTestRegistrator(meta, item_type));
+        auto map_proto = SafeAlloc::MakeRefCounted<ProtoMap>(rest_stop_day_time_pid, GetTestRegistrator(meta, map_type));
+        auto location_proto = SafeAlloc::MakeRefCounted<ProtoLocation>(rest_stop_day_time_pid, GetTestRegistrator(meta, location_type));
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(map_type, map_proto);
         meta.RegisterProto(location_type, location_proto);
@@ -111,13 +126,13 @@ TEST_CASE("ProtoManager")
         meta.RegisterMigrationRule("Proto", "Map", "RestStop_Day", "RestStop_DayTime");
         meta.RegisterMigrationRule("Proto", "Location", "RestStop_Day", "RestStop_DayTime");
 
-        CHECK(meta.GetProtoItem(legacy_pid) == item_proto.get());
-        CHECK(meta.GetProtoEntity(item_type, legacy_pid) == item_proto.get());
-        CHECK(meta.GetProtoEntity(proto_item_type, legacy_pid) == item_proto.get());
-        CHECK(meta.GetProtoEntity(map_type, rest_stop_day_pid) == map_proto.get());
-        CHECK(meta.GetProtoEntity(proto_map_type, rest_stop_day_pid) == map_proto.get());
-        CHECK(meta.GetProtoEntity(location_type, rest_stop_day_pid) == location_proto.get());
-        CHECK(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid) == location_proto.get());
+        CHECK(IsSameProtoPtr(meta.GetProtoItem(legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, legacy_pid), item_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(map_type, rest_stop_day_pid), map_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_map_type, rest_stop_day_pid), map_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(location_type, rest_stop_day_pid), location_proto.get()));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_location_type, rest_stop_day_pid), location_proto.get()));
     }
 
     SECTION("MigrationRuleRemoveResolvesToSentinel")
@@ -137,7 +152,7 @@ TEST_CASE("ProtoManager")
         const auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);
         CHECK(resolved.has_value());
         CHECK(resolved.value() == remove_sentinel);
-        CHECK(meta.GetProtoItem(removed_pid) == nullptr);
+        CHECK_FALSE(static_cast<bool>(meta.GetProtoItem(removed_pid)));
     }
 
     SECTION("UnknownTypeCollectionReturnsEmptyReference")
@@ -147,7 +162,7 @@ TEST_CASE("ProtoManager")
 
         const hstring map_type = meta.Hashes.ToHashedString("Map");
 
-        CHECK(meta.GetProtoEntity(map_type, meta.Hashes.ToHashedString("Missing")) == nullptr);
+        CHECK_FALSE(static_cast<bool>(meta.GetProtoEntity(map_type, meta.Hashes.ToHashedString("Missing"))));
         CHECK(meta.GetProtoEntities(map_type).empty());
     }
 
@@ -167,11 +182,11 @@ TEST_CASE("ProtoManager")
         const hstring item_type = meta.Hashes.ToHashedString("Item");
         const hstring proto_item_type = meta.Hashes.ToHashedString("ProtoItem");
 
-        REQUIRE(meta.GetProtoItem(loaded_pid) != nullptr);
+        REQUIRE(static_cast<bool>(meta.GetProtoItem(loaded_pid)));
         CHECK(meta.GetProtoItem(loaded_pid)->GetName() == string_view {"LoadedKnife"});
         CHECK(meta.GetProtoItem(loaded_pid)->GetTypeName() == item_type);
-        CHECK(meta.GetProtoEntity(item_type, loaded_pid) == meta.GetProtoItem(loaded_pid));
-        CHECK(meta.GetProtoEntity(proto_item_type, loaded_pid) == meta.GetProtoItem(loaded_pid));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, loaded_pid), meta.GetProtoItem(loaded_pid)));
+        CHECK(IsSameProtoPtr(meta.GetProtoEntity(proto_item_type, loaded_pid), meta.GetProtoItem(loaded_pid)));
         CHECK(meta.GetProtoItems().contains(loaded_pid));
     }
 }
