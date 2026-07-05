@@ -46,10 +46,11 @@ FO_BEGIN_NAMESPACE
 
 static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
 static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
+static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT = 2;
 
-// One growable, persistently-mapped HOST_VISIBLE buffer slot of a per-frame ring pool.
-// Rings are reset when the context frame index advances (BeginFrame waits the queue idle,
-// so every slot written in a previous frame is GPU-free by then) and only grow capacity;
+// One growable, persistently-mapped HOST_VISIBLE buffer slot of a ring pool.
+// Rings live per in-flight frame slot: a ring is reset for reuse only after the slot's
+// fence proved the GPU finished the frame that wrote it, and slots only grow capacity —
 // steady-state uploads are pure memcpy with no create/map/destroy traffic.
 struct VulkanPooledBuffer
 {
@@ -57,6 +58,43 @@ struct VulkanPooledBuffer
     VkDeviceMemory Memory {};
     VkDeviceSize Capacity {};
     nptr<void> Mapped {};
+};
+
+// A ring of pooled buffers: one slot per upload within a frame, index reset on the first
+// acquire of a new frame (stamp mismatch).
+struct VulkanBufferRing
+{
+    vector<VulkanPooledBuffer> Buffers {};
+    size_t Index {};
+    uint64_t Frame {};
+};
+
+// Destroy requests enqueued while a frame slot records; flushed only after the slot's fence
+// proves the GPU finished every submitted frame that could still reference the resources
+// (fence signal N implies completion of all earlier submissions on the same queue).
+struct VulkanDeferredDestroyQueue
+{
+    vector<VkBuffer> Buffers {};
+    vector<VkDeviceMemory> Memories {};
+    vector<VkImage> Images {};
+    vector<VkImageView> ImageViews {};
+    vector<VkFramebuffer> Framebuffers {};
+};
+
+// Everything owned by one in-flight frame slot. BeginFrame waits the slot's fence before
+// reusing any of it, which is the single correctness anchor for command buffer reset,
+// descriptor pool reset, uniform bump rewind, staging-ring reuse and deferred destroys.
+struct VulkanFrameSlot
+{
+    VkCommandBuffer CommandBuffer {};
+    VkFence InFlightFence {};
+    VkSemaphore ImageAvailableSemaphore {};
+    VkDescriptorPool DescriptorPool {};
+    VkBuffer UniformBuffer {};
+    VkDeviceMemory UniformBufferMemory {};
+    nptr<void> UniformBufferMapped {};
+    VulkanBufferRing TextureStagingRing {};
+    VulkanDeferredDestroyQueue DestroyQueue {};
 };
 
 struct Vulkan_Renderer::Context
@@ -87,9 +125,17 @@ struct Vulkan_Renderer::Context
     VkImageView SwapchainDepthImageView {};
     VkDeviceMemory SwapchainDepthImageMemory {};
     VkCommandPool CommandPool {};
-    VkCommandBuffer CommandBuffer {}; // Single command buffer (single-threaded)
-    VkSemaphore ImageAvailableSemaphore {}; // Signaled when image acquired
-    VkSemaphore RenderCompleteSemaphore {}; // Signaled when render done
+
+    // In-flight frame slots (VULKAN_FRAMES_IN_FLIGHT-deep CPU/GPU overlap) plus aliases to the
+    // slot currently recording — draw/transition/upload code uses the aliases and never touches
+    // the array directly. BeginFrame advances the slot, waits its fence and refreshes the aliases.
+    VulkanFrameSlot FrameSlots[VULKAN_FRAMES_IN_FLIGHT] {};
+    VkCommandBuffer CommandBuffer {}; // Current slot's command buffer
+    VkSemaphore ImageAvailableSemaphore {}; // Current slot's acquire semaphore
+
+    // Render-complete semaphores are per swapchain image (indexed by the acquired image), so a
+    // semaphore is never re-signaled while the presentation engine may still be waiting on it.
+    vector<VkSemaphore> RenderCompleteSemaphores {};
     irect32 ViewPort {};
     isize32 TargetSize {};
     mat44 ProjMatrix {};
@@ -100,12 +146,11 @@ struct Vulkan_Renderer::Context
     VkCommandBuffer StagingCommandBuffer {};
     VkDescriptorSetLayout TextureDescriptorSetLayout {};
     VkDescriptorSetLayout UniformDescriptorSetLayout {};
-    VkDescriptorPool FrameDescriptorPool {};
-    VkBuffer FrameUniformBuffer {};
-    VkDeviceMemory FrameUniformBufferMemory {};
-    nptr<void> FrameUniformBufferMapped {};
+    VkDescriptorPool FrameDescriptorPool {}; // Current slot's descriptor pool
+    VkBuffer FrameUniformBuffer {}; // Current slot's uniform bump buffer
+    nptr<void> FrameUniformBufferMapped {}; // Current slot's persistent uniform mapping
     size_t FrameUniformOffset {};
-    size_t FrameUniformBufferSize {numeric_cast<size_t>(16 * 1024 * 1024)}; // 16 MB
+    size_t FrameUniformBufferSize {numeric_cast<size_t>(16 * 1024 * 1024)}; // 16 MB per frame slot
     VkSampler LinearSampler {};
     VkSampler PointSampler {};
     nptr<RenderTexture> CurrentRenderTarget {}; // Current render target (nullptr = swapchain)
@@ -113,11 +158,6 @@ struct Vulkan_Renderer::Context
     bool ScissorEnabled {};
     uint32_t CurrentSwapchainImageIndex {};
     optional<isize32> PendingSwapchainRecreateSize {};
-    vector<VkBuffer> DeferredDestroyBuffers {};
-    vector<VkDeviceMemory> DeferredDestroyMemories {};
-    vector<VkImage> DeferredDestroyImages {};
-    vector<VkImageView> DeferredDestroyImageViews {};
-    vector<VkFramebuffer> DeferredDestroyFramebuffers {};
 
     VkDebugUtilsMessengerEXT DebugMessenger {};
 
@@ -128,14 +168,12 @@ struct Vulkan_Renderer::Context
     bool FrameCbRecording {}; // Frame command buffer is currently recording (between BeginFrame and Present)
     bool ImageAvailableWaited {}; // ImageAvailableSemaphore was consumed by a queue submit this frame
 
-    // Monotonic frame counter advanced right after BeginFrame's queue-idle wait; ring pools
-    // compare against it to know when previous-frame slots became reusable.
+    // Monotonic frame counter advanced at the top of BeginFrame; selects the in-flight frame
+    // slot (FrameIndex % VULKAN_FRAMES_IN_FLIGHT) and stamps ring pools so their first acquire
+    // in a new frame resets the ring index.
     uint64_t FrameIndex {1};
 
-    // Per-frame staging ring for texture uploads recorded into the frame command buffer.
-    vector<VulkanPooledBuffer> TextureStagingRing {};
-    size_t TextureStagingRingIndex {};
-    uint64_t TextureStagingRingFrame {};
+    [[nodiscard]] auto CurrentFrameSlot() -> VulkanFrameSlot& { return FrameSlots[FrameIndex % VULKAN_FRAMES_IN_FLIGHT]; }
 };
 
 class Vulkan_Texture;
@@ -144,12 +182,12 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx);
 static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) -> mat44;
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size);
 static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
-static void RecreateFrameSyncSemaphores(ptr<Vulkan_Renderer::Context> ctx);
+static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
 static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage);
-static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring, size_t& ring_index, uint64_t& ring_frame, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&;
-static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring);
+static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&;
+static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring);
 static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx);
 static void EndFrame(ptr<Vulkan_Renderer::Context> ctx);
 static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout);
@@ -162,7 +200,8 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemor
 static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image);
 static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view);
 static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer);
-static void FlushDeferredDestroyResources(ptr<Vulkan_Renderer::Context> ctx);
+static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue);
+static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx);
 static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf);
 static void EndCommandBufferRecording(VkCommandBuffer cmd_buf);
 static void SubmitCommandBufferAndWait(ptr<Vulkan_Renderer::Context> ctx, VkCommandBuffer cmd_buf);
@@ -426,15 +465,12 @@ public:
     VkBuffer CurrentVertexBuffer {};
     VkBuffer CurrentIndexBuffer {};
 
-    // Dynamic geometry ring pools (see VulkanPooledBuffer): one slot per Upload within a frame,
-    // reset on frame advance, so re-uploading the same draw buffer mid-frame never overwrites
-    // data a still-pending draw in the frame command buffer refers to.
-    vector<VulkanPooledBuffer> VertexBufferRing {};
-    size_t VertexRingIndex {};
-    uint64_t VertexRingFrame {};
-    vector<VulkanPooledBuffer> IndexBufferRing {};
-    size_t IndexRingIndex {};
-    uint64_t IndexRingFrame {};
+    // Dynamic geometry ring pools, one per in-flight frame slot (see VulkanBufferRing): one ring
+    // buffer per Upload within a frame, so re-uploading the same draw buffer mid-frame never
+    // overwrites data a still-pending draw refers to, and a slot's ring is only reused after its
+    // in-flight fence was waited.
+    VulkanBufferRing VertexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
+    VulkanBufferRing IndexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
 
     // Static geometry (uploaded once via staging copy to device-local memory).
     VkBuffer StaticVertexBuffer {};
@@ -588,40 +624,41 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
     pooled.Mapped = mapped_raw;
 }
 
-static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring, size_t& ring_index, uint64_t& ring_frame, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&
+static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Slots written in previous frames are GPU-free once BeginFrame's queue-idle wait has run,
-    // which is exactly when the context frame index advances past this ring's stamp.
-    if (ring_frame != ctx->FrameIndex) {
-        ring_frame = ctx->FrameIndex;
-        ring_index = 0;
+    // Rings are owned per in-flight frame slot: by the time the slot records again, BeginFrame
+    // has waited its fence, so a stamp mismatch means every buffer in this ring is GPU-free.
+    if (ring.Frame != ctx->FrameIndex) {
+        ring.Frame = ctx->FrameIndex;
+        ring.Index = 0;
     }
 
-    if (ring_index >= ring.size()) {
-        ring.emplace_back();
+    if (ring.Index >= ring.Buffers.size()) {
+        ring.Buffers.emplace_back();
     }
 
-    auto& pooled = ring[ring_index];
-    ring_index++;
+    auto& pooled = ring.Buffers[ring.Index];
+    ring.Index++;
 
     EnsurePooledBufferCapacity(ctx, pooled, size, usage);
     return pooled;
 }
 
-static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring)
+static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, VulkanBufferRing& ring)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto& pooled : ring) {
+    for (auto& pooled : ring.Buffers) {
         DestroyResourceSafe(ctx, pooled.Buffer);
         DestroyResourceSafe(ctx, pooled.Memory);
         pooled.Mapped = nullptr;
         pooled.Capacity = 0;
     }
 
-    ring.clear();
+    ring.Buffers.clear();
+    ring.Index = 0;
 }
 
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory)
@@ -932,9 +969,9 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         // Record the upload into the frame command buffer: program order inside the one buffer
         // preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this
         // frame executes before this copy) with no mid-frame submit or full-GPU wait. The pooled
-        // staging slot stays untouched by the CPU for the rest of the frame and is only reused
-        // after BeginFrame's queue-idle wait.
-        auto& staging = AcquireRingBuffer(_ctx, _ctx->TextureStagingRing, _ctx->TextureStagingRingIndex, _ctx->TextureStagingRingFrame, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        // staging buffer stays untouched by the CPU for the rest of the frame and is only reused
+        // after its frame slot's fence was waited.
+        auto& staging = AcquireRingBuffer(_ctx, _ctx->CurrentFrameSlot().TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         fill_staging(GetMappedMemoryBytes(staging.Mapped));
 
         // Transfers are illegal inside a render pass; suspend it around the copy.
@@ -982,8 +1019,13 @@ Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    DestroyPooledBuffers(_ctx, VertexBufferRing);
-    DestroyPooledBuffers(_ctx, IndexBufferRing);
+    for (auto& ring : VertexBufferRings) {
+        DestroyPooledBuffers(_ctx, ring);
+    }
+    for (auto& ring : IndexBufferRings) {
+        DestroyPooledBuffers(_ctx, ring);
+    }
+
     DestroyResourceSafe(_ctx, StaticVertexBuffer);
     DestroyResourceSafe(_ctx, StaticVertexBufferMemory);
     DestroyResourceSafe(_ctx, StaticIndexBuffer);
@@ -1023,10 +1065,10 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
     if (vert_size != 0) {
         if (!IsStatic) {
-            // Dynamic geometry: memcpy into the next persistently-mapped ring slot. Each Upload
-            // gets its own slot so earlier draws recorded in the still-pending frame command
+            // Dynamic geometry: memcpy into the next persistently-mapped ring buffer. Each Upload
+            // gets its own buffer so earlier draws recorded in the still-pending frame command
             // buffer keep their vertex snapshots intact.
-            auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRing, VertexRingIndex, VertexRingFrame, vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
             MemCopy(GetMappedMemoryData(pooled.Mapped), vert_data.get(), vert_size);
             CurrentVertexBuffer = pooled.Buffer;
         }
@@ -1069,8 +1111,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
     if (idx_size != 0) {
         if (!IsStatic) {
-            // Dynamic geometry: same ring-slot scheme as the vertex path.
-            auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRing, IndexRingIndex, IndexRingFrame, idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+            // Dynamic geometry: same ring scheme as the vertex path.
+            auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
             MemCopy(GetMappedMemoryData(pooled.Mapped), Indices.data(), idx_size);
             CurrentIndexBuffer = pooled.Buffer;
         }
@@ -1454,18 +1496,20 @@ Vulkan_Renderer::~Vulkan_Renderer()
 
     if (ctx->Device != nullptr) {
         vkDeviceWaitIdle(ctx->Device);
-        FlushDeferredDestroyResources(ctx);
+        FlushAllDeferredDestroyQueues(ctx);
 
         // Release the dummy texture's Vk handles now, while the device is still alive.
-        // ~Vulkan_Texture() routes its handles through ctx->DeferredDestroy* and they must be
-        // flushed against a live VkDevice. If left to the implicit Context teardown, it would
+        // ~Vulkan_Texture() routes its handles through the deferred-destroy queues and they must
+        // be flushed against a live VkDevice. If left to the implicit Context teardown, it would
         // run after vkDestroyDevice below.
         ctx->DummyTexture.reset();
-        FlushDeferredDestroyResources(ctx);
+        FlushAllDeferredDestroyQueues(ctx);
 
-        // The texture staging ring routes through the same deferred-destroy queues.
-        DestroyPooledBuffers(ctx, ctx->TextureStagingRing);
-        FlushDeferredDestroyResources(ctx);
+        // The per-slot texture staging rings route through the same deferred-destroy queues.
+        for (auto& slot : ctx->FrameSlots) {
+            DestroyPooledBuffers(ctx, slot.TextureStagingRing);
+        }
+        FlushAllDeferredDestroyQueues(ctx);
     }
 
     for (auto* fb : ctx->Framebuffers) {
@@ -1516,14 +1560,43 @@ Vulkan_Renderer::~Vulkan_Renderer()
         ctx->CommandPool = VK_NULL_HANDLE;
     }
 
-    if (ctx->ImageAvailableSemaphore != nullptr) {
-        vkDestroySemaphore(ctx->Device, ctx->ImageAvailableSemaphore, nullptr);
-        ctx->ImageAvailableSemaphore = VK_NULL_HANDLE;
+    for (auto& slot : ctx->FrameSlots) {
+        if (slot.ImageAvailableSemaphore != nullptr) {
+            vkDestroySemaphore(ctx->Device, slot.ImageAvailableSemaphore, nullptr);
+            slot.ImageAvailableSemaphore = VK_NULL_HANDLE;
+        }
+        if (slot.InFlightFence != nullptr) {
+            vkDestroyFence(ctx->Device, slot.InFlightFence, nullptr);
+            slot.InFlightFence = VK_NULL_HANDLE;
+        }
+        if (slot.DescriptorPool != nullptr) {
+            vkDestroyDescriptorPool(ctx->Device, slot.DescriptorPool, nullptr);
+            slot.DescriptorPool = VK_NULL_HANDLE;
+        }
+        if (slot.UniformBuffer != nullptr) {
+            vkDestroyBuffer(ctx->Device, slot.UniformBuffer, nullptr);
+            slot.UniformBuffer = VK_NULL_HANDLE;
+        }
+        if (slot.UniformBufferMemory != nullptr) {
+            vkUnmapMemory(ctx->Device, slot.UniformBufferMemory);
+            vkFreeMemory(ctx->Device, slot.UniformBufferMemory, nullptr);
+            slot.UniformBufferMemory = VK_NULL_HANDLE;
+            slot.UniformBufferMapped = nullptr;
+        }
     }
-    if (ctx->RenderCompleteSemaphore != nullptr) {
-        vkDestroySemaphore(ctx->Device, ctx->RenderCompleteSemaphore, nullptr);
-        ctx->RenderCompleteSemaphore = VK_NULL_HANDLE;
+
+    ctx->CommandBuffer = VK_NULL_HANDLE;
+    ctx->ImageAvailableSemaphore = VK_NULL_HANDLE;
+    ctx->FrameDescriptorPool = VK_NULL_HANDLE;
+    ctx->FrameUniformBuffer = VK_NULL_HANDLE;
+    ctx->FrameUniformBufferMapped = nullptr;
+
+    for (auto& semaphore : ctx->RenderCompleteSemaphores) {
+        if (semaphore != nullptr) {
+            vkDestroySemaphore(ctx->Device, semaphore, nullptr);
+        }
     }
+    ctx->RenderCompleteSemaphores.clear();
 
     if (ctx->Swapchain != nullptr) {
         vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
@@ -1536,20 +1609,6 @@ Vulkan_Renderer::~Vulkan_Renderer()
     if (ctx->UniformDescriptorSetLayout != nullptr) {
         vkDestroyDescriptorSetLayout(ctx->Device, ctx->UniformDescriptorSetLayout, nullptr);
         ctx->UniformDescriptorSetLayout = VK_NULL_HANDLE;
-    }
-    if (ctx->FrameDescriptorPool != nullptr) {
-        vkDestroyDescriptorPool(ctx->Device, ctx->FrameDescriptorPool, nullptr);
-        ctx->FrameDescriptorPool = VK_NULL_HANDLE;
-    }
-    if (ctx->FrameUniformBuffer != nullptr) {
-        vkDestroyBuffer(ctx->Device, ctx->FrameUniformBuffer, nullptr);
-        ctx->FrameUniformBuffer = VK_NULL_HANDLE;
-    }
-    if (ctx->FrameUniformBufferMemory != nullptr) {
-        vkUnmapMemory(ctx->Device, ctx->FrameUniformBufferMemory);
-        vkFreeMemory(ctx->Device, ctx->FrameUniformBufferMemory, nullptr);
-        ctx->FrameUniformBufferMemory = VK_NULL_HANDLE;
-        ctx->FrameUniformBufferMapped = nullptr;
     }
     if (ctx->LinearSampler != nullptr) {
         vkDestroySampler(ctx->Device, ctx->LinearSampler, nullptr);
@@ -2190,23 +2249,31 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
     ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
 
-    // Allocate single command buffer (single-threaded rendering)
-    VkCommandBufferAllocateInfo cbai {};
-    cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cbai.commandPool = ctx->CommandPool;
-    cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cbai.commandBufferCount = 1;
+    // Allocate one command buffer per in-flight frame slot plus per-slot acquire semaphores and
+    // in-flight fences (created signaled so the first wait on each slot passes immediately).
+    {
+        VkCommandBufferAllocateInfo cbai {};
+        cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        cbai.commandPool = ctx->CommandPool;
+        cbai.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        cbai.commandBufferCount = 1;
 
-    vk_result = vkAllocateCommandBuffers(ctx->Device, &cbai, &ctx->CommandBuffer);
-    VerifyVkResult(vk_result);
+        VkSemaphoreCreateInfo sem_ci {};
+        sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    // Create semaphores for acquire/present synchronization
-    VkSemaphoreCreateInfo sem_ci {};
-    sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &ctx->ImageAvailableSemaphore);
-    VerifyVkResult(vk_result);
-    vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &ctx->RenderCompleteSemaphore);
-    VerifyVkResult(vk_result);
+        VkFenceCreateInfo fence_ci {};
+        fence_ci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fence_ci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+        for (auto& slot : ctx->FrameSlots) {
+            vk_result = vkAllocateCommandBuffers(ctx->Device, &cbai, &slot.CommandBuffer);
+            VerifyVkResult(vk_result);
+            vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &slot.ImageAvailableSemaphore);
+            VerifyVkResult(vk_result);
+            vk_result = vkCreateFence(ctx->Device, &fence_ci, nullptr, &slot.InFlightFence);
+            VerifyVkResult(vk_result);
+        }
+    }
 
     // Allocate staging command buffer for buffer uploads
     VkCommandBufferAllocateInfo staging_cbai {};
@@ -2256,33 +2323,46 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateDescriptorSetLayout(ctx->Device, &ubo_layout_ci, nullptr, &ctx->UniformDescriptorSetLayout);
     VerifyVkResult(vk_result);
 
-    // Create ctx->FrameDescriptorPool
+    // Create per-slot descriptor pools and uniform bump buffers.
     // Pool sizing: each per-draw set we allocate uses VULKAN_MAX_*_BINDINGS descriptors of its
     // type even when the shader only writes a couple of bindings (the layout is fixed-width,
     // see TextureDescriptorSetLayout / UniformDescriptorSetLayout). With a tight budget the
     // ImGui pass — which is queued last in the frame — silently runs out of descriptors and the
     // UI vanishes while the world keeps rendering. Provision per-type counts to cover maxSets.
-    constexpr uint32_t kMaxFrameSets = 20000;
-    VkDescriptorPoolSize frame_pool_sizes[2] {};
-    frame_pool_sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    frame_pool_sizes[0].descriptorCount = kMaxFrameSets * VULKAN_MAX_TEXTURE_BINDINGS;
-    frame_pool_sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    frame_pool_sizes[1].descriptorCount = kMaxFrameSets * VULKAN_MAX_UNIFORM_BINDINGS;
+    {
+        constexpr uint32_t kMaxFrameSets = 20000;
+        VkDescriptorPoolSize frame_pool_sizes[2] {};
+        frame_pool_sizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        frame_pool_sizes[0].descriptorCount = kMaxFrameSets * VULKAN_MAX_TEXTURE_BINDINGS;
+        frame_pool_sizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        frame_pool_sizes[1].descriptorCount = kMaxFrameSets * VULKAN_MAX_UNIFORM_BINDINGS;
 
-    VkDescriptorPoolCreateInfo frame_pool_ci {};
-    frame_pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    frame_pool_ci.poolSizeCount = 2;
-    frame_pool_ci.pPoolSizes = frame_pool_sizes;
-    frame_pool_ci.maxSets = kMaxFrameSets;
-    frame_pool_ci.flags = 0;
+        VkDescriptorPoolCreateInfo frame_pool_ci {};
+        frame_pool_ci.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        frame_pool_ci.poolSizeCount = 2;
+        frame_pool_ci.pPoolSizes = frame_pool_sizes;
+        frame_pool_ci.maxSets = kMaxFrameSets;
+        frame_pool_ci.flags = 0;
 
-    vk_result = vkCreateDescriptorPool(ctx->Device, &frame_pool_ci, nullptr, &ctx->FrameDescriptorPool);
-    VerifyVkResult(vk_result);
+        for (auto& slot : ctx->FrameSlots) {
+            vk_result = vkCreateDescriptorPool(ctx->Device, &frame_pool_ci, nullptr, &slot.DescriptorPool);
+            VerifyVkResult(vk_result);
 
-    // Create ctx->FrameUniformBuffer
-    AllocateBuffer(ctx, ctx->FrameUniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, ctx->FrameUniformBuffer, ctx->FrameUniformBufferMemory);
-    vk_result = vkMapMemory(ctx->Device, ctx->FrameUniformBufferMemory, 0, ctx->FrameUniformBufferSize, 0, ctx->FrameUniformBufferMapped.get_pp());
-    VerifyVkResult(vk_result);
+            AllocateBuffer(ctx, ctx->FrameUniformBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, slot.UniformBuffer, slot.UniformBufferMemory);
+            vk_result = vkMapMemory(ctx->Device, slot.UniformBufferMemory, 0, ctx->FrameUniformBufferSize, 0, slot.UniformBufferMapped.get_pp());
+            VerifyVkResult(vk_result);
+        }
+    }
+
+    // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them.
+    {
+        auto& initial_slot = ctx->CurrentFrameSlot();
+        ctx->CommandBuffer = initial_slot.CommandBuffer;
+        ctx->ImageAvailableSemaphore = initial_slot.ImageAvailableSemaphore;
+        ctx->FrameDescriptorPool = initial_slot.DescriptorPool;
+        ctx->FrameUniformBuffer = initial_slot.UniformBuffer;
+        ctx->FrameUniformBufferMapped = initial_slot.UniformBufferMapped;
+    }
 
     // Create samplers for texture filtering (linear and point)
     VkSamplerCreateInfo sampler_ci {};
@@ -2456,6 +2536,28 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     vk_result = vkGetSwapchainImagesKHR(ctx->Device, ctx->Swapchain, &image_count, ctx->SwapchainImages.data());
     VerifyVkResult(vk_result);
     ctx->SwapchainImageLayouts.assign(ctx->SwapchainImages.size(), VK_IMAGE_LAYOUT_UNDEFINED);
+
+    // Render-complete semaphores are per swapchain image; (re)create the set to match the new
+    // image count (the device is idle here on a recreate — see the wait above — and no semaphores
+    // exist yet on first creation).
+    {
+        VkSemaphoreCreateInfo sem_ci {};
+        sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        for (auto& semaphore : ctx->RenderCompleteSemaphores) {
+            if (semaphore != nullptr) {
+                vkDestroySemaphore(ctx->Device, semaphore, nullptr);
+            }
+        }
+
+        ctx->RenderCompleteSemaphores.assign(ctx->SwapchainImages.size(), VK_NULL_HANDLE);
+
+        for (auto& semaphore : ctx->RenderCompleteSemaphores) {
+            vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &semaphore);
+            VerifyVkResult(vk_result);
+        }
+    }
+
     ctx->SwapchainFormat = sci.imageFormat;
 
     if (ctx->RenderPass == nullptr) {
@@ -2583,30 +2685,48 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 }
 
-static void RecreateFrameSyncSemaphores(ptr<Vulkan_Renderer::Context> ctx)
+static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Callers must run with the device idle (after vkQueueWaitIdle). Binary semaphores can be left
+    // Callers must run with the device idle (after vkDeviceWaitIdle). Binary semaphores can be left
     // in a stale signaled state after a failed present or a deferred resize; destroying and
     // recreating them guarantees a clean unsignaled state before the next acquire/submit cycle,
     // avoiding double-signal validation errors (VUID-vkAcquireNextImageKHR-semaphore-01779 et al).
-    if (ctx->ImageAvailableSemaphore != nullptr) {
-        vkDestroySemaphore(ctx->Device, ctx->ImageAvailableSemaphore, nullptr);
-        ctx->ImageAvailableSemaphore = VK_NULL_HANDLE;
-    }
-    if (ctx->RenderCompleteSemaphore != nullptr) {
-        vkDestroySemaphore(ctx->Device, ctx->RenderCompleteSemaphore, nullptr);
-        ctx->RenderCompleteSemaphore = VK_NULL_HANDLE;
-    }
+    // In-flight fences are recreated in the signaled state — the device is idle, so every slot is
+    // reusable; the caller re-resets the fence of the slot it is about to submit with.
+    VkResult vk_result = VK_SUCCESS;
 
     VkSemaphoreCreateInfo sem_ci {};
     sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkResult vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &ctx->ImageAvailableSemaphore);
-    VerifyVkResult(vk_result);
-    vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &ctx->RenderCompleteSemaphore);
-    VerifyVkResult(vk_result);
+    VkFenceCreateInfo fence_ci {};
+    fence_ci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fence_ci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    for (auto& slot : ctx->FrameSlots) {
+        if (slot.ImageAvailableSemaphore != nullptr) {
+            vkDestroySemaphore(ctx->Device, slot.ImageAvailableSemaphore, nullptr);
+            slot.ImageAvailableSemaphore = VK_NULL_HANDLE;
+        }
+        if (slot.InFlightFence != nullptr) {
+            vkDestroyFence(ctx->Device, slot.InFlightFence, nullptr);
+            slot.InFlightFence = VK_NULL_HANDLE;
+        }
+
+        vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &slot.ImageAvailableSemaphore);
+        VerifyVkResult(vk_result);
+        vk_result = vkCreateFence(ctx->Device, &fence_ci, nullptr, &slot.InFlightFence);
+        VerifyVkResult(vk_result);
+    }
+
+    for (auto& semaphore : ctx->RenderCompleteSemaphores) {
+        if (semaphore != nullptr) {
+            vkDestroySemaphore(ctx->Device, semaphore, nullptr);
+        }
+        vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &semaphore);
+        VerifyVkResult(vk_result);
+    }
 }
 
 static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
@@ -2618,42 +2738,71 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     VkResult vk_result = VK_SUCCESS;
 
-    // Single-threaded: wait for all GPU work to finish before reusing command buffer
-    vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
+    // Advance to the next in-flight frame slot and wait until the GPU released it. With
+    // VULKAN_FRAMES_IN_FLIGHT slots the CPU records frame N while the GPU still renders frame
+    // N-1; the fence wait replaces the old full queue-idle and normally returns instantly.
+    ctx->FrameIndex++;
+    auto& frame_slot = ctx->CurrentFrameSlot();
+
+    vk_result = vkWaitForFences(ctx->Device, 1, &frame_slot.InFlightFence, VK_TRUE, UINT64_MAX);
+    VerifyVkResult(vk_result);
+    vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
     VerifyVkResult(vk_result);
 
-    // The GPU consumed everything from the previous frame: ring pools (draw-buffer geometry,
-    // texture staging) may reuse their slots from the start.
-    ctx->FrameIndex++;
-
-    FlushDeferredDestroyResources(ctx);
+    // The fence proves every submission up to this slot's frame completed, so everything this
+    // slot owns (rings, descriptor pool, uniform bump buffer, destroy queue) is GPU-free.
+    FlushDeferredDestroyQueue(ctx, frame_slot.DestroyQueue);
 
     if (ctx->PendingSwapchainRecreateSize.has_value()) {
         const auto recreate_size = ctx->PendingSwapchainRecreateSize.value();
         ctx->PendingSwapchainRecreateSize.reset();
+        // A swapchain recreate invalidates in-flight state wholesale: settle the device, drop
+        // every pending destroy, and rebuild the sync objects so no stale semaphore signal or
+        // in-flight fence survives into the next acquire/submit cycle.
+        vk_result = vkDeviceWaitIdle(ctx->Device);
+        VerifyVkResult(vk_result);
+        FlushAllDeferredDestroyQueues(ctx);
         RecreateSwapchain(ctx, {std::max(recreate_size.width, 1), std::max(recreate_size.height, 1)});
-        // Device is idle here (vkQueueWaitIdle above); clear any stale semaphore signal left by a
-        // deferred resize or a failed present before the next acquire/submit cycle.
-        RecreateFrameSyncSemaphores(ctx);
+        RecreateFrameSyncObjects(ctx);
+
+        // The sync objects were rebuilt (fences signaled); this frame is about to submit with the
+        // current slot's fence, so put it back into the unsignaled state.
+        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
+        VerifyVkResult(vk_result);
 
         if (!ctx->CurrentRenderTarget) {
             ApplySwapchainTargetMetrics(ctx, ctx->SwapchainSize);
         }
     }
 
-    vk_result = vkResetDescriptorPool(ctx->Device, ctx->FrameDescriptorPool, 0);
+    vk_result = vkResetDescriptorPool(ctx->Device, frame_slot.DescriptorPool, 0);
     VerifyVkResult(vk_result);
+
+    // Point the current-slot aliases at this frame's resources.
+    ctx->CommandBuffer = frame_slot.CommandBuffer;
+    ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
+    ctx->FrameDescriptorPool = frame_slot.DescriptorPool;
+    ctx->FrameUniformBuffer = frame_slot.UniformBuffer;
+    ctx->FrameUniformBufferMapped = frame_slot.UniformBufferMapped;
     ctx->FrameUniformOffset = 0;
 
     vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
+
     if (vk_result == VK_ERROR_OUT_OF_DATE_KHR) {
-        // Acquire failed and the semaphore was NOT signaled, so recreating and re-acquiring on the
-        // same (now freshly recreated) semaphore is safe.
+        // Acquire failed and the semaphore was NOT signaled. Settle the device, rebuild the
+        // swapchain and every sync object, and re-acquire on the freshly recreated semaphore.
         int width;
         int height;
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
+        vk_result = vkDeviceWaitIdle(ctx->Device);
+        VerifyVkResult(vk_result);
+        FlushAllDeferredDestroyQueues(ctx);
         RecreateSwapchain(ctx, {std::max(width, 1), std::max(height, 1)});
-        RecreateFrameSyncSemaphores(ctx);
+        RecreateFrameSyncObjects(ctx);
+        ctx->CommandBuffer = frame_slot.CommandBuffer;
+        ctx->ImageAvailableSemaphore = frame_slot.ImageAvailableSemaphore;
+        vk_result = vkResetFences(ctx->Device, 1, &frame_slot.InFlightFence);
+        VerifyVkResult(vk_result);
 
         vk_result = vkAcquireNextImageKHR(ctx->Device, ctx->Swapchain, UINT64_MAX, ctx->ImageAvailableSemaphore, VK_NULL_HANDLE, &ctx->CurrentSwapchainImageIndex);
         VerifyVkResult(vk_result);
@@ -2661,7 +2810,7 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     else if (vk_result == VK_SUBOPTIMAL_KHR) {
         // SUBOPTIMAL is a success code: the image WAS acquired and ImageAvailableSemaphore IS
         // signaled. Render/present this frame as-is and defer the recreate to the next BeginFrame
-        // (which runs after vkQueueWaitIdle and recreates the semaphores). Re-acquiring on the
+        // (which settles the device and rebuilds the sync objects). Re-acquiring on the
         // already-signaled semaphore here would be illegal.
         int width;
         int height;
@@ -2729,14 +2878,19 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
     ctx->FrameCbRecording = false;
 
     // A mid-frame flush may have already consumed the acquire semaphore with the frame's first
-    // submit; wait for it here only if this is the first submit of the frame.
+    // submit; wait for it here only if this is the first submit of the frame. The render-complete
+    // semaphore is the acquired image's own, and the submit signals the slot's in-flight fence —
+    // the anchor the next use of this slot waits on.
+    FO_VERIFY_AND_THROW(ctx->CurrentSwapchainImageIndex < ctx->RenderCompleteSemaphores.size(), "Swapchain image index out of render-complete semaphore range");
+    VkSemaphore render_complete_semaphore = ctx->RenderCompleteSemaphores[ctx->CurrentSwapchainImageIndex];
+
     constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &ctx->CommandBuffer;
     submit_info.signalSemaphoreCount = 1;
-    submit_info.pSignalSemaphores = &ctx->RenderCompleteSemaphore;
+    submit_info.pSignalSemaphores = &render_complete_semaphore;
 
     if (!ctx->ImageAvailableWaited) {
         submit_info.waitSemaphoreCount = 1;
@@ -2745,14 +2899,14 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
         ctx->ImageAvailableWaited = true;
     }
 
-    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, VK_NULL_HANDLE);
+    vk_result = vkQueueSubmit(ctx->GraphicsQueue, 1, &submit_info, ctx->CurrentFrameSlot().InFlightFence);
     VerifyVkResult(vk_result);
 
     // Present to screen
     VkPresentInfoKHR info {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores = &ctx->RenderCompleteSemaphore;
+    info.pWaitSemaphores = &render_complete_semaphore;
     info.swapchainCount = 1;
     info.pSwapchains = &ctx->Swapchain;
     info.pImageIndices = &ctx->CurrentSwapchainImageIndex;
@@ -2760,8 +2914,8 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
     vk_result = vkQueuePresentKHR(ctx->GraphicsQueue, &info);
     if (vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_SUBOPTIMAL_KHR) {
         // Defer the recreate to the next BeginFrame rather than recreating inline: a failed present
-        // may leave RenderCompleteSemaphore in an ambiguous state, and BeginFrame recreates both
-        // sync semaphores after vkQueueWaitIdle, guaranteeing a clean state for the next submit.
+        // may leave the render-complete semaphore in an ambiguous state, and BeginFrame settles the
+        // device and rebuilds all sync objects, guaranteeing a clean state for the next submit.
         int width;
         int height;
         SDL_GetWindowSizeInPixels(ctx->SdlWindow.get(), &width, &height);
@@ -3197,12 +3351,16 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     }
 }
 
+// Destroy requests enqueue into the CURRENT frame slot's queue: that queue is flushed only
+// after the slot's fence is waited, and a fence signal implies completion of every earlier
+// submission on the queue — so both in-flight frames that could reference the resource are
+// provably done by then.
 static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (buffer != VK_NULL_HANDLE) {
-        ctx->DeferredDestroyBuffers.emplace_back(buffer);
+        ctx->CurrentFrameSlot().DestroyQueue.Buffers.emplace_back(buffer);
         buffer = VK_NULL_HANDLE;
     }
 }
@@ -3212,7 +3370,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemor
     FO_STACK_TRACE_ENTRY();
 
     if (memory != VK_NULL_HANDLE) {
-        ctx->DeferredDestroyMemories.emplace_back(memory);
+        ctx->CurrentFrameSlot().DestroyQueue.Memories.emplace_back(memory);
         memory = VK_NULL_HANDLE;
     }
 }
@@ -3222,7 +3380,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& imag
     FO_STACK_TRACE_ENTRY();
 
     if (image != VK_NULL_HANDLE) {
-        ctx->DeferredDestroyImages.emplace_back(image);
+        ctx->CurrentFrameSlot().DestroyQueue.Images.emplace_back(image);
         image = VK_NULL_HANDLE;
     }
 }
@@ -3232,7 +3390,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& 
     FO_STACK_TRACE_ENTRY();
 
     if (image_view != VK_NULL_HANDLE) {
-        ctx->DeferredDestroyImageViews.emplace_back(image_view);
+        ctx->CurrentFrameSlot().DestroyQueue.ImageViews.emplace_back(image_view);
         image_view = VK_NULL_HANDLE;
     }
 }
@@ -3242,49 +3400,64 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer
     FO_STACK_TRACE_ENTRY();
 
     if (framebuffer != VK_NULL_HANDLE) {
-        ctx->DeferredDestroyFramebuffers.emplace_back(framebuffer);
+        ctx->CurrentFrameSlot().DestroyQueue.Framebuffers.emplace_back(framebuffer);
         framebuffer = VK_NULL_HANDLE;
     }
 }
 
-static void FlushDeferredDestroyResources(ptr<Vulkan_Renderer::Context> ctx)
+static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue)
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (auto* framebuffer : ctx->DeferredDestroyFramebuffers) {
+    for (auto* framebuffer : queue.Framebuffers) {
         if (framebuffer != VK_NULL_HANDLE) {
             vkDestroyFramebuffer(ctx->Device, framebuffer, nullptr);
         }
     }
-    ctx->DeferredDestroyFramebuffers.clear();
 
-    for (auto* image_view : ctx->DeferredDestroyImageViews) {
+    queue.Framebuffers.clear();
+
+    for (auto* image_view : queue.ImageViews) {
         if (image_view != VK_NULL_HANDLE) {
             vkDestroyImageView(ctx->Device, image_view, nullptr);
         }
     }
-    ctx->DeferredDestroyImageViews.clear();
 
-    for (auto* image : ctx->DeferredDestroyImages) {
+    queue.ImageViews.clear();
+
+    for (auto* image : queue.Images) {
         if (image != VK_NULL_HANDLE) {
             vkDestroyImage(ctx->Device, image, nullptr);
         }
     }
-    ctx->DeferredDestroyImages.clear();
 
-    for (auto* buffer : ctx->DeferredDestroyBuffers) {
+    queue.Images.clear();
+
+    for (auto* buffer : queue.Buffers) {
         if (buffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(ctx->Device, buffer, nullptr);
         }
     }
-    ctx->DeferredDestroyBuffers.clear();
 
-    for (auto* memory : ctx->DeferredDestroyMemories) {
+    queue.Buffers.clear();
+
+    for (auto* memory : queue.Memories) {
         if (memory != VK_NULL_HANDLE) {
             vkFreeMemory(ctx->Device, memory, nullptr);
         }
     }
-    ctx->DeferredDestroyMemories.clear();
+
+    queue.Memories.clear();
+}
+
+// Flush every slot's queue; the caller must have proven the device idle (vkDeviceWaitIdle).
+static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& slot : ctx->FrameSlots) {
+        FlushDeferredDestroyQueue(ctx, slot.DestroyQueue);
+    }
 }
 
 FO_END_NAMESPACE
