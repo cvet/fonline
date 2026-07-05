@@ -572,6 +572,10 @@ namespace NativeDataCaller
             FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
             return temp.emplace(target_entity.get());
         }
+        else if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
+            // Mutable slot is the address of the caller's variable; work on a copy and write it back in ReturnArg
+            return temp.emplace(*cast_from_void<raw_t*>(data.get()));
+        }
         else if constexpr (std::is_reference_v<T>) {
             return **cast_from_void<raw_t**>(data.get());
         }

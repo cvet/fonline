@@ -127,6 +127,10 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 [[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
 // GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null.
 [[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
+[[nodiscard]] auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
+[[nodiscard]] auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;
+[[nodiscard]] auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>;
+[[nodiscard]] auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept;
@@ -184,6 +188,14 @@ template<typename T>
     else {
         return cast_from_void<T*>(arg_address.get());
     }
+}
+
+template<typename T>
+[[nodiscard]] inline auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return cast_from_void<const T*>(value.get());
 }
 
 #ifdef AS_MAX_PORTABILITY

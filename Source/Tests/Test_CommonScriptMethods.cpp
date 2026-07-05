@@ -1049,6 +1049,23 @@ namespace CommonMethods
         return -1;
     }
 
+    void InvokeRefTarget(int& value, string& text)
+    {
+        value = value * 2 + 1;
+        text += "-invoked";
+    }
+
+    int TestInvokeByNameWithRefArgs()
+    {
+        int value = 5;
+        string text = "ping";
+        bool result = Invoke("CommonMethods::InvokeRefTarget", value, text);
+        if (!result) return -1;
+        if (value != 11) return -2;
+        if (text != "ping-invoked") return -3;
+        return 0;
+    }
+
  )" + R"(
     // ========== Entity Time Events (Critter) ==========
 
@@ -2096,6 +2113,11 @@ TEST_CASE("GameInvokeOperations")
     SECTION("ByNameRejectsWrongType")
     {
         RUN_CM_FUNC("TestInvokeByNameRejectsWrongType");
+    }
+
+    SECTION("ByNameWithRefArgs")
+    {
+        RUN_CM_FUNC("TestInvokeByNameWithRefArgs");
     }
 }
 

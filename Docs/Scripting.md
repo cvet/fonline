@@ -85,6 +85,19 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
+Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
+The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
+value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
+(`Critter@&`). Every AngelScript-side producer follows this contract: `ScriptGenericCall()` and the `Invoke`
+family resolve `out`/`inout` arguments through `asIScriptGeneric::GetArgAddress()` (the pointer held on the
+stack), while ordinary input arguments use `GetAddressOfArg()`; only references to non-handle reference-object
+types keep the raw stack slot, which their accessor paths expect. Consumers rely on it symmetrically:
+`NativeDataCaller::ConvertArg`/`ReturnArg` read and write back through the slot, and the AngelScript-to-
+AngelScript branch of `ScriptFuncCall()` (script-fired events with by-ref args, `Invoke` targeting a script
+function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regression coverage:
+`Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
+`Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
+
 ### AngelScript backend shutdown
 
 `~AngelScriptBackend()` tears the runtime down in a fixed order: stop the debugger endpoint, run the registered cleanup callbacks, reset the context manager, then reset the backend-owned `_engine` / `_meta` / `_scriptSys` / `_entityMngr` holders. It then calls `ReleaseScriptGlobalsAndReportGC()` **before** `asIScriptEngine::ShutDownAndRelease()` (which asserts the returned engine ref count is `0`), and finally runs the post-cleanup callbacks.
