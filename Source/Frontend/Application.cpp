@@ -484,7 +484,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
-        throw NotImplementedException(FO_LINE_STR);
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 
@@ -503,6 +503,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 #if FO_HAVE_OPENGL

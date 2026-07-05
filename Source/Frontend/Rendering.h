@@ -268,9 +268,11 @@ public:
     };
 
     // GLSL: uniform TimeBuf { vec4 FrameTime; vec4 GameTime; };
-    //   FrameTime.x = real-frame time in seconds (continuously increasing).
-    //   GameTime.x  = game-frame time in seconds (same source today, may diverge).
+    //   FrameTime.x = real-frame time in seconds since the first rendered frame, wrapped at 8192 s.
+    //   GameTime.x  = game-frame time in seconds, same wrap (same source today, may diverge).
     //   Both .yzw are reserved (zero).
+    // The values are periodic animation phases: fp32 shader math degrades at large magnitudes, so
+    // consumers must tolerate the once-per-period pop and wrap unbounded phase math locally.
     // (EffectManager::PerFrameEffectUpdate.)
     struct TimeBuffer
     {
@@ -581,6 +583,39 @@ public:
 
     Direct3D_Renderer();
     ~Direct3D_Renderer() override;
+
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Present() override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(irect32 rect) override;
+    void DisableScissor() override;
+    void OnResizeWindow(isize32 size) override;
+
+private:
+    unique_nptr<Context> _ctx {};
+};
+
+#endif
+
+#if FO_HAVE_VULKAN
+
+class Vulkan_Renderer final : public Renderer
+{
+public:
+    struct Context;
+
+    Vulkan_Renderer();
+    ~Vulkan_Renderer() override;
 
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;

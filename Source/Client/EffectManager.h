@@ -141,6 +141,7 @@ private:
     ptr<IAppRender> _render;
     std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
     unordered_map<string, unique_ptr<RenderEffect>> _loadedEffects {};
+    optional<nanotime> _shaderTimeEpoch {};
 };
 
 FO_END_NAMESPACE

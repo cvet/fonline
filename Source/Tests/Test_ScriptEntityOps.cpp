@@ -1253,6 +1253,7 @@ namespace EntityOps
         Game.GetCoverageFixeds(CoverageFixedProperty::History, value);
     }
 
+ )" + R"(
     CoverageTarget MakeCoverageGuardTarget()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -1550,7 +1551,6 @@ namespace EntityOps
     }
 
  )" + R"(
-
     int TestCustomEntityHolderAccessors()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);

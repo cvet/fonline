@@ -173,6 +173,7 @@ VARIABLE_SETTING(bool, Render, NullRenderer, false); // If true, null renderer i
 VARIABLE_SETTING(bool, Render, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, Render, ForceDirect3D, false); // If true, Direct3D is forced
 VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
+VARIABLE_SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
 FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile

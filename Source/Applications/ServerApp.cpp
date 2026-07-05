@@ -530,7 +530,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextItemOpen(!GetApp()->Settings.CollapseLogOnStart, ImGuiCond_FirstUseEver);
 
                         if (ImGui::CollapsingHeader("Log")) {
-                            const auto log_height = std::min(400.0f, std::max(rect_size.y * 0.4f, 150.0f));
+                            const auto log_height = std::max(150.0f, ImGui::GetContentRegionAvail().y);
 
                             if (ImGui::BeginChild("##LogChild", ImVec2(0.0f, log_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
                                 scoped_lock locker {log_buffer_locker};
