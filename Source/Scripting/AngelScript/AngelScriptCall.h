@@ -67,8 +67,7 @@ static constexpr ScriptDataAccessor SCRIPT_DATA_ACCESSOR;
 
 auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, uint32_t flags = 0, bool is_ret = false) -> ComplexTypeDesc;
 auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFuncDesc>;
-auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
-void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const function<void(FuncCallData&)>& callback);
+void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const_span<ArgDesc> args_desc, const function<void(FuncCallData&)>& callback);
 void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call);
 
 FO_END_NAMESPACE

@@ -1046,12 +1046,19 @@ void ServerEngine::Shutdown()
     const bool reached_running_state = _workerPool.has_value();
 
     if (reached_running_state) {
+        // Cut the time-event dispatcher off BEFORE draining the pool: an in-flight job's script may still
+        // StartTimeEvent during the drain, and a fresh Submit would enqueue a job that WorkerPool::Clear
+        // never cancel-marked (an Asap-repeating one keeps the untimed WaitIdle below from ever returning),
+        // while after _workerPool.reset() the Submit/Cancel hooks would dereference the empty optional.
+        // Pausing is an atomic flag, so it is safe against concurrent lock-free hook reads; the hook
+        // objects themselves are cleared further down, once teardown is single-threaded.
+        WriteLog("Shutdown stage: TimeEventMngr.PauseDispatcherHooks");
+        TimeEventMngr.PauseDispatcherHooks();
+
         // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
         // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
         // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
         // strand it and hang WaitIdle, so the main worker is always torn down last.
-        WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
-        TimeEventMngr.ClearDispatcherHooks();
         WriteLog("Shutdown stage: workerPool.Clear");
         _workerPool->Clear();
 
@@ -1092,6 +1099,15 @@ void ServerEngine::Shutdown()
 
     WriteLog("Shutdown stage: mainWorker.Clear");
     _mainWorker.Clear();
+
+    // Clear the dispatcher hook objects only after BOTH the worker pool and the main worker are gone:
+    // NotifySchedule/NotifyCancel read the hook std::functions lock-free from worker threads, so
+    // move-assigning them earlier raced those reads. The hooks are already inert — PauseDispatcherHooks
+    // cut them off before the pool drain — so this only releases the captured state now that teardown
+    // is single-threaded.
+    WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
+    TimeEventMngr.ClearDispatcherHooks();
+
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
 

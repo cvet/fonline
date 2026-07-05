@@ -51,48 +51,6 @@ struct ScriptArrayTypeData
     int32_t EqFuncReturnCode {};
 };
 
-static auto ScriptArrayInitListBytesAt(ptr<void> init_list, size_t offset) noexcept -> ptr<AngelScript::asBYTE>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<AngelScript::asBYTE> bytes = cast_from_void<AngelScript::asBYTE*>(init_list.get());
-    return bytes.get() + offset;
-}
-
-static auto ScriptArrayInitListPayload(ptr<void> init_list, int32_t element_size) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    const size_t payload_offset = element_size >= 8 ? sizeof(int64_t) : sizeof(int32_t);
-    auto payload = ScriptArrayInitListBytesAt(init_list, payload_offset);
-    return cast_to_void(payload.get());
-}
-
-template<typename T>
-static auto ReadScriptArrayInitListValue(ptr<void> init_list) noexcept -> T
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    static_assert(std::is_trivially_copyable_v<T>);
-
-    ptr<T> value = cast_from_void<T*>(init_list.get());
-    return *value;
-}
-
-static auto ScriptArrayInitListObjectAt(ptr<void> init_list, int32_t index, ptr<AngelScript::asITypeInfo> sub_type) noexcept -> ptr<AngelScript::asBYTE>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(index >= 0, "Init list element index is negative");
-
-    const int32_t sub_size = sub_type->GetSize();
-    const size_t elem_align = sub_size >= 8 ? 8u : 4u;
-    const size_t header = sub_size >= 4 ? ((sizeof(int32_t) + (elem_align - 1)) & ~(elem_align - 1)) : sizeof(int32_t);
-    const size_t stride = sub_size >= 4 ? ((numeric_cast<size_t>(sub_size) + (elem_align - 1)) & ~(elem_align - 1)) : numeric_cast<size_t>(sub_size);
-    const size_t object_offset = numeric_cast<size_t>(index) * stride;
-    return ScriptArrayInitListBytesAt(init_list, header + object_offset);
-}
-
 static void CleanupScriptArrayTypeData(ptr<ScriptArrayTypeData> cache) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -293,14 +251,16 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
 
     PrecacheSubTypeData();
 
-    const int32_t length = ReadScriptArrayInitListValue<int32_t>(init_list);
+    // The init list buffer starts with an int32 length header; elements follow with 4/8-byte alignment
+    auto init_bytes = init_list.reinterpret_as<AngelScript::asBYTE>();
+    const int32_t length = *init_list.reinterpret_as<const int32_t>();
     CheckArraySize(length);
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         CreateBuffer(length);
 
         if (length != 0) {
-            auto init_payload = ScriptArrayInitListPayload(init_list, _elementSize);
+            ptr<AngelScript::asBYTE> init_payload = init_bytes.get() + (_elementSize >= 8 ? sizeof(int64_t) : sizeof(int32_t));
             MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
         }
     }
@@ -308,7 +268,7 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         CreateBuffer(length);
 
         if (length != 0) {
-            auto init_payload = ScriptArrayInitListBytesAt(init_list, sizeof(int32_t));
+            ptr<AngelScript::asBYTE> init_payload = init_bytes.get() + sizeof(int32_t);
             MemCopy(At(0), init_payload, numeric_cast<size_t>(length * _elementSize));
             MemFill(init_payload, 0, numeric_cast<size_t>(length * _elementSize));
         }
@@ -320,9 +280,14 @@ ScriptArray::ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) 
         FO_VERIFY_AND_THROW(nullable_sub_type, "Array sub-type info not found");
         auto sub_type = nullable_sub_type.as_ptr();
 
+        const int32_t sub_size = sub_type->GetSize();
+        const size_t elem_align = sub_size >= 8 ? 8u : 4u;
+        const size_t header = elem_align; // The int32 length header padded to the element alignment
+        const size_t stride = sub_size >= 4 ? align_up(numeric_cast<size_t>(sub_size), elem_align) : numeric_cast<size_t>(sub_size);
+
         for (int32_t i = 0; i < length; i++) {
             auto obj = At(i);
-            auto src_obj = ScriptArrayInitListObjectAt(init_list, i, sub_type);
+            ptr<AngelScript::asBYTE> src_obj = init_bytes.get() + header + numeric_cast<size_t>(i) * stride;
             engine->AssignScriptObject(obj.get(), src_obj.get(), sub_type.get());
         }
     }

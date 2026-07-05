@@ -78,17 +78,6 @@ static auto CollectModuleScriptFunctions(ptr<const AngelScript::asIScriptModule>
     return funcs;
 }
 
-static auto RemoteCallBufferAt(span<uint8_t> data, size_t offset, size_t size) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(size != 0, "Buffer slice size is zero");
-    FO_STRONG_ASSERT(offset < data.size(), "Buffer slice offset is out of range");
-    FO_STRONG_ASSERT(size <= data.size() - offset, "Buffer slice extends past buffer end");
-
-    return &data[offset];
-}
-
 static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -372,9 +361,8 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
                 if (field.Type.Size != 0) {
                     FO_VERIFY_AND_THROW(nullable_field_data, "Decoded struct field data is null");
                     auto field_data = nullable_field_data.as_ptr();
-                    auto buf_span = make_span(*buf);
-                    auto field_dest = RemoteCallBufferAt(buf_span, field.Offset, field.Type.Size);
-                    MemCopy(field_dest, field_data, field.Type.Size);
+                    size_t field_pos = field.Offset;
+                    span_write_bytes(make_span(*buf), field_pos, make_span(field_data.get(), field.Type.Size));
                 }
             }
             nptr<uint8_t> buf_data = buf->data();

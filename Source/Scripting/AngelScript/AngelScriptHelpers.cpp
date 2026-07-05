@@ -1971,6 +1971,39 @@ void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ui
     FO_AS_VERIFY(ctx->SetArgObject(arg_index, NativeDataProvider::ReadHandleSlot(slot).get()));
 }
 
+auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<void> slot_address = static_cast<void*>(slot->get_pp());
+    return slot_address;
+}
+
+auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_arg_address = ctx->GetAddressOfArg(arg_index);
+    FO_STRONG_ASSERT(nullable_arg_address, "Context argument address is null");
+    return nullable_arg_address.as_ptr();
+}
+
+auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    nptr<void> nullable_return_value = ctx->GetAddressOfReturnValue();
+    FO_STRONG_ASSERT(nullable_return_value, "Context return value address is null");
+    return nullable_return_value.as_ptr();
+}
+
+auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return make_unique_del_ptr(func_desc, [func_lifetime = std::move(func_lifetime)](ptr<ScriptFuncDesc> released_func_desc) noexcept { ignore_unused(released_func_desc, func_lifetime); });
+}
+
 FO_END_NAMESPACE
 
 #endif
