@@ -47,6 +47,18 @@ FO_BEGIN_NAMESPACE
 static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
 static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
 
+// One growable, persistently-mapped HOST_VISIBLE buffer slot of a per-frame ring pool.
+// Rings are reset when the context frame index advances (BeginFrame waits the queue idle,
+// so every slot written in a previous frame is GPU-free by then) and only grow capacity;
+// steady-state uploads are pure memcpy with no create/map/destroy traffic.
+struct VulkanPooledBuffer
+{
+    VkBuffer Buffer {};
+    VkDeviceMemory Memory {};
+    VkDeviceSize Capacity {};
+    nptr<void> Mapped {};
+};
+
 struct Vulkan_Renderer::Context
 {
     Context(ptr<GlobalSettings> settings, ptr<SDL_Window> sdl_window) :
@@ -86,7 +98,6 @@ struct Vulkan_Renderer::Context
     unique_nptr<RenderTexture> DummyTexture {};
     VkClearColorValue ClearColor {{0.0f, 0.0f, 0.0f, 1.0f}};
     VkCommandBuffer StagingCommandBuffer {};
-    vector<tuple<VkBuffer, VkDeviceMemory>> StagingBuffers {};
     VkDescriptorSetLayout TextureDescriptorSetLayout {};
     VkDescriptorSetLayout UniformDescriptorSetLayout {};
     VkDescriptorPool FrameDescriptorPool {};
@@ -116,6 +127,15 @@ struct Vulkan_Renderer::Context
 
     bool FrameCbRecording {}; // Frame command buffer is currently recording (between BeginFrame and Present)
     bool ImageAvailableWaited {}; // ImageAvailableSemaphore was consumed by a queue submit this frame
+
+    // Monotonic frame counter advanced right after BeginFrame's queue-idle wait; ring pools
+    // compare against it to know when previous-frame slots became reusable.
+    uint64_t FrameIndex {1};
+
+    // Per-frame staging ring for texture uploads recorded into the frame command buffer.
+    vector<VulkanPooledBuffer> TextureStagingRing {};
+    size_t TextureStagingRingIndex {};
+    uint64_t TextureStagingRingFrame {};
 };
 
 class Vulkan_Texture;
@@ -127,6 +147,9 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size);
 static void RecreateFrameSyncSemaphores(ptr<Vulkan_Renderer::Context> ctx);
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory);
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory);
+static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage);
+static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring, size_t& ring_index, uint64_t& ring_frame, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&;
+static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring);
 static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx);
 static void EndFrame(ptr<Vulkan_Renderer::Context> ctx);
 static void TransitionColorImage(VkCommandBuffer cmd_buf, VkImage image, VkImageLayout old_layout, VkImageLayout new_layout);
@@ -398,12 +421,26 @@ public:
 
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override;
 
-    VkBuffer VertexBuffer {};
-    VkDeviceMemory VertexBufferMemory {};
-    size_t VertexBufferSize {};
-    VkBuffer IndexBuffer {};
-    VkDeviceMemory IndexBufferMemory {};
-    size_t IndexBufferSize {};
+    // Buffers the next draw binds: the ring slot picked by the last dynamic Upload, or the
+    // device-local buffer for static geometry.
+    VkBuffer CurrentVertexBuffer {};
+    VkBuffer CurrentIndexBuffer {};
+
+    // Dynamic geometry ring pools (see VulkanPooledBuffer): one slot per Upload within a frame,
+    // reset on frame advance, so re-uploading the same draw buffer mid-frame never overwrites
+    // data a still-pending draw in the frame command buffer refers to.
+    vector<VulkanPooledBuffer> VertexBufferRing {};
+    size_t VertexRingIndex {};
+    uint64_t VertexRingFrame {};
+    vector<VulkanPooledBuffer> IndexBufferRing {};
+    size_t IndexRingIndex {};
+    uint64_t IndexRingFrame {};
+
+    // Static geometry (uploaded once via staging copy to device-local memory).
+    VkBuffer StaticVertexBuffer {};
+    VkDeviceMemory StaticVertexBufferMemory {};
+    VkBuffer StaticIndexBuffer {};
+    VkDeviceMemory StaticIndexBufferMemory {};
 
 private:
     ptr<Vulkan_Renderer::Context> _ctx;
@@ -439,9 +476,10 @@ private:
     ptr<Vulkan_Renderer::Context> _ctx;
 };
 
-// Submits the partially recorded frame command buffer and resumes recording. Needed before any
-// immediate staging-queue operation that must observe prior frame commands (e.g. an atlas clear
-// recorded earlier this frame must reach the GPU before an immediate texture upload лands on top).
+// Submits the partially recorded frame command buffer and resumes recording. Needed before an
+// immediate readback (GetTextureRegion) that must observe clears/draws/uploads recorded earlier
+// this frame. Texture uploads no longer need this: they are recorded into the frame command
+// buffer itself, so program order preserves the engine's immediate-mode semantics.
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
@@ -522,6 +560,68 @@ static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size,
 
     vk_result = vkBindBufferMemory(ctx->Device, buffer, memory, 0);
     VerifyVkResult(vk_result);
+}
+
+static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, VulkanPooledBuffer& pooled, VkDeviceSize size, VkBufferUsageFlags usage)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (pooled.Capacity >= size) {
+        return;
+    }
+
+    // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
+    DestroyResourceSafe(ctx, pooled.Buffer);
+    DestroyResourceSafe(ctx, pooled.Memory);
+    pooled.Mapped = nullptr;
+
+    constexpr VkDeviceSize min_capacity = 4096;
+    const VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
+
+    AllocateBuffer(ctx, new_capacity, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pooled.Buffer, pooled.Memory);
+    pooled.Capacity = new_capacity;
+
+    // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy.
+    void* mapped_raw {};
+    const auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
+    VerifyVkResult(vk_result);
+    pooled.Mapped = mapped_raw;
+}
+
+static auto AcquireRingBuffer(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring, size_t& ring_index, uint64_t& ring_frame, VkDeviceSize size, VkBufferUsageFlags usage) -> VulkanPooledBuffer&
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Slots written in previous frames are GPU-free once BeginFrame's queue-idle wait has run,
+    // which is exactly when the context frame index advances past this ring's stamp.
+    if (ring_frame != ctx->FrameIndex) {
+        ring_frame = ctx->FrameIndex;
+        ring_index = 0;
+    }
+
+    if (ring_index >= ring.size()) {
+        ring.emplace_back();
+    }
+
+    auto& pooled = ring[ring_index];
+    ring_index++;
+
+    EnsurePooledBufferCapacity(ctx, pooled, size, usage);
+    return pooled;
+}
+
+static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, vector<VulkanPooledBuffer>& ring)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& pooled : ring) {
+        DestroyResourceSafe(ctx, pooled.Buffer);
+        DestroyResourceSafe(ctx, pooled.Memory);
+        pooled.Mapped = nullptr;
+        pooled.Capacity = 0;
+    }
+
+    ring.clear();
 }
 
 static void AllocateImage(ptr<Vulkan_Renderer::Context> ctx, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& memory)
@@ -748,46 +848,31 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_VERIFY_AND_THROW(!!nullable_source_data, "Texture update source data is null");
     auto source_bytes = nullable_source_data.as_ptr().reinterpret_as<uint8_t>();
 
-    // Create staging buffer for texture data
-    VkBuffer staging_buf {};
-    VkDeviceMemory staging_mem {};
+    // Fills a mapped staging area with the region pixels, swizzled R<->B: ucolor stores {R,G,B,A}
+    // but VK_FORMAT_B8G8R8A8_UNORM expects {B,G,R,A}. The swizzle happens while composing from the
+    // source so the staging memory is write-only: HOST_VISIBLE memory is typically write-combined,
+    // and reading it back (e.g. an in-place swap loop) runs uncached and costs milliseconds per
+    // large region. Only the first row_bytes of each data_stride row are populated; on the
+    // use_dest_pitch path the inter-row gap is left untouched (vkCmdCopyBufferToImage skips it via
+    // bufferRowLength; when use_dest_pitch is false, data_stride == row_bytes and rows are tight).
+    const auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
+        const size_t pixels_per_row = numeric_cast<size_t>(size.width);
 
-    AllocateBuffer(_ctx, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buf, staging_mem);
-
-    // Copy pixel data to staging buffer
-    void* mapped_data_raw {};
-    VkResult vk_result = vkMapMemory(_ctx->Device, staging_mem, 0, total_data_size, 0, &mapped_data_raw);
-    VerifyVkResult(vk_result);
-    auto mapped_bytes = GetMappedMemoryBytes(mapped_data_raw);
-
-    if (use_dest_pitch) {
-        // Data has full destination texture pitch - copy row by row respecting the stride
         for (int32_t y = 0; y < size.height; y++) {
             const size_t row_offset = numeric_cast<size_t>(y) * data_stride;
-            MemCopy(OffsetMappedBytes(mapped_bytes, row_offset), OffsetMappedBytes(source_bytes, row_offset), row_bytes);
-        }
-    }
-    else {
-        // Data is tightly packed for the region - direct copy
-        MemCopy(mapped_bytes, source_bytes, row_bytes * size.height);
-    }
+            const uint8_t* src_row = OffsetMappedBytes(source_bytes, row_offset).get();
+            uint8_t* dst_row = OffsetMappedBytes(mapped_bytes, row_offset).get();
 
-    // Swizzle R↔B: ucolor stores {R,G,B,A} but VK_FORMAT_B8G8R8A8_UNORM expects {B,G,R,A}.
-    // Only the first row_bytes of each data_stride row are populated; on the use_dest_pitch path the
-    // inter-row gap is uninitialized, so swizzle per row and skip the gap (when use_dest_pitch is
-    // false, data_stride == row_bytes, so this matches the tight-packed layout exactly).
-    {
-        auto row = mapped_bytes;
-        const size_t pixels_per_row = numeric_cast<size_t>(size.width);
-        for (int32_t y = 0; y < size.height; y++) {
             for (size_t i = 0; i < pixels_per_row; i++) {
-                std::swap(row[i * 4 + 0], row[i * 4 + 2]); // Swap R and B
+                dst_row[i * 4 + 0] = src_row[i * 4 + 2];
+                dst_row[i * 4 + 1] = src_row[i * 4 + 1];
+                dst_row[i * 4 + 2] = src_row[i * 4 + 0];
+                dst_row[i * 4 + 3] = src_row[i * 4 + 3];
             }
-            row = OffsetMappedBytes(row, data_stride);
         }
-    }
+    };
 
-    vkUnmapMemory(_ctx->Device, staging_mem);
+    VkResult vk_result = VK_SUCCESS;
 
     // Create GPU texture image if needed
     if (TextureImage == nullptr) {
@@ -829,17 +914,6 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         }
     }
 
-    // The engine may clear/draw into this texture earlier in the current frame; those commands sit
-    // in the still-recording frame command buffer while this staging upload executes immediately.
-    // Flush the frame commands first so the GPU order matches the engine's logical order.
-    FlushFrameCommandBufferMidFrame(_ctx);
-
-    // Record copy commands using standalone staging command buffer
-    BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
-
-    const auto old_layout = TextureImageLayout;
-    TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
     // Copy staging buffer to image region with position offset
     VkBufferImageCopy region {};
     region.bufferOffset = 0;
@@ -852,29 +926,68 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     region.imageOffset = {.x = numeric_cast<int32_t>(pos.x), .y = numeric_cast<int32_t>(pos.y), .z = 0};
     region.imageExtent = {.width = numeric_cast<uint32_t>(size.width), .height = numeric_cast<uint32_t>(size.height), .depth = 1};
 
-    vkCmdCopyBufferToImage(_ctx->StagingCommandBuffer, staging_buf, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    const auto old_layout = TextureImageLayout;
 
-    TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-    TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    if (_ctx->FrameCbRecording) {
+        // Record the upload into the frame command buffer: program order inside the one buffer
+        // preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this
+        // frame executes before this copy) with no mid-frame submit or full-GPU wait. The pooled
+        // staging slot stays untouched by the CPU for the rest of the frame and is only reused
+        // after BeginFrame's queue-idle wait.
+        auto& staging = AcquireRingBuffer(_ctx, _ctx->TextureStagingRing, _ctx->TextureStagingRingIndex, _ctx->TextureStagingRingFrame, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        fill_staging(GetMappedMemoryBytes(staging.Mapped));
 
-    EndCommandBufferRecording(_ctx->StagingCommandBuffer);
-    SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
+        // Transfers are illegal inside a render pass; suspend it around the copy.
+        EndCurrentRenderPass(_ctx);
 
-    // Free staging buffer after GPU is done
-    vkDestroyBuffer(_ctx->Device, staging_buf, nullptr);
-    vkFreeMemory(_ctx->Device, staging_mem, nullptr);
+        TransitionColorImage(_ctx->CommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        vkCmdCopyBufferToImage(_ctx->CommandBuffer, staging.Buffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        TransitionColorImage(_ctx->CommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+        BeginCurrentRenderPass(_ctx);
+    }
+    else {
+        // No frame is recording (texture initialization outside the render loop): perform the
+        // upload immediately through the standalone staging command buffer.
+        VkBuffer staging_buf {};
+        VkDeviceMemory staging_mem {};
+        AllocateBuffer(_ctx, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buf, staging_mem);
+
+        void* mapped_data_raw {};
+        vk_result = vkMapMemory(_ctx->Device, staging_mem, 0, total_data_size, 0, &mapped_data_raw);
+        VerifyVkResult(vk_result);
+        fill_staging(GetMappedMemoryBytes(mapped_data_raw));
+        vkUnmapMemory(_ctx->Device, staging_mem);
+
+        BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
+
+        TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, old_layout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        vkCmdCopyBufferToImage(_ctx->StagingCommandBuffer, staging_buf, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+        TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+        EndCommandBufferRecording(_ctx->StagingCommandBuffer);
+        SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
+
+        // Free staging buffer after GPU is done
+        vkDestroyBuffer(_ctx->Device, staging_buf, nullptr);
+        vkFreeMemory(_ctx->Device, staging_mem, nullptr);
+
+        ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+    }
 }
 
 Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
 {
     FO_STACK_TRACE_ENTRY();
 
-    DestroyResourceSafe(_ctx, VertexBuffer);
-    DestroyResourceSafe(_ctx, VertexBufferMemory);
-    DestroyResourceSafe(_ctx, IndexBuffer);
-    DestroyResourceSafe(_ctx, IndexBufferMemory);
+    DestroyPooledBuffers(_ctx, VertexBufferRing);
+    DestroyPooledBuffers(_ctx, IndexBufferRing);
+    DestroyResourceSafe(_ctx, StaticVertexBuffer);
+    DestroyResourceSafe(_ctx, StaticVertexBufferMemory);
+    DestroyResourceSafe(_ctx, StaticIndexBuffer);
+    DestroyResourceSafe(_ctx, StaticIndexBufferMemory);
 }
 
 void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
@@ -902,140 +1015,98 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     ignore_unused(usage);
 #endif
 
+    const nptr<const void> vert_data =
+#if FO_ENABLE_3D
+        usage == EffectUsage::Model ? static_cast<const void*>(Vertices3D.data()) :
+#endif
+                                      static_cast<const void*>(Vertices.data());
+
     if (vert_size != 0) {
         if (!IsStatic) {
-            // Dynamic buffers: allocate fresh HOST_VISIBLE buffer per upload to keep per-draw snapshots valid
-            DestroyResourceSafe(_ctx, VertexBuffer);
-            DestroyResourceSafe(_ctx, VertexBufferMemory);
-
-            AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VertexBuffer, VertexBufferMemory);
-            VertexBufferSize = vert_size;
-
-            void* mapped_data_raw {};
-            vk_result = vkMapMemory(_ctx->Device, VertexBufferMemory, 0, vert_size, 0, &mapped_data_raw);
-            VerifyVkResult(vk_result);
-            auto mapped_data = GetMappedMemoryData(mapped_data_raw);
-#if FO_ENABLE_3D
-            if (usage == EffectUsage::Model) {
-                MemCopy(mapped_data, Vertices3D.data(), vert_size);
-            }
-            else {
-                MemCopy(mapped_data, Vertices.data(), vert_size);
-            }
-#else
-            MemCopy(mapped_data, Vertices.data(), vert_size);
-#endif
-            vkUnmapMemory(_ctx->Device, VertexBufferMemory);
+            // Dynamic geometry: memcpy into the next persistently-mapped ring slot. Each Upload
+            // gets its own slot so earlier draws recorded in the still-pending frame command
+            // buffer keep their vertex snapshots intact.
+            auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRing, VertexRingIndex, VertexRingFrame, vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+            MemCopy(GetMappedMemoryData(pooled.Mapped), vert_data.get(), vert_size);
+            CurrentVertexBuffer = pooled.Buffer;
         }
         else {
             // Static buffers: use staging copy to GPU-local memory
-            DestroyResourceSafe(_ctx, VertexBuffer);
-            DestroyResourceSafe(_ctx, VertexBufferMemory);
+            DestroyResourceSafe(_ctx, StaticVertexBuffer);
+            DestroyResourceSafe(_ctx, StaticVertexBufferMemory);
 
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
 
             AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_vert_buf, staging_vert_mem);
-            _ctx->StagingBuffers.emplace_back(staging_vert_buf, staging_vert_mem);
 
             void* mapped_data_raw {};
             vk_result = vkMapMemory(_ctx->Device, staging_vert_mem, 0, vert_size, 0, &mapped_data_raw);
             VerifyVkResult(vk_result);
-            auto mapped_data = GetMappedMemoryData(mapped_data_raw);
-#if FO_ENABLE_3D
-            if (usage == EffectUsage::Model) {
-                MemCopy(mapped_data, Vertices3D.data(), vert_size);
-            }
-            else {
-                MemCopy(mapped_data, Vertices.data(), vert_size);
-            }
-#else
-            MemCopy(mapped_data, Vertices.data(), vert_size);
-#endif
+            MemCopy(GetMappedMemoryData(mapped_data_raw), vert_data.get(), vert_size);
             vkUnmapMemory(_ctx->Device, staging_vert_mem);
 
-            AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VertexBuffer, VertexBufferMemory);
+            AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StaticVertexBuffer, StaticVertexBufferMemory);
 
             VkBufferCopy copy_region {};
             copy_region.size = vert_size;
 
             BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_vert_buf, VertexBuffer, 1, &copy_region);
+            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_vert_buf, StaticVertexBuffer, 1, &copy_region);
 
             EndCommandBufferRecording(_ctx->StagingCommandBuffer);
             SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
 
-            for (const auto& [sb, sm] : _ctx->StagingBuffers) {
-                if (sb != nullptr) {
-                    vkDestroyBuffer(_ctx->Device, sb, nullptr);
-                }
-                if (sm != nullptr) {
-                    vkFreeMemory(_ctx->Device, sm, nullptr);
-                }
-            }
-            _ctx->StagingBuffers.clear();
+            vkDestroyBuffer(_ctx->Device, staging_vert_buf, nullptr);
+            vkFreeMemory(_ctx->Device, staging_vert_mem, nullptr);
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+
+            CurrentVertexBuffer = StaticVertexBuffer;
         }
     }
 
     if (idx_size != 0) {
         if (!IsStatic) {
-            // Dynamic buffers: allocate fresh HOST_VISIBLE buffer per upload to keep per-draw snapshots valid
-            DestroyResourceSafe(_ctx, IndexBuffer);
-            DestroyResourceSafe(_ctx, IndexBufferMemory);
-
-            AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, IndexBuffer, IndexBufferMemory);
-            IndexBufferSize = idx_size;
-
-            void* mapped_data_raw {};
-            vk_result = vkMapMemory(_ctx->Device, IndexBufferMemory, 0, idx_size, 0, &mapped_data_raw);
-            VerifyVkResult(vk_result);
-            auto mapped_data = GetMappedMemoryData(mapped_data_raw);
-            MemCopy(mapped_data, Indices.data(), idx_size);
-            vkUnmapMemory(_ctx->Device, IndexBufferMemory);
+            // Dynamic geometry: same ring-slot scheme as the vertex path.
+            auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRing, IndexRingIndex, IndexRingFrame, idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+            MemCopy(GetMappedMemoryData(pooled.Mapped), Indices.data(), idx_size);
+            CurrentIndexBuffer = pooled.Buffer;
         }
         else {
             // Static buffers: use staging copy to GPU-local memory
-            DestroyResourceSafe(_ctx, IndexBuffer);
-            DestroyResourceSafe(_ctx, IndexBufferMemory);
+            DestroyResourceSafe(_ctx, StaticIndexBuffer);
+            DestroyResourceSafe(_ctx, StaticIndexBufferMemory);
 
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
             AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
-            _ctx->StagingBuffers.emplace_back(staging_idx_buf, staging_idx_mem);
 
             void* mapped_data_raw {};
             vk_result = vkMapMemory(_ctx->Device, staging_idx_mem, 0, idx_size, 0, &mapped_data_raw);
             VerifyVkResult(vk_result);
-            auto mapped_data = GetMappedMemoryData(mapped_data_raw);
-            MemCopy(mapped_data, Indices.data(), idx_size);
+            MemCopy(GetMappedMemoryData(mapped_data_raw), Indices.data(), idx_size);
             vkUnmapMemory(_ctx->Device, staging_idx_mem);
 
-            AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, IndexBuffer, IndexBufferMemory);
+            AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StaticIndexBuffer, StaticIndexBufferMemory);
 
             VkBufferCopy copy_region {};
             copy_region.size = idx_size;
 
             BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_idx_buf, IndexBuffer, 1, &copy_region);
+            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_idx_buf, StaticIndexBuffer, 1, &copy_region);
 
             EndCommandBufferRecording(_ctx->StagingCommandBuffer);
             SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
 
-            for (const auto& [sb, sm] : _ctx->StagingBuffers) {
-                if (sb != nullptr) {
-                    vkDestroyBuffer(_ctx->Device, sb, nullptr);
-                }
-                if (sm != nullptr) {
-                    vkFreeMemory(_ctx->Device, sm, nullptr);
-                }
-            }
-            _ctx->StagingBuffers.clear();
+            vkDestroyBuffer(_ctx->Device, staging_idx_buf, nullptr);
+            vkFreeMemory(_ctx->Device, staging_idx_mem, nullptr);
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
+
+            CurrentIndexBuffer = StaticIndexBuffer;
         }
     }
 }
@@ -1143,8 +1214,8 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 #endif
 
-    // Upload draw buffer geometry
-    if (vk_dbuf->VertexBuffer == nullptr) {
+    // Skip until geometry is uploaded
+    if (vk_dbuf->CurrentVertexBuffer == nullptr) {
         return;
     }
 
@@ -1153,14 +1224,9 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         return;
     }
 
-    // Ensure buffers are uploaded to GPU
-    if (vk_dbuf->VertexBuffer == nullptr) {
-        return;
-    }
-
     // Bind vertex buffer
     constexpr VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(_ctx->CommandBuffer, 0, 1, &vk_dbuf->VertexBuffer, offsets);
+    vkCmdBindVertexBuffers(_ctx->CommandBuffer, 0, 1, &vk_dbuf->CurrentVertexBuffer, offsets);
 
     // Process each pass
     for (size_t pass = 0; pass < _passCount; pass++) {
@@ -1339,11 +1405,11 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         // Draw indexed or non-indexed
-        if (vk_dbuf->IndCount != 0 && vk_dbuf->IndexBuffer != nullptr) {
+        if (vk_dbuf->IndCount != 0 && vk_dbuf->CurrentIndexBuffer != nullptr) {
             // Bind index buffer and draw indexed
             // ReSharper disable once CppUnreachableCode
             constexpr auto index_type = sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
-            vkCmdBindIndexBuffer(_ctx->CommandBuffer, vk_dbuf->IndexBuffer, 0, index_type);
+            vkCmdBindIndexBuffer(_ctx->CommandBuffer, vk_dbuf->CurrentIndexBuffer, 0, index_type);
 
             const size_t num_indices = indices_to_draw.value_or(vk_dbuf->IndCount);
             vkCmdDrawIndexed(_ctx->CommandBuffer, numeric_cast<uint32_t>(num_indices), 1, numeric_cast<uint32_t>(start_index), 0, 0);
@@ -1396,19 +1462,11 @@ Vulkan_Renderer::~Vulkan_Renderer()
         // run after vkDestroyDevice below.
         ctx->DummyTexture.reset();
         FlushDeferredDestroyResources(ctx);
-    }
 
-    // Destroy staging buffers
-    for (const auto& [buf, mem] : ctx->StagingBuffers) {
-        if (buf != nullptr) {
-            vkDestroyBuffer(ctx->Device, buf, nullptr);
-        }
-        if (mem != nullptr) {
-            vkFreeMemory(ctx->Device, mem, nullptr);
-        }
+        // The texture staging ring routes through the same deferred-destroy queues.
+        DestroyPooledBuffers(ctx, ctx->TextureStagingRing);
+        FlushDeferredDestroyResources(ctx);
     }
-
-    ctx->StagingBuffers.clear();
 
     for (auto* fb : ctx->Framebuffers) {
         vkDestroyFramebuffer(ctx->Device, fb, nullptr);
@@ -1705,6 +1763,8 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
         rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
 #if FO_ENABLE_3D
+        // The negative-height viewport flips screen-space winding exactly like the previously used
+        // Y-negated projection did, so the effective front face stays the same as before.
         rasterization_ci.cullMode = (usage == EffectUsage::Model) ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
         rasterization_ci.frontFace = (usage == EffectUsage::Model) ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
 #else
@@ -1852,12 +1912,10 @@ static auto BuildOrthoMatrix(float32_t left, float32_t right, float32_t bottom, 
     result[2][0] = 0.0f;
     result[3][0] = (l + r) / (l - r);
 
-    // Vulkan clip space has Y pointing down (no negative-viewport flip is used by this backend),
-    // so the Y axis is negated relative to the Direct3D ortho matrix.
     result[0][1] = 0.0f;
-    result[1][1] = 2.0f / (b - t);
+    result[1][1] = 2.0f / (t - b);
     result[2][1] = 0.0f;
-    result[3][1] = (t + b) / (t - b);
+    result[3][1] = (t + b) / (b - t);
 
     result[0][2] = 0.0f;
     result[1][2] = 0.0f;
@@ -1918,7 +1976,9 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.pEngineName = "FOnline Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = VK_API_VERSION_1_0;
+    // 1.1 is required for negative-viewport-height rendering (VK_KHR_maintenance1 in core), which
+    // this backend uses to keep its projection matrices identical to the other backends.
+    app_info.apiVersion = VK_API_VERSION_1_1;
 
     VkInstanceCreateInfo create_info {};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -2341,6 +2401,37 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         FO_VERIFY_AND_THROW(format_supported, "Surface does not support required VK_FORMAT_B8G8R8A8_UNORM / SRGB_NONLINEAR");
     }
 
+    // Present mode: FIFO is the only mode the spec guarantees and is vsync-locked. With VSync off,
+    // prefer IMMEDIATE (uncapped, possible tearing), then MAILBOX (uncapped, no tearing) — matching
+    // the other backends, which honor Render.VSync in their present paths.
+    VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+
+    if (!ctx->Settings->VSync) {
+        uint32_t present_mode_count = 0;
+        vk_result = vkGetPhysicalDeviceSurfacePresentModesKHR(ctx->PhysicalDevice, ctx->Surface, &present_mode_count, nullptr);
+        VerifyVkResult(vk_result);
+        vector<VkPresentModeKHR> present_modes(present_mode_count);
+        vk_result = vkGetPhysicalDeviceSurfacePresentModesKHR(ctx->PhysicalDevice, ctx->Surface, &present_mode_count, present_modes.data());
+        VerifyVkResult(vk_result);
+
+        bool immediate_supported = false;
+        bool mailbox_supported = false;
+
+        for (const auto mode : present_modes) {
+            immediate_supported |= mode == VK_PRESENT_MODE_IMMEDIATE_KHR;
+            mailbox_supported |= mode == VK_PRESENT_MODE_MAILBOX_KHR;
+        }
+
+        if (immediate_supported) {
+            present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+        }
+        else if (mailbox_supported) {
+            present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+        }
+    }
+
+    WriteLog("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
+
     VkSwapchainCreateInfoKHR sci {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     sci.surface = ctx->Surface;
@@ -2353,7 +2444,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     sci.preTransform = caps.currentTransform;
     sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    sci.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    sci.presentMode = present_mode;
     sci.clipped = VK_TRUE;
     sci.oldSwapchain = VK_NULL_HANDLE;
 
@@ -2530,6 +2621,10 @@ static void BeginFrame(ptr<Vulkan_Renderer::Context> ctx)
     // Single-threaded: wait for all GPU work to finish before reusing command buffer
     vk_result = vkQueueWaitIdle(ctx->GraphicsQueue);
     VerifyVkResult(vk_result);
+
+    // The GPU consumed everything from the previous frame: ring pools (draw-buffer geometry,
+    // texture staging) may reuse their slots from the start.
+    ctx->FrameIndex++;
 
     FlushDeferredDestroyResources(ctx);
 
@@ -2830,11 +2925,14 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
+    // Negative-height viewport (core since Vulkan 1.1): flips Vulkan's Y-down clip space so the
+    // same Y-up projection matrices as OpenGL/Direct3D produce top-left-origin output. Winding is
+    // flipped by the negative height, which the pipeline frontFace settings account for.
     VkViewport viewport {};
     viewport.x = numeric_cast<float32_t>(ctx->ViewPort.x);
-    viewport.y = numeric_cast<float32_t>(ctx->ViewPort.y);
+    viewport.y = numeric_cast<float32_t>(ctx->ViewPort.y + ctx->ViewPort.height);
     viewport.width = numeric_cast<float32_t>(ctx->ViewPort.width);
-    viewport.height = numeric_cast<float32_t>(ctx->ViewPort.height);
+    viewport.height = -numeric_cast<float32_t>(ctx->ViewPort.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     vkCmdSetViewport(ctx->CommandBuffer, 0, 1, &viewport);
