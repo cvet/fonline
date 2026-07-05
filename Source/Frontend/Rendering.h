@@ -268,12 +268,14 @@ public:
     };
 
     // GLSL: uniform TimeBuf { vec4 FrameTime; vec4 GameTime; };
-    //   FrameTime.x = real-frame time in seconds since the first rendered frame (continuously increasing).
-    //   GameTime.x  = game-frame time in seconds since the first rendered frame (same source today, may diverge).
+    //   FrameTime.x = real-frame time in seconds since the first rendered frame, wrapped at 8192 s.
+    //   GameTime.x  = game-frame time in seconds, same wrap (same source today, may diverge).
     //   Both .yzw are reserved (zero).
-    // Session-relative on purpose: the values are animation phases consumed by fp32 shader math
-    // (fract/hash/sin), which degrades visibly at large magnitudes; effects with unbounded phase
-    // accumulation should still wrap it locally (see mod() usage in noise-driven effects).
+    // Session-relative and wrapped on purpose: the values are animation phases consumed by fp32
+    // shader math (fract/hash/sin), which degrades visibly at large magnitudes — the wrap keeps the
+    // clock granularity under 1 ms for any session length. Consumers must treat the value as a
+    // periodic phase source (the once-per-period phase pop must land on noisy/ambient math);
+    // effects feeding it into hash lattices should still wrap locally (see mod() in fog effects).
     // (EffectManager::PerFrameEffectUpdate.)
     struct TimeBuffer
     {
