@@ -997,7 +997,7 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
     FO_VERIFY_AND_THROW(rect.height >= 0, "Text layout rectangle height must not be negative", rect.height);
 
     const std::array<uint64_t, 8> key_parts {
-        HashStorage::DefaultHash(string_to_span(str)),
+        HashStorage::DefaultHash(make_const_span(str)),
         static_cast<uint32_t>(font),
         static_cast<uint32_t>(format.Flags),
         static_cast<uint32_t>(format.SkipLines),

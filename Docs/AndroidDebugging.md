@@ -13,7 +13,7 @@ Android debug work is split into four layers:
 3. package a Gradle project with baked resources;
 4. build/install/launch the APK on a Wi-Fi ADB device.
 
-The current supported platform identifiers are `android-arm32`, `android-arm64`, and `android-x86`. Most local tasks use `android-arm64`. Official package targets currently emit Android APKs only for the production-like `Daily`, `Staging`, and `Prod` packages; `AndroidTest` remains a raw LocalTest client package.
+The current supported platform identifiers are `android-arm32`, `android-arm64`, and `android-x86`. Most local tasks use `android-arm64`. A package emits an installable Android APK when its `DefinePackage(...)` entry carries a `BINARY Client Android arm64 Apk` line — the raw LocalTest `AndroidTest` package is the reusable example. Which of an embedding project's release packages include Android (and which CI job builds them) is that project's own choice; consult the project's build/CI documentation for its package composition.
 
 The high-level command flow from the repo root is:
 
@@ -64,9 +64,7 @@ Use `Android :: Launch Remote Scene [linux]` after compatibility-affecting chang
 
 ## Official Package Targets
 
-The local debug flow above uses `package-android-debug` and then Gradle `assembleDebug` from `Workspace/android-debug/...`. The CI/release package flow is different: `MakePackage-Daily`, `MakePackage-Staging`, and `MakePackage-Prod` are generated from `../../CMakeLists.txt` `DefinePackage(...)` entries and include `BINARY Client Android arm64 Apk` alongside the Windows, Web, and Linux server artifacts.
-
-CI prepares Android prerequisites only for those three package types before running the matching `../BuildTools/toolset.sh MakePackage-<type>` target. The generated package lands under `Workspace/output/LF-<type>` and includes the installable Android arm64 APK produced through the shared `../BuildTools/package.py` Android packager. The official packager invokes Gradle with `--no-daemon` so concurrent package jobs on the same self-hosted runner do not reuse or kill each other's Gradle daemon.
+The local debug flow above uses `package-android-debug` and then Gradle `assembleDebug` from `Workspace/android-debug/...`. The CI/release package flow is different: `MakePackage-<type>` targets are generated from the `DefinePackage(...)` entries in the embedding project's `CMakeLists.txt`. Any package whose entry lists `BINARY Client Android arm64 Apk` produces an installable APK alongside its other artifacts, provided the packaging job runs `prepare-workspace android-sdk android-ndk` first; the generated package lands under `Workspace/output/<DevName>-<type>` with the APK produced through the shared `../BuildTools/package.py` Android packager. The official packager invokes Gradle with `--no-daemon` so concurrent package jobs on the same self-hosted runner do not reuse or kill each other's Gradle daemon.
 
 
 ## Source paths inspected
@@ -86,7 +84,7 @@ CI prepares Android prerequisites only for those three package types before runn
 Use this split when debugging Android output:
 
 - **LocalTest/RemoteSceneLaunch device debugging** -> inspect `package-android-debug`, `Workspace/android-debug/LF-Client-*-Android`, Wi-Fi ADB, and the VS Code Android tasks.
-- **Daily/Staging/Prod APK artifact issue** -> inspect `../../CMakeLists.txt` package definitions, `.github/workflows/ci.yml` package matrix, `MakePackage-<type>`, and `Workspace/output/LF-<type>` rather than the local debug Gradle directory first.
+- **Release-package APK artifact issue** -> inspect the embedding project's `DefinePackage(...)` entries, its CI package matrix, `MakePackage-<type>`, and `Workspace/output/<DevName>-<type>` rather than the local debug Gradle directory first.
 - **AndroidTest package issue** -> remember it is defined as `BINARY Client Android arm64 Raw`, not an APK-producing package target.
 
 ## Runtime Resource Copy
@@ -112,15 +110,15 @@ When Android launch behavior fails, isolate the failing layer before rebuilding 
 - **scene launch opens the wrong scene** -> inspect the selected `startupSceneName`, `LF_ServerHeadless --ApplySubConfig RemoteSceneLaunch --Scene.Startup <SceneId>`, and the installed package path.
 - **resources are stale after reinstall** -> verify the APK was rebuilt from the expected `Workspace/android-debug/LF-Client-*-Android` directory and that `FOnlineActivity` recopied assets by checking app logs for resource-copy failures.
 - **packaging fails on icon or signing** -> inspect `Android.Icon`, `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in `../../LastFrontier.fomain`; icon input must be a PNG, and partial signing config is invalid.
-- **CI package contains Windows/Web/Linux artifacts but no Android APK** -> check whether the package is `Daily`, `Staging`, or `Prod`; CI prepares `android-arm64` only for those matrix types, and only package definitions with `BINARY Client Android arm64 Apk` emit APKs.
+- **CI package contains Windows/Web/Linux artifacts but no Android APK** -> only package definitions whose `DefinePackage(...)` lists `BINARY Client Android arm64 Apk` emit APKs, and the CI job that builds such a package must prepare the `android-sdk`/`android-ndk` workspace; check the embedding project's package definitions and CI matrix.
 
 ## Key Files and Integration Points
 
 If you need to trace the Android debug flow through the live repository, start with these files:
 
 - `README.md` - concise repo-front-door Android command flow that this detailed device/debug guide expands
-- `../../CMakeLists.txt` - `AndroidTest`, `Daily`, `Staging`, and `Prod` package definitions, including which package targets emit `Android arm64 Apk` artifacts
-- `.github/workflows/ci.yml` - package matrix and Android workspace preparation gate for `Prod`, `Staging`, and `Daily`
+- the embedding project's `CMakeLists.txt` `DefinePackage(...)` entries, including which package targets emit `Android arm64 Apk` artifacts
+- the embedding project's CI config - package matrix and the Android workspace-preparation step for APK-producing packages
 - `../../.vscode/tasks.json` - live Android task graph for workspace prep, package build, install, remote-scene server startup, and app launch
 - `../BuildTools/buildtools.py` - Android platform identifiers, workspace feature mapping, and `package-android-debug` entry point
 - `../BuildTools/android_device.py` - Wi-Fi ADB discovery, connection caching, install, launch, `launch-game`, stop, and logcat helper
@@ -136,8 +134,8 @@ Current checks worth running when Android build, packaging, or launch docs chang
 
 - `../../.vscode/tasks.json` confirms the current task names, package paths, APK paths, and remote-scene sequence.
 - `README.md` remains the front-door summary for the concise Android command flow; this guide owns detailed Wi-Fi ADB, Gradle project, package-output, and remote-scene troubleshooting behavior.
-- `../../CMakeLists.txt` confirms which official package targets emit Android APKs, especially `Daily`, `Staging`, and `Prod` with `BINARY Client Android arm64 Apk`.
-- `.github/workflows/ci.yml` confirms CI prepares `android-arm64` only for the APK-producing package matrix types.
+- the embedding project's `CMakeLists.txt` confirms which package targets emit Android APKs (those with `BINARY Client Android arm64 Apk`).
+- the embedding project's CI config confirms it prepares the Android workspace only for APK-producing package types.
 - `../BuildTools/android_device.py` confirms the current helper commands and failure messages around Wi-Fi ADB discovery/installation.
 - `../BuildTools/package.py` confirms Android config keys, icon requirements, signing behavior, and resource movement into APK assets.
 - `FOnlineActivity.java` confirms runtime resource copy and `ClientNetwork.ServerHost` override handling.

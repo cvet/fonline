@@ -847,7 +847,7 @@ void AppInput::SetClipboardText(string_view text)
     ignore_unused(text);
 }
 
-auto AppInput::GetClipboardText() -> string_view
+auto AppInput::GetClipboardText() -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 

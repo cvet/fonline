@@ -151,7 +151,7 @@ void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path
             if (settings_errors == 0) {
                 const auto write_config = [&](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
                     const string cfg_name = strex("{}.fomain-{}", cfg_name1, cfg_name2);
-                    _context->WriteData(cfg_name, string_to_span(cfg_content));
+                    _context->WriteData(cfg_name, make_const_span(cfg_content));
                 };
 
                 write_config(!sub_config.empty() ? sub_config : "(Root)", "server", server_config_content);

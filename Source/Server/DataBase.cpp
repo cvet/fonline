@@ -51,6 +51,8 @@ FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef.inc"
 
+FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+
 FO_BEGIN_NAMESPACE
 
 static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
@@ -1390,33 +1392,34 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     const string_view key_data = escaped_key;
     const auto key_len = numeric_cast<int32_t>(escaped_key.length());
     nptr<const char> nullable_key_data = key_data.data();
+    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(bson.get(), nullable_key_data.get(), key_len, value.AsInt64())) {
+        if (!bson_append_int64(aligned_bson, nullable_key_data.get(), key_len, value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if (!bson_append_double(bson.get(), nullable_key_data.get(), key_len, value.AsDouble())) {
+        if (!bson_append_double(aligned_bson, nullable_key_data.get(), key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(bson.get(), nullable_key_data.get(), key_len, value.AsBool())) {
+        if (!bson_append_bool(aligned_bson, nullable_key_data.get(), key_len, value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
         const string_view value_str = value.AsString();
 
-        if (!bson_append_utf8(bson.get(), nullable_key_data.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
+        if (!bson_append_utf8(aligned_bson, nullable_key_data.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_unsafe_begin(bson.get(), nullable_key_data.get(), key_len, &bson_arr)) {
+        if (!bson_append_array_unsafe_begin(aligned_bson, nullable_key_data.get(), key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
@@ -1428,14 +1431,14 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
             ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
         }
 
-        if (!bson_append_array_end(bson.get(), &bson_arr)) {
+        if (!bson_append_array_end(aligned_bson, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_end");
         }
     }
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(bson.get(), nullable_key_data.get(), key_len, &bson_doc)) {
+        if (!bson_append_document_begin(aligned_bson, nullable_key_data.get(), key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
@@ -1445,7 +1448,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
             ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
         }
 
-        if (!bson_append_document_end(bson.get(), &bson_doc)) {
+        if (!bson_append_document_end(aligned_bson, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_document_end");
         }
     }
@@ -1528,8 +1531,9 @@ void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_
     FO_STACK_TRACE_ENTRY();
 
     bson_iter_t iter;
+    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
-    if (!bson_iter_init(&iter, bson.get())) {
+    if (!bson_iter_init(&iter, aligned_bson)) {
         throw DataBaseException("BsonToDocument bson_iter_init");
     }
 
@@ -1959,3 +1963,5 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 }
 
 FO_END_NAMESPACE
+
+FO_CLANG_IGNORE_WARNINGS_POP()

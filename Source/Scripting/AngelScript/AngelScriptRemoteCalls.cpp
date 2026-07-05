@@ -372,7 +372,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
                 if (field.Type.Size != 0) {
                     FO_VERIFY_AND_THROW(nullable_field_data, "Decoded struct field data is null");
                     auto field_data = nullable_field_data.as_ptr();
-                    span<uint8_t> buf_span {*buf};
+                    auto buf_span = make_span(*buf);
                     auto field_dest = RemoteCallBufferAt(buf_span, field.Offset, field.Type.Size);
                     MemCopy(field_dest, field_data, field.Type.Size);
                 }

@@ -170,7 +170,7 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
     if (!error) {
         FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
-        const_span<uint8_t> received_data {_inBufData.data(), bytes};
+        const auto received_data = make_const_span(_inBufData.data(), bytes);
         ReceiveCallback(received_data);
         NextAsyncRead();
     }

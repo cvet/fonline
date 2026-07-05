@@ -1146,7 +1146,7 @@ class Packager:
 		# antivirus reputation — see the H1 finding in the project's client-AV audit). Runs before any
 		# archiving/installer step so every downstream artifact (Zip/Wix/Raw) carries the signature, and after
 		# all binary patching so the signature covers the final bytes. Tool-agnostic by design:
-		# Windows.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
+		# Packaging.CodeSigningHook is an owner-provided executable script called once per PE as `<hook> <abs-path>`;
 		# the script owns the tool (osslsigncode / signtool / Azure Trusted Signing / SSL.com eSigner), the
 		# certificate, the timestamp URL and any secrets (kept out of the repo and the main config). Empty hook =
 		# unsigned (today's behavior). A signing failure is fatal so a release that asked to be signed never ships
@@ -1154,12 +1154,12 @@ class Packager:
 		if self.args.platform != 'Windows':
 			return
 
-		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.CodeSigningHook', ''))
+		hook = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.CodeSigningHook', ''))
 		if not hook:
-			log('Code signing: skipped (Windows.CodeSigningHook not set)')
+			log('Code signing: skipped (Packaging.CodeSigningHook not set)')
 			return
 
-		assert os.path.isfile(hook), 'Windows.CodeSigningHook script not found: ' + hook
+		assert os.path.isfile(hook), 'Packaging.CodeSigningHook script not found: ' + hook
 
 		binaries = sorted({
 			str(path)
@@ -1173,7 +1173,7 @@ class Packager:
 		log('Code signing', len(binaries), 'Windows binaries via', hook)
 		for binary in binaries:
 			result = subprocess.call([hook, binary])
-			assert result == 0, 'Windows.CodeSigningHook failed (exit ' + str(result) + ') for: ' + binary
+			assert result == 0, 'Packaging.CodeSigningHook failed (exit ' + str(result) + ') for: ' + binary
 		log('Code signing: done')
 
 	def finalize_output(self) -> None:
@@ -1246,16 +1246,16 @@ class Packager:
 
 		game_name = self.fomain.mainSection().getStr('Common.GameName', self.args.nicename).strip() or self.args.nicename
 
-		upgrade_code = self.fomain.mainSection().getStr('Windows.MsiUpgradeCode', '').strip()
-		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Windows.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
+		upgrade_code = self.fomain.mainSection().getStr('Packaging.MsiUpgradeCode', '').strip()
+		assert re.match(r'^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$', upgrade_code), 'Wix pack requires Packaging.MsiUpgradeCode to be a stable GUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)'
 		upgrade_code = upgrade_code.upper()
 
 		version = self.resolve_game_version()
 		assert re.match(r'^\d+(\.\d+){1,3}$', version), 'Wix pack requires a numeric Common.GameVersion (x.y.z[.w]), got: ' + version
 
-		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Windows.Icon', ''))
+		icon_path = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Packaging.AppIcon', ''))
 		if icon_path:
-			assert os.path.isfile(icon_path), 'Windows.Icon file not found: ' + icon_path
+			assert os.path.isfile(icon_path), 'Packaging.AppIcon file not found: ' + icon_path
 
 		exe_name = self.args.nicename + '.exe'
 		command_value = '"[INSTALLDIR]%s" --DeepLinkUri "%%1"' % exe_name

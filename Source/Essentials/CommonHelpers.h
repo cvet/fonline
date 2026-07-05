@@ -395,44 +395,60 @@ template<std::ranges::range T>
 
 template<typename T>
     requires(!std::is_void_v<T>)
-[[nodiscard]] FO_FORCE_INLINE auto make_span(T* data, size_t byte_size) noexcept -> span<std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>>
+[[nodiscard]] inline auto make_span(T* data, size_t byte_size) noexcept -> span<std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>>
 {
     using byte_type = std::conditional_t<std::is_const_v<T>, const uint8_t, uint8_t>;
     return span<byte_type> {reinterpret_cast<byte_type*>(data), byte_size};
 }
 
-[[nodiscard]] FO_FORCE_INLINE auto make_span(void* data, size_t byte_size) noexcept -> span<uint8_t>
+[[nodiscard]] inline auto make_span(void* data, size_t byte_size) noexcept -> span<uint8_t>
 {
     return span<uint8_t> {cast_from_void<uint8_t*>(data), byte_size};
 }
 
-[[nodiscard]] FO_FORCE_INLINE auto make_span(const void* data, size_t byte_size) noexcept -> const_span<uint8_t>
+[[nodiscard]] inline auto make_span(const void* data, size_t byte_size) noexcept -> const_span<uint8_t>
 {
     return const_span<uint8_t> {cast_from_void<const uint8_t*>(data), byte_size};
 }
 
 template<typename P>
     requires(!std::is_pointer_v<std::remove_reference_t<P>> && requires(P&& p) { p.get(); })
-[[nodiscard]] FO_FORCE_INLINE auto make_span(P&& data, size_t byte_size) noexcept
+[[nodiscard]] inline auto make_span(P&& data, size_t byte_size) noexcept
 {
     return make_span(data.get(), byte_size);
 }
 
 template<typename R>
     requires(std::ranges::contiguous_range<R> && std::is_trivially_copyable_v<std::ranges::range_value_t<R>>)
-[[nodiscard]] FO_FORCE_INLINE auto make_span(R&& range) noexcept
+[[nodiscard]] inline auto make_span(R&& range) noexcept
 {
     return make_span(std::ranges::data(range), std::ranges::size(range) * sizeof(std::ranges::range_value_t<R>));
 }
 
-[[nodiscard]] inline auto string_to_span(string_view str) noexcept -> const_span<uint8_t>
+template<typename T>
+    requires(!std::is_void_v<T>)
+[[nodiscard]] inline auto make_const_span(const T* data, size_t byte_size) noexcept -> const_span<uint8_t>
 {
-    return {reinterpret_cast<const uint8_t*>(str.data()), str.size()};
+    return const_span<uint8_t> {reinterpret_cast<const uint8_t*>(data), byte_size};
 }
 
-[[nodiscard]] inline auto string_to_span(string& str) noexcept -> span<uint8_t>
+[[nodiscard]] inline auto make_const_span(const void* data, size_t byte_size) noexcept -> const_span<uint8_t>
 {
-    return {reinterpret_cast<uint8_t*>(str.data()), str.size()};
+    return make_span(data, byte_size);
+}
+
+template<typename P>
+    requires(!std::is_pointer_v<std::remove_reference_t<P>> && requires(P&& p) { p.get(); })
+[[nodiscard]] inline auto make_const_span(P&& data, size_t byte_size) noexcept -> const_span<uint8_t>
+{
+    return make_const_span(data.get(), byte_size);
+}
+
+template<typename R>
+    requires(std::ranges::contiguous_range<R> && std::is_trivially_copyable_v<std::ranges::range_value_t<R>>)
+[[nodiscard]] inline auto make_const_span(R&& range) noexcept -> const_span<uint8_t>
+{
+    return make_const_span(std::ranges::data(range), std::ranges::size(range) * sizeof(std::ranges::range_value_t<R>));
 }
 
 [[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view

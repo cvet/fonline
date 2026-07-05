@@ -2720,7 +2720,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 		offset += AS_PTR_SIZE;
 
 	if (descr->IsVariadic())
-		offset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+		offset += 2; // (FOnline Patch) even variadic count slot (platform-uniform)
 
 #ifdef AS_DEBUG
 	// If the function being called is the opAssign or copy constructor for the same type
@@ -3800,9 +3800,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 							if (builder->GetFunctionDescription(funcs[0])->IsVariadic())
 							{
 								// Argument count
-								#if AS_PTR_SIZE == 2
-								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
-#endif
+								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot (platform-uniform)
 								ctx.bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 							}
 
@@ -4401,14 +4399,6 @@ void asCCompiler::CompileInitList(asCExprValue *var, asCScriptNode *node, asCByt
 	}
 
 	// After all values have been evaluated we know the final size of the buffer
-
-	// (FOnline Patch) A value-type element smaller than a dword is packed at its exact size, but its
-	// per-element asBC_COPY writes a dword-rounded number of bytes; for the final element that copy spills
-	// past the buffer end (heap-buffer-overflow caught by AddressSanitizer). Round the buffer up to a dword
-	// so the last copy stays in bounds. Element offsets are unchanged, so the list factory still reads the
-	// tightly-packed elements by count and simply ignores the trailing padding.
-	bufferSize = (bufferSize + 3u) & ~3u;
-
 	asCExprContext allocExpr(engine);
 	allocExpr.bc.InstrSHORT_DW(asBC_AllocMem, short(bufferVar), bufferSize);
 
@@ -16816,9 +16806,7 @@ int asCCompiler::MakeFunctionCall(asCExprContext *ctx, int funcId, asCObjectType
 	if (descr->IsVariadic())
 	{
 		// Argument count
-		#if AS_PTR_SIZE == 2
-		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
-#endif
+		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot (platform-uniform)
 		ctx->bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 	}
 
@@ -18889,7 +18877,7 @@ void asCCompiler::PerformFunctionCall(int funcId, asCExprContext *ctx, bool isCo
 			argSize -= sizeOfVariadicArg;
 
 			// Add 1 for the arg count
-			argSize += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+			argSize += 2; // (FOnline Patch) even variadic count slot (platform-uniform)
 
 			// Add the actual space used for the variadic args
 			argSize += sizeOfVariadicArg * (args->GetLength() - descr->parameterTypes.GetLength() + 1);

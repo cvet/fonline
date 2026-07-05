@@ -227,7 +227,7 @@ FIXED_SETTING(int32_t, Web, MaxWidth, 1920); // Maximum adaptive web width in pi
 FIXED_SETTING(int32_t, Web, MaxHeight, 1080); // Maximum adaptive web height in pixels
 SETTING_GROUP_END();
 
-///@ ExportSettings Client
+///@ ExportSettings Server
 SETTING_GROUP(AndroidSettings, virtual BaseSettings);
 FIXED_SETTING(string, Android, PackageName, "com.fonline.app"); // Android application package name for packaging tools
 FIXED_SETTING(int32_t, Android, VersionCode, 1); // Android application version code for packaging tools
@@ -240,6 +240,13 @@ FIXED_SETTING(string, Android, Keystore, ""); // Android release signing keystor
 FIXED_SETTING(string, Android, KeystorePassword, ""); // Android release signing keystore password for packaging tools
 FIXED_SETTING(string, Android, KeyAlias, ""); // Android release signing key alias for packaging tools
 FIXED_SETTING(string, Android, KeyPassword, ""); // Android release signing key password for packaging tools
+SETTING_GROUP_END();
+
+///@ ExportSettings Server
+SETTING_GROUP(PackagingSettings, virtual AndroidSettings, virtual WebSettings);
+FIXED_SETTING(string, Packaging, CodeSigningHook, ""); // Windows code signing hook executable path for packaging tools
+FIXED_SETTING(string, Packaging, AppIcon, ""); // Windows application ICO source path for packaging tools
+FIXED_SETTING(string, Packaging, MsiUpgradeCode, ""); // Windows MSI installer upgrade GUID for packaging tools, must never change once an MSI has shipped
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -346,7 +353,7 @@ VARIABLE_SETTING(bool, Mapper, SplitTilesCollection, true); // If true, tiles co
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings, virtual AndroidSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings, virtual WebSettings);
 FIXED_SETTING(int32_t, Client, UpdaterInfoDelay, 1000); // Updater info delay in milliseconds
 FIXED_SETTING(int32_t, Client, UpdaterInfoPos, 0); // Updater info position (<1 - top, 0 - center, >1 - bottom)
 FIXED_SETTING(string, Client, DefaultSplash); // Default splash screen
@@ -361,7 +368,7 @@ VARIABLE_SETTING(bool, Client, HelpInfo, false); // If true, help information is
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ScriptSettings, virtual BakingSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual CritterSettings, virtual DataBaseSettings, virtual WebSettings, virtual PackagingSettings);
 FIXED_SETTING(string, Server, DbStorage, "Memory"); // Database storage type
 FIXED_SETTING(bool, Server, ServerPropertiesPackData, true); // If true, server entities with prototypes use overlay property storage
 FIXED_SETTING(bool, Server, NoStart, false); // If true, server start is disabled

@@ -888,7 +888,7 @@ template<typename T, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<T> entry) noexcept -> ptr<T> { return entry; });
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
@@ -896,22 +896,7 @@ template<typename T, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<const T> entry) noexcept -> ptr<T> { return const_cast<T*>(std::addressof(*entry)); });
-}
-
-template<typename T>
-[[nodiscard]] auto ReleaseScriptOwnershipVector(vector<refcount_ptr<T>>&& entries)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<T*> result; // SmartPointerAudit: script ABI raw container.
-    result.reserve(entries.size());
-
-    for (refcount_ptr<T>& entry : entries) {
-        result.emplace_back(std::move(entry).release_ownership());
-    }
-
-    return result;
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return const_cast<T*>(entry.get()); });
 }
 
 template<typename T, typename U, typename TContainer>
@@ -919,7 +904,7 @@ template<typename T, typename U, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<U> entry) noexcept -> ptr<U> { return entry; });
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>

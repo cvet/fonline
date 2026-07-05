@@ -142,6 +142,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-undefined': make_validation_target('linux', 'unit-tests', 'San_Undefined', run_target_name='RunUnitTests'),
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
+	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
@@ -1728,6 +1729,15 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
 		reset_build_dir(build_dir)
 
+	extra_cmake_args = make_output_path_cmake_args(output, binary_output_postfix)
+
+	# San_Memory needs the MSan-instrumented libc++ prefix at configure time (the build embeds an
+	# rpath to it, so the resulting binary needs no runtime LD_LIBRARY_PATH). The workspace part is
+	# prepared separately (prepare-workspace msan-libcxx); mirror what run_validation() passes so
+	# `build <platform> <target> San_Memory*` works the same as the validate path.
+	if config.startswith('San_Memory'):
+		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(resolve_msan_libcxx_root(env))}')
+
 	ready_path = build_dir / 'READY'
 	reset_marker(ready_path)
 
@@ -1738,7 +1748,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		build_dir,
 		config,
 		env,
-		extra_cmake_args=make_output_path_cmake_args(output, binary_output_postfix),
+		extra_cmake_args=extra_cmake_args,
 	)
 
 	ready_path.touch()

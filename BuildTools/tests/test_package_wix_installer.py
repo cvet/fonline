@@ -77,8 +77,8 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
         "Common.GameName = Last Frontier",
         "Common.GameVersion = 0.3.422",
         "Auth.UriScheme = lastfrontier",
-        "Windows.Icon = app.ico",
-        "Windows.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
+        "Packaging.AppIcon = app.ico",
+        "Packaging.MsiUpgradeCode = B6A1F2C0-3D4E-4A5B-9C7D-0E1F2A3B4C5D",
     ]
     packager = _make_packager(tmp_path, fomain_lines)
     packager.target_output_path = str(staged)

@@ -281,7 +281,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
     }
     else if (_settings->ProxyType == PROXY_HTTP) {
         const string request = strex("CONNECT {}:{} HTTP/1.0\r\n\r\n", net_sockets::ipv4_to_string(_gameAddrIp), _gameAddrPort);
-        const vector<uint8_t> result = send_recv(string_to_span(request));
+        const vector<uint8_t> result = send_recv(make_const_span(request));
         const string result_str {span_to_string(result)};
 
         if (result_str.find(" 200 ") == string::npos) {
@@ -368,7 +368,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
     while (whole_len == buf.size()) {
         buf.resize(buf.size() * 2);
 
-        span<uint8_t> tail {buf.data() + whole_len, buf.size() - whole_len};
+        auto tail = make_span(buf.data() + whole_len, buf.size() - whole_len);
         len = _sock.receive(tail);
 
         if (len < 0) {

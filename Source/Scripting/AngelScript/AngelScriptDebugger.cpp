@@ -687,7 +687,7 @@ auto DebuggerEndpointServer::Impl::SendToActiveClient(string_view message) -> bo
         return false;
     }
 
-    return _activeClientSock.send(string_to_span(message)) > 0;
+    return _activeClientSock.send(make_const_span(message)) > 0;
 }
 
 auto DebuggerEndpointServer::Impl::HandleRequestLine(string_view line) -> RequestResult
@@ -1113,7 +1113,7 @@ void DebuggerEndpointServer::Impl::RunDiscoveryResponder()
         }
 
         const string response = strex("{{\"type\":\"discovery\",\"processId\":\"{}\",\"endpoint\":\"{}\",\"targetName\":\"{}\",\"protocolVersion\":1}}\n", _instanceId, _endpoint, _targetName).str();
-        _discoverySocket.send_to(remote_host, remote_port, string_to_span(response));
+        _discoverySocket.send_to(remote_host, remote_port, make_const_span(response));
     }
 }
 

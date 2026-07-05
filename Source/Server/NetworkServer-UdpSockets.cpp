@@ -319,7 +319,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
-        span<uint8_t> packet_buf {_packetBuf};
+        auto packet_buf = make_span(_packetBuf);
         const auto received = _socket.receive_from(packet_buf, host, port);
 
         if (received <= 0) {
@@ -328,7 +328,7 @@ void NetworkServer_UdpSockets::ProcessIncomingPackets()
 
         UdpPacketInfo packet;
         FO_STRONG_ASSERT(numeric_cast<size_t>(received) <= _packetBuf.size(), "Received byte count exceeds the packet buffer size");
-        const_span<uint8_t> received_packet {_packetBuf.data(), numeric_cast<size_t>(received)};
+        const auto received_packet = make_const_span(_packetBuf.data(), numeric_cast<size_t>(received));
 
         if (!TryParseUdpPacket(received_packet, packet)) {
             continue;

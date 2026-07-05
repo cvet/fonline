@@ -1103,6 +1103,30 @@ void ScriptArray::Copy(ptr<void> dst, ptr<void> src) const
     MemCopy(dst, src, numeric_cast<size_t>(_elementSize));
 }
 
+auto ScriptArray::GetBuffer() -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<uint8_t> buffer = _buffer.data();
+    if (!buffer) {
+        return nullptr;
+    }
+    nptr<void> buffer_data = cast_to_void(buffer.get());
+    return buffer_data;
+}
+
+auto ScriptArray::GetBuffer() const -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<const uint8_t> buffer = _buffer.data();
+    if (!buffer) {
+        return nullptr;
+    }
+    nptr<void> buffer_data = cast_to_void(buffer.get());
+    return buffer_data;
+}
+
 auto ScriptArray::GetArrayItemPointer(int32_t index) -> ptr<void>
 {
     FO_STACK_TRACE_ENTRY();
