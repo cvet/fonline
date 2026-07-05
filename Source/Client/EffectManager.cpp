@@ -158,8 +158,16 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
     if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
-        time_buf->FrameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32_t>() / 1000.0f;
-        time_buf->GameTime[0] = timespan(game_time.GetFrameTime().duration_value()).to_ms<float32_t>() / 1000.0f;
+        if (!_shaderTimeEpoch.has_value()) {
+            _shaderTimeEpoch = game_time.GetFrameTime();
+        }
+
+        constexpr float64_t shader_time_period = 8192.0;
+        const float64_t session_seconds = (game_time.GetFrameTime() - _shaderTimeEpoch.value()).to_ms<float64_t>() / 1000.0;
+        const float32_t shader_time = numeric_cast<float32_t>(std::fmod(session_seconds, shader_time_period));
+
+        time_buf->FrameTime[0] = shader_time;
+        time_buf->GameTime[0] = shader_time;
     }
 
     if (effect->IsNeedRandomValueBuf()) {

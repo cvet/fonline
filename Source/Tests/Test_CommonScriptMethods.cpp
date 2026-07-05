@@ -404,6 +404,23 @@ namespace CommonMethods
         return 0;
     }
 
+    int TestSmallValueTypeArrayInitListPadding()
+    {
+        hdir[] dirs = {HDIR_NorthEast, HDIR_East, HDIR_SouthEast, HDIR_SouthWest, HDIR_West, HDIR_NorthWest};
+        if (dirs.length() != 6) return -1;
+        if (dirs[0] != HDIR_NorthEast) return -2;
+        if (dirs[1] != HDIR_East) return -3;
+        if (dirs[2] != HDIR_SouthEast) return -4;
+        if (dirs[3] != HDIR_SouthWest) return -5;
+        if (dirs[4] != HDIR_West) return -6;
+        if (dirs[5] != HDIR_NorthWest) return -7;
+
+        hdir[] cloned = dirs.clone();
+        if (!(cloned == dirs)) return -8;
+
+        return 0;
+    }
+
     int TestScriptValueTypeMetadataConversions()
     {
         if (ZERO_UCOLOR.value != 0) return -1;
@@ -1030,6 +1047,23 @@ namespace CommonMethods
         }
 
         return -1;
+    }
+
+    void InvokeRefTarget(int& value, string& text)
+    {
+        value = value * 2 + 1;
+        text += "-invoked";
+    }
+
+    int TestInvokeByNameWithRefArgs()
+    {
+        int value = 5;
+        string text = "ping";
+        bool result = Invoke("CommonMethods::InvokeRefTarget", value, text);
+        if (!result) return -1;
+        if (value != 11) return -2;
+        if (text != "ping-invoked") return -3;
+        return 0;
     }
 
  )" + R"(
@@ -1937,6 +1971,11 @@ TEST_CASE("ScriptTypeConversionOps")
         RUN_CM_FUNC("TestScriptTypeConversions");
     }
 
+    SECTION("SmallValueTypeArrayInitListPadding")
+    {
+        RUN_CM_FUNC("TestSmallValueTypeArrayInitListPadding");
+    }
+
     SECTION("HstringStringConvBinding")
     {
         CheckHstringStringConvBinding(server);
@@ -2074,6 +2113,11 @@ TEST_CASE("GameInvokeOperations")
     SECTION("ByNameRejectsWrongType")
     {
         RUN_CM_FUNC("TestInvokeByNameRejectsWrongType");
+    }
+
+    SECTION("ByNameWithRefArgs")
+    {
+        RUN_CM_FUNC("TestInvokeByNameWithRefArgs");
     }
 }
 

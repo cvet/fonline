@@ -478,7 +478,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     else if (Settings.ForceVulkan) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
-        throw NotImplementedException(FO_LINE_STR);
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 
@@ -497,6 +497,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
 #if FO_HAVE_VULKAN
     if (!_ctx->ActiveRenderer) {
         _ctx->ActiveRendererType = RenderType::Vulkan;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
 #if FO_HAVE_OPENGL
@@ -628,7 +629,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     }
 
-    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().data(); };
+    platform_io.Platform_GetClipboardTextFn = [](ImGuiContext*) -> const char* FO_DEFERRED { return GetApp()->Input.GetClipboardText().c_str(); };
     platform_io.Platform_SetClipboardTextFn = [](ImGuiContext*, const char* text) FO_DEFERRED { GetApp()->Input.SetClipboardText(text ? string_view {text} : string_view {}); };
     platform_io.Platform_ClipboardUserData = nullptr;
 
@@ -2282,7 +2283,7 @@ void Application::EndFrame()
                     FO_VERIFY_AND_THROW(nullable_tex_data, "ImGui texture pixel data is null");
                     auto tex_data = nullable_tex_data.as_ptr();
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
-                    const auto tex_pixels = make_const_span(tex_data, tex_pixels_count);
+                    const auto tex_pixels = make_span(tex_data, tex_pixels_count);
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
                     im_tex->SetTexID(cast_to_void(font_tex.get()));
                     im_tex->SetStatus(ImTextureStatus_OK);
@@ -2299,7 +2300,7 @@ void Application::EndFrame()
                     nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
                     FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
                     auto tex = nullable_tex.as_ptr();
-                    const auto update_pixels = make_const_span(update_data, update_size_in_pixels);
+                    const auto update_pixels = make_span(update_data, update_size_in_pixels);
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
@@ -2997,15 +2998,13 @@ void AppInput::SetClipboardText(string_view text)
     WebRelated::SyncClipboardToSystem(text);
 }
 
-auto AppInput::GetClipboardText() -> string_view
+auto AppInput::GetClipboardText() -> const string&
 {
     FO_STACK_TRACE_ENTRY();
 
     nptr<char> nullable_clipboard_text = SDL_GetClipboardText();
     if (nullable_clipboard_text) {
         auto clipboard_text = make_unique_del_ptr(nullable_clipboard_text.as_ptr(), [](char* raw_data) {
-            FO_NO_STACK_TRACE_ENTRY();
-
             if (raw_data != nullptr) {
                 ptr<char> data = raw_data;
                 SDL_free(data.get());

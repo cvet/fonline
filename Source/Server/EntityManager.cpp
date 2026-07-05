@@ -724,8 +724,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
     }
 
     try {
-        item->SetStatic(false);
         RegisterItem(item);
+        item->SetStatic(false);
         item->SetPersistent(true);
     }
     catch (const std::exception& ex) {

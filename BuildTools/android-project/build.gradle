@@ -12,9 +12,10 @@ allprojects {
     repositories {
         mavenCentral()
         google()
+$ANDROID_GRADLE_MAVEN_REPOSITORIES$
     }
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
 }

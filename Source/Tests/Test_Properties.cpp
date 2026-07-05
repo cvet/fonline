@@ -471,7 +471,7 @@ namespace
             else {
                 REQUIRE(nullable_data);
                 auto data = nullable_data.as_ptr();
-                const_span<uint8_t> data_span {data.get(), size};
+                const auto data_span = make_const_span(data, size);
                 result.emplace_back(data_span.begin(), data_span.end());
             }
         }
@@ -2316,50 +2316,68 @@ TEST_CASE("PropertiesOverlayIndexMaintenance")
     CHECK(derived.GetValue<string>(props[19]) == tail_value);
 }
 
-TEST_CASE("PropertiesOverlayDataAllowsUnalignedPackedEntries")
+TEST_CASE("PropertiesOverlayDataKeepsNaturalAlignment")
 {
     HashStorage hashes {};
     TestNameResolver resolver;
-    PropertyRegistrator registrator("OverlayPackedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    PropertyRegistrator registrator("OverlayAlignedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
     const auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
     const auto hash_prop = registrator.RegisterProperty({"Common", "hstring", "HashValue", "Mutable", "Persistent", "PublicSync"});
     const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+    const auto arr_prop = registrator.RegisterProperty({"Common", "int32[]", "ArrValue", "Mutable", "Persistent", "PublicSync"});
+    const auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+    const auto ref_arr_prop = registrator.RegisterProperty({"Common", "RouteSnapshot[]", "RefArrValue", "Mutable", "Persistent", "PublicSync"});
+    const auto dict_prop = registrator.RegisterProperty({"Common", "int32=>int32", "DictValue", "Mutable", "Persistent", "PublicSync"});
+
+    CHECK(flag_prop->GetDataAlignment() == 1);
+    CHECK(hash_prop->GetDataAlignment() == sizeof(hstring::hash_t));
+    CHECK(wide_prop->GetDataAlignment() == sizeof(int64_t));
+    CHECK(arr_prop->GetDataAlignment() == sizeof(int32_t));
+    CHECK(name_prop->GetDataAlignment() == 1);
+    CHECK(ref_arr_prop->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
+    CHECK(dict_prop->GetDataAlignment() == sizeof(int32_t));
 
     const hstring base_hash = hashes.ToHashedString("base-hash");
     const hstring overlay_hash = hashes.ToHashedString("overlay-hash");
     constexpr int64_t base_wide_value = 0x1111111111111111;
     constexpr int64_t overlay_wide_value = 0x2222222222222222;
+    const vector<int32_t> overlay_arr_value = {1, 2, 3};
 
     Properties base(&registrator);
     base.SetValue<bool>(flag_prop, false);
     base.SetValue<hstring>(hash_prop, base_hash);
     base.SetValue<int64_t>(wide_prop, base_wide_value);
 
-    Properties derived(&registrator, &base);
-    derived.SetValue<bool>(flag_prop, true);
-    derived.SetValue<hstring>(hash_prop, overlay_hash);
-    derived.SetValue<int64_t>(wide_prop, overlay_wide_value);
+    const auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
 
     const auto check_overlay_values = [&](const Properties& props) {
         const auto flag_raw_data = props.GetRawData(flag_prop);
         const auto hash_raw_data = props.GetRawData(hash_prop);
         const auto wide_raw_data = props.GetRawData(wide_prop);
+        const auto arr_raw_data = props.GetRawData(arr_prop);
 
         REQUIRE(flag_raw_data.size() == sizeof(bool));
         REQUIRE(hash_raw_data.size() == sizeof(hstring::hash_t));
         REQUIRE(wide_raw_data.size() == sizeof(int64_t));
-        REQUIRE(hash_raw_data.data() > flag_raw_data.data());
-        REQUIRE(wide_raw_data.data() > hash_raw_data.data());
-        CHECK(static_cast<size_t>(hash_raw_data.data() - flag_raw_data.data()) == sizeof(bool));
-        CHECK(static_cast<size_t>(wide_raw_data.data() - hash_raw_data.data()) == sizeof(hstring::hash_t));
+        REQUIRE(arr_raw_data.size() == overlay_arr_value.size() * sizeof(int32_t));
+        CHECK(is_aligned(hash_raw_data.data(), sizeof(hstring::hash_t)));
+        CHECK(is_aligned(wide_raw_data.data(), sizeof(int64_t)));
+        CHECK(is_aligned(arr_raw_data.data(), sizeof(int32_t)));
         CHECK(props.GetValue<bool>(flag_prop));
         CHECK(props.GetValueFast<bool>(flag_prop));
         CHECK(props.GetValue<hstring>(hash_prop) == overlay_hash);
         CHECK(props.GetValueFast<hstring>(hash_prop) == overlay_hash);
         CHECK(props.GetValue<int64_t>(wide_prop) == overlay_wide_value);
         CHECK(props.GetValueFast<int64_t>(wide_prop) == overlay_wide_value);
+        CHECK(props.GetValue<vector<int32_t>>(arr_prop) == overlay_arr_value);
     };
+
+    Properties derived(&registrator, &base);
+    derived.SetValue<bool>(flag_prop, true);
+    derived.SetValue<hstring>(hash_prop, overlay_hash);
+    derived.SetValue<int64_t>(wide_prop, overlay_wide_value);
+    derived.SetValue(arr_prop, overlay_arr_value);
 
     check_overlay_values(derived);
 
@@ -2367,11 +2385,162 @@ TEST_CASE("PropertiesOverlayDataAllowsUnalignedPackedEntries")
     full_source.SetValue<bool>(flag_prop, true);
     full_source.SetValue<hstring>(hash_prop, overlay_hash);
     full_source.SetValue<int64_t>(wide_prop, overlay_wide_value);
+    full_source.SetValue(arr_prop, overlay_arr_value);
 
     Properties rebuilt_from_full(&registrator, &base);
     rebuilt_from_full.CopyFrom(full_source);
 
     check_overlay_values(rebuilt_from_full);
+
+    // Rebuilt layout packs entries alignment-descending (stable by property index) with zero padding:
+    // hash (8-byte hash storage) and wide share the strictest alignment, then arr, then flag
+    {
+        const auto flag_raw_data = rebuilt_from_full.GetRawData(flag_prop);
+        const auto hash_raw_data = rebuilt_from_full.GetRawData(hash_prop);
+        const auto wide_raw_data = rebuilt_from_full.GetRawData(wide_prop);
+        const auto arr_raw_data = rebuilt_from_full.GetRawData(arr_prop);
+        CHECK(wide_raw_data.data() == hash_raw_data.data() + hash_raw_data.size());
+        CHECK(arr_raw_data.data() == wide_raw_data.data() + wide_raw_data.size());
+        CHECK(flag_raw_data.data() == arr_raw_data.data() + arr_raw_data.size());
+    }
+
+    const Properties cloned = rebuilt_from_full.Copy();
+    check_overlay_values(cloned);
+}
+
+TEST_CASE("PropertiesOverlayDataReusesAlignmentPaddings")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OverlayPaddingEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    const auto first_flag_prop = registrator.RegisterProperty({"Common", "bool", "FirstFlag", "Mutable", "Persistent", "PublicSync"});
+    const auto second_flag_prop = registrator.RegisterProperty({"Common", "bool", "SecondFlag", "Mutable", "Persistent", "PublicSync"});
+    const auto short_prop = registrator.RegisterProperty({"Common", "uint16", "ShortValue", "Mutable", "Persistent", "PublicSync"});
+    const auto int_prop = registrator.RegisterProperty({"Common", "uint32", "IntValue", "Mutable", "Persistent", "PublicSync"});
+    const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties base(&registrator);
+    Properties derived(&registrator, &base);
+
+    // Tail extension keeps natural alignment and leaves paddings behind
+    derived.SetValue<bool>(first_flag_prop, true);
+    derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
+
+    const auto first_flag_data = derived.GetRawData(first_flag_prop).data();
+    CHECK(derived.GetRawData(wide_prop).data() == first_flag_data + 8);
+
+    // Following allocations fill the alignment paddings instead of extending the overlay
+    derived.SetValue<uint32_t>(int_prop, 0x33333333);
+    CHECK(derived.GetRawData(int_prop).data() == first_flag_data + 4);
+
+    derived.SetValue<uint16_t>(short_prop, 0x4444);
+    CHECK(derived.GetRawData(short_prop).data() == first_flag_data + 2);
+
+    derived.SetValue<bool>(second_flag_prop, true);
+    CHECK(derived.GetRawData(second_flag_prop).data() == first_flag_data + 1);
+
+    CHECK(derived.GetValue<bool>(first_flag_prop));
+    CHECK(derived.GetValue<bool>(second_flag_prop));
+    CHECK(derived.GetValue<uint16_t>(short_prop) == 0x4444);
+    CHECK(derived.GetValue<uint32_t>(int_prop) == 0x33333333);
+    CHECK(derived.GetValue<int64_t>(wide_prop) == 0x2222222222222222);
+
+    // Freed hole is reused by the next allocation with a matching alignment
+    derived.SetValue<int64_t>(wide_prop, 0);
+    CHECK(derived.GetRawData(wide_prop).data() != first_flag_data + 8);
+
+    derived.SetValue<int64_t>(wide_prop, 0x5555555555555555);
+    CHECK(derived.GetRawData(wide_prop).data() == first_flag_data + 8);
+    CHECK(derived.GetValue<int64_t>(wide_prop) == 0x5555555555555555);
+
+    // Cloned overlay keeps the garbage accounting, so the freed hole stays reusable in the copy
+    derived.SetValue<int64_t>(wide_prop, 0);
+
+    Properties cloned = derived.Copy();
+    const auto cloned_flag_data = cloned.GetRawData(first_flag_prop).data();
+    cloned.SetValue<int64_t>(wide_prop, 0x6666666666666666);
+    CHECK(cloned.GetRawData(wide_prop).data() == cloned_flag_data + 8);
+    CHECK(cloned.GetValue<int64_t>(wide_prop) == 0x6666666666666666);
+}
+
+TEST_CASE("PropertiesOverlayDataPrefersBestFitHole")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OverlayBestFitEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+    const auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    const auto first_int_prop = registrator.RegisterProperty({"Common", "uint32", "FirstIntValue", "Mutable", "Persistent", "PublicSync"});
+    const auto second_int_prop = registrator.RegisterProperty({"Common", "uint32", "SecondIntValue", "Mutable", "Persistent", "PublicSync"});
+    const auto short_prop = registrator.RegisterProperty({"Common", "uint16", "ShortValue", "Mutable", "Persistent", "PublicSync"});
+    const auto third_int_prop = registrator.RegisterProperty({"Common", "uint32", "ThirdIntValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties base(&registrator);
+    Properties derived(&registrator, &base);
+
+    // Build the layout wide@0, first-int@8, flag@12, second-int@16 with a 3-byte padding hole at 13
+    derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
+    derived.SetValue<bool>(flag_prop, true);
+    derived.SetValue<uint32_t>(first_int_prop, 0x33333333);
+    derived.SetValue<uint32_t>(second_int_prop, 0x44444444);
+
+    const auto wide_data = derived.GetRawData(wide_prop).data();
+    const auto flag_data = derived.GetRawData(flag_prop).data();
+    REQUIRE(derived.GetRawData(first_int_prop).data() == wide_data + 8);
+    REQUIRE(flag_data == wide_data + 12);
+    REQUIRE(derived.GetRawData(second_int_prop).data() == wide_data + 16);
+
+    // Freeing the first int opens a 4-byte hole at 8 before the padding hole at 13
+    derived.SetValue<uint32_t>(first_int_prop, 0);
+
+    // Best-fit placement picks the smaller padding hole at 14, not the first fitting hole at 8
+    derived.SetValue<uint16_t>(short_prop, 0x5555);
+    CHECK(derived.GetRawData(short_prop).data() == flag_data + 2);
+
+    // The exact-size hole at 8 is then reused by the next int
+    derived.SetValue<uint32_t>(third_int_prop, 0x66666666);
+    CHECK(derived.GetRawData(third_int_prop).data() == wide_data + 8);
+
+    CHECK(derived.GetValue<int64_t>(wide_prop) == 0x2222222222222222);
+    CHECK(derived.GetValue<bool>(flag_prop));
+    CHECK(derived.GetValue<uint16_t>(short_prop) == 0x5555);
+    CHECK(derived.GetValue<uint32_t>(second_int_prop) == 0x44444444);
+    CHECK(derived.GetValue<uint32_t>(third_int_prop) == 0x66666666);
+}
+
+TEST_CASE("PropertiesOverlayDataStaysAlignedThroughRepack")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OverlayRepackEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    const auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
+    const auto int_prop = registrator.RegisterProperty({"Common", "uint32", "IntValue", "Mutable", "Persistent", "PublicSync"});
+    const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+    const auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
+
+    Properties base(&registrator);
+    Properties derived(&registrator, &base);
+
+    derived.SetValue<bool>(flag_prop, true);
+    derived.SetValue<uint32_t>(int_prop, 0x33333333);
+    derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
+
+    const auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+
+    // Growing and shrinking string payloads force tail growth, garbage buildup and repacks
+    for (const size_t str_size : {100, 300, 50, 1000, 10, 500}) {
+        derived.SetValue<string>(name_prop, string(str_size, 'x'));
+
+        CHECK(derived.GetValue<string>(name_prop) == string(str_size, 'x'));
+        CHECK(is_aligned(derived.GetRawData(int_prop).data(), sizeof(uint32_t)));
+        CHECK(is_aligned(derived.GetRawData(wide_prop).data(), sizeof(int64_t)));
+        CHECK(derived.GetValue<bool>(flag_prop));
+        CHECK(derived.GetValue<uint32_t>(int_prop) == 0x33333333);
+        CHECK(derived.GetValue<int64_t>(wide_prop) == 0x2222222222222222);
+    }
 }
 
 TEST_CASE("PropertiesFullRestoreAndStoreDataEdges")
@@ -3163,6 +3332,235 @@ TEST_CASE("PropertiesDictConversions")
     CHECK(PropertiesSerializator::SavePropertyToValue(&restored, tags_prop, hashes, resolver) == tags_value);
     CHECK(PropertiesSerializator::SavePropertyToValue(&restored, routes_prop, hashes, resolver) == routes_value);
     CHECK(restored.SaveToText(nullptr) == text_data);
+}
+
+TEST_CASE("PropertiesComplexDataInteriorAlignment")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("ComplexAlignedEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    const auto wide_dict_prop = registrator.RegisterProperty({"Common", "uint8=>int64", "WideDict", "Mutable", "Persistent", "PublicSync"});
+    const auto str_dict_prop = registrator.RegisterProperty({"Common", "int32=>string", "StrDict", "Mutable", "Persistent", "PublicSync"});
+    const auto arr_dict_prop = registrator.RegisterProperty({"Common", "int32=>int32[]", "ArrDict", "Mutable", "Persistent", "PublicSync"});
+    const auto str_arr_prop = registrator.RegisterProperty({"Common", "string[]", "StrArr", "Mutable", "Persistent", "PublicSync"});
+    const auto str_key_dict_prop = registrator.RegisterProperty({"Common", "string=>int64", "StrKeyDict", "Mutable", "Persistent", "PublicSync"});
+    const auto ref_prop = registrator.RegisterProperty({"Common", "RouteSnapshot", "Snapshot", "Mutable", "Persistent", "PublicSync"});
+
+    CHECK(wide_dict_prop->GetDataAlignment() == sizeof(int64_t));
+    CHECK(str_dict_prop->GetDataAlignment() == sizeof(uint32_t));
+    CHECK(arr_dict_prop->GetDataAlignment() == sizeof(uint32_t));
+    CHECK(str_arr_prop->GetDataAlignment() == sizeof(uint32_t));
+    CHECK(str_key_dict_prop->GetDataAlignment() == sizeof(int64_t));
+    CHECK(ref_prop->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
+    CHECK(registrator.RegisterProperty({"Common", "hstring=>Mode", "HashKeyDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == sizeof(hstring::hash_t));
+    CHECK(registrator.RegisterProperty({"Common", "Mode=>string", "EnumKeyDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == sizeof(uint32_t));
+    CHECK(registrator.RegisterProperty({"Common", "int32=>RouteSnapshot", "RefDict", "Mutable", "Persistent", "PublicSync"})->GetDataAlignment() == MAX_SERIALIZED_ALIGNMENT);
+
+    Properties props(&registrator);
+
+    // dict<uint8, int64>: per entry the key is byte-aligned and the value is 8-aligned
+    const auto wide_dict_value = []() {
+        AnyData::Dict dict;
+        dict.Emplace("1", int64_t {0x1111111111111111});
+        dict.Emplace("2", int64_t {-0x2222222222222222});
+        return AnyData::Value {std::move(dict)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, wide_dict_prop, wide_dict_value, hashes, resolver);
+
+    {
+        const auto raw_data = props.GetRawData(wide_dict_prop);
+        REQUIRE(raw_data.size() == 32);
+        CHECK(raw_data[0] == 1);
+        CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 8) == 0x1111111111111111);
+        CHECK(raw_data[16] == 2);
+        CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 24) == -0x2222222222222222);
+
+        for (const size_t pad_pos : {1, 2, 3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23}) {
+            CHECK(raw_data[pad_pos] == 0);
+        }
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, wide_dict_prop, hashes, resolver) == wide_dict_value);
+
+    // dict<int32, string>: the second entry key re-aligns to 4 after the odd-length string payload
+    const auto str_dict_value = []() {
+        AnyData::Dict dict;
+        dict.Emplace("7", string {"abc"});
+        dict.Emplace("8", string {"x"});
+        return AnyData::Value {std::move(dict)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, str_dict_prop, str_dict_value, hashes, resolver);
+
+    {
+        const auto raw_data = props.GetRawData(str_dict_prop);
+        REQUIRE(raw_data.size() == 21);
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data()) == 7);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 3);
+        CHECK(raw_data[8] == 'a');
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data() + 12) == 8);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 16) == 1);
+        CHECK(raw_data[20] == 'x');
+        CHECK(raw_data[11] == 0);
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, str_dict_prop, hashes, resolver) == str_dict_value);
+
+    // dict<int32, int32[]>: key, count prefix and the packed element run stay 4-aligned
+    const auto arr_dict_value = []() {
+        AnyData::Array arr;
+        arr.EmplaceBack(int64_t {10});
+        arr.EmplaceBack(int64_t {20});
+        arr.EmplaceBack(int64_t {30});
+
+        AnyData::Dict dict;
+        dict.Emplace("5", AnyData::Value {std::move(arr)});
+        return AnyData::Value {std::move(dict)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, arr_dict_prop, arr_dict_value, hashes, resolver);
+
+    {
+        const auto raw_data = props.GetRawData(arr_dict_prop);
+        REQUIRE(raw_data.size() == 20);
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data()) == 5);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 3);
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data() + 8) == 10);
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data() + 12) == 20);
+        CHECK(*reinterpret_cast<const int32_t*>(raw_data.data() + 16) == 30);
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, arr_dict_prop, hashes, resolver) == arr_dict_value);
+
+    // string[]: every length prefix re-aligns to 4 after a variable string payload
+    props.SetValue(str_arr_prop, vector<string> {"a", "bc"});
+
+    {
+        const auto raw_data = props.GetRawData(str_arr_prop);
+        REQUIRE(raw_data.size() == 18);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 2);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 1);
+        CHECK(raw_data[8] == 'a');
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 12) == 2);
+        CHECK(raw_data[16] == 'b');
+        CHECK(raw_data[17] == 'c');
+        CHECK(raw_data[9] == 0);
+        CHECK(raw_data[10] == 0);
+        CHECK(raw_data[11] == 0);
+    }
+
+    CHECK(props.GetValue<vector<string>>(str_arr_prop) == vector<string> {"a", "bc"});
+
+    // dict<string, int64>: the wide value re-aligns to 8 after the variable-length key
+    const auto str_key_dict_value = []() {
+        AnyData::Dict dict;
+        dict.Emplace("ab", int64_t {0x3333333333333333});
+        dict.Emplace("c", int64_t {0x4444444444444444});
+        return AnyData::Value {std::move(dict)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, str_key_dict_prop, str_key_dict_value, hashes, resolver);
+
+    {
+        const auto raw_data = props.GetRawData(str_key_dict_prop);
+        REQUIRE(raw_data.size() == 32);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 2);
+        CHECK(raw_data[4] == 'a');
+        CHECK(raw_data[5] == 'b');
+        CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 8) == 0x3333333333333333);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 16) == 1);
+        CHECK(raw_data[20] == 'c');
+        CHECK(*reinterpret_cast<const int64_t*>(raw_data.data() + 24) == 0x4444444444444444);
+        CHECK(raw_data[6] == 0);
+        CHECK(raw_data[7] == 0);
+        CHECK(raw_data[21] == 0);
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, str_key_dict_prop, hashes, resolver) == str_key_dict_value);
+
+    // Ref-type blob: field-size prefixes re-align to 4, non-empty field payloads to the field alignment
+    const auto note_only_snapshot = []() {
+        AnyData::Dict fields;
+        fields.Emplace("Note", string {"hi"});
+        return AnyData::Value {std::move(fields)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, ref_prop, note_only_snapshot, hashes, resolver);
+
+    {
+        // Fields: Values(int32[]) Tags(hstring[]) Anchor(Waypoint) Note(string) - three empty prefixes, then the note
+        const auto raw_data = props.GetRawData(ref_prop);
+        REQUIRE(raw_data.size() == 18);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 0);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == 0);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 8) == 0);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 12) == 2);
+        CHECK(raw_data[16] == 'h');
+        CHECK(raw_data[17] == 'i');
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, ref_prop, hashes, resolver) == note_only_snapshot);
+
+    const hstring tag_hash = hashes.ToHashedString("tag-one");
+    const auto tags_only_snapshot = [&tag_hash]() {
+        AnyData::Array tags;
+        tags.EmplaceBack(string {tag_hash.as_str()});
+
+        AnyData::Dict fields;
+        fields.Emplace("Tags", AnyData::Value {std::move(tags)});
+        return AnyData::Value {std::move(fields)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, ref_prop, tags_only_snapshot, hashes, resolver);
+
+    {
+        // The 8-aligned hstring[] payload of the second field lands at offset 8 after two u32 prefixes
+        const auto raw_data = props.GetRawData(ref_prop);
+        REQUIRE(raw_data.size() == 16);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data()) == 0);
+        CHECK(*reinterpret_cast<const uint32_t*>(raw_data.data() + 4) == sizeof(hstring::hash_t));
+        CHECK(*reinterpret_cast<const hstring::hash_t*>(raw_data.data() + 8) == tag_hash.as_hash());
+    }
+
+    CHECK(PropertiesSerializator::SavePropertyToValue(&props, ref_prop, hashes, resolver) == tags_only_snapshot);
+}
+
+TEST_CASE("PropertiesOverlayRepackHandlesUnevenComplexSizes")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("OverlayUnevenEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    const auto wide_prop = registrator.RegisterProperty({"Common", "int64", "WideValue", "Mutable", "Persistent", "PublicSync"});
+    const auto str_arr_prop = registrator.RegisterProperty({"Common", "string[]", "StrArr", "Mutable", "Persistent", "PublicSync"});
+    const auto int_prop = registrator.RegisterProperty({"Common", "uint32", "IntValue", "Mutable", "Persistent", "PublicSync"});
+
+    Properties base(&registrator);
+    Properties derived(&registrator, &base);
+
+    const auto is_aligned = [](const uint8_t* data, size_t alignment) -> bool { return reinterpret_cast<uintptr_t>(data) % alignment == 0; };
+
+    derived.SetValue<int64_t>(wide_prop, 0x2222222222222222);
+    derived.SetValue<uint32_t>(int_prop, 0x33333333);
+
+    // The string-array entry size (18, 41, ... bytes) is not a multiple of its 4-byte alignment,
+    // so repacks must insert aligned gaps for the entries that follow it in the pack order
+    for (const size_t str_size : {1, 25, 2, 100, 3, 50}) {
+        derived.SetValue(str_arr_prop, vector<string> {string(str_size, 'x'), "bc"});
+
+        CHECK(derived.GetValue<vector<string>>(str_arr_prop) == vector<string> {string(str_size, 'x'), "bc"});
+        CHECK(is_aligned(derived.GetRawData(str_arr_prop).data(), sizeof(uint32_t)));
+        CHECK(is_aligned(derived.GetRawData(wide_prop).data(), sizeof(int64_t)));
+        CHECK(is_aligned(derived.GetRawData(int_prop).data(), sizeof(uint32_t)));
+        CHECK(derived.GetValue<int64_t>(wide_prop) == 0x2222222222222222);
+        CHECK(derived.GetValue<uint32_t>(int_prop) == 0x33333333);
+    }
+
+    const Properties cloned = derived.Copy();
+    CHECK(cloned.GetValue<vector<string>>(str_arr_prop) == vector<string> {string(50, 'x'), "bc"});
+    CHECK(cloned.GetValue<int64_t>(wide_prop) == 0x2222222222222222);
 }
 
 TEST_CASE("PropertiesNumericDictConversions")

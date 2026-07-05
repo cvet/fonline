@@ -33,10 +33,12 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Vulkan.cpp")
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
+        TargetIncludeDirectories(AppFrontend PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${Vulkan_INCLUDE_DIRS}>)
     endif()
 
     AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE

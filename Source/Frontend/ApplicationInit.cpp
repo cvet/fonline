@@ -308,11 +308,6 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    // Apply command-line settings once before local-config lookup so writable-root overrides (and any
-    // related path knobs) affect the cache path itself. ApplyCommandLine runs again later for normal
-    // precedence over local config.
-    settings.ApplyCommandLine(args);
-
     // Resolve the installed-client writable root now that the config is applied, so the local-config
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.
     ResolveUserWritablePath(settings);

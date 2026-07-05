@@ -965,16 +965,17 @@ ZipFile::ZipFile(string_view fname)
 
     ffunc.opaque = cast_to_void(_fileStream.get());
 
-    const string file_name = string(_fileName);
-    ptr<const char> file_name_ptr = file_name.c_str();
-    nptr<void> nullable_zip_handle = unzOpen2(file_name_ptr.get(), &ffunc);
+    nptr<void> zip_handle = unzOpen2(string(_fileName).c_str(), &ffunc);
+    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+        if (zip_handle) {
+            unzClose(zip_handle.get());
+            zip_handle = nullptr;
+        }
+    });
 
-    if (!nullable_zip_handle) {
+    if (!zip_handle) {
         throw DataSourceException("Can't read zip file", _fileName);
     }
-
-    auto zip_handle = nullable_zip_handle.as_ptr();
-    auto close_zip_on_fail = scope_fail([zip_handle]() mutable noexcept { unzClose(zip_handle.get()); });
 
     unz_global_info gi;
 
@@ -1010,7 +1011,7 @@ ZipFile::ZipFile(string_view fname)
         }
     }
 
-    _zipHandle = zip_handle;
+    _zipHandle = std::move(zip_handle);
 }
 
 ZipFile::~ZipFile()

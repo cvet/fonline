@@ -542,7 +542,7 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
     auto entities = nullable_entities.as_ptr();
 
     for (int32_t i = 0; i < entities->GetSize(); i++) {
-        auto nullable_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(entities->At(i));
+        auto nullable_entity = entities->AtAs<Entity>(i);
 
         if (nullable_entity) {
             auto entity = nullable_entity.as_ptr();
@@ -952,7 +952,7 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call binding is null");
 
-    ScriptGenericCall(gen, true, [&](FuncCallData& call) { method->Call(call); });
+    ScriptGenericCall(gen, true, method->Args, [&](FuncCallData& call) { method->Call(call); });
 }
 
 static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
@@ -965,7 +965,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call binding is null");
 
-    ScriptGenericCall(gen, false, [&](FuncCallData& base_call) {
+    ScriptGenericCall(gen, false, method->Args, [&](FuncCallData& base_call) {
         FuncCallData call = base_call;
         nptr<Entity> engine_arg = engine;
         vector<ptr<void>> args_data;
@@ -1088,7 +1088,7 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
     // May call on unsynced entity
     // May call on destroyed entity
     if (!entity->IsDestroyed() && entity->HasEventCallbacks(event->Name)) {
-        ScriptGenericCall(gen, !entity->IsGlobal(), [&](FuncCallData& call) {
+        ScriptGenericCall(gen, !entity->IsGlobal(), event->Args, [&](FuncCallData& call) {
             const auto result = entity->FireEvent(event->Name, call);
             new (gen->GetAddressOfReturnLocation()) Entity::EventResult(result);
         });

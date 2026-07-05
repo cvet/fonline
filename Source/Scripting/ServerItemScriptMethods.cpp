@@ -180,8 +180,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>
@@ -221,8 +219,6 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
@@ -249,8 +245,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 FO_END_NAMESPACE

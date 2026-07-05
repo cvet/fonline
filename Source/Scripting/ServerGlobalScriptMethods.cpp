@@ -869,7 +869,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ptr<ServerEngine> server,
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Critter>(result);
 }
 
 // SyncScope: no existing entity cover required; creates a disconnected unlogined player session.
@@ -947,7 +947,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t map
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, hstring mapPid, int32_t skipCount = 0)
 {
     auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
@@ -955,7 +955,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, hstring map
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMap> mapProto, int32_t skipCount = 0)
 {
     ptr<const ProtoMap> map_proto = mapProto;
@@ -1033,7 +1033,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, i
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, hstring locPid, int32_t skipCount = 0)
 {
     auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
@@ -1041,7 +1041,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, h
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
-///@ ExportMethod
+///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ptr<ProtoLocation> locProto, int32_t skipCount = 0)
 {
     ptr<const ProtoLocation> loc_proto = locProto;
@@ -1077,7 +1077,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
         result.emplace_back(std::move(locs[i]));
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Location>(result);
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
@@ -1097,7 +1097,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Location>(result);
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
@@ -1115,7 +1115,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
             result.emplace_back(std::move(locs[i]));
         }
 
-        return ReleaseScriptOwnershipVector(std::move(result));
+        return MakeScriptHandleVector<Location>(result);
     }
 
     auto proto_ptr = proto_lookup.as_ptr();
@@ -1126,7 +1126,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Location>(result);
 }
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
@@ -1144,7 +1144,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Location>(result);
 }
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
@@ -1164,7 +1164,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, hs
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Item>(result);
 }
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
@@ -1182,7 +1182,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, np
             result.emplace_back(std::move(items[i]));
         }
 
-        return ReleaseScriptOwnershipVector(std::move(result));
+        return MakeScriptHandleVector<Item>(result);
     }
 
     auto proto_ptr = proto_lookup.as_ptr();
@@ -1193,7 +1193,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, np
         }
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Item>(result);
 }
 
 // SyncScope: registry scan only; returned player handles are not covered for later reads/mutations.
@@ -1208,7 +1208,7 @@ FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ptr<ServerEngine> ser
         result.emplace_back(std::move(players[i]));
     }
 
-    return ReleaseScriptOwnershipVector(std::move(result));
+    return MakeScriptHandleVector<Player>(result);
 }
 
 // SyncScope: database registry read only; no live player cover is required.

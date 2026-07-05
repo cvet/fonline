@@ -356,6 +356,10 @@
         }
 
         pushLogEntry('stdout', text);
+        // Mirror engine stdout to the browser console so headless drivers (Playwright pipeline
+        // tests) and devtools see the client log markers (e.g. client_entered_game), matching
+        // what printErr already does for stderr.
+        originalConsole.log(text);
       },
 
       printErr: function (text) {

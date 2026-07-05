@@ -24,6 +24,7 @@ Read this page together with:
 - `Source/Frontend/Rendering.cpp`
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
+- `Source/Frontend/Rendering-Vulkan.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
@@ -172,7 +173,17 @@ Important behaviors:
 - sizes the atlas against `AppRender::MAX_ATLAS_SIZE` and backend limits;
 - creates textures, draw buffers, and effects;
 - compiles/loads vertex and fragment shader content through the effect loader;
-- reports render-target textures as vertically flipped (`IsRenderTargetFlipped() == true`).
+- reports render-target textures as vertically flipped (`IsRenderTargetFlipped() == true`);
+- **uniform blocks go through one shared bump-allocated UBO** (ES 3.0 / GL 3.1 compatible): per
+  draw, every shader-required block — default-initialized to zero when the engine did not fill
+  it, since a skipped block would otherwise keep a binding into a region whose storage dies at
+  the per-frame orphan in `Present()` — is packed into a contiguous region, uploaded with a
+  single `glBufferSubData`, and bound per pass with `glBindBufferRange` (replaces up to ~8 tiny
+  per-draw `glBufferData` re-specifications of per-effect UBOs);
+- **`SetRenderTarget` elides redundant re-selects** of the already-applied target (bind, viewport,
+  aspect-fit and ortho recompute are skipped); the cache is invalidated on resize and on
+  destruction of the cached texture, and mid-frame texture creation restores the *current*
+  target's framebuffer rather than unconditionally the base one.
 
 OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer changes with [WebDebugging.md](WebDebugging.md) validation.
 
@@ -189,6 +200,30 @@ Important behaviors:
 - reports render-target textures as not flipped (`IsRenderTargetFlipped() == false`).
 
 Direct3D changes are Windows-specific and should be validated through a Windows embedding-project build/debug flow.
+
+### Vulkan renderer
+
+`Source/Frontend/Rendering-Vulkan.cpp` implements the Vulkan path. It is compiled only when the build enables Vulkan support (`FO_SUPPORT_VULKAN` → `FO_HAVE_VULKAN`, which requires a Vulkan SDK / `find_package(Vulkan)` and is off for headless-only and web builds) and is selected at runtime by `Render.ForceVulkan` (or as an automatic fallback when no other backend is configured).
+
+Design and important behaviors:
+
+- **Single queue, two frames in flight.** The context owns `VULKAN_FRAMES_IN_FLIGHT` (= 2) frame slots, each bundling a command buffer, an in-flight fence, an acquire semaphore, a descriptor pool, a persistently-mapped uniform bump buffer, a texture-staging ring and a deferred-destroy queue. `BeginFrame()` advances the slot, waits its fence (normally instant — this replaces the old full `vkQueueWaitIdle`, so the CPU records frame N while the GPU renders frame N-1), flushes the slot's deferred destroys, resets its descriptor pool, points the context's current-slot aliases (`CommandBuffer`, `FrameDescriptorPool`, `FrameUniformBuffer`, …) at it, acquires a swapchain image, clears it, and begins the render pass; `EndFrame()` ends the pass, submits (signaling the slot fence and the acquired image's render-complete semaphore), and presents. Render-complete semaphores are **per swapchain image**, so a semaphore is never re-signaled while the presentation engine may still wait on it; acquire semaphores are per slot. A fence signal implies completion of all earlier submissions on the queue, which is the single correctness anchor for every per-slot resource reuse.
+- **Deferred destroys are per frame slot.** `DestroyResourceSafe(...)` enqueues into the *current* slot's queue; the queue is flushed right after that slot's fence is waited, by which point both in-flight frames that could reference the resource are provably complete. Swapchain recreation paths settle the device (`vkDeviceWaitIdle`), flush all queues wholesale and rebuild every sync object.
+- **Texture uploads record into the frame command buffer; readbacks flush it.** Draws and clears record into the frame command buffer (executed at present time). `UpdateTextureRegion` during a recording frame suspends the render pass and records barrier → `vkCmdCopyBufferToImage` → barrier into that same buffer, so program order preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this frame executes before the upload — without this, "clear atlas, then upload sprites" would execute as *upload first, clear last* and silently erase glyphs/sprites) with no mid-frame submit or full-GPU wait; the pixels go through the frame slot's pooled staging ring. `GetTextureRegion` (readback) must observe everything recorded so far, so it first calls `FlushFrameCommandBufferMidFrame()` — submit the partially recorded frame buffer (waiting the swapchain-acquire semaphore if it is the frame's first submit), wait idle, resume recording — and then runs an immediate staging copy. Uploads outside a recording frame (texture init) use the immediate staging path too. Keep this invariant when adding any new immediate-queue operation.
+- **Dynamic geometry goes through per-draw-buffer, per-frame-slot ring pools.** Every dynamic `DrawBuffer::Upload` takes the next buffer of the draw buffer's growable ring of persistently-mapped HOST_VISIBLE buffers for the current frame slot (one ring buffer per upload within a frame, so earlier draws pending in the frame command buffer keep their geometry snapshots). A ring resets on its first acquire in a new frame; its slot's in-flight fence was waited by then, so every buffer in it is GPU-free. Ring buffers only reallocate on capacity growth, so steady-state uploads are pure memcpy with zero `vkCreateBuffer`/`vkAllocateMemory`/`vkFreeMemory` traffic (per-upload buffer churn plus the matching deferred-destroy sweep previously dominated the backend's CPU frame cost ~25 ms/frame in crowd scenes). Static buffers keep the one-off staging copy to device-local memory.
+- **Shaders are baked with `highp` floats.** The effect baker emits ES shaders with `precision highp float`. `mediump` would become SPIR-V `RelaxedPrecision`, which desktop GL/D3D silently ignore but NVIDIA Vulkan drivers honor as FP16 — large uniform values (frame time in seconds, world-anchored UVs) then overflow half-float range (max 65504) and shaders that consume them (e.g. time-driven weather/atmosphere post-processing) collapse to black on Vulkan only.
+- **Back-buffer target metrics follow resizes without `SetRenderTarget`.** The letterboxed viewport, logical target size and projection for back-buffer rendering are recomputed by `ApplySwapchainTargetMetrics()` — from `SetRenderTarget(nullptr)`, from `OnResizeWindow()` and after a deferred swapchain recreation when the back buffer is the active target. The server host UI renders ImGui straight into the swapchain and never calls `SetRenderTarget`, so without the resize-path refresh a post-init window/logical-size change leaves a stale projection and the UI renders shrunken into a corner (Direct3D gets the same refresh by ending its `OnResizeWindow` with `SetRenderTarget(nullptr)`).
+- **Two fixed descriptor set layouts.** **Set 0 holds uniform buffers** and **set 1 holds combined image samplers** (each layout declares a fixed number of bindings). Per draw, the backend allocates one descriptor set per layout from a per-frame descriptor pool (reset every `BeginFrame()`), and writes uniform data into a single host-visible **bump-allocated** uniform buffer. The binding index used within each set is the effect's reflected binding from the baked `EffectInfo`.
+- **Authored `.fofx` descriptor-set contract.** Because of the two-set layout, every effect's shader **must** declare uniform blocks with `layout(set = 0, binding = N, std140)` and samplers with `layout(set = 1, binding = N)`. An effect that omits the `set` qualifier defaults every resource to set 0, which collides samplers with uniform buffers and produces `VkDescriptorType` mismatch (`VUID-…-layout-07990`) and "descriptor never updated" (`VUID-vkCmdDrawIndexed-None-08114`) validation errors, leading to device loss. Engine core/embedded effects follow this convention; embedding-project effects must follow it too. (OpenGL/Direct3D ignore the `set` qualifier because they bind UBOs and samplers in separate namespaces, so this only surfaces on Vulkan.)
+- **Uniform completeness.** Unlike OpenGL/D3D, where an unbound UBO retains its last value, a per-draw descriptor set must write every uniform block the shader uses. The backend default-initializes any required-but-unset standard buffer (egg, sprite-border, time, random, script, camera, …) to zero before upload so no shader reads an unwritten descriptor.
+- **Surface format.** The swapchain uses `VK_FORMAT_B8G8R8A8_UNORM` / `SRGB_NONLINEAR`, verified against `vkGetPhysicalDeviceSurfaceFormatsKHR`. The single render pass is shared by the swapchain framebuffers and all texture render targets, so texture render targets use the same color format for render-pass compatibility. CPU pixel upload/readback swizzles R↔B to match this format.
+- **Present mode honors `Render.VSync`.** `VSync = true` (or a surface with no better mode) uses `VK_PRESENT_MODE_FIFO_KHR`; with VSync off the swapchain prefers `IMMEDIATE` (uncapped, possible tearing), then `MAILBOX` (uncapped, no tearing), matching how the other backends honor the setting in their present paths. The chosen mode is logged at swapchain (re)creation (`Vulkan swapchain present mode: …`). A hardcoded FIFO would silently vsync-lock the backend and make cross-renderer frame-rate comparisons meaningless.
+- **Orientation.** Render-target textures are reported as not flipped (`IsRenderTargetFlipped() == false`, like Direct3D). The projection matrices are **identical to the other backends** (Y-up ortho); Vulkan's Y-down clip space is compensated by a **negative-height viewport** (core since Vulkan 1.1 — the instance requests `VK_API_VERSION_1_1`). Keeping the matrices identical matters beyond the GPU: `GetProjMatrix()` feeds engine-side 3D model camera math (`ModelSprites`/`3dStuff`), and a backend-specific Y-negated matrix breaks that CPU-side placement (3D models render clipped). The negative viewport flips screen-space winding exactly like the old Y-negated matrix did, so pipeline front-face settings are unaffected.
+- **Point primitives.** Effect shaders are cross-compiled to HLSL/MSL via spirv-cross, which cannot express `gl_PointSize`, so a `POINT_LIST` topology (which Vulkan requires `PointSize` for) is mapped to `TRIANGLE_LIST`. Point primitives are not used by current content; revisit if real point rendering is needed.
+- **Physical device selection.** The backend prefers a discrete GPU that exposes a graphics+present queue family for the surface and the swapchain extension, instead of blindly taking the first enumerated device.
+- **Validation.** When `Render.RenderDebug` is set (or in a debug build) and the `VK_LAYER_KHRONOS_validation` layer is available, the backend enables it and routes layer messages to the log as `[VkLayer/…]` through a `VK_EXT_debug_utils` messenger. Use this for backend validation; a correct change should run with zero validation errors.
+
+Vulkan changes should be validated on a platform with the Vulkan SDK by running a visible client with `Render.ForceVulkan=True Render.RenderDebug=True` and confirming the log has no `[VkLayer]` errors.
 
 ## Render targets and client bridge
 
@@ -255,7 +290,11 @@ Local-map viewports recenter instantly on the chosen critter when their screen s
 - time/random/script values;
 - camera/model/model-texture/model-animation data.
 
-`EffectManager` in `Source/Client/EffectManager.h` loads minimal/default effects, resolves script-selected effects, writes script-value buffers, and performs per-frame updates. Scripts can write one `ScriptValueBuf` float with `Game.SetEffectScriptValue(...)`, or write a contiguous range with `Game.SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values, valuesOffset = 0, valuesCount = -1)` to avoid repeated native calls when updating shader parameter blocks. Both APIs validate the selected effect, require the shader to declare `ScriptValueBuf`, and enforce the configured `EFFECT_SCRIPT_VALUES` range. When adding an effect feature, document whether the change belongs in:
+`EffectManager` in `Source/Client/EffectManager.h` loads minimal/default effects, resolves script-selected effects, writes script-value buffers, and performs per-frame updates. Scripts can write one `ScriptValueBuf` float with `Game.SetEffectScriptValue(...)`, or write a contiguous range with `Game.SetEffectScriptValues(effectType, effectSubtype, valueStartIndex, values, valuesOffset = 0, valuesCount = -1)` to avoid repeated native calls when updating shader parameter blocks. Both APIs validate the selected effect, require the shader to declare `ScriptValueBuf`, and enforce the configured `EFFECT_SCRIPT_VALUES` range.
+
+**Shader time is session-relative and wrapped.** `TimeBuf` (`FrameTime.x` / `GameTime.x`, seconds) is rebased to the first rendered frame and wrapped at 8192 s by `EffectManager::PerFrameEffectUpdate` — it is a periodic animation-phase input, not an absolute clock. The raw steady-clock time is seconds since OS boot (days-scale on long-running machines), and even session-relative time reaches 10^5–10^6 s on clients embedded into long-running servers; at such magnitudes fp32 `fract()`/hash/`sin` math degrades into visible stepping (high-frequency phases like `sin(t * 76)` break within a day) and the clock granularity eventually exceeds the frame delta. The fp32-exact wrap keeps granularity under 1 ms for any session length at the cost of a once-per-~2.3h phase pop, which consumers must keep on noisy/ambient math. Effects that feed the time into hash lattices should still wrap locally (`mod(p, period)` noise lattices in the fog effects); script-side accumulated effect clocks (e.g. weather anim clocks passed through `ScriptValueBuf`) need the same treatment — an fp32 accumulator that only grows will first quantize and then freeze once its ulp exceeds the per-tick increment.
+
+When adding an effect feature, document whether the change belongs in:
 
 - effect config parsing in `Rendering.cpp`;
 - backend shader loading/drawing in `Rendering-OpenGL.cpp` or `Rendering-Direct3D.cpp`;
@@ -330,8 +369,8 @@ When changing frontend or rendering behavior, verify:
 - `Application` init still works for graphical, headless, and test/tool flows.
 - Input changes preserve `InputEvent` invariants and client script event mapping.
 - Touch/gamepad changes are platform-neutral unless clearly guarded.
-- Renderer changes are tested on the affected backend: null/headless, OpenGL/WebGL, or Direct3D.
+- Renderer changes are tested on the affected backend: null/headless, OpenGL/WebGL, Direct3D, or Vulkan.
 - Render-target changes preserve stack push/pop behavior and previous-target restoration.
-- Texture orientation changes account for `IsRenderTargetFlipped()` differences between OpenGL and Direct3D.
-- Effect changes document config parsing, shader files, and script-value buffer implications.
+- Texture orientation changes account for `IsRenderTargetFlipped()` differences between OpenGL (flipped) and Direct3D/Vulkan (not flipped).
+- Effect changes document config parsing, shader files, and script-value buffer implications. On Vulkan, confirm shader resources follow the set-0-UBO / set-1-sampler descriptor-set contract.
 - Web changes cross-link to [WebDebugging.md](WebDebugging.md); Android changes cross-link to [AndroidDebugging.md](AndroidDebugging.md); native attach/debug changes cross-link to [Debugging.md](Debugging.md).

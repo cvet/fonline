@@ -177,3 +177,7 @@ endmacro()
 macro(TargetLinkLibraries)
 	target_link_libraries(${ARGV})
 endmacro()
+
+macro(TargetLinkOptions)
+	target_link_options(${ARGV})
+endmacro()

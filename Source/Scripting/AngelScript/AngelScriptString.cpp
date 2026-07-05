@@ -882,8 +882,7 @@ static auto ScriptString_Join(const string& str, const ScriptArray* array) -> st
         size_t capacity = size * str.size();
 
         for (int32_t i = 0; i < size; i++) {
-            ptr<const void> entry_slot = array->At(i);
-            ptr<const string> entry = cast_from_void<const string*>(entry_slot.get());
+            ptr<const string> entry = array->AtAs<const string>(i);
             capacity += entry->length();
         }
 
@@ -891,14 +890,12 @@ static auto ScriptString_Join(const string& str, const ScriptArray* array) -> st
         result.reserve(capacity);
 
         for (int32_t i = 0; i < size - 1; i++) {
-            ptr<const void> entry_slot = array->At(i);
-            ptr<const string> entry = cast_from_void<const string*>(entry_slot.get());
+            ptr<const string> entry = array->AtAs<const string>(i);
             result += *entry;
             result += str;
         }
 
-        ptr<const void> entry_slot = array->At(size - 1);
-        ptr<const string> entry = cast_from_void<const string*>(entry_slot.get());
+        ptr<const string> entry = array->AtAs<const string>(size - 1);
         result += *entry;
     }
 

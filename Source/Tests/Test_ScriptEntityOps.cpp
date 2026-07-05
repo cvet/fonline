@@ -82,7 +82,7 @@ namespace
                     {"CoverageFixed", "Common", "bool", "FixedMarker", "Mutable", "Persistent", "PublicSync", "Component"},
                     {"CoverageFixed", "Common", "int32", "FixedMarker.Step", "Mutable", "Persistent", "PublicSync"},
                 }},
-            {"Event", {{"CoverageTarget", "OnCoveragePulse", "int32", "0", "value"}}},
+            {"Event", {{"CoverageTarget", "OnCoveragePulse", "int32", "0", "value"}, {"CoverageTarget", "OnCoverageRefPulse", "int32&", "0", "value", "string&", "0", "text"}}},
         });
     }
 
@@ -1253,6 +1253,7 @@ namespace EntityOps
         Game.GetCoverageFixeds(CoverageFixedProperty::History, value);
     }
 
+ )" + R"(
     CoverageTarget MakeCoverageGuardTarget()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -1348,6 +1349,8 @@ namespace EntityOps
         any value = 1;
         target.SetAsAny(CoverageTargetProperty::ReadOnlyScore, value);
     }
+
+ )" + R"(
 
     int TestCustomComponentAccessors()
     {
@@ -1505,6 +1508,47 @@ namespace EntityOps
         return 0;
     }
 
+    [[Event]]
+    void OnCoverageRefPulseHandler(CoverageTarget target, int& value, string& text)
+    {
+        value = value * 2 + 1;
+        text += "-handled";
+    }
+
+    int TestCustomEntityEventRefArgs()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null) return -1;
+
+        hstring noPid;
+        CoverageTarget target = cr.AddCoverageItem(noPid);
+        if (target is null) {
+            Game.DestroyCritter(cr);
+            return -2;
+        }
+
+        target.OnCoverageRefPulse.Subscribe(OnCoverageRefPulseHandler, EventPriority::Normal);
+
+        int value = 5;
+        string text = "ping";
+        if (target.OnCoverageRefPulse.Fire(value, text) != EventResult::ContinueChain) {
+            Game.DestroyCritter(cr);
+            return -3;
+        }
+
+        if (value != 11) {
+            Game.DestroyCritter(cr);
+            return -4;
+        }
+        if (text != "ping-handled") {
+            Game.DestroyCritter(cr);
+            return -5;
+        }
+
+        Game.DestroyCritter(cr);
+        return 0;
+    }
+
     int TestCustomEntityEventDestroyedNoOps()
     {
         CoverageTargetEventTrace = 0;
@@ -1547,6 +1591,7 @@ namespace EntityOps
         return 0;
     }
 
+ )" + R"(
     int TestCustomEntityHolderAccessors()
     {
         Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
@@ -2364,6 +2409,11 @@ TEST_CASE("AdvancedServerOperations")
     SECTION("CustomEntityEventCallbacks")
     {
         RUN_SCRIPT_FUNC("TestCustomEntityEventCallbacks");
+    }
+
+    SECTION("CustomEntityEventRefArgs")
+    {
+        RUN_SCRIPT_FUNC("TestCustomEntityEventRefArgs");
     }
 
     SECTION("CustomEntityEventDestroyedNoOps")

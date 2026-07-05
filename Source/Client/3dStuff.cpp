@@ -2132,7 +2132,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         const size_t matrix_offset = i * MATRIX_VALUE_COUNT;
         span<float32_t> world_matrix = world_matrices.subspan(matrix_offset, MATRIX_VALUE_COUNT);
         ptr<const float32_t> source_matrix_values = glm::value_ptr(m);
-        const_span<float32_t> source_matrix = make_const_span(source_matrix_values, MATRIX_VALUE_COUNT);
+        const_span<float32_t> source_matrix = make_span(source_matrix_values, MATRIX_VALUE_COUNT);
         std::ranges::copy(source_matrix, world_matrix.begin());
     }
 

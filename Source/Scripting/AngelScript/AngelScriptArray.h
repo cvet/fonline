@@ -49,10 +49,15 @@ namespace AngelScript
 FO_BEGIN_NAMESPACE
 
 struct ScriptArrayTypeData;
+class ScriptDict;
 
 class ScriptArray final
 {
     friend class SafeAlloc;
+
+    template<typename T>
+    static constexpr bool IsHandleAtType = std::is_void_v<std::remove_cv_t<T>> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
 
 public:
     static auto Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptArray>;
@@ -97,31 +102,35 @@ public:
     auto Find(int32_t start_at, ptr<void> value) const -> int32_t;
     auto FindByRef(ptr<void> ref) const -> int32_t;
     auto FindByRef(int32_t start_at, ptr<void> ref) const -> int32_t;
-    auto GetBuffer() -> nptr<void>
-    {
-        nptr<uint8_t> buffer = _buffer.data();
-        if (!buffer) {
-            return nullptr;
-        }
-        nptr<void> buffer_data = cast_to_void(buffer.get());
-        return buffer_data;
-    }
-
-    auto GetBuffer() const -> nptr<void>
-    {
-        nptr<const uint8_t> buffer = _buffer.data();
-        if (!buffer) {
-            return nullptr;
-        }
-        nptr<void> buffer_data = cast_to_void(buffer.get());
-        return buffer_data;
-    }
+    auto GetBuffer() -> nptr<void>;
+    auto GetBuffer() const -> nptr<void>;
 
     auto GetRefCount() const -> int32_t;
     void SetFlag() const;
     auto GetFlag() const -> bool;
     void EnumReferences(ptr<AngelScript::asIScriptEngine> engine);
     void ReleaseAllHandles();
+
+    template<typename T, typename Index>
+        requires(IsHandleAtType<T>)
+    [[nodiscard]] auto AtAs(Index index) const -> nptr<T>
+    {
+        if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
+            return NativeDataProvider::ReadHandleSlot(At(numeric_cast<int32_t>(index)));
+        }
+        else {
+            return NativeDataProvider::ReadTypedHandleSlot<std::remove_const_t<T>>(At(numeric_cast<int32_t>(index)));
+        }
+    }
+
+    template<typename T, typename Index>
+        requires(!IsHandleAtType<T>)
+    [[nodiscard]] auto AtAs(Index index) const -> ptr<T>
+    {
+        ptr<void> value = At(numeric_cast<int32_t>(index));
+
+        return cast_from_void<T*>(value.get());
+    }
 
 private:
     explicit ScriptArray(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list);

@@ -46,75 +46,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto MakeAngelScriptFuncDescBorrowDeleter(refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> function<void(ScriptFuncDesc*)>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return [func_lifetime = std::move(func_lifetime)](ptr<ScriptFuncDesc> func_desc) noexcept {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        ignore_unused(func_desc, func_lifetime);
-    };
-}
-
-auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return make_unique_del_ptr(func_desc, MakeAngelScriptFuncDescBorrowDeleter(std::move(func_lifetime)));
-}
-
-static void SetScriptArgAddressFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, AngelScript::asUINT arg_index, ptr<void> slot)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    int32_t as_result = 0;
-    FO_AS_VERIFY(ctx->SetArgAddress(arg_index, NativeDataProvider::ReadHandleSlot(slot).get()));
-}
-
-[[maybe_unused]] static auto GetHandleSlotAddress(ptr<void*> slot) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<void> slot_address = slot;
-    return slot_address;
-}
-
-static auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<void> slot_address = static_cast<void*>(slot->get_pp());
-    return slot_address;
-}
-
-static auto GetGenericReturnLocation(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_return_location = gen->GetAddressOfReturnLocation();
-    FO_STRONG_ASSERT(nullable_return_location, "Generic call return location is null");
-    return nullable_return_location.as_ptr();
-}
-
-static auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, AngelScript::asUINT arg_index) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_arg_address = ctx->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Context argument address is null");
-    return nullable_arg_address.as_ptr();
-}
-
-static auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    nptr<void> nullable_return_value = ctx->GetAddressOfReturnValue();
-    FO_STRONG_ASSERT(nullable_return_value, "Context return value address is null");
-    return nullable_return_value.as_ptr();
-}
-
 auto ScriptDataAccessor::GetArraySize(ptr<void> data) const -> size_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -368,9 +299,31 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
     return nullable_func_desc.as_ptr();
 }
 
-void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const function<void(FuncCallData&)>& callback)
+// AngelScript passes reference parameters as a pointer on the stack: GetAddressOfArg() returns the
+// address of that stack slot (T**), while the unified FuncCallData slot contract (shared with the
+// managed backend and consumed by NativeDataCaller) is "address of the caller's variable" - the value
+// itself for primitives/enums/value types (T*) and the handle cell for object handles ('Type@&').
+// Mutability comes from the registration-time descriptor, which produced the declaration in the first
+// place (MakeScriptArgName emits '&'/'@&' exactly for mutable args), so no per-call type interrogation
+// is needed: mutable args resolve through GetArgAddress(), which returns the pointer held on the stack.
+static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index, const ComplexTypeDesc& arg_type) -> ptr<void>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (arg_type.IsMutable) {
+        nptr<void> arg_address = GetGenericArgAddress(gen, arg_index);
+        FO_VERIFY_AND_THROW(arg_address, "Reference argument address is null");
+        return arg_address.as_ptr();
+    }
+
+    return GetGenericAddressArg(gen, arg_index);
+}
+
+void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const_span<ArgDesc> args_desc, const function<void(FuncCallData&)>& callback)
 {
     FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(numeric_cast<size_t>(gen->GetArgCount()) == args_desc.size(), "Generic call argument count does not match descriptor", gen->GetArgCount(), args_desc.size());
 
     int32_t as_result = 0;
     ptr<const DataAccessor> accessor = &SCRIPT_DATA_ACCESSOR;
@@ -386,12 +339,12 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
         auto this_obj_slot = GetNullableHandleSlotAddress(&this_obj_storage[0]);
 
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data.emplace_back(index == 0 ? this_obj_slot : GetGenericAddressArg(gen, index - 1));
+            args_data.emplace_back(index == 0 ? this_obj_slot : GetGenericArgSlot(gen, index - 1, args_desc[index - 1].Type));
         }
     }
     else {
         for (AngelScript::asUINT index = 0; index < args_count; index++) {
-            args_data.emplace_back(GetGenericAddressArg(gen, index));
+            args_data.emplace_back(GetGenericArgSlot(gen, index, args_desc[index].Type));
         }
     }
 
@@ -400,7 +353,9 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
     const auto ret_type_id = gen->GetReturnTypeId();
 
     if (ret_type_id != AngelScript::asTYPEID_VOID) {
-        call.RetData = GetGenericReturnLocation(gen);
+        nptr<void> nullable_ret_location = gen->GetAddressOfReturnLocation();
+        FO_STRONG_ASSERT(nullable_ret_location, "Generic call return location is null");
+        call.RetData = nullable_ret_location.as_ptr();
         ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
 
         if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
@@ -549,7 +504,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
 
             if (arg_type->Kind == ComplexTypeKind::Simple) {
                 if (arg_type->IsMutable) {
-                    SetScriptArgAddressFromHandleSlot(ctx, i, arg_data);
+                    // Unified mutable slot: the slot already is the address of the caller's variable
+                    // (the value itself or the handle cell), so it is the reference address as-is
+                    FO_AS_VERIFY(ctx->SetArgAddress(i, arg_data.get()));
                 }
                 else if (base_type->IsEntity || base_type->IsRefType) {
                     SetScriptArgObjectFromHandleSlot(ctx, i, arg_data);

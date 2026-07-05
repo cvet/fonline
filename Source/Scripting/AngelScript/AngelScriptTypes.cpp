@@ -1037,7 +1037,7 @@ static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call function is null");
 
-    ScriptGenericCall(gen, false, [&](FuncCallData& call) { method->Call(call); });
+    ScriptGenericCall(gen, false, method->Args, [&](FuncCallData& call) { method->Call(call); });
 }
 
 static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
@@ -1047,7 +1047,7 @@ static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call function is null");
 
-    ScriptGenericCall(gen, true, [&](FuncCallData& call) { method->Call(call); });
+    ScriptGenericCall(gen, true, method->Args, [&](FuncCallData& call) { method->Call(call); });
 }
 
 static void RefType_Equals(AngelScript::asIScriptGeneric* gen)

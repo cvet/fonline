@@ -141,14 +141,14 @@ public:
 
     BaseEngineException(BaseEngineException&& other) noexcept = default;
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.data(); }
-    [[nodiscard]] auto name() const noexcept -> const char* { return _name.data(); }
+    [[nodiscard]] auto what() const noexcept -> const char* override { return !_extendedMessage.empty() ? _extendedMessage.c_str() : _name.c_str(); }
+    [[nodiscard]] auto name() const noexcept -> const char* { return _name.c_str(); }
     [[nodiscard]] auto message() const noexcept -> string_view { return _message; }
     [[nodiscard]] auto params() const noexcept -> const_span<string> { return _params; }
     [[nodiscard]] auto stack_trace() const noexcept -> const StackTraceData& { return _stackTrace; }
 
 private:
-    string_view _name;
+    string _name;
     string _message {};
     string _extendedMessage {};
     vector<string> _params {};

@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.UUID;
 
+@SuppressWarnings("deprecation")
 class HIDDeviceBLESteamController extends BluetoothGattCallback implements HIDDevice {
 
     private static final String TAG = "hidapi";

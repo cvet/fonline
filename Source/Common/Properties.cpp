@@ -49,19 +49,20 @@ static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) no
         return false;
     }
 
+    // Unaligned reads: compared spans may point into serialized payloads, not only into aligned property storage
     switch (left.size()) {
     case 0:
         return true;
     case 1:
         return left[0] == right[0];
     case 2: {
-        return PropertiesReadObject<uint16_t>(left) == PropertiesReadObject<uint16_t>(right);
+        return MemReadUnaligned<uint16_t>(left.data()) == MemReadUnaligned<uint16_t>(right.data());
     }
     case 4: {
-        return PropertiesReadObject<uint32_t>(left) == PropertiesReadObject<uint32_t>(right);
+        return MemReadUnaligned<uint32_t>(left.data()) == MemReadUnaligned<uint32_t>(right.data());
     }
     case 8: {
-        return PropertiesReadObject<uint64_t>(left) == PropertiesReadObject<uint64_t>(right);
+        return MemReadUnaligned<uint64_t>(left.data()) == MemReadUnaligned<uint64_t>(right.data());
     }
     default:
         return MemCompare(left.data(), right.data(), left.size());
@@ -282,7 +283,7 @@ auto Properties::IsOverlayPropertyIncluded(ptr<const Property> prop, bool with_p
     return allowed_props.contains(prop->GetRegIndex());
 }
 
-auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32_t
+auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexcept -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -290,7 +291,62 @@ auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32_t
         return 0;
     }
 
-    const auto needed_size = _overlayDataSize + data_size;
+    FO_STRONG_ASSERT(data_alignment != 0 && (data_alignment & (data_alignment - 1)) == 0, "Overlay data alignment is not a power of two", _registrator->GetTypeName(), data_alignment);
+
+    const auto align_offset = [data_alignment](size_t offset) noexcept -> size_t { return align_up(offset, data_alignment); };
+
+    // Best-fit search over freed holes and alignment paddings between existing entries;
+    // garbage size counts exactly the bytes not owned by any entry within the used range,
+    // so a smaller garbage amount can never contain a fitting hole
+    if (_overlayGarbageSize >= data_size) {
+        vector<pair<size_t, size_t>> used_ranges;
+        used_ranges.reserve(_overlayEntries.size());
+
+        for (const auto& entry : _overlayEntries) {
+            if (entry.DataSize != 0) {
+                used_ranges.emplace_back(entry.DataOffset, entry.DataSize);
+            }
+        }
+
+        std::ranges::sort(used_ranges);
+
+        optional<size_t> best_offset;
+        size_t best_leftover = std::numeric_limits<size_t>::max();
+        size_t gap_begin = 0;
+
+        const auto consider_gap = [&](size_t gap_end) noexcept {
+            const size_t aligned_offset = align_offset(gap_begin);
+
+            if (aligned_offset + data_size <= gap_end) {
+                const size_t leftover = gap_end - gap_begin - data_size;
+
+                if (leftover < best_leftover) {
+                    best_offset = aligned_offset;
+                    best_leftover = leftover;
+                }
+            }
+        };
+
+        for (const auto& [used_offset, used_size] : used_ranges) {
+            if (used_offset > gap_begin) {
+                consider_gap(used_offset);
+            }
+
+            gap_begin = std::max(gap_begin, used_offset + used_size);
+        }
+
+        if (_overlayDataSize > gap_begin) {
+            consider_gap(_overlayDataSize);
+        }
+
+        if (best_offset.has_value()) {
+            _overlayGarbageSize -= data_size;
+            return static_cast<uint32_t>(*best_offset);
+        }
+    }
+
+    // No suitable hole, extend the overlay tail
+    const size_t needed_size = align_offset(_overlayDataSize) + data_size;
 
     if (needed_size > _overlayDataCapacity) {
         size_t new_capacity = _overlayDataCapacity != 0 ? _overlayDataCapacity : OVERLAY_START_CAPACITY;
@@ -302,31 +358,68 @@ auto Properties::AllocOverlayData(size_t data_size) noexcept -> uint32_t
         RepackOverlayData(new_capacity);
     }
 
-    const auto offset = static_cast<uint32_t>(_overlayDataSize);
-    _overlayDataSize += data_size;
-    return offset;
+    const size_t aligned_offset = align_offset(_overlayDataSize);
+    FO_STRONG_ASSERT(aligned_offset + data_size <= _overlayDataCapacity, "Overlay data allocation exceeds capacity", _registrator->GetTypeName(), aligned_offset, data_size, _overlayDataCapacity);
+
+    _overlayGarbageSize += aligned_offset - _overlayDataSize;
+    _overlayDataSize = aligned_offset + data_size;
+    return static_cast<uint32_t>(aligned_offset);
+}
+
+auto Properties::MakeOverlayPackOrder() const noexcept -> vector<size_t>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Stable alignment-descending order minimizes padding between packed entries: plain entry
+    // sizes are multiples of their alignment and pack back-to-back with zero padding, only
+    // variable-size complex payloads may leave small aligned gaps for the entries that follow
+    vector<size_t> pack_order(_overlayEntries.size());
+    std::iota(pack_order.begin(), pack_order.end(), size_t {0});
+
+    std::ranges::stable_sort(pack_order, [this](size_t left, size_t right) noexcept -> bool {
+        const size_t left_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[left].PropRegIndex)->GetDataAlignment();
+        const size_t right_alignment = _registrator->GetPropertyByIndexUnsafe(_overlayEntries[right].PropRegIndex)->GetDataAlignment();
+        return left_alignment > right_alignment;
+    });
+
+    return pack_order;
 }
 
 auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t new_capacity = std::max(min_capacity, OVERLAY_START_CAPACITY);
-    size_t used_size = 0;
+    const vector<size_t> pack_order = MakeOverlayPackOrder();
 
-    for (const auto& entry : _overlayEntries) {
-        used_size += entry.DataSize;
+    size_t used_size = 0;
+    size_t packed_size = 0;
+
+    for (const size_t entry_index : pack_order) {
+        const auto& entry = _overlayEntries[entry_index];
+
+        if (entry.DataSize != 0) {
+            packed_size = align_up(packed_size, _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex)->GetDataAlignment());
+            packed_size += entry.DataSize;
+            used_size += entry.DataSize;
+        }
     }
 
-    while (new_capacity < used_size) {
+    size_t new_capacity = std::max(min_capacity, OVERLAY_START_CAPACITY);
+
+    while (new_capacity < packed_size) {
         new_capacity *= 2;
     }
 
     unique_arr_ptr<uint8_t> new_data = new_capacity != 0 ? SafeAlloc::MakeUniqueArr<uint8_t>(new_capacity) : nullptr;
     size_t new_size = 0;
 
-    for (auto& entry : _overlayEntries) {
+    for (const size_t entry_index : pack_order) {
+        auto& entry = _overlayEntries[entry_index];
+
         if (entry.DataSize != 0) {
+            auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
+            new_size = align_up(new_size, prop->GetDataAlignment());
+
             if (_overlayData) {
                 nptr<uint8_t> nullable_new_data_bytes = new_data.get();
                 nptr<const uint8_t> nullable_overlay_data_bytes = _overlayData.get();
@@ -340,7 +433,7 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
                 MemCopy(target, source, entry.DataSize);
             }
 
-            entry.DataOffset = static_cast<uint32_t>(new_size);
+            entry.DataOffset = numeric_cast<uint32_t>(new_size);
             new_size += entry.DataSize;
         }
         else {
@@ -348,10 +441,12 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
         }
     }
 
+    FO_STRONG_ASSERT(new_size == packed_size, "Repacked overlay size mismatch", _registrator->GetTypeName(), packed_size, new_size);
+
     _overlayData = std::move(new_data);
     _overlayDataCapacity = new_capacity;
     _overlayDataSize = new_size;
-    _overlayGarbageSize = 0;
+    _overlayGarbageSize = new_size - used_size;
 
     _storeDataRevision++;
 }
@@ -486,7 +581,7 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
         _overlayEntries = other._overlayEntries;
         _overlayDataSize = other._overlayDataSize;
         _overlayDataCapacity = other._overlayDataSize;
-        _overlayGarbageSize = 0;
+        _overlayGarbageSize = other._overlayGarbageSize;
 
         RebuildOverlayEntryIndex();
 
@@ -582,6 +677,7 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
     };
 
     size_t total_overlay_data_size = 0;
+    vector<span<const uint8_t>> entries_raw_data;
 
     for (const auto& data_prop : _registrator->_dataProperties) {
         auto prop = data_prop.Prop.as_ptr();
@@ -589,51 +685,54 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
         if (!RawDataEqual(_baseProps->GetRawData(prop), other_raw_data)) {
             _overlayEntries.emplace_back(OverlayEntry {.PropRegIndex = prop->GetRegIndex(), .DataOffset = 0, .DataSize = numeric_cast<uint32_t>(other_raw_data.size())});
+            entries_raw_data.emplace_back(other_raw_data);
             total_overlay_data_size += other_raw_data.size();
         }
     }
 
     if (!_overlayEntries.empty()) {
-        if (total_overlay_data_size != 0) {
-            _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(total_overlay_data_size);
-        }
+        const vector<size_t> pack_order = MakeOverlayPackOrder();
 
-        _overlayDataSize = total_overlay_data_size;
-        _overlayDataCapacity = total_overlay_data_size;
-        _overlayGarbageSize = 0;
+        size_t packed_size = 0;
 
-        size_t data_offset = 0;
-        size_t overlay_index = 0;
-
-        for (const auto& data_prop : _registrator->_dataProperties) {
-            if (overlay_index >= _overlayEntries.size()) {
-                break;
-            }
-
-            auto& entry = _overlayEntries[overlay_index];
-            auto prop = data_prop.Prop.as_ptr();
-
-            if (entry.PropRegIndex != prop->GetRegIndex()) {
-                continue;
-            }
-
-            const auto other_raw_data = get_full_raw_data(other, data_prop);
-            entry.DataOffset = numeric_cast<uint32_t>(data_offset);
+        for (const size_t entry_index : pack_order) {
+            const auto& entry = _overlayEntries[entry_index];
 
             if (entry.DataSize != 0) {
+                packed_size = align_up(packed_size, _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex)->GetDataAlignment());
+                packed_size += entry.DataSize;
+            }
+        }
+
+        if (packed_size != 0) {
+            _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(packed_size);
+        }
+
+        _overlayDataSize = packed_size;
+        _overlayDataCapacity = packed_size;
+        _overlayGarbageSize = packed_size - total_overlay_data_size;
+
+        size_t data_offset = 0;
+
+        for (const size_t entry_index : pack_order) {
+            auto& entry = _overlayEntries[entry_index];
+
+            if (entry.DataSize != 0) {
+                auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
+                data_offset = align_up(data_offset, prop->GetDataAlignment());
+
                 nptr<uint8_t> nullable_overlay_data = _overlayData.get();
                 FO_STRONG_ASSERT(nullable_overlay_data, "Overlay data buffer is null");
 
                 auto overlay_data = nullable_overlay_data.as_ptr();
                 auto target = overlay_data.offset(data_offset);
-                MemCopy(target, other_raw_data.data(), entry.DataSize);
+                MemCopy(target, entries_raw_data[entry_index].data(), entry.DataSize);
+                entry.DataOffset = numeric_cast<uint32_t>(data_offset);
                 data_offset += entry.DataSize;
             }
-
-            overlay_index++;
         }
 
-        FO_STRONG_ASSERT(overlay_index == _overlayEntries.size(), "Overlay rebuild entry count mismatch", _registrator->GetTypeName(), _overlayEntries.size(), overlay_index);
+        FO_STRONG_ASSERT(data_offset == packed_size, "Overlay rebuild data size mismatch", _registrator->GetTypeName(), packed_size, data_offset);
     }
 
     RebuildOverlayEntryIndex();
@@ -913,9 +1012,9 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
         }
 
         if (!cache->PropertyIndices.empty()) {
-            const auto property_index_bytes = PropertiesObjectArrayAsBytes<uint16_t>(cache->PropertyIndices);
-            cache->Data.insert(cache->Data.begin() + 1, property_index_bytes.data());
-            cache->Sizes.insert(cache->Sizes.begin() + 1, numeric_cast<uint32_t>(property_index_bytes.size()));
+            const ptr<const uint16_t> property_indices = cache->PropertyIndices.data();
+            cache->Data.insert(cache->Data.begin() + 1, property_indices.reinterpret_as<uint8_t>().get());
+            cache->Sizes.insert(cache->Sizes.begin() + 1, numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
         }
     }
     else {
@@ -944,9 +1043,9 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
 
         // Store complex properties data
         if (!cache->PropertyIndices.empty()) {
-            const auto property_index_bytes = PropertiesObjectArrayAsBytes<uint16_t>(cache->PropertyIndices);
-            cache->Data.push_back(property_index_bytes.data());
-            cache->Sizes.push_back(numeric_cast<uint32_t>(property_index_bytes.size()));
+            const ptr<const uint16_t> property_indices = cache->PropertyIndices.data();
+            cache->Data.push_back(property_indices.reinterpret_as<uint8_t>().get());
+            cache->Sizes.push_back(numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
 
             for (const auto index : cache->PropertyIndices) {
                 auto prop = _registrator->GetPropertyByIndexUnsafe(index);
@@ -1534,8 +1633,10 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
                 set_overlay_raw_data(entry->DataOffset, raw_data);
             }
             else {
+                // Release the old block before allocating so the allocator can reuse its bytes
                 _overlayGarbageSize += entry->DataSize;
-                entry->DataOffset = AllocOverlayData(raw_data.size());
+                entry->DataSize = 0;
+                entry->DataOffset = AllocOverlayData(raw_data.size(), prop->GetDataAlignment());
                 entry->DataSize = static_cast<uint32_t>(raw_data.size());
 
                 set_overlay_raw_data(entry->DataOffset, raw_data);
@@ -1544,7 +1645,7 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
         else {
             OverlayEntry new_entry;
             new_entry.PropRegIndex = prop->GetRegIndex();
-            new_entry.DataOffset = AllocOverlayData(raw_data.size());
+            new_entry.DataOffset = AllocOverlayData(raw_data.size(), prop->GetDataAlignment());
             new_entry.DataSize = static_cast<uint32_t>(raw_data.size());
 
             set_overlay_raw_data(new_entry.DataOffset, raw_data);
@@ -2276,6 +2377,51 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         else if (!type.BaseType.IsRefType) {
             prop->_isPlainData = true;
         }
+    }
+
+    // Raw data alignment (see the layout contract in Properties.h): the strictest alignment used
+    // inside the property raw data, so an aligned blob start keeps every interior item aligned
+    if (prop->_isPlainData) {
+        FO_VERIFY_AND_THROW(prop->_baseType.Size != 0, "Property base type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
+        prop->_dataAlignment = alignment_for_size(prop->_baseType.Size);
+    }
+    else if (prop->_isArray) {
+        if (prop->_isArrayOfString) {
+            prop->_dataAlignment = sizeof(uint32_t);
+        }
+        else if (prop->_baseType.IsRefType) {
+            prop->_dataAlignment = MAX_SERIALIZED_ALIGNMENT;
+        }
+        else {
+            FO_VERIFY_AND_THROW(prop->_baseType.Size != 0, "Property base type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
+            prop->_dataAlignment = alignment_for_size(prop->_baseType.Size);
+        }
+    }
+    else if (prop->_isDict) {
+        const size_t key_alignment = prop->_isDictKeyString ? sizeof(uint32_t) : alignment_for_size(prop->_dictKeyType.Size);
+        FO_VERIFY_AND_THROW(prop->_isDictKeyString || prop->_dictKeyType.Size != 0, "Dictionary property key type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
+
+        size_t value_alignment;
+
+        if (prop->_baseType.IsRefType) {
+            value_alignment = MAX_SERIALIZED_ALIGNMENT;
+        }
+        else if (prop->_baseType.IsString) {
+            value_alignment = sizeof(uint32_t);
+        }
+        else {
+            FO_VERIFY_AND_THROW(prop->_baseType.Size != 0, "Dictionary property value type has no size", _typeName, prop->GetName(), prop->_viewTypeName);
+            value_alignment = alignment_for_size(prop->_baseType.Size);
+        }
+
+        if (prop->_isDictOfArray) {
+            value_alignment = std::max(value_alignment, sizeof(uint32_t));
+        }
+
+        prop->_dataAlignment = std::max(key_alignment, value_alignment);
+    }
+    else if (prop->_baseType.IsRefType) {
+        prop->_dataAlignment = MAX_SERIALIZED_ALIGNMENT;
     }
 
     prop->_propName = tokens[2];

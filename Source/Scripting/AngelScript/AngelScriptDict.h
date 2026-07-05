@@ -54,6 +54,10 @@ class ScriptDict
 {
     friend class SafeAlloc;
 
+    template<typename T>
+    static constexpr bool IsHandleAsType = std::is_same_v<T, void> || std::is_same_v<std::remove_cv_t<T>, Entity> || //
+        std::is_same_v<std::remove_cv_t<T>, DynamicRefTypeInstance> || std::is_same_v<std::remove_cv_t<T>, ScriptArray> || std::is_same_v<std::remove_cv_t<T>, ScriptDict>;
+
 public:
     struct ScriptDictComparator
     {
@@ -74,18 +78,8 @@ public:
     void AddRef() const;
     void Release() const;
 
-    auto GetDictObjectType() -> ptr<AngelScript::asITypeInfo>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return _typeInfo;
-    }
-    auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return _typeInfo;
-    }
+    auto GetDictObjectType() -> ptr<AngelScript::asITypeInfo> { return _typeInfo; }
+    auto GetDictObjectType() const -> ptr<const AngelScript::asITypeInfo> { return _typeInfo; }
     auto GetDictTypeId() const -> int32_t;
     auto GetMap() const -> ptr<const map<void*, void*, ScriptDictComparator>> { return &_data; }
     auto IsEmpty() const -> bool;
@@ -110,6 +104,82 @@ public:
     auto GetFlag() const -> bool;
     void EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const;
     void ReleaseAllHandles();
+
+    template<typename T>
+        requires(IsHandleAsType<T>)
+    [[nodiscard]] auto KeyAs(void* key) const
+    {
+        if constexpr (std::is_same_v<T, void>) {
+            return NativeDataProvider::ReadHandleSlot(KeyAs<const void>(key));
+        }
+        else {
+            return NativeDataProvider::ReadConstTypedHandleSlot<std::remove_const_t<T>>(KeyAs<const void>(key));
+        }
+    }
+
+    template<typename T>
+        requires(!IsHandleAsType<T>)
+    [[nodiscard]] auto KeyAs(void* key) const -> ptr<T>
+    {
+        if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
+            return static_cast<T*>(key);
+        }
+        else {
+            return cast_from_void<T*>(key);
+        }
+    }
+
+    template<typename T>
+        requires(IsHandleAsType<T>)
+    [[nodiscard]] auto ValueAs(void* value) const
+    {
+        if constexpr (std::is_same_v<T, void>) {
+            return NativeDataProvider::ReadHandleSlot(ValueAs<const void>(value));
+        }
+        else {
+            return NativeDataProvider::ReadConstTypedHandleSlot<std::remove_const_t<T>>(ValueAs<const void>(value));
+        }
+    }
+
+    template<typename T>
+        requires(!IsHandleAsType<T>)
+    [[nodiscard]] auto ValueAs(void* value) const -> ptr<T>
+    {
+        if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
+            return static_cast<T*>(value);
+        }
+        else {
+            return cast_from_void<T*>(value);
+        }
+    }
+
+    template<typename T, typename Index>
+        requires(IsHandleAsType<T>)
+    [[nodiscard]] auto KeyAtAs(Index index) const
+    {
+        return KeyAs<T>(GetKey(numeric_cast<int32_t>(index)).get());
+    }
+
+    template<typename T, typename Index>
+        requires(!IsHandleAsType<T>)
+    [[nodiscard]] auto KeyAtAs(Index index) const -> ptr<T>
+    {
+        return KeyAs<T>(GetKey(numeric_cast<int32_t>(index)).get());
+    }
+
+    template<typename T, typename Index>
+        requires(IsHandleAsType<T>)
+    [[nodiscard]] auto ValueAtAs(Index index) const
+    {
+        return ValueAs<T>(GetValue(numeric_cast<int32_t>(index)).get());
+    }
+
+    template<typename T, typename Index>
+        requires(!IsHandleAsType<T>)
+    [[nodiscard]] auto ValueAtAs(Index index) const -> ptr<T>
+    {
+        return ValueAs<T>(GetValue(numeric_cast<int32_t>(index)).get());
+    }
 
 private:
     explicit ScriptDict(ptr<AngelScript::asITypeInfo> ti);

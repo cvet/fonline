@@ -81,6 +81,27 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     return value;
 }
 
+// Property raw data places every fixed-size item at its natural alignment with zeroed padding bytes;
+// the payload is untrusted network input, so skipped padding is verified to actually be zero
+static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> data, size_t& offset, size_t alignment)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const size_t aligned_offset = align_up(offset, alignment);
+
+    if (aligned_offset > data.size()) {
+        throw ClientDataValidationException("Alignment padding extends past the end of property data", owner_name);
+    }
+
+    for (size_t i = offset; i < aligned_offset; i++) {
+        if (data[i] != 0) {
+            throw ClientDataValidationException("Non-zero alignment padding byte in property data", owner_name, i);
+        }
+    }
+
+    offset = aligned_offset;
+}
+
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
@@ -325,6 +346,8 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
             continue;
         }
 
+        SkipAlignmentPadding(owner_name, raw_data, offset, sizeof(uint32_t));
+
         if (raw_data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
         }
@@ -335,14 +358,17 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
         if (field_prop->IsPlainData() && field_size != 0 && field_size != field_prop->GetBaseSize()) {
             throw ClientDataValidationException("Wrong ref field raw size", owner_name, field_prop->GetName(), field_size);
         }
-        if (raw_data.size() - offset < field_size) {
-            throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
-        }
 
-        if (field_size > 0) {
+        if (field_size != 0) {
+            SkipAlignmentPadding(owner_name, raw_data, offset, field_prop->GetDataAlignment());
+
+            if (raw_data.size() - offset < field_size) {
+                throw ClientDataValidationException("Corrupted ref type payload", owner_name, field_prop->GetName());
+            }
+
             ValidateInboundPropertyData(field_prop, raw_data.subspan(offset, field_size), meta);
+            offset += field_size;
         }
-        offset += field_size;
     }
 
     if (offset != raw_data.size()) {
@@ -357,6 +383,8 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
     FO_VERIFY_AND_THROW(offset <= data.size(), "Packed value read offset is past the end of the data buffer");
 
     if (type.IsString) {
+        SkipAlignmentPadding(owner_name, data, offset, sizeof(uint32_t));
+
         if (data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted string in packed property data", owner_name);
         }
@@ -381,12 +409,18 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
         offset += str_data.size();
     }
     else if (type.IsRefType) {
+        SkipAlignmentPadding(owner_name, data, offset, sizeof(uint32_t));
+
         if (data.size() - offset < sizeof(uint32_t)) {
             throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
         }
 
         const uint32_t ref_size = ReadTrivialValue<uint32_t>(data.subspan(offset, sizeof(uint32_t)));
         offset += sizeof(ref_size);
+
+        if (ref_size != 0) {
+            SkipAlignmentPadding(owner_name, data, offset, MAX_SERIALIZED_ALIGNMENT);
+        }
 
         if (data.size() - offset < ref_size) {
             throw ClientDataValidationException("Corrupted ref in packed property data", owner_name);
@@ -400,6 +434,9 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
         if (type.Size == 0) {
             throw ClientDataValidationException("Zero-sized value in packed property data", owner_name, type.Name);
         }
+
+        SkipAlignmentPadding(owner_name, data, offset, alignment_for_size(type.Size));
+
         if (data.size() - offset < type.Size) {
             throw ClientDataValidationException("Corrupted value in packed property data", owner_name, type.Name);
         }
@@ -456,6 +493,8 @@ static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span
         ValidateInboundPackedValue(prop->GetName(), dict_key_type, data, offset, meta);
 
         if (prop->IsDictOfArray()) {
+            SkipAlignmentPadding(prop->GetName(), data, offset, sizeof(uint32_t));
+
             if (data.size() - offset < sizeof(uint32_t)) {
                 throw ClientDataValidationException("Corrupted dict-of-array property data", prop->GetName());
             }

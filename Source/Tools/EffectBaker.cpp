@@ -186,11 +186,11 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
     const auto shader_version = fofx.GetAsInt("Effect", "Version", 310);
     const auto shader_version_str = strex("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
-    const auto shader_defines = strex("precision mediump float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
+    const auto shader_defines = strex("precision highp float;\n#define MAX_BONES {}\n#define MAX_TEXTURES {}\n", MODEL_MAX_BONES, MODEL_MAX_TEXTURES).str();
 #else
-    const auto shader_defines = strex("precision mediump float;\n").str();
+    const auto shader_defines = strex("precision highp float;\n").str();
 #endif
-    const string_view shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    const string_view_nt shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
     const auto shader_defines_ex2 = strex("#define MAX_SCRIPT_VALUES {}\n", EFFECT_SCRIPT_VALUES).str();
 
     for (auto pass = 1; pass <= passes; pass++) {
@@ -211,12 +211,13 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         glslang::TShader vert(EShLangVertex);
-        vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientNone, shader_version);
-        vert.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-        vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientVulkan, shader_version);
+        vert.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+        vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+        vert.setShiftBindingForSet(glslang::EResUbo, 0, 0);
         ptr<const char> shader_version_text = shader_version_str.c_str();
         ptr<const char> shader_defines_text = shader_defines.c_str();
-        nptr<const char> shader_defines_ex_text = shader_defines_ex.data();
+        nptr<const char> shader_defines_ex_text = shader_defines_ex.c_str();
         ptr<const char> shader_defines_ex2_text = shader_defines_ex2.c_str();
         ptr<const char> shader_common_text = shader_common_content.c_str();
         ptr<const char> vertex_pass_text = vertex_pass_content.c_str();
@@ -227,9 +228,10 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         }
 
         glslang::TShader frag(EShLangFragment);
-        frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientNone, shader_version);
-        frag.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-        frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientVulkan, shader_version);
+        frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
+        frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
+        frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
         ptr<const char> fragment_pass_text = fragment_pass_content.c_str();
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);

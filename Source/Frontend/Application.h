@@ -399,7 +399,7 @@ public:
     [[nodiscard]] virtual auto IsMouseAvailable() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto GetMousePosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto GetGamepadState() const noexcept -> GamepadState = 0;
-    [[nodiscard]] virtual auto GetClipboardText() -> string_view = 0;
+    [[nodiscard]] virtual auto GetClipboardText() -> const string& = 0;
     [[nodiscard]] virtual auto IsShiftDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsCtrlDown() const noexcept -> bool = 0;
     [[nodiscard]] virtual auto IsAltDown() const noexcept -> bool = 0;
@@ -576,7 +576,7 @@ public:
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override;
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override;
     [[nodiscard]] auto GetGamepadState() const noexcept -> GamepadState override;
-    [[nodiscard]] auto GetClipboardText() -> string_view override;
+    [[nodiscard]] auto GetClipboardText() -> const string& override;
     [[nodiscard]] auto IsShiftDown() const noexcept -> bool override { return _shiftDown; }
     [[nodiscard]] auto IsCtrlDown() const noexcept -> bool override { return _ctrlDown; }
     [[nodiscard]] auto IsAltDown() const noexcept -> bool override { return _altDown; }
