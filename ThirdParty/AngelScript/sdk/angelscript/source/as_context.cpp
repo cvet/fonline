@@ -4925,11 +4925,10 @@ static const void *const dispatch_table[256] = {
 				// Pop the int arg from the stack
 				int arg = *(int*)l_sp;
 				l_sp++;
-#if AS_PTR_SIZE == 2
-				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot
-				// (see asCDataType::GetArgSlotSizeOnStackDWords), so pop the slot padding as well
+				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot on
+				// every pointer size (see asCDataType::GetArgSlotSizeOnStackDWords) — the compiler bakes the
+				// padding push into the bytecode, so 32-bit must pop it too or the stack desyncs.
 				l_sp++;
-#endif
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
@@ -5989,9 +5988,10 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		varArgCount = *args;
 
-		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on 64-bit targets
-		args += AS_PTR_SIZE == 2 ? 2 : 1;
-		popSize += AS_PTR_SIZE == 2 ? 2 : 1;
+		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on every pointer size
+		// (the compiler bakes the padding push, so 32-bit must pop the same amount)
+		args += 2;
+		popSize += 2;
 
 		// Calculate the arguments that need to be popped
 		asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];

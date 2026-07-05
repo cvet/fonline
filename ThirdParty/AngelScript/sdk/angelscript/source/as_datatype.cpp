@@ -741,11 +741,19 @@ int asCDataType::GetSizeOnStackDWords() const
 // (FOnline Patch) Alignment-aware call-argument layout: see the declaration comment in as_datatype.h.
 int asCDataType::GetArgSlotSizeOnStackDWords() const
 {
-#if AS_PTR_SIZE == 2
-	return (GetSizeOnStackDWords() + 1) & ~1;
-#else
-	return GetSizeOnStackDWords();
-#endif
+	// (FOnline Patch) Argument slots use a platform-uniform layout: the pointer-carried part keeps the
+	// per-platform AS_PTR_SIZE (the VM's push instructions emit it per-target), while the by-value part
+	// (a primitive value, or the ? var-type's typeid dword) is padded up to an even dword count. The
+	// compiler bakes that padding into the bytecode as physical push instructions, so a 32-bit load of
+	// 64-bit-baked bytecode must account the same even slots; the old dense 32-bit branch made every
+	// consumer (CallGeneric popSize, generic arg walk, script-callee negative param offsets) expect fewer
+	// dwords than the caller actually pushed, desyncing the stack (e.g. global-init CALLSYS left the
+	// global's storage null -> 'Null pointer access'). On 64-bit this formula is value-for-value identical
+	// to the previous (GetSizeOnStackDWords()+1)&~1 for every parameter kind.
+	const int totalSize = GetSizeOnStackDWords();
+	const int ptrPart = (isReference || (typeInfo && !IsEnumType())) ? AS_PTR_SIZE : 0;
+	const int valuePart = totalSize - ptrPart;
+	return ptrPart + ((valuePart + 1) & ~1);
 }
 
 #ifdef WIP_16BYTE_ALIGN

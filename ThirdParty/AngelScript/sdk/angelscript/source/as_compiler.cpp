@@ -2720,7 +2720,7 @@ void asCCompiler::MoveArgsToStack(int funcId, asCByteCode *bc, asCArray<asCExprC
 		offset += AS_PTR_SIZE;
 
 	if (descr->IsVariadic())
-		offset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+		offset += 2; // (FOnline Patch) even variadic count slot (platform-uniform)
 
 #ifdef AS_DEBUG
 	// If the function being called is the opAssign or copy constructor for the same type
@@ -3800,9 +3800,7 @@ bool asCCompiler::CompileInitialization(asCScriptNode *node, asCByteCode *bc, co
 							if (builder->GetFunctionDescription(funcs[0])->IsVariadic())
 							{
 								// Argument count
-								#if AS_PTR_SIZE == 2
-								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
-#endif
+								ctx.bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot (platform-uniform)
 								ctx.bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 							}
 
@@ -16808,9 +16806,7 @@ int asCCompiler::MakeFunctionCall(asCExprContext *ctx, int funcId, asCObjectType
 	if (descr->IsVariadic())
 	{
 		// Argument count
-		#if AS_PTR_SIZE == 2
-		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot
-#endif
+		ctx->bc.InstrDWORD(asBC_PshC4, 0); // (FOnline Patch) even variadic count slot (platform-uniform)
 		ctx->bc.InstrDWORD(asBC_PshC4, (asDWORD)args.GetLength());
 	}
 
@@ -18881,7 +18877,7 @@ void asCCompiler::PerformFunctionCall(int funcId, asCExprContext *ctx, bool isCo
 			argSize -= sizeOfVariadicArg;
 
 			// Add 1 for the arg count
-			argSize += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+			argSize += 2; // (FOnline Patch) even variadic count slot (platform-uniform)
 
 			// Add the actual space used for the variadic args
 			argSize += sizeOfVariadicArg * (args->GetLength() - descr->parameterTypes.GetLength() + 1);

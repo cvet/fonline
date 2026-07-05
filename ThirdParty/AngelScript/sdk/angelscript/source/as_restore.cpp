@@ -3643,7 +3643,7 @@ void asCReader::CalculateStackNeeded(asCScriptFunction *func)
 						// Calculate the actual size of arguments for this function call
 						stackInc = -(called->GetSpaceNeededForArguments() + // size of fixed arguments
 							(numArgs - int(called->parameterTypes.GetLength()))*called->parameterTypes[called->parameterTypes.GetLength()-1].GetArgSlotSizeOnStackDWords() + // size of dynamic arguments // (FOnline Patch)
-							(AS_PTR_SIZE == 2 ? 2 : 1)); // argument count // (FOnline Patch) even variadic count slot
+							2); // argument count // (FOnline Patch) even variadic count slot (platform-uniform)
 					}
 					else
 						stackInc = -called->GetSpaceNeededForArguments();
@@ -3780,7 +3780,10 @@ void asCReader::CalculateAdjustmentByPos(asCScriptFunction *func)
 		else
 		{
 			asASSERT( func->parameterTypes[n].IsPrimitive() );
-			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords(); // (FOnline Patch)
+			// (FOnline Patch) GetArgSlotSizeOnStackDWords is platform-uniform (even by-value slots), so the
+			// canonical parameter offsets equal the runtime ones on every pointer size and no extra
+			// adjustment entry is needed here — this also sizes adjustNegativeStackByPos to the real span.
+			offset += func->parameterTypes[n].GetArgSlotSizeOnStackDWords();
 		}
 	}
 
@@ -4036,7 +4039,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+		currOffset += 2; // (FOnline Patch) even variadic count slot (platform-uniform, matches the baked pushes)
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -4056,7 +4059,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additiona 32bit integer with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
+				currOffset += 2; // (FOnline Patch) typeid + argument slot padding (platform-uniform, matches the baked pushes)
 		}
 		else
 		{
@@ -4087,7 +4090,7 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 #endif
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
+					currOffset += 2; // (FOnline Patch) typeid + argument slot padding (platform-uniform, matches the baked pushes)
 			}
 			else
 			{
@@ -5384,7 +5387,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			numPtrs++;
 	}
 	if (offset > currOffset && calledFunc->IsVariadic())
-		currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) even variadic count slot
+		currOffset += 2; // (FOnline Patch) even variadic count slot (platform-uniform, matches the baked pushes)
 	for( asUINT p = 0; p < calledFunc->parameterTypes.GetLength(); p++ )
 	{
 		if( offset <= currOffset ) break;
@@ -5399,7 +5402,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 			// The variable arg ? has an additional 32bit int with the typeid
 			if( calledFunc->parameterTypes[p].IsAnyType() )
-				currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
+				currOffset += 2; // (FOnline Patch) typeid + argument slot padding (platform-uniform, matches the baked pushes)
 		}
 		else
 		{
@@ -5425,7 +5428,7 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 
 				// The variable arg ? has an additional 32bit int with the typeid
 				if (variadicType.IsAnyType())
-					currOffset += AS_PTR_SIZE == 2 ? 2 : 1; // (FOnline Patch) typeid + argument slot padding
+					currOffset += 2; // (FOnline Patch) typeid + argument slot padding (platform-uniform, matches the baked pushes)
 			}
 			else
 			{

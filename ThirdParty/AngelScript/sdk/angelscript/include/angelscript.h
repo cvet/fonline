@@ -1984,7 +1984,7 @@ const asSBCInfo asBCInfo[256] =
 	asBCINFO(POWdi,		wW_rW_rW_ARG,	0),
 	asBCINFO(POWi64,	wW_rW_rW_ARG,	0),
 	asBCINFO(POWu64,	wW_rW_rW_ARG,	0),
-	asBCINFO(Thiscall1, DW_ARG,			-AS_PTR_SIZE-1),
+	asBCINFO(Thiscall1, DW_ARG,			-AS_PTR_SIZE-2), // (FOnline Patch) even argument slots: this + padded 2-dword int arg
 	asBCINFO(RefCpyChk,	PTR_ARG,		-AS_PTR_SIZE), // (FOnline Patch) same shape as REFCPY
 
 	asBCINFO_DUMMY(202),
