@@ -173,7 +173,17 @@ Important behaviors:
 - sizes the atlas against `AppRender::MAX_ATLAS_SIZE` and backend limits;
 - creates textures, draw buffers, and effects;
 - compiles/loads vertex and fragment shader content through the effect loader;
-- reports render-target textures as vertically flipped (`IsRenderTargetFlipped() == true`).
+- reports render-target textures as vertically flipped (`IsRenderTargetFlipped() == true`);
+- **uniform blocks go through one shared bump-allocated UBO** (ES 3.0 / GL 3.1 compatible): per
+  draw, every shader-required block — default-initialized to zero when the engine did not fill
+  it, since a skipped block would otherwise keep a binding into a region whose storage dies at
+  the per-frame orphan in `Present()` — is packed into a contiguous region, uploaded with a
+  single `glBufferSubData`, and bound per pass with `glBindBufferRange` (replaces up to ~8 tiny
+  per-draw `glBufferData` re-specifications of per-effect UBOs);
+- **`SetRenderTarget` elides redundant re-selects** of the already-applied target (bind, viewport,
+  aspect-fit and ortho recompute are skipped); the cache is invalidated on resize and on
+  destruction of the cached texture, and mid-frame texture creation restores the *current*
+  target's framebuffer rather than unconditionally the base one.
 
 OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer changes with [WebDebugging.md](WebDebugging.md) validation.
 
