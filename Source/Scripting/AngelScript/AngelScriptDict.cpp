@@ -443,7 +443,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
     nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
 
     if (sub_type) {
-        // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types.
+        // Native fast comparator (stored in the sub-type user data) bypasses the script VM dispatch for known value types
         sub_type_data->FastCompare = GetScriptTypeFastCompare(sub_type);
 
         for (AngelScript::asUINT i = 0; i < sub_type->GetMethodCount(); i++) {

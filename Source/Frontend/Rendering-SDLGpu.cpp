@@ -49,7 +49,7 @@ FO_BEGIN_NAMESPACE
 // open at a time, passes begin lazily right before the operation that needs them, clears are deferred into the
 // next render pass load-op, and readbacks flush the recorded work with a fence wait. The window backbuffer is
 // never rendered to directly: all backbuffer output goes to an RGBA8 proxy texture that Present() blits to the
-// acquired swapchain texture, which keeps mid-frame flushes safe and pipeline target formats uniform.
+// acquired swapchain texture, which keeps mid-frame flushes safe and pipeline target formats uniform
 
 class SDLGpu_Texture final : public RenderTexture
 {
@@ -330,7 +330,7 @@ static auto ConvertPrimitiveType(RenderPrimitiveType prim_type) -> SDL_GPUPrimit
     case RenderPrimitiveType::PointList:
         // The effect vertex shaders do not write gl_PointSize, so point-list is unusable on the Vulkan driver
         // (and SPIRV-Cross cannot emit it for the other flavors). Mirror Rendering-Vulkan and remap to triangle-list;
-        // point primitives are unused by content.
+        // point primitives are unused by content
         return SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
     case RenderPrimitiveType::LineList:
         return SDL_GPU_PRIMITIVETYPE_LINELIST;
@@ -830,7 +830,7 @@ auto SDLGpu_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     auto sdl_effect = SafeAlloc::MakeUnique<SDLGpu_Effect>(usage, name, loader, _ctx);
 
     // The SDL_GPU backend consumes the SDL-convention baked flavors (per-stage descriptor sets), not the native
-    // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver.
+    // `-spv` that Rendering-Vulkan uses: `-spv_sdl` for the Vulkan driver, SDL-remapped `-msl_*` for the Metal driver
     bool spirv = _ctx->ShaderFormat == SDL_GPU_SHADERFORMAT_SPIRV;
 #if FO_IOS
     const string_view shader_flavor = spirv ? "spv_sdl" : "msl_ios";
@@ -1578,7 +1578,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     // it here with the renderer's current 2D ortho would project the skinned mesh off-screen and it
     // would render nothing (only its 2D nameplate remained). The other externally fed buffers keep
     // their last value inside the optionals to emulate GPU-buffer persistence; ProjBuf/MainTexBuf are
-    // reset at the end of the draw so the next non-model draw re-derives them.
+    // reset at the end of the draw so the next non-model draw re-derives them
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
@@ -1594,7 +1594,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so
-    // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw.
+    // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw
     auto reset_derived_on_fail = scope_fail([this]() noexcept {
         ProjBuf.reset();
         MainTexBuf.reset();
@@ -1710,7 +1710,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Push the full ModelBuffer (matching the Vulkan backend) rather than trimming to
         // 32+64*MatrixCount bytes: SDL_GPU validates pushed uniform data against the shader's declared
         // UBO size, so a short push can trip validation. The unused tail matrices are harmless — the
-        // shader reads only MatrixCount of them.
+        // shader reads only MatrixCount of them
         push_uniform(_needModelBuf, ModelBuf, slots.VertModelBuf, slots.FragModelBuf, sizeof(ModelBuffer));
         push_uniform(_needModelTexBuf, ModelTexBuf, slots.VertModelTexBuf, slots.FragModelTexBuf);
         push_uniform(_needModelAnimBuf, ModelAnimBuf, slots.VertModelAnimBuf, slots.FragModelAnimBuf);
@@ -1720,7 +1720,7 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     }
 
     // Derived buffers are per-draw: clear them so the next draw re-derives ProjBuf/MainTexBuf from the
-    // renderer state (or preserves a fresh externally-supplied ProjBuf, e.g. the next model's projection).
+    // renderer state (or preserves a fresh externally-supplied ProjBuf, e.g. the next model's projection)
     ProjBuf.reset();
     MainTexBuf.reset();
 }

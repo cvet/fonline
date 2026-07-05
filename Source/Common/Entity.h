@@ -344,7 +344,7 @@ public:
     virtual ~EntityManagerApi() = default;
 };
 
-// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
+// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`
 inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
     if (entity) {

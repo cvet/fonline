@@ -897,7 +897,7 @@ public:
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
 
     // Returns false only when the init function itself threw; that exception is already reported by ScriptFunc::Call.
-    // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op.
+    // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op
     template<typename T>
     static auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {

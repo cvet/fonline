@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -207,7 +208,7 @@ namespace
     {
         // Critter is registered as an implicit-handle ref type so the
         // game-side `Critter` / `Critter?` syntax (without explicit `@`) matches the
-        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup.
+        // production engine's `asEP_ALLOW_IMPLICIT_HANDLE_TYPES` setup
         CHECK(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
         REQUIRE(engine->RegisterObjectType("Critter", 0, asOBJ_REF | asOBJ_IMPLICIT_HANDLE) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("Critter", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DummyRefAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
@@ -715,7 +716,7 @@ void WithPriority()
     // `?` is no longer stripped by the preprocessor — AngelScript itself
     // parses the suffix on handle types. The script uses the project's implicit-handle
     // syntax (`Critter?`) since Critter is registered with `asOBJ_IMPLICIT_HANDLE`;
-    // ternary uses inside function bodies stay disambiguated by the AS parser.
+    // ternary uses inside function bodies stay disambiguated by the AS parser
     static constexpr string_view NullableStripScript = R"(
 namespace AttrTest
 {
@@ -1790,7 +1791,7 @@ void NamespacedCall()
         // `?` now passes through the preprocessor untouched and is parsed
         // by AngelScript itself as a first-class nullable handle marker. The `?` suffix
         // must survive into the AS source; ternary `cond ? a : b` inside function bodies
-        // must continue to parse normally.
+        // must continue to parse normally
         auto parsed = ParseScript("AttributesNullableStrip.fos", NullableStripScript);
 
         INFO(parsed.Errors);
@@ -1819,7 +1820,7 @@ void NamespacedCall()
     SECTION("RejectsNullableSuffixOnPrimitive")
     {
         // `?` is only meaningful on handle types — applying it to a
-        // primitive must produce a parse / type-check error.
+        // primitive must produce a parse / type-check error
         static constexpr string_view PrimitiveNullableScript = R"(
 namespace AttrTest
 {
@@ -1882,7 +1883,7 @@ void TakesIntPlease(int? value)
         auto mod = BuildModule(engine, "AttrDirectCall", parsed.Source, messages);
         // The script uses `[[EngineOnly]]` as a placeholder blocking attribute; declare it via
         // the project-extras list so the validator treats it as direct-call-blocking (Rule 1)
-        // rather than as a viral marker (Rule 2 default for unknown attributes).
+        // rather than as a viral marker (Rule 2 default for unknown attributes)
         vector<string> project_blocking_extras {"EngineOnly"};
         string bind_error = BindFunctionAttributeRecords(mod, parsed.Records, &project_blocking_extras);
         INFO(bind_error);
@@ -1899,7 +1900,7 @@ void TakesIntPlease(int? value)
     {
         // `[[InvokeEntry]]` marks a function that is dispatched only through the engine's dynamic
         // `Invoke(name, ...)` global, so it is a built-in direct-call-blocking attribute: no
-        // project-extras list is passed here, proving the engine blocks the direct call on its own.
+        // project-extras list is passed here, proving the engine blocks the direct call on its own
         auto parsed = ParseScript("AttributesInvokeEntryDirectCall.fos", InvokeEntryDirectCallScript);
         REQUIRE(parsed.Errors.empty());
 
@@ -1922,7 +1923,7 @@ void TakesIntPlease(int? value)
     SECTION("AllowsFunctionReferencesToInvokeEntryFunctions")
     {
         // Registering the entry by name (`NameOf(SceneEntry)`) compiles to a function reference, so
-        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked.
+        // referencing an `[[InvokeEntry]]` function must stay legal - only calling it is blocked
         auto parsed = ParseScript("AttributesInvokeEntryReference.fos", InvokeEntryReferenceScript);
         REQUIRE(parsed.Errors.empty());
 

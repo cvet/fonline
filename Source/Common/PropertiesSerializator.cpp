@@ -820,7 +820,7 @@ static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashRes
         return name_resolver.ResolveEnumValue(base_type.Name, migrated.value().as_str());
     }
 
-    // No migration rule: keep the original throwing behavior for genuinely unknown values.
+    // No migration rule: keep the original throwing behavior for genuinely unknown values
     return name_resolver.ResolveEnumValue(base_type.Name, value_name);
 }
 

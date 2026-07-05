@@ -315,9 +315,8 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
 
     auto align_offset = [data_alignment](size_t offset) noexcept -> size_t { return align_up(offset, data_alignment); };
 
-    // Best-fit search over freed holes and alignment paddings between existing entries;
-    // garbage size counts exactly the bytes not owned by any entry within the used range,
-    // so a smaller garbage amount can never contain a fitting hole
+    // Search freed holes and alignment padding for the best fit.
+    // A smaller garbage total cannot contain a fitting hole
     if (_overlayGarbageSize >= data_size) {
         vector<pair<size_t, size_t>> used_ranges;
         used_ranges.reserve(_overlayEntries.size());
@@ -366,7 +365,7 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
     }
 
     // No suitable hole, extend the overlay tail. Repacking can increase the aligned tail size
-    // when variable-size entries move, so re-evaluate the required capacity after every repack.
+    // when variable-size entries move, so re-evaluate the required capacity after every repack
     size_t aligned_offset = align_offset(_overlayDataSize);
 
     while (aligned_offset + data_size > _overlayDataCapacity) {
@@ -392,9 +391,8 @@ auto Properties::MakeOverlayPackOrder() const noexcept -> vector<size_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Stable alignment-descending order minimizes padding between packed entries: plain entry
-    // sizes are multiples of their alignment and pack back-to-back with zero padding, only
-    // variable-size complex payloads may leave small aligned gaps for the entries that follow
+    // Stable alignment-descending order packs fixed-size entries without padding.
+    // Only variable-size complex payloads may leave aligned gaps
     vector<size_t> pack_order(_overlayEntries.size());
     std::iota(pack_order.begin(), pack_order.end(), size_t {0});
 

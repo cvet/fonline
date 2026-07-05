@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -119,9 +120,7 @@ TEST_CASE("WorkThread")
             return true;
         });
 
-        // The throwing job must not run until the second job is queued. Otherwise the worker can pick
-        // up the first job, throw, and let the handler clear an empty queue before the second job is
-        // even added - the second job is then enqueued after the clear and runs normally (flaky).
+        // Queue the second job before releasing the thrower so exception cleanup must clear it
         worker.AddJob([&]() -> optional<timespan> {
             jobs_enqueued.wait(false);
             throw std::runtime_error("boom");
@@ -219,14 +218,11 @@ TEST_CASE("WorkThread")
         worker.Wait();
 
         // Each execution of the self-rescheduling job is counted, so the server's job-throughput
-        // stats reflect every body run rather than the number of distinct submissions.
+        // stats reflect every body run rather than the number of distinct submissions
         CHECK(worker.GetDiagnostics().CompletedJobs == 3);
     }
 
-    // Regression for a Pause() deadlock: the worker only signalled _doneSignal when its queue drained, so
-    // a Pause() waiting on _jobActive was never woken while jobs were still queued behind the in-flight
-    // one — hanging the pauser forever. Pause() must return as soon as the active job finishes, regardless
-    // of how many jobs remain queued.
+    // Pause must wake when the active job finishes even while later jobs remain queued
     SECTION("PauseReturnsWhileJobsRemainQueued")
     {
         WorkThread worker {"PauseDrainWorker"};
@@ -246,7 +242,7 @@ TEST_CASE("WorkThread")
             std::this_thread::sleep_for(std::chrono::milliseconds {1});
         }
 
-        // Pause from a helper thread while the first job is in flight and the second is still queued.
+        // Pause from a helper thread while the first job is in flight and the second is still queued
         thread pauser = run_thread("Pauser", [&]() { worker.Pause(); });
         gate.store(true); // let the in-flight job finish
 
@@ -258,12 +254,8 @@ TEST_CASE("WorkThread")
         CHECK(worker.GetJobsCount() == 0);
     }
 
-    // Faithful to production cross-thread use (e.g. `_healthWriter.AddJob` is called from the
-    // `_mainWorker` thread while the control thread also drives the worker): several producer threads
-    // hammer AddJob concurrently while a controller churns Pause/Resume/Clear and the worker runs the
-    // bodies. The `_dataLocker`-guarded state machine must stay race-free (TSan), never use freed job
-    // state (ASan), never deadlock, and remain functional afterwards. Bodies don't self-reschedule, so
-    // Pause (which waits for the active job) can never block forever.
+    // Race concurrent producers against Pause, Resume, and Clear across the guarded state machine.
+    // Bodies never self-reschedule, so Pause must still converge
     SECTION("ConcurrentProducersHammerAddJobClearPauseResume")
     {
         WorkThread worker {"ChaosWorker"};
@@ -317,12 +309,12 @@ TEST_CASE("WorkThread")
         stop.store(true, std::memory_order_release);
         controller.join();
 
-        // Ensure the worker is not left paused, then drain whatever survived the Clear churn.
+        // Ensure the worker is not left paused, then drain whatever survived the Clear churn
         worker.Resume();
         worker.Wait();
         CHECK(worker.GetJobsCount() == 0);
 
-        // The worker must still be fully functional after the chaos — a fresh job runs to completion.
+        // The worker must still be fully functional after the chaos — a fresh job runs to completion
         std::atomic_bool final_ran {false};
         worker.AddJob([&final_ran]() -> optional<timespan> {
             final_ran.store(true);

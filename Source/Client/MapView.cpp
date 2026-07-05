@@ -109,7 +109,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
         // Size the depth range from a realistic elevation bound rather than the full int16 domain (+-32767):
         // the latter reserves >90% of the depth buffer for elevations no sprite reaches, crushing precision and
         // the per-layer depth bias (matters now that 2D sprites depth-test with LessEqual). Sprites beyond the
-        // bound would be depth-clipped, so it is a generous, tunable Setting.
+        // bound would be depth-clipped, so it is a generous, tunable Setting
         float32_t elev_extent = numeric_cast<float32_t>(std::max(_engine->Settings->MapMaxElevation, 0));
         float32_t elev_min = -elev_extent;
         float32_t elev_max = elev_extent;
@@ -1555,7 +1555,7 @@ void MapView::CleanLightSourceOffsets(ident_t id)
             // Already-built light primitives hold this raw offset pointer (PointOffset), which points into
             // the entity view that is being destroyed right now; null them in place so even the current
             // frame cannot dereference the freed storage. A rebuild is not needed: the offset participates
-            // in primitives only through PointOffset.
+            // in primitives only through PointOffset
             for (auto& points : _lightPoints) {
                 for (auto& point : points) {
                     if (point.PointOffset == ls->Offset) {
@@ -1624,7 +1624,7 @@ void MapView::ApplyLightFan(ptr<LightSource> ls)
 
     // One spoke per hex direction. MAP_DIR_COUNT is 6 (hexagonal) or 8 (square);
     // LightFlag::StopDir0..StopDir7 carry the per-spoke blocked bits inside
-    // ls->Flags — (StopDir0 << i) gates spoke i.
+    // ls->Flags — (StopDir0 << i) gates spoke i
     for (int32_t i = 0, ii = GameSettings::MAP_DIR_COUNT; i < ii; i++) {
         mdir dir = hdir((i + 2) % GameSettings::MAP_DIR_COUNT);
 
@@ -1983,7 +1983,7 @@ void MapView::LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoi
     center_pos.x += GameSettings::MAP_HEX_WIDTH / 2;
     center_pos.y += GameSettings::MAP_HEX_HEIGHT / 2;
 
-    // Per-light ovalization metadata.
+    // Per-light ovalization metadata
     const auto [screen_anchor_ox, screen_anchor_oy] = GeometryHelper::GetHexOffset(ipos32 {0, 0}, _screenRawHex);
     fpos32 screen_anchor_tex = {numeric_cast<float32_t>(screen_anchor_ox), numeric_cast<float32_t>(screen_anchor_oy)};
     int32_t natural_radius = std::max(1, ls->Distance);
@@ -2436,7 +2436,7 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
         return;
     }
 
-    // egg.HexOffset is hex-center-relative; GetHexMapPos is the cell top-left, so add half a hex.
+    // egg.HexOffset is hex-center-relative; GetHexMapPos is the cell top-left, so add half a hex
     ipos32 hex_pos = GetHexMapPos(egg.Hex);
     int32_t center_x = hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2 + egg.HexOffset.x;
     int32_t center_y = hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2 + egg.HexOffset.y;
@@ -2619,7 +2619,7 @@ void MapView::DrawMap()
                     // the seam (older `ps = TexCoord - anchor` form had a hex-sized gap there).
                     // Pre-zoom anchor (no GetSpritesZoom() multiply) keeps ps zoom-invariant: a
                     // fixed world position produces the same ps at any zoom, so noise patterns
-                    // stay pinned to the world during zoom in/out instead of drifting.
+                    // stay pinned to the world during zoom in/out instead of drifting
                     ipos32 anchor_hex_pos = GetHexMapPos(mpos(0, 0));
                     ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
                     fpos32 anchor_world = fpos32(anchor_hex_pos + hex_center) - _scrollOffset;
@@ -2636,7 +2636,7 @@ void MapView::DrawMap()
                     // stay attached to the screen frame (vignette, sun bleach, grain). Same
                     // rt-vs-screen scaling correction as MapAnchorScreenPos: TexCoord max is
                     // ~sw/rt_w not 1.0, so the per-TexCoord screen UV step is
-                    // `(rt_w/sw) * draw_scale`, and the chunk anchor backs out source_x.
+                    // `(rt_w/sw) * draw_scale`, and the chunk anchor backs out source_x
                     cam_buf->ChunkScreenAnchor[0] = (step_xf - source_x / sw_f) * draw_scale.x;
                     cam_buf->ChunkScreenAnchor[1] = (step_yf - source_y / sh_f) * draw_scale.y;
                     cam_buf->ChunkScreenAnchor[2] = cam_buf->MapAnchorScreenPos[2] * draw_scale.x;
@@ -2683,7 +2683,7 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
 
     size_t last_sprite_order = static_cast<size_t>(DrawOrderType::Last);
 
-    // Fog slots below the main sprite pass (draw order < Light) blit first, at ground level.
+    // Fog slots below the main sprite pass (draw order < Light) blit first, at ground level
     for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Light); order++) {
         DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
     }
@@ -2730,7 +2730,7 @@ void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
             // Custom flush (e.g. base-look fog): rasterize the honest hexagon profile into the light
             // target, then composite it onto the scene with the custom effect. The effect shapes the
             // analytic oval, cold tint, drifting mist edge, and distance depth from the fog's own tunable
-            // fields, passed below as script values (fog center + semi-axes in light-target UV, plus knobs).
+            // fields, passed below as script values (fog center + semi-axes in light-target UV, plus knobs)
             FO_VERIFY_AND_THROW(_rtLight, "Lighting render target is not allocated");
             _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtLight);
             _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
@@ -2752,7 +2752,7 @@ void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
                 };
 
                 // Index 2 is the first inserted center point of the triangle strip; the ring points fan
-                // around it. Semi-axes are the farthest extent from the center along each axis.
+                // around it. Semi-axes are the farthest extent from the center along each axis
                 ipos32 center = to_target(fog_points[2]);
                 int32_t semi_x = 0;
                 int32_t semi_y = 0;
@@ -2774,7 +2774,7 @@ void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
 
                 // World-anchored noise offset: the origin's absolute world pos in light-target UV. Added to
                 // (TexCoord - center) in the shader it yields each pixel's world position, so the rim noise
-                // is fixed to the world — stable under camera scroll, streaming as the fog moves through it.
+                // is fixed to the world — stable under camera scroll, streaming as the fog moves through it
                 float32_t world_x = numeric_cast<float32_t>(fog->OriginWorldPos.x) / rt_w;
                 float32_t world_y = numeric_cast<float32_t>(fog->OriginWorldPos.y) / rt_h;
 
@@ -2913,7 +2913,7 @@ void MapView::PrepareFogToDraw()
             base_draw_offset = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(fog_input.FogOrigin.BaseHex));
             draw_offset = base_draw_offset + *cr->GetSpriteOffsetPtr();
             // Absolute world-pixel position of the origin (camera-independent), incl. the sub-hex sprite
-            // offset for smooth flow; the shader anchors the rim noise to it so it streams as the fog moves.
+            // offset for smooth flow; the shader anchors the rim noise to it so it streams as the fog moves
             fog->OriginWorldPos = GeometryHelper::GetHexOffset(ipos32 {}, ipos32(fog_input.FogOrigin.BaseHex)) + *cr->GetSpriteOffsetPtr();
         }
         else {
@@ -3358,7 +3358,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
     cr->ChangeDir(dir);
 
     // Detect re-addition: if the previous view is still around (fading out), the new view inherits its
-    // alpha in AddCritterInternal, so we must skip the FadeUp() reset to keep the transition smooth.
+    // alpha in AddCritterInternal, so we must skip the FadeUp() reset to keep the transition smooth
     bool was_present = !!GetCritter(id);
 
     auto added = AddCritterInternal(cr);
@@ -3609,7 +3609,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offs
     // items) and GetHexScreenPos anchor at the hex visual center = origin + {MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2}.
     // Bias the lookup point by -half a hex so we resolve the hex whose visual center is nearest and the
     // returned offset is measured relative to that center (matching the critter HexOffset convention, and
-    // staying within +-{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2} without clamping).
+    // staying within +-{MAP_HEX_WIDTH/2, MAP_HEX_HEIGHT/2} without clamping)
     ipos32 hex_center = {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     ipos32 offset;
     ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos - hex_center, &offset);

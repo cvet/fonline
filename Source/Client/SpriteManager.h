@@ -147,7 +147,7 @@ struct DipData
 };
 
 // A direct-to-scene sprite (e.g. particle system) deferred to a single pass after the sprite batch, so its
-// own shader does not split the batch. Occlusion stays correct via the shared scene depth buffer.
+// own shader does not split the batch. Occlusion stays correct via the shared scene depth buffer
 struct DirectDrawSprite
 {
     nptr<const Sprite> Spr {};
@@ -177,7 +177,7 @@ public:
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
     // A copy of whatever has been drawn into the current render target so far, for draws that refract what is behind
     // them. The copy is taken on demand and at most once per direct-draw replay, so a frame with nothing refracting
-    // never pays for it.
+    // never pays for it
     [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
 
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }

@@ -129,7 +129,7 @@ struct ModelAnimationRigBindingSource
 
 // Builds canonical runtime animation objects, wraps them in LF archives, and
 // reads every archive back before returning. BuildModelAnimationRigData then
-// turns these validated artifacts into the production model-description payload.
+// turns these validated artifacts into the production model-description payload
 [[nodiscard]] auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const_span<ModelAnimationSource> animations, bool nearest_sampling) -> ModelAnimationRigArtifacts;
 [[nodiscard]] auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span<ModelAnimationRigBindingSource> bindings) -> ModelAnimationRigData;
 

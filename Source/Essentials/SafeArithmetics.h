@@ -255,7 +255,7 @@ template<typename T, typename U>
     }
 
     // std::llround is undefined for values outside the int64 range, so reject them before rounding.
-    // The upper bound is exclusive: casting int64 max to floating point rounds it up to 2^63, which is already unrepresentable.
+    // The upper bound is exclusive: casting int64 max to floating point rounds it up to 2^63, which is already unrepresentable
     constexpr U min_bound = static_cast<U>(std::numeric_limits<int64_t>::min());
     constexpr U max_bound = static_cast<U>(std::numeric_limits<int64_t>::max());
 

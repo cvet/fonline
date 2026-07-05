@@ -134,7 +134,7 @@ protected:
 
         // Exception safety: build a plain-data model first (Phase 1), then render it with pure ImGui calls (Phase 2).
         // Every recoverable throw (strex, AnyData::ValueToString on a non-finite Float64) happens in Phase 1, before any
-        // ImGui push, so an exception leaves ImGui's ID/tree/table stacks untouched and balanced instead of corrupting the frame.
+        // ImGui push, so an exception leaves ImGui's ID/tree/table stacks untouched and balanced instead of corrupting the frame
         struct FieldRow
         {
             string key;

@@ -244,7 +244,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
-        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset.
+        // Particle UVs address the complete source bitmap; this callback cannot carry a cropped frame's SourceOffset
         auto atlas_spr = _sprMngr->LoadSpriteAsQuad(path, AtlasType::MeshTextures);
 
         if (atlas_spr) {

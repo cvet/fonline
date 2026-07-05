@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 
 // Backend of SettingsStorage. Values are always stored as strings (typed accessors serialize through them), so the
 // registry and the file backend behave identically. On Windows a value is a REG_SZ under the application subkey;
-// elsewhere it is one entry in a per-application CacheStorage.
+// elsewhere it is one entry in a per-application CacheStorage
 class SettingsStorageImpl
 {
 public:
@@ -73,7 +73,7 @@ private:
 
 // The registry stores the raw UTF-8 bytes of the value as a REG_SZ (a trailing null is added on write and stripped
 // on read), so the round-trip is byte-preserving even for non-ASCII text. Only the explicit *A entry points are
-// used because WinApiUndef.inc removes the RegCreateKeyEx/etc. resolver macros.
+// used because WinApiUndef.inc removes the RegCreateKeyEx/etc. resolver macros
 static auto RegistryReadValue(const string& sub_key, string_view name) -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
@@ -100,7 +100,7 @@ static auto RegistryReadValue(const string& sub_key, string_view name) -> option
         return std::nullopt;
     }
 
-    // REG_SZ carries a terminating null in its byte count; drop it to recover the original string.
+    // REG_SZ carries a terminating null in its byte count; drop it to recover the original string
     if (!value.empty() && value.back() == '\0') {
         value.pop_back();
     }
@@ -155,7 +155,7 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 #else
 
     // Keep tool settings out of the resource cache: a dedicated per-application directory in the user data base.
-    // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary.
+    // No user data base (unusual sandbox) means best-effort no persistence rather than writing next to the binary
     string base = Platform::GetUserDataBase();
 
     if (!base.empty()) {

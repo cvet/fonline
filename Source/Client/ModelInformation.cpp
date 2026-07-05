@@ -668,7 +668,7 @@ auto ModelInformation::GetRootBone() const -> ptr<const ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // A loaded model always has a hierarchy (both load paths reject a missing
-    // one) and its root bone is a non-null ptr, so absence is an invariant break.
+    // one) and its root bone is a non-null ptr, so absence is an invariant break
     FO_VERIFY_AND_THROW(_hierarchy, "Model information has no hierarchy", _fileName);
     return _hierarchy->_rootBone;
 }

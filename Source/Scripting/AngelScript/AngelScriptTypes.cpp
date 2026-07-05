@@ -267,7 +267,7 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
                 throw ScriptException("Invalid cast to any (floating point value is not finite)");
             }
 
-            // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
+            // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity
             v = numeric_cast<T>(strvex(tokens[index]).to_float64());
 
             if (!std::isfinite(v)) {
@@ -650,7 +650,7 @@ static auto Any_Conv(const any_t& self) -> T
             throw ScriptException("Invalid cast from any (floating point value is not finite)");
         }
 
-        // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
+        // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity
         T converted_value = numeric_cast<T>(strvex(self).to_float64());
 
         if (!std::isfinite(converted_value)) {

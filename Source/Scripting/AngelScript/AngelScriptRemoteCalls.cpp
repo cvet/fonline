@@ -384,7 +384,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
     if (engine->GetSide() == EngineSideKind::ServerSide) {
         FO_VERIFY_AND_THROW(inbound_call.Args.size() + 1 == func->GetParamCount(), "Inbound server remote call argument count does not match function signature", inbound_call.Name, inbound_call.Args.size(), func->GetParamCount());
         // Store a pointer into the entity parameter's own handle slot: the parameter outlives the ScriptFuncCall
-        // below. A local copy would be destroyed at the end of this block, leaving data_storage dangling.
+        // below. A local copy would be destroyed at the end of this block, leaving data_storage dangling
         data_storage.emplace_back(make_ptr(entity.get_pp()).void_cast());
         arg_index++;
     }

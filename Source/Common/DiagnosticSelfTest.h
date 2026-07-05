@@ -37,16 +37,11 @@
 
 FO_BEGIN_NAMESPACE
 
-// Diagnostic self-test that deliberately crashes the process to verify the crash
-// diagnostics reliably reach the log file. Driven by the FO_SELFTEST_CRASH
-// environment variable so it is inert in production and invisible to the config
-// and script settings surface. Intended for the crash-to-log pipeline tests; it
-// must never be wired into normal runtime paths.
+// FO_SELFTEST_CRASH drives deliberate process failures for crash-to-log tests.
+// Keep this surface invisible to production configuration and scripts
 namespace DiagnosticSelfTest
 {
-    // Reads FO_SELFTEST_CRASH and induces the requested crash. Does nothing when
-    // the variable is unset, empty or names an unknown mode (the process keeps
-    // running). Most modes never return.
+    // Induces the FO_SELFTEST_CRASH mode; unset or unknown modes are no-ops
     extern void RunIfRequested();
 }
 

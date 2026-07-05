@@ -597,7 +597,7 @@ OpenGL_Renderer::~OpenGL_Renderer()
 
     _ctx->DummyTexture.reset();
 
-    // The GL context must still be current for this delete.
+    // The GL context must still be current for this delete
     if (_ctx->UniformBumpBuf != 0) {
         glDeleteBuffers(1, &_ctx->UniformBumpBuf);
         _ctx->UniformBumpBuf = 0;
@@ -921,7 +921,7 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     // The requested target is already fully applied (bind, viewport, projection); the projection
-    // stays valid across the skip because SetOrthoDepthRange keeps OrthoNear/OrthoFar in sync.
+    // stays valid across the skip because SetOrthoDepthRange keeps OrthoNear/OrthoFar in sync
     if (_ctx->CurrentRenderTargetValid && tex == _ctx->CurrentRenderTarget) {
         return;
     }
@@ -1494,7 +1494,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     // Every shader-required block must be written and bound EVERY draw: a stale binding would
     // point into the shared bump buffer, whose storage dies at the per-frame orphan — so
-    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend).
+    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend)
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }
@@ -1529,7 +1529,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 #endif
 
     // One slot per standard uniform block the gather below walks, used or not: the counter advances for every
-    // block so the indices stay stable across draws that declare different subsets.
+    // block so the indices stay stable across draws that declare different subsets
     constexpr size_t max_uniform_blocks = 12;
     size_t block_offsets[max_uniform_blocks] = {};
     size_t block_sizes[max_uniform_blocks] = {};
@@ -1578,7 +1578,7 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
         if (!scratch.empty()) {
             // Rewind and re-specify (orphan) the bump storage when the draw does not fit — the
-            // driver keeps the old storage alive for the already-issued draws that reference it.
+            // driver keeps the old storage alive for the already-issued draws that reference it
             size_t base_offset = (_ctx->UniformBumpOffset + alignment - 1) & ~(alignment - 1);
 
             if (base_offset + scratch.size() > _ctx->UniformBumpCapacity) {

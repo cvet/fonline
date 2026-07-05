@@ -858,7 +858,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
             }
         }
 
-        // Create one rasterizer state per cull mode the effect can resolve to.
+        // Create one rasterizer state per cull mode the effect can resolve to
         for (size_t cull_mode = 0; cull_mode < EFFECT_CULL_MODES; cull_mode++) {
             CullModeType cull_mode_type = static_cast<CullModeType>(cull_mode);
 

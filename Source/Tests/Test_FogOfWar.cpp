@@ -68,7 +68,7 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(fog.GetPoints().size() == 10);
-        // Geometry is the honest hexagon (the oval is shaped in the flush shader, not here).
+        // Geometry is the honest hexagon (the oval is shaped in the flush shader, not here)
         CHECK(fog.GetPoints().front().PointPos.x == 21);
         CHECK(fog.GetPoints().front().PointColor.comp.a == 0);
     }
@@ -102,12 +102,12 @@ TEST_CASE("FogOfWar")
 
         CHECK(fog.GetPoints().size() == 10);
         // Shared radial falloff: an edge one hex out (max_overlay_dist = min(1, 3) + 1 = 2, unblocked
-        // result = 1) tints to overlay * (2 - 1) * 255 / 2 / 255 = overlay * 127 / 255.
+        // result = 1) tints to overlay * (2 - 1) * 255 / 2 / 255 = overlay * 127 / 255
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 47);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.g) == 111);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.b) == 47);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.a) == 255);
-        // The traced-overlay center carries the full overlay color (origin of the gradient).
+        // The traced-overlay center carries the full overlay color (origin of the gradient)
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.r) == 96);
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.g) == 224);
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.b) == 96);
@@ -126,11 +126,11 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(fog.GetPoints().size() == 10);
-        // Edge one hex out tints to overlay * 127 / 255 along the shared falloff (see above).
+        // Edge one hex out tints to overlay * 127 / 255 along the shared falloff (see above)
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.r) == 127);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.g) == 47);
         CHECK(static_cast<int>(fog.GetPoints().front().PointColor.comp.b) == 87);
-        // The center carries the full custom overlay color.
+        // The center carries the full custom overlay color
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.r) == 255);
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.g) == 96);
         CHECK(static_cast<int>(fog.GetPoints()[2].PointColor.comp.b) == 176);
@@ -327,11 +327,10 @@ TEST_CASE("FogOfWar")
         fog.Prepare(input);
 
         CHECK(!fog.GetPoints().empty());
-        // The ray to a hex 6 out (max_overlay_dist = min(6, 6) + 1 = 7) is blocked at distance 3, so it
-        // fades to (7 - 3) * 255 / 7 along the one shared falloff — the same value an unobstructed ray
-        // reaches at distance 3. Obstacles only shorten a ray along that gradient, not change its slope.
+        // Obstacles shorten a ray along the shared falloff without changing its slope.
+        // At distance 3 of 7 the expected value is (7 - 3) * 255 / 7
         CHECK(fog.GetPoints()[0].PointColor.comp.r == numeric_cast<uint8_t>((7 - 3) * 255 / 7));
-        // Green stays proportional to the overlay tint (96 / 255 of the red strength).
+        // Green stays proportional to the overlay tint (96 / 255 of the red strength)
         CHECK(fog.GetPoints()[0].PointColor.comp.g == numeric_cast<uint8_t>((numeric_cast<int32_t>(fog.GetPoints()[0].PointColor.comp.r) * 96) / 255));
     }
 

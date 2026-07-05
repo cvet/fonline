@@ -108,18 +108,15 @@ struct TraceLineOutput
 
 namespace PathFinding
 {
-    // Check a single hex or multihex perimeter in a given BFS direction
-    // For multihex > 0: checks the directional front arc (base extended + CW/CCW perimeter spokes)
-    // Returns worst result across all checked hexes (Blocked > DeferCritter > DeferGag > Passable)
+    // Check the BFS-direction front arc for a single hex or multihex perimeter.
+    // Return the worst result in Blocked > DeferCritter > DeferGag > Passable order
     [[nodiscard]] auto CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
 
     // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
 
-    // FreeMovement: sub-hex offset (clamped to half a hex) at new_to_hex so the end sits at the cut gap
-    // dist(new_to_hex center, to_hex center) from the target's real position (to_hex center + to_hex_offset).
-    // Returns nullopt when the real target essentially coincides with new_to_hex center (stop direction
-    // undefined) — caller is expected to keep the mover's current offset rather than force the center.
+    // Compute the half-hex-clamped FreeMovement endpoint relative to the target's real offset.
+    // Return nullopt for an undefined stop direction so callers preserve the mover's offset
     [[nodiscard]] auto EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>;
 
     // Core line trace from start toward target, stopping at blocked hexes

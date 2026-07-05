@@ -299,7 +299,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
 
             // Each teardown pass must strictly reduce the critter's remaining dependencies; a stalled
             // (or growing) count means the destruction can never converge, so terminate deterministically
-            // rather than leave a half-destroyed "undead" critter in the registry until restart.
+            // rather than leave a half-destroyed "undead" critter in the registry until restart
             size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
             FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
             prev_deps = remaining_deps;

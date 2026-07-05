@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -86,7 +86,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     auto exports = make_ptr(raw_exports);
 
     // Pin the runtime name string for the lifetime of this DLL — host reads it as
-    // const char* through the ABI, and it must outlive every consumer call.
+    // const char* through the ABI, and it must outlive every consumer call
     static const string runtime_name = GetCurrentClientRuntimeLibraryName();
 
     exports->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeExports));
@@ -229,7 +229,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
                     auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
-                    // for an installed client, the exe dir for a portable one); request that exact path.
+                    // for an installed client, the exe dir for a portable one); request that exact path
                     string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 

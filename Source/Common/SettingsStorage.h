@@ -43,7 +43,7 @@ class SettingsStorageImpl;
 // selection, ...). Values are scoped by an application name so different tools never collide. On Windows the
 // backing store is the registry under HKCU\Software\FOnline\<app_name>; on other platforms it is a file store
 // under the per-user data directory. Persistence is best-effort: a backend failure is logged, never thrown, so a
-// tool never dies because its settings could not be written.
+// tool never dies because its settings could not be written
 class SettingsStorage
 {
 public:

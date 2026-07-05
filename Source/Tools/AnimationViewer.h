@@ -77,12 +77,12 @@ public:
     void SetVisible(bool visible) noexcept { _visible = visible; }
 
     // Standalone hosts have nothing else on screen, so the window takes the
-    // whole viewport and drops its title bar and move/resize handles.
+    // whole viewport and drops its title bar and move/resize handles
     void SetFillViewport(bool fill) noexcept { _fillViewport = fill; }
     void Draw();
 
     // Persists the ImGui layout and the view options (zoom, facing, overlays, last critter) to the per-user
-    // settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown.
+    // settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown
     void SaveSettings();
 
 private:
@@ -143,22 +143,22 @@ private:
     // Facing is an angle (degrees), the same currency the engine uses: a sprite
     // takes its hex direction from the angle and a model rotates to it. Default
     // 210° is hex direction 3 (dir*60+30), the game's front-facing review angle.
-    // Held-LMB drag over the preview turns it left/right.
+    // Held-LMB drag over the preview turns it left/right
     float32_t _dirAngle {210.0f};
     float32_t _zoom {1.0f};
     fpos32 _pan {}; // camera pan offset (screen px), held-RMB drag
 
     // Direct draw renders a 3D model straight into the scene (real geometry +
-    // depth) instead of through the cached atlas sprite. Off by default.
+    // depth) instead of through the cached atlas sprite. Off by default
     bool _directDraw {};
 
     // Direct draw scales the model to the zoom for a crisp real-geometry render;
     // sprite mode keeps it at native scale (scale 1). Tracked to avoid redundant
-    // relayouts when the effective scale is unchanged.
+    // relayouts when the effective scale is unchanged
     float32_t _appliedModelScale {};
 
     // Debug overlays, all opt-in (off by default) for verifying a model's
-    // authored anchor geometry.
+    // authored anchor geometry
     bool _drawRoot {};
     bool _drawNameLevel {};
     bool _drawRenderRect {};

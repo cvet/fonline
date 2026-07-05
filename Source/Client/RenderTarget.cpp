@@ -164,7 +164,7 @@ void RenderTargetManager::PopRenderTarget()
         _flush();
 
         // Bind the target that will become the new stack top (the entry under the current top) before
-        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged.
+        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged
         if (_rtStack.size() >= 2) {
             _render->SetRenderTarget(_rtStack[_rtStack.size() - 2]->_texture);
         }

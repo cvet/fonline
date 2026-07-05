@@ -247,7 +247,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
             break;
         }
 
-        // Consume the round's prefix without shifting the vector.
+        // Consume the round's prefix without shifting the vector
         next_hexes_read = round_end;
 
         // Add gag hex after some distance
@@ -486,12 +486,12 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
     FO_STACK_TRACE_ENTRY();
 
     // Work in map pixel space with the final hex center as the origin.
-    // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset.
+    // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset
     ipos32 center_to_hex = GeometryHelper::GetHexOffset(new_to_hex, to_hex);
     float32_t target_x = numeric_cast<float32_t>(center_to_hex.x + to_hex_offset.x);
     float32_t target_y = numeric_cast<float32_t>(center_to_hex.y + to_hex_offset.y);
 
-    // Distance uses the camera Y projection (same metric as MovingContext segment distances).
+    // Distance uses the camera Y projection (same metric as MovingContext segment distances)
     float32_t y_proj = GeometryHelper::GetYProj();
     float32_t target_proj_y = target_y * y_proj;
     float32_t target_len = std::sqrt(target_x * target_x + target_proj_y * target_proj_y);
@@ -499,16 +499,16 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
     constexpr float32_t min_len = 0.5f;
 
     if (target_len < min_len) {
-        // Already on the target.
+        // Already on the target
         return std::nullopt;
     }
 
-    // Gap to preserve = continuous distance between the final hex center and the target hex center (the "cut" gap).
+    // Gap to preserve = continuous distance between the final hex center and the target hex center (the "cut" gap)
     float32_t gap_x = numeric_cast<float32_t>(center_to_hex.x);
     float32_t gap_proj_y = numeric_cast<float32_t>(center_to_hex.y) * y_proj;
     float32_t gap_len = std::sqrt(gap_x * gap_x + gap_proj_y * gap_proj_y);
 
-    // Stand at gap_len from the real target, on the final-hex side of it.
+    // Stand at gap_len from the real target, on the final-hex side of it
     float32_t factor = 1.0f - gap_len / target_len;
     int32_t ox = iround<int32_t>(factor * target_x);
     int32_t oy = iround<int32_t>(factor * target_y);

@@ -50,7 +50,7 @@ class EntityManager;
 // lock-free ancestor on its parent / widen chain)? The access path keeps diagnostics enabled so uncovered
 // entities dump their parent chain before the caller throws; Game.IsEntityLocked passes diagnose=false
 // because it is a deliberate non-throwing probe. NOTE: this is the read-path notion; mutating an entity
-// (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there.
+// (SetParent reparent) requires holding its OWN lock directly, a stricter check made inline there
 [[nodiscard]] auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose = true) noexcept -> bool;
 
 class EntityLock final
@@ -69,11 +69,11 @@ public:
     // Number of times the calling thread currently holds this lock EXCLUSIVELY (its recursion
     // count), or 0 if it is not the exclusive owner. Used by the globally-ordered escalation in
     // `SyncContext::AcquireLocks` to release a parent-held lock down to zero and re-acquire it the
-    // same number of times, restoring the parent context's recursion bookkeeping exactly.
+    // same number of times, restoring the parent context's recursion bookkeeping exactly
     auto GetExclusiveRecursionForCurrentThread() const noexcept -> int32_t;
 
     // Exclusive ("write") acquisition. One owner thread at a time; re-entrant on that thread via
-    // `_recursionCount`. Blocks until no shared holders and no other exclusive owner remain.
+    // `_recursionCount`. Blocks until no shared holders and no other exclusive owner remain
     void Acquire(uint64_t ticket);
     auto TryAcquire() -> bool;
     void Release() noexcept;
@@ -82,7 +82,7 @@ public:
     // exclusive with `Acquire`. Re-entrant per thread. If the calling thread already owns the lock
     // exclusively, the shared request is subsumed into the exclusive recursion (a writer trivially
     // has read access). Used for Game-singleton property reads so concurrent readers don't serialize
-    // on the engine-global lock; writes (property setters) and `Game.Lock()` stay exclusive.
+    // on the engine-global lock; writes (property setters) and `Game.Lock()` stay exclusive
     void AcquireShared(uint64_t ticket);
     void ReleaseShared() noexcept;
 
@@ -99,27 +99,27 @@ public:
     //   - Re-entrant per thread (locking two descendants of the same ancestor marks it twice); the
     //     same thread may also escalate up into an ancestor it already marks (own marks never block).
     //   - Registration yields to an already-waiting exclusive writer (queues behind it) so a
-    //     map/location-exclusive op cannot be starved forever by a stream of sibling locks.
+    //     map/location-exclusive op cannot be starved forever by a stream of sibling locks
     void RegisterDescendantHold(uint64_t ticket);
     auto TryRegisterDescendantHold() -> bool;
     void UnregisterDescendantHold() noexcept;
 
     // Number of descendant-holds the calling thread currently has on this lock (0 if none). Mirrors
     // GetExclusiveRecursionForCurrentThread: lets the globally-ordered escalation release a marked
-    // ancestor down to zero and re-mark it the same number of times, restoring intention bookkeeping.
+    // ancestor down to zero and re-mark it the same number of times, restoring intention bookkeeping
     auto GetDescendantHoldCountForCurrentThread() const noexcept -> int32_t;
 
     // Marks this lock as shutting down and force-aborts every parked waiter. Each `WaitEntry`'s
     // state atomic CAS-flips from "waiting" to "aborted", then `notify_one` wakes its single
     // blocked thread (FIFO precision preserved — no thundering herd). The flag also rejects any
     // future `Acquire` so a tick that fires after shutdown started can't deadlock on the empty
-    // owner field. `Server::Shutdown` walks every entity once and calls this on each lock.
+    // owner field. `Server::Shutdown` walks every entity once and calls this on each lock
     void AbortPendingWaiters() noexcept;
 
     // Internal state-mutex handles plus a single Ensure operation split into a read-only
     // compatibility check and a no-throw ownership commit. SyncContext's all-or-nothing multi-op Ensure
     // transaction and lock-contention tests drive these; hold the state mutex only across the
-    // paired check/commit, never across a blocking operation.
+    // paired check/commit, never across a blocking operation
     void LockStateMutex() FO_TSA_ACQUIRE(_mutex);
     [[nodiscard]] bool TryLockStateMutex() FO_TSA_TRY_ACQUIRE(true, _mutex);
     void UnlockStateMutex() noexcept FO_TSA_RELEASE(_mutex);
@@ -131,7 +131,7 @@ private:
     // reader/writer modes (Shared used only for Game-singleton property reads). DescendantHold is the
     // hierarchical intention mark — it conflicts with a foreign Exclusive both ways but is compatible
     // with other DescendantHolds (sibling parallelism). Shared and DescendantHold never coexist on the
-    // same lock (a Game singleton is in no entity's parent chain), so their grant logic stays disjoint.
+    // same lock (a Game singleton is in no entity's parent chain), so their grant logic stays disjoint
     enum class WaitKind : uint8_t
     {
         Exclusive,
@@ -146,7 +146,7 @@ private:
         //   1 = lock granted by Release; on wake the waiter removes itself and returns
         //   2 = aborted by AbortPendingWaiters; on wake the waiter removes itself and throws
         // Atomicity carries the cross-thread hand-off; CAS in Release / AbortPendingWaiters
-        // disambiguates the abort-races-grant window.
+        // disambiguates the abort-races-grant window
         static constexpr int32_t STATE_WAITING = 0;
         static constexpr int32_t STATE_GRANTED = 1;
         static constexpr int32_t STATE_ABORTED = 2;
@@ -161,7 +161,7 @@ private:
     // number in the low single digits, so a linear inline vector replaces a hash map here: an idle
     // lock allocates nothing, whereas a per-entity hash map eagerly allocates 4 KB of bucket storage
     // — gigabytes across a loaded world (and past ThreadSanitizer's per-size-class allocator cap).
-    // Exposes the unordered_map subset EntityLock uses; emplace assumes the key is absent.
+    // Exposes the unordered_map subset EntityLock uses; emplace assumes the key is absent
     class ThreadHoldCounts final
     {
     public:
@@ -197,24 +197,24 @@ private:
     // Grants ownership to the next eligible waiter(s) after the lock becomes free. Called under
     // `_mutex` from `Release` / `ReleaseShared`. Exclusive waiters require zero shared holders;
     // a run of consecutive shared waiters at the queue front is granted together (readers batch),
-    // stopping at the first exclusive waiter so writers are not starved by a stream of readers.
+    // stopping at the first exclusive waiter so writers are not starved by a stream of readers
     void GrantWaiters() noexcept FO_TSA_REQUIRES(_mutex);
 
     // True if a thread OTHER than `self` currently holds a descendant-mark on this lock — i.e. some
     // other thread is working inside this entity's subtree, so an exclusive Acquire here must wait.
-    // Caller holds `_mutex`. Own marks (escalating up into a subtree you already hold) never block.
+    // Caller holds `_mutex`. Own marks (escalating up into a subtree you already hold) never block
     bool HasForeignDescendantHolder(std::thread::id self) const noexcept FO_TSA_REQUIRES(_mutex);
     // True if an exclusive waiter is already parked ahead — a new Shared/DescendantHold request queues
-    // behind it so a writer is not starved by a stream of readers/sibling marks. Caller holds `_mutex`.
+    // behind it so a writer is not starved by a stream of readers/sibling marks. Caller holds `_mutex`
     bool HasWaitingExclusive() const noexcept FO_TSA_REQUIRES(_mutex);
 
     mutable mutex _mutex {};
     std::atomic<std::thread::id> _ownerThread {};
     int32_t _recursionCount FO_TSA_GUARDED_BY(_mutex) {};
-    ThreadHoldCounts _sharedHolders FO_TSA_GUARDED_BY(_mutex) {}; // Per-thread shared ("read") holders with their recursion counts.
+    ThreadHoldCounts _sharedHolders FO_TSA_GUARDED_BY(_mutex) {}; // Per-thread shared ("read") holders with their recursion counts
     // Per-thread descendant-hold ("intention") counts: how many descendants of this lock's entity the
     // thread currently holds. A foreign entry blocks this lock's exclusive Acquire; the owner's own
-    // entry does not. Bumped by Register*, dropped by Unregister. Never coexists with `_sharedHolders`.
+    // entry does not. Bumped by Register*, dropped by Unregister. Never coexists with `_sharedHolders`
     ThreadHoldCounts _descendantHolders FO_TSA_GUARDED_BY(_mutex) {};
     list<WaitEntry> _waitQueue FO_TSA_GUARDED_BY(_mutex) {};
 };
@@ -227,7 +227,7 @@ private:
 // `refcount_ptr<ServerEntity>` needs `ServerEntity` complete for small_vector inline storage (its dtor
 // calls `Release()`), but this header forward-declares `ServerEntity` as a compile firewall. Only the
 // `ptr<EntityLock>` lists (a complete type, trivial dtor) go inline; the asymmetric container types are
-// forced by that constraint, and each list's move-assign partner must share its type.
+// forced by that constraint, and each list's move-assign partner must share its type
 using SyncLockList = small_vector<ptr<EntityLock>, 4>;
 
 class SyncContext final
@@ -260,7 +260,7 @@ public:
     // `Sync::Lock(...)` (which REPLACES `_heldLocks`) doesn't drop singletons under the caller's
     // feet. Recursion is supported per the EntityLock primitive — repeated LockSingleton calls
     // bump recursion, matched UnlockSingleton calls release. Job-exit (SyncContext destructor)
-    // drains both buckets so leaked singleton locks can't outlive a worker job.
+    // drains both buckets so leaked singleton locks can't outlive a worker job
     void LockSingleton(ptr<EntityLock> lock);
     void UnlockSingleton(ptr<EntityLock> lock);
 
@@ -270,18 +270,18 @@ private:
 
     // Trusted creation/registration boundary. Unlike ordinary EnsureEntitySynced, this may capture
     // an unpublished parentless entity that has no existing caller cover. Keep the C++ surface
-    // restricted to the two owners whose exact call sites are also pinned by the native audit.
+    // restricted to the two owners whose exact call sites are also pinned by the native audit
     void EnsureFreshEntitySynced(nptr<ServerEntity> entity);
     // Takes the target's own lock plus a descendant-mark on each separate-lock ancestor up to the cover as
     // one all-or-nothing state-mutex transaction, retried until it lands (see the body). TSA cannot follow
-    // the try-lock/roll-back batch, hence FO_TSA_NO_ANALYSIS.
+    // the try-lock/roll-back batch, hence FO_TSA_NO_ANALYSIS
     void FO_TSA_NO_ANALYSIS EnsureEntitySyncedImpl(ptr<ServerEntity> entity);
 
     // Acquire the exclusive cover (`locks`/`owners`) AND register the hierarchical intention marks
     // (`holds`/`hold_owners` — the cover owners' separate-lock ancestors) in ONE deadlock-free
     // ascending-address pass: exclusive locks via Acquire/TryAcquire, intention marks via
     // RegisterDescendantHold/TryRegisterDescendantHold. A single total order over the union of both
-    // makes the mixed acquire cycle-free. Replaces the whole held set (cover + intentions).
+    // makes the mixed acquire cycle-free. Replaces the whole held set (cover + intentions)
     void AcquireLocks(SyncLockList& locks, vector<refcount_ptr<ServerEntity>>&& owners, SyncLockList& holds, vector<refcount_ptr<ServerEntity>>&& hold_owners);
     // Deadlock-breaking escalation used by AcquireLocks when the non-parking back-off cannot make
     // progress (typically a nested context cross-holding locks against another thread's parent
@@ -292,7 +292,7 @@ private:
     // exclusive-recursion and descendant-hold counts exactly. Total resource ordering over the mixed
     // union makes this fair acquire deadlock-free regardless of what the thread (or its ancestors) held.
     // If the blocking re-acquire is aborted by shutdown, it rolls the whole union back to zero and
-    // clears the ancestor bookkeeping so the unwinding contexts don't release locks they no longer hold.
+    // clears the ancestor bookkeeping so the unwinding contexts don't release locks they no longer hold
     void AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
@@ -304,20 +304,20 @@ private:
     // a `Sync::Lock(cr)` block) leaves a dangling lock borrow here; the next SyncEntities call
     // would `ReleaseLocks` and crash. Keeping the owner alive via refcount until `ReleaseLocks`
     // runs guarantees the EntityLock storage outlives the held-lock list. Entries are never null:
-    // the engine singleton lock lives in the separate `_singletonLocks` bucket, not here.
+    // the engine singleton lock lives in the separate `_singletonLocks` bucket, not here
     vector<refcount_ptr<ServerEntity>> _heldLockOwners {};
     // Hierarchical intention marks: the SEPARATE-lock ancestors of every cover owner (a critter's map
     // and location, an item's map/location, …). Registered as descendant-holds so no other thread can
     // take any of those ancestors exclusively while we hold their descendant; compatible among siblings
     // marking the same ancestor. The parallel owner vector pins the ancestor entities so their
-    // `_ownedLock` storage outlives the hold. Reset together with `_heldLocks` (derived from the cover).
+    // `_ownedLock` storage outlives the hold. Reset together with `_heldLocks` (derived from the cover)
     SyncLockList _heldDescendantHolds {};
     vector<refcount_ptr<ServerEntity>> _heldDescendantHoldOwners {};
     // Singleton locks acquired via LockSingleton; survive SyncEntities replacement. Each entry
-    // is one outstanding LockSingleton call (so recursion tracking matches paired Unlock calls).
+    // is one outstanding LockSingleton call (so recursion tracking matches paired Unlock calls)
     SyncLockList _singletonLocks {};
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
-    // event-callback's nested context can pop back to the dispatcher's primary context cleanly.
+    // event-callback's nested context can pop back to the dispatcher's primary context cleanly
     nptr<SyncContext> _previousContext {};
 };
 
@@ -347,7 +347,7 @@ private:
 // Null-tolerant own-lock retention for an entity already covered by the active script/job context.
 // Never releases the caller's existing cover or blocks on an entity lock. It retries the all-or-nothing
 // state-mutex transaction with bounded back-off to absorb in-flight acquire/release windows, and throws
-// when there is no active context, the entity is uncovered, or the invariant-level retry budget is exhausted.
+// when there is no active context, the entity is uncovered, or the invariant-level retry budget is exhausted
 void EnsureEntitySynced(nptr<ServerEntity> entity);
 
 FO_END_NAMESPACE

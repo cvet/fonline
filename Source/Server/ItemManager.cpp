@@ -234,7 +234,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
             while (item->HasInnerItems()) {
                 ptr<Item> inner = item->GetAllInnerItems().front();
                 // Inner item is covered through the captured container's chain; the recursive
-                // DestroyItem takes the inner item's own lock itself as its teardown capture.
+                // DestroyItem takes the inner item's own lock itself as its teardown capture
                 ValidateEntityAccess(inner);
                 DestroyItem(inner);
             }
@@ -248,7 +248,7 @@ void ItemManager::DestroyItem(ptr<Item> item)
         }
 
         // Each teardown pass must strictly reduce the item's remaining dependencies; a non-converging
-        // loop is corruption, so terminate rather than leave a half-destroyed "undead" item.
+        // loop is corruption, so terminate rather than leave a half-destroyed "undead" item
         size_t remaining_deps = (item->GetOwnership() != ItemOwnership::Nowhere ? 1 : 0) + (item->HasInnerItems() ? item->GetAllInnerItems().size() : 0) + item->GetInnerEntitiesCount();
         FO_STRONG_ASSERT(remaining_deps < prev_deps, "Item destruction made no progress", item->GetId(), remaining_deps, prev_deps);
         prev_deps = remaining_deps;

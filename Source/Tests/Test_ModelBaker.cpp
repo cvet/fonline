@@ -1471,7 +1471,7 @@ ActionAnimEqual 4 6
     {
         // Default clip duration is 1.0s, so speed 1e6 yields 0.001ms, which rounds to a zero millisecond
         // count. The runtime model-anim-info load requires a positive duration, so baking must fail here
-        // rather than emit a manifest the client cannot load.
+        // rather than emit a manifest the client cannot load
         TestRig rounding_rig;
         AddModelInfoMetadata(rounding_rig);
         rounding_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\nAnimSpeed 0 1 1e6\n", 1);

@@ -1,38 +1,23 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: ThirdParty ===
-# Adds bundled engine libraries via AddSubdirectory().
-# Add or override behaviour via AddStageHook(ThirdParty Pre|Post <macro-name>).
+# Add bundled libraries and extend through AddStageHook(ThirdParty Pre|Post <macro-name>)
 
-# ---------------------------------------------------------------------------
-# Install the find_package() interceptor before any AddSubdirectory() call so
-# third-party CMakeLists cannot reach into the host system unannounced.
-# Project-side handlers (e.g. OpenSSL → bundled LibreSSL) must already be
-# registered by now via RegisterFindPackageHandler() — typically right
-# before AddThirdPartyLibraries() in the consuming project's CMakeLists.txt.
-#
-# Active on every platform. Adding a new third-party tree may require
-# registering further handlers if it brings in unexpected probes.
-# ---------------------------------------------------------------------------
+# Install find_package interception before AddSubdirectory so vendored trees cannot probe the host unexpectedly.
+# Projects must register every allowed or redirected package handler first
 
-# Baseline build-tool / system-meta packages we always accept from the host:
-# pthreads/Win32-thread metadata, the Python interpreter used by the codegen
-# step, optional Perl probes from third-party trees, pkg-config probes that
-# legitimately fall through on non-pkg systems, Git for version detection.
+# Allow baseline host build tools and system metadata: threads, Python, Perl, pkg-config, and Git
 RegisterFindPackageHandler(Threads   PassThroughFindPackage)
 RegisterFindPackageHandler(Python3   PassThroughFindPackage)
 RegisterFindPackageHandler(Perl      PassThroughFindPackage)
 RegisterFindPackageHandler(PkgConfig PassThroughFindPackage)
 RegisterFindPackageHandler(Git       PassThroughFindPackage)
-# Bundled-by-the-library Find modules (e.g. mongo-c-driver ships its own
-# FindUtf8Proc.cmake to drive its in-tree utf8proc copy). Let CMake's
-# standard find_package() pick those up via CMAKE_MODULE_PATH.
+# Allow vendored libraries' own Find modules through CMAKE_MODULE_PATH
 RegisterFindPackageHandler(Utf8Proc  PassThroughFindPackage)
 
-# Host runtime libs we deliberately use through SDL3 and engine code.
+# Host runtime libraries deliberately used through SDL3 and engine code
 if(FO_LINUX)
 	# X11 for display, OpenGL for rendering, ALSA for audio backend.
-	# CMake's FindX11 also probes Freetype and Fontconfig for Xft support.
+	# FindX11 also probes Freetype and Fontconfig for Xft support
 	RegisterFindPackageHandler(X11        PassThroughFindPackage)
 	RegisterFindPackageHandler(Freetype   PassThroughFindPackage)
 	RegisterFindPackageHandler(Fontconfig PassThroughFindPackage)
@@ -41,20 +26,17 @@ if(FO_LINUX)
 endif()
 if(FO_MAC)
 	# OpenGL framework on macOS (Init.cmake also probes it via RequirePackage,
-	# but SDL3 in ThirdParty re-probes from inside the interceptor scope).
+	# but SDL3 in ThirdParty re-probes from inside the interceptor scope)
 	RegisterFindPackageHandler(OpenGL PassThroughFindPackage)
 endif()
 
-# Optional probes from engine-bundled third-party trees that we do not bundle
-# and do not want to satisfy from the host. They must be reported as not-found
-# (the consumers handle the absence gracefully).
-# SDL3 probes:
+# Report unbundled optional probes as missing instead of satisfying them from the host
 RegisterFindPackageHandler(LibUSB              NotFoundFindPackage)
 RegisterFindPackageHandler(SdlAndroidPlatform  NotFoundFindPackage)
 RegisterFindPackageHandler(Java                NotFoundFindPackage)
 # glslang probe:
 RegisterFindPackageHandler(SPIRV-Tools-opt     NotFoundFindPackage)
-# tracy probe:
+# Tracy probe:
 RegisterFindPackageHandler(rocprofiler-sdk     NotFoundFindPackage)
 
 macro(find_package _fo_pkg_name)
@@ -139,9 +121,7 @@ SetCacheValues(
     ZLIB_LIBRARY "zlibstatic")
 SetCacheValues(ZLIB_USE_STATIC_LIBS ON)
 
-# Use IMPORTED INTERFACE (rather than ALIAS) so the target is visible to
-# try_compile() invocations launched from third-party CMakeLists.txt that
-# call find_package(ZLIB).
+# Use IMPORTED INTERFACE so third-party try_compile projects can see the ZLIB target
 SetValue(FO_ZLIB_INCLUDE_DIR_ABS "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ZLIB_DIR}")
 SetValue(FO_ZLIB_BINARY_DIR_ABS  "${CMAKE_CURRENT_BINARY_DIR}/${FO_ZLIB_DIR}")
 add_library(ZLIB::ZLIB INTERFACE IMPORTED GLOBAL)
@@ -149,10 +129,7 @@ set_target_properties(ZLIB::ZLIB PROPERTIES
     INTERFACE_LINK_LIBRARIES zlibstatic
     INTERFACE_INCLUDE_DIRECTORIES "${FO_ZLIB_INCLUDE_DIR_ABS};${FO_ZLIB_BINARY_DIR_ABS}")
 
-# Capture absolute paths now — the handler macro is expanded at the
-# find_package() call site (e.g. inside libpng or downstream consumers),
-# where CMAKE_CURRENT_SOURCE_DIR / FO_ZLIB_DIR would resolve to the
-# consumer subdirectory.
+# Capture absolute paths before handler expansion changes CMAKE_CURRENT_SOURCE_DIR
 macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
     set(ZLIB_FOUND TRUE)
     set(ZLIB_LIBRARY zlibstatic)
@@ -227,7 +204,7 @@ SetValue(SIZE64 int64_t)
 SetValue(USIZE64 uint64_t)
 include("${FO_OGG_DIR}/cmake/CheckSizes.cmake")
 # (FOnline Patch) The engine builds Ogg through a custom static target instead
-# of upstream CMake, so generate the Unix type header that os_types.h includes.
+# of upstream CMake, so generate the Unix type header that os_types.h includes
 configure_file("${FO_OGG_DIR}/include/ogg/config_types.h.in" "${FO_OGG_CONFIG_INCLUDE_DIR}/ogg/config_types.h" @ONLY)
 SetValue(FO_OGG_SOURCE
     "${FO_OGG_DIR}/src/bitwise.c"
@@ -479,9 +456,7 @@ if(FO_BUILD_SERVER_LIB)
         ENABLE_SSL OFF
         ENABLE_SASL OFF
         ENABLE_ZLIB SYSTEM
-        # We don't ship snappy or zstd, so disable both. Otherwise mongo-c-driver
-        # falls back to pkg_check_modules() and silently links against the host
-        # libraries on Linux build agents.
+        # Disable unbundled snappy and zstd so mongo-c cannot silently link host libraries
         ENABLE_SNAPPY OFF
         ENABLE_ZSTD OFF
         ENABLE_CLIENT_SIDE_ENCRYPTION OFF)

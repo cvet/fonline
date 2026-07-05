@@ -378,7 +378,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
     addr.sin_addr.s_addr = *resolved;
 
-    // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS.
+    // Switch to non-blocking before kicking off connect so we can return immediately on EWOULDBLOCK/EINPROGRESS
 #if FO_WINDOWS
     u_long mode = 1;
 

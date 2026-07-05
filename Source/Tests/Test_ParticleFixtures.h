@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 namespace ParticleTests
 {
     // Effekseer upstream Dev/Cpp/Test/Resource/Simple_GeneratingPosition1.efkproj (MIT), normalized
-    // by Effekseer Editor 1.80.5. Keep this compact source fixture independent of embedding projects.
+    // by Effekseer Editor 1.80.5. Keep this compact source fixture independent of embedding projects
     inline constexpr string_view SimpleGeneratingPositionProject = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -153,7 +153,7 @@ namespace ParticleTests
 
     // Effekseer upstream Dev/Cpp/Test/Resource/Simple_Sprite_FixedYAxis.efk (MIT), exported by
     // Effekseer 1.70e. Keep this tiny cooked fixture self-contained so the reusable engine tests
-    // do not depend on an embedding project's resource tree.
+    // do not depend on an embedding project's resource tree
     inline constexpr string_view SimpleSpriteFixedYAxisEffectHex = "534b464507000000010000001700000054006500780074007500720065002f005000610072007400690063006c006500300031002e0070006e006700"
                                                                    "000000000000000000000000803fffffffff01000000020000002c000000640000000200000002000000020000000100000000000000000000004600"
                                                                    "0000460000000000803f0000000001000000480000000000a040000000000000a0400000a0c0000000000000a0c00ad7233c000000000ad7233c0ad7"
@@ -165,7 +165,7 @@ namespace ParticleTests
 
     // Project-authored with Effekseer Editor 1.80.5 from a minimal six-instance Sprite node:
     // random sphere generation, Clamp sampling, and NormalOrder Z-sort. Only the Z-sort enum is
-    // patched below, so all three modes exercise the same modern cooked effect (SKFE version 1810).
+    // patched below, so all three modes exercise the same modern cooked effect (SKFE version 1810)
     inline constexpr string_view ZSortSpriteEffectHex = "534b464512070000010000001700000054006500780074007500720065002f005000610072007400690063006c006500300031002e0070006e006700"
                                                         "000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000010000000000"
                                                         "00000000803fffffffff00000000000000000000000000000000ffffffff0100000002000000010000000000000064000000ffffffffffffffffffff"
@@ -185,7 +185,7 @@ namespace ParticleTests
     // Effekseer upstream TestData Effects/Performance/ManyRings2 at commit
     // ed93b472428ae0a15e9bf6cd102b7116ddd60050, authored with Editor 1.80.3. This is its
     // self-contained SKFE/1810 cooked payload. MakeModernRingEffect limits the original 4000
-    // instances to a requested test count while preserving the Ring node and renderer parameters.
+    // instances to a requested test count while preserving the Ring node and renderer parameters
     inline constexpr string_view ModernRingEffectHex = "534b46451207000000000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000"
                                                        "0000000001000000000000000000803fffffffff00000000000000000000000000000000ffffffff0100000004000000010000000000000064000000"
                                                        "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa00f00000200000002000000020000000000000001000000"
@@ -237,7 +237,7 @@ namespace ParticleTests
         FO_VERIFY_AND_THROW(result.size() > texture_wrap_offset && result[texture_wrap_offset] == 0, "Effekseer test fixture layout changed");
 
         // The upstream fixture requests Repeat. FOnline atlases require Clamp, so this mirrors the
-        // one-field authoring patch documented for the production runtime-smoke copy.
+        // one-field authoring patch documented for the production runtime-smoke copy
         result[texture_wrap_offset] = 1;
         return result;
     }
@@ -284,7 +284,7 @@ namespace ParticleTests
     // viewpoint-dependent flag as a parameter, since that is the one strip sub-parameter the sample corpus exercises
     // both ways. Both are untextured - the compiler only assigns a colour texture index when it can read the image file
     // itself, which a compiled-in-memory fixture has no way to offer - so they draw their vertex colours through the
-    // renderer's white pixel, the same configuration the corpus uses for most of its tracks.
+    // renderer's white pixel, the same configuration the corpus uses for most of its tracks
     inline constexpr string_view StripProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -371,7 +371,7 @@ namespace ParticleTests
 
     // A model project and the mesh it references. The mesh is written here in Effekseer's own version-6 model layout
     // (version, scale, model count, frame count, then per frame the vertices and the faces indexing them) so the whole
-    // fixture stays self-contained: one unit quad, two faces, distinct vertex colours per corner.
+    // fixture stays self-contained: one unit quad, two faces, distinct vertex colours per corner
     inline constexpr string_view ModelProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -439,7 +439,7 @@ namespace ParticleTests
 </EffekseerProject>
 )EFFEKSEER";
 
-    // Effekseer culling: 0 = discard front faces, 1 = discard back faces, 2 = draw both.
+    // Effekseer culling: 0 = discard front faces, 1 = discard back faces, 2 = draw both
     inline auto MakeModelProject(int32_t culling) -> string
     {
         FO_VERIFY_AND_THROW(culling >= 0 && culling <= 2, "Effekseer model fixture culling mode is invalid", culling);
@@ -468,7 +468,7 @@ namespace ParticleTests
             write_float(x);
             write_float(y);
             write_float(0.0f);
-            // Normal, binormal and tangent are part of the layout but the renderer draws unlit meshes.
+            // Normal, binormal and tangent are part of the layout but the renderer draws unlit meshes
             for (size_t axis = 0; axis < 9; axis++) {
                 write_float(axis % 3 == 2 ? 1.0f : 0.0f);
             }
@@ -505,7 +505,7 @@ namespace ParticleTests
 
     // A sprite project whose material refracts the scene instead of drawing its own colour. The compiler only assigns a
     // texture index for an image it can measure, so the fixture is compiled from a directory holding the referenced
-    // file; MakeFixtureImageHeader writes just enough of a PNG for that measurement.
+    // file; MakeFixtureImageHeader writes just enough of a PNG for that measurement
     inline constexpr string_view DistortionProjectTemplate = R"EFFEKSEER(<?xml version="1.0" encoding="utf-8"?>
 <EffekseerProject>
   <Root>
@@ -579,7 +579,7 @@ namespace ParticleTests
         return strex(DistortionProjectTemplate, intensity, alpha_blend).str();
     }
 
-    // The Effekseer compiler reads an image only to learn its size, from the PNG signature and the first header chunk.
+    // The Effekseer compiler reads an image only to learn its size, from the PNG signature and the first header chunk
     inline auto MakeFixtureImageHeader(int32_t width, int32_t height) -> vector<uint8_t>
     {
         FO_VERIFY_AND_THROW(width > 0 && height > 0, "Fixture image size is invalid", width, height);

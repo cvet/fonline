@@ -472,13 +472,11 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
 {
     using namespace BakerTests;
 
-    // Regression: a baker may read another baker's output while the data source is still discovering outputs.
-    // ModelInfoBaker builds a BakerClientEngine during the discovery pass, which reads the baked metadata back
-    // through the data source (re-entrancy). Reindex must publish the input resources before the discovery loop
-    // and each discovered output to the live index as it goes, so this mid-loop on-demand read resolves; before
-    // the fix it found neither and threw MetadataNotFoundException, crashing every standalone tool that boots a
-    // BakerDataSource. A .fo3d input is required to make ModelInfoBaker build the engine at all - the plain
-    // dependency-order case above uses a non-model placeholder, so ModelInfoBaker returns before that point.
+    // A baker may read another baker's output while the data source is still discovering outputs: ModelInfoBaker
+    // builds a BakerClientEngine during the discovery pass, which reads the baked metadata back through the data
+    // source. Reindex must therefore publish the input resources before the discovery loop and each discovered
+    // output as it goes, so this re-entrant mid-loop read resolves. A .fo3d input is required to make
+    // ModelInfoBaker build the engine at all - the plain dependency-order case above uses a non-model placeholder
     string temp_dir = MakeTempBakerSetupDir("baker_data_source_reentrant_metadata");
     string metadata_input_path = strex(temp_dir).combine_path("metadata_input/Metadata.fos").str();
     string model_desc_path = strex(temp_dir).combine_path("model_input/Test.fo3d").str();
@@ -497,7 +495,7 @@ TEST_CASE("BakerDataSourceResolvesMetadataReadDuringModelInfoDiscovery")
     SetBakerSetupFileWriteTime(model_mesh_path, source_time);
 
     // RegisterClientStubMetadata reads the server, client and mapper metadata; write all three newer than the
-    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery.
+    // source so the re-entrant resolve returns them from disk instead of re-baking mid-discovery
     array<string_view, 3> metadata_targets = {"server", "client", "mapper"};
 
     for (const string_view target : metadata_targets) {
@@ -527,7 +525,7 @@ Bakers = {}
 
     settings.ApplyConfigFile(config, temp_dir);
 
-    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read.
+    // Construction runs Reindex, whose output-discovery pass triggers the re-entrant metadata read
     CHECK_NOTHROW(BakerDataSource {&settings});
 
     BakerDataSource data_source {&settings};

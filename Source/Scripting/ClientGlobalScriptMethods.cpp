@@ -1239,11 +1239,7 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
 #if FO_ENABLE_3D
     size_t instance_index = numeric_cast<size_t>(instance);
 
-    // x y
-    // rx ry rz
-    // sx sy sz
-    // speed
-    // scissor l t r b
+    // Layout: xy, rotation xyz, scale xyz, speed, scissor ltrb
     if (instance_index >= client->DrawCritterModel.size()) {
         client->DrawCritterModel.resize(instance_index + 1);
         client->DrawCritterModelCrType.resize(instance_index + 1);

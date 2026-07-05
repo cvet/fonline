@@ -147,7 +147,7 @@ enum class DepthFuncType : uint8_t
 // orthogonal to the shader, so selecting it per draw avoids one effect file per combination. An effect opts in with
 // `DepthVariants = True`; only then are the alternative variants built, so every other effect stays exactly as costly
 // as before. "Test" reuses the comparison the effect declares; "NoTest" replaces it with a comparison that always
-// passes.
+// passes
 enum class DepthVariantType : uint8_t
 {
     FromEffect, // Default (zero-init): the state declared by the effect file
@@ -160,7 +160,7 @@ enum class DepthVariantType : uint8_t
 constexpr size_t EFFECT_DEPTH_VARIANTS = 4;
 
 // Which faces a draw discards. Both 3D models and particle content carry this per draw, so it is a property of the draw
-// rather than of the effect's usage; the zero-initialised default draws both faces, which is what a 2D batch wants.
+// rather than of the effect's usage; the zero-initialised default draws both faces, which is what a 2D batch wants
 enum class CullModeType : uint8_t
 {
     None, // Default (zero-init)
@@ -260,7 +260,7 @@ public:
     // Uniform-buffer payloads consumed by the per-effect GLSL/HLSL/MSL passes.
     // All members are float32 in std140 layout (vec4-aligned). For each buffer
     // the comment lists the corresponding GLSL declaration and which channel
-    // holds what; producers cited in parentheses.
+    // holds what; producers cited in parentheses
 
     // GLSL: uniform ProjBuf { mat4 ProjMatrix; };
     // Column-major 4x4 view-proj matrix.
@@ -333,7 +333,7 @@ public:
 
     // GLSL: uniform ScriptValueBuf { vec4 ScriptValue[EFFECT_SCRIPT_VALUES / 4]; };
     // Flat float pool indexed by ExportMethod Game.SetEffectScriptValue(idx, value).
-    // Slot meanings are project-defined; see Scripts/EffectSlots.fos in this game.
+    // Slot meanings are project-defined; see Scripts/EffectSlots.fos in this game
     struct ScriptValueBuffer
     {
         float32_t ScriptValue[EFFECT_SCRIPT_VALUES] {};
@@ -363,7 +363,7 @@ public:
     //                        effects pinned to the screen frame (vignette, sun bleach,
     //                        film grain, heat warp). .xy + .zw = (step_xy + 1) * draw_scale.
     // Populated by MapView::DrawMap right before the FlushMap pass so weather/dust/rain
-    // shaders can sample world-anchored coords without per-frame scripts.
+    // shaders can sample world-anchored coords without per-frame scripts
     struct CameraBuffer
     {
         float32_t MapAnchorScreenPos[4] {};
@@ -386,7 +386,7 @@ public:
     // GLSL: uniform ModelTexBuf { vec4 TexAtlasOffset[MAX_TEXTURES]; vec4 TexSize[MAX_TEXTURES]; };
     //   TexAtlasOffset[i] = .xy atlas UV origin, .zw atlas UV scale of texture i.
     //   TexSize[i]        = .xy width/height px, .zw 1/width 1/height (matches MainTexBuf format).
-    // Used by 3D shaders that sample multiple model textures (normal map etc.).
+    // Used by 3D shaders that sample multiple model textures (normal map etc.)
     struct ModelTexBuffer
     {
         float32_t TexAtlasOffset[4 * MODEL_MAX_TEXTURES] {};
@@ -454,21 +454,21 @@ public:
     [[nodiscard]] auto HasDepthVariants() const noexcept -> bool { return _depthVariants; }
 
     // Backends that bake the cull mode into a device object or pipeline build one per mode the effect can be drawn
-    // with. Only an effect that declares cull variants pays for the extra objects; every other effect draws both faces.
+    // with. Only an effect that declares cull variants pays for the extra objects; every other effect draws both faces
     [[nodiscard]] auto IsCullModeUsed(CullModeType cull_mode) const noexcept -> bool { return _cullVariants || cull_mode == CullModeType::None; }
 
     // The current draw's cull mode, checked against what the effect actually built: a backend that silently skipped the
-    // missing object would drop the draw or fall back to a different mode instead of reporting the mismatch.
+    // missing object would drop the draw or fall back to a different mode instead of reporting the mismatch
     [[nodiscard]] auto ResolveCullMode() const -> CullModeType;
 
     // Depth state the current draw resolves to, and the variant slot that state lives in. ResolveDepthVariantSlot
-    // rejects a state the effect did not build, keeping device-object and immediate-state backends consistent.
+    // rejects a state the effect did not build, keeping device-object and immediate-state backends consistent
     [[nodiscard]] auto GetDepthWrite(size_t pass) const noexcept -> bool;
     [[nodiscard]] auto GetDepthFunc(size_t pass) const noexcept -> DepthFuncType;
     [[nodiscard]] auto ResolveDepthVariantSlot(size_t pass) const -> size_t;
 
     // Backends that bake depth state into a device object build one per used slot and index it at draw time with
-    // ResolveDepthVariantSlot. A slot is used only when the effect declares variants or the slot is the effect's own.
+    // ResolveDepthVariantSlot. A slot is used only when the effect declares variants or the slot is the effect's own
     [[nodiscard]] auto IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexcept -> bool;
     [[nodiscard]] auto GetDepthVariantWrite(size_t slot) const noexcept -> bool;
     [[nodiscard]] auto GetDepthVariantFunc(size_t pass, size_t slot) const noexcept -> DepthFuncType;
@@ -476,7 +476,7 @@ public:
     // Input data
     nptr<const RenderTexture> MainTex {};
     nptr<const RenderTexture> IndoorMaskTex {};
-    // A copy of the scene as it was before this draw, for effects that refract what is behind them.
+    // A copy of the scene as it was before this draw, for effects that refract what is behind them
     nptr<const RenderTexture> BackgroundTex {};
     bool DisableBlending {};
     DepthVariantType DepthVariant {};

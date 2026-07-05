@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "SpriteMeshing.h"
 #include "Settings.h"
@@ -315,7 +316,7 @@ static auto DilateSpriteMask(const vector<uint8_t>& source, int32_t width, int32
     vector<uint8_t> horizontal(source.size());
     vector<uint8_t> result(source.size());
 
-    // A separable square dilation keeps the configured pixel padding conservative while staying linear in image area.
+    // A separable square dilation keeps the configured pixel padding conservative while staying linear in image area
     for (int32_t y = 0; y < height; y++) {
         size_t visible_count = 0;
         int32_t initial_right = std::min(width - 1, radius);
@@ -401,7 +402,7 @@ static auto RoundSpriteIntersectionPoint(float64_t x, float64_t y) -> optional<i
     // Nearly parallel support lines intersect arbitrarily far from the frame, and iround throws instead of
     // saturating, so unrepresentable coordinates must be rejected before conversion. The bound sits far outside
     // any frame yet well inside the int32 range, so the callers keep owning the actual frame range checks.
-    // The negated form also rejects the non-finite coordinates that iround refuses.
+    // The negated form also rejects the non-finite coordinates that iround refuses
     constexpr float64_t coordinate_bound = 1.0e9;
 
     if (!(std::abs(x) <= coordinate_bound && std::abs(y) <= coordinate_bound)) {
@@ -717,7 +718,7 @@ static auto RemoveEnclosingSpriteContourPoint(vector<ipos32>& points, size_t poi
     }
 
     // Preserve the removed exterior support point by moving the replacement chord through it;
-    // intersecting the adjacent edge lines keeps the vertex count one lower without clipping the contour.
+    // intersecting the adjacent edge lines keeps the vertex count one lower without clipping the contour
     float64_t replacement_x = removed.x;
     float64_t replacement_y = removed.y;
 
@@ -899,7 +900,7 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
             }
 
             if (!is_visible(x, y - 1)) {
-                // Boundary edges are clockwise in screen coordinates, with opaque pixels on their right side.
+                // Boundary edges are clockwise in screen coordinates, with opaque pixels on their right side
                 add_edge({x, y}, 0);
             }
             if (!is_visible(x + 1, y)) {
@@ -943,7 +944,7 @@ static auto ExtractSpriteContours(const vector<uint8_t>& mask, int32_t width, in
             }
 
             const uint8_t candidate_directions[] = {
-                // Prefer keeping the same opaque component on the right. This also separates diagonal pixel islands.
+                // Prefer keeping the same opaque component on the right. This also separates diagonal pixel islands
                 numeric_cast<uint8_t>((incoming_direction + 1) % 4),
                 incoming_direction,
                 numeric_cast<uint8_t>((incoming_direction + 3) % 4),
@@ -2731,7 +2732,7 @@ static auto TryBuildBestSpriteMesh(const vector<uint8_t>& original_mask, const v
 
                     // Douglas-Peucker bounds discarded points by the tolerance. Expanding by
                     // that distance turns a simplified contour into a cover candidate; any
-                    // resulting transparent overdraw is compared by the normal score.
+                    // resulting transparent overdraw is compared by the normal score
                     int32_t enclosing_dilation = std::min(SPRITE_MESH_MAXIMUM_PADDING, SPRITE_MESH_DILATION + iround<int32_t>(std::ceil(tolerance)));
                     vector<SpriteMeshCandidate> expanded_candidates = BuildSimplifiedSpriteCandidates(*simplified_contours, width, height, enclosing_dilation, config.MaxTriangles);
                     validate_detailed_candidates(expanded_candidates, {}, SpriteMeshCandidateSource::DetailedExpanded, enclosing_dilation);

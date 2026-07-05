@@ -304,7 +304,7 @@ endif()
 # excuses in BuildTools/cmake/helpers/Build.cmake (DisableLibWarnings: -fno-sanitize=function,alignment for SQLite /
 # AngelScript bytecode packing / C-callback idioms) — those are genuine upstream design, not our code.
 
-# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html).
+# Clang Thread Safety Analysis (https://clang.llvm.org/docs/ThreadSafetyAnalysis.html)
 # Enforced as a hard error on every Clang toolchain (native clang, clang-cl, AppleClang, Emscripten, Android NDK).
 # FO_TSA_* annotation macros are no-ops on MSVC/GCC, and third-party code is silenced via DisableLibWarnings, so the
 # analysis is confined to first-party engine + SourceExt code. clang-cl uses the cl-style driver, so the GNU-style

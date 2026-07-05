@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: Applications ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(Applications Pre|Post <macro-name>).
+# Build applications and extend through AddStageHook(Applications Pre|Post <macro-name>)
 
 # Applications
 StatusMessage("Applications:")

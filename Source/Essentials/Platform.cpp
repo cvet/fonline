@@ -369,7 +369,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     FILETIME user_time {};
 
     if (::GetProcessTimes(::GetCurrentProcess(), &creation_time, &exit_time, &kernel_time, &user_time) != 0) {
-        // FILETIME process times are in 100 ns units.
+        // FILETIME process times are in 100 ns units
         result.ProcessTimeNs = (file_time_to_uint64(kernel_time) + file_time_to_uint64(user_time)) * 100;
     }
 
@@ -549,7 +549,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return 0;
         }
 
-        // task_info time_value_t fields are seconds + microseconds.
+        // task_info time_value_t fields are seconds + microseconds
         return static_cast<uint64_t>(info.user_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.user_time.microseconds) * 1000ULL + static_cast<uint64_t>(info.system_time.seconds) * 1000000000ULL + static_cast<uint64_t>(info.system_time.microseconds) * 1000ULL;
     }();
 #endif

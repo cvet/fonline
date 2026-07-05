@@ -76,7 +76,7 @@ namespace BakerTests
     // Test rigs embed tiny scripts that intentionally use mutable module-level globals as
     // observation hooks. List every namespace those embedded scripts declare; production scripts
     // compile through their own settings instance and stay gated. The gate-test namespace
-    // (MutableGlobal) is intentionally excluded so the gate-test still fires.
+    // (MutableGlobal) is intentionally excluded so the gate-test still fires
     inline auto GetTestMutableGlobalsAllowedNamespaces() -> vector<string>
     {
         return {
@@ -136,7 +136,7 @@ namespace BakerTests
 
     // Serializes a full metadata blob in the `Metadata.fometa-*` wire format: u16 section count, then per
     // section { u16+name, u32 entry count, per entry { u32 token count, per token u16+text } }. Lets a test
-    // declare dynamic Entity / EntityHolder / Property / Event / FixedType metadata without hand-packing bytes.
+    // declare dynamic Entity / EntityHolder / Property / Event / FixedType metadata without hand-packing bytes
     inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
     {
         vector<uint8_t> metadata;
@@ -213,7 +213,7 @@ namespace BakerTests
     // the same entity type into one pack and lets the caller mutate each proto's default properties via
     // a configure callback (invoked before properties are serialized). Matches the proto pack format read
     // by ProtoManager::LoadFromResources: u32 hashes_count, u32 types_count, then per type
-    // { u32 protos_count, u16+type_name, per proto { u16+proto_name, u32+props_data } }.
+    // { u32 protos_count, u16+type_name, per proto { u16+proto_name, u32+props_data } }
     template<typename ProtoType>
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
@@ -249,7 +249,7 @@ namespace BakerTests
 
     // Minimal valid baked sprite blob (the versioned single-frame format read by
     // DefaultSpriteFactory::LoadSprite). Produces a width x height fully-opaque white image so that
-    // headless font/sprite binding succeeds under NullRenderer without shipping real baked art.
+    // headless font/sprite binding succeeds under NullRenderer without shipping real baked art
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
@@ -424,7 +424,7 @@ namespace BakerTests
     inline auto GetTestSettings() -> ptr<GlobalSettings>
     {
         // GlobalSettings holds member references back to *this (Common, Network, ...), so it can't
-        // be safely moved out of a lambda. Construct in place and initialize once via call_once.
+        // be safely moved out of a lambda. Construct in place and initialize once via call_once
         static GlobalSettings instance(true);
         static std::once_flag once;
         std::call_once(once, [] { instance.ApplyDefaultSettings(); });
@@ -466,7 +466,7 @@ namespace BakerTests
             // Match MakeScriptCompilerSettings — the gate also fires at runtime when ServerEngine
             // loads bytecode, so the runtime settings need the same allowlist as the compile-time
             // ones. The gate-test (Test_AngelScriptBaker) intentionally bypasses this default by
-            // re-overriding the field on its TestRig instance before compiling.
+            // re-overriding the field on its TestRig instance before compiling
             OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
             auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");

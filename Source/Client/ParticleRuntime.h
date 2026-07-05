@@ -63,7 +63,7 @@ struct ParticleSceneBackgroundResult
 // Unavailable result means there is no scene to refract and fails the particle closed. Deferred is narrower: a
 // direct-scene owner is performing an auxiliary offscreen preview, so this draw is skipped without retiring the
 // particle and the later scene draw can ask again. Called only by a draw that needs it, so an ordinary particle never
-// pays for the copy.
+// pays for the copy
 using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()>;
 
 // Bake-time extent of a particle system, kept as two separable quantities because they do not transform alike. The
@@ -71,7 +71,7 @@ using ParticleSceneBackgroundProvider = function<ParticleSceneBackgroundResult()
 // frame scale, entity scale) in full and rotates with the model's facing. The billboard radius is the largest
 // half-extent one particle's camera-facing sprite reaches: it follows only the placement's *scale*, because a sprite
 // always faces the camera and keeps the same screen footprint at every facing, so it is added once in the view plane
-// and never rotated or swept.
+// and never rotated or swept
 struct ParticleBounds3D
 {
     vec3 PositionMin {};
@@ -80,13 +80,13 @@ struct ParticleBounds3D
 };
 
 // Validate a measured bake-time extent. An inverted or non-finite box and a negative radius mean the baked data cannot
-// frame anything, so the caller reserves no space instead of trusting it.
+// frame anything, so the caller reserves no space instead of trusting it
 auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>;
 
 // Fold a bake-time extent through a frame transform (the emitter's world placement combined with the view matrix).
 // The position box follows the matrix outright; the billboard radius follows only its scale, because the renderers
 // scale a sprite with the effect's placement while a camera-facing quad keeps the same screen footprint at every
-// facing - so the radius must never be rotated or swept.
+// facing - so the radius must never be rotated or swept
 auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>;
 
 struct ParticleRuntimeSetup
@@ -152,12 +152,12 @@ public:
 };
 
 // Create particle runtime backends for all available particle systems.
-// The returned vector is sorted by backend priority, with the first backend being the most preferred.
+// The returned vector is sorted by backend priority, with the first backend being the most preferred
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>;
 
 // Debug wireframe overlay for particle geometry: re-draws a particle draw buffer's triangles as a line list through
 // the primitive effect with the same projection, mirroring the sprite-batch wireframe from Render.DrawWireframe. The
-// overlay buffer is created lazily on first use and reused between draws.
+// overlay buffer is created lazily on first use and reused between draws
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix);
 
 FO_END_NAMESPACE

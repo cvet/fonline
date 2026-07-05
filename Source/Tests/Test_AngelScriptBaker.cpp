@@ -152,7 +152,7 @@ TEST_CASE("AngelScript mutable globals are disallowed")
     using namespace BakerTests;
 
     // Defaults: ScriptSettings::MutableGlobalsAllowedSourcePaths is empty, so no path is exempt.
-    // The gate must fire for any non-const module-level global.
+    // The gate must fire for any non-const module-level global
     TestRig rig;
     rig.AddBakedFile("Metadata.fometa-server", MakeEmptyMetadataBlob());
 

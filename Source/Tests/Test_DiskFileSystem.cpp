@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -158,15 +159,15 @@ TEST_CASE("DiskFileSystem")
         string root = strex("/data").combine_path("user").str();
         string nested_relative = strex("Resources").combine_path("Sub").str();
 
-        // Portable layout (empty root): the relative path is returned unchanged, written next to the exe.
+        // Portable layout (empty root): the relative path is returned unchanged, written next to the exe
         CHECK(fs_make_writable_path("", "Cache") == "Cache");
         CHECK(fs_make_writable_path("", nested_relative) == nested_relative);
 
-        // Installed layout: the relative path is layered under the writable root.
+        // Installed layout: the relative path is layered under the writable root
         CHECK(fs_make_writable_path(root, "Cache") == strex(root).combine_path("Cache").str());
         CHECK(fs_make_writable_path(root, nested_relative) == strex(root).combine_path(nested_relative).str());
 
-        // An already-absolute relative path is never relocated under the root, in either layout.
+        // An already-absolute relative path is never relocated under the root, in either layout
         string absolute_input = MakeTempTestDir("diskfs_writable_abs");
         CHECK(fs_is_absolute_path(absolute_input));
         CHECK(fs_make_writable_path(root, absolute_input) == absolute_input);

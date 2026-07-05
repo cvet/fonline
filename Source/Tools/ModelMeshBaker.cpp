@@ -104,7 +104,7 @@ static void PrepareModelMeshOptimizationRuntime()
     FO_STACK_TRACE_ENTRY();
 
     // meshoptimizer exposes one allocator table per linked module. This synchronization has no
-    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs.
+    // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs
     static std::once_flag init_once;
     std::call_once(init_once, [] { meshopt_setAllocator(&ModelMeshOptimizationAllocator::Allocate, &ModelMeshOptimizationAllocator::Deallocate); });
 }

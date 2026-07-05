@@ -46,7 +46,7 @@ FO_BEGIN_NAMESPACE
 // Reinterpret an opaque `void` pointer back to a typed nullable borrow. Lives here (not in BasicCore) because
 // the nullable-borrow return type `nptr<T>` needs the smart-pointer vocabulary. The pointer type is spelled as
 // the caller expects (`cast_from_void<T*>(vp)`), and the result is `nptr<T>` — deref/pass it through the wrapper
-// vocabulary. Raw `void*`, `ptr<void>`, and `nptr<void>` sources are accepted.
+// vocabulary. Raw `void*`, `ptr<void>`, and `nptr<void>` sources are accepted
 template<typename T, typename U>
     requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
 [[nodiscard]] inline auto cast_from_void(U ptr) noexcept -> nptr<std::remove_pointer_t<T>>
@@ -273,7 +273,7 @@ template<typename T>
 }
 
 // RAII holder for a value-typed C resource bracketed by paired init/clear free functions (e.g. th_info_init / th_info_clear).
-// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction.
+// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction
 template<typename T, auto InitFn, auto ClearFn>
     requires(std::is_invocable_v<decltype(InitFn), T*> && std::is_invocable_v<decltype(ClearFn), T*>)
 struct scoped_init_clear

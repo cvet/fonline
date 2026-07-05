@@ -54,7 +54,7 @@ ServerEntity::~ServerEntity()
 
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
-    // but if something slipped through, this destructor still releases cleanly.
+    // but if something slipped through, this destructor still releases cleanly
     if (auto parent = _parent.load(std::memory_order_relaxed); parent) {
         parent->Release();
     }
@@ -221,7 +221,7 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
         // coverage is a read-path right only; there is no empty-context free pass). The only exemption
         // is a thread with no sync context at all (non-server threads). Stop-the-world owners
         // (ServerEngine::Lock / Shutdown) satisfy this naturally: their reparents run through the
-        // capture paths (EnsureEntitySynced), which take the entity's own lock.
+        // capture paths (EnsureEntitySynced), which take the entity's own lock
         FO_VERIFY_AND_CONTINUE(!ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
     }
 
@@ -246,12 +246,12 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         return EventResult::ContinueChain;
     }
 
-    // Engine-wide invariant: a primary SyncContext is always active when an event fires.
+    // Engine-wide invariant: a primary SyncContext is always active when an event fires
     FO_STRONG_ASSERT(SyncContext::GetCurrentOnThisThread(), "Server entity event fired without active sync context");
 
     bool had_exception = false;
 
-    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work.
+    // Iterate a copy — callbacks vector may be changed/invalidated during cycle work
     small_vector<EventCallbackData, 4> callbacks_snapshot(callbacks.begin(), callbacks.end());
 
     for (const auto& cb : callbacks_snapshot) {

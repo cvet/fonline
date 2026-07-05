@@ -67,15 +67,14 @@ static void RunSelfTestCrash(string_view mode)
 
     WriteLog(LogType::Warning, "Diagnostic self-test: inducing crash '{}'", mode);
 
-    // Non-main-thread variants: a raw std::thread is the faithful model of an
-    // unguarded engine thread dying (WorkThread jobs are try/catch wrapped, so a
-    // job throw is reported-and-continued rather than a process kill).
+    // Raw std::thread models an unguarded engine-thread failure.
+    // WorkThread catches job exceptions and therefore cannot exercise process termination
     if (strvex(mode).starts_with("thread_")) {
         string main_mode = strex("main_{}", mode.substr(std::size("thread_") - 1)).str();
 
         auto crasher = std::thread([main_mode] {
             // Mirror what every long-lived engine worker thread does at entry so the self-test
-            // faithfully exercises a properly set-up thread (notably for stack-overflow crashes).
+            // faithfully exercises a properly set-up thread (notably for stack-overflow crashes)
             InstallCrashHandlerStackForThisThread();
             RunSelfTestCrash(main_mode);
         });
@@ -121,7 +120,7 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
     FO_NO_STACK_TRACE_ENTRY();
 
     // Launder the address through volatile so the optimizer cannot fold the
-    // access away as undefined behavior; the volatile-qualified access must be emitted.
+    // access away as undefined behavior; the volatile-qualified access must be emitted
     volatile uintptr_t laundered = address;
     volatile int* ptr = reinterpret_cast<volatile int*>(laundered);
 
@@ -133,7 +132,7 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
         ignore_unused(value);
     }
 
-    // Unreachable on any real platform; abort loudly if the access was somehow tolerated.
+    // Unreachable on any real platform; abort loudly if the access was somehow tolerated
     std::abort();
 }
 
@@ -155,7 +154,7 @@ static auto RecurseUntilStackOverflow(int depth) -> int
     FO_NO_STACK_TRACE_ENTRY();
 
     // A large volatile frame plus using it after the recursive call defeats both
-    // tail-call optimization and register promotion, so each frame really grows the stack.
+    // tail-call optimization and register promotion, so each frame really grows the stack
     volatile char blocker[8192];
     blocker[0] = static_cast<char>(depth & 0xFF);
     blocker[sizeof(blocker) - 1] = static_cast<char>(depth & 0xFF);
@@ -202,9 +201,8 @@ static void CrashByNoexceptThrow() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // A noexcept function that calls a throwing helper: the escaping exception cannot cross the
-    // noexcept boundary, so std::terminate is invoked. This is the classic real-world terminate bug.
-    // The trailing abort is intentionally unreachable defensive code (the throw never returns).
+    // Escaping a noexcept boundary invokes std::terminate.
+    // The trailing abort is intentionally unreachable
     ThrowSelfTestException();
     std::abort();
 }
@@ -221,7 +219,7 @@ static void CrashByThrow()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Propagates up to the application entry point's catch and the graceful exception reporter.
+    // Propagates up to the application entry point's catch and the graceful exception reporter
     throw GenericException("Self-test crash: unhandled exception");
 }
 

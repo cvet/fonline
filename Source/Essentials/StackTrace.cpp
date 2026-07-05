@@ -444,9 +444,7 @@ static auto ResolveFunctionKey(NativeStackFrameAddress addr) noexcept -> uintptr
     }
 
     try {
-        // backward stores the function entry address in `object_base + relative offset` form
-        // on POSIX, but on Windows we approximate by collapsing all IPs that resolve to the
-        // same symbol name into a single key.
+        // POSIX exposes object-relative function entries; Windows approximates them by symbol name
         return ResolveNativeFrame(addr, 0).FunctionKey;
     }
     catch (...) {
@@ -578,7 +576,7 @@ static void StoreResolvedNativeFrameInCache(NativeStackFrameAddress addr, const 
         state.ResolvedNativeFrameOrder.emplace_back(key);
     }
     catch (...) {
-        // The cache is opportunistic; symbol resolution itself must still succeed if caching cannot allocate.
+        // The cache is opportunistic; symbol resolution itself must still succeed if caching cannot allocate
     }
 }
 
@@ -628,9 +626,8 @@ static auto IsLowNativeAddress(NativeStackFrameAddress addr) noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Unit tests synthesize native frames with small integer addresses. These are not
-    // userspace instruction pointers on supported native platforms, and POSIX symbol
-    // resolvers can be extremely slow or return the same "??" symbol for all of them.
+    // Small synthetic test addresses are not valid native instruction pointers.
+    // Skip slow and ambiguous POSIX symbol resolution for them
     return addr < 0x10000U;
 }
 
@@ -670,12 +667,8 @@ static auto GetNativeTraceResolver() noexcept -> backward::TraceResolver&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Intentionally process-lifetime and never destroyed. backward-cpp resolves native frames through
-    // libbfd, which slurps each binary's symbol table and DWARF debug info into caches hung off the open
-    // bfd handle and never fully releases them on bfd_close. Reusing one resolver loads every binary at
-    // most once (instead of once per resolved range/key), and keeping it reachable from this static root
-    // for the whole process keeps those libbfd caches reachable, so LeakSanitizer does not report them.
-    // The resolver is not thread-safe; callers serialize access via StackTraceState::NativeResolverLocker.
+    // Keep one process-lifetime resolver so libbfd caches each binary once and remains reachable to LeakSanitizer.
+    // NativeResolverLocker serializes this non-thread-safe object
     static backward::TraceResolver* resolver = new backward::TraceResolver();
     return *resolver;
 }

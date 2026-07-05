@@ -2151,7 +2151,7 @@ FO_SCRIPT_API string Common_ImGui_SaveIniSettingsToMemory([[maybe_unused]] ptr<S
     return data ? string(data.get(), ini_size) : string {};
 }
 
-// Keep script enum bindings in sync with upstream Dear ImGui constants.
+// Keep script enum bindings in sync with upstream Dear ImGui constants
 static_assert(static_cast<int>(ImGui_WindowFlags::None) == ImGuiWindowFlags_None);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoTitleBar) == ImGuiWindowFlags_NoTitleBar);
 static_assert(static_cast<int>(ImGui_WindowFlags::NoResize) == ImGuiWindowFlags_NoResize);

@@ -16,7 +16,7 @@ FO_BEGIN_NAMESPACE
 TEST_CASE("ModelSpriteParticleFrameExpansionMovesPivotWithEnvelope", "[model][particle]")
 {
     // Regression: a full-frame particle crop used to keep (16,65) while growing to 118x160, appending all new
-    // space to the right and bottom and leaving the critter in the upper-left of the advertised particle frame.
+    // space to the right and bottom and leaving the critter in the upper-left of the advertised particle frame
     optional<ModelSpriteFramePlacement> placement = CalculateModelSpriteFramePlacement(-40.0f, -71.0f, 74.0f, 85.0f, {16, 65}, 2.0f, {32, 74});
 
     REQUIRE(placement);
@@ -51,7 +51,7 @@ TEST_CASE("ModelSpriteParticleFramePlacementClampsExtremeFiniteBounds", "[model]
 TEST_CASE("ModelSpriteFramePlacementMergeContainsAlternatingEqualSizePivots", "[model][particle]")
 {
     // Regression: a live attack-frame envelope alternated between adjacent pivots while retaining its 58x86 size.
-    // Replacing the placement never converged; their root-relative union is only one pixel larger on each affected axis.
+    // Replacing the placement never converged; their root-relative union is only one pixel larger on each affected axis
     optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {16, 65}}, ModelSpriteFramePlacement {.Size = {58, 86}, .Pivot = {17, 64}});
 
     REQUIRE(merged);
@@ -74,7 +74,7 @@ TEST_CASE("ModelSpriteFramePlacementMergeContainsAlternatingEqualSizePivots", "[
 TEST_CASE("ModelSpriteFramePlacementMergeAllowsRootOutsideTightFrame", "[model][particle]")
 {
     // Regression: a preview model's tight envelope was entirely left of its root, so the current X pivot was five
-    // pixels beyond the frame. That is a valid placement and must merge with a wider particle/animation envelope.
+    // pixels beyond the frame. That is a valid placement and must merge with a wider particle/animation envelope
     optional<ModelSpriteFramePlacement> merged = MergeModelSpriteFramePlacements(ModelSpriteFramePlacement {.Size = {130, 266}, .Pivot = {135, 210}}, ModelSpriteFramePlacement {.Size = {270, 274}, .Pivot = {98, 191}});
 
     REQUIRE(merged);
@@ -98,7 +98,7 @@ TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
 {
     // The view rect anchors the critter name, so it must never advertise more space than the model actually draws in.
     // Its bounds are the idle-pose subset of the model bounds, and the layout must keep that containment: the regression
-    // this pins is a view box grown from live poses and attachments until it dwarfed the frame and the name drifted up.
+    // this pins is a view box grown from live poses and attachments until it dwarfed the frame and the name drifted up
     const ModelBounds3D model_bounds = {.Min = {-0.9f, 0.0f, -0.7f}, .Max = {0.9f, 2.4f, 0.7f}};
     const ModelBounds3D view_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
     const mat44 identity {1.0f};
@@ -119,7 +119,7 @@ TEST_CASE("ModelSpriteViewRectStaysInsideTheDrawRectOfWiderBounds", "[model]")
 TEST_CASE("ModelSpriteViewBoundsFollowALowerPoseButNeverAHigherOne", "[model]")
 {
     // A corpse or a prone body must wear its name at its own height, not at standing height, so a lower animation box
-    // replaces the idle one. The opposite must not happen: a raised weapon or an overhead swing may not lift the name.
+    // replaces the idle one. The opposite must not happen: a raised weapon or an overhead swing may not lift the name
     const ModelBounds3D idle_bounds = {.Min = {-0.3f, 0.0f, -0.25f}, .Max = {0.3f, 1.8f, 0.25f}};
     const ModelBounds3D lying_bounds = {.Min = {-0.9f, 0.0f, -0.3f}, .Max = {0.9f, 0.4f, 0.3f}};
     const ModelBounds3D overhead_bounds = {.Min = {-0.6f, 0.0f, -0.4f}, .Max = {0.6f, 2.6f, 0.4f}};
@@ -130,14 +130,14 @@ TEST_CASE("ModelSpriteViewBoundsFollowALowerPoseButNeverAHigherOne", "[model]")
     CHECK(SelectModelViewBounds(idle_bounds, overhead_bounds, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
     CHECK(SelectModelViewBounds(idle_bounds, std::nullopt, identity, identity, projection_factor).Max.y == idle_bounds.Max.y);
 
-    // The lying pose is wider than the standing one, so the whole box - not just its top - has to come from it.
+    // The lying pose is wider than the standing one, so the whole box - not just its top - has to come from it
     CHECK(SelectModelViewBounds(idle_bounds, lying_bounds, identity, identity, projection_factor).Min.x == lying_bounds.Min.x);
 }
 
 TEST_CASE("ModelSpriteViewBoundsCompareHeightAfterTheModelBaseRotation", "[model]")
 {
     // Several production models import with RotX +/-90, making source Z - not source Y - the screen-up axis. The
-    // active box deliberately has a taller raw Y than idle, so a raw Max.y comparison would keep idle in both cases.
+    // active box deliberately has a taller raw Y than idle, so a raw Max.y comparison would keep idle in both cases
     const mat44 identity {1.0f};
     constexpr float32_t projection_factor = 32.0f;
 

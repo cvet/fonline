@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -91,7 +92,7 @@ TEST_CASE("EntityLock")
         a.join();
         b.join();
 
-        // Both readers must have held the lock at the same time — readers do not serialize.
+        // Both readers must have held the lock at the same time — readers do not serialize
         CHECK(max_concurrent.load() == 2);
     }
 
@@ -201,7 +202,7 @@ TEST_CASE("EntityLock")
 
         // Wait until the reader is actually parked as a waiter before aborting. A fixed sleep here
         // could, under load, call AbortPendingWaiters before the reader parks — the abort would then
-        // find nothing to abort and the reader would block forever (join hangs).
+        // find nothing to abort and the reader would block forever (join hangs)
         while (lock.WaiterCount() != 1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -326,7 +327,7 @@ TEST_CASE("EntityLock")
         });
 
         // Wait until both waiters are fully enqueued before releasing, so the grant order is
-        // determined purely by ticket value and not by thread-startup timing under load.
+        // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 2) {
             std::this_thread::yield();
         }
@@ -365,7 +366,7 @@ TEST_CASE("EntityLock")
         auto t3 = make_waiter(75, 3);
 
         // Wait until all three waiters are fully enqueued before releasing, so the grant order is
-        // determined purely by ticket value and not by thread-startup timing under load.
+        // determined purely by ticket value and not by thread-startup timing under load
         while (lock.WaiterCount() != 3) {
             std::this_thread::yield();
         }
@@ -420,7 +421,7 @@ TEST_CASE("EntityLock")
         // merely QUEUED (parked, not yet holding) must NOT take the immediate-grant fast path — it
         // queues behind the writer (AcquireShared `exclusive_waiter_ahead` branch). On release the
         // writer is granted first, then the reader. SharedWaitsForExclusiveHolder only covers a reader
-        // blocking while exclusive is HELD; this covers it blocking behind a QUEUED writer.
+        // blocking while exclusive is HELD; this covers it blocking behind a QUEUED writer
         EntityLock lock;
         std::atomic_int grant_seq {0};
         std::atomic_int writer_grant {-1};
@@ -434,7 +435,7 @@ TEST_CASE("EntityLock")
             lock.Release();
         });
 
-        // Writer parks as a WAITING exclusive entry.
+        // Writer parks as a WAITING exclusive entry
         while (lock.WaiterCount() != 1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -445,12 +446,12 @@ TEST_CASE("EntityLock")
             lock.ReleaseShared();
         });
 
-        // Reader must queue BEHIND the writer (exclusive_waiter_ahead), not grab the lock.
+        // Reader must queue BEHIND the writer (exclusive_waiter_ahead), not grab the lock
         while (lock.WaiterCount() != 2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        // Stable-state check: while main still holds exclusive, neither waiter can have been granted.
+        // Stable-state check: while main still holds exclusive, neither waiter can have been granted
         CHECK(writer_grant.load() == -1);
         CHECK(reader_grant.load() == -1);
 
@@ -459,7 +460,7 @@ TEST_CASE("EntityLock")
         writer.join();
         reader.join();
 
-        // Grant order: writer (seq 0) strictly before reader (seq 1) — the writer is not starved.
+        // Grant order: writer (seq 0) strictly before reader (seq 1) — the writer is not starved
         CHECK(writer_grant.load() == 0);
         CHECK(reader_grant.load() == 1);
     }
@@ -468,7 +469,7 @@ TEST_CASE("EntityLock")
     {
         // GrantWaiters batch-grants the leading consecutive shared waiters and STOPS at the first
         // exclusive waiter: queue [R1,R2,W,R3] -> release grants R1+R2 together, W and R3 stay parked.
-        // After R1+R2 drain, W is granted alone, and only after W releases is R3 granted.
+        // After R1+R2 drain, W is granted alone, and only after W releases is R3 granted
         EntityLock lock;
         std::atomic_bool got_r1 {false};
         std::atomic_bool got_r2 {false};
@@ -490,7 +491,7 @@ TEST_CASE("EntityLock")
         };
 
         // Ticket order R1(10) < R2(20) < W(30) < R3(40) — the wait queue is sorted by ticket regardless
-        // of thread start order, so the queue is deterministically [R1,R2,W,R3].
+        // of thread start order, so the queue is deterministically [R1,R2,W,R3]
         std::thread r1 = reader(got_r1, 10);
         std::thread r2 = reader(got_r2, 20);
         std::thread w([&]() {
@@ -506,7 +507,7 @@ TEST_CASE("EntityLock")
 
         lock.Release(); // grants the leading shared batch R1+R2 only
 
-        // R1 and R2 are granted as a batch; W and R3 stay queued behind the (now-granted) readers.
+        // R1 and R2 are granted as a batch; W and R3 stay queued behind the (now-granted) readers
         while (!(got_r1.load() && got_r2.load())) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -528,7 +529,7 @@ TEST_CASE("EntityLock")
     SECTION("WaiterCountSnapshotConsistency")
     {
         // WaiterCount() returns a consistent mutex-protected snapshot. While main holds exclusive the
-        // parked-reader count is stable and exact; after release the granted readers drain the queue.
+        // parked-reader count is stable and exact; after release the granted readers drain the queue
         constexpr int reader_count = 8;
         EntityLock lock;
         std::atomic_bool release_readers {false};
@@ -546,7 +547,7 @@ TEST_CASE("EntityLock")
             });
         }
 
-        // All readers park behind the exclusive holder; the count is stable while main holds exclusive.
+        // All readers park behind the exclusive holder; the count is stable while main holds exclusive
         while (lock.WaiterCount() != static_cast<size_t>(reader_count)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -554,7 +555,7 @@ TEST_CASE("EntityLock")
 
         lock.Release(); // all eight shared waiters are batch-granted and erase their queue entries
 
-        // The queue drains to empty once every granted reader has woken and removed its entry.
+        // The queue drains to empty once every granted reader has woken and removed its entry
         while (lock.WaiterCount() != 0) {
             CHECK(lock.WaiterCount() <= static_cast<size_t>(reader_count)); // never exceeds the spawned count
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -684,13 +685,13 @@ TEST_CASE("EntityLockNegative")
         // self-deadlock — the exclusive grant waits for all shared holders to drain, including this
         // very thread. The Acquire guard (FO_VERIFY_AND_THROW) catches it immediately. The property
         // pipeline never upgrades (a getter releases its shared hold before any setter runs), so only
-        // an explicit negative test reaches this branch.
+        // an explicit negative test reaches this branch
         EntityLock lock;
         lock.AcquireShared(0);
 
         CHECK_THROWS_AS(lock.Acquire(0), VerificationException);
 
-        // The shared hold is untouched (the assert fired before any state change).
+        // The shared hold is untouched (the assert fired before any state change)
         lock.ReleaseShared();
         CHECK(lock.TryAcquire());
         lock.Release();
@@ -731,7 +732,7 @@ TEST_CASE("EntityLockDescendantHold")
     SECTION("ForeignDescendantHoldBlocksExclusiveAcquire")
     {
         // Down-direction: while another thread holds a descendant, the ancestor's exclusive Acquire
-        // must wait (you cannot take a node while a descendant of it is busy elsewhere).
+        // must wait (you cannot take a node while a descendant of it is busy elsewhere)
         EntityLock lock;
         std::atomic_bool holder_in {false};
         std::atomic_bool writer_got {false};
@@ -768,7 +769,7 @@ TEST_CASE("EntityLockDescendantHold")
     SECTION("ForeignExclusiveBlocksRegister")
     {
         // Up-direction: while another thread holds the ancestor exclusively, a descendant-mark
-        // registration must wait (you cannot take a descendant under a foreign-held ancestor).
+        // registration must wait (you cannot take a descendant under a foreign-held ancestor)
         EntityLock lock;
         std::atomic_bool holder_got {false};
 
@@ -790,7 +791,7 @@ TEST_CASE("EntityLockDescendantHold")
 
     SECTION("SiblingDescendantHoldsAreConcurrent")
     {
-        // Two threads marking the same ancestor (their shared parent) are compatible — neither blocks.
+        // Two threads marking the same ancestor (their shared parent) are compatible — neither blocks
         EntityLock lock;
         std::atomic_int in_count {0};
         std::atomic_bool release_all {false};
@@ -807,7 +808,7 @@ TEST_CASE("EntityLockDescendantHold")
         std::thread a(worker);
         std::thread b(worker);
 
-        // Both must be able to hold their marks simultaneously (sibling parallelism).
+        // Both must be able to hold their marks simultaneously (sibling parallelism)
         while (in_count.load() != 2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
@@ -821,7 +822,7 @@ TEST_CASE("EntityLockDescendantHold")
     SECTION("OwnExclusiveOwnerMayRegister")
     {
         // The exclusive owner escalating down into its own subtree (it locks a descendant while
-        // holding this node) must not self-deadlock — its own marks never conflict with its ownership.
+        // holding this node) must not self-deadlock — its own marks never conflict with its ownership
         EntityLock lock;
 
         lock.Acquire(0);
@@ -837,7 +838,7 @@ TEST_CASE("EntityLockDescendantHold")
     SECTION("OwnDescendantHoldAllowsUpEscalationToExclusive")
     {
         // Holding a descendant-mark, the same thread escalates up and takes this node exclusively
-        // (lock a critter, then lock its map). Own marks must not block its own Acquire.
+        // (lock a critter, then lock its map). Own marks must not block its own Acquire
         EntityLock lock;
 
         lock.RegisterDescendantHold(0);
@@ -896,7 +897,7 @@ TEST_CASE("EntityLockDescendantHold")
     {
         // Anti-starvation: once a writer is parked waiting for the node, later sibling-mark requests
         // queue BEHIND it rather than jumping ahead — otherwise an endless stream of sibling locks
-        // could starve a map/location-exclusive op forever (the real livelock hazard of this model).
+        // could starve a map/location-exclusive op forever (the real livelock hazard of this model)
         EntityLock lock;
         std::atomic_bool holder_in {false};
         std::atomic_bool release_holder {false};
@@ -917,7 +918,7 @@ TEST_CASE("EntityLockDescendantHold")
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        // Writer parks waiting exclusive (blocked by holder's mark).
+        // Writer parks waiting exclusive (blocked by holder's mark)
         std::thread writer([&]() {
             lock.Acquire(10);
             writer_got.store(true);
@@ -931,7 +932,7 @@ TEST_CASE("EntityLockDescendantHold")
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
-        // Late sibling-mark request: must queue behind the parked writer, not register immediately.
+        // Late sibling-mark request: must queue behind the parked writer, not register immediately
         std::thread late([&]() {
             lock.RegisterDescendantHold(20);
             late_registered.store(true);
@@ -945,7 +946,7 @@ TEST_CASE("EntityLockDescendantHold")
         CHECK_FALSE(late_registered.load()); // queued behind the writer
         CHECK_FALSE(writer_got.load());
 
-        // Drain the original holder: the WRITER must win next (not the later sibling mark).
+        // Drain the original holder: the WRITER must win next (not the later sibling mark)
         release_holder.store(true);
         while (!writer_got.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -953,7 +954,7 @@ TEST_CASE("EntityLockDescendantHold")
         CHECK(writer_got.load());
         CHECK_FALSE(late_registered.load()); // still behind the now-running writer
 
-        // Writer releases — the late sibling mark finally proceeds.
+        // Writer releases — the late sibling mark finally proceeds
         release_writer.store(true);
         late.join();
         CHECK(late_registered.load());
@@ -1160,7 +1161,7 @@ TEST_CASE("SyncContextNegative")
     {
         CHECK(SyncContext::GetCurrentOnThisThread() == nullptr);
         // No active context — there is nothing to call SyncEntity on. The pre-refactor static
-        // SyncCurrentContext(nullptr) was a no-op; now the equivalent is just "no current ctx".
+        // SyncCurrentContext(nullptr) was a no-op; now the equivalent is just "no current ctx"
     }
 
     SECTION("DoubleRelease")
@@ -1226,7 +1227,7 @@ TEST_CASE("SyncContextNegative")
 // ============================================================================
 // SyncContext singleton-lock bucket (Game.Lock) — kept SEPARATE from the per-Sync
 // held-lock set so a later Sync replacement cannot drop it, recursive, and script
-// locks must block Sync (the {Engine,Entity} <-> {Entity,Engine} guard).
+// locks must block Sync (the {Engine,Entity} <-> {Entity,Engine} guard)
 // ============================================================================
 
 TEST_CASE("SyncContextSingletonLock")
@@ -1242,11 +1243,11 @@ TEST_CASE("SyncContextSingletonLock")
         CHECK_FALSE(ctx.IsEmpty());
 
         // A thread holding Game.Lock() must not Sync(...) — the guard converts that into a
-        // hard error instead of risking the per-property auto-lock deadlock.
+        // hard error instead of risking the per-property auto-lock deadlock
         vector<nptr<ServerEntity>> empty;
         CHECK_THROWS_AS(ctx.SyncEntities(empty), EntitySyncException);
 
-        // Drain (destructor asserts both buckets are empty).
+        // Drain (destructor asserts both buckets are empty)
         ctx.UnlockSingleton(make_ptr(&singleton));
         CHECK(ctx.IsEmpty());
         CHECK_FALSE(singleton.IsLockedByCurrentThread());
@@ -1299,7 +1300,7 @@ TEST_CASE("SyncContextSingletonLock")
         // UnlockSingleton with no matching LockSingleton (more Game.Unlock() than Game.Lock()) trips
         // the find-fail FO_VERIFY_AND_THROW. The first IsLockedByCurrentThread guard fires once the lock
         // is already fully released, so the unbalanced second unlock is rejected rather than corrupting
-        // the singleton bucket.
+        // the singleton bucket
         EntityLock singleton;
         SyncContext ctx;
         ctx.Activate();
@@ -1310,7 +1311,7 @@ TEST_CASE("SyncContextSingletonLock")
         CHECK_FALSE(singleton.IsLockedByCurrentThread());
         CHECK(ctx.IsEmpty());
 
-        // Second unlock has nothing to match.
+        // Second unlock has nothing to match
         CHECK_THROWS_AS(ctx.UnlockSingleton(make_ptr(&singleton)), VerificationException);
 
         CHECK(ctx.IsEmpty());
@@ -1392,7 +1393,7 @@ TEST_CASE("EntityLockContention")
     // writes / syncing a parentless entity whose lock is `_engine->GetEntityLock()`). The
     // exclusive holders make readers pile up as shared waiters; each Release fires the
     // GrantWaiters shared-batch path (`_sharedHolders.emplace(...)`). Reproduces the
-    // ServerPool crash in EntityLock::GrantWaiters seen by the encounters gameplay suite.
+    // ServerPool crash in EntityLock::GrantWaiters seen by the encounters gameplay suite
     SECTION("SharedExclusiveBatchGrantStress")
     {
         EntityLock lock;
@@ -1425,7 +1426,7 @@ TEST_CASE("EntityLockContention")
             writers.emplace_back([&]() {
                 for (int j = 0; j < writer_iterations; j++) {
                     lock.Acquire(ticket.fetch_add(1, std::memory_order_relaxed));
-                    // Owner reads a Game property mid-write — folds into the exclusive recursion.
+                    // Owner reads a Game property mid-write — folds into the exclusive recursion
                     lock.AcquireShared(ticket.fetch_add(1, std::memory_order_relaxed));
                     lock.ReleaseShared();
                     writer_ops.fetch_add(1, std::memory_order_relaxed);
@@ -1454,7 +1455,7 @@ TEST_CASE("EntityLockContention")
     // engine-global lock fires GrantWaiters while Game-property readers are parked as shared
     // waiters — the high-frequency churn the encounters suite hits. Readers sleep briefly between
     // reads so the exclusive syncers are never perpetually starved (keeps the test bounded) while
-    // still overlapping with the exclusive batch-grant path.
+    // still overlapping with the exclusive batch-grant path
     SECTION("AcquireLocksChurnWithSharedReaders")
     {
         EntityLock gl; // engine-global lock — taken shared by readers, exclusive by sync threads
@@ -1478,7 +1479,7 @@ TEST_CASE("EntityLockContention")
                     reader_ops.fetch_add(1, std::memory_order_relaxed);
                     gl.ReleaseShared();
                     // Sleep (not just yield) so the lock actually frees and exclusive syncers
-                    // make steady progress — keeps the contention window without starving writers.
+                    // make steady progress — keeps the contention window without starving writers
                     std::this_thread::sleep_for(std::chrono::microseconds(10));
                 }
             });
@@ -1493,7 +1494,7 @@ TEST_CASE("EntityLockContention")
 
                 for (int j = 0; j < sync_iterations; j++) {
                     // Replicates AcquireLocks: try the whole set, release the prefix on the first
-                    // contended lock, back off, retry. `gl` is acquired exclusively first.
+                    // contended lock, back off, retry. `gl` is acquired exclusively first
                     for (int32_t spins = 0;;) {
                         size_t acquired = 0;
                         EntityLock* set[2] = {&gl, second};
@@ -1548,7 +1549,7 @@ TEST_CASE("EntityLockContention")
     // same-kind run), and every RegisterDescendantHold arriving while an exclusive writer is parked
     // queues behind it (HasWaitingExclusive). Ticket ordering keeps both sides making progress. This
     // exercises the descendant-hold wait queue, the DescendantHold batch-grant arm of GrantWaiters, and
-    // HasForeignDescendantHolder draining under churn — the least-covered concurrent path of EntityLock.
+    // HasForeignDescendantHolder draining under churn — the least-covered concurrent path of EntityLock
     SECTION("DescendantHoldChurnWithExclusive")
     {
         EntityLock ancestor;
@@ -1571,7 +1572,7 @@ TEST_CASE("EntityLockContention")
                     marker_ops.fetch_add(1, std::memory_order_relaxed);
                     ancestor.UnregisterDescendantHold();
                     // Brief sleep so the exclusive writers actually drain the marks and make steady
-                    // progress instead of being perpetually re-blocked by a fresh stream of marks.
+                    // progress instead of being perpetually re-blocked by a fresh stream of marks
                     std::this_thread::sleep_for(std::chrono::microseconds(10));
                 }
             });
@@ -1608,7 +1609,7 @@ TEST_CASE("EntityLockContention")
     // on the first contended node, releases the marks it already took and retries. Mirror that try-and-
     // back-off for descendant marks running against ancestor-exclusive writers, so the TryRegisterDescendantHold
     // rejection path (foreign owner / parked exclusive) and the Unregister-driven GrantWaiters are hammered
-    // without any thread ever parking on the descendant-hold futex.
+    // without any thread ever parking on the descendant-hold futex
     SECTION("TryDescendantHoldBackoffWithExclusive")
     {
         EntityLock ancestor;
@@ -1653,7 +1654,7 @@ TEST_CASE("EntityLockContention")
                     ancestor.Release();
                     // Leave the lock fully free for a beat so the non-parking TryRegisterDescendantHold
                     // markers reliably catch a window and make progress (TryRegister never queues, so it
-                    // only succeeds when no exclusive owns and none is parked ahead).
+                    // only succeeds when no exclusive owns and none is parked ahead)
                     std::this_thread::sleep_for(std::chrono::microseconds(10));
                 }
             });

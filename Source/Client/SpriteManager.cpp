@@ -495,7 +495,7 @@ auto SpriteManager::AcquireSceneBackground() -> nptr<const RenderTexture>
     }
 
     // Reading the target that is currently bound is not allowed, so the scene is copied out of it first. The copy is a
-    // plain opaque blit: the refracting draw wants the colours behind it, not another blend of them.
+    // plain opaque blit: the refracting draw wants the colours behind it, not another blend of them
     _rtMngr.PushRenderTarget(_rtSceneBackground.as_ptr());
     _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     DrawRenderTarget(current_rt.as_ptr(), false);
@@ -1192,11 +1192,11 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             // Direct-draw sprites contain real scene geometry; keep only a tiny ground separation instead of
             // inheriting their late draw-order bias, otherwise particles become closer than critters/scenery.
             // Proxy-geometry map sprites write unbiased world depth, so one step is enough to avoid terrain
-            // z-fighting without shifting the particle anchor toward the camera.
+            // z-fighting without shifting the particle anchor toward the camera
             float32_t direct_layer_bias = MAP_LAYER_DEPTH_BIAS;
             float32_t depth = map_proj.z + direct_layer_bias;
             // scene_pos == GetDrawRootPos() - draw_area == mspr_rect.pos + sprite root offset (already computed
-            // by GetDrawRect above), so reuse mspr_rect instead of calling GetDrawRootPos a second time.
+            // by GetDrawRect above), so reuse mspr_rect instead of calling GetDrawRootPos a second time
             ipos32 root_offset = mspr->GetSpriteRootOffset();
             fpos32 scene_pos = {numeric_cast<float32_t>(mspr_rect.x + root_offset.x), numeric_cast<float32_t>(mspr_rect.y + root_offset.y)};
             _directDrawSprites.emplace_back(DirectDrawSprite {.Spr = spr, .ScenePos = scene_pos, .Depth = depth});
@@ -1276,7 +1276,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             vbuf[j].PosZ = pos_z;
         }
 
-        // Rotation and map-projected flattening.
+        // Rotation and map-projected flattening
         int16_t angle_deg = mspr->GetAngle();
         bool use_map_projected = mspr->GetMapProjected();
 
@@ -1341,7 +1341,7 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
     Flush();
 
     // Anything drawn after this point sees the scene as it is now, so a snapshot taken during an earlier replay is
-    // stale for this one.
+    // stale for this one
     _sceneBackgroundValid = false;
 
     for (const auto& dd : _directDrawSprites) {
@@ -1462,10 +1462,10 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
         vbuf[i].PosZ = point.PointPosZ;
         vbuf[i].Color = point.PPointColor ? *point.PPointColor : point.PointColor;
 
-        // TexU/TexV = caller's PrimitivePoint::TexUV + draw_area top-left.
+        // TexU/TexV = caller's PrimitivePoint::TexUV + draw_area top-left
         vbuf[i].TexU = point.TexUV.x + draw_area_offset.x;
         vbuf[i].TexV = point.TexUV.y + draw_area_offset.y;
-        // Free-form per-vertex data forwarded verbatim to location 3 (InTexEggCoord).
+        // Free-form per-vertex data forwarded verbatim to location 3 (InTexEggCoord)
         vbuf[i].EggFlags[0] = point.EggData.x;
         vbuf[i].EggFlags[1] = point.EggData.y;
 

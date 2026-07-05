@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 class ParticleManager;
 
 // Sprite-frame layout derived from a particle's baked bounds: the atlas frame size in pixels, the root offset within
-// it, the ortho extent in world units, and the world transform that seats the effect inside the frame.
+// it, the ortho extent in world units, and the world transform that seats the effect inside the frame
 struct ParticleSpriteFrame
 {
     isize32 DrawSize {};

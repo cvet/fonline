@@ -388,7 +388,7 @@ void MasterBaker::BakeAllInternal()
 
         auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
-            // to be guarded; without it concurrent emplace() races on the bucket array.
+            // to be guarded; without it concurrent emplace() races on the bucket array
             {
                 scoped_lock lock {context->BakedFilePathsLocker};
 
@@ -780,7 +780,7 @@ auto BakerDataSource::Reindex() -> bool
 
         // Live sources: the on-demand baker serves editors and viewers, whose content is edited while the tool
         // runs, so input dirs are mounted non-cached - a cached snapshot would go stale between the initial
-        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake).
+        // indexing and a later open (cached mounts stay for the client/server runtime and the one-shot batch bake)
         for (const auto& dir : res_pack.InputDirs) {
             res_entry.InputDir.AddDirSource(dir, true, true);
         }
@@ -801,7 +801,7 @@ auto BakerDataSource::Reindex() -> bool
     // Input resources must be published before the discovery pass runs the bakers: a baker can read another
     // baker's output while it discovers its own (for example ModelInfoBaker builds a BakerClientEngine that
     // reads the baked metadata), which re-enters this data source through _outputResources and resolves the
-    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it.
+    // file via ResolveFilePath - which needs the input resources to locate or on-demand bake it
     _inputResources = std::move(input_resources);
 
     // Evaluate output files
@@ -820,7 +820,7 @@ auto BakerDataSource::Reindex() -> bool
 
         // Publish live so a later baker in this same discovery pass can resolve an earlier baker's output
         // on-demand (bakers run in dependency order, e.g. metadata before model info). Additive so no entry is
-        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes.
+        // transiently missing for a concurrent reader; the clean set replaces it once the pass completes
         {
             scoped_lock locker {_outputFilesLocker};
 

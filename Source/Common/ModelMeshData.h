@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #pragma once
 
@@ -91,7 +92,7 @@ struct ModelMeshData
     unique_nptr<ModelMeshBoneData> RootBone {};
 };
 
-// Schema 1 wire order: header, then one recursive root bone with its optional drawable mesh.
+// Schema 1 wire order: header, then one recursive root bone with its optional drawable mesh
 void WriteModelMeshHeader(DataWriter& writer);
 void ReadModelMeshHeader(DataReader& reader, string_view context);
 void ValidateModelMeshData(const ModelMeshData& data, string_view context);

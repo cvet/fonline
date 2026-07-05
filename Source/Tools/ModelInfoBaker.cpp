@@ -1407,7 +1407,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         return;
     }
 
-    // Collect all (non-template) model descriptions and the newest write time across them and their includes.
+    // Collect all (non-template) model descriptions and the newest write time across them and their includes
     vector<File> fo3d_files;
     uint64_t max_write_time = 0;
     BakerClientEngine client_engine(*ctx.BakedFiles);
@@ -1431,7 +1431,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         return;
     }
 
-    // Deterministic section order.
+    // Deterministic section order
     std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
 
     unordered_map<string, optional<ModelBounds3D>> animation_bounds_cache;
@@ -1511,7 +1511,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             }
 
             // Authored playback speed scales the cycle (faster speed -> shorter real cycle). The runtime
-            // moving-speed factor is applied separately at play time and must not be baked in here.
+            // moving-speed factor is applied separately at play time and must not be baked in here
             float32_t speed = 1.0f;
 
             for (const auto& [anim_pair, anim_speed] : description.AnimSpeed) {
@@ -1534,7 +1534,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
             int32_t duration_ms = iround<int32_t>(duration_milliseconds);
 
             // The runtime model-anim-info load rejects a non-positive duration, so a sub-millisecond effective
-            // cycle that rounds down to zero must fail here rather than bake a manifest the client cannot load.
+            // cycle that rounds down to zero must fail here rather than bake a manifest the client cannot load
             if (duration_ms <= 0) {
                 throw ModelInfoBakerException("Animation duration rounds to a non-positive millisecond value", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), clip_duration, speed);
             }
@@ -1601,7 +1601,7 @@ static void BakeModelAnimationInfo(const BakingContext& ctx, const FileCollectio
         // Match ModelInformation::GetAnimationIndexEx: both alias maps are applied once before the
         // animation lookup, and an alias has priority over an exact entry with the same source key.
         // Materialize every input pair that resolves to a baked entry so common runtimes do not need
-        // the client-only model description to answer the typed duration query.
+        // the client-only model description to answer the typed duration query
         set<pair<int32_t, int32_t>> output_pairs;
 
         for (const auto& [state_anim, action_anim, duration_ms] : raw_durations) {
@@ -1781,7 +1781,7 @@ void BakerModelDescription::Save(DataWriter& writer) const
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
-    // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds.
+    // Reserved legacy sprite-size fields. Runtime dimensions are calculated from baked model bounds
     writer.Write<int32_t>(0);
     writer.Write<int32_t>(0);
     writer.Write<int32_t>(0);

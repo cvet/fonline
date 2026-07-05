@@ -411,7 +411,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     // are recorded apart: the fixture emits one motionless particle at the origin from a point zone, so its position
     // box is degenerate and the whole extent lives in the quad radius. That radius is the group's graphical radius
     // (default 1) times the renderer's quad diagonal, sqrt(1.5^2 + 2^2) = 2.5 - it must not leak into the box, because
-    // the runtime transforms the box with the emitter's world placement but never scales the quad.
+    // the runtime transforms the box with the emitter's world placement but never scales the quad
     SECTION("BakerComputesAndStoresBoundsFromSimulation")
     {
         TestRig rig;
@@ -440,7 +440,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // An explicit box must survive the binary save/load unchanged so the runtime reads back exactly what the baker
-    // measured.
+    // measured
     SECTION("ExplicitBoundsSurviveBinaryRoundtrip")
     {
         TestRig rig;
@@ -476,7 +476,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // Baked bounds are mandatory: a particle system that never emits cannot be measured, so the baker rejects it
-    // rather than shipping a system without a frame extent.
+    // rather than shipping a system without a frame extent
     SECTION("RejectsSystemThatEmitsNoParticles")
     {
         TestRig rig;
@@ -488,7 +488,7 @@ TEST_CASE("SPARK baked bounds", "[particle][spark]")
     }
 
     // A fully transparent particle draws nothing, so it must not reserve frame space. Measuring it would inflate every
-    // effect whose colour graph fades out at the end of life, where the particle is also at its largest.
+    // effect whose colour graph fades out at the end of life, where the particle is also at its largest
     SECTION("RejectsSystemWhoseParticlesAreFullyTransparent")
     {
         TestRig rig;

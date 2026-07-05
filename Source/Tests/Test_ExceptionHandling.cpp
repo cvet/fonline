@@ -26,7 +26,7 @@ TEST_CASE("ExceptionHandling")
     SECTION("FormatStackTraceListsNewestCallFirst")
     {
         // Order matches the unified trace contract: provider emits most-recent first, so
-        // SecondFunc (the deeper call) appears before FirstFunc (its caller).
+        // SecondFunc (the deeper call) appears before FirstFunc (its caller)
         ScriptStackTraceLayer layer;
         layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "SecondFunc", "/tmp/second.cpp", 22});
         layer.ScriptFrames.push_back({StackTraceFrame::FrameType::Script, "FirstFunc", "/tmp/first.cpp", 11});
@@ -86,7 +86,7 @@ TEST_CASE("ExceptionHandling")
     SECTION("DerivedExceptionPreservesOwnNameMessageAndParams")
     {
         // Regression: a macro exception derived from another macro exception (not BaseEngineException
-        // directly) must still report its own name/message/params, with no stray null pushed into params.
+        // directly) must still report its own name/message/params, with no stray null pushed into params
         static_assert(std::is_base_of_v<ExceptionHandlingTestBaseException, ExceptionHandlingTestDerivedException>);
         static_assert(std::is_base_of_v<BaseEngineException, ExceptionHandlingTestDerivedException>);
 

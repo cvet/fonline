@@ -162,7 +162,7 @@ int main(int argc, char** argv) // Handled by SDL
                 client_windows.emplace_back(window);
                 GetApp()->SetActiveWindow(window);
 
-                // Two or more clients -> switch to Tile so the user can see them all at once.
+                // Two or more clients -> switch to Tile so the user can see them all at once
                 if (clients.size() >= 2 && layout_mode != WindowLayoutMode::Tile) {
                     layout_mode = WindowLayoutMode::Tile;
                     layout_init_dirty = true;
@@ -213,7 +213,7 @@ int main(int argc, char** argv) // Handled by SDL
                 return true; // Cascade
             }();
 
-            // Compute layout rects for this frame.
+            // Compute layout rects for this frame
             const auto& io = ImGui::GetIO();
             float32_t host_w = io.DisplaySize.x;
             float32_t host_h = io.DisplaySize.y;
@@ -434,7 +434,7 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
 
                         if (ImGui::CollapsingHeader("Controls")) {
-                            // Buttons sit on a single horizontal row; each takes an equal share of the available width.
+                            // Buttons sit on a single horizontal row; each takes an equal share of the available width
                             constexpr int32_t CONTROL_BTN_COUNT = 4;
                             float32_t total_w = ImGui::GetContentRegionAvail().x;
                             float32_t spacing_x = ImGui::GetStyle().ItemSpacing.x;
@@ -651,7 +651,7 @@ int main(int argc, char** argv) // Handled by SDL
                 ImGui::End();
             }
 
-            // Mode-switch button is the only path that flips this; clear once consumed.
+            // Mode-switch button is the only path that flips this; clear once consumed
             if (layout_init_dirty) {
                 layout_init_dirty = false;
             }

@@ -53,7 +53,7 @@ FO_GLOBAL_DATA(MemorySystemData, MemorySystem);
 
 // Unpoliced allocation primitives backing the SafeAlloc::*Raw tier. They report failure by returning null
 // and are deliberately not part of the public header: every caller must go through SafeAlloc so that an
-// allocation failure follows the engine out-of-memory contract instead of being silently propagated.
+// allocation failure follows the engine out-of-memory contract instead of being silently propagated
 static auto MemMalloc(size_t size) noexcept -> nptr<void>;
 static auto MemCalloc(size_t num, size_t size) noexcept -> nptr<void>;
 static auto MemRealloc(nptr<void> ptr, size_t size) noexcept -> nptr<void>;

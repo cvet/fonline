@@ -69,7 +69,7 @@ auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_mod
 
     if (!direct_scene_draw) {
         // A direct model still renders an auxiliary atlas frame for preview/hit testing. Its distortion attachments
-        // must survive that offscreen pass and retry when the real scene draw follows.
+        // must survive that offscreen pass and retry when the real scene draw follows
         return direct_model_draw && scene_background_provider ? ParticleSceneBackgroundResult {.State = ParticleSceneBackgroundState::Deferred} : ParticleSceneBackgroundResult {};
     }
 

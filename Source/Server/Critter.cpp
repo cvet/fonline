@@ -99,11 +99,8 @@ void Critter::UnlockMapTransfers() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // NOT NOT_DESTROYED: MapManager::RemoveCritterFromMap pairs LockMapTransfers() with a
-    // scope_exit{ UnlockMapTransfers() } around the OnMapCritterOut / OnCritterDisappeared events, which may
-    // destroy this critter. The scope_exit must still balance the counter on an already-destroyed (but still
-    // ref-held) critter — the destructor asserts _lockMapTransfers == 0 — and decrementing a plain counter
-    // on a destroyed-but-allocated object is safe.
+    // NOT NOT_DESTROYED: teardown events may destroy this ref-held critter before scope_exit balances the counter.
+    // The destructor requires _lockMapTransfers == 0
     FO_VALIDATE_ENTITY(LOCKED);
     _lockMapTransfers--;
 }
@@ -388,7 +385,7 @@ void Critter::AttachPlayer(ptr<Player> player)
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
 
     // Owning publication (mirrors ServerEntity::SetParent): AddRef the new owner, then publish atomically so a
-    // concurrent lock-free GetPlayerForSend reader sees either the old or the new pointer, never a torn value.
+    // concurrent lock-free GetPlayerForSend reader sees either the old or the new pointer, never a torn value
     player->AddRef();
     _player.store(player.get(), std::memory_order_release);
 
@@ -436,9 +433,7 @@ void Critter::StopMoving(MovingState reason)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // NOT NOT_DESTROYING: MapManager::Transfer/RemoveCritterFromMap stop a critter's movement while it is being
-    // destroyed (TransferToGlobal of a destroying critter is part of teardown), so this cleanup is legitimately
-    // reached during IsDestroying.
+    // NOT NOT_DESTROYING: transfer teardown stops movement after IsDestroying begins
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!_moving) {
@@ -457,7 +452,7 @@ void Critter::AddAttachedCritter(ptr<Critter> cr)
     FO_STACK_TRACE_ENTRY();
 
     // Adds a child into the holder's owned _attachedCritters list (torn down during destruction), so the
-    // holder must not be mid-destruction. The only caller (AttachToCritter) already guards both ends.
+    // holder must not be mid-destruction. The only caller (AttachToCritter) already guards both ends
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     vec_add_unique_value(_attachedCritters, cr);
 }
@@ -521,7 +516,7 @@ void Critter::MoveAttachedCritters()
     FO_STACK_TRACE_ENTRY();
 
     // NOT NOT_DESTROYING: reached from MapManager::Transfer on a destroying critter (its IsDestroyed-only guard
-    // lets an IsDestroying critter through during the transfer/destroy cascade).
+    // lets an IsDestroying critter through during the transfer/destroy cascade)
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (!GetMapId()) {
@@ -744,7 +739,7 @@ auto Critter::GetGlobalMapGroup() -> vector<ptr<Critter>>
     FO_STACK_TRACE_ENTRY();
 
     // NOT NOT_DESTROYING: the DestroyCritter -> TransferToGlobal cascade unhooks a destroying critter onto the
-    // global map and reads its group here (MapManager::Transfer), so this runs while IsDestroying.
+    // global map and reads its group here (MapManager::Transfer), so this runs while IsDestroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     FO_VERIFY_AND_THROW(!GetMapId(), "Map id is already set");
     FO_VERIFY_AND_THROW(_globalMapGroup, "Critter has no global map group");
@@ -757,7 +752,7 @@ auto Critter::GetGlobalMapGroupIds(uint64_t& revision) const -> vector<ident_t>
     FO_STACK_TRACE_ENTRY();
 
     // NOT NOT_DESTROYING: a caller preparing the cover for a destroy enumerates the group of a critter that is
-    // already being destroyed, exactly like GetGlobalMapGroup above.
+    // already being destroyed, exactly like GetGlobalMapGroup above
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     revision = 0;
@@ -843,9 +838,7 @@ auto Critter::AddVisibleCritter(ptr<Critter> cr, CritterVisibilityMode mode) -> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Adds links into this critter's owned visibility structures (_visibleCrWhoSeeMe*) and into the target's
-    // (_visibleCrMap/_visibleCrModes/_visibleCr) — both torn down during destruction, so neither end may be
-    // mid-destruction. The live ProcessCritterLook path already returns before this on a destroying entity.
+    // Visibility links mutate storage owned by both critters, so neither endpoint may be destroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetMapId(), "Entity has no map id");
     FO_VERIFY_AND_THROW(cr != this, "Critter visibility cannot target itself");
@@ -982,9 +975,8 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    // NOT NOT_DESTROYED/NOT_DESTROYING: this visibility query gracefully returns false when this critter or
-    // the item is destroyed (the check below). It is invoked from per-critter/item loops that may have fired
-    // entity-destroying events, so it must tolerate a destroyed self rather than assert/throw before that check.
+    // NOT NOT_DESTROYED/NOT_DESTROYING: event-driven loops may query after either entity is destroyed.
+    // The check below reports false instead of asserting
     FO_VALIDATE_ENTITY(LOCKED);
 
     if (IsDestroyed() || item->IsDestroyed()) {
@@ -1007,7 +999,7 @@ void Critter::ChangeDir(mdir dir)
     FO_STACK_TRACE_ENTRY();
 
     // NOT NOT_DESTROYING: MapManager::AddCritterToMap sets a critter's facing during the transfer/destroy
-    // cascade (past an IsDestroyed-only guard), so this can run while the critter is IsDestroying.
+    // cascade (past an IsDestroyed-only guard), so this can run while the critter is IsDestroying
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     SetDir(dir);
 }
@@ -1017,7 +1009,7 @@ void Critter::SetItem(ptr<Item> item)
     FO_STACK_TRACE_ENTRY();
 
     // Adds a child item into the critter's owned inventory (_invItems) and parents it to this critter; the
-    // inventory is torn down during destruction, so a critter mid-destruction must never gain new inventory.
+    // inventory is torn down during destruction, so a critter mid-destruction must never gain new inventory
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
     vec_add_unique_value(_invItems, item);
@@ -1113,7 +1105,7 @@ auto Critter::GetItemByPidInvPriority(hstring item_pid) -> nptr<Item>
         }
     }
     else {
-        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere.
+        // Non-stackable: prefer an item actually in the Inventory slot over one equipped elsewhere
         nptr<Item> another_slot;
 
         for (auto& item : _invItems) {
@@ -1207,9 +1199,8 @@ void Critter::Broadcast_Property(NetProperty type, ptr<const Property> prop, ptr
 {
     FO_STACK_TRACE_ENTRY();
 
-    // NOT NOT_DESTROYING: a property change can fire during the critter's own teardown drain (the final
-    // state push to viewers), so this broadcast is legitimately reached while IsDestroying. Both callees
-    // (GetBroadcastRecipients, Player::Send_Property) are teardown-safe.
+    // NOT NOT_DESTROYING: the final viewer state push may fire during teardown.
+    // GetBroadcastRecipients and Send_Property tolerate that state
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     for (refcount_ptr<Player> player : GetBroadcastRecipients()) {

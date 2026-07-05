@@ -1316,7 +1316,7 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
 
                 ClassifyFunctionAttributes(target, target_has_blocking, target_markers, project_blocking_extras);
 
-                // Rule 1: direct-call-blocking attribute → caller must live in an allowed namespace.
+                // Rule 1: direct-call-blocking attribute → caller must live in an allowed namespace
                 if (target_has_blocking) {
                     if (!ShouldSkipAttributedUsageValidation(caller, allowed_namespaces)) {
                         if (!errors.empty()) {
@@ -1328,7 +1328,7 @@ auto ValidateAttributedFunctionUsage(ptr<AngelScript::asIScriptModule> mod, nptr
                 }
 
                 // Rule 2: marker attribute (any non-blocking attribute, e.g. [[Async]]) →
-                // caller must carry the same marker.
+                // caller must carry the same marker
                 for (const auto& marker : target_markers) {
                     bool caller_has_marker = std::find(caller_markers.begin(), caller_markers.end(), marker) != caller_markers.end();
 

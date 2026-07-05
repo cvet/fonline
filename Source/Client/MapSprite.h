@@ -159,9 +159,8 @@ private:
     ipos32 _hexOffset {};
     nptr<const ipos32> _pHexOffset {};
     nptr<const ipos32> _pSprOffset {};
-    // Static logical-root offset (item proto Offset): the bottom-center→trunk vector. Kept separate from
-    // _pSprOffset (which still positions the bitmap) so the depth/sort anchor can use the logical root, not the
-    // bitmap bottom-center. Null for sprites without one (critters, particles).
+    // Static bottom-center-to-logical-root offset kept separate from the bitmap-positioning _pSprOffset.
+    // Null for sprites without a logical-root adjustment
     nptr<const ipos32> _pRootOffset {};
     nptr<const uint8_t> _alpha {};
     nptr<const ucolor> _light {};

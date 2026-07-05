@@ -824,9 +824,9 @@ def resolve_property_targets(entity: str, property_flags: list[str], game_entiti
 
 def strip_pointer_wrapper(type_text: str) -> tuple[str, bool, bool]:
     # Recognize ptr<T> / nptr<T> script-ABI wrapper spellings and reduce them to the raw
-    # `T*` form the meta-type parser understands. Returns (raw_type_text, is_wrapper, is_nullable).
+    # `T*` form the meta-type parser understands. Returns (raw_type_text, is_wrapper, is_nullable)
     type_text = type_text.strip()
-    # Strip leading C++ attributes such as [[maybe_unused]] (used on ignored receivers).
+    # Strip leading C++ attributes such as [[maybe_unused]] (used on ignored receivers)
     while type_text.startswith('[['):
         attr_end = type_text.find(']]')
         if attr_end == -1:
@@ -896,7 +896,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     name = function_tokens[2]
 
     # The first parameter (engine/entity receiver) is skipped by parse_method_args, so detect its
-    # ptr<T> wrapper spelling here for the generated extern declaration / function-pointer cast.
+    # ptr<T> wrapper spelling here for the generated extern declaration / function-pointer cast
     receiver_wrapper = False
     receiver_args = split_engine_args(function_args)
     if receiver_args:
@@ -981,7 +981,7 @@ def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
         stripped = line.strip()
         if not stripped or stripped.startswith('}'):
             # Skip blank lines, comment-only lines (truncated to empty above) and the closing brace, so they are
-            # not parsed as enum entries (which would produce empty keys and auto-values that collide).
+            # not parsed as enum entries (which would produce empty keys and auto-values that collide)
             continue
         separator = line.find('=')
         if separator == -1:
@@ -1143,7 +1143,7 @@ def engine_type_to_unified_type(engine_type: str, valid_types: set[str], allow_r
         'string_view': 'string', 'string': 'string', 'hstring': 'hstring', 'any_t': 'any',
     }
     # Reduce nested ptr<T> / nptr<T> wrappers (e.g. vector<ptr<ItemView>>) to the raw T* form.
-    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements.
+    # Top-level args strip the wrapper earlier via strip_pointer_wrapper; this handles container elements
     for prefix in ('ptr<', 'nptr<'):
         if engine_type.startswith(prefix) and engine_type.endswith('>'):
             return engine_type_to_unified_type(engine_type[len(prefix):-1].strip() + '*', valid_types, allow_raw_handle_pointer=True)
@@ -1211,7 +1211,7 @@ def is_validated_pointer_meta_type(meta_type: str) -> bool:
     # Codegen emits CheckArgNotNull / CheckReturnNotNull for every meta-type
     # whose runtime representation is a script handle to a heap object: game
     # entities, the generic `Entity` base, entity relatives (Abstract*,
-    # Proto*, Static*) and user-declared `///@ ExportRefType` classes.
+    # Proto*, Static*) and user-declared `///@ ExportRefType` classes
     return (meta_type in game_entities
             or meta_type == 'Entity'
             or meta_type in entity_relatives
@@ -1463,7 +1463,7 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
-            # client/server compatibility hash when a raw signature is converted to a wrapper.
+            # client/server compatibility hash when a raw signature is converted to a wrapper
             hashable_args = [(a.arg_type, a.name, a.nullable, a.default_value) for a in result_args]
             hash_recursive(compatibility_hasher, (target, entity, name, ret, hashable_args, export_flags, ret_nullable))
 
@@ -1768,7 +1768,7 @@ def wrap_handle_engine_type(engine_type: str, nullable: bool) -> str:
 def container_element_wrapper(type_text: str) -> str:
     # Report the wrapper of a script-ABI container element (e.g. readonly_vector<nptr<Critter>> ->
     # 'nptr', vector<ptr<Item>> -> 'ptr'). Parameter types are part of the C++ mangled symbol, so
-    # the generated extern/native-call cast must spell the element exactly as the source did.
+    # the generated extern/native-call cast must spell the element exactly as the source did
     text = type_text.strip()
     for prefix in ('readonly_vector<', 'vector<'):
         if text.startswith(prefix):
@@ -2089,7 +2089,7 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
     # AFTER the referenced type's layout — the engine assertion on
     # `field.Type.IsSimpleStruct` requires the dependency to be fully registered first.
     # Without this sort, codegen emits in file-alphabetic order, which breaks any
-    # cross-file dependency that points "downward" alphabetically.
+    # cross-file dependency that points "downward" alphabetically
     value_type_tags = list(codegen_tags['ExportValueType'])
     value_type_names = {tag.name for tag in value_type_tags}
 
@@ -2422,7 +2422,7 @@ def try_get_git_branch() -> str:
 def write_engine_config() -> None:
     def write_engine_config_impl() -> None:
         # Single generated header with configuration and build/version macros, pulled in at the very top of
-        # BasicCore.h instead of cluttering the compiler command line.
+        # BasicCore.h instead of cluttering the compiler command line
         generated_output.create_file('EngineConfig.gen.h', args.genoutput)
         generated_output.write_line('// FOnline Engine generated configuration. Do not edit.')
         generated_output.write_line('')

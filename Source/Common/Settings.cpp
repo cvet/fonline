@@ -627,7 +627,7 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
                 }
 
                 // Merge, not assign: with multiple parents (Parent = A B) later parents override earlier
-                // ones per key, and the section's own settings (below) override all parents.
+                // ones per key, and the section's own settings (below) override all parents
                 for (auto&& [key, value] : it->Settings) {
                     config_info.Settings[key] = value;
                 }

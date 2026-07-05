@@ -42,7 +42,7 @@ TEST_CASE("Settings")
         settings.ApplySubConfigSection("Mixed");
 
         // Multiple parents merge (not replace): both parents' unique keys survive, later parents
-        // override earlier ones on shared keys, and the child's own settings sit on top.
+        // override earlier ones on shared keys, and the child's own settings sit on top
         CHECK(settings.GetCustomSetting("OnlyA") == "fromA");
         CHECK(settings.GetCustomSetting("OnlyB") == "fromB");
         CHECK(settings.GetCustomSetting("Shared") == "fromB");
@@ -133,14 +133,14 @@ TEST_CASE("Settings")
 
     SECTION("ApplyCommandLineMasksSecretValuesInLog")
     {
-        // Capture the "Set <name> to <value>" lines emitted by the logging pass.
+        // Capture the "Set <name> to <value>" lines emitted by the logging pass
         string captured;
         SetLogCallback("settings_secret_redaction_test", [&captured](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured += message; });
         auto remove_callback = scope_exit([]() noexcept { SetLogCallback("settings_secret_redaction_test", nullptr); });
 
         GlobalSettings settings {false};
         // Real flow logs command-line overrides only after defaults (and the config) are applied, so the
-        // Common.SecretSettingTokens list (default includes "token") is populated by then.
+        // Common.SecretSettingTokens list (default includes "token") is populated by then
         settings.ApplyDefaultSettings();
 
         char arg0[] = "lf_tests";
@@ -153,11 +153,11 @@ TEST_CASE("Settings")
         settings.ApplyCommandLine(CommandLineArgs {5, argv});
 
         // A name matching a secret token (Common.SecretSettingTokens, default includes "token") is masked;
-        // the credential value itself must never reach the log.
+        // the credential value itself must never reach the log
         CHECK(captured.find("Set Probe.AccessToken to ***") != string::npos);
         CHECK(captured.find("super-secret-value") == string::npos);
 
-        // A non-secret name is logged verbatim, and both values are still applied.
+        // A non-secret name is logged verbatim, and both values are still applied
         CHECK(captured.find("Set Common.GameName to RedactionProbe") != string::npos);
         CHECK(settings.GetCustomSetting("Probe.AccessToken") == "super-secret-value");
         CHECK(settings.GameName == "RedactionProbe");
@@ -168,7 +168,7 @@ TEST_CASE("Settings")
         // '+'-prefixed overrides append to the current value, so applying the same command line twice to
         // one settings object doubles the result. LoadAppSettings() therefore applies the command line to
         // the live settings exactly once — this test pins the hazard that the single-application flow
-        // must avoid (it was a real bug while the command line was applied in two passes).
+        // must avoid (it was a real bug while the command line was applied in two passes)
         GlobalSettings settings {false};
         char arg0[] = "lf_tests";
         char arg1[] = "--Common.GameName";
@@ -178,7 +178,7 @@ TEST_CASE("Settings")
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag");
 
-        // A second pass over the same object appends again — what the two-pass flow used to do.
+        // A second pass over the same object appends again — what the two-pass flow used to do
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.GameName == "Tag Tag");
     }
@@ -264,7 +264,7 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
 
         // An explicit absolute path is the installed layout: resolve it, create it, and pre-create the
-        // cache + resource-overlay subdirs under it.
+        // cache + resource-overlay subdirs under it
         string root = MakeTempSettingsDir("settings_writable_root");
         ignore_unused(fs_remove_dir_tree(root));
 
@@ -283,7 +283,7 @@ TEST_CASE("Settings")
     {
         GlobalSettings settings {false};
 
-        // No explicit path and no installer marker next to the test exe: stay portable (empty).
+        // No explicit path and no installer marker next to the test exe: stay portable (empty)
         settings.UserWritablePath = "";
         ResolveUserWritablePath(settings);
 
@@ -295,7 +295,7 @@ TEST_CASE("Settings")
         GlobalSettings settings {false};
 
         // A root whose parent is a regular file can't be created: the resolver must fail safe to portable
-        // rather than brick startup.
+        // rather than brick startup
         string temp_dir = MakeTempSettingsDir("settings_writable_blocker");
         ignore_unused(fs_remove_dir_tree(temp_dir));
         string blocker = strex(temp_dir).combine_path("blocker").str();

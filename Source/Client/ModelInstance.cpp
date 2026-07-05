@@ -46,7 +46,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
-// Keep in sync with the default 3D_Skinned shadow pass.
+// Keep in sync with the default 3D_Skinned shadow pass
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
@@ -109,7 +109,7 @@ void ModelInstance::PrewarmParticles()
     // Prewarming owns its own simulated time. Reset the model clock on the next actual animation advance rather than
     // here: a newly prepared model may still wait off-screen before its first draw. Feeding that wall time into every
     // attached emitter as one giant frame would expire the warmed distribution and respawn a continuous effect as one
-    // detached-looking clump.
+    // detached-looking clump
     _resetDrawTimeOnNextAnimationAdvance = true;
 
     for (auto& model_particle : _modelParticles) {
@@ -830,7 +830,7 @@ void ModelInstance::RefreshMoveAnimation()
     // A one-shot body animation owns the whole skeleton while the critter
     // stands still: release the movement-layer leg override (idle/turn on
     // LegBones) until it finishes, otherwise full-body clips play only above
-    // the waist. Movement keeps the leg layer as usual.
+    // the waist. Movement keeps the leg layer as usual
     if (!_isMoving && _playOnceAnimPlaying) {
         if (_curMovingAnimIndex != -1) {
             _moveAnimController->ResetEvents();
@@ -1065,7 +1065,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t max_y {};
 
     // Sprite-pixel length of a world-space extent under the frame projection. The projection is orthographic, so the
-    // difference between two projected points is exact and independent of where they sit in the frame.
+    // difference between two projected points is exact and independent of where they sit in the frame
     auto project_sprite_length = [&](float32_t world_length) -> optional<float32_t> {
         vec3 projected_origin {};
         vec3 projected_offset {};
@@ -1081,7 +1081,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
     // Merge a projected world point into the frame envelope, grown by a padding in sprite pixels. The padding carries a
     // particle's camera-facing billboard radius, which is a screen-space disc around the particle position rather than
-    // another world point; mesh geometry passes zero.
+    // another world point; mesh geometry passes zero
     auto include_projected_point = [&](vec3 world_pos, float32_t padding) -> bool {
         vec3 projected_pos {};
         if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
@@ -1135,7 +1135,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // another facing, so projecting each mesh vertex at the current facing plus +90/+180/+270 and keeping the union
     // yields a frame that already covers every direction - attached gear (a backpack, a weapon) that only widens the
     // silhouette at some facings no longer resizes the frame on a turn. Runtime layer/equipment meshes are not in the
-    // baked animation bounds, so this is what keeps their contribution direction-independent.
+    // baked animation bounds, so this is what keeps their contribution direction-independent
     mat44 facing_prefix = glm::translate(mat44 {1.0f}, Convert2dTo3d(_framePivot)) * _matTransBase * _matRot;
     mat44 facing_prefix_inverse = glm::inverse(facing_prefix);
     auto facing_delta_matrix = [&](float32_t degrees) -> mat44 { //
@@ -1146,7 +1146,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     // A point's projected coordinate traces a sinusoid as the model turns; sampling it at facing, +90 and +180 and
     // taking the harmonic range yields its continuous min/max over every facing, independent of which facing the
     // model currently holds (four discrete samples would give a facing-dependent union). This mirrors the layout's
-    // own direction sweep, applied here to the actual runtime geometry.
+    // own direction sweep, applied here to the actual runtime geometry
     auto harmonic_range = [](float32_t value_0, float32_t value_90, float32_t value_180) -> pair<float32_t, float32_t> {
         float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
         float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
@@ -1304,7 +1304,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             // space, so an idle effect (e.g. furnace smoke that is not currently puffing) does not inflate the
             // frame; when it starts emitting, the render's frame-expansion pass grows the frame to fit the live
             // particles. Reserving the full particle sprite for a non-emitting system would bloat every model that
-            // carries an occasional effect.
+            // carries an occasional effect
             optional<ParticleBounds3D> live_bounds = model_particle.Particle->GetLiveBounds();
 
             if (!live_bounds) {
@@ -1314,7 +1314,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             // The radius already carries the placement's scale, so only the projection is left to turn it into sprite
             // pixels, and it is then added as padding around each projected position. Feeding it as another world
             // point instead would let the all-facings sweep rotate it too, reserving well over the space a
-            // camera-facing quad actually covers.
+            // camera-facing quad actually covers
             optional<float32_t> billboard_padding = project_sprite_length(live_bounds->BillboardRadius);
 
             if (!billboard_padding) {
@@ -1334,7 +1334,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
                 // Keep the emitting effect (e.g. furnace smoke) inside the frame at every facing, not just the
                 // current one, so a turn does not clip it - same all-facings envelope the mesh geometry uses. Only
-                // the particle position is swept; the quad faces the camera at every facing.
+                // the particle position is swept; the quad faces the camera at every facing
                 include_mesh_all_facings(corner, *billboard_padding);
             }
 
@@ -1360,7 +1360,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     float32_t guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
 
     // The frame must contain the current-facing crop (min_x..max_x, which also carries the shadow and any live
-    // particles) and the mesh geometry across all facings, so it stays a fixed size while the critter turns.
+    // particles) and the mesh geometry across all facings, so it stays a fixed size while the critter turns
     float32_t frame_min_x = min_x;
     float32_t frame_min_y = min_y;
     float32_t frame_max_x = max_x;
@@ -1542,7 +1542,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
         ModelAnimationController::TrackState state = controller->GetTrackState(track);
 
         for (size_t joint_index = 0; joint_index < joint_mask.size(); joint_index++) {
-            // Bindings use the runtime name; the model root can intentionally differ from its authored source name.
+            // Bindings use the runtime name; the model root can intentionally differ from its authored source name
             joint_mask[joint_index] = controller->IsTrackBoneEnabled(track, _modelInfo->_poseJointRuntimeNames[joint_index]) ? 1 : 0;
         }
 
@@ -1656,7 +1656,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     // model in the hierarchy - this one and its children - has been posed. Placing them earlier leaves an effect that
     // hangs on a child joint one pose behind the root: harmless as a one-frame lag while drawing, but fatal to
     // DrawModelToAtlas' frame-sizing loop, which then measures a stale effect box against a fresh root placement,
-    // grows the frame, moves the root again and never converges.
+    // grows the frame, moves the root again and never converges
     for (auto& model_particle : _modelParticles) {
         const mat44& proj = _directSceneDraw ? _drawProj : _frameProj;
         vec3 view_offset = _directSceneDraw ? vec3 {} : _moveOffset;
@@ -1666,7 +1666,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         // applies _matRot with the root world placement outermost), and in the direct-scene path it lives in _drawProj.
         // Re-applying it in the view matrix would double-tilt the effect and, worse for the atlas path, rotate the
         // frame-size-dependent root placement so it no longer cancels in _frameProj - the frame-sizing loop then chases
-        // an ever-growing projected box across the shared model sprite frame and never converges.
+        // an ever-growing projected box across the shared model sprite frame and never converges
         bool tilt_in_proj = true;
         FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
         const mat44& bone_world_matrix = model_particle.Owner->GetWorldMatrix(model_particle.JointIndex);
@@ -1680,7 +1680,7 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
 
         // Model-attached effects do not own a ParticleSprite update loop. Advance them from the same logical delta as
         // the skeletal pose, after applying the current attachment transform, so continuous emitters remain visible
-        // and follow animated bones. Frame-layout re-poses pass zero and therefore never advance the effect twice.
+        // and follow animated bones. Frame-layout re-poses pass zero and therefore never advance the effect twice
         model_particle.Particle->Update(std::max(elapsed, 0.0f));
     }
 
@@ -1735,7 +1735,7 @@ void ModelInstance::BuildRestWorldMatrices()
 
     // Preserve the legacy procedural body/head rotations for static models.
     // The validated helper establishes the base rest pose; this parent-ordered
-    // pass is the safe adapter for the two optional procedural joints.
+    // pass is the safe adapter for the two optional procedural joints
     for (size_t joint_index = 0; joint_index < _worldMatrices.size(); joint_index++) {
         const ModelPoseJoint& joint = _modelInfo->_restPoseJoints[joint_index];
         const mat44& parent_matrix = joint.ParentIndex >= 0 ? _worldMatrices[numeric_cast<size_t>(joint.ParentIndex)] : _parentMatrix;
@@ -2095,10 +2095,7 @@ void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
     }
 }
 
-// -2 - ignore
-// -1 - inside
-// 0 - outside
-// 1 - one point
+// -2 ignore, -1 inside, 0 outside, 1 one point
 static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float32_t r, Vertex3D& in) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -2490,7 +2487,7 @@ void ModelInstance::RefreshFrameLayout()
     _lightingDrawSize = lighting_layout->DrawSize;
 
     // The model origin sits at its real projected position inside the tight frame (top-left of the draw rect is
-    // the frame's top-left), not at a fixed quarter fraction.
+    // the frame's top-left), not at a fixed quarter fraction
     ipos32 frame_pivot = {-_drawRect.x, -_drawRect.y};
 
     if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
@@ -2557,7 +2554,7 @@ void ModelInstance::RefreshConfigurationLayout()
     }
 
     // The drawing frame must cover everything the configuration rasterizes, attachments included, and must not shrink
-    // mid-animation - the frame-sizing pass would then chase a moving target - so it grows until the meshes change.
+    // mid-animation - the frame-sizing pass would then chase a moving target - so it grows until the meshes change
     if (_configurationLayoutRevision != _combinedMeshGenerationRevision || !_configurationModelBounds) {
         _configurationModelBounds = *current_model_bounds;
         _configurationLayoutRevision = _combinedMeshGenerationRevision;
@@ -2686,7 +2683,7 @@ void ModelInstance::PoseSpriteFrame(bool advance_animation)
 
     // Pose the model into its sprite frame without rendering. GetSpriteBounds derives the frame extent from the posed
     // skeleton and the baked particle box, never from rendered pixels, so DrawModelToAtlas sizes the frame from this
-    // pose and only then draws once (DrawSpriteFrame) at the final size - it never draws just to measure.
+    // pose and only then draws once (DrawSpriteFrame) at the final size - it never draws just to measure
     _drawProj = _frameProj;
     _directSceneDraw = false;
     Pose(const_numeric_cast<float32_t>(FRAME_SCALE), advance_animation);
@@ -2696,7 +2693,7 @@ void ModelInstance::DrawSpriteFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target.
+    // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target
     DrawPosed(true);
 }
 
@@ -2727,7 +2724,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
     // converge on a stable frame size; those re-poses must not step the animation, so each frame-size measurement is
     // taken against one stable pose and the animation advances once per displayed frame. Truncating the delta to whole
     // milliseconds used to freeze the pose across re-poses by accident; a full-resolution delta does not, so they are
-    // frozen explicitly here.
+    // frozen explicitly here
     float32_t dt = 0.0f;
 
     if (advance_animation) {
@@ -2735,7 +2732,7 @@ void ModelInstance::Pose(float32_t scale, bool advance_animation)
 
         // Full-resolution delta: truncating to whole milliseconds drops sub-millisecond frames, so on an uncapped
         // viewer running at a very high frame rate the animation never accumulates time and looks frozen until a
-        // slower frame crosses the 1 ms boundary.
+        // slower frame crosses the 1 ms boundary
         if (!_resetDrawTimeOnNextAnimationAdvance) {
             dt = numeric_cast<float32_t>((time - _lastDrawTime).nanoseconds()) * 1e-9f;
         }
@@ -2880,7 +2877,7 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 
     auto p = Convert3dTo2d(pos);
     // Convert3dTo2d gives a sprite-space point measured from the bottom, so the origin's row from the bottom is
-    // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction.
+    // (frame_height - pivot.y). The bone offset is taken relative to the exact origin pivot, not a fixed fraction
     int32_t frame_height = _frameSize.height / FRAME_SCALE;
     auto x = p.x - _framePivot.x;
     auto y = -(p.y - (frame_height - _framePivot.y));
@@ -2919,7 +2916,7 @@ void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int3
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Every point in the hierarchy is projected through the projector - the root model, the only one that owns a frame.
+    // Every point in the hierarchy is projected through the projector - the root model, the only one that owns a frame
     for (const auto& model_particle : _modelParticles) {
         FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
 
@@ -2999,7 +2996,7 @@ auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ip
     // Match GetSpriteBounds' sprite-space convention (Y measured from the frame
     // bottom, then divided down by the render supersample) so the point lands in
     // the same logical frame the crop rect is taken from, then localise it to
-    // the cropped sprite by subtracting the crop origin.
+    // the cropped sprite by subtracting the crop origin
     float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
     int32_t sprite_x = iround<int32_t>(projected.x / frame_scale);
     int32_t sprite_y = iround<int32_t>((numeric_cast<float32_t>(_frameSize.height) - projected.y) / frame_scale);

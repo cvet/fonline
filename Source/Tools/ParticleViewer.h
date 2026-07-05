@@ -74,12 +74,12 @@ public:
     void SetVisible(bool visible) noexcept { _visible = visible; }
 
     // Standalone hosts have nothing else on screen, so the window takes the
-    // whole viewport and drops its title bar and move/resize handles.
+    // whole viewport and drops its title bar and move/resize handles
     void SetFillViewport(bool fill) noexcept { _fillViewport = fill; }
     void Draw();
 
     // Persists the ImGui layout and the view options (zoom, seed, loop/prewarm, overlays, last effect) to the
-    // per-user settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown.
+    // per-user settings store. Loaded in the constructor (the ImGui layout applies lazily on the first Draw); a host calls SaveSettings() before teardown
     void SaveSettings();
 
 private:
@@ -120,7 +120,7 @@ private:
     bool _looped {true}; // restart the effect when a finite burst ends
     bool _prewarm {true}; // warm the system on play so it opens mid-effect
 
-    // Diagnostic overlays, all opt-in (off by default).
+    // Diagnostic overlays, all opt-in (off by default)
     bool _drawRoot {};
     bool _drawDrawRect {};
     bool _showWireframe {};

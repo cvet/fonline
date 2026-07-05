@@ -231,7 +231,7 @@ void Location::RemoveMap(ptr<Map> map)
     }
 
     // Currently all maps are destroyed on this stage but in future maps can be reused or
-    // moved to another location, so keep the persistence flag in sync with the location.
+    // moved to another location, so keep the persistence flag in sync with the location
     if (map->IsPersistent() && !map->IsExplicitlyPersistent() && !map->IsDestroying() && !map->IsDestroyed()) {
         _engine->EntityMngr.MakePersistent(map, false);
     }

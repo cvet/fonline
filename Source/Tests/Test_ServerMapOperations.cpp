@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -769,7 +770,7 @@ namespace MapOpsTest
         Critter? deadExact = map.GetCritterOnHex(cr.Hex);
         if (deadExact is null) return -5;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> nearby = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (nearby.length() < 1) return -6;
 
@@ -862,7 +863,7 @@ namespace MapOpsTest
         Critter cr = map.AddCritter("TestCritter".hstr(), hex, mdir(0));
         if (cr is null) return -3;
 
-        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area.
+        // Spawn may relocate to a nearby free hex, so validate lookup from the requested area
         array<Critter> onHex = map.GetCrittersInRadius(hex, 2, CritterFindType::Any);
         if (onHex.length() < 1) return -4;
 
@@ -4609,10 +4610,8 @@ namespace MapOpsTest
         return 0;
     }
 
-    // ========== Script-boundary argument validation (2026-06-16 hardening) ==========
-    // Each function passes an out-of-range argument that must be rejected with an early, clearly
-    // messaged ScriptException at the script-export boundary, instead of reaching a deep numeric_cast
-    // / FO_VERIFY_* / std::string::resize. Driven by RUN_FUNC_THROWS, which asserts the message.
+    // Reject out-of-range arguments with a clear ScriptException at the export boundary.
+    // RUN_FUNC_THROWS pins each message
 
     bool ArgValidationDummyGag(Critter cr, Item item)
     {

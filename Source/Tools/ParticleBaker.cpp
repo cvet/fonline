@@ -458,7 +458,7 @@ void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_pa
 #if FO_SPARK_PARTICLES
 // Bounds simulation tuning: step the effect at a fixed rate for several particle lifetimes so a continuous emitter
 // reaches steady state and a one-shot burst fully expands, capped so a pathologically long-lived effect cannot
-// stall the bake.
+// stall the bake
 static constexpr float32_t SPARK_BOUNDS_SIM_STEP = 0.05f;
 static constexpr float32_t SPARK_BOUNDS_LIFETIME_FACTOR = 3.0f;
 static constexpr float32_t SPARK_BOUNDS_MIN_DURATION = 1.0f;
@@ -486,12 +486,12 @@ void ParticleBaker::BakeSparkFile(const File& file) const
     // every frame. Positions and the billboard radius are measured separately: the position box is transformed by the
     // emitter's world placement at runtime, while the quad radius is an absolute world length that must be added in
     // the view plane and never scaled or rotated with the model. Rendering is not needed to measure either, so no
-    // renderer setup is performed here.
+    // renderer setup is performed here
     {
         SPK::Ref<SPK::System> simulation = SPK::SPKObject::copy(system);
 
         // Measure in emitter-local space: identity transform so the box captures only the effect's own layout, not
-        // an authored world placement. The runtime folds the actual bone/entity transform back in when framing.
+        // an authored world placement. The runtime folds the actual bone/entity transform back in when framing
         simulation->getTransform().reset();
         simulation->initialize();
 
@@ -509,7 +509,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
             // sized from the group's graphical radius alone (Oriented3DRenderBehavior sizes the side/up vectors from
             // it, then multiplies by the renderer scale and the particle's PARAM_SCALE) and the system transform never
             // touches it, so this is an absolute length. The in-plane angle interpolator can turn the quad to any
-            // orientation, so the corner distance - the half-diagonal - is the tight orientation-independent radius.
+            // orientation, so the corner distance - the half-diagonal - is the tight orientation-independent radius
             if (renderer && renderer->isActive() && SPK::FO::IsSparkQuadRenderer(*renderer)) {
                 SPK::FO::SparkQuadRendererData renderer_data = SPK::FO::GetSparkQuadRendererData(*renderer);
                 quad_radius = group->getGraphicalRadius() * std::sqrt(renderer_data.ScaleX * renderer_data.ScaleX + renderer_data.ScaleY * renderer_data.ScaleY);
@@ -537,7 +537,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
                 for (SPK::ConstGroupIterator it(*group); !it.end(); ++it) {
                     // A fully transparent particle draws nothing, so it must reserve no frame space. Effects commonly
                     // reach their largest scale at the end of life, exactly where the authored colour graph has
-                    // already faded the particle out.
+                    // already faded the particle out
                     if (it->getColor().a == 0) {
                         continue;
                     }
@@ -553,7 +553,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
         // Baked bounds are mandatory: a system that never shows a particle across its full simulated lifetime has no
         // measurable extent and cannot be framed at runtime, so treat it as broken content rather than baking an
-        // empty box.
+        // empty box
         if (!any_particles) {
             throw ParticleBakerException("SPARK particle system showed no visible particles while baking its bounds", source_path);
         }
@@ -577,7 +577,7 @@ void ParticleBaker::BakeSparkFile(const File& file) const
 
 #if FO_EFFEKSEER_PARTICLES
 // Bounds simulation tuning: play the compiled effect on a headless CPU manager and union the world-space extent of
-// its drawn particles across a bounded window. A one-shot effect finishes early; the frame cap bounds a looping effect.
+// its drawn particles across a bounded window. A one-shot effect finishes early; the frame cap bounds a looping effect
 static constexpr int32_t EFFEKSEER_BOUNDS_MAX_FRAMES = 600;
 static constexpr int32_t EFFEKSEER_BOUNDS_SIM_INSTANCES = 4000;
 
@@ -607,7 +607,7 @@ static auto ToEffekseerUtf16(string_view value) -> vector<char16_t>
 
 // Bounds simulation needs model geometry just like the runtime does. Keep the loader confined to the project's
 // directory resource source: the compiler dependency walk validates the same containment before simulation, and the
-// loader repeats it at the actual resource boundary so an unexpected model path cannot escape the pack.
+// loader repeats it at the actual resource boundary so an unexpected model path cannot escape the pack
 class EffekseerBoundsModelLoader final : public Effekseer::ModelLoader
 {
 public:
@@ -645,7 +645,7 @@ public:
         }
 
         // The lexical check rejects ".." traversal. Resolve existing symlinks/junctions as well before opening the
-        // file, otherwise a path which looks internal could redirect the model loader outside the resource source.
+        // file, otherwise a path which looks internal could redirect the model loader outside the resource source
         std::error_code canonical_error;
         std::filesystem::path canonical_source_root = std::filesystem::weakly_canonical(_sourceRoot, canonical_error);
 
@@ -694,14 +694,14 @@ private:
 
 // Accumulates the world-space positions of the particles drawn during the bounds simulation. Kept in our own code
 // (fed by the collecting renderers below through Effekseer's public renderer interface) so no Effekseer core change is
-// needed to read the instance transforms.
+// needed to read the instance transforms
 class EffekseerBoundsCollector final
 {
 public:
     void Include(const Effekseer::SIMD::Vec3f& position, float32_t billboard_radius)
     {
         // Non-finite instance geometry cannot be drawn - the runtime renderers reject an effect that emits it - so it
-        // must not enter the measurement either, where it would poison the whole baked extent.
+        // must not enter the measurement either, where it would poison the whole baked extent
         if (!std::isfinite(position.GetX()) || !std::isfinite(position.GetY()) || !std::isfinite(position.GetZ()) || !std::isfinite(billboard_radius)) {
             return;
         }
@@ -730,7 +730,7 @@ private:
 
 // Half-extent of one drawn instance in its own local space, read from the same instance parameters our renderers build
 // their vertices from. Every drawable family reports one; a node type with no shape of its own falls through to the
-// zero overload and contributes positions alone.
+// zero overload and contributes positions alone
 template<typename TInstanceParameter>
 static auto GetEffekseerInstanceLocalExtent(const TInstanceParameter& instance) -> float32_t
 {
@@ -764,7 +764,7 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::RingRenderer::Insta
 }
 
 // A ribbon spreads from its centre line to the two edge offsets. Positions[2] and [3] are read only by the spline path,
-// which the runtime rejects, and the emitter leaves them uninitialised - so they must stay out of the measurement.
+// which the runtime rejects, and the emitter leaves them uninitialised - so they must stay out of the measurement
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::RibbonRenderer::InstanceParameter& instance) -> float32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -773,7 +773,7 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::RibbonRenderer::Ins
 }
 
 // A track cross-section is centred on its instance and reaches half its width to either side; which of the three widths
-// applies depends on where along the trail the instance sits, so the measurement takes the largest of them.
+// applies depends on where along the trail the instance sits, so the measurement takes the largest of them
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::TrackRenderer::InstanceParameter& instance) -> float32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -782,7 +782,7 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::TrackRenderer::Inst
 }
 
 // A model node's shape lives in its mesh rather than in the instance, so its extent is the furthest vertex of the
-// furthest frame - measured once per node, since every instance draws the same mesh.
+// furthest frame - measured once per node, since every instance draws the same mesh
 static auto GetEffekseerNodeLocalExtent(const Effekseer::ModelRenderer::NodeParameter& parameter) -> float32_t
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -829,7 +829,7 @@ static auto GetEffekseerNodeLocalExtent(const TNodeParameter& parameter) -> floa
 // A minimal renderer that discards geometry and only records each drawn particle's world position (its SRTMatrix43
 // translation, which every renderer family exposes) plus the world-space half-extent of its shape. Instantiated for
 // every family - sprite, ribbon, ring, track, and model - so any effect contributes to the bounds. The body carries no
-// stack-trace marker because it is an inline template method.
+// stack-trace marker because it is an inline template method
 template<typename TRenderer>
 class EffekseerBoundsRenderer final : public TRenderer
 {
@@ -844,7 +844,7 @@ public:
         ignore_unused(user_data);
 
         // The local extent is expressed in the instance's own space, so stretch it by the largest axis scale of the
-        // instance transform to get an orientation-independent world radius.
+        // instance transform to get an orientation-independent world radius
         Effekseer::SIMD::Vec3f scale = instance.SRTMatrix43.GetScale();
         float32_t max_axis_scale = std::max({std::abs(scale.GetX()), std::abs(scale.GetY()), std::abs(scale.GetZ())});
         float32_t local_extent = std::max(GetEffekseerInstanceLocalExtent(instance), GetEffekseerNodeLocalExtent(parameter));
@@ -857,13 +857,13 @@ private:
 
 // Precompute an Effekseer effect's maximal world-space extent by simulating it and collecting the particle positions
 // through our own renderers, so the runtime frames an emitting instance from a static box (like the SPARK baked
-// bounds) instead of measuring live particles every frame.
+// bounds) instead of measuring live particles every frame
 static void SimulateEffekseerBounds(string_view source_path, string_view source_root_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max, float32_t& out_billboard_radius)
 {
     FO_STACK_TRACE_ENTRY();
 
     // The collector outlives the manager (declared first, destroyed last) so the renderers' borrow stays valid for the
-    // manager's whole lifetime.
+    // manager's whole lifetime
     EffekseerBoundsCollector collector;
     Effekseer::ManagerRef manager = Effekseer::Manager::Create(EFFEKSEER_BOUNDS_SIM_INSTANCES);
 
@@ -898,7 +898,7 @@ static void SimulateEffekseerBounds(string_view source_path, string_view source_
     }
 
     // Draw every frame with culling disabled so the collecting renderers receive every live particle regardless of
-    // camera; the collector reads the camera-independent world transform, so the camera only needs to be finite.
+    // camera; the collector reads the camera-independent world transform, so the camera only needs to be finite
     Effekseer::Manager::DrawParameter draw_parameter;
     draw_parameter.CameraCullingMask = manager->GetCameraCullingMaskToShowAllEffects();
     draw_parameter.CameraPosition = {0.0f, 0.0f, 1.0f};
@@ -916,7 +916,7 @@ static void SimulateEffekseerBounds(string_view source_path, string_view source_
 
     // Bounds are mandatory, so a box is always produced. An effect that draws nothing across the whole window (a
     // logic-only, GPU-particle, or otherwise non-renderable coverage sample) has no measurable extent, so it gets a
-    // degenerate box at the origin and reserves no frame space at runtime.
+    // degenerate box at the origin and reserves no frame space at runtime
     if (collector.HasBounds()) {
         out_min = collector.GetMin();
         out_max = collector.GetMax();
@@ -955,7 +955,7 @@ void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
         vector<string> dependency_paths = ResolveEffekseerDependencyPaths(file, compiled.Dependencies);
 
         // Precompute the bounds from the pure Effekseer payload, then append them as a trailer so the runtime frames
-        // the effect from a static box. Validation above ran on the untrailered binary.
+        // the effect from a static box. Validation above ran on the untrailered binary
         vec3 bounds_min;
         vec3 bounds_max;
         float32_t billboard_radius;

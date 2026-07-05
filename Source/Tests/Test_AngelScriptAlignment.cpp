@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -61,7 +62,7 @@ FO_BEGIN_NAMESPACE
 //   3. Module globals of 8-byte types (initialized in the module-init frame), array init-list
 //      element storage, and the non-POD `any` value.
 // Call-shape coverage (method/virtual/interface/funcdef/delegate/parameters) lives in
-// Test_AngelScriptCall.cpp.
+// Test_AngelScriptCall.cpp
 namespace
 {
     struct AlignTestRig
@@ -293,7 +294,7 @@ namespace AlignTest
 
     // Required byte alignment of one script-class member slot, derived from what the layout stores
     // there: handles, script-object/array members and non-POD value references are a pointer; inline
-    // value types and primitives align by their size (mirrors AddPropertyToClass).
+    // value types and primitives align by their size (mirrors AddPropertyToClass)
     static auto RequiredMemberAlignment(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, bool is_reference) -> size_t
     {
         if (is_reference || (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -370,7 +371,7 @@ TEST_CASE("AngelScriptValueAlignment")
     auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
-    // the base class, both inheritance levels and the mixin-including class.
+    // the base class, both inheritance levels and the mixin-including class
     {
         auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
         auto context_mngr = backend->GetContextMngr();
@@ -383,7 +384,7 @@ TEST_CASE("AngelScriptValueAlignment")
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
         REQUIRE(as_engine != nullptr);
 
-        // Script classes live in the script module, not in the engine's registered-type scope.
+        // Script classes live in the script module, not in the engine's registered-type scope
         REQUIRE(as_engine->GetModuleCount() >= 1);
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
         REQUIRE(script_module != nullptr);
@@ -397,7 +398,7 @@ TEST_CASE("AngelScriptValueAlignment")
     }
 
     // Runtime execution: under the UBSan leg any misaligned member/local/global constructor or read
-    // trips a hard `alignment` runtime error in the value-type behaviours.
+    // trips a hard `alignment` runtime error in the value-type behaviours
     auto call_and_check = [&](string_view func_name, int64_t expected) {
         INFO(func_name);
         auto func = server->FindFunc<int64_t>(fn(func_name));

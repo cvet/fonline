@@ -351,7 +351,7 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
             }
         }
 
-        // Single atomic busy->free move; reserve first so the add cannot half-complete.
+        // Single atomic busy->free move; reserve first so the add cannot half-complete
         vec_remove_unique_value(_busyContexts, ctx_holder);
         vec_add_unique_value(_freeContexts, ctx_holder);
     }
@@ -644,9 +644,8 @@ static void CollectScriptStackLayers(std::vector<ScriptStackTraceLayer>& out_lay
     FO_NO_STACK_TRACE_ENTRY();
 
     try {
-        // asGetActiveContext below lazily allocates AngelScript thread-local storage on first access, including
-        // on threads that only capture a stack trace (never run a script). Register the per-thread cleanup so
-        // that storage is released when the thread exits rather than leaked.
+        // asGetActiveContext lazily allocates AngelScript TLS even on stack-trace-only threads.
+        // Register cleanup before the first access
         EnsureAngelScriptThreadStorageReleasedOnExit();
 
         auto ctx = make_nptr(AngelScript::asGetActiveContext());
@@ -730,7 +729,7 @@ static void AngelScriptException(AngelScript::asIScriptContext* raw_ctx, void* p
         return;
     }
 
-    // Capture the script call stack as it stands right now.
+    // Capture the script call stack as it stands right now
     ex = std::make_exception_ptr(ScriptCoreException(ctx->GetExceptionString()));
 }
 

@@ -353,7 +353,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapToPath(ptr<MapperEngine> mapper, ptr<MapVi
 {
     // Sandbox-disciplined save into <MapsRoot>/<subDir>/<name>.<ext> (subDir defaults to the
     // AI authoring area "Generated" at the caller). Refuse path separators in the name and any
-    // ".." traversal so an authoring agent cannot escape the Maps tree.
+    // ".." traversal so an authoring agent cannot escape the Maps tree
     if (name.empty()) {
         throw ScriptException("Map name is empty");
     }
@@ -673,7 +673,7 @@ FO_SCRIPT_API void Mapper_Game_CenterMapperOnPlayableArea(ptr<MapperEngine> mapp
     if (irect32 area = map->GetScrollAxialArea(); !area.is_zero()) {
         // Axial -> pixel center, then resolve back to a raw hex without clamping to the
         // authored map rectangle. ScrollAxialArea may intentionally extend into negative
-        // axial space, and preview captures need to align to that editor boundary.
+        // axial space, and preview captures need to align to that editor boundary
         int32_t axial_cx = area.x + area.width / 2;
         int32_t axial_cy = area.y + area.height / 2;
         ipos32 pixel_center {axial_cx * (GameSettings::MAP_HEX_WIDTH / 2), axial_cy * GameSettings::MAP_HEX_LINE_HEIGHT};
@@ -829,7 +829,7 @@ FO_SCRIPT_API float32_t Mapper_Game_CalcMapperFitZoom(ptr<MapperEngine> mapper, 
     // Pixel extents of the playable area: ScrollAxialArea (in axial coordinates) maps to
     // (axial_w * MAP_HEX_WIDTH/2) x (axial_h * MAP_HEX_LINE_HEIGHT) — same basis as the
     // engine's RefreshMinZoom. For maps without an explicit axial area fall back to the
-    // map's hex bounding box.
+    // map's hex bounding box
     int32_t pixel_w;
     int32_t pixel_h;
 
@@ -873,7 +873,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
     // The mapper's main window paints into the swap-chain backbuffer (no virtual RT) but
     // SpriteManager keeps an intermediate _rtMain that holds the full frame just before it
     // is blit out. Re-run the mapper's draw routine to refresh _rtMain, then read pixels
-    // from there. Two paints per save is acceptable for batch tooling.
+    // from there. Two paints per save is acceptable for batch tooling
     mapper->DrawMapperFrame();
 
     auto main_rt = mapper->SprMngr.GetMainRenderTarget();

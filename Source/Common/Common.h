@@ -68,7 +68,7 @@ extern bool IsTestingInProgress;
 //                    throws, so use it only where an exception may legally propagate; a noexcept method that
 //                    must stay alive on a destroying entity handles that case itself with FO_VERIFY_AND_RETURN*.
 //   NONE           - no precondition (explicitly validated as callable at any time). Replaces the old
-//                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
+//                    FO_NO_VALIDATE_ENTITY_ACCESS marker
 // Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
 class Entity;
 inline void ValidateEntityAccess(nptr<const Entity> entity);
@@ -79,7 +79,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 #define FO_VE_CHECK_NONE
 #define FO_VE_DISPATCH(flag) FO_CONCAT(FO_VE_CHECK_, flag)
 
-// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor.
+// Bounded variadic dispatch (1..3 flags); the FO_VE_EXPAND wrapper keeps it correct on the MSVC preprocessor
 #define FO_VE_EXPAND(x) x
 #define FO_VE_NARGS(...) FO_VE_EXPAND(FO_VE_NARGS_IMPL(__VA_ARGS__, 3, 2, 1))
 #define FO_VE_NARGS_IMPL(_1, _2, _3, N, ...) N
@@ -90,7 +90,7 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 
 #define FO_VALIDATE_ENTITY(...) FO_VE_FOREACH(FO_VE_DISPATCH, __VA_ARGS__)
 
-// Explicit-entity access check (validates a passed-in entity argument rather than `this`).
+// Explicit-entity access check (validates a passed-in entity argument rather than `this`)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
 ///@ ExportValueType Name = ident Layout = int64-value

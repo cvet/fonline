@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -37,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 // Helper: wait for `predicate` to become true, polling every 1 ms up to `max_wait`.
-// Used instead of sleep+CHECK to keep tests robust against scheduler jitter.
+// Used instead of sleep+CHECK to keep tests robust against scheduler jitter
 static auto WaitFor(std::function<bool()> predicate, std::chrono::milliseconds max_wait = std::chrono::milliseconds {500}) -> bool
 {
     auto deadline = std::chrono::steady_clock::now() + max_wait;
@@ -91,7 +92,7 @@ TEST_CASE("WorkerPoolAnonymous")
         REQUIRE(WaitFor([&] { return fired.load(); }, std::chrono::milliseconds {2000}));
         // The delayed task must not run before (close to) its scheduled deadline. Measuring the actual
         // fire delay is robust under suite load, unlike asserting "not fired" after a fixed wall-clock
-        // sleep that can itself overshoot the deadline. Small slack accounts for timer granularity.
+        // sleep that can itself overshoot the deadline. Small slack accounts for timer granularity
         CHECK(fired_after_ms.load() >= 70);
         pool.WaitIdle();
     }
@@ -122,7 +123,7 @@ TEST_CASE("WorkerPoolKeyed")
     SECTION("KeyDedupWhileQueued")
     {
         // One thread, blocking job in flight; subsequent Submit(key, ...) calls with the same key
-        // should coalesce into the queued slot rather than stack up.
+        // should coalesce into the queued slot rather than stack up
         std::atomic<bool> shutdown_flag {false};
         std::atomic_int blocker_acquired {0};
         std::atomic_int blocker_release {0};
@@ -131,7 +132,7 @@ TEST_CASE("WorkerPoolKeyed")
         WorkerJobKey dup_key {WorkerJobType::Player, 2};
         WorkerPool pool {"test", 1, &shutdown_flag};
 
-        // First job: blocks until release flag flips, occupying the worker.
+        // First job: blocks until release flag flips, occupying the worker
         pool.Submit(gate_key, [&]() -> std::optional<timespan> {
             blocker_acquired.fetch_add(1);
             while (blocker_release.load() == 0) {
@@ -141,7 +142,7 @@ TEST_CASE("WorkerPoolKeyed")
         });
         REQUIRE(WaitFor([&] { return blocker_acquired.load() == 1; }));
 
-        // Now another key, submitted many times — second and beyond should be dropped (queued dedup).
+        // Now another key, submitted many times — second and beyond should be dropped (queued dedup)
         for (int i = 0; i < 10; i++) {
             pool.Submit(dup_key, [&]() -> std::optional<timespan> {
                 submissions.fetch_add(1);
@@ -158,7 +159,7 @@ TEST_CASE("WorkerPoolKeyed")
     SECTION("PendingRerunReplacesClosureWhileRunning")
     {
         // While a keyed job is running, a fresh Submit(key, newClosure) should make `newClosure`
-        // execute exactly once after the current run, replacing any previously-stored closure.
+        // execute exactly once after the current run, replacing any previously-stored closure
         std::atomic<bool> shutdown_flag {false};
         std::atomic_int latest_value {0};
         std::atomic_int run_count {0};
@@ -175,10 +176,10 @@ TEST_CASE("WorkerPoolKeyed")
         });
 
         // Wait until the first job is actually running before pushing replacements; otherwise the
-        // replacements would hit the queued-dedup branch (no-op) instead of the running branch.
+        // replacements would hit the queued-dedup branch (no-op) instead of the running branch
         REQUIRE(WaitFor([&] { return run_count.load() == 1; }));
 
-        // Now while it's running, push three closures with increasing values; only the last must run.
+        // Now while it's running, push three closures with increasing values; only the last must run
         for (int v = 1; v <= 3; v++) {
             pool.Submit(key, [&, v]() -> std::optional<timespan> {
                 latest_value.store(v);
@@ -189,7 +190,7 @@ TEST_CASE("WorkerPoolKeyed")
 
         gate.store(1);
         pool.WaitIdle();
-        CHECK(run_count.load() == 2); // Original + one rerun.
+        CHECK(run_count.load() == 2); // Original + one rerun
         CHECK(latest_value.load() == 3);
     }
 
@@ -232,7 +233,7 @@ TEST_CASE("WorkerPoolKeyed")
 
     SECTION("DistinctTypeSameIdAreSeparateKeys")
     {
-        // {Player, 42} and {CritterMovement, 42} must NOT collide.
+        // {Player, 42} and {CritterMovement, 42} must NOT collide
         std::atomic<bool> shutdown_flag {false};
         std::atomic_int player_runs {0};
         std::atomic_int critter_runs {0};
@@ -285,13 +286,13 @@ TEST_CASE("WorkerPoolWake")
         WorkerJobKey key {WorkerJobType::Player, 1};
         WorkerPool pool {"test", 1, &shutdown_flag};
 
-        // Submit with a 5-second delay — it would normally not run during the test.
+        // Submit with a 5-second delay — it would normally not run during the test
         pool.Submit(key, std::chrono::seconds {5}, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
             return std::nullopt;
         });
 
-        // Wake should advance FireTime to now.
+        // Wake should advance FireTime to now
         bool waked = pool.Wake(key);
         CHECK(waked);
 
@@ -310,7 +311,7 @@ TEST_CASE("WorkerPoolWake")
     SECTION("WakeRunningJobOverridesSelfRescheduleDelay")
     {
         // Body returns a 5-second delay between runs; Wake during execution must collapse the
-        // wait so the next run starts immediately.
+        // wait so the next run starts immediately
         std::atomic<bool> shutdown_flag {false};
         std::atomic_int runs {0};
         std::atomic_bool first_run_started {false};
@@ -395,7 +396,7 @@ TEST_CASE("WorkerPoolCancel")
             while (first_release.load() == 0) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
-            // Body asks for a self-reschedule, but Cancel should suppress it.
+            // Body asks for a self-reschedule, but Cancel should suppress it
             return std::optional<timespan> {std::chrono::milliseconds {1}};
         });
 
@@ -403,7 +404,7 @@ TEST_CASE("WorkerPoolCancel")
         CHECK(pool.Cancel(key));
 
         first_release.store(1);
-        // Wait for the in-flight run to finalize. After that, no rerun should happen.
+        // Wait for the in-flight run to finalize. After that, no rerun should happen
         std::this_thread::sleep_for(std::chrono::milliseconds {50});
         pool.WaitIdle();
         CHECK(runs.load() == 1);
@@ -431,7 +432,7 @@ TEST_CASE("WorkerPoolCancel")
         CHECK(pool.Cancel(key));
 
         // Submit after Cancel-while-running: the new closure should run as a pending rerun, and
-        // the cancel-on-finish flag must be cleared so the rerun isn't itself silently dropped.
+        // the cancel-on-finish flag must be cleared so the rerun isn't itself silently dropped
         pool.Submit(key, [&]() -> std::optional<timespan> {
             runs.fetch_add(1);
             return std::nullopt;
@@ -500,7 +501,7 @@ TEST_CASE("WorkerPoolClearAndParallelism")
                 while (gate_release.load() == 0) {
                     std::this_thread::sleep_for(std::chrono::milliseconds {1});
                 }
-                // Self-reschedule — but Clear() should suppress this rerun.
+                // Self-reschedule — but Clear() should suppress this rerun
                 return std::optional<timespan> {std::chrono::milliseconds {1}};
             }
             gate_reruns.fetch_add(1);
@@ -557,7 +558,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
     // while the worker threads run the bodies — the interleaving that actually stresses every
     // transition in WorkerEntry's finalize block. Bodies are non-deterministic, so only structural
     // invariants are asserted: the pool must stay race-free (TSan), never touch a freed closure (ASan),
-    // and drain to a fully idle, self-consistent state.
+    // and drain to a fully idle, self-consistent state
     SECTION("DriversHammerSubmitWakeCancelClear")
     {
         std::atomic<bool> shutdown_flag {false};
@@ -573,7 +574,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
             return [&body_runs]() -> std::optional<timespan> {
                 int32_t n = body_runs.fetch_add(1, std::memory_order_relaxed) + 1;
                 // Every fourth run self-reschedules with a tiny delay, exercising the reschedule path
-                // and the wake-override / cancel-on-finish interplay when an external op lands mid-run.
+                // and the wake-override / cancel-on-finish interplay when an external op lands mid-run
                 return n % 4 == 0 ? std::optional<timespan> {std::chrono::microseconds {50}} : std::nullopt;
             };
         };
@@ -583,7 +584,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
 
         for (int d = 0; d < driver_count; d++) {
             drivers.emplace_back([&, d]() {
-                // Per-driver deterministic LCG — no shared RNG state, no <random> dependency.
+                // Per-driver deterministic LCG — no shared RNG state, no <random> dependency
                 uint32_t rng = 0xC0FFEEU + static_cast<uint32_t>(d) * 2654435761U;
                 auto next = [&rng]() {
                     rng = rng * 1664525U + 1013904223U;
@@ -624,7 +625,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
         }
 
         // Stop the self-reschedule churn and drain everything to a clean barrier. After Clear() no queued
-        // job remains and every in-flight body is marked cancel-on-finish, so the pool must reach idle.
+        // job remains and every in-flight body is marked cancel-on-finish, so the pool must reach idle
         pool.Clear();
         REQUIRE(pool.WaitIdle(std::chrono::seconds {10}));
 
@@ -641,7 +642,7 @@ TEST_CASE("WorkerPoolConcurrentChaos")
 TEST_CASE("WorkerPoolWaitIdleTimeout")
 {
     // The timed WaitIdle backs the shutdown grace window: while a job is still in flight it must
-    // report "not idle" once the deadline passes, and reach idle once the job drains.
+    // report "not idle" once the deadline passes, and reach idle once the job drains
     SECTION("ReturnsFalseWhileBusyThenTrueWhenDrained")
     {
         std::atomic<bool> shutdown_flag {false};
@@ -659,10 +660,10 @@ TEST_CASE("WorkerPoolWaitIdleTimeout")
 
         REQUIRE(WaitFor([&] { return started.load() == 1; }));
 
-        // Job is parked on the gate → the pool is not idle, so a short timed wait must give up.
+        // Job is parked on the gate → the pool is not idle, so a short timed wait must give up
         CHECK_FALSE(pool.WaitIdle(std::chrono::milliseconds {50}));
 
-        // Release the gate; the timed wait now reaches idle well within its budget.
+        // Release the gate; the timed wait now reaches idle well within its budget
         release.store(1);
         CHECK(pool.WaitIdle(std::chrono::seconds {5}));
 

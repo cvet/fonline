@@ -73,7 +73,7 @@ public:
 
     // Wire the websocketpp connection handlers to this wrapper. Must run after the shared_ptr owning
     // this object exists (weak_from_this() is unusable in the constructor), so it is called from OnOpen
-    // right after allocation - mirrors the Asio transport's post-construction StartAsyncRead().
+    // right after allocation - mirrors the Asio transport's post-construction StartAsyncRead()
     void Start();
 
 private:
@@ -90,7 +90,7 @@ private:
     // Held weak, never strong: the websocketpp endpoint owns the connection for its whole life and destroys
     // it (with its io_context-bound asio timers) on the io thread. If this wrapper kept a strong ref it
     // could outlive the server and destroy the connection after the io_context is gone - a heap use-after-
-    // free on shutdown. Locking the weak ref for each use touches the connection only while it is still alive.
+    // free on shutdown. Locking the weak ref for each use touches the connection only while it is still alive
     connection_weak_ptr _connection {};
 };
 
@@ -177,7 +177,7 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
     // keeps the connection registered until it finishes closing), so the handlers must not touch a raw
     // dangling 'this'. Hold the wrapper alive for the duration of each handler via a weak_from_this() lock -
     // the same lifetime discipline the Asio transport gets from its shared_from_this() read/write handlers.
-    // If the lock fails the wrapper is already gone and the callback is a no-op.
+    // If the lock fails the wrapper is already gone and the callback is a no-op
     auto connection = _connection.lock();
 
     if (!connection) {
@@ -240,7 +240,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         // close() is the thread-safe teardown (it posts to the endpoint's io service); terminate() is the
         // internal io-thread-only path and must never be called from the engine thread that destroys this
         // wrapper - doing so races the websocketpp run loop and corrupts connection state / crashes. If the
-        // weak ref no longer locks the endpoint already destroyed the connection - nothing to close.
+        // weak ref no longer locks the endpoint already destroyed the connection - nothing to close
         if (auto connection = _connection.lock()) {
             std::error_code close_error;
             connection->close(websocketpp::close::status::going_away, "", close_error);
@@ -328,7 +328,7 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 
     // Runs on the engine thread, not the websocketpp io thread: use the thread-safe close() (posts to the
     // io service) rather than the io-thread-only terminate(), which would race the run loop. A dead weak ref
-    // means the endpoint already tore the connection down - nothing to do.
+    // means the endpoint already tore the connection down - nothing to do
     if (auto connection = _connection.lock()) {
         std::error_code close_error;
         connection->close(websocketpp::close::status::going_away, "", close_error);

@@ -65,13 +65,13 @@ private:
     ptr<TimerSettings> _settings;
 
     // Advanced on the main worker (FrameAdvance) but read from WorkerPool/network threads (entity
-    // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race.
+    // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race
     std::atomic<nanotime> _frameTime {};
     std::atomic<timespan> _frameDeltaTime {};
     timespan _debuggingOffset {}; // main-worker only
 
     // The synchronized-time projection reads this triple together, so it needs a consistent snapshot
-    // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic).
+    // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic)
     mutable mutex _syncTimeLocker {};
     synctime _syncTimeBase FO_TSA_GUARDED_BY(_syncTimeLocker) {};
     synctime _syncTimeFloor FO_TSA_GUARDED_BY(_syncTimeLocker) {};

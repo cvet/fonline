@@ -117,7 +117,7 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 
     // Try the bundled runtime DLL first on self-update platforms (the DLL is the authoritative
     // runtime); if it is absent or fails to load, RunClientFromLibrary falls back to the embedded
-    // engine. ForceEmbeddedRuntime skips the implicit DLL load; an explicit --ClientLibPath still loads.
+    // engine. ForceEmbeddedRuntime skips the implicit DLL load; an explicit --ClientLibPath still loads
     bool can_load_bundled_runtime = requested_runtime.ExplicitPath || (!requested_runtime.ForceEmbedded && can_self_update);
 
     if (can_load_bundled_runtime) {
@@ -384,7 +384,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
                     auto result = Data->ResourceUpdater->GetResult();
                     // The updater stages the new runtime under its own binary dir (the writable root
-                    // for an installed client, the exe dir for a portable one); reload that exact path.
+                    // for an installed client, the exe dir for a portable one); reload that exact path
                     string staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
@@ -514,7 +514,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 
     // The runtime being loaded decides where staging lives: the install-dir base DLL on the initial
     // load, or the writable-root DLL on an installed client's reload. Portable clients use the exe dir
-    // in both passes, so this is identical to the previous exe-dir-only behavior for them.
+    // in both passes, so this is identical to the previous exe-dir-only behavior for them
     string staged_path = MakeClientRuntimeStagingPath(runtime_live_path);
     string binary_dir = strex(runtime_live_path).extract_dir().str();
 

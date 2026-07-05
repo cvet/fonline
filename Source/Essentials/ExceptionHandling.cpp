@@ -119,7 +119,7 @@ extern void SetCrashStackTrace() noexcept // Called in backward.hpp
         FO_NAMESPACE ExceptionHandling->CrashStackTrace = FO_NAMESPACE GetStackTrace();
     }
     catch (...) {
-        // Best effort: keep the original fatal error alive even if stack capture fails.
+        // Best effort: keep the original fatal error alive even if stack capture fails
     }
 }
 
@@ -247,13 +247,11 @@ extern void InstallCrashHandlerStackForThisThread() noexcept
     }
 
     // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
-    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults.
+    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
     constexpr size_t stack_size = size_t {2} * 1024 * 1024;
 
-    // Per-thread backing buffer kept alive for the thread's lifetime; sigaltstack retains a pointer to it
-    // and the registration is torn down automatically when the thread exits. std::unique_ptr (not the
-    // engine alias) is used because it supports array storage; new[] leaves the bytes uninitialized so
-    // the reservation stays lazily committed.
+    // sigaltstack borrows this backing buffer until thread teardown.
+    // std::unique_ptr supports uninitialized array storage and preserves lazy commitment
     static thread_local std::unique_ptr<uint8_t[]> alt_stack_buffer;
 
     if (alt_stack_buffer) {
@@ -347,7 +345,7 @@ static void SetCrashInfo(string info) noexcept
         ExceptionHandling->CrashInfo = std::move(info);
     }
     catch (...) {
-        // Best effort: crash handlers must not throw while recording context.
+        // Best effort: crash handlers must not throw while recording context
     }
 }
 

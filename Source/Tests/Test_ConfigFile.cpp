@@ -98,7 +98,7 @@ TEST_CASE("ConfigFile")
     {
         // An input this small fits every implementation's small-string buffer, so holding it in a
         // plain string member would move the characters inside the object and dangle every stored
-        // view. The input lives in the owned-node list precisely to keep its address stable here.
+        // view. The input lives in the owned-node list precisely to keep its address stable here
         ConfigFile original {"[A]\nk = v\n"};
         ConfigFile moved {std::move(original)};
 

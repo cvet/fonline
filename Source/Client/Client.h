@@ -423,7 +423,7 @@ protected:
     vector<tuple<string, bool>> _videoQueue {};
 
     // Sorted ascending by `FireTime`. Per-frame dispatch in `MainLoop` only needs to peek
-    // the front and pop entries whose deadline passed; nothing scanned every frame.
+    // the front and pop entries whose deadline passed; nothing scanned every frame
     struct ScheduledCallback
     {
         nanotime FireTime {};

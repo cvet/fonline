@@ -64,7 +64,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     FO_STACK_TRACE_ENTRY();
 
     // Headless test clients still execute the normal draw pipeline, so dummy mode
-    // must synthesize the full default effect set instead of the updater-only subset.
+    // must synthesize the full default effect set instead of the updater-only subset
     EffectMngr.LoadDefaultEffects();
 
     // Init sprite subsystems
@@ -297,7 +297,7 @@ void ClientEngine::ProcessScheduledCallbacks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Execute only callbacks that were due when this pass began.
+    // Execute only callbacks that were due when this pass began
     nanotime now = GameTime.GetFrameTime();
     auto due_end = std::ranges::upper_bound(_scheduledCallbacks, now, {}, &ScheduledCallback::FireTime);
     size_t due_count = numeric_cast<size_t>(std::distance(_scheduledCallbacks.begin(), due_end));
@@ -493,7 +493,7 @@ void ClientEngine::ProcessInputEvent(const InputEvent& ev)
 
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         auto key_code = ev.KeyDown.Code;
-        // Windows turns Alt+numpad into an OS text-input event whose payload can be a bare C0 control character.
+        // Windows turns Alt+numpad into an OS text-input event whose payload can be a bare C0 control character
         string key_text;
         key_text.reserve(ev.KeyDown.Text.length());
 
@@ -776,7 +776,7 @@ void ClientEngine::Net_OnInitData()
 
         if (!Settings->UserWritablePath.empty()) {
             // Installed client: self-update resource patches live in the per-user writable dir; layer
-            // it on top so the up-to-date file wins the size/hash check below.
+            // it on top so the up-to-date file wins the size/hash check below
             resources.AddDirSource(fs_make_writable_path(Settings->UserWritablePath, Settings->ClientResources), false, true, true);
         }
 
@@ -2438,7 +2438,7 @@ void ClientEngine::OnSetItemSomeLight(ptr<Entity> entity, ptr<const Property> pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    // LightSource, LightIntensity, LightDistance, LightFlags, LightColor.
+    // LightSource, LightIntensity, LightDistance, LightFlags, LightColor
 
     ignore_unused(prop);
 
@@ -2452,7 +2452,7 @@ void ClientEngine::OnSetCritterLight(ptr<Entity> entity, ptr<const Property> pro
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Re-apply the critter's light fan after a single bundled write to Critter.Light.
+    // Re-apply the critter's light fan after a single bundled write to Critter.Light
 
     ignore_unused(prop);
 

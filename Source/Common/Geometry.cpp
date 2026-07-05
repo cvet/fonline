@@ -496,7 +496,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         // Hex grid: ring R has 6R cells; HexesInRadius(R) = 1 + 3R(R+1).
-        // R = smallest integer with 3R(R+1) >= index.
+        // R = smallest integer with 3R(R+1) >= index
         float64_t fi = static_cast<float64_t>(index);
         int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(12.0 * fi + 9.0) - 3.0) / 6.0 - 1e-9));
 
@@ -514,7 +514,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
         // Axial position relative to hex (engine's doubled-axial: E=(+2,0), SE=(+1,+1), ...).
         // 6 sides of length `round` walked in order SE, SW, W, NW, NE, E. Ranges below
-        // overlap at corners by design - both side formulas agree there.
+        // overlap at corners by design - both side formulas agree there
         int32_t dax;
         int32_t day;
 
@@ -545,7 +545,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
         // Convert axial delta back to offset delta. Hex directions always produce
         // an even (day - dax), so dx is integer; dy then depends on hex.x parity
-        // via the same row-shift rule used by GetHexPos.
+        // via the same row-shift rule used by GetHexPos
         int32_t dx = (day - dax) / 2;
         int32_t cx_parity = hex.x & 1;
         int32_t shift = dx + cx_parity;
@@ -556,7 +556,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
     }
     else {
         // Square grid: ring R has 8R cells; HexesInRadius(R) = 1 + 4R(R+1).
-        // R = smallest integer with 4R(R+1) >= index.
+        // R = smallest integer with 4R(R+1) >= index
         float64_t fi = static_cast<float64_t>(index);
         int32_t round = static_cast<int32_t>(std::ceil((std::sqrt(1.0 + fi) - 1.0) / 2.0 - 1e-9));
 
@@ -573,7 +573,7 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
         int32_t r = index - (1 + 4 * (round - 1) * round); // [0, 8*round - 1]
 
         // 4 sides of length 2R, walked SE, SW, NW, NE (raw-coord directions).
-        // Square geometry has no parity quirk: raw coords ARE the lattice.
+        // Square geometry has no parity quirk: raw coords ARE the lattice
         int32_t drx;
         int32_t dry;
 
@@ -689,12 +689,12 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t
     // GetYProj()) and elevation by cos(angle). Anchoring the ground point at z = legacy_y / sin(angle) makes
     // ProjectWorldToMap reproduce the legacy GetHexPos screen position exactly at elevation 0. Models render
     // in this same frame, so they need no extra transform (see
-    // Docs/Plans/2026-05-29-sprites-real-3d-coordinates.md).
+    // Docs/Plans/2026-05-29-sprites-real-3d-coordinates.md)
     ipos32 hex_pos = GetHexPos(raw_hex);
     float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 
     // Hex offsets are authored in legacy map-screen pixels. Treat them as movement along the ground plane:
-    // +X stays +X, while +screenY is the camera-foreshortened projection of +worldZ.
+    // +X stays +X, while +screenY is the camera-foreshortened projection of +worldZ
     vec3 world_pos {numeric_cast<float32_t>(hex_pos.x), elevation, numeric_cast<float32_t>(hex_pos.y) / sin_a};
     world_pos.x += numeric_cast<float32_t>(hex_offset.x);
     world_pos.z += numeric_cast<float32_t>(hex_offset.y) / sin_a;
@@ -709,7 +709,7 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
     // projection. Returns map-space pixels in .x/.y (legacy convention, Y down) and view depth in .z (larger
     // == nearer the camera == drawn on top). The (.y, .z) pair is an orthonormal rotation of the world
     // (Z, Y) pair, so this is a true rigid camera tilt rather than a shear. The Phase 1 GPU view-projection
-    // matrix must agree with this contract; it is pinned by Test_Geometry.cpp.
+    // matrix must agree with this contract; it is pinned by Test_Geometry.cpp
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -763,12 +763,12 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
     // matrix shared by sprites, 3D models and particles. 2D map sprites write per-vertex world depth and test it
     // with DepthFunc = LessEqual (the CPU painter sort still orders blended layers), so the shared GPU depth
     // buffer resolves occlusion across sprites, 3D models and particles alike. Pinned against
-    // ProjectWorldToMap / GetHexPos by Test_Geometry.cpp.
+    // ProjectWorldToMap / GetHexPos by Test_Geometry.cpp
     float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
 
-    // Rigid tilt about X (map Y is down): screen_y = sin*z - cos*y, depth = cos*z + sin*y; screen_x = x.
+    // Rigid tilt about X (map Y is down): screen_y = sin*z - cos*y, depth = cos*z + sin*y; screen_x = x
     mat44 tilt {1.0f};
     tilt[1][1] = -cos_a;
     tilt[2][1] = sin_a;
@@ -776,7 +776,7 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
     tilt[2][2] = cos_a;
 
     // Yaw about the world up axis (Y), applied before the tilt so the ground orbits under the fixed-elevation
-    // camera. The vertical axis is invariant under yaw, so walls/models stay vertical on screen.
+    // camera. The vertical axis is invariant under yaw, so walls/models stay vertical on screen
     mat44 yaw_mat = glm::rotate(mat44 {1.0f}, yaw_deg * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
 
     mat44 scroll_zoom = glm::scale(mat44 {1.0f}, vec3 {zoom, zoom, 1.0f}) * //
@@ -790,7 +790,7 @@ auto GeometryHelper::MakeMapAnchoredProj(const mat44& base_proj, const mat44& ma
     FO_NO_STACK_TRACE_ENTRY();
 
     // Shift `base_proj` in clip space so its local origin lands at the map-space anchor encoded by
-    // `map_ortho`. This keeps direct-draw models and in-scene particle systems on the same root/depth formula.
+    // `map_ortho`. This keeps direct-draw models and in-scene particle systems on the same root/depth formula
     glm::vec4 origin_clip = base_proj * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
     glm::vec4 anchor_clip = map_ortho * glm::vec4 {anchor_pos.x, anchor_pos.y, anchor_depth, 1.0f};
     vec3 clip_offset = vec3 {anchor_clip.x / anchor_clip.w - origin_clip.x / origin_clip.w, //
@@ -973,7 +973,7 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
     // Re-deriving the hex from a pixel position can round onto a hex its owner could never walk to.
     // A caller that relocates a live critter passes the predicate so the rounding cannot seat it
     // inside a wall: keeping the accumulated offset is always better than adopting an illegal hex,
-    // because a position the other side refuses to path to can never be reconciled again.
+    // because a position the other side refuses to path to can never be reconciled again
     if (is_movable && normalized_hex != hex && !is_movable(normalized_hex)) {
         return false;
     }

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -104,7 +105,7 @@ namespace
     // livelock valve and throws. Asserts that the give-up is the retry budget's own and not the watchdog's
     // rescue, by requiring the contention to still be held when the throw lands. A wall-clock budget cannot
     // state that: the budget is a count of attempts whose back-off sleeps are stretched by the platform's
-    // timer granularity, so on a loaded machine an absolute deadline measures the scheduler, not the code.
+    // timer granularity, so on a loaded machine an absolute deadline measures the scheduler, not the code
     static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
         FO_STACK_TRACE_ENTRY();
@@ -130,7 +131,7 @@ namespace
 
         // Safety net only — it must stay well above the retry budget (which on a coarse-timer platform is
         // dominated by the sleep granularity), so releasing early can never turn the expected throw into a
-        // success and mask a regression.
+        // success and mask a regression
         std::jthread contention_watchdog {[&](std::stop_token) {
             for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
@@ -141,7 +142,7 @@ namespace
 
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
-        // Read before the test releases the contention itself, so this reflects only the watchdog.
+        // Read before the test releases the contention itself, so this reflects only the watchdog
         const bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
@@ -153,7 +154,7 @@ namespace
 
     // The realistic counterpart: a foreign thread that holds the state mutex only for the microsecond-to-
     // millisecond span of its own non-blocking pass. Retention must retry THROUGH that window and land,
-    // because for a covered target such a block always clears on its own.
+    // because for a covered target such a block always clears on its own
     static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
         FO_STACK_TRACE_ENTRY();
@@ -452,7 +453,7 @@ namespace ServerEngineInitGateTest
     // `MakeSingleProtoResourceBlob` builds a proto with default properties, which leaves `Stackable`
     // false. The conservation stress (ServerEngineConcurrentItemTransferConservesTotal) needs a
     // stackable item so `MoveItem` exercises the split/merge `count` read-modify-write. Mirror of the
-    // helper in Test_ServerMapOperations.cpp.
+    // helper in Test_ServerMapOperations.cpp
     static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
     {
         vector<uint8_t> props_data;
@@ -675,23 +676,23 @@ TEST_CASE("ServerResourcesMountBakedServerEntries")
 TEST_CASE("ServerEngineConnectionAcceptPredicates")
 {
     // Pure accept-path decision logic for the network population cap + per-source rate guard
-    // (launch-network-load-test-and-caps Track 1). Static + side-effect-free, so no live server is needed.
+    // (launch-network-load-test-and-caps Track 1). Static + side-effect-free, so no live server is needed
 
     SECTION("PopulationCapAcceptsUnderLimitAndRejectsAtOrOver")
     {
-        // 0 means unlimited on both axes.
+        // 0 means unlimited on both axes
         CHECK(ServerEngine::ShouldAcceptConnection(1000, 1000, 0, 0));
 
-        // Connection cap.
+        // Connection cap
         CHECK(ServerEngine::ShouldAcceptConnection(9, 5, 10, 0));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 5, 10, 0));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(11, 5, 10, 0));
 
-        // Player cap.
+        // Player cap
         CHECK(ServerEngine::ShouldAcceptConnection(100, 4, 0, 5));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(100, 5, 0, 5));
 
-        // Either ceiling rejects.
+        // Either ceiling rejects
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 1, 10, 5));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(1, 5, 10, 5));
     }
@@ -700,17 +701,17 @@ TEST_CASE("ServerEngineConnectionAcceptPredicates")
     {
         ServerEngine::ConnRateState state {};
 
-        // 0 disables the guard (always accept) and does not touch the bucket.
+        // 0 disables the guard (always accept) and does not touch the bucket
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 0));
 
-        // Up to the limit within the same second is accepted; beyond it is rejected.
+        // Up to the limit within the same second is accepted; beyond it is rejected
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
 
-        // A new second rolls the window over and accepts again.
+        // A new second rolls the window over and accepts again
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
     }
@@ -762,7 +763,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(registered_player == player);
 
     // Login work re-synced the context onto the player, so the critter cover must be re-established
-    // by the caller before the destroy call — the callee only retains an already covered entity.
+    // by the caller before the destroy call — the callee only retains an already covered entity
     server->RequireCurrentSyncContext()->SyncEntity(cr);
 
     server->CrMngr.DestroyCritter(cr);
@@ -878,7 +879,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     // later quit ran Shutdown(), which dereferenced the null worker pool — SIGSEGV in
     // WorkerPool::Clear() locking the pool mutex through a null `this`. Shutdown() must be safe to
     // call on such a partially-initialized engine. An unrecognized DbStorage makes ConnectToDataBase
-    // throw "Wrong storage options", reproducing the same aborted-startup state deterministically.
+    // throw "Wrong storage options", reproducing the same aborted-startup state deterministically
     auto settings = MakeServerTestSettings();
     BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
 
@@ -1242,7 +1243,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1290,7 +1291,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1340,7 +1341,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1401,7 +1402,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 // ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
 // tests in Test_EntitySync.cpp cannot reach this - they have no entity hierarchy
 // (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under an
-// external ServerEngine::Lock; trusted registration captures newly created entities before publication.
+// external ServerEngine::Lock; trusted registration captures newly created entities before publication
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
@@ -1454,7 +1455,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     server->MapMngr.TransferToMap(cr_c, map, mpos {14, 14}, mdir {}, std::nullopt);
     server->CrMngr.AddItemToCritter(cr_a, nested_item, false);
 
-    // Parent wiring (Critter._parent = Map) must be established for the cover logic.
+    // Parent wiring (Critter._parent = Map) must be established for the cover logic
     auto cr_a_parent = cr_a->GetParentRaw();
     auto cr_b_parent = cr_b->GetParentRaw();
     auto cr_c_parent = cr_c->GetParentRaw();
@@ -1481,15 +1482,15 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
     // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
     // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
-    // plus the null short-circuit and the stop-the-world universal-cover grant.
+    // plus the null short-circuit and the stop-the-world universal-cover grant
 
     // Strict model: an empty context is NOT exempt — no held lock means no entity access. Only a
-    // null entity short-circuits to granted.
+    // null entity short-circuits to granted
     CHECK(ctx.IsEmpty());
     CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
-    // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
+    // Single critter: only its own lock is held; access is granted to it but not siblings or the map
     {
         vector<nptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
@@ -1520,7 +1521,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         // Negative: the binding-level gate (ServerEntity::ValidateAccess, hit by every script
         // property read / method call) must THROW on an uncovered entity, not merely report false -
-        // an unsynced access is a rejected error, never silently allowed. The covered entity passes.
+        // an unsynced access is a rejected error, never silently allowed. The covered entity passes
         CHECK_NOTHROW(cr_a->ValidateAccess());
         CHECK_THROWS_AS(cr_b->ValidateAccess(), ScriptException);
         CHECK_THROWS_AS(map->ValidateAccess(), ScriptException);
@@ -1531,7 +1532,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // Two siblings are locked INDIVIDUALLY — there is deliberately no sibling-to-parent escalation, so
     // `Sync({cr_a, cr_b})` holds exactly those two critters' own locks. The shared map is only
     // descendant-MARKED (not exclusively held), so the map itself is not accessible and an unrequested
-    // third sibling on the same map is NOT covered.
+    // third sibling on the same map is NOT covered
     {
         vector<nptr<ServerEntity>> both {cr_a, cr_b};
         ctx.SyncEntities(both);
@@ -1546,7 +1547,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Explicit {critter, its own map}: BOTH locks are kept (no parent-cover reduction), so the
-    // critter survives a reparent that a parent-only cover would strand.
+    // critter survives a reparent that a parent-only cover would strand
     {
         vector<nptr<ServerEntity>> pair {cr_a, map};
         ctx.SyncEntities(pair);
@@ -1558,7 +1559,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Ordinary EnsureEntitySynced only retains the own lock of an entity that is already covered. It never turns an
-    // empty context or an unrelated held entity into implicit synchronization.
+    // empty context or an unrelated held entity into implicit synchronization
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("neither locked nor covered"));
     CHECK(ctx.IsEmpty());
 
@@ -1582,7 +1583,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
     // Distinct covered children can each be retained once without changing or releasing the parent cover.
     // This is the runtime counterpart of the allowed structural-loop contract: one acquisition per newly
-    // visited entity is not a retry of the same target.
+    // visited entity is not a retry of the same target
     ctx.SyncEntity(map);
     ctx.EnsureEntitySynced(cr_a);
     ctx.EnsureEntitySynced(cr_b);
@@ -1596,7 +1597,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // A successful multi-op retention commits both the nested target's exclusive lock and the
-    // intermediate ancestor mark, and Release balances both counters.
+    // intermediate ancestor mark, and Release balances both counters
     ctx.SyncEntity(map);
     auto successful_item_lock = nested_item->GetEntityLock();
     auto successful_cr_lock = cr_a->GetEntityLock();
@@ -1619,7 +1620,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // intention marks: an unending foreign exclusive hold under our exclusively-held ancestor cannot occur
     // for a genuinely covered target, so retention retries it as if transient and then reports the corrupt
     // invariant when the livelock valve trips. The watchdog is a safety net only and must stay above that
-    // valve, so it can never release early and turn the expected throw into a success.
+    // valve, so it can never release early and turn the expected throw into a success
     ctx.SyncEntity(map);
     auto cr_lock = cr_a->GetEntityLock();
     REQUIRE(cr_lock);
@@ -1650,7 +1651,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }};
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
-    // Read before the test releases the contention itself, so this reflects only the watchdog.
+    // Read before the test releases the contention itself, so this reflects only the watchdog
     const bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
     ensure_finished.store(true, std::memory_order_release);
     release_child.store(true, std::memory_order_release);
@@ -1658,7 +1659,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     contention_watchdog.join();
 
     // Bounded and self-terminating: it gave up on its own retry budget while the child lock was still held,
-    // rather than being rescued by the watchdog letting go.
+    // rather than being rescued by the watchdog letting go
     CHECK_FALSE(rescued_by_watchdog);
     CHECK(ctx.ValidateAccess(map));
     const auto retained_cover = ctx.GetHeldEntities();
@@ -1668,7 +1669,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
     // A busy target's internal state mutex normally means a foreign non-blocking pass is mid-flight, so
     // retention retries through it (covered below). An UNENDING hold cannot legitimately happen; ensure must
-    // then give up on its own bounded budget without changing the valid parent cover.
+    // then give up on its own bounded budget without changing the valid parent cover
     {
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
@@ -1683,7 +1684,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     // The same guarantee applies to an intermediate ancestor mark. Giving up on its state mutex must not
-    // leave either the descendant's exclusive count or the intermediate mark incremented.
+    // leave either the descendant's exclusive count or the intermediate mark incremented
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1703,7 +1704,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
     // Deterministically contend the second address-ordered state mutex. Every unlanded attempt — including
     // the last one before giving up — must roll back the first state mutex it already try-locked and leave
-    // both ownership counters at zero.
+    // both ownership counters at zero
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1731,7 +1732,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // The realistic case, and the reason retention retries at all: a foreign thread holds the state mutex
     // only for the span of its own non-blocking pass. Retention must absorb that window and LAND — reporting
     // it instead would make an ordinary concurrent access fail a caller that provably owns the cover (the
-    // regression this pins: `DestroyLocation` retaining a child map while a worker drains its marks).
+    // regression this pins: `DestroyLocation` retaining a child map while a worker drains its marks)
     {
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
@@ -1748,7 +1749,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     // The same absorption for an intermediate ancestor mark: a transient hold on the mark's state mutex must
-    // not fail the nested target's retention.
+    // not fail the nested target's retention
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1769,7 +1770,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // A failed multi-op atomic preflight must leave every operation unchanged.
     // The nested item contributes its exclusive own-lock op and a descendant-mark op on its critter;
     // raw-locking whichever sorts second proves that compatibility is checked for the complete batch
-    // before either earlier operation can be committed.
+    // before either earlier operation can be committed
     ctx.SyncEntity(map);
     auto item_lock = nested_item->GetEntityLock();
     auto nested_cr_lock = cr_a->GetEntityLock();
@@ -1817,14 +1818,14 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Fresh registration uses the dedicated trusted capture path and therefore remains safe under an
-    // otherwise empty context without weakening ordinary EnsureEntitySynced.
+    // otherwise empty context without weakening ordinary EnsureEntitySynced
     auto fresh_cr = server->CreateCritter(critter_pid, false);
     CHECK(ctx.ValidateAccess(fresh_cr));
     CHECK(IsEntityAccessValid(fresh_cr));
     server->CrMngr.DestroyCritter(fresh_cr);
     ctx.Release();
 
-    // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
+    // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate
     ctx.SyncEntity(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
     ctx.SyncEntity(cr_b);
@@ -1840,7 +1841,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 // ============================================================================
 // Symmetric Critter<->Player auto-widening + the ancestor-coverage verify fix.
 // Critter::GetSyncWidenEntity returns its Player and Player::GetSyncWidenEntity
-// returns its controlled Critter, so a Sync of either half must cover both.
+// returns its controlled Critter, so a Sync of either half must cover both
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
@@ -1892,7 +1893,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     auto player_b_holder = CreateStandalonePlayer(server, "SyncWidenPlayerB");
 
     // The standalone players were built inside their own already-released contexts, so this context has no
-    // cover for them and retention alone cannot create one — the whole setup scope is Sync'd by the caller.
+    // cover for them and retention alone cannot create one — the whole setup scope is Sync'd by the caller
     vector<nptr<ServerEntity>> setup_scope {loc, map, cr_a, cr_b, player_a_holder, player_b_holder};
     setup_ctx->SyncEntities(setup_scope);
 
@@ -1929,7 +1930,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     auto item_a = server->ItemMngr.AddItemCritter(cr_a, item_pid, 1);
     REQUIRE(static_cast<bool>(item_a));
 
-    // The widen link must be live in both directions before we test the cover.
+    // The widen link must be live in both directions before we test the cover
     REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
     REQUIRE(player_a_holder->GetSyncWidenEntity() == cr_a);
 
@@ -1946,7 +1947,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     });
 
     // Syncing a player-controlled critter auto-widens to also lock its Player (both own locks held);
-    // the other player is untouched.
+    // the other player is untouched
     {
         vector<nptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
@@ -1960,7 +1961,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held).
+    // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held)
     {
         vector<nptr<ServerEntity>> one {player_a_holder};
         ctx.SyncEntities(one);
@@ -1973,7 +1974,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     // Duplicate-lock regression: an inventory item can share the holder critter's propagated lock.
     // The lock-set representative may be the item, but widening still has to inspect the explicitly
-    // requested holder so the controlled Player lock is included.
+    // requested holder so the controlled Player lock is included
     {
         vector<nptr<ServerEntity>> item_holder_map {item_a, cr_a, map};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_map));
@@ -1988,7 +1989,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     // No propagation, no escalation: Sync({item, holder, recipient}) holds each one's OWN lock — the item
     // keeps its own lock (it does not share the holder's), and the two critters are NOT collapsed onto
-    // their shared map. Widening still adds each critter's Player. The shared map is only marked, not held.
+    // their shared map. Widening still adds each critter's Player. The shared map is only marked, not held
     {
         vector<nptr<ServerEntity>> item_holder_recipient {item_a, cr_a, cr_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
@@ -2007,7 +2008,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     // Syncing BOTH players widens each to its controlled critter. With no escalation those critters keep
     // their OWN locks (not collapsed onto the shared map), so each is covered by its own held lock and the
     // widen verify-after-acquire is satisfied directly. The shared map is only marked, so the map itself
-    // is not accessible.
+    // is not accessible
     {
         vector<nptr<ServerEntity>> players {player_a_holder, player_b_holder};
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
@@ -2025,7 +2026,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     // Login begins with only the Player covered. PlayerInit switches to the restored critter inside
     // its nested script context; SwitchPlayerCritter must retain the new pair in the outer context
-    // before the next OnPlayerLogin subscriber reads the critter inventory.
+    // before the next OnPlayerLogin subscriber reads the critter inventory
     {
         vector<nptr<ServerEntity>> attached_pair {player_a_holder, cr_a};
         ctx.SyncEntities(attached_pair);
@@ -2061,7 +2062,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 // exactly once (no deadlock / lost work), forward progress is made, and nothing crashes
 // or corrupts (the atomic _parent + TryAddRef-after-load + the engine asserts would trip
 // otherwise). EntitySyncException is an ACCEPTED outcome under extreme churn - the bounded
-// retry deliberately gives up rather than livelock.
+// retry deliberately gives up rather than livelock
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
@@ -2071,7 +2072,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
     // exclusion must never deadlock or starve. Two threads — one repeatedly taking the map, the other
     // repeatedly taking the descendant critter — serialize against each other yet must both make full
     // progress (FIFO queue + anti-starvation). A model that turned the exclusion into a lock cycle would
-    // hang here (the joins never return); completion is the deterministic deadlock/starvation-freedom proof.
+    // hang here (the joins never return); completion is the deterministic deadlock/starvation-freedom proof
     auto settings = MakeServerTestSettings();
     auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
@@ -2202,7 +2203,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     locked = false;
 
     // Reparent targets include nullptr so the detach / no-parent / cover-recompute paths are churned
-    // alongside same-map (escalation) and cross-map (escape → retry) transitions.
+    // alongside same-map (escalation) and cross-map (escape → retry) transitions
     const nptr<ServerEntity> targets[] = {map_a, map_b, map_c, nullptr};
 
     std::atomic_bool stop {false};
@@ -2248,7 +2249,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
                 syncs_ok.fetch_add(1, std::memory_order_relaxed);
                 // Drive the single-pass access validator under concurrent reparenting to confirm it
                 // never crashes or reads freed memory; the racing SetParent makes the boolean result
-                // nondeterministic, so it is observed to drive the code path, not asserted.
+                // nondeterministic, so it is observed to drive the code path, not asserted
                 (void)IsEntityAccessValid(req[0]);
                 (void)IsEntityAccessValid(req[1]);
             }
@@ -2281,12 +2282,12 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     INFO("syncs_ok=" << syncs_ok.load() << " giveups=" << sync_giveups.load() << " reparents=" << reparents.load());
     // No deadlock (every thread joined) and no crash (control reached here). Every reader
     // iteration completed exactly once - either a valid cover or a bounded give-up - so no
-    // work was lost or double-counted.
+    // work was lost or double-counted
     CHECK(syncs_ok.load() + sync_giveups.load() == int64_t {READER_THREADS} * int64_t {READER_ITERS});
     CHECK(syncs_ok.load() > 0); // forward progress - the retry loop is not failing every call
     CHECK(reparents.load() > 0);
 
-    // Detach the critters so the maps' refcounts drop cleanly before Shutdown.
+    // Detach the critters so the maps' refcounts drop cleanly before Shutdown
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
@@ -2308,7 +2309,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
 // count across a cover-changing initialization boundary, so a concurrent split/merge of the same stack
 // could land a lost update (199/200). Red before the leaf-lock fix, green after. Mirrors
 // the script-stress sync_stress.concurrent_item_transfer_conserves_total. High-contention iteration
-// rather than a strict-deterministic interleave: many threads × many moves so the window is hit.
+// rather than a strict-deterministic interleave: many threads × many moves so the window is hit
 // ============================================================================
 
 TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
@@ -2374,7 +2375,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
         ctx.Activate();
 
         // Per-thread LCG — deterministic per thread but overlaps other threads' holder pairs so the
-        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid).
+        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid)
         uint64_t rng = numeric_cast<uint64_t>(tid) * 0x9E3779B97F4A7C15ULL + 1U;
 
         vector<nptr<ServerEntity>> req(2);
@@ -2420,7 +2421,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     }
 
     // Sum the surviving stacks under a single cover — conservation must hold regardless of how the
-    // coins redistributed across holders.
+    // coins redistributed across holders
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
 
@@ -2444,7 +2445,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     CHECK(moves_done.load() > 0);
     CHECK(total == EXPECTED_TOTAL);
 
-    // Detach so item/critter refcounts drop before Shutdown.
+    // Detach so item/critter refcounts drop before Shutdown
     for (auto cr : holders) {
         cr->SetParent(nullptr);
     }
@@ -2458,7 +2459,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
 // land during CreateItem's sync-cover yield. Pre-fix, SplitItem's stale write clobbers the mutation
 // (a lost unit when the source grew, a duplicated unit when it shrank); the reorder fix re-reads fresh
 // and conserves. This is the only engine-resident test that covers the fix's fresh-read invariant AND
-// its post-yield re-validation (drain -> DestroyItem -> nullptr) cleanup branch.
+// its post-yield re-validation (drain -> DestroyItem -> nullptr) cleanup branch
 // ============================================================================
 
 TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
@@ -2507,7 +2508,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
         auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
         REQUIRE(source != nullptr);
 
-        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split.
+        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
 
         auto moved = server->ItemMngr.MoveItem(source, 1, h2);
@@ -2520,7 +2521,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
 
         INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
         // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
-        // by SplitItem writing the stale pre-CreateItem count).
+        // by SplitItem writing the stale pre-CreateItem count)
         CHECK(src_count + dst_count == 25);
     }
 
@@ -2530,7 +2531,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
         REQUIRE(source != nullptr);
 
         // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
-        // re-validation (count >= GetCount()) trips and the split is undone.
+        // re-validation (count >= GetCount()) trips and the split is undone
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
 
         auto moved = server->ItemMngr.MoveItem(source, 1, h2);
@@ -2543,7 +2544,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
 
         INFO("src=" << src_count << " dst=" << dst_count);
         // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the
-        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit).
+        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit)
         CHECK(src_count == 1);
         CHECK(dst_count == 0);
     }
@@ -2557,7 +2558,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
 // another thread's own-lock on that descendant. This is the load-bearing design invariant of the
 // whole sync model - a regression that made ancestor locks exclude descendant locks would deadlock
 // or starve. ReparentStress hammers overlapping covers with reparent noise; this isolates and
-// directly proves the positive non-exclusion property.
+// directly proves the positive non-exclusion property
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisition")
@@ -2608,7 +2609,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         // Hierarchical exclusion: T1 holds the map (ancestor) lock and keeps holding it. While it does,
         // T2's Sync(cr_a) — a descendant of that map — must BLOCK (Sync marks the critter's ancestors,
         // and the mark on the map cannot be registered while T1 owns the map exclusively). T2 must only
-        // acquire cr_a once T1 releases the map. This is the core ancestor↔descendant mutual exclusion.
+        // acquire cr_a once T1 releases the map. This is the core ancestor↔descendant mutual exclusion
         std::atomic_bool t1_holds_map {false};
         std::atomic_bool t2_got_cr {false};
         std::atomic_bool t2_may_finish {false};
@@ -2642,14 +2643,14 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 
         // While T1 holds the map, T2 must be excluded: t2_got_cr stays false. A generous window rules
         // out the descendant being acquired concurrently (the old flat model would set it almost
-        // immediately). A correct hierarchical model never sets it while the ancestor is held.
+        // immediately). A correct hierarchical model never sets it while the ancestor is held
         nanotime exclusion_window = nanotime::now() + timespan {std::chrono::milliseconds {300}};
         while (nanotime::now() < exclusion_window) {
             CHECK_FALSE(t2_got_cr.load(std::memory_order_acquire));
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
-        // Release T1 — T2's blocked Sync must now complete.
+        // Release T1 — T2's blocked Sync must now complete
         t2_may_finish.store(true, std::memory_order_release);
         t1.join();
         t2.join();
@@ -2660,7 +2661,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     {
         // Both threads hammer locks that now mutually exclude under hierarchical exclusion: one always
         // takes the map ancestor, the other always takes cr_a's descendant lock. They serialize against
-        // each other, but both must complete every iteration — no deadlock, no starvation.
+        // each other, but both must complete every iteration — no deadlock, no starvation
         constexpr int32_t ITERS = 20000;
         std::atomic<int64_t> ancestor_done {0};
         std::atomic<int64_t> sibling_done {0};
@@ -2714,7 +2715,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 
         // Game-owned custom entities share Game's singleton lock. Engine operations such as
         // DestroyEntity call EnsureEntitySynced while Game.Lock() is active; that must reuse the
-        // acquisition already tracked by this context instead of adding it to a second lock bucket.
+        // acquisition already tracked by this context instead of adding it to a second lock bucket
         ctx.EnsureEntitySynced(singleton_owned_entity);
         ctx.UnlockSingleton(make_ptr(&singleton_lock));
 
@@ -2723,7 +2724,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         ctx.Deactivate();
     }
 
-    // Detach so the map refcount drops cleanly before Shutdown.
+    // Detach so the map refcount drops cleanly before Shutdown
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
@@ -2746,7 +2747,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 // thread's parent. The acquire must escalate to a globally-ordered blocking acquire of the full
 // thread-held union (releasing parent locks across the transition, since no entity state is observed
 // during a lock-set change) so both threads converge. Guarded by a watchdog so a regression reports
-// a clean failure instead of hanging the whole unit-test process.
+// a clean failure instead of hanging the whole unit-test process
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
@@ -2781,7 +2782,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     });
 
     // Two critters on DIFFERENT maps so each keeps its OWN lock (no sibling escalation to a shared
-    // map lock would collapse the pair and hide the cross-lock contention).
+    // map lock would collapse the pair and hide the cross-lock contention)
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid});
     auto map_a = loc->GetMapByIndex(0);
     auto map_b = loc->GetMapByIndex(1);
@@ -2806,7 +2807,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     // Once both threads pass the barrier they acquire {primary cover} then {nested cross cover}
     // back-to-back, so the two opposite-order cross-acquires overlap and the 2-cycle is hammered
     // every round. The outer barrier is lock-free; the inner barrier intentionally waits while each
-    // thread holds only its own primary lock.
+    // thread holds only its own primary lock
     std::atomic<int32_t> arrive {0};
     std::atomic<int32_t> generation {0};
     std::atomic<int32_t> primary_arrive {0};
@@ -2844,14 +2845,14 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     auto cross_thread = [&](ServerEntity* own, ServerEntity* peer) {
         for (int32_t round = 0; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
             // Outer rendezvous while holding NO lock, so both threads start the locked section
-            // together.
+            // together
             barrier(round);
 
             SyncContext primary;
             primary.Activate();
 
             // Primary cover: this thread's "own" critter (like a player job's controlled critter,
-            // already covered when an event fires).
+            // already covered when an event fires)
             vector<nptr<ServerEntity>> primary_req {own};
             try {
                 primary.SyncEntities(primary_req);
@@ -2863,19 +2864,19 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
                 // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
                 // escalation; an unfixed engine spins forever (regression caught by the watchdog).
                 // The generation counter avoids the reset race of a plain per-round counter: a fast
-                // thread entering the next round must not make its peer miss this round's rendezvous.
+                // thread entering the next round must not make its peer miss this round's rendezvous
                 bool primary_met = primary_barrier(round);
 
                 // The rendezvous MUST be met before the nested cross-acquire: if the peer never
                 // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
                 // never forms, and even a broken engine would slip through as a false PASS. The peer
                 // only has to take one uncontended primary lock, so missing the generous deadline means
-                // the setup is broken — fail hard instead of running a non-diagnostic acquire.
+                // the setup is broken — fail hard instead of running a non-diagnostic acquire
                 if (!primary_met) {
                     failed.store(true, std::memory_order_release);
                 }
                 else {
-                    // Nested context (like script execution) requesting BOTH critters.
+                    // Nested context (like script execution) requesting BOTH critters
                     SyncContext nested;
                     nested.Activate();
                     auto nested_cleanup = scope_exit([&]() noexcept {
@@ -2887,7 +2888,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
                     nested.SyncEntities(nested_req);
                     // Catch2's CHECK/REQUIRE macros are not thread-safe (they race on RunContext's assertion
                     // fast-path, a process-global), and this runs on a worker thread. Record the result through
-                    // the `failed` atomic instead; the main thread reports it via CHECK_FALSE(failed.load()).
+                    // the `failed` atomic instead; the main thread reports it via CHECK_FALSE(failed.load())
                     if (!IsEntityAccessValid(own) || !IsEntityAccessValid(peer)) {
                         failed.store(true, std::memory_order_release);
                     }
@@ -2908,7 +2909,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
     // Watchdog: a correct implementation finishes the cross-rounds in well under a second even on a
     // loaded host. If the threads deadlock, detect it, wake shutdown-abortable waiters, then join before
-    // reporting the failure. Both threads run ROUNDS rounds, so the target is 2*ROUNDS.
+    // reporting the failure. Both threads run ROUNDS rounds, so the target is 2*ROUNDS
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
     nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {30}};
     bool timed_out = false;
@@ -2921,7 +2922,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     }
 
     if (timed_out) {
-        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit.
+        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit
         failed.store(true, std::memory_order_release);
         server->Shutdown();
     }
@@ -2937,7 +2938,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     }
 
     if (!timed_out) {
-        // Detach so the map refcounts drop cleanly before Shutdown.
+        // Detach so the map refcounts drop cleanly before Shutdown
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         locked = true;
         auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();

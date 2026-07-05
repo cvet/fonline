@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelSpriteLayout.h"
 
@@ -37,7 +38,7 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr float32_t MODEL_SPRITE_LAYOUT_GUARD = 2.0f;
-// Keep in sync with the default 3D_Skinned shadow pass.
+// Keep in sync with the default 3D_Skinned shadow pass
 static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
 static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
 static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
@@ -118,7 +119,7 @@ auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpr
 
     // The model origin is not required to lie inside a tight frame: an animation or attached effect may put the
     // complete visible envelope on one side of the root. Treat the pivot as a signed root-relative interval anchor;
-    // only the frame dimensions themselves must be positive.
+    // only the frame dimensions themselves must be positive
     auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
 
     if (!is_valid(current) || !is_valid(required)) {
@@ -152,7 +153,7 @@ auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<Mode
     // otherwise wear its name at standing height, far above itself. Compare the projected tops after the same base
     // transforms as the eventual view layout: imported models may rotate their source Y away from screen-up, so raw
     // model-space Max.y is not a height. Both inputs are baked per clip, so the choice is fixed for a given animation
-    // and never accumulates.
+    // and never accumulates
     if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
         return idle_bounds;
     }

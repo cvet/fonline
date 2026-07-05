@@ -969,7 +969,7 @@ ZipFile::ZipFile(string_view fname) :
     };
     ffunc.zclose_file = [](voidpf, voidpf) -> int32_t {
         // The ifstream is owned by the ZipFile object (_fileStream), not by zlib, so closing the zip must
-        // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip.
+        // not delete it. This keeps ownership RAII-safe when the constructor throws on a malformed zip
         return 0;
     };
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {

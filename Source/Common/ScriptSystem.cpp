@@ -373,7 +373,7 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
             return false;
         }
 
-        // Not comparing IsMutable.
+        // Not comparing IsMutable
         return true;
     };
 

@@ -164,7 +164,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     // The cached ImGui window layout only matters for the interactive editor UI. Skip it under the null
     // renderer (headless mapper, e.g. unit tests and batch map rendering): nothing draws those windows, and
-    // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface.
+    // feeding a stale/foreign cached ini into the headless ImGui context is a needless crash surface
     if (!Settings->NullRenderer) {
         auto imgui_ini = _uiSettings.GetString(MAPPER_IMGUI_SETTINGS_KEY);
 
@@ -2681,7 +2681,7 @@ void MapperEngine::DrawInspectorImGui()
 
     ImGui::Separator();
 
-    // Preserve inspector keyboard navigation when the window has focus.
+    // Preserve inspector keyboard navigation when the window has focus
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && !ImGui::IsAnyItemActive()) {
         if (ImGui::IsKeyPressed(ImGuiKey_PageUp)) {
             reset_selected_line_state(InspectorSelectedLine - 1);
@@ -3899,7 +3899,7 @@ void MapperEngine::SetSelectionContour(ptr<ClientEntity> entity, ucolor color) c
 
     // Selection outline goes through the same script contour pipeline as the client (ContourPipeline.fos):
     // write the entity's Contour property; the script's property-setter caches it and OnRenderMap_AfterSprites
-    // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter.
+    // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter
     auto prop = entity->GetProperties()->GetRegistrator()->FindProperty("Contour");
 
     if (prop) {
@@ -4653,11 +4653,11 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
     // AnyUnique items merge by (proto, data), independent of position, into the lowest-id group member. Doing
     // that with the generic per-step loop is O(N^2) (a full-map rescan per merge - the dominant cost of loading
     // a large tiled map). Coalesce them all in one O(N*groups) grouping pass; SameSibling and AnyUnique never
-    // interact (MultihexGeneration is a proto property), so the result is identical to the interleaved loops.
+    // interact (MultihexGeneration is a proto property), so the result is identical to the interleaved loops
     merges += CoalesceAnyUniqueItems(map, false);
 
     // SameSibling items merge spatially; the per-step best-by-id selection is path-dependent, so keep the exact
-    // two-phase order (modified items first, then the rest) and the incremental driver.
+    // two-phase order (modified items first, then the rest) and the incremental driver
 
     // First merge to modified items
     for (ptr<ItemHexView> item : copy_hold_ref(map->GetItems())) {
@@ -4715,10 +4715,10 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
     // collapsing each (proto, data) group into its lowest-id member - exactly what the original per-step loop
     // (TryMergeItemToMultihexMesh's AnyUnique branch + the MergeItemsToMultihexMeshes while-loops) converges to,
     // but without the O(N^2) full-map rescan per merge. The per-group merge sequence is irrelevant to the final
-    // stored mesh because MergeItemsToMultihexMeshes normalizes (sorts + origin-to-smallest) afterward.
+    // stored mesh because MergeItemsToMultihexMeshes normalizes (sorts + origin-to-smallest) afterward
     size_t merges = 0;
 
-    // One (proto, data) group: its current lowest-id survivor plus the members still to be merged into it.
+    // One (proto, data) group: its current lowest-id survivor plus the members still to be merged into it
     struct UniqueGroup
     {
         ptr<ItemHexView> survivor;
@@ -4727,7 +4727,7 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
 
     // Group representatives are bucketed by proto id so data comparison is only ever done within a single
     // proto. Within a proto the number of distinct data signatures is small in practice (clean tiles plus a
-    // few authored variants), so the linear "first matching group" assignment stays effectively O(N).
+    // few authored variants), so the linear "first matching group" assignment stays effectively O(N)
     unordered_map<hstring, vector<UniqueGroup>> groups_by_proto;
 
     for (ptr<ItemHexView> item : copy_hold_ref(map->GetItems())) {
@@ -4751,7 +4751,7 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
 
         if (match) {
             if (item->GetId() < match->survivor->GetId()) {
-                // Keep the lowest id as the survivor (the original always merges into the lower id).
+                // Keep the lowest id as the survivor (the original always merges into the lower id)
                 match->to_merge.emplace_back(match->survivor);
                 match->survivor = item;
             }
@@ -4767,12 +4767,12 @@ auto MapperEngine::CoalesceAnyUniqueItems(ptr<MapView> map, bool skip_selected) 
     // Merge each group's members into its survivor. Rather than calling MergeItemToMultihexMesh once per
     // member (each of which rescans the survivor's growing mesh - O(group^2), the second quadratic of a large
     // tiled map), gather the whole group's hexes once into a dedup set and assign the survivor's mesh a single
-    // time. The resulting hex set is identical; MergeItemsToMultihexMeshes normalizes order afterward.
+    // time. The resulting hex set is identical; MergeItemsToMultihexMeshes normalizes order afterward
     unordered_set<mpos> mesh_hexes;
     vector<mpos> mesh_vec;
 
     // All merged-away sources are destroyed in one bulk pass at the end - destroying them individually is the
-    // third O(N^2) on a large tiled map (each DestroyItem linearly compacts the membership vectors).
+    // third O(N^2) on a large tiled map (each DestroyItem linearly compacts the membership vectors)
     vector<ptr<ItemHexView>> sources_to_destroy;
 
     for (auto& [proto_id, proto_groups] : groups_by_proto) {
@@ -4823,14 +4823,13 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Incremental driver for the merge loop that used to be `while ((item = TryMergeItemToMultihexMesh(...))
-    // != nullptr) merges++;`. It produces the exact same sequence of merges (same per-step best-by-id target
-    // and source, same merge direction, same survivor) as repeatedly calling TryMergeItemToMultihexMesh, but
-    // collects the merge candidates ONCE per mesh hex instead of rescanning the whole growing mesh on every
-    // step. That turns each coalesced region from O(N^2) to O(N) (the dominant cost of the map-load merge).
+    // Incremental driver: produces the exact same merge sequence (same per-step best-by-id target and
+    // source, same direction, same survivor) as repeatedly calling TryMergeItemToMultihexMesh, but
+    // collects the merge candidates ONCE per mesh hex instead of rescanning the growing mesh every step -
+    // O(N^2) to O(N) for the coalesced region, the dominant map-load merge cost.
     //
     // Only the SameSibling strategy grows a mesh hex by hex (so only it is quadratic); AnyUnique merges by a
-    // full-map scan per step and is left on the original per-step path.
+    // full-map scan per step and is left on the original per-step path
     if (item->GetMultihexGeneration() != MultihexGenerationType::SameSibling) {
         size_t merges = 0;
         nptr<ItemHexView> merge_item = item;
@@ -4851,7 +4850,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
     // Candidate sets maintained across the whole loop, mirroring TryMergeItemToMultihexMesh's per-call sets:
     // an item eligible to be merged INTO (target) and an item eligible to be merged FROM (source), each found
     // around the survivor's mesh hexes via FindMultihexMeshForItemAroundHex. `scanned` records which hexes
-    // already contributed their neighborhood so each hex is scanned exactly once.
+    // already contributed their neighborhood so each hex is scanned exactly once
     unordered_set<ptr<ItemHexView>> target_items;
     unordered_set<ptr<ItemHexView>> source_items;
     unordered_set<mpos> scanned;
@@ -4859,7 +4858,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
     auto scan_hex = [&](mpos hex) {
         // Mirror find_include_multihex_lines from the original per-step function. multihex_lines is re-read
         // from the current survivor (proto-derived, so constant within a region) to stay faithful if the
-        // survivor object changes.
+        // survivor object changes
         auto multihex_lines = item->GetMultihexLines();
 
         FindMultihexMeshForItemAroundHex(map, item, hex, true, target_items);
@@ -4874,7 +4873,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
     };
 
     // Scan one hex's neighborhood exactly once. Cheap no-op if the hex was already scanned. This is what keeps
-    // the whole region O(N): every hex contributes its neighborhood to the candidate sets a single time.
+    // the whole region O(N): every hex contributes its neighborhood to the candidate sets a single time
     auto scan_hex_once = [&](mpos hex) {
         if (scanned.emplace(hex).second) {
             scan_hex(hex);
@@ -4882,7 +4881,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
     };
 
     // Collect a snapshot of every hex an item covers (origin + mesh). Used to fold the hexes a just-merged
-    // party brings into the survivor, scanning ONLY those new hexes instead of re-walking the whole mesh.
+    // party brings into the survivor, scanning ONLY those new hexes instead of re-walking the whole mesh
     auto collect_item_hexes = [](ptr<const ItemHexView> it, vector<mpos>& out) {
         out.clear();
         out.emplace_back(it->GetHex());
@@ -4895,7 +4894,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
 
     // Full rebuild of the candidate sets against the current survivor. Used once at the start, and again only
     // when a merge changes the survivor's DATA (the X->clean transition), because that flips which neighbors
-    // are eligible. Within a constant-data regime the incremental scan below is sufficient.
+    // are eligible. Within a constant-data regime the incremental scan below is sufficient
     vector<mpos> hex_scratch;
 
     auto rebuild = [&]() {
@@ -4915,7 +4914,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
     for (;;) {
         // The survivor never merges into itself; FindMultihexMeshForItemAroundHex would never collect it
         // (CompareMultihexItemForMerge rejects equal ids), but a prior step may have collected it before it
-        // became the survivor, so drop it explicitly.
+        // became the survivor, so drop it explicitly
         target_items.erase(item);
         source_items.erase(item);
 
@@ -4956,14 +4955,14 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
         auto old_survivor = item;
 
         // All of the previous survivor's hexes are already scanned; the only hexes new to the merged survivor
-        // come from the OTHER party. Snapshot them before the merge destroys the source.
+        // come from the OTHER party. Snapshot them before the merge destroys the source
         auto incoming_item = target_item == item ? source_item : target_item;
         collect_item_hexes(incoming_item, hex_scratch);
 
         MergeItemToMultihexMesh(map, source_item, target_item);
         merges++;
 
-        // The merged-away source is destroyed; it must never leak back as a candidate.
+        // The merged-away source is destroyed; it must never leak back as a candidate
         target_items.erase(source_item);
         source_items.erase(source_item);
 
@@ -4971,7 +4970,7 @@ auto MapperEngine::CoalesceItemMultihexMesh(ptr<MapView> map, ptr<ItemHexView> i
 
         // The survivor's data changes only when it merges INTO a clean target whose (clean) data differs from
         // the old survivor's data; that flips neighbor eligibility, so rebuild from scratch. This happens at
-        // most once per region (clean data is absorbing), keeping the whole region O(N).
+        // most once per region (clean data is absorbing), keeping the whole region O(N)
         bool data_changed = item != old_survivor && !old_survivor->GetProperties()->CompareData(*item->GetProperties(), ignore_props, true);
 
         if (data_changed) {
@@ -5589,7 +5588,7 @@ void MapperEngine::CurDraw()
 
             if (proto->GetIsTile() && PreviewRoofTiles) {
                 // The flat tile/roof XY offset already came from the prototype Offset above; a roof preview rides the
-                // same 3D elevation as a placed roof tile, so raise it on screen by that elevation's projection.
+                // same 3D elevation as a placed roof tile, so raise it on screen by that elevation's projection
                 float32_t elev_y = GeometryHelper::ProjectWorldToMap(vec3 {0.0F, numeric_cast<float32_t>(Settings->MapRoofElevation), 0.0F}).y;
                 pos.y += iround<int32_t>(elev_y * zoom);
             }
@@ -5872,7 +5871,7 @@ void MapperEngine::ConsoleSubmitCommand()
         return;
     }
 
-    // Keep history unique and bounded.
+    // Keep history unique and bounded
     ConsoleHistory.emplace_back(ConsoleStr);
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(ConsoleHistory.size()) - 1; i++) {
@@ -6418,7 +6417,7 @@ void MapperEngine::ResetCurrentMapChanges()
 
 // Rebuilds a multi-map map-file content with one map's sections replaced by freshly saved text.
 // Sections of other maps are preserved byte-exact; the saved map's block lands at the position
-// of its first original section.
+// of its first original section
 static auto SpliceMapIntoFomapContent(string_view file_stem, const string& original_content, string_view map_name, string_view map_content) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -6668,7 +6667,7 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     // Resolve the on-disk Maps root from an existing map container's disk path, then write the
     // new map under <MapsRoot>/<sub_dir>/<name>.<ext> with the reference container's extension.
     // The AI authoring loop targets a checked-in Maps/Generated/ area, so this avoids SaveMap's
-    // "first file's directory" fallback that could scatter generated maps next to unrelated content.
+    // "first file's directory" fallback that could scatter generated maps next to unrelated content
     auto map_files = MapsFileSys.FilterFiles("");
     string reference_map_path;
 

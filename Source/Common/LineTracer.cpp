@@ -80,7 +80,7 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
 
         // Convert pixel sub-hex offset to internal trace coordinates.
         // Internal hex bounding box is 4 wide (vertex-to-vertex) and SQRT3_X2 tall (edge-to-edge),
-        // visual hex bounding box is MAP_HEX_WIDTH x MAP_HEX_HEIGHT.
+        // visual hex bounding box is MAP_HEX_WIDTH x MAP_HEX_HEIGHT
         constexpr float32_t offset_scale_x = 4.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
         constexpr float32_t offset_scale_y = SQRT3_X2_FLOAT / numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT);
 
@@ -148,7 +148,7 @@ void LineTracer::TraceInit(mpos start_hex, mpos target_hex, float32_t dir_angle_
         }
     }
     else {
-        // Square geometry: internal hex size is 1x1, visual is MAP_HEX_WIDTH x MAP_HEX_HEIGHT.
+        // Square geometry: internal hex size is 1x1, visual is MAP_HEX_WIDTH x MAP_HEX_HEIGHT
         constexpr float32_t offset_scale_x = 1.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_WIDTH);
         constexpr float32_t offset_scale_y = 1.0f / numeric_cast<float32_t>(GameSettings::MAP_HEX_HEIGHT);
 

@@ -501,7 +501,7 @@ void BinaryWriter::WriteUtf16(string_view value)
     FO_STACK_TRACE_ENTRY();
 
     // Decode the UTF-8 input directly rather than through a platform wide string: strex::to_wide_char is
-    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way.
+    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way
     vector<uint16_t> units;
     units.reserve(value.length());
 
@@ -1704,7 +1704,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     WriteBasicUv(writer, renderer, context, color_path);
 
     // No advanced renderer values are emitted by the fixed 1.80.5 source profile. Their
-    // runtime representation is still present and consists of default UV commands.
+    // runtime representation is still present and consists of default UV commands
     writer.WriteInt32(0);
     writer.WriteInt32(0);
     writer.WriteFloat(0.0f);
@@ -2360,7 +2360,7 @@ static void WriteNode(BinaryWriter& writer, nptr<const XmlNode> node, const Comp
     WriteRendererValues(data, node, context, renderer_exported);
     writer.WriteBytes(data.GetData());
     WriteSoundValues(writer, node, context);
-    writer.WriteInt32(0); // GPU particles are disabled in the fixed project profile.
+    writer.WriteInt32(0); // GPU particles are disabled in the fixed project profile
 
     vector<nptr<const XmlNode>> children;
     nptr<const XmlNode> child_container = Child(node, "Children");
@@ -2473,9 +2473,9 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     WriteResourceTable(writer, context.DistortionTextures);
     WriteResourceTable(writer, context.Waves);
     WriteResourceTable(writer, context.Models);
-    writer.WriteInt32(0); // Material files are excluded by the fixed project profile.
+    writer.WriteInt32(0); // Material files are excluded by the fixed project profile
     WriteResourceTable(writer, context.Curves);
-    writer.WriteInt32(0); // Procedural models are excluded by the fixed project profile.
+    writer.WriteInt32(0); // Procedural models are excluded by the fixed project profile
 
     nptr<const XmlNode> inputs = Find(&project, "Dynamic/Inputs");
     writer.WriteInt32(inputs ? numeric_cast<int32_t>(inputs->Children.size()) : 0);

@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 
 // Thread-local name slot. Backs `set_this_thread_name` / `get_this_thread_name`; populated
 // lazily with a numeric default the first time the slot is read on a thread that never set
-// itself.
+// itself
 static thread_local string ThreadName;
 
 struct ThreadingData
@@ -84,7 +84,7 @@ struct GlobalPools
 
     // Drain both pools before this struct's mutexes / condvars / deques are destroyed by the
     // FO_GLOBAL_DATA delete callback. Any worker still parked on `WorkSignal.wait` at that
-    // point would touch a half-destroyed condition_variable / mutex — UB.
+    // point would touch a half-destroyed condition_variable / mutex — UB
     ~GlobalPools() noexcept
     {
         internal_shutdown(RunPool);
@@ -95,7 +95,7 @@ struct GlobalPools
 FO_GLOBAL_DATA(GlobalPools, Pools);
 
 // Caller must hold `pool.Locker`. Initialises the pool's `MaxWorkers` / `NamePrefix` on first
-// use; idempotent for subsequent calls.
+// use; idempotent for subsequent calls
 static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_view name_prefix)
 {
     if (pool.Initialized) {
@@ -111,7 +111,7 @@ static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_vie
 // idle worker or by a newly spawned worker), or queued when `can_queue` is `true`. Returns
 // `false` when `can_queue` is `false` and the pool has no idle worker AND is already at its
 // `MaxWorkers` cap — that signal is used by `try_submit_async` to let the caller fall back
-// to inline synchronous execution.
+// to inline synchronous execution
 static auto submit_impl(Pool& pool, string_view task_name, std::function<void()> task, bool can_queue) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -131,7 +131,7 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
         bool can_spawn_worker = pool.Workers.size() < pool.MaxWorkers;
 
         if (!has_idle_worker && !can_spawn_worker && !can_queue) {
-            // Pool saturated and caller asked for try-only — let them fall back to sync.
+            // Pool saturated and caller asked for try-only — let them fall back to sync
             return false;
         }
 
@@ -145,10 +145,10 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
         // parallel-test session drivers), the old `!has_idle_worker` test could leave a freshly
         // submitted task queued with no worker to ever run it: the apparently-idle worker takes
         // the earlier long-lived task and never parks again. Keeping workers >= pending tasks
-        // guarantees forward progress for every submitted task.
+        // guarantees forward progress for every submitted task
         if (pool.Pending.size() > pool.IdleCount && can_spawn_worker) {
             // Reserve/register the worker while still holding the pool lock so concurrent
-            // submitters see the updated size and cannot overshoot MaxWorkers.
+            // submitters see the updated size and cannot overshoot MaxWorkers
             try {
                 spawn_pool_worker(pool, strex("{}-{}", pool.NamePrefix, pool.Workers.size()));
             }
@@ -158,7 +158,7 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
                 // throw. Undo the task we just queued so a failed submit leaves the pool exactly as
                 // before: the invariant is "a queued task has a worker that will run it". Otherwise the
                 // orphaned task keeps a dangling capture of a caller (e.g. a NetworkServer_WebSockets
-                // whose constructor is now unwinding) and a later worker would dereference it.
+                // whose constructor is now unwinding) and a later worker would dereference it
                 pool.Pending.pop_back();
                 throw;
             }
@@ -171,7 +171,7 @@ static auto submit_impl(Pool& pool, string_view task_name, std::function<void()>
 
 // Caller must hold `pool.Locker`. NOT noexcept: constructing a std::thread can throw std::system_error
 // on OS thread-resource exhaustion. That is a genuinely recoverable failure — unlike SafeAlloc memory
-// allocation (§1), thread creation is not terminate-on-failure — so callers (submit_impl) roll back.
+// allocation (§1), thread creation is not terminate-on-failure — so callers (submit_impl) roll back
 static void spawn_pool_worker(Pool& pool, const string& worker_name)
 {
     FO_STACK_TRACE_ENTRY();
@@ -181,7 +181,7 @@ static void spawn_pool_worker(Pool& pool, const string& worker_name)
             set_this_thread_name(worker_name);
         }
         catch (...) {
-            // Naming failure is non-fatal; the worker still runs tasks.
+            // Naming failure is non-fatal; the worker still runs tasks
         }
 
         worker_loop(pool_ptr);
@@ -195,7 +195,7 @@ static void worker_loop(Pool* pool) noexcept
     // Remember the base worker name so we can restore it after each task's per-task name
     // override. The spawn helper already set it (e.g. "Pool-0" or "AsyncPool-3"); tasks
     // transiently rename via `set_this_thread_name` while they execute, which makes Tracy /
-    // debugger thread lists informative. Materialize the view before restoring the previous name.
+    // debugger thread lists informative. Materialize the view before restoring the previous name
     string_view base_name = get_this_thread_name();
     string base_thread_name {base_name.data(), base_name.size()};
 
@@ -211,7 +211,7 @@ static void worker_loop(Pool* pool) noexcept
 
             if (pool->Pending.empty()) {
                 // Stopping is true and queue drained — exit. Workers are joined in
-                // `internal_shutdown`.
+                // `internal_shutdown`
                 return;
             }
 
@@ -290,7 +290,7 @@ static void submit_run_thread(string_view task_name, std::function<void()> task)
 
     {
         std::lock_guard locker(pool.Locker);
-        // Unbounded — every submit either reuses an idle worker or spawns a new one.
+        // Unbounded — every submit either reuses an idle worker or spawns a new one
         ensure_initialized_locked(pool, std::numeric_limits<size_t>::max(), "RunPool");
     }
 
@@ -339,11 +339,11 @@ extern auto run_thread(string_view task_name, function<void()> task) -> thread
     // still sees and reports the task body's exception via `ReportExceptionAndContinue` — a
     // `packaged_task` would silently store the exception into the future where a `.join()`
     // caller never observes it. The promise is set unconditionally inside a `try`/`catch`
-    // around the body so a body exception both gets reported AND wakes any `.join()`.
+    // around the body so a body exception both gets reported AND wakes any `.join()`
     auto promise = SafeAlloc::MakeShared<std::promise<void>>();
     // Shared with the lambda below so the pool body and the returned handle's `get_id()` read
     // from the same slot. The body stores the worker thread id at entry and clears it at exit;
-    // readers see a valid id only while the body is actually executing.
+    // readers see a valid id only while the body is actually executing
     auto running_thread_id = SafeAlloc::MakeShared<std::atomic<std::thread::id>>();
     auto handle = thread {promise->get_future(), running_thread_id};
 
@@ -396,7 +396,7 @@ auto try_submit_async(string_view task_name, std::function<void()> task) -> bool
     {
         std::lock_guard locker(pool.Locker);
         // Capped at hardware concurrency — many short async tasks shouldn't be allowed to
-        // grow the thread count past what the host can actually run in parallel.
+        // grow the thread count past what the host can actually run in parallel
         ensure_initialized_locked(pool, hardware_concurrency_or_one(), "AsyncPool");
     }
 

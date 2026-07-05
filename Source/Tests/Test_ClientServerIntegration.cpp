@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include <charconv>
 #include <chrono>
@@ -880,7 +881,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto port = IntegrationTestPort.fetch_add(1);
 
     auto server_settings = MakeServerTestSettings(port);
-    // Linux debug stack traces for the expected script exception below can outlive the default ping window.
+    // Linux debug stack traces for the expected script exception below can outlive the default ping window
     BakerTests::OverrideSetting(server_settings.ClientPingTime, 120000);
     auto client_settings = MakeClientTestSettings(port);
 
@@ -924,7 +925,7 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
     auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
-    // Trigger the same client unresolved-hash reporter without forcing a slow script exception.
+    // Trigger the same client unresolved-hash reporter without forcing a slow script exception
     bool failed = false;
     hstring unresolved = client->Hashes.ResolveHash(reported.as_hash(), &failed);
     CHECK(failed);

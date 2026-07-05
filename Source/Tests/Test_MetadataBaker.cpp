@@ -978,7 +978,7 @@ namespace TestRefTypeComponent
         auto ref_type_it = tags.find("RefType");
 
         REQUIRE(ref_type_it != tags.end());
-        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating.
+        // Encoded as: name, "<field> <type> <flag-count> <flag*>" repeating
         CHECK(std::ranges::count(ref_type_it->second, vector<string> {"RouteSnapshot", "Marker", "bool", "1", "Component", "Marker.Steps", "int32", "0", "Marker.Note", "string", "0"}) == 1);
     }
 

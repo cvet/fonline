@@ -83,7 +83,7 @@ static auto GetViewer() -> ptr<ParticleViewer>
 
 // Minimal frame: advance time, refresh the render-side managers, and draw the
 // single window. The client's own main loop is deliberately not used - it drives
-// networking, login, and game screens this tool has no use for.
+// networking, login, and game screens this tool has no use for
 static void DrawViewerFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -98,7 +98,7 @@ static void DrawViewerFrame()
 
     // EndScene must balance BeginScene even if Draw throws, or the scene render
     // target is left bound and the following EndFrame fails ("render target tex
-    // must be unset").
+    // must be unset")
     auto end_scene = scope_exit([&]() noexcept { safe_call([&engine] { engine->SprMngr.EndScene(); }); });
 
     GetViewer()->Draw();
@@ -124,7 +124,7 @@ static void ParticleViewerEntry([[maybe_unused]] void* data)
                 Data->Viewer = SafeAlloc::MakeUnique<ParticleViewer>(engine, &engine->SprMngr);
 
                 // The window is the whole application here: it starts open and
-                // fills the viewport instead of floating inside an empty frame.
+                // fills the viewport instead of floating inside an empty frame
                 Data->Viewer->SetVisible(true);
                 Data->Viewer->SetFillViewport(true);
             }

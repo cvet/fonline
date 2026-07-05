@@ -838,9 +838,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     vector<vector<string>> result_tag_property;
     vector<vector<string>> result_tag_ref_type;
 
-    // Pass 1: detect Component declarations for both entity and RefType properties so the order of
-    // tags inside a script doesn't matter (a `Foo.Bar` field can appear before its `Foo Component`
-    // marker in source code).
+    // Discover entity and RefType components before fields so tag order is irrelevant
     for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
         if (tag_desc.Tokens.size() < 4) {
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -899,7 +897,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
         }
     }
 
-    // Pass 2: process RefType field properties.
+    // Pass 2: process RefType field properties
     for (const auto& tag_desc : ctx.CodeGenTags["Property"]) {
         if (tag_desc.Tokens.size() < 4) {
             throw MetadataBakerException("Invalid Property codegen tag: insufficient parameters", tag_desc.SourceFile, tag_desc.LineNumber);
@@ -936,9 +934,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
             throw MetadataBakerException("Invalid Property codegen tag: RefType field target must match RefType target", tag_desc.SourceFile, tag_desc.LineNumber, entity_name);
         }
 
-        // Fields are collected for every target so off-target metadata also has the layout — its
-        // properties get registered as IsServerOnly/IsClientOnly and disabled at runtime, but they
-        // still need a known layout for serialization.
+        // Collect off-target fields because disabled server/client properties still require serialized layout
 
         ComplexTypeDesc type;
         size_t type_tokens = 0;
@@ -1185,11 +1181,7 @@ void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
     ctx.ResultTags["Property"] = std::move(result_tag_property);
 }
 
-// Split any tag token whose last character is '?' into two tokens:
-// the original token without the trailing '?' followed by a literal "?".
-// This lets `///@ Event` / `///@ RemoteCall` declarations carry per-arg
-// nullable markers (`Type? name`) without requiring `?` to be a token
-// separator globally in strvex::tokenize.
+// Split trailing nullable markers for Event and RemoteCall arguments without changing global tokenization
 static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector<string_view>
 {
     vector<string_view> result;

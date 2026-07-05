@@ -130,7 +130,7 @@ void CritterHexView::StopMoving()
     // while the hex stays put — stranding the resting sprite hexes from its logical hex. Snap to the
     // hex the sprite has actually reached, keeping only the sub-hex remainder. Because
     // GetHexPos(hex) + offset is invariant under this re-split, the sprite does not visually jump; the
-    // logical hex just catches up to where the sprite already is.
+    // logical hex just catches up to where the sprite already is
     NormalizeHexOffset();
 }
 
@@ -677,7 +677,7 @@ void CritterHexView::NormalizeHexOffset()
     // Never let the rounding seat us on a blocked hex: the server reconciles a move request by
     // pathing to the hex we report, and an unwalkable one fails that path, so every later request is
     // rejected and resynced instead. Declining leaves the offset in place, which the sprite already
-    // draws at the same spot.
+    // draws at the same spot
     auto is_movable = [this](mpos check_hex) { return !GetMap()->GetField(check_hex).MoveBlocked; };
 
     if (!GeometryHelper::NormalizeHexOffset(hex, hex_offset, GetMap()->GetSize(), is_movable)) {
@@ -779,7 +779,7 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
             // Snap the sprite to its frame's intended root-motion position: while a frame is shown
             // the sprite stays put, then jumps by Delta accum on every frame transition. _offsAnim
             // = (cycle_start - disp) + accum[i] cancels the engine's linear hex_offset within the
-            // frame; sprite = start_hex + cycle_start + accum[i] is therefore constant per frame.
+            // frame; sprite = start_hex + cycle_start + accum[i] is therefore constant per frame
             const_span<ipos32> spr_offset = anim->GetSprOffset();
             int32_t frames_count = anim->GetFramesCount();
 
@@ -805,7 +805,7 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
                 int32_t rel_y = pos.y - _walkAnchorDisp.y;
                 int64_t rel_dot_total = numeric_cast<int64_t>(rel_x) * total.x + numeric_cast<int64_t>(rel_y) * total.y;
 
-                // Floor division so negative projections still wrap into [0, total_dot_total).
+                // Floor division so negative projections still wrap into [0, total_dot_total)
                 int64_t cycle_number;
 
                 if (rel_dot_total >= 0) {
@@ -880,7 +880,7 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
     }
 
     // Anchor-relative projection so direction changes restart the cycle from the critter's current
-    // position instead of measuring the entire past path against the new direction's T axis.
+    // position instead of measuring the entire past path against the new direction's T axis
     ipos32 pos = EvaluateMovementDisplacement();
     int32_t rel_x = pos.x - _walkAnchorDisp.x;
     int32_t rel_y = pos.y - _walkAnchorDisp.y;
@@ -892,7 +892,7 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
         cycle_proj += total_dot_total;
     }
 
-    // Find the frame whose accumulated root-motion projection along T is closest to cycle_proj.
+    // Find the frame whose accumulated root-motion projection along T is closest to cycle_proj
     ipos32 accum {};
     int32_t best_index = 0;
     int64_t best_diff = std::numeric_limits<int64_t>::max();

@@ -67,7 +67,7 @@ auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix
 
     // The radius is a length in the emitter's own space, so it follows the placement's scale - the same scale the
     // renderers apply to the sprite - but never its rotation: a camera-facing quad keeps the same screen footprint at
-    // every orientation.
+    // every orientation
     float32_t placement_scale = std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})});
 
     if (!std::isfinite(placement_scale) || placement_scale <= 0.0f) {

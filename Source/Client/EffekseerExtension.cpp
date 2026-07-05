@@ -254,7 +254,7 @@ static auto ToEffekseerMatrix43(const mat44& matrix) -> Effekseer::Matrix43
     Effekseer::Matrix43 result {};
     // GLM indexes column-major matrices as [column][row], while Effekseer
     // stores the equivalent row-vector transform as [row][column]. Keeping
-    // the same two indices therefore performs the intended convention swap.
+    // the same two indices therefore performs the intended convention swap
     for (glm::length_t row = 0; row < 4; row++) {
         for (glm::length_t column = 0; column < 3; column++) {
             result.Value[row][column] = matrix[row][column];
@@ -269,7 +269,7 @@ static auto ToEffekseerMatrix44(const mat44& matrix) -> Effekseer::Matrix44
 
     Effekseer::Matrix44 result {};
     // See ToEffekseerMatrix43: equal indices transpose the mathematical
-    // convention because GLM's first index denotes a column.
+    // convention because GLM's first index denotes a column
     for (glm::length_t row = 0; row < 4; row++) {
         for (glm::length_t column = 0; column < 4; column++) {
             result.Values[row][column] = matrix[row][column];
@@ -345,7 +345,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads.
+        // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads
         if (texture_type != Effekseer::TextureType::Color && texture_type != Effekseer::TextureType::Distortion) {
             WriteLog(LogType::Warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
             return nullptr;
@@ -369,7 +369,7 @@ private:
 };
 
 // Models are raw-copied resources, which keeps their vertex data identical to what the Editor exported. Effekseer's
-// parser does not bounds-check the payload itself, so validate it before the third-party constructor reads any count.
+// parser does not bounds-check the payload itself, so validate it before the third-party constructor reads any count
 class FOnlineEffekseerModelLoader final : public Effekseer::ModelLoader
 {
 public:
@@ -515,7 +515,7 @@ struct EffekseerSpriteNodeSnapshot
     Effekseer::TextureWrapType TextureWrap {};
     int32_t TextureIndex {-1};
     // A distortion node refracts the scene behind it instead of drawing its own colour, and scales the displacement
-    // its texture describes by this intensity.
+    // its texture describes by this intensity
     bool Distortion {};
     float32_t DistortionIntensity {};
     bool ZTest {};
@@ -548,7 +548,7 @@ struct EffekseerRingNodeSnapshot
 };
 
 // What the shared strip geometry needs from a Ribbon or Track node. Both families deliver the same material and depth
-// intent, so each renderer snapshots this and keeps only its own extras beside it.
+// intent, so each renderer snapshots this and keeps only its own extras beside it
 struct EffekseerStripNodeSnapshot
 {
     Effekseer::AlphaBlendType AlphaBlend {};
@@ -560,7 +560,7 @@ struct EffekseerStripNodeSnapshot
 };
 
 // One instance's contribution to a strip: the three world positions across the band's width, the colours at them, and
-// the texture rectangle the segment starting at this instance stretches from.
+// the texture rectangle the segment starting at this instance stretches from
 struct EffekseerStripWidthTriple
 {
     vec3 LeftPosition {};
@@ -574,7 +574,7 @@ struct EffekseerStripWidthTriple
 
 // How an emitter node's sampling, blend and depth intent lands on the renderer surface: sampling and blending pick the
 // effect, the depth flags pick a variant of that effect's depth state, and tiling changes what the caller must feed the
-// shader.
+// shader
 struct EffekseerNodeRenderState
 {
     nptr<RenderEffect> Effect {};
@@ -586,7 +586,7 @@ struct EffekseerNodeRenderState
 // The particle colour effects a node can draw through, indexed by how it blends. Every one of them maps the texture
 // coordinate into the atlas sub-rectangle in the fragment shader, because the texture lives in a shared atlas: hardware
 // wrapping and hardware clamping would both reach into neighbouring atlas entries. The node's wrap mode therefore only
-// selects how the shader addresses the coordinate, not which effect draws it.
+// selects how the shader addresses the coordinate, not which effect draws it
 class EffekseerParticleEffects
 {
 public:
@@ -594,7 +594,7 @@ public:
 
     // Returns nothing for a sampling or blend mode the renderer has no equivalent for, so the caller keeps failing
     // closed at the one place that can retire the handle. A distortion draw refracts the scene instead of drawing its
-    // own colour, which is a different shader family with its own, narrower set of blend modes.
+    // own colour, which is a different shader family with its own, narrower set of blend modes
     [[nodiscard]] auto Resolve(Effekseer::AlphaBlendType blend, Effekseer::TextureWrapType wrap, bool z_test, bool z_write) -> optional<EffekseerNodeRenderState>;
     [[nodiscard]] auto ResolveDistortion(Effekseer::AlphaBlendType blend, Effekseer::TextureWrapType wrap, bool z_test, bool z_write) -> optional<EffekseerNodeRenderState>;
 
@@ -625,7 +625,7 @@ EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mng
     }
 
 #if FO_ENABLE_3D
-    // The distortion family carries the particle's own plane per vertex, which is the model vertex layout.
+    // The distortion family carries the particle's own plane per vertex, which is the model vertex layout
     static constexpr string_view distortion_effect_names[DISTORTION_BLEND_MODES] = {
         "Effects/Particles_DistortionAtlas.fofx",
         "Effects/Particles_DistortionAddAtlas.fofx",
@@ -714,7 +714,7 @@ auto EffekseerParticleEffects::Resolve(Effekseer::AlphaBlendType blend, Effeksee
         blend_index = 2;
         break;
     case Effekseer::AlphaBlendType::Opacity:
-        // An opaque particle is the ordinary shader with blending switched off, which is a per-draw flag already.
+        // An opaque particle is the ordinary shader with blending switched off, which is a per-draw flag already
         state.DisableBlending = true;
         break;
     default:
@@ -751,7 +751,7 @@ struct EffekseerRingInstanceSnapshot
 // snapshot's extended alignment (their Effekseer SIMD members are alignas(16)) for its temporary
 // buffer, which MSVC's <type_traits> rejects. Sort a lightweight index permutation by camera depth
 // and materialize the reordered instances instead; the stable order keeps the particle draw order
-// deterministic.
+// deterministic
 template<typename T>
 static void StableSortSnapshotsByCameraDepth(vector<T>& instances, bool reverse_order)
 {
@@ -899,7 +899,7 @@ static auto ValidateRingNodeParameter(const Effekseer::RingRenderer::NodeParamet
 // (LookAtRH puts normalize(eye - at) into Values[..][2] and SetCameraParameterInternal never negates it),
 // so the reference billboard bases, the sprite Z-sort key, and DrawParameter::CameraFrontDirection are all
 // calibrated to the backward vector; the Manager.h "normalize(focus - position)" comment does not match the
-// renderer implementation.
+// renderer implementation
 static auto ExtractCameraBackward(const mat44& view_matrix) -> vec3
 {
     FO_STACK_TRACE_ENTRY();
@@ -989,7 +989,7 @@ static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const 
 // it, and whether the shader must snap the sampled coordinate to texel centres. Filtering is a per-node property in
 // Effekseer but a per-atlas one here (Render.AtlasLinearFiltration applies to every atlas), and a bilinear fetch at a
 // texel centre returns exactly that texel, so a node asking for point sampling from a linearly filtered atlas gets true
-// point sampling without a second atlas.
+// point sampling without a second atlas
 struct EffekseerNodeTexture
 {
     ptr<RenderTexture> Texture;
@@ -999,7 +999,7 @@ struct EffekseerNodeTexture
 
 // Resolves the colour texture slot that every node family shares. An untextured node draws its authored vertex colours,
 // so a private white pixel stands in for the atlas and the whole texture is the sampled rectangle. Fails the handle and
-// returns nothing when the slot cannot be served, so every family keeps failing closed through one path.
+// returns nothing when the slot cannot be served, so every family keeps failing closed through one path
 static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl> system, int32_t texture_index, Effekseer::TextureFilterType filter, ptr<RenderTexture> white_texture, bool distortion = false) -> optional<EffekseerNodeTexture>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1034,7 +1034,7 @@ static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl
 
 // The particle's own plane, as the distortion shader needs it: a displacement of (1, 0) in the distortion map moves
 // the sampled background along the tangent, and (0, 1) along the binormal. A billboard takes them from the basis it
-// faces the camera with; a fixed-orientation quad takes them from its own rotation.
+// faces the camera with; a fixed-orientation quad takes them from its own rotation
 static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> pair<vec3, vec3>
 {
     FO_STACK_TRACE_ENTRY();
@@ -1177,7 +1177,7 @@ public:
         vec3 camera_backward = ExtractCameraBackward(_binding->CurrentSystem->ViewMatrix);
 
         // Same key as the reference SpriteRendererBase: dot of the raw translation with the backward
-        // vector, so NormalOrder ascending renders back-to-front.
+        // vector, so NormalOrder ascending renders back-to-front
         float32_t camera_depth = glm::dot(position, camera_backward);
         if (!std::isfinite(camera_depth)) {
             _binding->Fail("sprite callback emitted a non-finite camera depth");
@@ -1271,7 +1271,7 @@ private:
 
         for (size_t instance_index = 0; instance_index < _instances.size(); instance_index++) {
             const EffekseerSpriteInstanceSnapshot& instance = _instances[instance_index];
-            // The shader maps this into the atlas sub-rectangle, so the vertex carries the emitter's own coordinate.
+            // The shader maps this into the atlas sub-rectangle, so the vertex carries the emitter's own coordinate
             float32_t uv_left = instance.UV.X;
             float32_t uv_right = instance.UV.X + instance.UV.Width;
             float32_t uv_top = instance.UV.Y;
@@ -1324,7 +1324,7 @@ private:
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture->PointSampled ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
 
-        // The fragment addresses the raw emitter coordinate inside this rectangle.
+        // The fragment addresses the raw emitter coordinate inside this rectangle
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
         effect->SpriteBorderBuf->SpriteBorder[0] = texture->AtlasRect.x;
         effect->SpriteBorderBuf->SpriteBorder[1] = texture->AtlasRect.y;
@@ -1341,7 +1341,7 @@ private:
 #if FO_ENABLE_3D
     // A distortion quad is the same geometry as an ordinary one, but it also has to tell the shader which way its own
     // plane points, so the displacement its texture describes is applied in the particle's frame rather than the
-    // screen's. That is what the model vertex layout carries, so this path fills Vertices3D instead of Vertices.
+    // screen's. That is what the model vertex layout carries, so this path fills Vertices3D instead of Vertices
     void RenderDistortion(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerNodeTexture& texture)
     {
         FO_STACK_TRACE_ENTRY();
@@ -1356,7 +1356,7 @@ private:
         }
 
         // Without a scene to refract there is nothing to draw. A direct-scene model has one auxiliary atlas refresh
-        // before its actual draw; skip only that explicitly deferred preview without poisoning the live attachment.
+        // before its actual draw; skip only that explicitly deferred preview without poisoning the live attachment
         ParticleSceneBackgroundResult background = _sceneBackgroundProvider ? _sceneBackgroundProvider() : ParticleSceneBackgroundResult {};
 
         if (background.State == ParticleSceneBackgroundState::Deferred) {
@@ -1432,10 +1432,10 @@ private:
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[2] = _node->DistortionIntensity;
         // The snapshot keeps whatever orientation its source render target has, so the shader flips the screen-space
-        // lookup for a flipped one instead of the copy being re-oriented.
+        // lookup for a flipped one instead of the copy being re-oriented
         effect->ParticleSamplingBuf->ParticleSampling[3] = background.Texture->FlippedHeight ? 1.0f : 0.0f;
 
-        // The fragment addresses the raw emitter coordinate inside this rectangle.
+        // The fragment addresses the raw emitter coordinate inside this rectangle
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
         effect->SpriteBorderBuf->SpriteBorder[0] = texture.AtlasRect.x;
         effect->SpriteBorderBuf->SpriteBorder[1] = texture.AtlasRect.y;
@@ -1744,7 +1744,7 @@ private:
                 Effekseer::Color next_inner_color = instance.InnerColor;
 
                 if (next_alpha != 1.0f) {
-                    // RingRendererBase intentionally truncates these products instead of rounding.
+                    // RingRendererBase intentionally truncates these products instead of rounding
                     next_outer_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_outer_color.A) * next_alpha));
                     next_center_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_center_color.A) * next_alpha));
                     next_inner_color.A = iround<uint8_t>(std::trunc(numeric_cast<float32_t>(next_inner_color.A) * next_alpha));
@@ -1824,7 +1824,7 @@ private:
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
 
-        // The fragment addresses the raw emitter coordinate inside this rectangle.
+        // The fragment addresses the raw emitter coordinate inside this rectangle
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
         effect->SpriteBorderBuf->SpriteBorder[0] = texture.AtlasRect.x;
         effect->SpriteBorderBuf->SpriteBorder[1] = texture.AtlasRect.y;
@@ -1853,7 +1853,7 @@ private:
 
 // The direction a strip spreads its width along: the band's own axis crossed with the view direction, so the band keeps
 // facing the camera while staying anchored to what the family considers the band axis - the emitter's up axis for a
-// viewpoint-dependent ribbon, the direction of travel for a track.
+// viewpoint-dependent ribbon, the direction of travel for a track
 static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_direction) -> vec3
 {
     FO_STACK_TRACE_ENTRY();
@@ -1861,7 +1861,7 @@ static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_dire
     vec3 width_axis = glm::cross(band_axis, view_direction);
 
     if (glm::dot(width_axis, width_axis) <= std::numeric_limits<float32_t>::epsilon()) {
-        // The band runs straight at the camera, so every perpendicular direction is equally correct.
+        // The band runs straight at the camera, so every perpendicular direction is equally correct
         vec3 fallback = std::abs(band_axis.y) < 0.999f ? vec3 {0.0f, 1.0f, 0.0f} : vec3 {1.0f, 0.0f, 0.0f};
         width_axis = glm::cross(band_axis, fallback);
     }
@@ -1870,7 +1870,7 @@ static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_dire
 }
 
 // A track's colour and width fade toward their middle value across the strip. TrackRendererBase clamps the interpolated
-// product into the byte range and truncates it rather than rounding, so this reproduces that exactly.
+// product into the byte range and truncates it rather than rounding, so this reproduces that exactly
 static auto LerpTrackColor(const Effekseer::Color& from, const Effekseer::Color& to, float32_t factor) -> Effekseer::Color
 {
     FO_STACK_TRACE_ENTRY();
@@ -1892,7 +1892,7 @@ static auto LerpTrackColor(const Effekseer::Color& from, const Effekseer::Color&
 
 // The node-level contract Ribbon and Track share. Everything the strip geometry does not implement fails closed here,
 // before a single vertex is built: the corpus census found spline smoothing, tiled strip UVs, trail smoothing, view
-// offset and left-handed strips entirely unused, so implementing them would be speculation rather than support.
+// offset and left-handed strips entirely unused, so implementing them would be speculation rather than support
 static auto ValidateStripNodeParameter(const Effekseer::NodeRendererBasicParameter* basic, const Effekseer::NodeRendererDepthParameter* depth, const Effekseer::NodeRendererTextureUVTypeParameter* texture_uv, int32_t spline_division, bool enable_view_offset, bool is_right_hand) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
@@ -1941,7 +1941,7 @@ static auto ValidateStripNodeParameter(const Effekseer::NodeRendererBasicParamet
         return "advanced depth parameters are unsupported";
     }
     // A strip is stitched by instance index, so a Z-sorted node would hand its instances over in an order that no longer
-    // describes the chain. Nothing in the corpus asks for it and upstream silently builds a scrambled band.
+    // describes the chain. Nothing in the corpus asks for it and upstream silently builds a scrambled band
     if (depth->ZSort != Effekseer::ZSortType::None) {
         return "Z-sorted strip nodes are unsupported";
     }
@@ -1949,7 +1949,7 @@ static auto ValidateStripNodeParameter(const Effekseer::NodeRendererBasicParamet
     return {};
 }
 
-// Effekseer picks which faces to discard per node; the renderer carries the same choice per draw.
+// Effekseer picks which faces to discard per node; the renderer carries the same choice per draw
 static auto ConvertEffekseerCulling(Effekseer::CullingType culling) -> optional<CullModeType>
 {
     FO_STACK_TRACE_ENTRY();
@@ -2032,7 +2032,7 @@ static auto ValidateModelNodeParameter(const Effekseer::ModelRenderer::NodeParam
 // The geometry Ribbon and Track share. Consecutive width triples become two quad strips - the left and right half of the
 // band - and the texture is stretched along the whole chain, so the segment between instance k and k+1 samples the V
 // range [k, k+1] / (count - 1). Ribbon and Track differ only in how one triple is produced, so texture resolution, the
-// atlas addressing flags, chunking against the vertex budget and the draw tail all live here once.
+// atlas addressing flags, chunking against the vertex budget and the draw tail all live here once
 class EffekseerStripGeometry final
 {
 public:
@@ -2052,7 +2052,7 @@ public:
     }
 
     // The chain holds the instances actually delivered; declared_instance_count is the node's own instance count, which
-    // owns the texture stretch so the mapping stays the emitter's regardless of how many instances were alive.
+    // owns the texture stretch so the mapping stays the emitter's regardless of how many instances were alive
     void Draw(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerStripNodeSnapshot& node, const vector<EffekseerStripWidthTriple>& chain, size_t declared_instance_count)
     {
         FO_STACK_TRACE_ENTRY();
@@ -2180,7 +2180,7 @@ private:
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
 
-        // The fragment addresses the raw emitter coordinate inside this rectangle.
+        // The fragment addresses the raw emitter coordinate inside this rectangle
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
         effect->SpriteBorderBuf->SpriteBorder[0] = texture.AtlasRect.x;
         effect->SpriteBorderBuf->SpriteBorder[1] = texture.AtlasRect.y;
@@ -2206,7 +2206,7 @@ private:
 // A ribbon is a band threaded through its instances: each one contributes a left and a right edge offset, and the
 // segment between two consecutive instances is drawn as two quads meeting at the band's centre line. Unless the node is
 // viewpoint dependent the edges are simply transformed by the instance matrix; when it is, the band twists around the
-// emitter's own up axis so it keeps facing the camera.
+// emitter's own up axis so it keeps facing the camera
 class FOnlineEffekseerRibbonRenderer final : public Effekseer::RibbonRenderer
 {
 public:
@@ -2250,7 +2250,7 @@ public:
         _viewpointDependent = parameter.ViewpointDependent;
     }
 
-    // A node draws one strip per instance group, so the chain restarts here rather than in BeginRendering.
+    // A node draws one strip per instance group, so the chain restarts here rather than in BeginRendering
     void BeginRenderingGroup(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
         FO_STACK_TRACE_ENTRY();
@@ -2284,7 +2284,7 @@ public:
             return;
         }
         // The chain is stitched in index order, so an instance arriving out of order would silently describe a different
-        // band instead of the emitter's.
+        // band instead of the emitter's
         if (instance.InstanceIndex < 0 || numeric_cast<size_t>(instance.InstanceIndex) != _chain.size() || instance.InstanceCount != numeric_cast<int32_t>(_declaredInstanceCount)) {
             _binding->Fail("ribbon callback emitted an instance out of strip order");
             return;
@@ -2294,7 +2294,7 @@ public:
             return;
         }
         // Positions[2] and [3] are read only by the spline path, which is rejected, and the emitter leaves them
-        // uninitialised - so validating them would reject perfectly drawable content.
+        // uninitialised - so validating them would reject perfectly drawable content
         if (!IsFinite(instance.SRTMatrix43) || !std::isfinite(instance.Positions[0]) || !std::isfinite(instance.Positions[1])) {
             _binding->Fail("ribbon callback emitted non-finite geometry data");
             return;
@@ -2313,7 +2313,7 @@ public:
 
         ignore_unused(parameter, count, user_data);
 
-        // A band needs two instances to span a segment; a shorter group draws nothing, exactly as upstream leaves it.
+        // A band needs two instances to span a segment; a shorter group draws nothing, exactly as upstream leaves it
         if (_binding->CurrentSystem && _node && !_binding->CurrentSystem->Failed && _chain.size() >= 2) {
             _geometry.Draw(_binding->CurrentSystem.as_ptr(), *_node, _chain, _declaredInstanceCount);
         }
@@ -2390,7 +2390,7 @@ private:
 
 // One instance of a track before the strip is known: its width and colours fade toward the middle of the whole trail, and
 // the direction the band spreads along comes from where the neighbouring instances are, so a triple can only be built
-// once the group has arrived in full.
+// once the group has arrived in full
 struct EffekseerTrackInstanceSnapshot
 {
     Effekseer::SIMD::Mat43f SRTMatrix43 {};
@@ -2408,7 +2408,7 @@ struct EffekseerTrackInstanceSnapshot
 
 // A track is a trail behind a moving emitter: every instance is one cross-section of it, centred on the instance and
 // spread across the direction of travel so the band faces the camera. Width and colour interpolate from the head and
-// tail values toward the middle ones across the length of the trail.
+// tail values toward the middle ones across the length of the trail
 class FOnlineEffekseerTrackRenderer final : public Effekseer::TrackRenderer
 {
 public:
@@ -2568,13 +2568,13 @@ private:
             ignore_unused(rotation);
 
             // The trail runs from one instance to the next, and an interior cross-section splits the difference between
-            // the segment it ends and the one it begins so the band does not kink at the joint.
+            // the segment it ends and the one it begins so the band does not kink at the joint
             vec3 forward_axis = index + 1 < _instances.size() ? NormalizeTrailAxis(_instances[index + 1], instance) : previous_axis;
             vec3 band_axis = index != 0 ? (forward_axis + previous_axis) * 0.5f : forward_axis;
             previous_axis = forward_axis;
 
             // The head half of the trail fades from its front size and colour toward the middle ones, the tail half from
-            // its back values, so both ends meet in the middle of the strip.
+            // its back values, so both ends meet in the middle of the strip
             float32_t fade_position = numeric_cast<float32_t>(index) / fade_divisor;
             bool head_half = index < _declaredInstanceCount / 2;
             float32_t fade = head_half ? fade_position * 2.0f : 1.0f - (fade_position * 2.0f - 1.0f);
@@ -2623,7 +2623,7 @@ private:
 };
 
 // What a model node needs beyond the material every family shares: which mesh it draws, how its instances are oriented,
-// and which faces the rasterizer discards.
+// and which faces the rasterizer discards
 struct EffekseerModelNodeSnapshot
 {
     Effekseer::AlphaBlendType AlphaBlend {};
@@ -2649,7 +2649,7 @@ struct EffekseerModelInstanceSnapshot
 // A model node draws a mesh per instance instead of a generated quad: the .efkmodel supplies positions, texture
 // coordinates and vertex colours, and each instance contributes its own transformed copy. The instance transform is
 // folded into the vertices here, the same way every other family bakes its geometry into world space, so the mesh needs
-// no per-draw matrix of its own and batches with the rest of the particle draws.
+// no per-draw matrix of its own and batches with the rest of the particle draws
 class FOnlineEffekseerModelRenderer final : public Effekseer::ModelRenderer
 {
 public:
@@ -2817,7 +2817,7 @@ private:
             return;
         }
 
-        // Every frame of an animated mesh is a separate vertex set, so the budget is taken from the largest of them.
+        // Every frame of an animated mesh is a separate vertex set, so the budget is taken from the largest of them
         size_t max_vertices_per_instance = 0;
 
         for (int32_t frame = 0; frame < model->GetFrameCount(); frame++) {
@@ -2872,7 +2872,7 @@ private:
             size_t vertex_total = numeric_cast<size_t>(model->GetVertexCount(frame));
             size_t face_total = numeric_cast<size_t>(model->GetFaceCount(frame));
 
-            // An empty frame of an animated mesh draws nothing, and its vertex array is not required to exist.
+            // An empty frame of an animated mesh draws nothing, and its vertex array is not required to exist
             if (vertex_total == 0 || face_total == 0) {
                 continue;
             }
@@ -2899,7 +2899,7 @@ private:
                     }
 
                     // The mesh's own coordinate lands inside the instance's texture rectangle, which the shader then
-                    // addresses inside the atlas - so a mesh that tiles its texture keeps tiling.
+                    // addresses inside the atlas - so a mesh that tiles its texture keeps tiling
                     float32_t texture_u = instance.UV.X + model_vertex.UV1.X * instance.UV.Width;
                     float32_t texture_v = instance.UV.Y + model_vertex.UV1.Y * instance.UV.Height;
 
@@ -2940,7 +2940,7 @@ private:
         effect->ParticleSamplingBuf->ParticleSampling[0] = texture.PointSampled ? 1.0f : 0.0f;
         effect->ParticleSamplingBuf->ParticleSampling[1] = render_state->ClampInShader ? 1.0f : 0.0f;
 
-        // The fragment addresses the raw emitter coordinate inside this rectangle.
+        // The fragment addresses the raw emitter coordinate inside this rectangle
         effect->SpriteBorderBuf = RenderEffect::SpriteBorderBuffer();
         effect->SpriteBorderBuf->SpriteBorder[0] = texture.AtlasRect.x;
         effect->SpriteBorderBuf->SpriteBorder[1] = texture.AtlasRect.y;
@@ -2954,7 +2954,7 @@ private:
         }
     }
 
-    // An animated mesh cycles through its frames, exactly as the reference renderer indexes them.
+    // An animated mesh cycles through its frames, exactly as the reference renderer indexes them
     [[nodiscard]] static auto ResolveFrame(const Effekseer::ModelRef& model, int32_t frame) -> int32_t
     {
         FO_STACK_TRACE_ENTRY();
@@ -2977,7 +2977,7 @@ private:
 
 // Only the sprite family refracts: the distortion shader takes the particle's own plane per vertex, which the sprite
 // geometry supplies. Rejecting the other families here rather than at their first draw keeps an effect that cannot be
-// drawn from being accepted and then vanishing mid-play.
+// drawn from being accepted and then vanishing mid-play
 static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::EffectBasicRenderParameter& parameter, ptr<Effekseer::Effect> effect, bool sprite_family) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -2998,13 +2998,13 @@ static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::Effect
     }
 
     // Modern Effekseer exports retain a non-zero distortion intensity even while the Default material leaves
-    // distortion disabled. The dormant value has no renderer effect; only the distortion material reads it.
+    // distortion disabled. The dormant value has no renderer effect; only the distortion material reads it
     if ((parameter.Distortion && !distortion) || parameter.EnableFalloff || parameter.TextureBlendType != -1 || parameter.FlipbookParams.EnableInterpolation || parameter.EmissiveScaling != 1.0f || parameter.EdgeParam.Threshold != 0.0f || parameter.SoftParticleDistanceFar != 0.0f || parameter.SoftParticleDistanceNear != 0.0f || parameter.SoftParticleDistanceNearOffset != 0.0f) {
         LogEffekseerRejection(path, "advanced material, soft-particle, or flipbook features are unsupported");
         return false;
     }
 
-    // A distortion node's texture index addresses the distortion image table, not the colour one.
+    // A distortion node's texture index addresses the distortion image table, not the colour one
     int32_t image_count = distortion ? effect->GetDistortionImageCount() : effect->GetColorImageCount();
 
     if (parameter.TextureIndexes[0] < -1 || parameter.TextureIndexes[0] >= image_count) {
@@ -3019,7 +3019,7 @@ static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::Effect
     }
 
     // Sampler and payload checks only mean something for a node that actually samples; an untextured one draws its
-    // authored vertex colours through a private white pixel.
+    // authored vertex colours through a private white pixel
     if (parameter.TextureIndexes[0] < 0) {
         return true;
     }
@@ -3060,7 +3060,7 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
     }
 
     // A node that draws carries the same material description whatever its shape is, so the material walk is shared and
-    // the per-family geometry contract is checked by that family's renderer when it receives its node parameters.
+    // the per-family geometry contract is checked by that family's renderer when it receives its node parameters
     bool draws = node_type == Effekseer::EffectNodeType::Sprite || node_type == Effekseer::EffectNodeType::Ring || node_type == Effekseer::EffectNodeType::Ribbon || node_type == Effekseer::EffectNodeType::Track || node_type == Effekseer::EffectNodeType::Model;
 
     if (draws && !ValidateStaticNodeMaterial(path, node->GetBasicRenderParameter(), effect, node_type == Effekseer::EffectNodeType::Sprite)) {
@@ -3134,7 +3134,7 @@ struct EffekseerRuntimeState
     }
 
     shared_ptr<EffekseerDrawBinding> Binding;
-    // Supplies the scene behind a refracting draw; absent where there is no scene to refract.
+    // Supplies the scene behind a refracting draw; absent where there is no scene to refract
     ParticleSceneBackgroundProvider SceneBackgroundProvider;
     Effekseer::SettingRef Setting;
     Effekseer::ManagerRef Manager;
@@ -3161,7 +3161,7 @@ static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> syst
     }
 
     // Effekseer intentionally retires draw sets through two deferred GC queues.
-    // Three flips cover an active draw set as well as both queue stages.
+    // Three flips cover an active draw set as well as both queue stages
     for (size_t flush_index = 0; flush_index < 3; flush_index++) {
         system->Runtime->Manager->BeginUpdate();
         system->Runtime->Manager->EndUpdate();
@@ -3223,7 +3223,7 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
 
     // Frame the effect from its mandatory bake-time extent (a static box measured while baking), and only while it is
     // actually playing - a cheap instance-count check, no per-frame bounds computation. A finished or not-yet-playing
-    // effect reserves nothing.
+    // effect reserves nothing
     if (_impl->Failed || _impl->Handle < 0 || !_impl->Runtime->Manager->Exists(_impl->Handle) || _impl->Runtime->Manager->GetInstanceCount(_impl->Handle) == 0) {
         return std::nullopt;
     }
@@ -3256,7 +3256,7 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
     _impl->ViewProjMatrix = setup.Projection * _impl->ViewMatrix;
 
     // Bake-time bounds are stored in effect-local space; fold the effect's world placement (RootMatrix) and the view
-    // transform into one matrix so the static box lands where the live particles emit.
+    // transform into one matrix so the static box lands where the live particles emit
     _impl->BoundsMatrix = _impl->ViewMatrix * _impl->RootMatrix;
 
     if (_impl->Handle >= 0 && _impl->Runtime->Manager->Exists(_impl->Handle)) {
@@ -3430,7 +3430,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 
     // The baker appends a mandatory bounds trailer after the Effekseer payload. Split it off (a missing or malformed
     // trailer is a broken invariant of our baked data and throws) so the effect is loaded from the untouched payload
-    // and the precomputed box is available for sprite-frame sizing.
+    // and the precomputed box is available for sprite-frame sizing
     EffekseerBoundsTrailer bounds_trailer = ReadEffekseerBoundsTrailer(data);
 
     if (bounds_trailer.PayloadSize > numeric_cast<size_t>(std::numeric_limits<int32_t>::max())) {
@@ -3463,7 +3463,7 @@ auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Pa
 
 // Bounds trailer, all little-endian: [6 x float32 min/max][uint32 payload size][uint32 magic]. A fixed size lets the
 // runtime probe the tail without scanning, and the payload-size cross-check makes a false positive on an untrailered
-// binary effectively impossible.
+// binary effectively impossible
 static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_FLOATS = 7; // position box min/max, then the billboard radius
 static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_SIZE = EFFEKSEER_BOUNDS_TRAILER_FLOATS * sizeof(float32_t) + 2 * sizeof(uint32_t);
 
@@ -3504,7 +3504,7 @@ auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTr
     FO_STACK_TRACE_ENTRY();
 
     // Every baked .efk carries the trailer, so each of these is a violated invariant of our own baked data, not an
-    // expected "maybe absent" case: fail loudly instead of skipping.
+    // expected "maybe absent" case: fail loudly instead of skipping
     FO_VERIFY_AND_THROW(binary.size() >= EFFEKSEER_BOUNDS_TRAILER_SIZE, "Baked Effekseer binary is too small to hold its mandatory bounds trailer", binary.size());
     FO_VERIFY_AND_THROW(ReadLittleEndianUint32(binary, binary.size() - sizeof(uint32_t)) == EFFEKSEER_BOUNDS_TRAILER_MAGIC, "Baked Effekseer binary is missing its mandatory bounds trailer magic", binary.size());
 

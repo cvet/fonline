@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 // recognizes the nesting syntax, never what a prefix means - resolving a prefix against the section
 // it belongs to is the consuming format's rule, and GetOrderedSections() exposes the file order it
 // needs for that. ConfigFileOption::SkipNestedSections parses only non-nested sections and skips
-// nested section bodies, which keeps header enumeration cheap on files with large nested payloads.
+// nested section bodies, which keeps header enumeration cheap on files with large nested payloads
 
 enum class ConfigFileOption : uint8_t
 {

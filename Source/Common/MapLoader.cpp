@@ -222,7 +222,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
 
 // Enumerates the maps a file declares; an empty result means the file is not a map container.
 // This doubles as the map-file detector: map files are recognized by their [ProtoMap] anchors,
-// not by a dedicated extension.
+// not by a dedicated extension
 auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
