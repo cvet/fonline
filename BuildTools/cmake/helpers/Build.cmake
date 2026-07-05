@@ -65,7 +65,16 @@ function(DisableLibWarnings)
 			# code, so vendored libs are excused from the alignment check. NOTE: the FOnline-side AngelScript value-type
 			# alignment (8-byte value types / primitives / handles on the VM stack, init-list buffers, return slots) was
 			# fixed at the SOURCE — our own code (Engine/Source/...) reports 0 alignment errors with this exclusion off.
-			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment>
+			#
+			# -fsanitize=pointer-overflow is excluded for the same reason, and again ONLY third-party VM design remains:
+			# AngelScript's bytecode interpreter addresses a local variable as `framePointer - unsignedVariableOffset`
+			# (asBC_GETOBJREF/asBC_GETREF: `*(asPWORD**)a = *(asPWORD**)(l_fp - *a)` at as_context.cpp), so the offset is
+			# subtracted from the frame pointer as an unsigned value. UBSan's pointer-overflow check reports that as
+			# "subtraction of unsigned offset overflowed" even though the result stays inside the VM stack frame — upstream
+			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
+			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
+			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage.
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
