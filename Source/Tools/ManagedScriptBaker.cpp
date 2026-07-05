@@ -125,26 +125,26 @@ static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> s
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool;
 static auto CountMutableArgs(const_span<ArgDesc> args) -> size_t;
 static void AppendObjectArrayDeclaration(std::ostringstream& out, string_view indent, string_view variable_name, const_span<ArgDesc> args);
-static void AppendNativeCallMethodExpression(std::ostringstream& out, string_view indent, string_view prefix, string_view target_literal, string_view owner_literal, string_view method_literal, size_t method_index, string_view entity_ptr, string_view object_args_variable, string_view suffix);
+static void AppendNativeCallMethodExpression(std::ostringstream& out, string_view indent, string_view prefix, string_view owner_literal, string_view method_literal, size_t method_index, string_view entity_ptr, string_view object_args_variable, string_view suffix);
 static void AppendSingleMutableArgAssignment(std::ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendMutableArgAssignments(std::ostringstream& out, const_span<ArgDesc> args, string_view source_name, size_t source_offset);
 static void AppendProperty(std::ostringstream& out, const string& type_name, const string& property_name, bool writable, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names, optional<string_view> initializer);
-static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
-static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view target_name, string_view setting_name, unordered_set<string>& member_names);
-static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
+static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names);
+static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures);
 static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view method_name, string_view ret, std::initializer_list<string_view> arg_types) -> bool;
-static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
-static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
-static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
-static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, string_view target_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
+static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
+static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names);
+static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names);
+static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
 static void AppendEntityHolderAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name, bool is_static, unordered_set<string>& member_names);
 static void AppendCustomEntityProtoGetters(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendPropertyGroupGetters(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendPropertyInfoAccessors(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendEventAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names);
 static void AppendEntityClass(std::ostringstream& out, string_view class_name, string_view base_name, const EntityTypeDesc& desc, string_view target_name, string_view native_owner_name = {}, bool is_fixed_type = false);
-static void AppendComponentClasses(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name);
-static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const EngineMetadata& meta, string_view target_name);
+static void AppendComponentClasses(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc);
+static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const EngineMetadata& meta);
 static void AppendRemoteCallerSurface(std::ostringstream& out, const EngineMetadata& meta, string_view target_name);
 static void AppendEmptyDerivedEntity(std::ostringstream& out, string_view class_name, string_view base_name);
 static auto MakeEnumUnderlyingCsType(const BaseTypeDesc& enum_type) -> string;
@@ -529,7 +529,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                     // A RefType/ExportObject DTO is a standalone managed class (no Entity base), so its
                     // Name/Id/ProtoId/IsDestroyed properties shadow nothing -> no `new` (CS0109 otherwise).
-                    AppendEntityProperties(out, type->RefType->FieldsRegistrator.get(), type->Name, target_name, {}, false, false, true, false, member_names);
+                    AppendEntityProperties(out, type->RefType->FieldsRegistrator.get(), type->Name, {}, false, false, true, false, member_names);
                 }
                 else {
                     out << CS_INDENT << "private IntPtr _refPtr;\n\n";
@@ -550,7 +550,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "}\n\n";
                 }
 
-                AppendMethods(out, type->RefType->Methods, type->Name, target_name, false, type->RefType->FieldsRegistrator == nullptr, type->RefType->FieldsRegistrator == nullptr, member_names);
+                AppendMethods(out, type->RefType->Methods, type->Name, false, type->RefType->FieldsRegistrator == nullptr, type->RefType->FieldsRegistrator == nullptr, member_names);
                 out << "    }\n\n";
             }
         }
@@ -565,10 +565,10 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         AppendEntityBaseClass(out);
 
         for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
-            AppendComponentClasses(out, type_name, *desc, target_name);
+            AppendComponentClasses(out, type_name, *desc);
         }
         for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetFixedTypes())) {
-            AppendComponentClasses(out, type_name, *desc, target_name);
+            AppendComponentClasses(out, type_name, *desc);
         }
 
         for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
@@ -609,7 +609,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         AppendPropertyGroupGetters(out, meta);
         AppendPropertyInfoAccessors(out, meta);
         AppendRemoteCallerSurface(out, meta, target_name);
-        AppendPropertyCallbackRegistrars(out, meta, target_name);
+        AppendPropertyCallbackRegistrars(out, meta);
 
         AppendGeneratedFooter(out);
         WriteGeneratedFile(project_dir, target_name, "Entities", out.str());
@@ -625,7 +625,6 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 const auto event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
                 const string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
                 const string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
-                const string target_literal = EscapeCsStringLiteral(target_name);
                 const string owner_literal = EscapeCsStringLiteral(type_name);
                 const string event_literal = EscapeCsStringLiteral(event.Name);
 
@@ -649,14 +648,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
                 out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend(\"" << target_literal << "\");\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
                 out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
                 out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key))\n";
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
                 out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        \"" << target_literal << "\",\n";
                 out << CS_INDENT << "        \"" << owner_literal << "\",\n";
                 out << CS_INDENT << "        \"" << event_literal << "\",\n";
                 out << CS_INDENT << "        _entityPtr,\n";
@@ -671,14 +669,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
                 out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend(\"" << target_literal << "\");\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
                 out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
                 out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key))\n";
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
                 out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
-                out << CS_INDENT << "        \"" << target_literal << "\",\n";
                 out << CS_INDENT << "        \"" << owner_literal << "\",\n";
                 out << CS_INDENT << "        \"" << event_literal << "\",\n";
                 out << CS_INDENT << "        _entityPtr,\n";
@@ -692,12 +689,11 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend(\"" << target_literal << "\");\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
                 out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
                 out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription))\n";
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            \"" << target_literal << "\",\n";
                 out << CS_INDENT << "            \"" << event_literal << "\",\n";
                 out << CS_INDENT << "            _entityPtr,\n";
                 out << CS_INDENT << "            subscription);\n";
@@ -710,12 +706,11 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        return;\n";
                 out << CS_INDENT << "    }\n\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend(\"" << target_literal << "\");\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
                 out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
                 out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription))\n";
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            \"" << target_literal << "\",\n";
                 out << CS_INDENT << "            \"" << event_literal << "\",\n";
                 out << CS_INDENT << "            _entityPtr,\n";
                 out << CS_INDENT << "            subscription);\n";
@@ -724,7 +719,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "}\n\n";
                 out << CS_INDENT << "public void UnsubscribeAll()\n";
                 out << CS_INDENT << "{\n";
-                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend(\"" << target_literal << "\");\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
                 out << CS_INDENT << "    List<(Delegate Handler, IntPtr Backend)> keys = new List<(Delegate Handler, IntPtr Backend)>();\n\n";
                 out << CS_INDENT << "    foreach (KeyValuePair<(Delegate Handler, IntPtr Backend), IntPtr> entry in _nativeSubscriptions)\n";
                 out << CS_INDENT << "    {\n";
@@ -736,7 +731,6 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    foreach ((Delegate Handler, IntPtr Backend) key in keys)\n";
                 out << CS_INDENT << "    {\n";
                 out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
-                out << CS_INDENT << "            \"" << target_literal << "\",\n";
                 out << CS_INDENT << "            \"" << event_literal << "\",\n";
                 out << CS_INDENT << "            _entityPtr,\n";
                 out << CS_INDENT << "            _nativeSubscriptions[key]);\n";
@@ -752,7 +746,6 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     out << CS_INDENT << "    {\n";
                     AppendObjectArrayDeclaration(out, strex("{}        ", CS_INDENT).str(), "__args", event.Args);
                     out << CS_INDENT << "        EventResult __result = (EventResult)global::FOnline.Native.FireEvent(\n";
-                    out << CS_INDENT << "            \"" << target_literal << "\",\n";
                     out << CS_INDENT << "            \"" << owner_literal << "\",\n";
                     out << CS_INDENT << "            \"" << event_literal << "\",\n";
                     out << CS_INDENT << "            _entityPtr,\n";
@@ -796,7 +789,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
         for (const auto& [setting_name, setting_type] : sorted_settings) {
             string accessor_name = setting_name;
             std::ranges::replace(accessor_name, '.', '_');
-            AppendSettingProperty(out, ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = *setting_type}, EscapeCsIdentifier(accessor_name), target_name, setting_name, setting_names);
+            AppendSettingProperty(out, ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = *setting_type}, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
         }
 
         // Engine ExportSettings (View/Hex/Input/...) are not in GetGameSettings() -- the metadata blob's "Setting"
@@ -819,7 +812,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             string accessor_name = setting_name;
             std::ranges::replace(accessor_name, '.', '_');
             const ComplexTypeDesc setting_type = meta.ResolveComplexType(type_name);
-            AppendSettingProperty(out, setting_type, EscapeCsIdentifier(accessor_name), target_name, setting_name, setting_names);
+            AppendSettingProperty(out, setting_type, EscapeCsIdentifier(accessor_name), setting_name, setting_names);
         }
 
         out << "    }\n";
@@ -834,6 +827,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
 
     const string proj_name = MakeGeneratedManagedUnifiedProjectFileName(project_name);
     const std::filesystem::path proj_path = project_dir / proj_name;
+    const string effective_target_framework = target_framework.empty() ? string("net10.0") : string(target_framework);
 
     std::ostringstream file;
     const array<string_view, 3> targets {"Server", "Client", "Mapper"};
@@ -847,7 +841,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <Configurations>Server;Client;Mapper</Configurations>\n";
     file << "    <RootNamespace>" << EscapeXml(project_name) << "</RootNamespace>\n";
     file << "    <OutputType>Library</OutputType>\n";
-    file << "    <TargetFramework>" << EscapeXml(target_framework) << "</TargetFramework>\n";
+    file << "    <TargetFramework>" << EscapeXml(effective_target_framework) << "</TargetFramework>\n";
     file << "    <EnableDefaultItems>false</EnableDefaultItems>\n";
     file << "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n";
     file << "    <ImplicitUsings>false</ImplicitUsings>\n";
@@ -2177,7 +2171,7 @@ static void AppendRemoteCallerSurface(std::ostringstream& out, const EngineMetad
 
 // as one non-generic overload per distinct simple property value type; overload resolution then picks
 // the match from the supplied setter method group with no explicit type argument.
-static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const EngineMetadata& meta, string_view target_name)
+static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const EngineMetadata& meta)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2212,14 +2206,14 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
 
         out << CS_INDENT << "public static void SetPropertyGetter<T>(" << enum_type << " property, global::System.Func<" << entity_type << ", T> getter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.SetPropertyGetter(\"" << target_name << "\", \"" << type_name << "\", property.ToString(), getter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.SetPropertyGetter(\"" << type_name << "\", property.ToString(), getter);\n";
         out << CS_INDENT << "}\n\n";
 
         // Deferred (post-set) reaction setter: receives only the entity, so a single non-generic
         // Action<Entity> overload covers every property of this type.
         out << CS_INDENT << "public static void AddPropertyDeferredSetter(" << enum_type << " property, global::System.Action<" << entity_type << "> setter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << target_name << "\", \"" << type_name << "\", property.ToString(), setter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
         out << CS_INDENT << "}\n\n";
 
         // AngelScript's single `AddPropertySetter` accepts BOTH the value-transforming form (entity + ref value)
@@ -2229,7 +2223,7 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
         // overloads below resolve unambiguously by the callback's arity); it routes to the same post-set native.
         out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::System.Action<" << entity_type << "> setter)\n";
         out << CS_INDENT << "{\n";
-        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << target_name << "\", \"" << type_name << "\", property.ToString(), setter);\n";
+        out << CS_INDENT << "    global::FOnline.Native.AddPropertyDeferredSetter(\"" << type_name << "\", property.ToString(), setter);\n";
         out << CS_INDENT << "}\n\n";
 
         unordered_set<string> seen_value_types;
@@ -2260,12 +2254,12 @@ static void AppendPropertyCallbackRegistrars(std::ostringstream& out, const Engi
         for (const string& value_type : value_types) {
             out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::FOnline.PropertySetter<" << entity_type << ", " << value_type << "> setter)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetter(\"" << target_name << "\", \"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetter(\"" << type_name << "\", property.ToString(), setter);\n";
             out << CS_INDENT << "}\n\n";
 
             out << CS_INDENT << "public static void AddPropertySetter(" << enum_type << " property, global::FOnline.PropertySetterWithProperty<" << entity_type << ", " << enum_type << ", " << value_type << "> setter)\n";
             out << CS_INDENT << "{\n";
-            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetterWithProperty(\"" << target_name << "\", \"" << type_name << "\", property.ToString(), setter);\n";
+            out << CS_INDENT << "    global::FOnline.Native.AddPropertySetterWithProperty(\"" << type_name << "\", property.ToString(), setter);\n";
             out << CS_INDENT << "}\n\n";
         }
     }
@@ -2648,12 +2642,11 @@ static void AppendObjectArrayDeclaration(std::ostringstream& out, string_view in
     out << indent << "};\n";
 }
 
-static void AppendNativeCallMethodExpression(std::ostringstream& out, string_view indent, string_view prefix, string_view target_literal, string_view owner_literal, string_view method_literal, size_t method_index, string_view entity_ptr, string_view object_args_variable, string_view suffix)
+static void AppendNativeCallMethodExpression(std::ostringstream& out, string_view indent, string_view prefix, string_view owner_literal, string_view method_literal, size_t method_index, string_view entity_ptr, string_view object_args_variable, string_view suffix)
 {
     FO_STACK_TRACE_ENTRY();
 
     out << indent << prefix << "global::FOnline.Native.CallMethod(\n";
-    out << indent << "    \"" << target_literal << "\",\n";
     out << indent << "    \"" << owner_literal << "\",\n";
     out << indent << "    \"" << method_literal << "\",\n";
     out << indent << "    " << method_index << ",\n";
@@ -2741,7 +2734,7 @@ static void AppendProperty(std::ostringstream& out, const string& type_name, con
     out << "\n\n";
 }
 
-static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, string_view target_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> prop, string_view owner_type_name, bool is_static, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2753,7 +2746,6 @@ static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> pr
         return;
     }
 
-    const string target_literal = EscapeCsStringLiteral(target_name);
     const string owner_literal = EscapeCsStringLiteral(owner_type_name);
     const string prop_literal = EscapeCsStringLiteral(prop->GetName());
     const string entity_ptr = string {MakeTargetPtrExpression(is_static, false)};
@@ -2772,7 +2764,6 @@ static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> pr
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
     out << CS_INDENT << "        return (" << decl_type << ")global::FOnline.Native.GetProperty(\n";
-    out << CS_INDENT << "            \"" << target_literal << "\",\n";
     out << CS_INDENT << "            \"" << owner_literal << "\",\n";
     out << CS_INDENT << "            \"" << prop_literal << "\",\n";
     out << CS_INDENT << "            " << entity_ptr << ");\n";
@@ -2782,7 +2773,6 @@ static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> pr
         out << CS_INDENT << "    set\n";
         out << CS_INDENT << "    {\n";
         out << CS_INDENT << "        global::FOnline.Native.SetProperty(\n";
-        out << CS_INDENT << "            \"" << target_literal << "\",\n";
         out << CS_INDENT << "            \"" << owner_literal << "\",\n";
         out << CS_INDENT << "            \"" << prop_literal << "\",\n";
         out << CS_INDENT << "            " << entity_ptr << ",\n";
@@ -2793,7 +2783,7 @@ static void AppendNativeProperty(std::ostringstream& out, ptr<const Property> pr
     out << CS_INDENT << "}\n\n";
 }
 
-static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view target_name, string_view setting_name, unordered_set<string>& member_names)
+static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc& type, const string& property_name, string_view setting_name, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2802,7 +2792,6 @@ static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc
     }
 
     const string setting_literal = EscapeCsStringLiteral(setting_name);
-    const string target_literal = EscapeCsStringLiteral(target_name);
     const string type_name = MakeCsTypeName(type);
     const BaseTypeDesc& base_type = type.BaseType;
     string getter_method;
@@ -2917,20 +2906,18 @@ static void AppendSettingProperty(std::ostringstream& out, const ComplexTypeDesc
     out << CS_INDENT << "    get\n";
     out << CS_INDENT << "    {\n";
     out << CS_INDENT << "        return " << getter_cast << "global::FOnline.Native." << getter_method << "(\n";
-    out << CS_INDENT << "            \"" << target_literal << "\",\n";
     out << CS_INDENT << "            \"" << setting_literal << "\");\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "    set\n";
     out << CS_INDENT << "    {\n";
     out << CS_INDENT << "        global::FOnline.Native." << setter_method << "(\n";
-    out << CS_INDENT << "            \"" << target_literal << "\",\n";
     out << CS_INDENT << "            \"" << setting_literal << "\",\n";
     out << CS_INDENT << "            " << setter_value << ");\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
 }
 
-static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures)
+static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size_t method_index, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, const unordered_set<string>& reserved_names, unordered_set<string>& signatures)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2980,7 +2967,6 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
         out << CS_INDENT << "}\n";
     }
     else if (allow_native_bridge && IsManagedBridgeMethod(method)) {
-        const string target_literal = EscapeCsStringLiteral(target_name);
         const string owner_literal = EscapeCsStringLiteral(owner_type_name);
         const string method_literal = EscapeCsStringLiteral(method.Name);
         const string entity_ptr = string {MakeTargetPtrExpression(is_static, is_ref_type_owner)};
@@ -2994,11 +2980,11 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
             out << "\n";
 
             if (ret == "void" && mutable_args_count == 1) {
-                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", target_literal, owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
                 AppendSingleMutableArgAssignment(out, method.Args, "__result");
             }
             else {
-                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", target_literal, owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
 
                 if (ret == "void") {
                     AppendMutableArgAssignments(out, method.Args, "__result", 0);
@@ -3015,14 +3001,14 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "", target_literal, owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "", owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
             out << CS_INDENT << "}\n";
         }
         else {
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", target_literal, owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", owner_literal, method_literal, method_index, entity_ptr, "__args", ";");
             out << CS_INDENT << "    return (" << ret << ")__result;\n";
             out << CS_INDENT << "}\n";
         }
@@ -3072,7 +3058,7 @@ static auto HasMethodSignature(const vector<MethodDesc>& methods, string_view me
     return false;
 }
 
-static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names)
+static void AppendMethodProperties(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3103,7 +3089,6 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
         }
     }
 
-    const string target_literal = EscapeCsStringLiteral(target_name);
     const string owner_literal = EscapeCsStringLiteral(owner_type_name);
     const string entity_ptr = string {MakeTargetPtrExpression(is_static, is_ref_type_owner)};
     const string body_indent = strex("{}        ", CS_INDENT).str();
@@ -3173,7 +3158,7 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
             out << CS_INDENT << "    {\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", accessors.Getter->Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", target_literal, owner_literal, getter_literal, accessors.GetterIndex, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", owner_literal, getter_literal, accessors.GetterIndex, entity_ptr, "__args", ";");
             out << body_indent << "return (" << getter_ret << ")__result;\n";
             out << CS_INDENT << "    }\n";
         }
@@ -3185,7 +3170,7 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
             out << CS_INDENT << "    {\n";
             out << body_indent << "object[] __args = new object[] { value };\n";
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "", target_literal, owner_literal, setter_literal, accessors.SetterIndex, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "", owner_literal, setter_literal, accessors.SetterIndex, entity_ptr, "__args", ";");
             out << CS_INDENT << "    }\n";
         }
 
@@ -3193,20 +3178,20 @@ static void AppendMethodProperties(std::ostringstream& out, const vector<MethodD
     }
 }
 
-static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, string_view target_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names)
+static void AppendMethods(std::ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
     unordered_set<string> signatures;
 
-    AppendMethodProperties(out, methods, owner_type_name, target_name, is_static, is_ref_type_owner, allow_native_bridge, member_names);
+    AppendMethodProperties(out, methods, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names);
 
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
-        AppendMethod(out, methods[method_index], method_index, owner_type_name, target_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, signatures);
+        AppendMethod(out, methods[method_index], method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, signatures);
     }
 }
 
-static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view target_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
+static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRegistrator> registrator, string_view owner_type_name, string_view component_name, bool is_static, bool allow_native_bridge, bool force_writable, bool shadows_entity_base, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3229,7 +3214,7 @@ static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRe
         const string prop_name = EscapeCsIdentifier(prop->GetNameWithoutComponent());
 
         if (allow_native_bridge && CanUseManagedPropertyBridge(prop)) {
-            AppendNativeProperty(out, prop, owner_type_name, target_name, is_static, shadows_entity_base, member_names);
+            AppendNativeProperty(out, prop, owner_type_name, is_static, shadows_entity_base, member_names);
         }
         else {
             AppendProperty(out, prop_type, prop_name, force_writable || prop->IsMutable(), is_static, shadows_entity_base, member_names);
@@ -3237,7 +3222,7 @@ static void AppendEntityProperties(std::ostringstream& out, ptr<const PropertyRe
     }
 }
 
-static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, string_view target_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
+static void AppendComponentAccessors(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, bool is_static, unordered_set<string>& member_names)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3269,7 +3254,6 @@ static void AppendComponentAccessors(std::ostringstream& out, string_view owner_
         }
 
         if (member_names.emplace(has_accessor_name).second) {
-            const string target_literal = EscapeCsStringLiteral(target_name);
             const string owner_literal = EscapeCsStringLiteral(owner_type_name);
             const string prop_literal = EscapeCsStringLiteral(prop->GetName());
 
@@ -3284,7 +3268,6 @@ static void AppendComponentAccessors(std::ostringstream& out, string_view owner_
             out << CS_INDENT << "    get\n";
             out << CS_INDENT << "    {\n";
             out << CS_INDENT << "        return (bool)global::FOnline.Native.GetProperty(\n";
-            out << CS_INDENT << "            \"" << target_literal << "\",\n";
             out << CS_INDENT << "            \"" << owner_literal << "\",\n";
             out << CS_INDENT << "            \"" << prop_literal << "\",\n";
             out << CS_INDENT << "            " << MakeTargetPtrExpression(is_static, false) << ");\n";
@@ -3369,7 +3352,7 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
         out << CS_INDENT << "}\n\n";
     }
 
-    AppendComponentAccessors(out, owner, target_name, desc, is_static, member_names);
+    AppendComponentAccessors(out, owner, desc, is_static, member_names);
     // AngelScript registers `get_Proto()` on every proto-backed entity (register_entity_protos); mirror it as a
     // `Proto` property resolving through the same Game proto getter the gen already emits (metadata-exported for
     // the built-ins, AppendProtoGetters for custom entities). Emitted on the content class, so an abstract
@@ -3386,9 +3369,9 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
     }
     // A non-static entity class derives from the Entity base (`: base_name`), so a Name/Id/ProtoId/IsDestroyed
     // property shadows the base member and needs `new`; the static `Game` class has no such base.
-    AppendEntityProperties(out, desc.PropRegistrator.get(), owner, target_name, {}, is_static, true, false, !is_static, member_names);
+    AppendEntityProperties(out, desc.PropRegistrator.get(), owner, {}, is_static, true, false, !is_static, member_names);
     AppendEventAccessors(out, owner, desc, is_static, member_names);
-    AppendMethods(out, desc.Methods, owner, target_name, is_static, false, true, member_names);
+    AppendMethods(out, desc.Methods, owner, is_static, false, true, member_names);
     AppendEntityHolderAccessors(out, owner, desc, target_name, is_static, member_names);
 
     if (is_static) {
@@ -3430,7 +3413,7 @@ static void AppendEntityClass(std::ostringstream& out, string_view class_name, s
     out << "    }\n\n";
 }
 
-static void AppendComponentClasses(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc, string_view target_name)
+static void AppendComponentClasses(std::ostringstream& out, string_view owner_type_name, const EntityTypeDesc& desc)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3449,7 +3432,7 @@ static void AppendComponentClasses(std::ostringstream& out, string_view owner_ty
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "}\n\n";
         // A component class derives from Entity (`: Entity`), so its shadow-named properties need `new`.
-        AppendEntityProperties(out, desc.PropRegistrator.get(), owner_type_name, target_name, component_name, false, true, false, true, member_names);
+        AppendEntityProperties(out, desc.PropRegistrator.get(), owner_type_name, component_name, false, true, false, true, member_names);
         out << "    }\n\n";
 
         ignore_unused(prop);

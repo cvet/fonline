@@ -65,8 +65,12 @@ constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ';';
 constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ':';
 #endif
 
-static std::mutex RegisteredBackendsLocker {};
-static std::array<vector<ptr<ManagedScriptBackend>>, 3> RegisteredBackends {};
+// Process-level liveness counters, one per engine side. They carry no per-engine state — only the fact
+// "at least one engine of this side is alive in the process" — which is exactly what the non-throwing
+// finalizer probe NativeIsGameDestroying may ask from the Mono GC thread, where no backend affinity exists.
+// Everything engine-specific resolves through the thread-affine ActiveBackend (threads are partitioned by
+// engine ownership, so the thread-local slot never observes a foreign engine).
+static std::array<std::atomic<int32_t>, 3> AliveBackendCountPerSide {};
 static thread_local nptr<ManagedScriptBackend> ActiveBackend {};
 
 class ActiveBackendScope final
@@ -110,13 +114,10 @@ struct ManagedAssemblyResource;
 // Static free-function forward declarations, ordered high-level -> low-level.
 
 // Backend registry and active-backend lifecycle
-static void RegisterBackend(ptr<ManagedScriptBackend> backend, string_view target_name);
-static void UnregisterBackend(ptr<ManagedScriptBackend> backend);
-static auto FindRegisteredBackend(MonoString* target) -> ptr<ManagedScriptBackend>;
 static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>;
 static auto GetActiveEntityManagerOrThrow() -> EntityManagerApi*;
-static auto TargetToIndex(string_view target_name) -> optional<size_t>;
-static auto SideToTargetIndex(EngineSideKind side) -> optional<size_t>;
+static auto TargetToSide(string_view target_name) -> optional<EngineSideKind>;
+static auto GetTargetName(EngineSideKind side) -> string_view;
 static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSettings*;
 
 // Native ABI: logging, hashing, backend and prototype queries
@@ -124,7 +125,7 @@ static void NativeLog(MonoString* text);
 static auto NativeGetHash(MonoString* text) -> uint64_t;
 static auto NativeGetHashStr(uint64_t value) -> MonoString*;
 static auto NativeIsGameDestroying(MonoString* target) -> mono_bool;
-static auto NativeGetBackend(MonoString* target) -> void*;
+static auto NativeGetBackend() -> void*;
 static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*;
 static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> mono_bool;
 static auto NativeGetProtoEntityCount(MonoString* type_name) -> int32_t;
@@ -157,34 +158,34 @@ static auto NativeGetInnerEntityCount(void* holder_ptr, MonoString* entry_name) 
 static auto NativeGetInnerEntityAt(void* holder_ptr, MonoString* entry_name, int32_t index) -> void*;
 
 // Native ABI: settings
-static auto NativeGetSettingBoolRaw(MonoString* target, MonoString* name) -> int32_t;
-static void NativeSetSettingBoolRaw(MonoString* target, MonoString* name, int32_t value);
-static auto NativeGetSettingInt(MonoString* target, MonoString* name) -> int32_t;
-static void NativeSetSettingInt(MonoString* target, MonoString* name, int32_t value);
-static auto NativeGetSettingUInt(MonoString* target, MonoString* name) -> uint32_t;
-static void NativeSetSettingUInt(MonoString* target, MonoString* name, uint32_t value);
-static auto NativeGetSettingLong(MonoString* target, MonoString* name) -> int64_t;
-static void NativeSetSettingLong(MonoString* target, MonoString* name, int64_t value);
-static auto NativeGetSettingULong(MonoString* target, MonoString* name) -> uint64_t;
-static void NativeSetSettingULong(MonoString* target, MonoString* name, uint64_t value);
-static auto NativeGetSettingFloat(MonoString* target, MonoString* name) -> float32_t;
-static void NativeSetSettingFloat(MonoString* target, MonoString* name, float32_t value);
-static auto NativeGetSettingDouble(MonoString* target, MonoString* name) -> float64_t;
-static void NativeSetSettingDouble(MonoString* target, MonoString* name, float64_t value);
-static auto NativeGetSettingString(MonoString* target, MonoString* name) -> MonoString*;
-static void NativeSetSettingString(MonoString* target, MonoString* name, MonoString* value);
+static auto NativeGetSettingBoolRaw(MonoString* name) -> int32_t;
+static void NativeSetSettingBoolRaw(MonoString* name, int32_t value);
+static auto NativeGetSettingInt(MonoString* name) -> int32_t;
+static void NativeSetSettingInt(MonoString* name, int32_t value);
+static auto NativeGetSettingUInt(MonoString* name) -> uint32_t;
+static void NativeSetSettingUInt(MonoString* name, uint32_t value);
+static auto NativeGetSettingLong(MonoString* name) -> int64_t;
+static void NativeSetSettingLong(MonoString* name, int64_t value);
+static auto NativeGetSettingULong(MonoString* name) -> uint64_t;
+static void NativeSetSettingULong(MonoString* name, uint64_t value);
+static auto NativeGetSettingFloat(MonoString* name) -> float32_t;
+static void NativeSetSettingFloat(MonoString* name, float32_t value);
+static auto NativeGetSettingDouble(MonoString* name) -> float64_t;
+static void NativeSetSettingDouble(MonoString* name, float64_t value);
+static auto NativeGetSettingString(MonoString* name) -> MonoString*;
+static void NativeSetSettingString(MonoString* name, MonoString* value);
 
 // Native ABI: events, properties, methods and remote calls
-static auto NativeSubscribeEvent(MonoString* target, MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*;
-static void NativeUnsubscribeEvent(MonoString* target, MonoString* event_name, void* entity_ptr, void* subscription);
-static auto NativeFireEvent(MonoString* target, MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t;
-static auto NativeGetProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*;
-static void NativeSetProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value);
-static void NativeSetPropertyGetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* getter);
-static void NativeAddPropertySetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertySetterWithProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertyDeferredSetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static auto NativeCallMethod(MonoString* target, MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*;
+static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*;
+static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription);
+static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t;
+static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*;
+static void NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value);
+static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter);
+static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
+static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
+static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter);
+static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*;
 static auto NativeInvokeScriptFunc(MonoString* func_name, MonoArray* args) -> mono_bool;
 static void NativeRegisterGlobalScriptFunc(MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler);
 static void NativeRegisterRemoteCallHandler(MonoString* name_str, int32_t param_count, MonoObject* handler);
@@ -196,9 +197,9 @@ static void RegisterInternalCalls();
 
 // Settings access helpers
 static auto GetSettingValueAsString(GlobalSettings* settings, const string& setting_name) -> string;
-static auto GetSettingValueAsString(MonoString* target, MonoString* name) -> string;
+static auto GetSettingValueAsString(MonoString* name) -> string;
 static void SetSettingValueFromString(GlobalSettings* settings, string_view setting_name, string value);
-static void SetSettingValueFromString(MonoString* target, MonoString* name, string value);
+static void SetSettingValueFromString(MonoString* name, string value);
 
 // Property getter/setter callback bridge
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*;
@@ -564,58 +565,28 @@ struct ManagedAssemblyResource
 
 // === Backend registry and active-backend lifecycle ===
 
-static void RegisterBackend(ptr<ManagedScriptBackend> backend, string_view target_name)
+void ManagedScriptBackend::RegisterAliveBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<size_t> target_index = TargetToIndex(target_name);
-
-    if (!target_index.has_value()) {
-        throw ScriptSystemException("Unknown Managed target", target_name);
+    if (_meta == nullptr) {
+        throw ScriptSystemException("Managed backend has no registered metadata");
     }
 
-    std::scoped_lock locker {RegisteredBackendsLocker};
-
-    auto& backends = RegisteredBackends[*target_index];
-    std::erase(backends, backend);
-    backends.emplace_back(backend);
-}
-
-static void UnregisterBackend(ptr<ManagedScriptBackend> backend)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::scoped_lock locker {RegisteredBackendsLocker};
-
-    for (auto& backends : RegisteredBackends) {
-        std::erase(backends, backend);
+    if (!_aliveRegistered) {
+        _aliveRegistered = true;
+        AliveBackendCountPerSide[static_cast<size_t>(_meta->GetSide())].fetch_add(1, std::memory_order_release);
     }
 }
 
-static auto FindRegisteredBackend(MonoString* target) -> ptr<ManagedScriptBackend>
+void ManagedScriptBackend::UnregisterAliveBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string target_name = ToStringAndFree(target);
-    const optional<size_t> target_index = TargetToIndex(target_name);
-
-    if (!target_index.has_value()) {
-        throw ScriptSystemException("Unknown Managed target", target_name);
+    if (_aliveRegistered) {
+        _aliveRegistered = false;
+        AliveBackendCountPerSide[static_cast<size_t>(_meta->GetSide())].fetch_sub(1, std::memory_order_release);
     }
-
-    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr && SideToTargetIndex(ActiveBackend->GetMetadata()->GetSide()) == target_index) {
-        return ActiveBackend.as_ptr();
-    }
-
-    std::scoped_lock locker {RegisteredBackendsLocker};
-
-    const auto& backends = RegisteredBackends[*target_index];
-
-    if (backends.empty()) {
-        throw ScriptSystemException("Managed backend is not registered for target", target_name);
-    }
-
-    return backends.back();
 }
 
 static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>
@@ -643,36 +614,36 @@ static auto GetActiveEntityManagerOrThrow() -> EntityManagerApi*
     return entity_mngr;
 }
 
-static auto TargetToIndex(string_view target_name) -> optional<size_t>
+static auto TargetToSide(string_view target_name) -> optional<EngineSideKind>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     if (target_name == "Server") {
-        return 0;
+        return EngineSideKind::ServerSide;
     }
     if (target_name == "Client") {
-        return 1;
+        return EngineSideKind::ClientSide;
     }
     if (target_name == "Mapper") {
-        return 2;
+        return EngineSideKind::MapperSide;
     }
 
     return std::nullopt;
 }
 
-static auto SideToTargetIndex(EngineSideKind side) -> optional<size_t>
+static auto GetTargetName(EngineSideKind side) -> string_view
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     switch (side) {
     case EngineSideKind::ServerSide:
-        return 0;
+        return "Server";
     case EngineSideKind::ClientSide:
-        return 1;
+        return "Client";
     case EngineSideKind::MapperSide:
-        return 2;
+        return "Mapper";
     default:
-        return std::nullopt;
+        return "Server";
     }
 }
 
@@ -722,28 +693,14 @@ static auto NativeGetHash(MonoString* text) -> uint64_t
         return 0;
     }
 
-    optional<uint64_t> result;
-
-    std::scoped_lock locker {RegisteredBackendsLocker};
-
-    for (const auto& backends : RegisteredBackends) {
-        for (ptr<ManagedScriptBackend> backend : backends) {
-            if (backend->GetMetadata() == nullptr) {
-                continue;
-            }
-
-            const uint64_t hash = backend->GetMetadata()->Hashes.ToHashedString(value).as_hash();
-
-            if (result.has_value()) {
-                FO_VERIFY_AND_THROW(*result == hash, "Same string hashes to different values across registered backends");
-            }
-            else {
-                result = hash;
-            }
-        }
+    // Intern into the calling engine only, so the hash can be resolved back to text there; interning into
+    // foreign engines would pollute their hash tables. The hash function itself is deterministic and
+    // engine-independent, so a thread without an active backend computes the same value directly.
+    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr) {
+        return ActiveBackend->GetMetadata()->Hashes.ToHashedString(value).as_hash();
     }
 
-    return result.value_or(hashing_ex::hash(value.data(), value.length()));
+    return hashing_ex::hash(value.data(), value.length());
 }
 
 static auto NativeGetHashStr(uint64_t value) -> MonoString*
@@ -764,43 +721,40 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
 }
 
-// Non-throwing registry probe backing managed `Game.IsGameDestroying`. Mirrors AngelScript's
+// Non-throwing liveness probe backing managed `Game.IsGameDestroying`. Mirrors AngelScript's
 // Global_IsGameDestroying (AngelScriptGlobals.cpp): the game engine is considered gone whenever no usable
 // backend is registered for the target side. MUST NOT throw: this runs from script destructors and, for
 // managed code, may be invoked from the Mono GC finalizer thread where a thrown exception is fatal. It does no
 // Mono marshalling beyond reading the already-marshalled target string and never touches game-thread-owned
-// engine state, so it is safe from any thread.
+// engine state — only the per-side atomic liveness counters — so it is safe from any thread.
 static auto NativeIsGameDestroying(MonoString* target) -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     const string target_name = ToStringAndFree(target);
-    const optional<size_t> target_index = TargetToIndex(target_name);
+    const optional<EngineSideKind> side = TargetToSide(target_name);
 
-    if (!target_index.has_value()) {
+    if (!side.has_value()) {
         // Unknown/empty target: treat as destroying so guarded cleanup is skipped rather than misdirected.
         return static_cast<mono_bool>(1);
     }
 
     // Fast path: a backend active on this thread whose side matches is, by definition, live.
-    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr && SideToTargetIndex(ActiveBackend->GetMetadata()->GetSide()) == target_index) {
+    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr && ActiveBackend->GetMetadata()->GetSide() == *side) {
         return static_cast<mono_bool>(0);
     }
 
-    // Slow path: process-global registry, lock-guarded, never throwing. A registered backend with live
-    // metadata means the game engine for this side is up; otherwise it is gone (or not yet created).
-    std::scoped_lock locker {RegisteredBackendsLocker};
-
-    const auto& backends = RegisteredBackends[*target_index];
-    const bool alive = !backends.empty() && backends.back()->GetMetadata() != nullptr;
+    // Slow path: lock-free process-level liveness counter, never throwing. At least one alive engine of the
+    // side means the game for this side is up; zero means all are gone (or none was created).
+    const bool alive = AliveBackendCountPerSide[static_cast<size_t>(*side)].load(std::memory_order_acquire) > 0;
     return static_cast<mono_bool>(alive ? 0 : 1);
 }
 
-static auto NativeGetBackend(MonoString* target) -> void*
+static auto NativeGetBackend() -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    return FindRegisteredBackend(target).get();
+    return GetActiveBackendOrThrow().get();
 }
 
 // Custom-entity proto getters (managed equivalent of AngelScript register_entity_protos / Game_GetProtoCustomEntity
@@ -1168,127 +1122,127 @@ static auto NativeGetInnerEntityAt(void* holder_ptr, MonoString* entry_name, int
 
 // === Native ABI: settings ===
 
-static auto NativeGetSettingBoolRaw(MonoString* target, MonoString* name) -> int32_t
+static auto NativeGetSettingBoolRaw(MonoString* name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strvex(GetSettingValueAsString(target, name)).to_bool() ? 1 : 0;
+    return strvex(GetSettingValueAsString(name)).to_bool() ? 1 : 0;
 }
 
-static void NativeSetSettingBoolRaw(MonoString* target, MonoString* name, int32_t value)
+static void NativeSetSettingBoolRaw(MonoString* name, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, value != 0 ? "True" : "False");
+    SetSettingValueFromString(name, value != 0 ? "True" : "False");
 }
 
-static auto NativeGetSettingInt(MonoString* target, MonoString* name) -> int32_t
+static auto NativeGetSettingInt(MonoString* name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(target, name)).to_int32();
+    return strex(GetSettingValueAsString(name)).to_int32();
 }
 
-static void NativeSetSettingInt(MonoString* target, MonoString* name, int32_t value)
+static void NativeSetSettingInt(MonoString* name, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingUInt(MonoString* target, MonoString* name) -> uint32_t
+static auto NativeGetSettingUInt(MonoString* name) -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(target, name)).to_uint32();
+    return strex(GetSettingValueAsString(name)).to_uint32();
 }
 
-static void NativeSetSettingUInt(MonoString* target, MonoString* name, uint32_t value)
+static void NativeSetSettingUInt(MonoString* name, uint32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingLong(MonoString* target, MonoString* name) -> int64_t
+static auto NativeGetSettingLong(MonoString* name) -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(target, name)).to_int64();
+    return strex(GetSettingValueAsString(name)).to_int64();
 }
 
-static void NativeSetSettingLong(MonoString* target, MonoString* name, int64_t value)
+static void NativeSetSettingLong(MonoString* name, int64_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingULong(MonoString* target, MonoString* name) -> uint64_t
+static auto NativeGetSettingULong(MonoString* name) -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string value = GetSettingValueAsString(target, name);
+    const string value = GetSettingValueAsString(name);
     return std::strtoull(value.c_str(), nullptr, 0);
 }
 
-static void NativeSetSettingULong(MonoString* target, MonoString* name, uint64_t value)
+static void NativeSetSettingULong(MonoString* name, uint64_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingFloat(MonoString* target, MonoString* name) -> float32_t
+static auto NativeGetSettingFloat(MonoString* name) -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(target, name)).to_float32();
+    return strex(GetSettingValueAsString(name)).to_float32();
 }
 
-static void NativeSetSettingFloat(MonoString* target, MonoString* name, float32_t value)
+static void NativeSetSettingFloat(MonoString* name, float32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingDouble(MonoString* target, MonoString* name) -> float64_t
+static auto NativeGetSettingDouble(MonoString* name) -> float64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(target, name)).to_float64();
+    return strex(GetSettingValueAsString(name)).to_float64();
 }
 
-static void NativeSetSettingDouble(MonoString* target, MonoString* name, float64_t value)
+static void NativeSetSettingDouble(MonoString* name, float64_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, strex("{}", value).str());
+    SetSettingValueFromString(name, strex("{}", value).str());
 }
 
-static auto NativeGetSettingString(MonoString* target, MonoString* name) -> MonoString*
+static auto NativeGetSettingString(MonoString* name) -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    const string value = GetSettingValueAsString(target, name);
+    const string value = GetSettingValueAsString(name);
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
 }
 
-static void NativeSetSettingString(MonoString* target, MonoString* name, MonoString* value)
+static void NativeSetSettingString(MonoString* name, MonoString* value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(target, name, ToStringAndFree(value));
+    SetSettingValueFromString(name, ToStringAndFree(value));
 }
 
 // === Native ABI: events, properties, methods and remote calls ===
 
-static auto NativeSubscribeEvent(MonoString* target, MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*
+static auto NativeSubscribeEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto* meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
@@ -1339,21 +1293,21 @@ static auto NativeSubscribeEvent(MonoString* target, MonoString* owner_type, Mon
     return reinterpret_cast<void*>(token);
 }
 
-static void NativeUnsubscribeEvent(MonoString* target, MonoString* event_name, void* entity_ptr, void* subscription)
+static void NativeUnsubscribeEvent(MonoString* event_name, void* entity_ptr, void* subscription)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
     const string event_name_str = ToStringAndFree(event_name);
     entity->UnsubscribeEvent(event_name_str, reinterpret_cast<uintptr_t>(subscription));
 }
 
-static auto NativeFireEvent(MonoString* target, MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t
+static auto NativeFireEvent(MonoString* owner_type, MonoString* event_name, void* entity_ptr, MonoArray* args) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto* meta = backend->GetMetadata();
     FO_VERIFY_AND_THROW(meta, "Backend metadata is not available");
 
@@ -1437,11 +1391,11 @@ static auto NativeFireEvent(MonoString* target, MonoString* owner_type, MonoStri
     return static_cast<int32_t>(result);
 }
 
-static auto NativeGetProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*
+static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
     const string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
@@ -1470,11 +1424,11 @@ static auto NativeGetProperty(MonoString* target, MonoString* owner_type, MonoSt
     return BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 }
 
-static void NativeSetProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value)
+static void NativeSetProperty(MonoString* owner_type, MonoString* property_name, void* entity_ptr, MonoObject* value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto entity = ResolveEntity(backend, entity_ptr);
     const string property_name_str = ToStringAndFree(property_name);
     auto nullable_prop = entity->GetProperties()->GetRegistrator()->FindProperty(property_name_str);
@@ -1502,11 +1456,11 @@ static void NativeSetProperty(MonoString* target, MonoString* owner_type, MonoSt
     entity->SetValueFromData(prop, prop_data);
 }
 
-static void NativeSetPropertyGetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* getter)
+static void NativeSetPropertyGetter(MonoString* owner_type, MonoString* property_name, MonoObject* getter)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
 
     if (getter == nullptr) {
         throw ScriptSystemException("Null Managed property getter");
@@ -1540,11 +1494,11 @@ static void NativeSetPropertyGetter(MonoString* target, MonoString* owner_type, 
     });
 }
 
-static void NativeAddPropertySetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static void NativeAddPropertySetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
 
     if (setter == nullptr) {
         throw ScriptSystemException("Null Managed property setter");
@@ -1582,11 +1536,11 @@ static void NativeAddPropertySetter(MonoString* target, MonoString* owner_type, 
     });
 }
 
-static void NativeAddPropertySetterWithProperty(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static void NativeAddPropertySetterWithProperty(MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
 
     if (setter == nullptr) {
         throw ScriptSystemException("Null Managed property setter");
@@ -1626,11 +1580,11 @@ static void NativeAddPropertySetterWithProperty(MonoString* target, MonoString* 
     });
 }
 
-static void NativeAddPropertyDeferredSetter(MonoString* target, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static void NativeAddPropertyDeferredSetter(MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
 
     if (setter == nullptr) {
         throw ScriptSystemException("Null Managed deferred property setter");
@@ -1666,11 +1620,11 @@ static void NativeAddPropertyDeferredSetter(MonoString* target, MonoString* owne
     });
 }
 
-static auto NativeCallMethod(MonoString* target, MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*
+static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, int32_t method_index, void* entity_ptr, MonoArray* args) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = FindRegisteredBackend(target);
+    auto backend = GetActiveBackendOrThrow();
     auto* meta = backend->GetMetadata();
     const string owner_type_name = ToStringAndFree(owner_type);
     const string method_name_str = ToStringAndFree(method_name);
@@ -2324,11 +2278,11 @@ static auto GetSettingValueAsString(GlobalSettings* settings, const string& sett
 #undef SETTING_GROUP_END
 }
 
-static auto GetSettingValueAsString(MonoString* target, MonoString* name) -> string
+static auto GetSettingValueAsString(MonoString* name) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
-    GlobalSettings* settings = GetBackendSettings(FindRegisteredBackend(target));
+    GlobalSettings* settings = GetBackendSettings(GetActiveBackendOrThrow());
     const string setting_name = ToStringAndFree(name);
     return GetSettingValueAsString(settings, setting_name);
 }
@@ -2344,11 +2298,11 @@ static void SetSettingValueFromString(GlobalSettings* settings, string_view sett
     settings->SetCustomSetting(setting_name, any_t(std::move(value)));
 }
 
-static void SetSettingValueFromString(MonoString* target, MonoString* name, string value)
+static void SetSettingValueFromString(MonoString* name, string value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    GlobalSettings* settings = GetBackendSettings(FindRegisteredBackend(target));
+    GlobalSettings* settings = GetBackendSettings(GetActiveBackendOrThrow());
     const string setting_name = ToStringAndFree(name);
     SetSettingValueFromString(settings, setting_name, std::move(value));
 }
@@ -4730,7 +4684,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
-    UnregisterBackend(this);
+    UnregisterAliveBackend();
 
     for (const uint32_t gc_handle : _globalFuncGcHandles) {
         if (gc_handle != 0) {
@@ -4753,22 +4707,6 @@ void ManagedScriptBackend::AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc,
 
     _globalFuncs.emplace_back(std::move(desc));
     _globalFuncGcHandles.emplace_back(gc_handle);
-}
-
-auto ManagedScriptBackend::GetTargetName(EngineSideKind side) -> string_view
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    switch (side) {
-    case EngineSideKind::ServerSide:
-        return "Server";
-    case EngineSideKind::ClientSide:
-        return "Client";
-    case EngineSideKind::MapperSide:
-        return "Mapper";
-    default:
-        return "Server";
-    }
 }
 
 void ManagedScriptBackend::InvokeInitializator(void* assembly, const char* method_name)
@@ -4871,7 +4809,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     RegisterInternalCalls();
 
     const auto target_name = GetTargetName(_meta->GetSide());
-    RegisterBackend(this, target_name);
+    RegisterAliveBackend();
 
     const auto resource_assemblies = CollectAssemblyResources(resources, target_name);
     const unordered_map<string, std::filesystem::path> restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);

@@ -15,8 +15,9 @@ namespace FOnline
     // `Game` member.
     //
     // `Game` is a partial static class whose other parts are generated per target; this part only adds the
-    // game-state predicate. The target literal is the same per-side name the generated `Game.*` methods pass to
-    // `Native.CallMethod`, selected here by the build-time target define (the baker emits TRACE;<SIDE>).
+    // game-state predicate. The target literal names this assembly's side for the liveness probe (the only
+    // native call that still takes a side: it may run on the GC finalizer thread, where no backend is active),
+    // selected here by the build-time target define (the baker emits TRACE;<SIDE>).
     public static partial class Game
     {
 #if SERVER

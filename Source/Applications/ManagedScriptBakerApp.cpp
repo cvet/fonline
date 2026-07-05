@@ -47,20 +47,24 @@ FO_USING_NAMESPACE();
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
-[[maybe_unused]] static auto ManagedScriptBakerApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto ManagedScriptBakerApp(CommandLineArgs args) -> int
 #endif
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        InitApp(numeric_cast<int32_t>(argc), argv, AppInitFlags::DisableLogTags);
+#if !FO_TESTING_APP
+    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+#endif
 
-        FO_VERIFY_AND_THROW(!App->Settings.BakeOutput.empty(), "Bake output directory is not configured");
+    try {
+        InitApp(args, AppInitFlags::DisableLogTags);
+
+        FO_VERIFY_AND_THROW(!GetApp()->Settings.BakeOutput.empty(), "Bake output directory is not configured");
 
         WriteLog("Prepare metadata");
         FileSystem metadata_files;
 
-        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, MetadataBaker::NAME)) {
                 continue;
             }
@@ -72,7 +76,7 @@ int main(int argc, char** argv)
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
@@ -86,12 +90,12 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to write bake output file");
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &GetApp()->Settings, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
                 metadata_baker.BakeFiles(res_files.GetAllFiles(), "");
-                metadata_files.AddDirSource(strex(App->Settings.BakeOutput).combine_path(res_pack.Name), false);
+                metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
                 const auto& params = ex.params();
@@ -115,7 +119,7 @@ int main(int argc, char** argv)
 
         WriteLog("Generate and bake Managed scripts");
 
-        for (const auto& res_pack : App->Settings.GetResourcePacks()) {
+        for (const auto& res_pack : GetApp()->Settings.GetResourcePacks()) {
             if (!vec_exists(res_pack.Bakers, ManagedScriptBaker::NAME)) {
                 continue;
             }
@@ -127,7 +131,7 @@ int main(int argc, char** argv)
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
-                const auto output_path = strex(App->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
+                const auto output_path = strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name).combine_path(path).str();
                 const auto dir = strex(output_path).extract_dir().str();
 
                 if (!dir.empty()) {
@@ -141,7 +145,7 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to write bake output file");
             };
 
-            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &App->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});
+            auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = &GetApp()->Settings, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = &metadata_files, .ForceSyncMode = true});
             auto managed_baker = ManagedScriptBaker(std::move(baking_ctx));
 
             try {

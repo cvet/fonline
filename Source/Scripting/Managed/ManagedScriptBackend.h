@@ -58,9 +58,9 @@ public:
     void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
 
 private:
-    static auto GetTargetName(EngineSideKind side) -> string_view;
-
     void InvokeInitializator(void* assembly, const char* method_name);
+    void RegisterAliveBackend();
+    void UnregisterAliveBackend();
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
@@ -68,6 +68,7 @@ private:
     vector<nptr<void>> _images {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _globalFuncGcHandles {};
+    bool _aliveRegistered {};
 };
 
 FO_END_NAMESPACE

@@ -62,7 +62,7 @@ FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespa
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
 FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
 FIXED_SETTING(string, Script, ManagedScriptProjectName); // Managed project base name (empty for the game nice name)
-FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, Script, ManagedScriptTargetFramework); // Managed project target framework (empty for net10.0)
 FIXED_SETTING(string, Script, ManagedScriptMsBuild); // Managed msbuild command override (empty for 'dotnet msbuild')
 FIXED_SETTING(string, Script, ManagedScriptSourceDir); // Managed engine core-scripts directory override (empty for auto-detection)
 FIXED_SETTING(string, Script, ManagedScriptProjectDir); // Managed project directory override (empty for Scripts/Managed)

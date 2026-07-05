@@ -406,7 +406,7 @@ namespace FOnline
         internal static extern bool IsGameDestroying(string target);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern IntPtr GetBackend(string target);
+        internal static extern IntPtr GetBackend();
 
         // Custom-entity proto lookup (mirrors AngelScript Game_GetProtoCustomEntity / Game_CheckProtoCustomEntity):
         // returns the proto entity pointer for `typeName`/`protoIdHash` (IntPtr.Zero if unknown), or whether it
@@ -458,7 +458,6 @@ namespace FOnline
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr SubscribeEvent(
-            string target,
             string ownerType,
             string eventName,
             IntPtr entityPtr,
@@ -468,14 +467,12 @@ namespace FOnline
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void UnsubscribeEvent(
-            string target,
             string eventName,
             IntPtr entityPtr,
             IntPtr subscription);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern int FireEvent(
-            string target,
             string ownerType,
             string eventName,
             IntPtr entityPtr,
@@ -483,14 +480,12 @@ namespace FOnline
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern object GetProperty(
-            string target,
             string ownerType,
             string propertyName,
             IntPtr entityPtr);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void SetProperty(
-            string target,
             string ownerType,
             string propertyName,
             IntPtr entityPtr,
@@ -498,35 +493,30 @@ namespace FOnline
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void SetPropertyGetter(
-            string target,
             string ownerType,
             string propertyName,
             Delegate getter);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void AddPropertySetter(
-            string target,
             string ownerType,
             string propertyName,
             Delegate setter);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void AddPropertySetterWithProperty(
-            string target,
             string ownerType,
             string propertyName,
             Delegate setter);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void AddPropertyDeferredSetter(
-            string target,
             string ownerType,
             string propertyName,
             Delegate setter);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern object CallMethod(
-            string target,
             string ownerType,
             string methodName,
             int methodIndex,
@@ -570,63 +560,63 @@ namespace FOnline
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern void LoopbackRemoteCall(object caller, string name, object[] args);
 
-        internal static bool GetSettingBool(string target, string name)
+        internal static bool GetSettingBool(string name)
         {
-            return GetSettingBoolRaw(target, name) != 0;
+            return GetSettingBoolRaw(name) != 0;
         }
 
-        internal static void SetSettingBool(string target, string name, bool value)
+        internal static void SetSettingBool(string name, bool value)
         {
-            SetSettingBoolRaw(target, name, value ? 1 : 0);
+            SetSettingBoolRaw(name, value ? 1 : 0);
         }
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private static extern int GetSettingBoolRaw(string target, string name);
+        private static extern int GetSettingBoolRaw(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        private static extern void SetSettingBoolRaw(string target, string name, int value);
+        private static extern void SetSettingBoolRaw(string name, int value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern int GetSettingInt(string target, string name);
+        internal static extern int GetSettingInt(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingInt(string target, string name, int value);
+        internal static extern void SetSettingInt(string name, int value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern uint GetSettingUInt(string target, string name);
+        internal static extern uint GetSettingUInt(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingUInt(string target, string name, uint value);
+        internal static extern void SetSettingUInt(string name, uint value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern long GetSettingLong(string target, string name);
+        internal static extern long GetSettingLong(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingLong(string target, string name, long value);
+        internal static extern void SetSettingLong(string name, long value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern ulong GetSettingULong(string target, string name);
+        internal static extern ulong GetSettingULong(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingULong(string target, string name, ulong value);
+        internal static extern void SetSettingULong(string name, ulong value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern float GetSettingFloat(string target, string name);
+        internal static extern float GetSettingFloat(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingFloat(string target, string name, float value);
+        internal static extern void SetSettingFloat(string name, float value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern double GetSettingDouble(string target, string name);
+        internal static extern double GetSettingDouble(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingDouble(string target, string name, double value);
+        internal static extern void SetSettingDouble(string name, double value);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern string GetSettingString(string target, string name);
+        internal static extern string GetSettingString(string name);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SetSettingString(string target, string name, string value);
+        internal static extern void SetSettingString(string name, string value);
 
         private static readonly char[] SettingListSeparators = new char[] { ' ', '\t', '\r', '\n' };
 
@@ -674,52 +664,52 @@ namespace FOnline
             return bool.Parse(value);
         }
 
-        internal static List<bool> GetSettingBoolList(string target, string name) => ParseSettingList(GetSettingString(target, name), ParseSettingBool);
+        internal static List<bool> GetSettingBoolList(string name) => ParseSettingList(GetSettingString(name), ParseSettingBool);
 
-        internal static void SetSettingBoolList(string target, string name, List<bool> value) => SetSettingString(target, name, JoinSettingList(value, item => item ? "True" : "False"));
+        internal static void SetSettingBoolList(string name, List<bool> value) => SetSettingString(name, JoinSettingList(value, item => item ? "True" : "False"));
 
-        internal static List<sbyte> GetSettingSByteList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => sbyte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<sbyte> GetSettingSByteList(string name) => ParseSettingList(GetSettingString(name), item => sbyte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingSByteList(string target, string name, List<sbyte> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingSByteList(string name, List<sbyte> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<byte> GetSettingByteList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => byte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<byte> GetSettingByteList(string name) => ParseSettingList(GetSettingString(name), item => byte.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingByteList(string target, string name, List<byte> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingByteList(string name, List<byte> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<short> GetSettingShortList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => short.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<short> GetSettingShortList(string name) => ParseSettingList(GetSettingString(name), item => short.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingShortList(string target, string name, List<short> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingShortList(string name, List<short> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<ushort> GetSettingUShortList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => ushort.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<ushort> GetSettingUShortList(string name) => ParseSettingList(GetSettingString(name), item => ushort.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingUShortList(string target, string name, List<ushort> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingUShortList(string name, List<ushort> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<int> GetSettingIntList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => int.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<int> GetSettingIntList(string name) => ParseSettingList(GetSettingString(name), item => int.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingIntList(string target, string name, List<int> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingIntList(string name, List<int> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<uint> GetSettingUIntList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => uint.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<uint> GetSettingUIntList(string name) => ParseSettingList(GetSettingString(name), item => uint.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingUIntList(string target, string name, List<uint> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingUIntList(string name, List<uint> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<long> GetSettingLongList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => long.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<long> GetSettingLongList(string name) => ParseSettingList(GetSettingString(name), item => long.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingLongList(string target, string name, List<long> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingLongList(string name, List<long> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<ulong> GetSettingULongList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => ulong.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<ulong> GetSettingULongList(string name) => ParseSettingList(GetSettingString(name), item => ulong.Parse(item, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingULongList(string target, string name, List<ulong> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingULongList(string name, List<ulong> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<float> GetSettingFloatList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => float.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<float> GetSettingFloatList(string name) => ParseSettingList(GetSettingString(name), item => float.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingFloatList(string target, string name, List<float> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingFloatList(string name, List<float> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<double> GetSettingDoubleList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => double.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
+        internal static List<double> GetSettingDoubleList(string name) => ParseSettingList(GetSettingString(name), item => double.Parse(item, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture));
 
-        internal static void SetSettingDoubleList(string target, string name, List<double> value) => SetSettingString(target, name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        internal static void SetSettingDoubleList(string name, List<double> value) => SetSettingString(name, JoinSettingList(value, item => item.ToString(System.Globalization.CultureInfo.InvariantCulture)));
 
-        internal static List<string> GetSettingStringList(string target, string name) => ParseSettingList(GetSettingString(target, name), item => item);
+        internal static List<string> GetSettingStringList(string name) => ParseSettingList(GetSettingString(name), item => item);
 
-        internal static void SetSettingStringList(string target, string name, List<string> value) => SetSettingString(target, name, JoinSettingList(value, item => item ?? string.Empty));
+        internal static void SetSettingStringList(string name, List<string> value) => SetSettingString(name, JoinSettingList(value, item => item ?? string.Empty));
     }
 }

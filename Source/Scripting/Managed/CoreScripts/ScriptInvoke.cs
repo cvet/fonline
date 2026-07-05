@@ -100,12 +100,12 @@ namespace FOnline
 
         public static int GetAsInt(GameProperty prop)
         {
-            return Convert.ToInt32(Native.GetProperty(CurrentTarget, "Game", prop.ToString(), IntPtr.Zero), CultureInfo.InvariantCulture);
+            return Convert.ToInt32(Native.GetProperty("Game", prop.ToString(), IntPtr.Zero), CultureInfo.InvariantCulture);
         }
 
         public static void SetAsInt(GameProperty prop, int value)
         {
-            Native.SetProperty(CurrentTarget, "Game", prop.ToString(), IntPtr.Zero, value);
+            Native.SetProperty("Game", prop.ToString(), IntPtr.Zero, value);
         }
 
         public static bool TryParseEnum<TEnum>(string valueName, out TEnum result)
@@ -148,22 +148,6 @@ namespace FOnline
         public static CritterProperty ParseEnum_CritterProperty(object value)
         {
             return ParseEnumValue<CritterProperty>(value);
-        }
-
-        private static string CurrentTarget
-        {
-            get
-            {
-#if SERVER
-                return "Server";
-#elif CLIENT
-                return "Client";
-#elif MAPPER
-                return "Mapper";
-#else
-                return string.Empty;
-#endif
-            }
         }
 
         private static bool InvokeCore(string funcName, object?[] args)
