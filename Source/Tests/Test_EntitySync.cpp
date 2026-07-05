@@ -1088,7 +1088,7 @@ TEST_CASE("SyncContext")
         CHECK(SyncContext::GetCurrentOnThisThread() == &ctx_main);
 
         std::atomic<SyncContext*> other_ctx {nullptr};
-        std::thread t([&]() { other_ctx.store(SyncContext::GetCurrentOnThisThread()); });
+        std::thread t([&]() { other_ctx.store(SyncContext::GetCurrentOnThisThread().get()); });
         t.join();
 
         CHECK(other_ctx.load() == nullptr);

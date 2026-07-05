@@ -1104,10 +1104,10 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto nullable_map = GetParent<Map>();
+    auto map = GetParent<Map>();
 
-    if (nullable_map) {
-        return nullable_map.as_ptr()->GetSpectatorPlayersForSend();
+    if (map) {
+        return map->GetSpectatorPlayersForSend();
     }
 
     return {};
@@ -1125,13 +1125,13 @@ auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector
     recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (ptr<Critter> cr : _visibleCrWhoSeeMe) {
-        if (refcount_nptr<Player> player = cr->GetPlayerForSend(); player && player.get() != ignore_player.get()) {
+        if (refcount_nptr<Player> player = cr->GetPlayerForSend(); player && player != ignore_player) {
             recipients.emplace_back(std::move(player).take_not_null());
         }
     }
 
     for (refcount_ptr<Player> player : spectators) {
-        if (player.get() != ignore_player.get()) {
+        if (player != ignore_player) {
             recipients.emplace_back(std::move(player));
         }
     }
@@ -1192,7 +1192,7 @@ void Critter::SendAndBroadcast(nptr<const Player> ignore_player, const function<
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (nptr<Player> self_player = _player.load(std::memory_order_acquire); self_player && self_player.get() != ignore_player.get()) {
+    if (nptr<Player> self_player = _player.load(std::memory_order_acquire); self_player && self_player != ignore_player) {
         player_callback(self_player.as_ptr());
     }
 

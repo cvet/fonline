@@ -222,8 +222,8 @@ public:
     auto operator=(SyncContext&&) noexcept = delete;
     ~SyncContext();
 
-    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> SyncContext*;
-    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> SyncContext*;
+    [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
+    [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
 
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }

@@ -66,7 +66,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
         if (nullable_item_already) {
             auto item_already = nullable_item_already.as_ptr();
 
-            if (item_already == item.get()) {
+            if (item_already == item) {
                 return item;
             }
 

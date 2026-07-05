@@ -5181,11 +5181,9 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     REQUIRE(map_proto);
 
     auto static_map = server->MapMngr.GetStaticMap(map_proto.as_ptr());
-    REQUIRE(static_map->HexField.get() != nullptr);
 
     REQUIRE(static_map->CritterBillets.size() == 1);
     CHECK(static_map->CritterBillets.front().first == ident_t {11});
-    REQUIRE(static_map->CritterBillets.front().second.get() != nullptr);
     CHECK(static_map->CritterBillets.front().second->GetProtoId() == static_critter_pid);
     CHECK(static_map->CritterBillets.front().second->GetHex() == mpos {10, 11});
 

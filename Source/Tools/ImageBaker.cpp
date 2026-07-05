@@ -128,92 +128,6 @@ alignas(ucolor) static uint8_t FoPalette[] = {
 static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
-template<typename T>
-static auto BytesAsMutableSpan(span<uint8_t> data, size_t value_count) noexcept -> span<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (value_count == 0) {
-        return {};
-    }
-
-    FO_STRONG_ASSERT(data.size() >= value_count * sizeof(T), "Byte span is too small to reinterpret as the requested value count");
-    nptr<uint8_t> bytes = data.data();
-    ptr<T> values = reinterpret_cast<T*>(bytes.get());
-    return {values.get(), value_count};
-}
-
-static auto BytesAsColors(span<uint8_t> data, size_t color_count) noexcept -> span<ucolor>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return BytesAsMutableSpan<ucolor>(data, color_count);
-}
-
-static auto BytesAsUInt32(span<uint8_t> data, size_t value_count) noexcept -> span<uint32_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return BytesAsMutableSpan<uint32_t>(data, value_count);
-}
-
-template<typename T>
-static auto MutableObjectBytes(T& object) noexcept -> span<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<T> object_ptr = &object;
-    ptr<uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
-    return {bytes.get(), sizeof(T)};
-}
-
-template<typename T>
-static auto GetObjectByte(T& object, size_t index) noexcept -> uint8_t
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    span<uint8_t> bytes = MutableObjectBytes(object);
-    FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
-    return bytes[index];
-}
-
-template<typename T>
-static void SetObjectByte(T& object, size_t index, uint8_t value) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    span<uint8_t> bytes = MutableObjectBytes(object);
-    FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
-    bytes[index] = value;
-}
-
-template<typename T>
-static void SwapObjectBytes(T& object, size_t first_index, size_t second_index) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    span<uint8_t> bytes = MutableObjectBytes(object);
-    FO_STRONG_ASSERT(first_index < bytes.size(), "First object byte index is out of range");
-    FO_STRONG_ASSERT(second_index < bytes.size(), "Second object byte index is out of range");
-    std::swap(bytes[first_index], bytes[second_index]);
-}
-
-static auto DefaultPaletteColors() noexcept -> span<ucolor>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<uint8_t> palette_data = FoPalette;
-    span<uint8_t> palette_bytes {palette_data.get(), sizeof(FoPalette)};
-    return BytesAsColors(palette_bytes, 256);
-}
-
-static auto IsDefaultPalette(span<ucolor> palette) noexcept -> bool
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return palette.data() == DefaultPaletteColors().data();
-}
-
 ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx))
 {
@@ -592,7 +506,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = DefaultPaletteColors();
+        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -624,7 +538,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
-            span<ucolor> pixels = BytesAsColors(span {shot.Data}, numeric_cast<size_t>(w) * h);
+            span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
             reader.SetCurPos(offset + 12);
 
             if (anim_pix_type == 0) {
@@ -683,7 +597,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             }
 
             // Check for animate pixels
-            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && IsDefaultPalette(palette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                 reader.SetCurPos(offset + 12);
 
                 for (auto i = 0, j = w * h; i < j; i++) {
@@ -864,7 +778,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = DefaultPaletteColors();
+        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -899,7 +813,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             shot.Data.resize(numeric_cast<size_t>(w) * h * 4);
-            span<ucolor> pixels = BytesAsColors(span {shot.Data}, numeric_cast<size_t>(w) * h);
+            span<ucolor> pixels = bytes_to_objects<ucolor>(span {shot.Data});
             reader.SetCurPos(offset + 12);
 
             if (anim_pix_type == 0) {
@@ -957,7 +871,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             }
 
             // Check for animate pixels
-            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && IsDefaultPalette(palette)) {
+            if (anim_pix_type == 0 && frm == 0 && dir == 0 && frm_count == 1 && palette.data() != custom_palette) {
                 reader.SetCurPos(offset + 12);
 
                 for (auto i = 0, j = w * h; i < j; i++) {
@@ -1076,7 +990,7 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, 
     const_span<uint8_t> palette = reader.GetCurDataSpan(256 * 3);
 
     vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-    span<ucolor> pixels = BytesAsColors(span {data}, numeric_cast<size_t>(w) * h);
+    span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
     reader.SetCurPos(0xA + 256 * 3);
 
     for (auto i = 0, j = w * h; i < j; i++) {
@@ -1288,7 +1202,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             auto w = frame_info.FrameWidth;
             auto h = frame_info.FrameHeight;
             vector<uint8_t> data(numeric_cast<size_t>(w) * h * 4);
-            span<uint32_t> pixels = BytesAsUInt32(span {data}, numeric_cast<size_t>(w) * h);
+            span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
             auto& shot = sequence.Frames[frm_write];
             shot.Width = numeric_cast<uint16_t>(w);
@@ -1301,7 +1215,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
             auto art_get_color = [&color, &reader, &palette, &palette_index, &transparent]() {
                 const auto index = reader.GetUInt8();
                 color = palette[palette_index][index];
-                SwapObjectBytes(color, 0, 2);
+                swap_object_bytes(color, 0, 2);
 
                 if (index == 0) {
                     color = 0;
@@ -1737,7 +1651,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
             // Allocate data
             vector<uint8_t> whole_data(numeric_cast<size_t>(whole_width) * whole_height * 4);
-            span<ucolor> whole_pixels = BytesAsColors(span {whole_data}, numeric_cast<size_t>(whole_width) * whole_height);
+            span<ucolor> whole_pixels = bytes_to_objects<ucolor>(span {whole_data});
 
             for (int32_t part = 0; part < 4; part++) {
                 const int32_t frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
@@ -1786,15 +1700,15 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                         switch (control_mode) {
                         case 1:
                             col = palette[part][rle_data[rle_pos + numeric_cast<size_t>(i)]];
-                            SetObjectByte(col, 3, 0xFF);
+                            set_object_byte(col, 3, 0xFF);
                             break;
                         case 2:
                             col = palette[part][rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
-                            SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
+                            set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                             break;
                         case 3:
                             col = palette[part][def_color];
-                            SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
+                            set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                             break;
                         default:
                             break;
@@ -1803,12 +1717,12 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                         for (int32_t j = 0; j < 3; j++) {
                             if (rgb_offs[part][j] != 0) {
                                 const size_t color_byte_index = numeric_cast<size_t>(2 - j);
-                                auto val = numeric_cast<int32_t>(GetObjectByte(col, color_byte_index)) + rgb_offs[part][j];
-                                SetObjectByte(col, color_byte_index, numeric_cast<uint8_t>(std::clamp(val, 0, 255)));
+                                auto val = numeric_cast<int32_t>(get_object_byte(col, color_byte_index)) + rgb_offs[part][j];
+                                set_object_byte(col, color_byte_index, numeric_cast<uint8_t>(std::clamp(val, 0, 255)));
                             }
                         }
 
-                        SwapObjectBytes(col, 0, 2);
+                        swap_object_bytes(col, 0, 2);
 
                         if (part == 0) {
                             whole_pixels[pixel_pos] = col;
@@ -1897,7 +1811,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
 
     // Allocate data
     vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-    span<uint32_t> pixels = BytesAsUInt32(span {data}, numeric_cast<size_t>(width) * height);
+    span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
     size_t pixel_pos = 0;
     size_t rle_pos = 0;
 
@@ -1915,15 +1829,15 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
             switch (control_mode) {
             case 1:
                 col = palette[rle_data[rle_pos + numeric_cast<size_t>(i)]];
-                SetObjectByte(col, 3, 0xFF);
+                set_object_byte(col, 3, 0xFF);
                 break;
             case 2:
                 col = palette[rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
-                SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
+                set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                 break;
             case 3:
                 col = palette[def_color];
-                SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
+                set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                 break;
             default:
                 break;
@@ -2029,7 +1943,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
         // Allocate data
         vector<uint8_t> data(numeric_cast<size_t>(zar_width) * zar_height * 4);
-        span<ucolor> pixels = BytesAsColors(span {data}, numeric_cast<size_t>(zar_width) * zar_height);
+        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
         size_t pixel_pos = 0;
         size_t rle_pos = 0;
 
@@ -2047,15 +1961,15 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
                 switch (control_mode) {
                 case 1:
                     col = palette[rle_data[rle_pos + numeric_cast<size_t>(i)]];
-                    SetObjectByte(col, 3, 0xFF);
+                    set_object_byte(col, 3, 0xFF);
                     break;
                 case 2:
                     col = palette[rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i)]];
-                    SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
+                    set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(2) * numeric_cast<size_t>(i) + 1]);
                     break;
                 case 3:
                     col = palette[def_color];
-                    SetObjectByte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
+                    set_object_byte(col, 3, rle_data[rle_pos + numeric_cast<size_t>(i)]);
                     break;
                 default:
                     break;
@@ -2139,7 +2053,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
 
     // Allocate data
     vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-    span<uint32_t> pixels = BytesAsUInt32(span {data}, numeric_cast<size_t>(width) * height);
+    span<uint32_t> pixels = bytes_to_objects<uint32_t>(span {data});
 
     // Read image data
     uint32_t palette[256] = {0};
@@ -2312,7 +2226,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
         // Allocate data
         vector<uint8_t> data(numeric_cast<size_t>(width) * height * 4);
-        span<ucolor> pixels = BytesAsColors(span {data}, numeric_cast<size_t>(width) * height);
+        span<ucolor> pixels = bytes_to_objects<ucolor>(span {data});
         size_t pixel_pos = 0;
 
         // Fill it

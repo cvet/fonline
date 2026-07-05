@@ -459,8 +459,9 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
                     const auto pixel_count = numeric_cast<size_t>(width) * height;
                     vector<ucolor> pixels(pixel_count);
-                    MemCopy(pixels.data(), reader.GetCurBuf(), pixel_count * sizeof(ucolor));
-                    reader.GoForward(pixel_count * sizeof(ucolor));
+                    auto pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
+                    MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
+                    reader.GoForward(pixel_data.size());
 
                     dir_anim->_sprOffset[j].x = nx;
                     dir_anim->_sprOffset[j].y = ny;
@@ -505,8 +506,9 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         const auto pixel_count = numeric_cast<size_t>(width) * height;
         vector<ucolor> pixels(pixel_count);
-        MemCopy(pixels.data(), reader.GetCurBuf(), pixel_count * sizeof(ucolor));
-        reader.GoForward(pixel_count * sizeof(ucolor));
+        const_span<uint8_t> pixel_data = reader.GetCurDataSpan(pixel_count * sizeof(ucolor));
+        MemCopy(pixels.data(), pixel_data.data(), pixel_data.size());
+        reader.GoForward(pixel_data.size());
 
         auto spr = FillAtlas(atlas_type, {width, height}, {ox, oy}, pixels.data());
 
@@ -532,7 +534,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
         auto pixels = nullable_pixels.as_ptr();
         const size_t width = numeric_cast<size_t>(size.width);
         const size_t height = numeric_cast<size_t>(size.height);
-        const_span<ucolor> pixel_data {pixels.get(), width * height};
+        const auto pixel_data = make_const_span(pixels, width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 
@@ -550,7 +552,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
         _borderBuf[0] = _borderBuf[1];
         _borderBuf[size.height + 1] = _borderBuf[size.height];
-        const_span<ucolor> border_pixels = {_borderBuf.data(), numeric_cast<size_t>(size.height + 2)};
+        const auto border_pixels = make_const_span(_borderBuf.data(), numeric_cast<size_t>(size.height + 2));
         tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, size.height + 2}, border_pixels);
 
         // Right

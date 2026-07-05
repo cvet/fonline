@@ -139,7 +139,7 @@ namespace MapperMergeTest
         runtime_source->AddFile("MapperMergeTiles.fopro-bin-mapper", proto_blob);
         runtime_source->AddFile("MapperMergeTest.fos-bin-mapper", script_blob);
 
-        for (const auto* font_name : {"OldDefault", "Numbers", "BigNumbers", "SandNumbers", "Special", "Default", "Thin", "Fat", "Big"}) {
+        for (string_view font_name : {"OldDefault", "Numbers", "BigNumbers", "SandNumbers", "Special", "Default", "Thin", "Fat", "Big"}) {
             AddMinimalFont(*runtime_source, font_name);
         }
 

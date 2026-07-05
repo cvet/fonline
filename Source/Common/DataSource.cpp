@@ -568,7 +568,9 @@ bool FalloutDat::ReadTree()
     if (!stream_set_read_pos(_datFile, -12, std::ios_base::end)) {
         return false;
     }
-    auto version_buf = make_span(ptr<uint32_t> {&version}, sizeof(version));
+
+    auto version_buf = object_to_bytes(version);
+
     if (!stream_read_exact(_datFile, version_buf)) {
         return false;
     }
@@ -581,7 +583,8 @@ bool FalloutDat::ReadTree()
 
         uint32_t tree_size = 0;
 
-        auto tree_size_buf = make_span(ptr<uint32_t> {&tree_size}, sizeof(tree_size));
+        auto tree_size_buf = object_to_bytes(tree_size);
+
         if (!stream_read_exact(_datFile, tree_size_buf)) {
             return false;
         }
@@ -593,7 +596,8 @@ bool FalloutDat::ReadTree()
 
         uint32_t files_total = 0;
 
-        auto files_total_buf = make_span(ptr<uint32_t> {&files_total}, sizeof(files_total));
+        auto files_total_buf = object_to_bytes(files_total);
+
         if (!stream_read_exact(_datFile, files_total_buf)) {
             return false;
         }
@@ -653,13 +657,15 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t tree_size = 0;
-    auto tree_size_buf = make_span(ptr<uint32_t> {&tree_size}, sizeof(tree_size));
+    auto tree_size_buf = object_to_bytes(tree_size);
+
     if (!stream_read_exact(_datFile, tree_size_buf)) {
         return false;
     }
 
     uint32_t dat_size = 0;
-    auto dat_size_buf = make_span(ptr<uint32_t> {&dat_size}, sizeof(dat_size));
+    auto dat_size_buf = object_to_bytes(dat_size);
+
     if (!stream_read_exact(_datFile, dat_size_buf)) {
         return false;
     }
@@ -670,12 +676,14 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t dir_count = 0;
-    auto dir_count_buf = make_span(ptr<uint32_t> {&dir_count}, sizeof(dir_count));
+    auto dir_count_buf = object_to_bytes(dir_count);
+
     if (!stream_read_exact(_datFile, dir_count_buf)) {
         return false;
     }
 
     dir_count >>= 24;
+
     if (dir_count == 0x01 || dir_count == 0x33) {
         return false;
     }
@@ -691,7 +699,8 @@ bool FalloutDat::ReadTree()
     }
 
     uint32_t files_total = 0;
-    auto files_total_buf = make_span(ptr<uint32_t> {&files_total}, sizeof(files_total));
+    auto files_total_buf = object_to_bytes(files_total);
+
     if (!stream_read_exact(_datFile, files_total_buf)) {
         return false;
     }
@@ -908,7 +917,7 @@ ZipFile::ZipFile(string_view fname)
     ffunc.zopen_file = [](voidpf opaque, const char*, int32_t) -> voidpf {
         nptr<void> stream = opaque;
         FO_VERIFY_AND_THROW(stream, "Zip open callback received a null stream handle");
-        return stream.as_ptr().get();
+        return opaque;
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         nptr<std::ifstream> nullable_file = cast_from_void<std::ifstream*>(stream);
@@ -917,7 +926,6 @@ ZipFile::ZipFile(string_view fname)
         if (size == 0) {
             return 0;
         }
-
         FO_VERIFY_AND_THROW(buf != nullptr, "Zip read callback received a null output buffer");
         return stream_read_exact(*file, make_span(buf, size)) ? size : 0;
     };
@@ -959,18 +967,18 @@ ZipFile::ZipFile(string_view fname)
 
     const string file_name = string(_fileName);
     ptr<const char> file_name_ptr = file_name.c_str();
-    _zipHandle = unzOpen2(file_name_ptr.get(), &ffunc);
+    nptr<void> nullable_zip_handle = unzOpen2(file_name_ptr.get(), &ffunc);
 
-    if (!_zipHandle) {
+    if (!nullable_zip_handle) {
         throw DataSourceException("Can't read zip file", _fileName);
     }
 
-    auto* zip_handle_for_cleanup = _zipHandle.get();
-    auto close_zip_on_fail = scope_fail([zip_handle_for_cleanup]() noexcept { (void)unzClose(zip_handle_for_cleanup); });
+    auto zip_handle = nullable_zip_handle.as_ptr();
+    auto close_zip_on_fail = scope_fail([zip_handle]() mutable noexcept { unzClose(zip_handle.get()); });
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(_zipHandle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
+    if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
         throw DataSourceException("Read zip file tree failed (unzGetGlobalInfo)", _fileName);
     }
 
@@ -980,11 +988,11 @@ ZipFile::ZipFile(string_view fname)
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
+        if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetFilePos)", _fileName);
         }
 
-        if (unzGetCurrentFileInfo(_zipHandle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+        if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGetCurrentFileInfo)", _fileName);
         }
 
@@ -997,10 +1005,12 @@ ZipFile::ZipFile(string_view fname)
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle.get()) != UNZ_OK) {
+        if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
             throw DataSourceException("Read zip file tree failed (unzGoToNextFile)", _fileName);
         }
     }
+
+    _zipHandle = zip_handle;
 }
 
 ZipFile::~ZipFile()
@@ -1112,8 +1122,7 @@ EmbeddedFile::EmbeddedFile()
         MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
         ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
-        ptr<void> stream = cast_to_void(mem_stream.get());
-        return stream.get();
+        return cast_to_void(mem_stream.get());
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         nptr<EmbeddedZipMemStream> nullable_mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);

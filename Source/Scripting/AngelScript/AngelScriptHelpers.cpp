@@ -148,7 +148,7 @@ static auto ReadScriptPropertyString(const_span<uint8_t> buffer, size_t& pos, si
     }
 
     auto chars = ReadScriptPropertyBytes(buffer, pos, size);
-    return {chars.reinterpret_as<const char>().get(), size};
+    return string {chars.reinterpret_as<const char>().as_str(size)};
 }
 
 static auto ScriptPropertyBufferSpan(ptr<uint8_t> buffer, size_t size) noexcept -> span<uint8_t>
@@ -862,8 +862,8 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
     }
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
-        refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(data, data_size);
-        nptr<DynamicRefTypeInstance> released_ref_obj = ReleaseScriptOwnership(std::move(ref_obj));
+        auto ref_obj = create_ref_obj(data, data_size);
+        auto released_ref_obj = ReleaseScriptOwnership(std::move(ref_obj));
         NativeDataProvider::WriteTypedHandleSlot<DynamicRefTypeInstance>(construct_addr, released_ref_obj);
     }
     else if (prop->IsString()) {
@@ -902,7 +902,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                     uint32_t ref_data_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
                     auto ref_data = ReadScriptPropertyBytes(data_span, data_pos, ref_data_size);
 
-                    refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(ref_data, ref_data_size);
+                    auto ref_obj = create_ref_obj(ref_data, ref_data_size);
                     arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
                 }
             }
@@ -1014,7 +1014,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 const uint32_t ref_data_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
                                 auto ref_data = ReadScriptPropertyBytes(data_span, data_pos, ref_data_size);
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = create_ref_obj(ref_data, ref_data_size);
+                                auto ref_obj = create_ref_obj(ref_data, ref_data_size);
                                 arr->SetValue(numeric_cast<int32_t>(i), ref_obj.get_pp());
                             }
                         }
@@ -1080,14 +1080,14 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const uint32_t key_len = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
                         const string key_str = ReadScriptPropertyString(data_span, data_pos, key_len);
                         const uint32_t arr_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
-                        refcount_ptr<ScriptArray> arr = read_array(arr_size);
+                        refcount_nptr<ScriptArray> arr = read_array(arr_size);
                         dict->Set(cast_to_void(&key_str), static_cast<void*>(arr.get_pp()));
                         continue;
                     }
 
                     auto key = ReadScriptPropertyBytes(data_span, data_pos, prop->GetDictKeyTypeSize());
                     const uint32_t arr_size = ReadScriptPropertyObject<uint32_t>(data_span, data_pos);
-                    refcount_ptr<ScriptArray> arr = read_array(arr_size);
+                    refcount_nptr<ScriptArray> arr = read_array(arr_size);
 
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
@@ -1158,11 +1158,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const string key_str = ReadScriptPropertyString(data_span, data_pos, key_len);
 
                         if (prop->IsBaseTypeRefType()) {
-                            refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
+                            auto ref_obj = read_ref_obj();
                             dict->Set(cast_to_void(&key_str), static_cast<void*>(ref_obj.get_pp()));
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
-                            nptr<Entity> fixed_type = read_fixed_type();
+                            auto fixed_type = read_fixed_type();
                             dict->Set(cast_to_void(&key_str), static_cast<void*>(fixed_type.get_pp()));
                         }
                         else if (prop->IsBaseTypeHash()) {
@@ -1170,7 +1170,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             dict->Set(cast_to_void(&key_str), cast_to_void(&hvalue));
                         }
                         else {
-                            ptr<const uint8_t> value_data = read_raw_value();
+                            auto value_data = read_raw_value();
                             dict->Set(cast_to_void(&key_str), cast_to_void(value_data.get()));
                         }
                     }
@@ -1181,11 +1181,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             const auto hkey = resolve_hash(key);
 
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
+                                auto ref_obj = read_ref_obj();
                                 dict->Set(cast_to_void(&hkey), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
+                                auto fixed_type = read_fixed_type();
                                 dict->Set(cast_to_void(&hkey), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
@@ -1193,7 +1193,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(cast_to_void(&hkey), cast_to_void(&hvalue));
                             }
                             else {
-                                ptr<const uint8_t> value_data = read_raw_value();
+                                auto value_data = read_raw_value();
                                 dict->Set(cast_to_void(&hkey), cast_to_void(value_data.get()));
                             }
                         }
@@ -1201,11 +1201,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             const auto ekey = resolve_enum(key, prop->GetDictKeyTypeSize());
 
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
+                                auto ref_obj = read_ref_obj();
                                 dict->Set(cast_to_void(&ekey), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
+                                auto fixed_type = read_fixed_type();
                                 dict->Set(cast_to_void(&ekey), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
@@ -1213,17 +1213,17 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(cast_to_void(&ekey), cast_to_void(&hvalue));
                             }
                             else {
-                                ptr<const uint8_t> value_data = read_raw_value();
+                                auto value_data = read_raw_value();
                                 dict->Set(cast_to_void(&ekey), cast_to_void(value_data.get()));
                             }
                         }
                         else {
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
+                                auto ref_obj = read_ref_obj();
                                 dict->Set(cast_to_void(key.get()), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
+                                auto fixed_type = read_fixed_type();
                                 dict->Set(cast_to_void(key.get()), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
@@ -1231,7 +1231,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                                 dict->Set(cast_to_void(key.get()), cast_to_void(&hvalue));
                             }
                             else {
-                                ptr<const uint8_t> value_data = read_raw_value();
+                                auto value_data = read_raw_value();
                                 dict->Set(cast_to_void(key.get()), cast_to_void(value_data.get()));
                             }
                         }

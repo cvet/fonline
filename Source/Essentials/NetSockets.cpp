@@ -220,7 +220,7 @@ auto net_sockets::last_error_text() noexcept -> string
     }
 
     auto ws = nullable_ws.as_ptr();
-    auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { (void)::LocalFree(static_cast<HLOCAL>(text.get())); }};
+    auto ws_holder = unique_del_ptr<wchar_t> {ws.get(), [](ptr<wchar_t> text) { ::LocalFree(cast_to_void(text.get()));
     const string error_str = strex().parse_wide_char(ws).trim();
 
     return strex("{} ({})", error_str, error_code);

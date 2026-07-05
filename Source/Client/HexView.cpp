@@ -57,7 +57,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     _mapSpr = mspr;
     SetupSprite(mspr);
 
-    FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex, static_cast<const void*>(mspr.get()), static_cast<const void*>(_mapSpr.get()));
+    FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex);
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
     return _mapSpr.as_ptr();

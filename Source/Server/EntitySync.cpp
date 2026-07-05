@@ -533,7 +533,7 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
     const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
     const auto lock_state = [](nptr<const EntityLock> lock) -> string_view {
-        if (lock == nullptr) {
+        if (!lock) {
             return "none";
         }
         if (lock->IsLockedByCurrentThread()) {
@@ -571,11 +571,11 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (entity == nullptr) {
+    if (!entity) {
         return true;
     }
 
-    const auto* current_ctx = SyncContext::GetCurrentOnThisThread();
+    nptr<const SyncContext> current_ctx = SyncContext::GetCurrentOnThisThread();
     FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
 
     if (current_ctx->IsEmpty()) {
@@ -774,13 +774,13 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         unordered_map<EntityLock*, ServerEntity*> lock_to_entity;
 
         for (nptr<ServerEntity> entity : entities) {
-            if (entity == nullptr) {
+            if (!entity) {
                 continue;
             }
 
             nptr<EntityLock> lock = entity->GetEntityLock();
 
-            if (lock == nullptr) {
+            if (!lock) {
                 continue;
             }
 
@@ -804,17 +804,17 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
                 vector<ServerEntity*> snapshot;
                 snapshot.reserve(lock_to_entity.size() + entities.size());
 
-                for (auto* entity : lock_to_entity | std::views::values) {
-                    snapshot.emplace_back(entity);
+                for (nptr<ServerEntity> entity : lock_to_entity | std::views::values) {
+                    snapshot.emplace_back(entity.get());
                 }
 
                 for (nptr<ServerEntity> entity : entities) {
-                    if (entity != nullptr) {
+                    if (entity) {
                         snapshot.emplace_back(entity.get());
                     }
                 }
 
-                for (auto* entity : snapshot) {
+                for (nptr<ServerEntity> entity : snapshot) {
                     auto widen = entity->GetSyncWidenEntity();
 
                     if (widen == nullptr) {
@@ -903,12 +903,12 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
         // a lock in our held set. If a requested entity's parent chain no longer passes
         // through any held lock, it escaped during AcquireLocks (concurrent SetParent moved
         // it out of the cover) — release everything and recompute.
-        const auto held_contains = [this](nptr<EntityLock> lock) noexcept { return lock != nullptr && std::ranges::find(_heldLocks, lock.get()) != _heldLocks.end(); };
+        const auto held_contains = [this](nptr<EntityLock> lock) noexcept { return lock && std::ranges::find(_heldLocks, lock.get()) != _heldLocks.end(); };
 
         bool all_covered = true;
 
         for (nptr<ServerEntity> entity : entities) {
-            if (entity == nullptr) {
+            if (!entity) {
                 continue;
             }
 
@@ -987,9 +987,6 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
             };
 
             for (auto& owner : _heldLockOwners) {
-                if (owner.get() == nullptr) {
-                    continue;
-                }
 
                 for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                     auto parent_lock = parent->GetEntityLock();
@@ -1028,7 +1025,7 @@ void SyncContext::SyncEntity(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity == nullptr) {
+    if (!entity) {
         return;
     }
 
@@ -1040,7 +1037,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (entity == nullptr) {
+    if (!entity) {
         return;
     }
 
@@ -1054,7 +1051,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
 
     auto lock = entity->GetEntityLock();
 
-    if (lock == nullptr) {
+    if (!lock) {
         return;
     }
 
@@ -1100,8 +1097,8 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
     ops.reserve(add_marks.size() + 1);
     ops.emplace_back(lock.get(), true);
 
-    for (auto* mark : add_marks) {
-        ops.emplace_back(mark, false);
+    for (nptr<EntityLock> mark : add_marks) {
+        ops.emplace_back(mark.get(), false);
     }
 
     std::ranges::sort(ops, {}, &pair<EntityLock*, bool>::first);
@@ -1175,7 +1172,7 @@ auto SyncContext::GetHeldEntities() -> vector<ptr<ServerEntity>>
     entities.reserve(_heldLockOwners.size());
 
     for (auto& owner : _heldLockOwners) {
-        if (owner.get() != nullptr && owner->GetId()) {
+        if (owner->GetId()) {
             entities.emplace_back(owner);
         }
     }
@@ -1233,13 +1230,13 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (entity == nullptr) {
+    if (!entity) {
         return false;
     }
 
     const auto lock = entity->GetEntityLock();
 
-    if (lock == nullptr) {
+    if (!lock) {
         return true;
     }
 
@@ -1314,11 +1311,11 @@ void SyncContext::AcquireLocks(vector<EntityLock*>& locks, vector<refcount_ptr<S
     vector<pair<EntityLock*, bool>> ops; // bool = is-exclusive
     ops.reserve(locks.size() + holds.size());
 
-    for (auto* lock : locks) {
-        ops.emplace_back(lock, true);
+    for (nptr<EntityLock> lock : locks) {
+        ops.emplace_back(lock.get(), true);
     }
-    for (auto* hold : holds) {
-        ops.emplace_back(hold, false);
+    for (nptr<EntityLock> hold : holds) {
+        ops.emplace_back(hold.get(), false);
     }
 
     std::ranges::sort(ops, {}, &pair<EntityLock*, bool>::first);
@@ -1385,24 +1382,24 @@ void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks, cons
         }
     };
 
-    for (auto* ancestor = _previousContext; ancestor != nullptr; ancestor = ancestor->_previousContext) {
-        for (auto* lock : ancestor->_heldLocks) {
-            add_excl(lock);
+    for (nptr<SyncContext> ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
+        for (nptr<EntityLock> lock : ancestor->_heldLocks) {
+            add_excl(lock.get());
         }
-        for (auto* lock : ancestor->_singletonLocks) {
-            add_excl(lock);
+        for (nptr<EntityLock> lock : ancestor->_singletonLocks) {
+            add_excl(lock.get());
         }
-        for (auto* lock : ancestor->_heldDescendantHolds) {
-            add_hold(lock);
+        for (nptr<EntityLock> lock : ancestor->_heldDescendantHolds) {
+            add_hold(lock.get());
         }
     }
 
     // The targets of THIS acquire each need one extra hold on top of whatever ancestors already hold.
-    for (auto* lock : locks) {
-        reacquire_count[lock] += 1;
+    for (nptr<EntityLock> lock : locks) {
+        reacquire_count[lock.get()] += 1;
     }
-    for (auto* lock : holds) {
-        reregister_count[lock] += 1;
+    for (nptr<EntityLock> lock : holds) {
+        reregister_count[lock.get()] += 1;
     }
 
     // Release every currently-held exclusive lock AND descendant-mark down to zero so the whole union
@@ -1490,7 +1487,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks, cons
             }
         }
 
-        for (auto* ancestor = _previousContext; ancestor != nullptr; ancestor = ancestor->_previousContext) {
+        for (nptr<SyncContext> ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
             ancestor->_heldLocks.clear();
             ancestor->_heldLockOwners.clear();
             ancestor->_heldDescendantHolds.clear();
@@ -1591,20 +1588,20 @@ void SyncContext::ReleaseLocks() noexcept
     _heldDescendantHoldOwners.clear();
 }
 
-auto SyncContext::GetCurrentOnThisThread() noexcept -> SyncContext*
+auto SyncContext::GetCurrentOnThisThread() noexcept -> nptr<SyncContext>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return CurrentContext;
 }
 
-auto SyncContext::GetOutermostOnThisThread() noexcept -> SyncContext*
+auto SyncContext::GetOutermostOnThisThread() noexcept -> nptr<SyncContext>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto* ctx = CurrentContext;
+    nptr<SyncContext> ctx = CurrentContext;
 
-    if (ctx == nullptr) {
+    if (!ctx) {
         return nullptr;
     }
 
@@ -1626,7 +1623,7 @@ void EnsureEntitySynced(nptr<ServerEntity> entity)
 {
     FO_STACK_TRACE_ENTRY();
 
-    SyncContext* ctx = SyncContext::GetCurrentOnThisThread();
+    nptr<SyncContext> ctx = SyncContext::GetCurrentOnThisThread();
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ctx->EnsureEntitySynced(entity);
 }

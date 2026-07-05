@@ -161,7 +161,8 @@ auto ParticleSystem::GetBaseSystem() -> nptr<SPK::System>
     FO_STACK_TRACE_ENTRY();
 
     auto impl = _impl.as_ptr();
-    return impl->BaseSystem.get();
+    nptr<SPK::System> base_system = impl->BaseSystem.get();
+    return base_system;
 }
 
 void ParticleSystem::SetBaseSystem(nptr<SPK::System> system)

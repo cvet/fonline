@@ -455,7 +455,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Game_GetCritter(ptr<ClientEngine> client,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> client, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, CritterFindType findType)
 {
     vector<ptr<CritterView>> critters;
 
@@ -485,11 +485,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> cli
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> client, hstring pid, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, hstring pid, CritterFindType findType)
 {
     vector<ptr<CritterView>> critters;
 
@@ -539,11 +539,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> cli
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> client, ptr<ProtoCritter> proto, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_GetCritters(ptr<ClientEngine> client, ptr<ProtoCritter> proto, CritterFindType findType)
 {
     vector<ptr<CritterView>> critters;
 
@@ -571,11 +571,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_GetCritters(ptr<ClientEngine> cli
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ptr<ClientEngine> client, readonly_vector<CritterView*> critters)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Game_SortCrittersByDeep(ptr<ClientEngine> client, readonly_vector<nptr<CritterView>> critters)
 {
     ignore_unused(client);
 
@@ -618,7 +618,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Game_SortCrittersByDeep(ptr<ClientEngi
         return cr1_pos.y < cr2_pos.y;
     });
 
-    return MakeScriptHandleVector<CritterView>(sorted_critters);
+    return sorted_critters;
 }
 
 ///@ ExportMethod

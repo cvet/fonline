@@ -76,7 +76,7 @@ static void SetScriptArgAddressFromHandleSlot(ptr<AngelScript::asIScriptContext>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<void> slot_address = static_cast<void*>(slot.get());
+    ptr<void> slot_address = slot;
     return slot_address;
 }
 

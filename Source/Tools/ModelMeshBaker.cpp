@@ -312,10 +312,6 @@ void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_p
 static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>;
 static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<const ufbx_node> fbx_node);
 static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fname) -> vector<unique_ptr<BakerAnimSet>>;
-static void CleanupUfbxScene(ufbx_scene* raw_scene) noexcept;
-static auto MakeUfbxSceneHolder(ptr<ufbx_scene> scene) -> unique_del_ptr<ufbx_scene>;
-static void CleanupUfbxBakedAnim(ufbx_baked_anim* raw_anim) noexcept;
-static auto MakeUfbxBakedAnimHolder(ptr<ufbx_baked_anim> anim) -> unique_del_ptr<ufbx_baked_anim>;
 static auto ConvertFbxVec3(const ufbx_vec3& v) -> vec3;
 static auto ConvertFbxQuat(const ufbx_quat& q) -> quaternion;
 static auto ConvertFbxColor(const ufbx_vec4& c) -> ucolor;
@@ -346,7 +342,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     }
 
     auto fbx_scene = nullable_fbx_scene.as_ptr();
-    auto fbx_scene_holder = MakeUfbxSceneHolder(fbx_scene);
+    auto fbx_scene_holder = make_unique_del_ptr(fbx_scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
 
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
@@ -366,40 +362,6 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     }
 
     return data;
-}
-
-static void CleanupUfbxScene(ufbx_scene* raw_scene) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_scene != nullptr) {
-        ptr<ufbx_scene> scene = raw_scene;
-        ufbx_free_scene(scene.get());
-    }
-}
-
-static auto MakeUfbxSceneHolder(ptr<ufbx_scene> scene) -> unique_del_ptr<ufbx_scene>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return unique_del_ptr<ufbx_scene> {scene.get(), CleanupUfbxScene};
-}
-
-static void CleanupUfbxBakedAnim(ufbx_baked_anim* raw_anim) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (raw_anim != nullptr) {
-        ptr<ufbx_baked_anim> anim = raw_anim;
-        ufbx_free_baked_anim(anim.get());
-    }
-}
-
-static auto MakeUfbxBakedAnimHolder(ptr<ufbx_baked_anim> anim) -> unique_del_ptr<ufbx_baked_anim>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    return unique_del_ptr<ufbx_baked_anim> {anim.get(), CleanupUfbxBakedAnim};
 }
 
 static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node) -> unique_ptr<BakerBone>
@@ -612,7 +574,7 @@ static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fn
         nptr<ufbx_baked_anim> nullable_fbx_baked_anim = ufbx_bake_anim(fbx_scene.get(), fbx_anim.get(), &fbx_bake_opts, &fbx_error);
         FO_VERIFY_AND_THROW(nullable_fbx_baked_anim, "Missing required fbx baked animation");
         auto fbx_baked_anim = nullable_fbx_baked_anim.as_ptr();
-        auto fbx_baked_anim_holder = MakeUfbxBakedAnimHolder(fbx_baked_anim);
+        auto fbx_baked_anim_holder = make_unique_del_ptr(fbx_baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); });
 
         auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
         anim_set->AnimFileName = fname;

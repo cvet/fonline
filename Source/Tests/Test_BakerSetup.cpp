@@ -272,21 +272,21 @@ Bakers = {}
 
     const auto prebaked_data = data_source.OpenFile("Data/prebaked.json", size, write_time);
     REQUIRE(prebaked_data);
-    CHECK(string_view {reinterpret_cast<const char*>(prebaked_data.get()), size} == "cached-prebaked");
+    CHECK(prebaked_data.as_ptr().reinterpret_as<const char>().as_str(size) == "cached-prebaked");
 
     const string runtime_output_path = strex(output_dir).combine_path("Core/Data/runtime.json").str();
     CHECK_FALSE(fs_exists(runtime_output_path));
 
     const auto runtime_data = data_source.OpenFile("Data/runtime.json", size, write_time);
     REQUIRE(runtime_data);
-    CHECK(string_view {reinterpret_cast<const char*>(runtime_data.get()), size} == "runtime-source");
+    CHECK(runtime_data.as_ptr().reinterpret_as<const char>().as_str(size) == "runtime-source");
     REQUIRE(fs_read_file(runtime_output_path).has_value());
     CHECK(*fs_read_file(runtime_output_path) == "runtime-source");
     CHECK(write_time != 0);
 
     const auto stale_data = data_source.OpenFile("Data/stale.json", size, write_time);
     REQUIRE(stale_data);
-    CHECK(string_view {reinterpret_cast<const char*>(stale_data.get()), size} == "stale-source");
+    CHECK(stale_data.as_ptr().reinterpret_as<const char>().as_str(size) == "stale-source");
     REQUIRE(fs_read_file(stale_output_path).has_value());
     CHECK(*fs_read_file(stale_output_path) == "stale-source");
     CHECK(write_time == fs_last_write_time(stale_input_path));

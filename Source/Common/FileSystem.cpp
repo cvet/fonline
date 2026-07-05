@@ -186,17 +186,6 @@ auto File::GetData() const -> vector<uint8_t>
     return result;
 }
 
-auto File::GetBuf() const -> ptr<const uint8_t>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
-    FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
-
-    auto file_data = _fileBuf.as_ptr();
-    return file_data;
-}
-
 auto File::GetDataSpan() const -> const_span<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -256,17 +245,6 @@ auto FileReader::GetData() const -> vector<uint8_t>
     return result;
 }
 
-auto FileReader::GetBuf() const -> nptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_buf.empty()) {
-        return nullptr;
-    }
-
-    return ptr<const uint8_t> {_buf.data()};
-}
-
 auto FileReader::GetDataSpan() const -> const_span<uint8_t>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -279,17 +257,6 @@ auto FileReader::GetSize() const -> size_t
     FO_NO_STACK_TRACE_ENTRY();
 
     return _buf.size();
-}
-
-auto FileReader::GetCurBuf() const -> nptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (_curPos == _buf.size()) {
-        return nullptr;
-    }
-
-    return ptr<const uint8_t> {_buf.data()}.offset(_curPos);
 }
 
 auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>

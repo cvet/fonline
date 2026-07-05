@@ -206,6 +206,12 @@ public:
     [[nodiscard]] FO_FORCE_INLINE constexpr auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE constexpr auto operator->() const noexcept -> const T* { return _ptr; }
     template<typename U = T>
+        requires(std::is_same_v<std::remove_const_t<U>, char>)
+    [[nodiscard]] FO_FORCE_INLINE auto as_str(size_t len) const noexcept -> string_view
+    {
+        return {_ptr, len};
+    }
+    template<typename U = T>
         requires(!std::is_void_v<U>)
     [[nodiscard]] FO_FORCE_INLINE auto operator*() noexcept -> U&
     {
@@ -296,7 +302,7 @@ public:
     {
         using target_type = std::conditional_t<std::is_const_v<T>, const U, U>;
         if constexpr (std::is_void_v<std::remove_const_t<T>>) {
-            return ptr<target_type>(cast_from_void<target_type*>(_ptr));
+            return ptr<target_type>(static_cast<target_type*>(_ptr));
         }
         else {
             return ptr<target_type>(cast_from_void<target_type*>(cast_to_void(_ptr)));
@@ -545,7 +551,7 @@ public:
     {
         using target_type = std::conditional_t<std::is_const_v<T>, const U, U>;
         if constexpr (std::is_void_v<std::remove_const_t<T>>) {
-            return nptr<target_type>(cast_from_void<target_type*>(_ptr));
+            return nptr<target_type>(static_cast<target_type*>(_ptr));
         }
         else {
             return nptr<target_type>(cast_from_void<target_type*>(cast_to_void(_ptr)));
@@ -1765,13 +1771,13 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() -> shared_ptr<T>
     {
         auto locked = _weakThis.lock();
-        FO_BASIC_STRONG_ASSERT(locked.get() != nullptr);
+        FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() const -> shared_ptr<const T>
     {
         shared_ptr<const T> locked = _weakThis.lock();
-        FO_BASIC_STRONG_ASSERT(locked.get() != nullptr);
+        FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
     [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() noexcept -> weak_ptr<T> { return _weakThis; }
@@ -2040,6 +2046,14 @@ static_assert(!std::is_default_constructible_v<unique_del_ptr<int32_t>>);
 static_assert(!std::is_constructible_v<unique_del_ptr<int32_t>, std::nullptr_t>);
 static_assert(!std::is_assignable_v<unique_del_ptr<int32_t>&, std::nullptr_t>);
 static_assert(!std::is_copy_constructible_v<unique_del_ptr<int32_t>>);
+
+// Heterogeneous wrapper comparison
+template<typename L, typename R>
+    requires((is_borrow_pointer_wrapper_v<L> || is_owning_pointer_v<L>) && (is_borrow_pointer_wrapper_v<R> || is_owning_pointer_v<R>) && !std::is_same_v<L, R> && requires(const L& l, const R& r) { l.get() == r.get(); })
+[[nodiscard]] FO_FORCE_INLINE auto operator==(const L& lhs, const R& rhs) noexcept -> bool
+{
+    return lhs.get() == rhs.get();
+}
 
 template<typename T>
 [[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>

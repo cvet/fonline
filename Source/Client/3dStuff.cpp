@@ -2125,14 +2125,14 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     constexpr size_t MATRIX_VALUE_COUNT = 16;
     constexpr size_t WORLD_MATRIX_VALUE_COUNT = MODEL_MAX_BONES * MATRIX_VALUE_COUNT;
     ptr<float32_t> world_matrices_values = model_buf->WorldMatrices;
-    span<float32_t> world_matrices {world_matrices_values.get(), WORLD_MATRIX_VALUE_COUNT};
+    span<float32_t> world_matrices = make_span(world_matrices_values, WORLD_MATRIX_VALUE_COUNT);
 
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         const size_t matrix_offset = i * MATRIX_VALUE_COUNT;
         span<float32_t> world_matrix = world_matrices.subspan(matrix_offset, MATRIX_VALUE_COUNT);
         ptr<const float32_t> source_matrix_values = glm::value_ptr(m);
-        const_span<float32_t> source_matrix {source_matrix_values.get(), MATRIX_VALUE_COUNT};
+        const_span<float32_t> source_matrix = make_const_span(source_matrix_values, MATRIX_VALUE_COUNT);
         std::ranges::copy(source_matrix, world_matrix.begin());
     }
 
