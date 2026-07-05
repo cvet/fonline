@@ -7,28 +7,36 @@ def releaseStorePassword = System.getenv('FO_ANDROID_RELEASE_STORE_PASSWORD') ?:
 def releaseKeyAlias = '$RELEASE_KEY_ALIAS$'
 def releaseKeyPassword = System.getenv('FO_ANDROID_RELEASE_KEY_PASSWORD') ?: ''
 def hasReleaseSigning = releaseStoreFile && releaseStorePassword && releaseKeyAlias && releaseKeyPassword
+def ndkVersionOverride = '$NDK_VERSION$'
+def ndkPathOverride = '$NDK_PATH$'
 
 android {
-    namespace "$PACKAGE$"
-    compileSdkVersion $COMPILE_SDK$
+    namespace = "$PACKAGE$"
+    compileSdk = $COMPILE_SDK$
+    if (ndkVersionOverride) {
+        ndkVersion = ndkVersionOverride
+    }
+    if (ndkPathOverride) {
+        ndkPath = ndkPathOverride
+    }
 
     signingConfigs {
         release {
             if (hasReleaseSigning) {
-                storeFile file(releaseStoreFile)
-                storePassword releaseStorePassword
-                keyAlias releaseKeyAlias
-                keyPassword releaseKeyPassword
+                storeFile = file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
 
     defaultConfig {
-        applicationId "$PACKAGE$"
-        minSdkVersion $MIN_SDK$
-        targetSdkVersion $TARGET_SDK$
-        versionCode $VERSION_CODE$
-        versionName "$VERSION_NAME$"
+        applicationId = "$PACKAGE$"
+        minSdk = $MIN_SDK$
+        targetSdk = $TARGET_SDK$
+        versionCode = $VERSION_CODE$
+        versionName = "$VERSION_NAME$"
         ndk {
             abiFilters $ABI_FILTERS$
         }
@@ -36,8 +44,8 @@ android {
 
     buildTypes {
         release {
-            signingConfig hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
-            minifyEnabled false
+            signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -64,4 +72,5 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+$ANDROID_GRADLE_DEPENDENCIES$
 }

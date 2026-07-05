@@ -44,6 +44,8 @@
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:hardwareAccelerated="true">
 
+$ANDROID_MANIFEST_META_DATA$
+
         <activity
             android:name=".FOnlineActivity"
             android:label="$APP_NAME$"

@@ -60,7 +60,9 @@ FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static std::atomic_uint16_t TestServerPort {47000};
+    // Base 47100: the sequential fetch_add(1) walk must not cross 47001, which Windows reserves for the
+    // WinRM HTTP listener on effectively every machine (bind fails with WSAEACCES there).
+    static std::atomic_uint16_t TestServerPort {47100};
 
     template<typename Predicate>
     auto WaitForCondition(Predicate&& predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool

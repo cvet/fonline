@@ -167,10 +167,10 @@
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode) __pragma(warning(push)) __pragma(warning(disable : warning_сode))
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code) __pragma(warning(push)) __pragma(warning(disable : warning_code))
 #define FO_MSVC_IGNORE_WARNINGS_POP() __pragma(warning(pop))
 #else
-#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode)
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
 #define FO_MSVC_IGNORE_WARNINGS_POP()
 #endif
 

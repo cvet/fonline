@@ -31,6 +31,10 @@ INTERNAL_CONFIG_MARKER = b'###InternalConfig###1234'
 INTERNAL_CONFIG_END_MARKER = b'###InternalConfigEnd###'
 ANDROID_RELEASE_STORE_PASSWORD_ENV = 'FO_ANDROID_RELEASE_STORE_PASSWORD'
 ANDROID_RELEASE_KEY_PASSWORD_ENV = 'FO_ANDROID_RELEASE_KEY_PASSWORD'
+ANDROID_MANIFEST_METADATA_CONFIG_PREFIX = 'Android.ManifestMetaData.'
+ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX = 'Android.GradleMavenRepository.'
+ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX = 'Android.GradleDependency.'
+ANDROID_JAVA_SOURCE_CONFIG_PREFIX = 'Android.JavaSource.'
 ANDROID_ARCH_ALIASES = {
 	'arm': 'arm32',
 	'arm32': 'arm32',
@@ -199,6 +203,88 @@ def escape_groovy_string(value: str) -> str:
 	return value.replace('\\', '\\\\').replace("'", "\\'").replace('\r', '\\r').replace('\n', '\\n')
 
 
+def escape_android_manifest_attribute(value: str) -> str:
+	return value.replace('&', '&amp;').replace('"', '&quot;').replace("'", '&apos;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def build_android_manifest_meta_data(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_MANIFEST_METADATA_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_MANIFEST_METADATA_CONFIG_PREFIX):].strip()
+		assert name, 'Android.ManifestMetaData.* key must include a manifest meta-data name'
+		assert value, 'Android.ManifestMetaData.' + name + ' must not be empty'
+
+		entries.append(
+			'        <meta-data\n'
+			'            android:name="' + escape_android_manifest_attribute(name) + '"\n'
+			'            android:value="' + escape_android_manifest_attribute(value) + '" />'
+		)
+
+	return '\n'.join(entries)
+
+
+def build_android_gradle_maven_repositories(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_GRADLE_MAVEN_REPOSITORY_CONFIG_PREFIX):].strip()
+		assert name, 'Android.GradleMavenRepository.* key must include a repository name'
+		if not value:
+			continue
+
+		entries.append("        maven { url = uri('" + escape_groovy_string(value) + "') }")
+
+	return '\n'.join(entries)
+
+
+def build_android_gradle_dependencies(config: foconfig.ConfigSection) -> str:
+	entries: list[str] = []
+
+	for key, value in sorted(config.content.items()):
+		if not key.startswith(ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX):
+			continue
+
+		name = key[len(ANDROID_GRADLE_DEPENDENCY_CONFIG_PREFIX):].strip()
+		assert name, 'Android.GradleDependency.* key must include a dependency name'
+		if not value:
+			continue
+
+		entries.append('    ' + value)
+
+	return '\n'.join(entries)
+
+
+def read_android_ndk_revision(android_ndk_root: str) -> str:
+	if not android_ndk_root:
+		return ''
+
+	source_properties = Path(android_ndk_root) / 'source.properties'
+	try:
+		lines = source_properties.read_text(encoding='utf-8').splitlines()
+	except OSError:
+		return ''
+
+	for line in lines:
+		key, separator, value = line.partition('=')
+		if separator and key.strip() == 'Pkg.Revision':
+			return value.strip()
+
+	return ''
+
+
+def load_config_from_data(config_data: bytes) -> foconfig.ConfigParser:
+	config = foconfig.ConfigParser()
+	config.loadFromLines(config_data.decode('utf-8-sig').splitlines())
+	return config
+
+
 def is_png_data(data: bytes) -> bool:
 	return data.startswith(PNG_FILE_SIGNATURE)
 
@@ -265,6 +351,7 @@ class Packager:
 	baking_path: str | None = field(init=False, default=None)
 	embedded_data: bytes = field(init=False, default=b'')
 	config_data: bytes = field(init=False, default=b'')
+	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -677,9 +764,13 @@ class Packager:
 
 	def load_config_data(self) -> None:
 		config_name, self.config_data = self.read_config_data(self.args.target)
+		self.target_config = load_config_from_data(self.config_data)
 		log('Config', config_name)
 		log('Embedded data length', len(self.embedded_data))
 		log('Embedded config length', len(self.config_data))
+
+	def get_effective_config_section(self) -> foconfig.ConfigSection:
+		return self.target_config.mainSection() if self.target_config else self.fomain.mainSection()
 
 	def prepare_resources(self) -> None:
 		bake_output = self.fomain.mainSection().getStr('Baking.BakeOutput')
@@ -971,6 +1062,31 @@ class Packager:
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)
 
+	def copy_android_java_sources(self, android_config: foconfig.ConfigSection, package_name: str) -> None:
+		output_java_dir = os.path.join(self.target_output_path, 'app', 'src', 'main', 'java', self.build_android_java_package_path(package_name))
+		os.makedirs(output_java_dir, exist_ok=True)
+
+		for key, value in sorted(android_config.content.items()):
+			if not key.startswith(ANDROID_JAVA_SOURCE_CONFIG_PREFIX):
+				continue
+
+			name = key[len(ANDROID_JAVA_SOURCE_CONFIG_PREFIX):].strip()
+			assert name, 'Android.JavaSource.* key must include a source name'
+			if not value:
+				continue
+
+			source_path = self.resolve_config_relative_path(value)
+			assert os.path.isfile(source_path), 'Android Java source file not found: ' + source_path
+			source_name = os.path.basename(source_path)
+			assert source_name.endswith('.java'), 'Android.JavaSource.' + name + ' must point to a .java file: ' + source_path
+			assert source_name != ANDROID_ACTIVITY_CLASS + '.java', 'Android.JavaSource.* must not override ' + ANDROID_ACTIVITY_CLASS + '.java'
+
+			output_path = os.path.join(output_java_dir, source_name)
+			shutil.copy(source_path, output_path)
+			patch_file(output_path, '$PACKAGE$', package_name)
+			patch_file(output_path, '$CONFIG$', self.args.config)
+			log('Android Java source', source_path, '=>', output_path)
+
 	def try_read_android_icon_png(self, icon_path: str) -> bytes | None:
 		with open(icon_path, 'rb') as file:
 			icon_data = file.read()
@@ -978,7 +1094,7 @@ class Packager:
 		return icon_data if is_png_data(icon_data) else None
 
 	def patch_android_icon(self) -> None:
-		configured_icon = self.fomain.mainSection().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
+		configured_icon = self.get_effective_config_section().getStr('Android.Icon', 'Engine/Resources/Radiation.png')
 		icon_path = self.resolve_config_relative_path(configured_icon)
 		assert os.path.isfile(icon_path), 'Android icon file not found: ' + icon_path
 
@@ -1033,18 +1149,23 @@ class Packager:
 			shutil.move(client_res_source, assets_res_dir)
 			log('Resources moved to', assets_res_dir)
 
-		# Read Android config from fomain
-		package_name = self.fomain.mainSection().getStr('Android.PackageName', 'com.fonline.app')
-		version_code = self.fomain.mainSection().getStr('Android.VersionCode', '1')
+		# Read Android config from the baked target config so SubConfig overrides affect APK metadata.
+		android_config = self.get_effective_config_section()
+		package_name = android_config.getStr('Android.PackageName', 'com.fonline.app')
+		version_code = android_config.getStr('Android.VersionCode', '1')
 		version_name = self.args.buildhash[:8] if self.args.buildhash else '1.0'
-		min_sdk = self.fomain.mainSection().getStr('Android.MinSdk', '23')
-		target_sdk = self.fomain.mainSection().getStr('Android.TargetSdk', '35')
-		compile_sdk = self.fomain.mainSection().getStr('Android.CompileSdk', '35')
-		screen_orientation = self.fomain.mainSection().getStr('Android.ScreenOrientation', 'landscape')
-		release_store_file = self.resolve_optional_config_relative_path(self.fomain.mainSection().getStr('Android.Keystore', ''))
-		release_store_password = self.fomain.mainSection().getStr('Android.KeystorePassword', '')
-		release_key_alias = self.fomain.mainSection().getStr('Android.KeyAlias', '')
-		release_key_password = self.fomain.mainSection().getStr('Android.KeyPassword', '')
+		min_sdk = android_config.getStr('Android.MinSdk', '23')
+		target_sdk = android_config.getStr('Android.TargetSdk', '35')
+		compile_sdk = android_config.getStr('Android.CompileSdk', '35')
+		screen_orientation = android_config.getStr('Android.ScreenOrientation', 'landscape')
+		release_store_file = self.resolve_optional_config_relative_path(android_config.getStr('Android.Keystore', ''))
+		release_store_password = android_config.getStr('Android.KeystorePassword', '')
+		release_key_alias = android_config.getStr('Android.KeyAlias', '')
+		release_key_password = android_config.getStr('Android.KeyPassword', '')
+		android_env = buildtools.resolve_env()
+		android_home = android_env.get('FO_ANDROID_HOME', '') or android_env.get('FO_ANDROID_SDK_ROOT', '')
+		android_ndk_root = android_env.get('FO_ANDROID_NDK_ROOT', '')
+		android_ndk_version = read_android_ndk_revision(android_ndk_root)
 
 		has_release_signing = any((release_store_file, release_store_password, release_key_alias, release_key_password))
 		if has_release_signing:
@@ -1065,8 +1186,13 @@ class Packager:
 		patch_file(app_build_gradle, '$ABI_FILTERS$', abi_filters)
 		patch_file(app_build_gradle, '$RELEASE_STORE_FILE$', escape_groovy_string(release_store_file))
 		patch_file(app_build_gradle, '$RELEASE_KEY_ALIAS$', escape_groovy_string(release_key_alias))
+		patch_file(app_build_gradle, '$NDK_VERSION$', escape_groovy_string(android_ndk_version))
+		patch_file(app_build_gradle, '$NDK_PATH$', escape_groovy_string(Path(android_ndk_root).as_posix() if android_ndk_root else ''))
+		patch_file(app_build_gradle, '$ANDROID_GRADLE_DEPENDENCIES$', build_android_gradle_dependencies(android_config))
+		patch_file(os.path.join(self.target_output_path, 'build.gradle'), '$ANDROID_GRADLE_MAVEN_REPOSITORIES$', build_android_gradle_maven_repositories(android_config))
 		patch_file(os.path.join(self.target_output_path, 'app', 'proguard-rules.pro'), '$PACKAGE$', package_name)
 		self.patch_android_activity(package_name)
+		self.copy_android_java_sources(android_config, package_name)
 
 		# Patch AndroidManifest.xml
 		manifest_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'AndroidManifest.xml')
@@ -1074,30 +1200,27 @@ class Packager:
 		patch_file(manifest_path, '$VERSION_NAME$', version_name)
 		patch_file(manifest_path, '$APP_NAME$', self.args.nicename)
 		patch_file(manifest_path, '$SCREEN_ORIENTATION$', screen_orientation)
+		patch_file(manifest_path, '$ANDROID_MANIFEST_META_DATA$', build_android_manifest_meta_data(android_config))
 
 		# Patch strings.xml
 		strings_path = os.path.join(self.target_output_path, 'app', 'src', 'main', 'res', 'values', 'strings.xml')
 		patch_file(strings_path, '$APP_NAME$', self.args.nicename)
 		self.patch_android_icon()
 
-		android_env = buildtools.resolve_env()
-		android_home = android_env.get('FO_ANDROID_HOME', '') or android_env.get('FO_ANDROID_SDK_ROOT', '')
-		android_ndk_root = android_env.get('FO_ANDROID_NDK_ROOT', '')
-
 		if android_home:
 			local_properties_path = os.path.join(self.target_output_path, 'local.properties')
 			with open(local_properties_path, 'w', encoding='utf-8', newline='\n') as file:
 				file.write('sdk.dir=' + Path(android_home).as_posix() + '\n')
-				if android_ndk_root:
-					file.write('ndk.dir=' + Path(android_ndk_root).as_posix() + '\n')
 			log('Android local.properties', local_properties_path)
 
 		# Build APK if requested
 		if self.has_pack('Apk'):
 			log('Building APK...')
-			gradlew = os.path.join(self.target_output_path, 'gradlew')
-			st = os.stat(gradlew)
-			os.chmod(gradlew, st.st_mode | stat.S_IEXEC)
+			gradlew_name = 'gradlew.bat' if os.name == 'nt' else 'gradlew'
+			gradlew = os.path.join(self.target_output_path, gradlew_name)
+			if os.name != 'nt':
+				st = os.stat(gradlew)
+				os.chmod(gradlew, st.st_mode | stat.S_IEXEC)
 
 			gradle_env = os.environ.copy()
 			if android_home:
