@@ -79,6 +79,9 @@ enum class RenderType : uint8_t
 #if FO_HAVE_VULKAN
     Vulkan,
 #endif
+#if FO_HAVE_SDL_GPU
+    SDLGpu,
+#endif
 };
 
 enum class EffectUsage : uint8_t
@@ -616,6 +619,39 @@ public:
 
     Vulkan_Renderer();
     ~Vulkan_Renderer() override;
+
+    [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect> override;
+    [[nodiscard]] auto CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44 override;
+    [[nodiscard]] auto GetViewPort() const -> irect32 override;
+    [[nodiscard]] auto IsRenderTargetFlipped() const -> bool override { return false; }
+    [[nodiscard]] auto GetProjMatrix() const -> mat44 override;
+
+    void Init(GlobalSettings& settings, nptr<WindowInternalHandle> window) override;
+    void Present() override;
+    void SetRenderTarget(nptr<RenderTexture> tex) override;
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override;
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(irect32 rect) override;
+    void DisableScissor() override;
+    void OnResizeWindow(isize32 size) override;
+
+private:
+    unique_nptr<Context> _ctx {};
+};
+
+#endif
+
+#if FO_HAVE_SDL_GPU
+
+class SDLGpu_Renderer final : public Renderer
+{
+public:
+    struct Context;
+
+    SDLGpu_Renderer();
+    ~SDLGpu_Renderer() override;
 
     [[nodiscard]] auto CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture> override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer> override;

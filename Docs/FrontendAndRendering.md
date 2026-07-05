@@ -25,6 +25,7 @@ Read this page together with:
 - `Source/Frontend/Rendering-OpenGL.cpp`
 - `Source/Frontend/Rendering-Direct3D.cpp`
 - `Source/Frontend/Rendering-Vulkan.cpp`
+- `Source/Frontend/Rendering-SDLGpu.cpp`
 - `Source/Frontend/Rendering-Null.cpp`
 - `Source/Client/RenderTarget.h`
 - `Source/Client/RenderTarget.cpp`
@@ -203,7 +204,9 @@ Direct3D changes are Windows-specific and should be validated through a Windows 
 
 ### Vulkan renderer
 
-`Source/Frontend/Rendering-Vulkan.cpp` implements the Vulkan path. It is compiled only when the build enables Vulkan support (`FO_SUPPORT_VULKAN` → `FO_HAVE_VULKAN`, which requires a Vulkan SDK / `find_package(Vulkan)` and is off for headless-only and web builds) and is selected at runtime by `Render.ForceVulkan` (or as an automatic fallback when no other backend is configured).
+`Source/Frontend/Rendering-Vulkan.cpp` implements the Vulkan path. It is built by default (opt out with `FO_DISABLE_VULKAN`; also skipped for headless-only and web builds) and needs **no external Vulkan SDK** — there is no `find_package(Vulkan)`. The build compiles against the Vulkan headers already vendored with SDL3 (`ThirdParty/SDL/src/video/khronos`, wired as a SYSTEM include when `FO_HAVE_VULKAN`), and the loader is resolved dynamically at runtime. It is selected at runtime by `Render.ForceVulkan` (or as an automatic fallback when no other backend is configured).
+
+The loader is **not** linked at build time (`vulkan-1.lib` is never referenced). Instead `Rendering-Vulkan.cpp` compiles with `VK_NO_PROTOTYPES` and resolves every entry point dynamically through SDL — `SDL_Vulkan_LoadLibrary` + `SDL_Vulkan_GetVkGetInstanceProcAddr` bootstrap `vkGetInstanceProcAddr`, then a small X-macro table (mirroring the OpenGL backend's `SDL_GL_GetProcAddress` table) loads global functions with a null instance and the rest from the created instance. Consequently a client built with Vulkan support carries **no load-time `vulkan-1.dll` import** and still launches on a machine without the Vulkan runtime; the loader is pulled in only when the Vulkan backend is actually selected (a missing runtime then throws from `SDL_Vulkan_LoadLibrary`, not at process start).
 
 Design and important behaviors:
 
@@ -224,6 +227,22 @@ Design and important behaviors:
 - **Validation.** When `Render.RenderDebug` is set (or in a debug build) and the `VK_LAYER_KHRONOS_validation` layer is available, the backend enables it and routes layer messages to the log as `[VkLayer/…]` through a `VK_EXT_debug_utils` messenger. Use this for backend validation; a correct change should run with zero validation errors.
 
 Vulkan changes should be validated on a platform with the Vulkan SDK by running a visible client with `Render.ForceVulkan=True Render.RenderDebug=True` and confirming the log has no `[VkLayer]` errors.
+
+### SDL_GPU renderer
+
+`Source/Frontend/Rendering-SDLGpu.cpp` implements a second, opt-in backend on top of SDL3's `SDL_GPU` API, which reaches Vulkan / Metal / D3D12 through one implementation (the vendored SDL3 already ships all three drivers). It is built by default (`FO_HAVE_SDL_GPU`), skipped only for headless-only and web builds, and can be force-disabled with `FO_DISABLE_SDL_GPU`; unlike Vulkan it needs no external SDK because the SDL3 GPU drivers are vendored. It is selected at runtime by `Render.ForceSDLGpu` (auto-selection is unchanged — it never becomes the automatic default). The optional `Render.SDLGpuDriver` pins a specific SDL_GPU driver (`vulkan` / `metal` / `direct3d12`); `Render.RenderDebug` maps to the SDL_GPU debug mode (Vulkan validation layers on the Vulkan driver).
+
+Design and important behaviors:
+
+- **Adapts the immediate-mode contract to SDL_GPU's explicit passes.** SDL_GPU records render/copy passes into per-frame command buffers, so the backend keeps a small pass state machine (`Context`): at most one render or copy pass is open at a time, passes begin lazily before the operation that needs them, `ClearRenderTarget` defers into the next render pass load-op, uploads run in copy passes through cycled transfer buffers, and texture readbacks submit the recorded work and wait on a fence.
+- **Backbuffer proxy.** The window backbuffer is never rendered directly: `SetRenderTarget(nullptr)` targets an RGBA8 proxy texture (letterbox viewport math shared with the other backends) and `Present()` blits the proxy to the acquired swapchain texture, which keeps mid-frame flushes safe and pipeline color formats uniform.
+- **Per-effect pipeline cache.** Graphics pipelines are immutable state objects cached per effect, keyed by pass, topology, depth-target presence, `DisableBlending`, and `DisableCulling`.
+- **Consumes the SDL-convention baked flavors, not the native `-spv`.** SDL_GPU mandates a per-stage descriptor convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3) that differs from the native Vulkan renderer's 2-set convention (UBO = set 0, sampler = set 1). So the effect baker emits an extra `-spv_sdl` flavor — the native SPIR-V with its descriptor decorations rewritten to the SDL convention — plus SDL-remapped `-msl_*` and an `[EffectInfoSdl]` metadata section (per-stage sampler/UBO counts + dense slot indices). The native `-spv` (consumed by `Rendering-Vulkan`) is untouched. The backend picks `-spv_sdl` for the Vulkan driver or `-msl_*` for the Metal driver via `SDL_GetGPUShaderFormats`, and reads the per-stage slots from `[EffectInfoSdl]`.
+- **Push-style uniforms.** Uniform data is pushed with `SDL_PushGPU{Vertex,Fragment}UniformData` (at most 4 slots per stage) and re-pushed on every draw; the effect's public uniform optionals keep their last value to emulate the persistent-buffer semantics of the other backends. The 4-UBO-per-stage limit is enforced by the baker at bake time.
+- **Shares the engine-wide black-map fixes.** Because it reuses the same baked SPIR-V pipeline (baked with `precision highp float`) and the same epoch-based shader-time wrap in `EffectManager::PerFrameEffectUpdate`, the SDL_GPU backend inherits both Vulkan-only fixes (half-float overflow and `sin(large accumulated time)` NaN) and does not reproduce the black-map failure.
+- **Point primitives, orientation, depth.** `POINT_LIST` is remapped to `TRIANGLE_LIST` (shaders lack `gl_PointSize`), mirroring the native Vulkan renderer. `IsRenderTargetFlipped()` is `false` and the ortho matrix uses the `[0,1]` depth convention. Depth targets use `D24_UNORM` when supported, otherwise `D32_FLOAT`. Max atlas size is fixed at 4096 (SDL_GPU exposes no texture-size query).
+
+Validate SDL_GPU changes with a client scene launch under `Render.ForceSDLGpu=True Render.RenderDebug=True` (Vulkan validation on the Vulkan driver), confirming a clean map/GUI render with no validation errors, side by side against the default backend.
 
 ## Render targets and client bridge
 

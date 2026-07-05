@@ -127,7 +127,8 @@ SetDefaultVariables(0
 	FO_OPENGL_ES
 	FO_HAVE_DIRECT_3D
 	FO_HAVE_METAL
-	FO_HAVE_VULKAN)
+	FO_HAVE_VULKAN
+	FO_HAVE_SDL_GPU)
 
 # Configuration duplication
 SetValue(configVarsFile "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt")

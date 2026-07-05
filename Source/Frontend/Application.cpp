@@ -487,6 +487,12 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
         _ctx->ActiveRenderer = SafeAlloc::MakeUnique<Vulkan_Renderer>();
     }
 #endif
+#if FO_HAVE_SDL_GPU
+    else if (Settings.ForceSDLGpu) {
+        _ctx->ActiveRendererType = RenderType::SDLGpu;
+        _ctx->ActiveRenderer = SafeAlloc::MakeUnique<SDLGpu_Renderer>();
+    }
+#endif
 
     // If none of selected then evaluate automatic selection
 #if FO_HAVE_DIRECT_3D

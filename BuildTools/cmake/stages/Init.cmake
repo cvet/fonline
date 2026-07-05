@@ -43,7 +43,8 @@ DeclareBoolOptions(
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF
 	FO_DISABLE_WEB_SOCKETS "Force disable using of WebSockets" OFF
 	FO_DISABLE_NAMESPACE "Force disable using of FOnline namespace" OFF
-	FO_SUPPORT_VULKAN "Add supporting of Vulkan rendering" OFF
+	FO_DISABLE_VULKAN "Force disable using of Vulkan rendering (built by default, headers vendored with SDL3, no SDK needed)" OFF
+	FO_DISABLE_SDL_GPU "Force disable using of SDL_GPU rendering (Vulkan / Metal / D3D12 via SDL3)" OFF
 	FO_VERBOSE_BUILD "Verbose build mode" OFF
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF
@@ -620,11 +621,17 @@ else()
 	AbortMessage("Unknown OS")
 endif()
 
-# Vulkan support
-if(FO_SUPPORT_VULKAN AND NOT FO_HEADLESS_ONLY)
-	find_package(Vulkan REQUIRED)
+# Vulkan support (enabled by default; opt out with FO_DISABLE_VULKAN). No external Vulkan SDK is
+# needed: the build compiles against the Vulkan headers vendored with SDL3, and the loader is resolved
+# dynamically through SDL at runtime (see Rendering-Vulkan.cpp), so vulkan-1.lib is not linked and the
+# executable keeps no load-time vulkan-1.dll import.
+if(NOT FO_DISABLE_VULKAN AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
 	SetValue(FO_HAVE_VULKAN 1)
-	AppendList(FO_RENDER_SYSTEM_LIBS ${Vulkan_LIBRARIES})
+endif()
+
+# SDL_GPU support (enabled by default; no external SDK: the vendored SDL3-static already carries the GPU drivers; web is excluded; opt out with FO_DISABLE_SDL_GPU)
+if(NOT FO_DISABLE_SDL_GPU AND NOT FO_HEADLESS_ONLY AND NOT FO_WEB)
+	SetValue(FO_HAVE_SDL_GPU 1)
 endif()
 
 AddCompileDefinitionsList(
@@ -639,7 +646,8 @@ AddCompileDefinitionsList(
 	FO_OPENGL_ES=${FO_OPENGL_ES}
 	FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D}
 	FO_HAVE_METAL=${FO_HAVE_METAL}
-	FO_HAVE_VULKAN=${FO_HAVE_VULKAN})
+	FO_HAVE_VULKAN=${FO_HAVE_VULKAN}
+	FO_HAVE_SDL_GPU=${FO_HAVE_SDL_GPU})
 
 if(FO_CODE_COVERAGE)
 	SetValue(FO_COVERAGE_VARIANT "")

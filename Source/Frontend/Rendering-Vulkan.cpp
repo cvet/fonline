@@ -37,6 +37,12 @@
 
 #include "Application.h"
 
+// The Vulkan loader is resolved dynamically through SDL (SDL_Vulkan_LoadLibrary +
+// SDL_Vulkan_GetVkGetInstanceProcAddr) instead of link-time against vulkan-1.lib, so a client
+// built with Vulkan support still launches on a machine without the Vulkan runtime — the loader is
+// only pulled in when the Vulkan backend is actually selected. VK_NO_PROTOTYPES suppresses the
+// header's function declarations; the entry points below are the sole definitions.
+#define VK_NO_PROTOTYPES
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_vulkan.h"
@@ -47,6 +53,124 @@ FO_BEGIN_NAMESPACE
 static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
 static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
 static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT = 2;
+
+// Dynamically-loaded Vulkan entry points (mirrors the OpenGL backend's SDL_GL_GetProcAddress table).
+// vkGetInstanceProcAddr is the bootstrap obtained from SDL; global functions load with a null
+// instance before one exists; the rest load from the created instance. These file-scope pointers are
+// process-global loader dispatch, not per-engine state, and the client renderer is single-instance.
+static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
+
+#define FO_VK_GLOBAL_FUNCTIONS(X) \
+    X(vkCreateInstance); \
+    X(vkEnumerateInstanceLayerProperties)
+
+#define FO_VK_INSTANCE_FUNCTIONS(X) \
+    X(vkDestroyInstance); \
+    X(vkEnumeratePhysicalDevices); \
+    X(vkGetPhysicalDeviceProperties); \
+    X(vkGetPhysicalDeviceMemoryProperties); \
+    X(vkGetPhysicalDeviceQueueFamilyProperties); \
+    X(vkGetPhysicalDeviceSurfaceSupportKHR); \
+    X(vkGetPhysicalDeviceSurfaceCapabilitiesKHR); \
+    X(vkGetPhysicalDeviceSurfaceFormatsKHR); \
+    X(vkGetPhysicalDeviceSurfacePresentModesKHR); \
+    X(vkEnumerateDeviceExtensionProperties); \
+    X(vkCreateDevice); \
+    X(vkDestroyDevice); \
+    X(vkGetDeviceQueue); \
+    X(vkDeviceWaitIdle); \
+    X(vkDestroySurfaceKHR); \
+    X(vkCreateSwapchainKHR); \
+    X(vkDestroySwapchainKHR); \
+    X(vkGetSwapchainImagesKHR); \
+    X(vkAcquireNextImageKHR); \
+    X(vkQueuePresentKHR); \
+    X(vkCreateImage); \
+    X(vkDestroyImage); \
+    X(vkCreateImageView); \
+    X(vkDestroyImageView); \
+    X(vkGetImageMemoryRequirements); \
+    X(vkBindImageMemory); \
+    X(vkCreateBuffer); \
+    X(vkDestroyBuffer); \
+    X(vkGetBufferMemoryRequirements); \
+    X(vkBindBufferMemory); \
+    X(vkAllocateMemory); \
+    X(vkFreeMemory); \
+    X(vkMapMemory); \
+    X(vkUnmapMemory); \
+    X(vkCreateSampler); \
+    X(vkDestroySampler); \
+    X(vkCreateRenderPass); \
+    X(vkDestroyRenderPass); \
+    X(vkCreateFramebuffer); \
+    X(vkDestroyFramebuffer); \
+    X(vkCreateShaderModule); \
+    X(vkDestroyShaderModule); \
+    X(vkCreateDescriptorSetLayout); \
+    X(vkDestroyDescriptorSetLayout); \
+    X(vkCreatePipelineLayout); \
+    X(vkDestroyPipelineLayout); \
+    X(vkCreateGraphicsPipelines); \
+    X(vkDestroyPipeline); \
+    X(vkCreateDescriptorPool); \
+    X(vkDestroyDescriptorPool); \
+    X(vkResetDescriptorPool); \
+    X(vkAllocateDescriptorSets); \
+    X(vkUpdateDescriptorSets); \
+    X(vkCreateCommandPool); \
+    X(vkDestroyCommandPool); \
+    X(vkAllocateCommandBuffers); \
+    X(vkBeginCommandBuffer); \
+    X(vkEndCommandBuffer); \
+    X(vkResetCommandBuffer); \
+    X(vkCreateFence); \
+    X(vkDestroyFence); \
+    X(vkWaitForFences); \
+    X(vkResetFences); \
+    X(vkCreateSemaphore); \
+    X(vkDestroySemaphore); \
+    X(vkQueueSubmit); \
+    X(vkQueueWaitIdle); \
+    X(vkCmdBeginRenderPass); \
+    X(vkCmdEndRenderPass); \
+    X(vkCmdBindPipeline); \
+    X(vkCmdBindDescriptorSets); \
+    X(vkCmdBindVertexBuffers); \
+    X(vkCmdBindIndexBuffer); \
+    X(vkCmdSetViewport); \
+    X(vkCmdSetScissor); \
+    X(vkCmdDraw); \
+    X(vkCmdDrawIndexed); \
+    X(vkCmdClearAttachments); \
+    X(vkCmdClearColorImage); \
+    X(vkCmdCopyBuffer); \
+    X(vkCmdCopyBufferToImage); \
+    X(vkCmdCopyImageToBuffer); \
+    X(vkCmdPipelineBarrier)
+
+#define FO_VK_FUNCTION_DEF(name) static PFN_##name name = nullptr
+FO_VK_GLOBAL_FUNCTIONS(FO_VK_FUNCTION_DEF);
+FO_VK_INSTANCE_FUNCTIONS(FO_VK_FUNCTION_DEF);
+#undef FO_VK_FUNCTION_DEF
+
+static void LoadVulkanGlobalFunctions() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#define FO_VK_LOAD_GLOBAL(name) name = reinterpret_cast<PFN_##name>(vkGetInstanceProcAddr(VK_NULL_HANDLE, #name))
+    FO_VK_GLOBAL_FUNCTIONS(FO_VK_LOAD_GLOBAL);
+#undef FO_VK_LOAD_GLOBAL
+}
+
+static void LoadVulkanInstanceFunctions(VkInstance instance) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#define FO_VK_LOAD_INSTANCE(name) name = reinterpret_cast<PFN_##name>(vkGetInstanceProcAddr(instance, #name))
+    FO_VK_INSTANCE_FUNCTIONS(FO_VK_LOAD_INSTANCE);
+#undef FO_VK_LOAD_INSTANCE
+}
 
 // Growable, persistently-mapped HOST_VISIBLE buffer of a ring pool; steady-state uploads
 // are pure memcpy.
@@ -1598,6 +1722,9 @@ Vulkan_Renderer::~Vulkan_Renderer()
         ctx->Instance = VK_NULL_HANDLE;
     }
 
+    // Balance the SDL_Vulkan_LoadLibrary from Init (SDL ref-counts the loader).
+    SDL_Vulkan_UnloadLibrary();
+
     _ctx.reset();
 }
 
@@ -1965,6 +2092,19 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     WriteLog("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
 
+    // Load the Vulkan loader through SDL (dynamic, at selection time) instead of a link-time
+    // vulkan-1.dll import, then bootstrap the entry-point table from it.
+    if (!SDL_Vulkan_LoadLibrary(nullptr)) {
+        throw RenderingException("SDL_Vulkan_LoadLibrary failed", SDL_GetError());
+    }
+
+    vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
+    if (vkGetInstanceProcAddr == nullptr) {
+        throw RenderingException("SDL_Vulkan_GetVkGetInstanceProcAddr returned null", SDL_GetError());
+    }
+
+    LoadVulkanGlobalFunctions();
+
     Uint32 ext_count = 0;
     const char* const* sdl_exts = SDL_Vulkan_GetInstanceExtensions(&ext_count);
 
@@ -1975,6 +2115,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     // VK_EXT_debug_utils routes validation messages into our log; opt-in via Render.RenderDebug
     vector<const char*> exts_list(sdl_exts, sdl_exts + ext_count);
     const bool want_validation = settings.RenderDebug || FO_DEBUG;
+
     if (want_validation) {
         exts_list.push_back("VK_EXT_debug_utils");
     }
@@ -1999,6 +2140,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
 
     const char* validation_layers[] = {"VK_LAYER_KHRONOS_validation"};
     bool validation_available = false;
+
     if (want_validation) {
         uint32_t layer_count = 0;
         vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -2027,6 +2169,9 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw RenderingException("vkCreateInstance failed", vk_result);
     }
 
+    // Resolve the remaining entry points now that an instance exists.
+    LoadVulkanInstanceFunctions(ctx->Instance);
+
     if (want_validation) {
         // Route layer warnings/errors into the log under [VkLayer]
         if (auto vkCreateDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(ctx->Instance, "vkCreateDebugUtilsMessengerEXT")); vkCreateDebugUtilsMessengerEXT_fn != nullptr) {
@@ -2041,6 +2186,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
                 return VK_FALSE;
             };
             vk_result = vkCreateDebugUtilsMessengerEXT_fn(ctx->Instance, &msg_ci, nullptr, &ctx->DebugMessenger);
+
             if (vk_result == VK_SUCCESS) {
                 WriteLog("[VkLayer] debug messenger attached");
             }
@@ -2100,6 +2246,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     };
 
     int32_t best_score = -1;
+
     for (auto* gpu : gpus) {
         if (!has_swapchain_ext(gpu) || !has_graphics_present_family(gpu, ctx->Surface)) {
             continue;
@@ -2386,6 +2533,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     VerifyVkResult(vk_result);
 
     VkExtent2D swapchain_extent {};
+
     if (caps.currentExtent.width != UINT32_MAX) {
         swapchain_extent = caps.currentExtent;
     }
@@ -2415,12 +2563,14 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
         // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction.
         bool format_supported = surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED;
+
         for (const auto& sf : surface_formats) {
             if (sf.format == VK_FORMAT_B8G8R8A8_UNORM && sf.colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR) {
                 format_supported = true;
                 break;
             }
         }
+
         FO_VERIFY_AND_THROW(format_supported, "Surface does not support required VK_FORMAT_B8G8R8A8_UNORM / SRGB_NONLINEAR");
     }
 
@@ -2656,6 +2806,7 @@ static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
         if (semaphore != nullptr) {
             vkDestroySemaphore(ctx->Device, semaphore, nullptr);
         }
+
         vk_result = vkCreateSemaphore(ctx->Device, &sem_ci, nullptr, &semaphore);
         VerifyVkResult(vk_result);
     }
@@ -2831,6 +2982,7 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
     info.pImageIndices = &ctx->CurrentSwapchainImageIndex;
 
     vk_result = vkQueuePresentKHR(ctx->GraphicsQueue, &info);
+
     if (vk_result == VK_ERROR_OUT_OF_DATE_KHR || vk_result == VK_SUBOPTIMAL_KHR) {
         // Defer the recreate to the next BeginFrame: a failed present can leave the semaphore in
         // an ambiguous state, and BeginFrame rebuilds all sync objects on an idle device

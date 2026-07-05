@@ -307,4 +307,38 @@ TEST_CASE("EffectBakerBakesExplicitBindings")
     CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv"));
 }
 
+TEST_CASE("EffectBakerBakesSdlGpuFlavors")
+{
+    using namespace BakerTests;
+
+    TestRig rig;
+    rig.AddSourceFile("Effects/Test.fofx", VALID_EFFECT);
+
+    EffectBaker baker {rig.MakeContext()};
+
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+    // The native Vulkan SPIR-V and the SDL_GPU-convention SPIR-V are baked as separate flavors
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv"));
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-vert-spv_sdl"));
+    CHECK(rig.Outputs.contains("Effects/Test.fofx-1-frag-spv_sdl"));
+
+    const auto info = ConfigFile("Effects/Test.fofx-1-info", rig.GetOutputText("Effects/Test.fofx-1-info"));
+
+    REQUIRE(info.HasSection("EffectInfoSdl"));
+    // VALID_EFFECT: vertex has ProjBuf (1 UBO, no samplers); fragment has MainTex (1 sampler) + TimeBuf (1 UBO)
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertexSamplers", -1) == 0);
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertexUniformBuffers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragmentSamplers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragmentUniformBuffers", -1) == 1);
+    CHECK(info.GetAsInt("EffectInfoSdl", "VertProjBuf", -1) == 0);
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragMainTex", -1) == 0);
+    // TimeBuf is authored at binding 3 but gets the dense SDL slot 0 within the fragment UBO set
+    CHECK(info.GetAsInt("EffectInfoSdl", "FragTimeBuf", -1) == 0);
+
+    // The native [EffectInfo] program-wide bindings are untouched by the SDL additions
+    REQUIRE(info.HasSection("EffectInfo"));
+    CHECK(info.GetAsInt("EffectInfo", "TimeBuf", -1) == 3);
+}
+
 FO_END_NAMESPACE

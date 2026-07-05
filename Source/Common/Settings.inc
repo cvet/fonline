@@ -174,9 +174,11 @@ VARIABLE_SETTING(bool, Render, ForceOpenGL, false); // If true, OpenGL is forced
 VARIABLE_SETTING(bool, Render, ForceDirect3D, false); // If true, Direct3D is forced
 VARIABLE_SETTING(bool, Render, ForceMetal, false); // If true, Metal is forced
 VARIABLE_SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
+VARIABLE_SETTING(bool, Render, ForceSDLGpu, false); // If true, SDL_GPU backend is forced
 VARIABLE_SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
 FIXED_SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
 FIXED_SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
+FIXED_SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 VARIABLE_SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
 VARIABLE_SETTING(bool, Render, VSync, false); // If true, vertical synchronization is enabled
 VARIABLE_SETTING(bool, Render, AlwaysOnTop, false); // If true, window is always on top

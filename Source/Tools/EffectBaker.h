@@ -52,6 +52,8 @@ class EffectBaker final : public BaseBaker
 public:
     static constexpr string_view_nt NAME = "Effect";
 
+    struct SdlStageSlots;
+
     explicit EffectBaker(shared_ptr<BakingContext> ctx);
     EffectBaker(const EffectBaker&) = delete;
     EffectBaker(EffectBaker&&) noexcept = delete;
@@ -66,7 +68,7 @@ public:
 
 private:
     void BakeShaderProgram(string_view fname, string_view content) const;
-    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate) const;
+    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const;
 };
 
 FO_END_NAMESPACE
