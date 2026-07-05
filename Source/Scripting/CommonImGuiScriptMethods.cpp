@@ -135,20 +135,26 @@ static void StoreColor4(ucolor& color, const float32_t (&values)[4])
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API ptr<ScriptImGui> Common_Game_ImGui(ptr<BaseEngine> engine)
 {
-    const nptr<ImGuiContext> nullable_imgui_context = ImGui::GetCurrentContext();
+    const auto imgui_context = ImGui::GetCurrentContext();
 
-    if (!nullable_imgui_context) {
+    if (!imgui_context) {
         throw ScriptException("ImGui context is not available");
     }
-
-    auto imgui_context = nullable_imgui_context.as_ptr();
 
     if (!imgui_context->WithinFrameScope) {
         throw ScriptException("You can use this function only in active ImGui frame");
     }
 
-    auto imgui = engine->GetImGui();
-    return imgui;
+    return engine->GetImGui();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API bool Common_Game_IsImGuiAvailable(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    const auto imgui_context = ImGui::GetCurrentContext();
+    return imgui_context && imgui_context->WithinFrameScope;
 }
 
 ///@ ExportMethod
