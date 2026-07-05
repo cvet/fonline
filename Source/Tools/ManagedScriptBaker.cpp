@@ -1071,7 +1071,7 @@ auto ManagedScriptBaker::GetManagedProjectDir(string_view dir_override) -> std::
         project_dir = dir_override;
     }
     else {
-        project_dir = std::filesystem::current_path() / "Scripts" / "Managed";
+        project_dir = std::filesystem::current_path() / "Scripts";
     }
 
     std::error_code ec;

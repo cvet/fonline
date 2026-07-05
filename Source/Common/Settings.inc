@@ -65,7 +65,7 @@ FIXED_SETTING(string, Script, ManagedScriptProjectName); // Managed project base
 FIXED_SETTING(string, Script, ManagedScriptTargetFramework); // Managed project target framework (empty for net10.0)
 FIXED_SETTING(string, Script, ManagedScriptMsBuild); // Managed msbuild command override (empty for 'dotnet msbuild')
 FIXED_SETTING(string, Script, ManagedScriptSourceDir); // Managed engine core-scripts directory override (empty for auto-detection)
-FIXED_SETTING(string, Script, ManagedScriptProjectDir); // Managed project directory override (empty for Scripts/Managed)
+FIXED_SETTING(string, Script, ManagedScriptProjectDir); // Managed project directory override (empty for Scripts)
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
 FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies

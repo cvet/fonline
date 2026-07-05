@@ -14,7 +14,7 @@ This page documents mapper-specific engine behavior and known mapper automation 
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Common/Geometry.cpp`
-- `../../Scripts/Managed/MapperRender.cs`
+- `../../Scripts/MapperRender.cs`
 - `../../Tools/MapPreview/generate_map_preview.py`
 - `../../Tools/MapPreview/map_preview_overrides.ini`
 - `../../LastFrontier.fomain`
@@ -87,7 +87,7 @@ Mapper exit is the common `Game.RequestQuit()` from [CommonGlobalScriptMethods.c
 
 ### Driver script
 
-[Scripts/Managed/MapperRender.cs](../../Scripts/Managed/MapperRender.cs) wires the helpers into a single-process autopilot that batches multiple maps:
+[Scripts/MapperRender.cs](../../Scripts/MapperRender.cs) wires the helpers into a single-process autopilot that batches multiple maps:
 
 1. Subscribes to `Game.OnStart` (mapper-side) and `Game.OnLoop`.
 2. The mapper process is launched with the engine `Render.HeadlessWindow=True` setting so batch runs lock interactive input, suppress exception message boxes, and create the engine render-host window hidden for off-screen rendering; this setting is intentionally separate from the project `Mapper.Render*` settings. Screenshot readback still comes from the mapper sprite manager's main render target.
@@ -245,7 +245,7 @@ The python script invokes `LF_Mapper` once for the planned batch, enables hidden
 - Engine geometry constants (`HEX_WIDTH = 32`, `HEX_HEIGHT = 16`, hexagonal layout) are mirrored as Python constants in the script. If `../../CMakeLists.txt` ever changes them, update both sides.
 - If the planned crop touches the viewport edge, the script prints a warning; rerun with a larger `--fit-padding` or viewport.
 - Button pixel coordinates are based on `MapEntry` hex centers. The preview image is cropped to `ScrollAxialArea` when authored, a per-map `ViewportCrop` when configured, or the fallback content/alpha bounds otherwise, so entries can legitimately land outside visible alpha if the entry item itself is hidden as client-invisible.
-- C# `try { } catch { }` in [Scripts/Managed/MapperRender.cs](../../Scripts/Managed/MapperRender.cs) skips maps whose load/show/save throws a script exception, but a hard native crash (e.g. missing critter animation, broken proto) still kills the mapper. Run again with `--skip-existing` to resume after fixing the offending content.
+- C# `try { } catch { }` in [Scripts/MapperRender.cs](../../Scripts/MapperRender.cs) skips maps whose load/show/save throws a script exception, but a hard native crash (e.g. missing critter animation, broken proto) still kills the mapper. Run again with `--skip-existing` to resume after fixing the offending content.
 
 ### Timing
 

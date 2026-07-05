@@ -79,7 +79,7 @@ TEST_CASE("MetadataBaker")
 
     SECTION("serializes metadata tags from managed scripts")
     {
-        rig.AddSourceFile("Scripts/Managed/TestManagedMetadata.cs", R"(
+        rig.AddSourceFile("Scripts/TestManagedMetadata.cs", R"(
 namespace TestManagedMetadata
 {
 ///@ Setting Server bool ManagedMetadata.ServerFlag
