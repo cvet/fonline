@@ -61,11 +61,11 @@ FIXED_SETTING(vector<string>, Script, MutableGlobalsAllowedNamespaces); // Scrip
 FIXED_SETTING(vector<string>, Script, AttributedFunctionDirectCallAllowedNamespaces); // Script namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
 FIXED_SETTING(vector<string>, Script, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct script-to-script calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
 FIXED_SETTING(vector<string>, Script, ManagedScriptAssemblies, "FOnline"); // Managed script assemblies to build
-FIXED_SETTING(string, Script, ManagedScriptProjectName); // Managed project base name (empty for the game nice name)
-FIXED_SETTING(string, Script, ManagedScriptTargetFramework); // Managed project target framework (empty for net10.0)
-FIXED_SETTING(string, Script, ManagedScriptMsBuild); // Managed msbuild command override (empty for 'dotnet msbuild')
-FIXED_SETTING(string, Script, ManagedScriptSourceDir); // Managed engine core-scripts directory override (empty for auto-detection)
-FIXED_SETTING(string, Script, ManagedScriptProjectDir); // Managed project directory override (empty for Scripts)
+FIXED_SETTING(string, Script, ManagedScriptProjectName, "FOnline"); // Managed project base name
+FIXED_SETTING(string, Script, ManagedScriptTargetFramework, "net10.0"); // Managed project target framework
+FIXED_SETTING(string, Script, ManagedScriptMsBuild, "dotnet msbuild"); // Managed msbuild command
+FIXED_SETTING(vector<string>, Script, ManagedScriptDirs, "Engine/Source/Scripting/Managed/CoreScripts", "Scripts"); // Managed script source directories, top-level .cs files of each are compiled in place
+FIXED_SETTING(string, Script, ManagedScriptGeneratedDir); // Directory for generated managed scripts and project files (empty targets the build GeneratedSource/Managed directory)
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraSources); // Extra managed source files as 'assembly,target,path' entries
 FIXED_SETTING(vector<string>, Script, ManagedScriptExtraReferences); // Extra managed assembly references as 'assembly,target,reference' entries
 FIXED_SETTING(bool, Script, ManagedScriptBakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies

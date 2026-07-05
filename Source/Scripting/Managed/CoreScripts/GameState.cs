@@ -6,30 +6,10 @@
 
 namespace FOnline
 {
-    // Managed equivalent of the AngelScript global `bool get_IsGameDestroying()`
-    // (Engine/Source/Scripting/AngelScript/AngelScriptGlobals.cpp Global_IsGameDestroying): true once the game
-    // engine for this side is gone, e.g. while script objects are being torn down during backend destruction.
-    // The native probe (ManagedScriptBackend NativeIsGameDestroying) is non-throwing and thread-safe, so this is
-    // safe to read from object finalizers as well as ordinary game-thread code. The port tool emits a bare
-    // `IsGameDestroying` token inside ported destructors; ported modules `using FOnline`, so it binds to this
-    // `Game` member.
-    //
-    // `Game` is a partial static class whose other parts are generated per target; this part only adds the
-    // game-state predicate. The target literal names this assembly's side for the liveness probe (the only
-    // native call that still takes a side: it may run on the GC finalizer thread, where no backend is active),
-    // selected here by the build-time target define (the baker emits TRACE;<SIDE>).
+    // `Game` is a partial static class whose other parts are generated per target; this part adds the
+    // game-state helpers below.
     public static partial class Game
     {
-#if SERVER
-        private const string GameStateTarget = "Server";
-#elif MAPPER
-        private const string GameStateTarget = "Mapper";
-#else
-        private const string GameStateTarget = "Client";
-#endif
-
-        public static bool IsGameDestroying => global::FOnline.Native.IsGameDestroying(GameStateTarget);
-
         // Managed equivalent of the per-enum AngelScript `Game.EnumToString(<Enum> value, bool fullSpecification)`
         // (AngelScriptGlobals.cpp Game_EnumToString -> EngineMetadata::ResolveEnumValueName): returns the enum
         // member's name, or `EnumType::Member` when fullSpecification is set. The generated managed enums carry the

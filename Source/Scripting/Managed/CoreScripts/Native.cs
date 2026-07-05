@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +16,7 @@ namespace FOnline
 
     internal static class Native
     {
-        internal static T WrapEntity<T>(IntPtr entityPtr) where T : Entity
+        internal static T? WrapEntity<T>(IntPtr entityPtr) where T : Entity
         {
             if (entityPtr == IntPtr.Zero)
             {
@@ -29,14 +31,14 @@ namespace FOnline
                 {
                     entityPtr,
                 },
-                null);
+                null)!;
         }
 
-        internal static T WrapRef<T>(IntPtr refPtr)
+        internal static T? WrapRef<T>(IntPtr refPtr)
         {
             if (refPtr == IntPtr.Zero)
             {
-                return default(T);
+                return default;
             }
 
             return (T)Activator.CreateInstance(
@@ -47,7 +49,7 @@ namespace FOnline
                 {
                     refPtr,
                 },
-                null);
+                null)!;
         }
 
         internal static EventResult InvokeEvent(
@@ -57,10 +59,10 @@ namespace FOnline
         {
             try
             {
-                object result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
+                object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
                 if (hasExplicitResult)
                 {
-                    return (EventResult)result;
+                    return (EventResult)result!;
                 }
 
                 return EventResult.ContinueChain;
@@ -72,12 +74,12 @@ namespace FOnline
             }
         }
 
-        internal static object InvokeCallback(Delegate handler, object[] args)
+        internal static object? InvokeCallback(Delegate handler, object[] args)
         {
             try
             {
-                object result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
-                Task task = result as Task;
+                object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
+                Task? task = result as Task;
 
                 if (task == null)
                 {
@@ -86,10 +88,10 @@ namespace FOnline
 
                 task.GetAwaiter().GetResult();
 
-                Type taskType = result.GetType();
+                Type taskType = result!.GetType();
                 if (taskType.IsGenericType)
                 {
-                    return taskType.GetProperty("Result").GetValue(result);
+                    return taskType.GetProperty("Result")!.GetValue(result);
                 }
 
                 return null;
@@ -104,7 +106,7 @@ namespace FOnline
         private static object[] AdaptInvokeArgs(Delegate handler, object[] args)
         {
             ParameterInfo[] parameters = handler.Method.GetParameters();
-            object[] adaptedArgs = null;
+            object[]? adaptedArgs = null;
 
             for (int i = 0; i < args.Length && i < parameters.Length; i++)
             {
@@ -136,7 +138,7 @@ namespace FOnline
 
             foreach (DictionaryEntry entry in source)
             {
-                string key = entry.Key as string;
+                string? key = entry.Key as string;
 
                 if (key == null)
                 {
@@ -163,7 +165,7 @@ namespace FOnline
 
         private static Exception UnwrapInvocationException(Exception ex)
         {
-            TargetInvocationException invocation = ex as TargetInvocationException;
+            TargetInvocationException? invocation = ex as TargetInvocationException;
             return invocation != null && invocation.InnerException != null
                 ? invocation.InnerException
                 : ex;
@@ -212,7 +214,7 @@ namespace FOnline
 
         private static string GetMethodName(MethodInfo method)
         {
-            string typeName = method.DeclaringType != null
+            string? typeName = method.DeclaringType != null
                 ? method.DeclaringType.FullName
                 : string.Empty;
 
@@ -251,7 +253,7 @@ namespace FOnline
             {
                 Delegate item = invocationList[i];
                 MethodInfo method = item.Method;
-                object target = item.Target;
+                object? target = item.Target;
 
                 if (key.Length != 0)
                 {
@@ -277,7 +279,7 @@ namespace FOnline
             return ((IList)value).Count;
         }
 
-        internal static object GetListItem(object value, int index)
+        internal static object? GetListItem(object value, int index)
         {
             return ((IList)value)[index];
         }
@@ -303,7 +305,7 @@ namespace FOnline
             throw new IndexOutOfRangeException();
         }
 
-        internal static object GetDictionaryValue(object value, int index)
+        internal static object? GetDictionaryValue(object value, int index)
         {
             int i = 0;
             foreach (DictionaryEntry entry in (IDictionary)value)
@@ -322,7 +324,7 @@ namespace FOnline
         internal static object CreateList(Type elementType)
         {
             return Activator.CreateInstance(
-                typeof(List<>).MakeGenericType(elementType));
+                typeof(List<>).MakeGenericType(elementType))!;
         }
 
         internal static void AddListItem(object list, object value)
@@ -333,7 +335,7 @@ namespace FOnline
         internal static object CreateDictionary(Type keyType, Type valueType)
         {
             return Activator.CreateInstance(
-                typeof(Dictionary<,>).MakeGenericType(keyType, valueType));
+                typeof(Dictionary<,>).MakeGenericType(keyType, valueType))!;
         }
 
         internal static void AddDictionaryItem(object dictionary, object key, object value)
@@ -400,10 +402,11 @@ namespace FOnline
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern string GetEntityName(IntPtr entityPtr);
 
-        // Non-throwing, thread-safe probe of "is the game engine for this side gone" (mirrors AngelScript
-        // get_IsGameDestroying); safe to read from object finalizers. Backs Game.IsGameDestroying (GameState.cs).
+        // The calling engine's alive flag: a one-element bool array that turns false when the backend is torn
+        // down. Capture it at construction time and read it from finalizers to ask "is my engine still alive"
+        // (a static probe cannot answer that: several same-side engines may coexist in one process).
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool IsGameDestroying(string target);
+        internal static extern bool[] GetBackendAliveFlag();
 
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern IntPtr GetBackend();
@@ -524,7 +527,7 @@ namespace FOnline
             object[] args);
 
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern bool InvokeScriptFunc(string funcName, object[] args);
+        internal static extern bool InvokeScriptFunc(string funcName, object?[] args);
 
         // Registers a managed global script function into the engine's cross-backend function map under a named
         // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
@@ -552,13 +555,13 @@ namespace FOnline
         // Serializes the boxed args (shared RemoteCallWire format) and sends the named outbound "cs" remote call to
         // the remote peer via the engine. `caller` is the entity the call is bound to (e.g. the Player).
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void SendRemoteCall(object caller, string name, object[] args);
+        internal static extern void SendRemoteCall(object? caller, string name, object[] args);
 
         // Diagnostic/test: serializes the boxed args and dispatches them through the engine's real inbound
         // remote-call path in-process (no network peer), invoking the registered handler for the named inbound
         // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side.
         [MethodImpl(MethodImplOptions.InternalCall)]
-        internal static extern void LoopbackRemoteCall(object caller, string name, object[] args);
+        internal static extern void LoopbackRemoteCall(object? caller, string name, object[] args);
 
         internal static bool GetSettingBool(string name)
         {

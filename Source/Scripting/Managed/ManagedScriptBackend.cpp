@@ -65,12 +65,9 @@ constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ';';
 constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ':';
 #endif
 
-// Process-level liveness counters, one per engine side. They carry no per-engine state — only the fact
-// "at least one engine of this side is alive in the process" — which is exactly what the non-throwing
-// finalizer probe NativeIsGameDestroying may ask from the Mono GC thread, where no backend affinity exists.
-// Everything engine-specific resolves through the thread-affine ActiveBackend (threads are partitioned by
-// engine ownership, so the thread-local slot never observes a foreign engine).
-static std::array<std::atomic<int32_t>, 3> AliveBackendCountPerSide {};
+// Thread-affine active backend: threads are partitioned by engine ownership, so the thread-local slot never
+// observes a foreign engine. Every native->managed invocation runs under ActiveBackendScope, making this the
+// one and only resolution of "which engine is executing managed code right now".
 static thread_local nptr<ManagedScriptBackend> ActiveBackend {};
 
 class ActiveBackendScope final
@@ -116,7 +113,6 @@ struct ManagedAssemblyResource;
 // Backend registry and active-backend lifecycle
 static auto GetActiveBackendOrThrow() -> ptr<ManagedScriptBackend>;
 static auto GetActiveEntityManagerOrThrow() -> EntityManagerApi*;
-static auto TargetToSide(string_view target_name) -> optional<EngineSideKind>;
 static auto GetTargetName(EngineSideKind side) -> string_view;
 static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSettings*;
 
@@ -124,7 +120,7 @@ static auto GetBackendSettings(ptr<ManagedScriptBackend> backend) -> GlobalSetti
 static void NativeLog(MonoString* text);
 static auto NativeGetHash(MonoString* text) -> uint64_t;
 static auto NativeGetHashStr(uint64_t value) -> MonoString*;
-static auto NativeIsGameDestroying(MonoString* target) -> mono_bool;
+static auto NativeGetBackendAliveFlag() -> MonoArray*;
 static auto NativeGetBackend() -> void*;
 static auto NativeGetProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> void*;
 static auto NativeCheckProtoEntity(MonoString* type_name, uint64_t proto_id_hash) -> mono_bool;
@@ -565,27 +561,48 @@ struct ManagedAssemblyResource
 
 // === Backend registry and active-backend lifecycle ===
 
-void ManagedScriptBackend::RegisterAliveBackend()
+auto ManagedScriptBackend::GetAliveFlagObject() const -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_meta == nullptr) {
-        throw ScriptSystemException("Managed backend has no registered metadata");
-    }
-
-    if (!_aliveRegistered) {
-        _aliveRegistered = true;
-        AliveBackendCountPerSide[static_cast<size_t>(_meta->GetSide())].fetch_add(1, std::memory_order_release);
-    }
+    return _aliveFlagGcHandle != 0 ? mono_gchandle_get_target(_aliveFlagGcHandle) : nullptr;
 }
 
-void ManagedScriptBackend::UnregisterAliveBackend()
+// The alive flag is a pinned one-element managed bool array. Wrappers that outlive deterministic disposal
+// (e.g. Sprite) capture it at construction, so their GC finalizers can ask "is MY engine still alive"
+// without any process-global side registry — correct with any number of same-side engines in the process.
+void ManagedScriptBackend::CreateAliveFlag()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_aliveRegistered) {
-        _aliveRegistered = false;
-        AliveBackendCountPerSide[static_cast<size_t>(_meta->GetSide())].fetch_sub(1, std::memory_order_release);
+    if (_aliveFlagGcHandle != 0) {
+        return;
+    }
+
+    auto* domain = GetDomainOrThrow(_domain.get());
+    auto* flag_array = mono_array_new(domain, mono_get_boolean_class(), 1);
+
+    if (flag_array == nullptr) {
+        throw ScriptSystemException("Can't create Managed backend alive flag");
+    }
+
+    mono_array_set(flag_array, uint8_t, 0, 1);
+    _aliveFlagGcHandle = mono_gchandle_new(reinterpret_cast<MonoObject*>(flag_array), 0);
+}
+
+void ManagedScriptBackend::ReleaseAliveFlag()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_aliveFlagGcHandle != 0) {
+        auto* flag_obj = mono_gchandle_get_target(_aliveFlagGcHandle);
+
+        if (flag_obj != nullptr) {
+            mono_array_set(reinterpret_cast<MonoArray*>(flag_obj), uint8_t, 0, 0);
+        }
+
+        mono_gchandle_free(_aliveFlagGcHandle);
+        _aliveFlagGcHandle = 0;
     }
 }
 
@@ -612,23 +629,6 @@ static auto GetActiveEntityManagerOrThrow() -> EntityManagerApi*
     }
 
     return entity_mngr;
-}
-
-static auto TargetToSide(string_view target_name) -> optional<EngineSideKind>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (target_name == "Server") {
-        return EngineSideKind::ServerSide;
-    }
-    if (target_name == "Client") {
-        return EngineSideKind::ClientSide;
-    }
-    if (target_name == "Mapper") {
-        return EngineSideKind::MapperSide;
-    }
-
-    return std::nullopt;
 }
 
 static auto GetTargetName(EngineSideKind side) -> string_view
@@ -721,33 +721,21 @@ static auto NativeGetHashStr(uint64_t value) -> MonoString*
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
 }
 
-// Non-throwing liveness probe backing managed `Game.IsGameDestroying`. Mirrors AngelScript's
-// Global_IsGameDestroying (AngelScriptGlobals.cpp): the game engine is considered gone whenever no usable
-// backend is registered for the target side. MUST NOT throw: this runs from script destructors and, for
-// managed code, may be invoked from the Mono GC finalizer thread where a thrown exception is fatal. It does no
-// Mono marshalling beyond reading the already-marshalled target string and never touches game-thread-owned
-// engine state — only the per-side atomic liveness counters — so it is safe from any thread.
-static auto NativeIsGameDestroying(MonoString* target) -> mono_bool
+// Returns the calling engine's alive flag (a one-element managed bool array). Managed wrappers capture it
+// at construction time (under the active backend scope) and read it from GC finalizers, where no backend is
+// active; the flag object stays valid as long as the wrapper references it, even after backend teardown.
+static auto NativeGetBackendAliveFlag() -> MonoArray*
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_STACK_TRACE_ENTRY();
 
-    const string target_name = ToStringAndFree(target);
-    const optional<EngineSideKind> side = TargetToSide(target_name);
+    auto backend = GetActiveBackendOrThrow();
+    auto* flag = backend->GetAliveFlagObject();
 
-    if (!side.has_value()) {
-        // Unknown/empty target: treat as destroying so guarded cleanup is skipped rather than misdirected.
-        return static_cast<mono_bool>(1);
+    if (flag == nullptr) {
+        throw ScriptSystemException("Managed backend alive flag is not created");
     }
 
-    // Fast path: a backend active on this thread whose side matches is, by definition, live.
-    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr && ActiveBackend->GetMetadata()->GetSide() == *side) {
-        return static_cast<mono_bool>(0);
-    }
-
-    // Slow path: lock-free process-level liveness counter, never throwing. At least one alive engine of the
-    // side means the game for this side is up; zero means all are gone (or none was created).
-    const bool alive = AliveBackendCountPerSide[static_cast<size_t>(*side)].load(std::memory_order_acquire) > 0;
-    return static_cast<mono_bool>(alive ? 0 : 1);
+    return static_cast<MonoArray*>(flag);
 }
 
 static auto NativeGetBackend() -> void*
@@ -1404,7 +1392,7 @@ static auto NativeGetProperty(MonoString* owner_type, MonoString* property_name,
         throw ScriptSystemException("Managed property not found", ToStringAndFree(owner_type), property_name_str);
     }
 
-    ptr<const Property> prop = nullable_prop.as_ptr();
+    auto prop = nullable_prop.as_ptr();
 
     if (prop->IsDict()) {
         if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
@@ -1437,7 +1425,7 @@ static void NativeSetProperty(MonoString* owner_type, MonoString* property_name,
         throw ScriptSystemException("Managed property not found", ToStringAndFree(owner_type), property_name_str);
     }
 
-    ptr<const Property> prop = nullable_prop.as_ptr();
+    auto prop = nullable_prop.as_ptr();
     if (prop->IsDict()) {
         if (!IsManagedBridgeFixedDictionaryProperty(prop)) {
             throw ScriptSystemException("Managed dictionary property bridge supports only fixed-size key/value types", prop->GetName());
@@ -2206,7 +2194,7 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetter", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
     mono_add_internal_call("FOnline.Native::CallMethod", reinterpret_cast<const void*>(NativeCallMethod));
     mono_add_internal_call("FOnline.Native::InvokeScriptFunc", reinterpret_cast<const void*>(NativeInvokeScriptFunc));
-    mono_add_internal_call("FOnline.Native::IsGameDestroying", reinterpret_cast<const void*>(NativeIsGameDestroying));
+    mono_add_internal_call("FOnline.Native::GetBackendAliveFlag", reinterpret_cast<const void*>(NativeGetBackendAliveFlag));
     mono_add_internal_call("FOnline.Native::GetBackend", reinterpret_cast<const void*>(NativeGetBackend));
     mono_add_internal_call("FOnline.Native::GetProtoEntity", reinterpret_cast<const void*>(NativeGetProtoEntity));
     mono_add_internal_call("FOnline.Native::CheckProtoEntity", reinterpret_cast<const void*>(NativeCheckProtoEntity));
@@ -2347,14 +2335,14 @@ static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend,
         throw ScriptSystemException("Managed property owner type not found", owner_type_name);
     }
 
-    ptr<const PropertyRegistrator> registrator = nullable_registrator.as_ptr();
+    auto registrator = nullable_registrator.as_ptr();
     auto nullable_prop = registrator->FindProperty(property_name_str);
 
     if (!nullable_prop) {
         throw ScriptSystemException("Managed property not found", owner_type_name, property_name_str);
     }
 
-    ptr<const Property> prop = nullable_prop.as_ptr();
+    auto prop = nullable_prop.as_ptr();
     if (require_virtual && !prop->IsVirtual()) {
         throw ScriptSystemException("Managed property getter requires a virtual property", prop->GetName());
     }
@@ -4368,13 +4356,13 @@ static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>
     candidates.emplace_back(std::filesystem::current_path() / "ManagedRuntime");
 
     if (const auto exe_path = Platform::GetExePath()) {
-        const std::filesystem::path exe_dir = std::filesystem::path(*exe_path).parent_path();
+        const auto exe_dir = std::filesystem::path(*exe_path).parent_path();
         candidates.emplace_back(exe_dir / "ManagedRuntime");
     }
 
     for (const std::filesystem::path& candidate : candidates) {
         std::error_code ec;
-        const std::filesystem::path normalized = std::filesystem::weakly_canonical(candidate, ec);
+        const auto normalized = std::filesystem::weakly_canonical(candidate, ec);
         const std::filesystem::path& runtime_dir = !ec ? normalized : candidate;
 
         if (IsRuntimeLayoutPath(runtime_dir)) {
@@ -4448,16 +4436,16 @@ static void ConfigureManagedRuntime()
     // safepoint; preemptive (OS-level) suspension stops them directly. Callers can override the env var.
     SetEnvironmentVariableDefault("MONO_THREADS_SUSPEND", "preemptive");
 
-    const optional<std::filesystem::path> runtime_dir = FindManagedRuntimeDir();
+    const auto runtime_dir = FindManagedRuntimeDir();
 
     if (!runtime_dir.has_value()) {
         mono_config_parse(nullptr);
         return;
     }
 
-    const std::filesystem::path lib_dir = *runtime_dir / "lib";
-    const std::filesystem::path etc_dir = *runtime_dir / "etc";
-    const std::filesystem::path config_file = etc_dir / "mono" / "config";
+    const auto lib_dir = *runtime_dir / "lib";
+    const auto etc_dir = *runtime_dir / "etc";
+    const auto config_file = etc_dir / "mono" / "config";
     const std::string lib_dir_str = lib_dir.string();
     const std::string etc_dir_str = etc_dir.string();
     const std::string config_file_str = config_file.string();
@@ -4514,7 +4502,7 @@ static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_pat
 {
     FO_STACK_TRACE_ENTRY();
 
-    const optional<string> existing_data = fs_read_file(disk_path.string());
+    const auto existing_data = fs_read_file(disk_path.string());
 
     if (!existing_data.has_value()) {
         return false;
@@ -4542,11 +4530,11 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
         return restored_paths;
     }
 
-    const std::filesystem::path cache_root = std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / MakeManagedAssemblyCacheKey(assembly_resources);
+    const auto cache_root = std::filesystem::current_path() / "Cache" / "ManagedAssemblies" / MakeManagedAssemblyCacheKey(assembly_resources);
     restored_paths.reserve(assembly_resources.size());
 
     for (const ManagedAssemblyResource& resource : assembly_resources) {
-        const std::filesystem::path disk_path = cache_root / resource.ResourcePath;
+        const auto disk_path = cache_root / resource.ResourcePath;
         const std::string disk_dir = disk_path.parent_path().string();
 
         if (!fs_create_directories(disk_dir)) {
@@ -4587,7 +4575,7 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
             continue;
         }
 
-        const std::filesystem::path target_dir = pack_it->path() / "Assemblies" / target_subdir;
+        const auto target_dir = pack_it->path() / "Assemblies" / target_subdir;
         std::error_code dir_ec;
 
         if (!std::filesystem::is_directory(target_dir, dir_ec)) {
@@ -4684,7 +4672,7 @@ ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
 
-    UnregisterAliveBackend();
+    ReleaseAliveFlag();
 
     for (const uint32_t gc_handle : _globalFuncGcHandles) {
         if (gc_handle != 0) {
@@ -4809,10 +4797,10 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     RegisterInternalCalls();
 
     const auto target_name = GetTargetName(_meta->GetSide());
-    RegisterAliveBackend();
+    CreateAliveFlag();
 
     const auto resource_assemblies = CollectAssemblyResources(resources, target_name);
-    const unordered_map<string, std::filesystem::path> restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
+    const auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
 
     vector<std::filesystem::path> assembly_paths;
 

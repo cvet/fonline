@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Linq;
 using System.Linq.Expressions;
@@ -176,7 +178,7 @@ namespace FOnline
             // Covers List<T> (the managed idiom) and T[]; the engine marshals both ends as the same array.
             if (type.IsArray)
             {
-                return EngineTypeName(type.GetElementType()) + "[]";
+                return EngineTypeName(type.GetElementType()!) + "[]";
             }
 
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(System.Collections.Generic.List<>))

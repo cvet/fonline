@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace FOnline
 {
     // Ported from Engine/Source/Scripting/AngelScript/CoreScripts/Time.fos (the engine Time:: core script).

@@ -6,7 +6,8 @@
 // unsafe: it routes through Native.CallMethod (which marshals strings, allocates managed arrays/GC handles, and
 // does no domain attach) and mutates the game-thread-owned native SpriteManager. So the native sprite is freed
 // only through deterministic, game-thread Dispose()/Unload(); the finalizer never touches native state and only
-// logs a leak (quiet during shutdown, when IsGameDestroying is true and the engine frees all sprites wholesale).
+// logs a leak (quiet after backend teardown, when its captured alive flag is false and the engine already freed
+// all sprites wholesale).
 // Downstream callers (ported GUI) must Dispose()/Unload() sprites deterministically rather than relying on GC.
 //
 // The baker globs every CoreScript into all three target assemblies, so this CLIENT-only type is wrapped in
@@ -28,6 +29,10 @@ namespace FOnline
         // The field name `Color` shadows the static class FOnline.Color, so the initializer must qualify it
         // (AngelScript's `Color::Neutral` had explicit scope; the ported `Color.Neutral` would bind to this field).
         public ucolor Color = global::FOnline.Color.Neutral;
+
+        // Captured at construction (on the game thread, under the active backend scope) so the finalizer can
+        // ask "is MY engine still alive" from the GC thread, where no backend is active.
+        private readonly bool[] _backendAlive = Native.GetBackendAliveFlag();
 
         public Sprite()
         {
@@ -52,7 +57,7 @@ namespace FOnline
             // During shutdown the engine frees all sprites, so a still-loaded sprite is expected and silent;
             // otherwise it is a real leak (a Sprite never Dispose()d/Unload()ed). Log only the raw hash to avoid
             // an off-thread hstring-table lookup (LoadedName.Value is a plain managed field).
-            if (Id != 0 && !Game.IsGameDestroying)
+            if (Id != 0 && _backendAlive[0])
             {
                 Native.Log("Managed Sprite leaked (not disposed); hstring hash=" + LoadedName.Value.ToString());
             }

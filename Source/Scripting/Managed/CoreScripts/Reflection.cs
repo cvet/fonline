@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace FOnline
 {
     // Managed equivalent of the AngelScript `reflection::typeof<T>(src).instantiate(src, dst)` idiom used by the
@@ -8,15 +10,15 @@ namespace FOnline
     public static class Reflection
     {
         public static T Clone<T>(T src)
+            where T : notnull
         {
             System.Type type = src.GetType();
-            object dst = System.Activator.CreateInstance(type);
+            object dst = System.Activator.CreateInstance(type)!;
 
-            // Walk the hierarchy with a non-nullable loop variable bounded by `object` (avoids a `System.Type?`
-            // annotation, which would be CS8669 in this generated, non-`#nullable` core script) so inherited
-            // private fields are copied too — needed for the Gui Object/Panel/Screen subclasses.
-            System.Type walk = type;
-            while (walk != typeof(object))
+            // Walk the hierarchy so inherited private fields are copied too — needed for the Gui
+            // Object/Panel/Screen subclasses.
+            System.Type? walk = type;
+            while (walk != null && walk != typeof(object))
             {
                 foreach (System.Reflection.FieldInfo field in walk.GetFields(
                     System.Reflection.BindingFlags.Instance |

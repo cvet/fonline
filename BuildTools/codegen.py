@@ -2430,6 +2430,7 @@ def write_engine_config() -> None:
         generated_output.write_line('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
         generated_output.write_line('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
         generated_output.write_line('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
+        generated_output.write_line('static constexpr string_view_nt FO_GENERATED_SOURCE_DIR = "' + args.genoutput.replace('\\', '/') + '";')
 
         compatibility_version = compatibility_hasher.hexdigest()[:16]
         generated_output.write_line('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatibility_version + '";')

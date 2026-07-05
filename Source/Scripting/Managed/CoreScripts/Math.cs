@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace FOnline
 {
     // Ported from Engine/Source/Scripting/AngelScript/CoreScripts/Math.fos (the engine Math:: core script).

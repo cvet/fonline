@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Linq;
 using System.Linq.Expressions;
@@ -68,7 +70,7 @@ namespace FOnline
             {
                 throw new InvalidOperationException(
                     "Remote call method must return void or Task: " +
-                    method.DeclaringType.FullName +
+                    method.DeclaringType?.FullName +
                     "." +
                     method.Name);
             }

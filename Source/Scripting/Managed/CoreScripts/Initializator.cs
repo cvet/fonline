@@ -1,3 +1,5 @@
+#nullable enable
+
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -72,7 +74,7 @@ namespace FOnline
                 foreach (MethodInfo method in type.GetMethods(
                     BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
                 {
-                    ModuleInitAttribute attr = (ModuleInitAttribute)Attribute.GetCustomAttribute(
+                    ModuleInitAttribute? attr = (ModuleInitAttribute?)Attribute.GetCustomAttribute(
                         method,
                         typeof(ModuleInitAttribute));
 
@@ -102,19 +104,19 @@ namespace FOnline
             foreach (Tuple<int, MethodInfo> moduleInit in moduleInits.OrderBy(entry => entry.Item1))
             {
                 MethodInfo method = moduleInit.Item2;
-                object result = method.Invoke(null, null);
+                object? result = method.Invoke(null, null);
 
                 if (method.ReturnType == typeof(void))
                 {
                     continue;
                 }
 
-                Task task = (Task)result;
+                Task? task = (Task?)result;
                 if (task == null)
                 {
                     throw new InvalidOperationException(
                         "ModuleInit Task method returned null: " +
-                        method.DeclaringType.FullName +
+                        method.DeclaringType?.FullName +
                         "." +
                         method.Name);
                 }

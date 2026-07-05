@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace FOnline
 {
     // Ported from Engine/Source/Scripting/AngelScript/CoreScripts/Color.fos (the engine Color:: core script):

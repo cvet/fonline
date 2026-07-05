@@ -50,6 +50,7 @@ public:
     [[nodiscard]] auto GetMetadata() const noexcept -> EngineMetadata* { return _meta.get_no_const(); }
     [[nodiscard]] auto GetGlobalEntity() const noexcept -> Entity*;
     [[nodiscard]] auto GetImages() const noexcept -> const vector<nptr<void>>& { return _images; }
+    [[nodiscard]] auto GetAliveFlagObject() const -> void*;
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view bake_output_dir = {});
@@ -59,8 +60,8 @@ public:
 
 private:
     void InvokeInitializator(void* assembly, const char* method_name);
-    void RegisterAliveBackend();
-    void UnregisterAliveBackend();
+    void CreateAliveFlag();
+    void ReleaseAliveFlag();
 
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
@@ -68,7 +69,7 @@ private:
     vector<nptr<void>> _images {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _globalFuncGcHandles {};
-    bool _aliveRegistered {};
+    uint32_t _aliveFlagGcHandle {};
 };
 
 FO_END_NAMESPACE
