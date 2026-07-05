@@ -231,17 +231,12 @@ struct OpenGL_Renderer::Context
     unique_nptr<RenderTexture> DummyTexture {};
     irect32 ViewPortRect {};
 
-    // Redundant-bind elision for SetRenderTarget: the engine pushes/pops render targets ~90 times
-    // per frame and most calls re-select the already-bound target; skipping them saves the FBO
-    // bind, viewport, aspect-fit math and ortho recompute. Invalidated on resize, on destruction
-    // of the cached texture, and by anything that leaves a different FBO bound.
+    // SetRenderTarget elision cache; invalidated on resize and on destruction of the cached texture
     nptr<RenderTexture> CurrentRenderTarget {};
     bool CurrentRenderTargetValid {};
 
-    // Bump-allocated uniform buffer shared by all effects (see Vulkan_Renderer's equivalent):
-    // per draw, every needed uniform block is written into one contiguous region with a single
-    // glBufferSubData and bound via glBindBufferRange, replacing up to ~8 tiny glBufferData
-    // re-specifications per draw. Orphaned (re-specified) once per frame in Present().
+    // Shared bump-allocated uniform buffer: blocks upload per draw with one glBufferSubData and
+    // bind via glBindBufferRange; orphaned once per frame in Present()
     GLuint UniformBumpBuf {};
     size_t UniformBumpOffset {};
     size_t UniformBumpCapacity {};
@@ -690,8 +685,7 @@ void OpenGL_Renderer::Present()
         throw RenderingException("OpenGL error", err);
     }
 
-    // Rewind the shared uniform bump buffer with fresh (orphaned) storage: draws submitted for
-    // the presented frame may still reference the old storage, which the driver keeps alive.
+    // Rewind the bump buffer with fresh (orphaned) storage; the driver keeps the old one alive
     if (ctx->UniformBumpBuf != 0) {
         GL(glBindBuffer(GL_UNIFORM_BUFFER, ctx->UniformBumpBuf));
         GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
@@ -738,9 +732,8 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
     FO_VERIFY_AND_THROW(status == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer is incomplete", status);
 
-    // Restore the actual current render target's framebuffer (texture creation can happen
-    // mid-frame while a texture target is selected), keeping the SetRenderTarget elision
-    // cache truthful.
+    // Restore the actual current target's framebuffer (creation can happen mid-frame while a
+    // texture target is selected)
     if (ctx->CurrentRenderTargetValid && ctx->CurrentRenderTarget) {
         auto cur_target = RenderBackendCast<OpenGL_Texture>(ctx->CurrentRenderTarget.as_ptr());
         GL(glBindFramebuffer(GL_FRAMEBUFFER, cur_target->FramebufObj));
@@ -1103,8 +1096,7 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 
     ctx->BaseFrameBufSize = size;
 
-    // The back-buffer viewport math depends on the new size; drop the elision cache so the
-    // re-apply below (and any later back-buffer select) recomputes instead of being skipped.
+    // The back-buffer viewport math depends on the new size; drop the elision cache
     ctx->CurrentRenderTargetValid = false;
 
     if (ctx->BaseFrameBufObjBinded) {
@@ -1116,8 +1108,7 @@ OpenGL_Texture::~OpenGL_Texture()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // A new texture may later be allocated at this address; a stale cache entry would
-    // wrongly elide its first SetRenderTarget.
+    // A new texture may reuse this address; a stale cache entry would elide its first select
     if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget.get() == static_cast<RenderTexture*>(this)) {
         _ctx->CurrentRenderTargetValid = false;
     }
@@ -1523,15 +1514,9 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
-    // Uniform blocks needed by this draw are packed into one contiguous bump-buffer region and
-    // uploaded with a single glBufferSubData; the per-pass loop below binds each block with
-    // glBindBufferRange. Slot indices follow the fixed order of the gather calls.
-    //
-    // Every shader-required block must be written and bound EVERY draw: a binding left from an
-    // earlier draw would point into the shared bump buffer, whose storage is re-specified once
-    // per frame — after the orphan the stale range reads undefined data (the old per-effect
-    // UBOs kept their last value forever, so a skipped upload used to be benign). Mirror the
-    // Vulkan backend and default-initialize any required-but-unset buffer to zero.
+    // Every shader-required block must be written and bound EVERY draw: a stale binding would
+    // point into the shared bump buffer, whose storage dies at the per-frame orphan — so
+    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend).
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }

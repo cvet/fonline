@@ -271,11 +271,8 @@ public:
     //   FrameTime.x = real-frame time in seconds since the first rendered frame, wrapped at 8192 s.
     //   GameTime.x  = game-frame time in seconds, same wrap (same source today, may diverge).
     //   Both .yzw are reserved (zero).
-    // Session-relative and wrapped on purpose: the values are animation phases consumed by fp32
-    // shader math (fract/hash/sin), which degrades visibly at large magnitudes — the wrap keeps the
-    // clock granularity under 1 ms for any session length. Consumers must treat the value as a
-    // periodic phase source (the once-per-period phase pop must land on noisy/ambient math);
-    // effects feeding it into hash lattices should still wrap locally (see mod() in fog effects).
+    // The values are periodic animation phases: fp32 shader math degrades at large magnitudes, so
+    // consumers must tolerate the once-per-period pop and wrap unbounded phase math locally.
     // (EffectManager::PerFrameEffectUpdate.)
     struct TimeBuffer
     {
