@@ -2036,7 +2036,7 @@ TEST_CASE("PropertiesRestoreAllDataRejectsOutOfBoundsPodSection")
 
     vector<uint8_t> blob;
     const auto append_u32 = [&blob](uint32_t value) {
-        const auto* bytes = reinterpret_cast<const uint8_t*>(&value);
+        const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&value);
         blob.insert(blob.end(), bytes, bytes + sizeof(value));
     };
 

@@ -2765,17 +2765,17 @@ int RunInitList()
 }
 )";
 
-    auto* module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
+    nptr<asIScriptModule> module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
     REQUIRE(module != nullptr);
     CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
     REQUIRE(module->Build() >= 0);
 
-    auto* func = module->GetFunctionByDecl("int RunInitList()");
+    nptr<asIScriptFunction> func = module->GetFunctionByDecl("int RunInitList()");
     REQUIRE(func != nullptr);
 
-    auto* ctx = engine->CreateContext();
+    nptr<asIScriptContext> ctx = engine->CreateContext();
     REQUIRE(ctx != nullptr);
-    CHECK(ctx->Prepare(func) >= 0);
+    CHECK(ctx->Prepare(func.get()) >= 0);
     REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
     CHECK(ctx->GetReturnDWord() == 8U);
     ctx->Release();

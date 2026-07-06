@@ -180,8 +180,8 @@ static auto ReadSavedModelInfoString(DataReader& reader) -> string
     FO_STACK_TRACE_ENTRY();
 
     const uint32_t len = reader.Read<uint32_t>();
-    const char* str = reader.ReadPtr<char>(len).get();
-    return str != nullptr ? string(str, len) : string {};
+    const_span<uint8_t> str_bytes = reader.ReadBytes(len);
+    return !str_bytes.empty() ? string(reinterpret_cast<const char*>(str_bytes.data()), len) : string {};
 }
 
 static void SkipSavedModelInfoCut(DataReader& reader)
@@ -191,7 +191,7 @@ static void SkipSavedModelInfoCut(DataReader& reader)
     (void)ReadSavedModelInfoString(reader);
 
     const uint32_t layer_count = reader.Read<uint32_t>();
-    (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
+    (void)reader.ReadBytes(numeric_cast<size_t>(layer_count) * sizeof(int32_t));
 
     const uint32_t shape_count = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < shape_count; i++) {
@@ -226,7 +226,7 @@ static auto ReadSavedModelInfoLink(DataReader& reader) -> SavedModelInfoLink
     link.SpeedAdjust = reader.Read<float32_t>();
 
     link.DisabledLayerCount = reader.Read<uint32_t>();
-    (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(link.DisabledLayerCount) * sizeof(int32_t));
+    (void)reader.ReadBytes(numeric_cast<size_t>(link.DisabledLayerCount) * sizeof(int32_t));
 
     link.DisabledMeshCount = reader.Read<uint32_t>();
     for (uint32_t i = 0; i < link.DisabledMeshCount; i++) {
@@ -272,16 +272,16 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
 
     const uint32_t vertex_count = reader.Read<uint32_t>();
     summary.Vertices += vertex_count;
-    const auto* vertices = reader.ReadPtr<uint8_t>(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D)).get();
+    const_span<uint8_t> vertices = reader.ReadBytes(numeric_cast<size_t>(vertex_count) * sizeof(Vertex3D));
     if (vertex_count != 0 && !summary.FirstVertex) {
         Vertex3D first_vertex;
-        MemCopy(&first_vertex, vertices, sizeof(first_vertex));
+        MemCopy(&first_vertex, vertices.data(), sizeof(first_vertex));
         summary.FirstVertex = first_vertex;
     }
 
     const uint32_t index_count = reader.Read<uint32_t>();
     summary.Indices += index_count;
-    (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(index_count) * sizeof(vindex_t));
+    (void)reader.ReadBytes(numeric_cast<size_t>(index_count) * sizeof(vindex_t));
 
     summary.DiffuseTexture = ReadSavedModelInfoString(reader);
 
@@ -292,7 +292,7 @@ static void SkipBakedModelMeshPayload(DataReader& reader, BakedModelMeshSummary&
     }
 
     const uint32_t skin_bone_offset_count = reader.Read<uint32_t>();
-    (void)reader.ReadPtr<uint8_t>(numeric_cast<size_t>(skin_bone_offset_count) * sizeof(mat44));
+    (void)reader.ReadBytes(numeric_cast<size_t>(skin_bone_offset_count) * sizeof(mat44));
 }
 
 static void ReadBakedModelMeshSummaryBone(DataReader& reader, BakedModelMeshSummary& summary)
@@ -302,8 +302,8 @@ static void ReadBakedModelMeshSummaryBone(DataReader& reader, BakedModelMeshSumm
     (void)ReadSavedModelInfoString(reader);
     summary.Bones++;
 
-    (void)reader.ReadPtr<uint8_t>(sizeof(mat44));
-    (void)reader.ReadPtr<uint8_t>(sizeof(mat44));
+    (void)reader.ReadBytes(sizeof(mat44));
+    (void)reader.ReadBytes(sizeof(mat44));
 
     if (reader.Read<uint8_t>() != 0) {
         summary.AttachedMeshes++;

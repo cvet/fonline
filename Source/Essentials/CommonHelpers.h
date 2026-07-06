@@ -426,6 +426,12 @@ template<typename R>
 }
 
 template<typename T>
+[[nodiscard]] inline auto make_span(ptr<T> data, size_t length) noexcept -> span<T>
+{
+    return {data.get(), length};
+}
+
+template<typename T>
     requires(!std::is_void_v<T>)
 [[nodiscard]] inline auto make_const_span(const T* data, size_t byte_size) noexcept -> const_span<uint8_t>
 {
@@ -454,6 +460,54 @@ template<typename R>
 [[nodiscard]] inline auto span_to_string(const_span<uint8_t> bytes) noexcept -> string_view
 {
     return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+}
+
+template<typename T>
+[[nodiscard]] inline auto bytes_to_objects(span<uint8_t> data) noexcept -> span<T>
+{
+    if (data.empty()) {
+        return {};
+    }
+
+    FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
+    nptr<uint8_t> nullable_bytes = data.data();
+    FO_STRONG_ASSERT(nullable_bytes, "Byte span has a null pointer");
+    auto bytes = nullable_bytes.as_ptr();
+    ptr<T> values = bytes.reinterpret_as<T>();
+    return make_span(values, data.size() / sizeof(T));
+}
+
+template<typename T>
+[[nodiscard]] inline auto object_to_bytes(T& object) noexcept -> span<uint8_t>
+{
+    ptr<T> object_ptr = &object;
+    ptr<uint8_t> bytes = object_ptr.template reinterpret_as<uint8_t>();
+    return make_span(bytes, sizeof(T));
+}
+
+template<typename T>
+[[nodiscard]] inline auto get_object_byte(T& object, size_t index) noexcept -> uint8_t
+{
+    span<uint8_t> bytes = object_to_bytes(object);
+    FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
+    return bytes[index];
+}
+
+template<typename T>
+inline void set_object_byte(T& object, size_t index, uint8_t value) noexcept
+{
+    span<uint8_t> bytes = object_to_bytes(object);
+    FO_STRONG_ASSERT(index < bytes.size(), "Object byte index is out of range");
+    bytes[index] = value;
+}
+
+template<typename T>
+inline void swap_object_bytes(T& object, size_t first_index, size_t second_index) noexcept
+{
+    span<uint8_t> bytes = object_to_bytes(object);
+    FO_STRONG_ASSERT(first_index < bytes.size(), "First object byte index is out of range");
+    FO_STRONG_ASSERT(second_index < bytes.size(), "Second object byte index is out of range");
+    std::swap(bytes[first_index], bytes[second_index]);
 }
 
 FO_END_NAMESPACE

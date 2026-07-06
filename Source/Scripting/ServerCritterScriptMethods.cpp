@@ -220,7 +220,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobal(ptr<Critter> self)
 
 // SyncScope: requires self + current source map and every group critter + its current source map before transfer.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(ptr<Critter> self, readonly_vector<Critter*> group)
+FO_SCRIPT_API void Server_Critter_TransferToGlobalWithGroup(ptr<Critter> self, readonly_vector<nptr<Critter>> group)
 {
     if (self->IsMapTransfersLocked()) {
         throw ScriptException("Transfers locked");
@@ -273,7 +273,7 @@ FO_SCRIPT_API void Server_Critter_TransferToGlobalGroup(ptr<Critter> self, ptr<C
     const auto& self_group = self->GetRawGlobalMapGroup();
     const auto& target_group = globalCr->GetRawGlobalMapGroup();
 
-    if (self_group && target_group && self_group.get() == target_group.get()) {
+    if (self_group && target_group && self_group == target_group) {
         return;
     }
 
@@ -350,7 +350,7 @@ FO_SCRIPT_API nptr<Critter> Server_Critter_GetCritter(ptr<Critter> self, ident_t
 
 // SyncScope: requires self and current map when mapped; returned critters are covered only while that cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(ptr<Critter> self, CritterSeeType seeType, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Critter_GetCritters(ptr<Critter> self, CritterSeeType seeType, CritterFindType findType)
 {
     if (self->GetMapId()) {
         auto nullable_map = self->GetParent<Map>();
@@ -366,10 +366,10 @@ FO_SCRIPT_API vector<Critter*> Server_Critter_GetCritters(ptr<Critter> self, Cri
             return dist1 < dist2;
         });
 
-        return MakeScriptHandleVector<Critter>(critters);
+        return critters;
     }
 
-    return MakeScriptHandleVector<Critter>(self->GetCritters(seeType, findType));
+    return self->GetCritters(seeType, findType);
 }
 
 // SyncScope: requires self + cr; checks self's visibility cache for a covered critter.
@@ -569,15 +569,15 @@ FO_SCRIPT_API nptr<Item> Server_Critter_GetItem(ptr<Critter> self, ItemProperty 
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self)
 {
     vector<ptr<Item>> items = self->GetInvItems();
-    return MakeScriptHandleVector<Item>(items);
+    return items;
 }
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     vector<ptr<Item>> items = self->GetInvItems();
@@ -591,12 +591,12 @@ FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, ItemPrope
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, hstring protoId)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, hstring protoId)
 {
     vector<ptr<Item>> items = self->GetInvItems();
 
@@ -609,12 +609,12 @@ FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, hstring p
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned inventory items are covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, ptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<Item>> Server_Critter_GetItems(ptr<Critter> self, ptr<ProtoItem> proto)
 {
     vector<ptr<Item>> items = self->GetInvItems();
 
@@ -627,7 +627,7 @@ FO_SCRIPT_API vector<Item*> Server_Critter_GetItems(ptr<Critter> self, ptr<Proto
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self + inventory item; mutates item slot and fires movement/equipment events.
@@ -762,7 +762,7 @@ FO_SCRIPT_API void Server_Critter_Action(ptr<Critter> self, CritterAction action
 
 // SyncScope: requires self + every non-null item in items; sends a network payload without changing cover.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Critter_SendItems(ptr<Critter> self, readonly_vector<Item*> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
+FO_SCRIPT_API void Server_Critter_SendItems(ptr<Critter> self, readonly_vector<nptr<Item>> items, bool owned = false, bool withInnerEntities = false, any_t contextParam = any_t {})
 {
     vector<ptr<const Item>> send_items;
     send_items.reserve(items.size());
@@ -1018,10 +1018,10 @@ FO_SCRIPT_API void Server_Critter_DetachAllCritters(ptr<Critter> self)
 
 // SyncScope: requires self; returned attached critters need their own cover before mutation.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Critter_GetAttachedCritters(ptr<Critter> self)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Critter_GetAttachedCritters(ptr<Critter> self)
 {
     span<ptr<Critter>> attached_critters = self->GetAttachedCritters();
-    return MakeScriptHandleVector<Critter>(attached_critters);
+    return vector<ptr<Critter>>(attached_critters.begin(), attached_critters.end());
 }
 
 // SyncScope: requires self; reads offline state for this critter's player link only.

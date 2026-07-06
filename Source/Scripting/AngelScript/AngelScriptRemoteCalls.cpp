@@ -162,7 +162,7 @@ static auto ReadMutableObjectHandleSlot(nptr<const void> slot) noexcept -> nptr<
         return nullptr;
     }
 
-    return *static_cast<void* const*>(const_cast<void*>(slot.get()));
+    return *slot.reinterpret_as<void*>();
 }
 
 static auto ResolveInboundRemoteCallImplementation(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> nptr<AngelScript::asIScriptFunction>
@@ -312,7 +312,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
         ptr<uint8_t> storage_bytes = storage.Bytes;
-        reader.ReadPtr(cast_to_void(storage_bytes.get()), size);
+        reader.ReadBytes({storage_bytes.get(), size});
         return cast_to_void(storage_bytes.get());
     };
 

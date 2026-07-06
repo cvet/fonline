@@ -28,6 +28,8 @@ The migration from the older `raw_ptr` name is intentionally staged. `raw_ptr<T>
 
 Use `nptr<T>::as_ptr()` after a local null check when a nullable borrowed value is explicitly narrowed to a required borrowed `ptr<T>`. The method asserts the non-null invariant and keeps the narrowing visible at the call site.
 
+For a short, locally **guarded** use you may instead dereference an `nptr<T>` directly (`nptr<T>` has `operator->` / `operator*`): `if (cr) { cr->Foo(); }`, the short-circuit `cr && cr->Foo()`, or after an early `if (!cr) { return; }`. The guard already proves non-null, so an `as_ptr()` there would only add a redundant assert. Prefer narrowing to a named `ptr<T>` when the checked value is used repeatedly. In script bindings (`FO_SCRIPT_API` and `SourceExt/` script impls) this is **enforced**: the smart-pointer audit's `ScriptNullableLocalDereference` rule is guard-aware — it accepts the guarded forms above but flags any `nptr` local dereferenced with no preceding null test.
+
 **Narrowing names.** A pointer's name form follows its *type*, so a raw value, a nullable wrapper, and a checked non-null view never collide in one scope. The clean domain name is reserved for the non-null `ptr<T>` — the value the body actually works with; the `raw_` / `nullable_` prefixes mark boundary values that exist only to be checked and narrowed:
 
 | Type | local / parameter (`snake_case`) | data member (`_camelCase`) |
@@ -100,6 +102,12 @@ When a reviewed raw cleanup boundary must adopt object storage, route it through
 
 For a low-level byte/ABI reinterpret of the pointee type (`ucolor` <-> `uint8_t`, `void` -> `T`, etc.), use `ptr<T>::reinterpret_as<U>()` / `nptr<T>::reinterpret_as<U>()` rather than the raw `cast_from_void<U*>(cast_to_void(p.get()))` roundtrip. It returns `ptr<U>` / `nptr<U>`, propagates the source pointee's `const` (so it can never silently strip `const`), and accepts a `ptr<void>` source (as `GetPtrAs<U>()` does). Reserve the bare `cast_from_void` / `cast_to_void` helpers for what the method cannot express — a deliberate const-stripping reinterpret (off a `get_no_const()`), or a non-wrapper raw operand.
 
+`cast_from_void<T>(void_ptr)` recovers a **concrete** typed pointer from a `void`-based pointer with `static_cast` (keeping const-correctness); its `T` must have a non-void ultimate pointee. A **void-of-void** indirection (`void**`, `const void* const*`, ...) — the AngelScript handle-slot plumbing in `ScriptSystem.h` and the script-call bridges — is not a concrete recovery, so reinterpret the *wrapper* with `ptr<void>::reinterpret_as<void*>()` / `nptr<const void>::reinterpret_as<const void*>()` (dereference with `*` to read the stored handle). A concrete-to-concrete storage reinterpret (e.g. a `unique_del_ptr<uint8_t>` holding a typed object) likewise goes through the wrapper's `.as_ptr().reinterpret_as<T>()`.
+
+For reinterpreting a mutable **byte span** as a typed value span, use the shared `bytes_to_objects<T>(span<uint8_t>)` helper (`CommonHelpers.h`) — it reinterprets the whole byte span (asserting the size is a whole multiple of `sizeof(T)`) into a `span<T>` through `reinterpret_as`; take a subrange with `span::first`/`subspan` on the input or result when fewer elements are wanted. The inverse `object_to_bytes<T>(T&)` exposes one object as its `span<uint8_t>`.
+
+To build a typed **element span** from a borrowed pointer and a length, use `make_span(ptr<T>, length) -> span<T>` / `make_const_span(ptr<T>, length) -> const_span<T>` (`CommonHelpers.h`) instead of constructing `span<T>{p.get(), length}` — they keep the `.get()` unwrap inside the helper. `make_const_span` also has a raw `const T*` overload for container-data sources (`make_const_span(vec.data(), n)`). (The other `make_span(...)` overloads take a *byte* size and return a `span<uint8_t>` view; the `ptr<T>` overload counts elements.) For a `ptr<char>` / `ptr<const char>` holding text, `as_str(size_t len) -> string_view` builds the view directly rather than `string_view{p.get(), len}`.
+
 ### Always-on non-null enforcement
 
 The non-null invariant is enforced by an **always-on** runtime check, in every build configuration — not a debug-only `assert` that release strips. Constructing a `ptr<T>` from a null raw pointer (the `ptr(T*)` ctor), and every nullable→non-null narrowing (`nptr<T>::as_ptr()`, `refcount_nptr<T>::as_ptr()` / `take_not_null()`, `unique_nptr<T>::take_not_null()`, `shared_ptr<T>::as_ptr()`, …), assert the invariant and, on violation, produce the same `StrongAssertationException` report and process exit as `FO_STRONG_ASSERT`.
@@ -138,6 +146,8 @@ These rules are the unconditional behavior of the smart-pointer types. (They wer
 - `ptr<T>` has no default/null construction, `nullptr` assignment/comparison, `operator bool`, `get_pp()`, or `reset()` without a replacement pointer.
 - `unique_ptr<T>` / `refcount_ptr<T>` have no default/null construction, `nullptr` assignment/comparison, `operator bool`, default-null `reset()`, or lvalue `release()` / `release_ownership()`; rvalue `unique_ptr<T>::release()` returns `ptr<T>`.
 
+Any two wrapper values (borrow or owner, same or different kind) compare directly with `==` / `!=` through a heterogeneous free `operator==` that forwards to the stored pointers — write `item == other_item` rather than unwrapping both sides with `.get()`. The smart-pointer audit's `DirectWrapperGetComparison` rule flags `a.get() == b.get()`.
+
 New code must be valid under this contract; the nullable siblings (`nptr<T>`, `unique_nptr<T>`, `refcount_nptr<T>`) exist for the genuinely-optional cases.
 
 ## Raw pointer allowlist
@@ -160,15 +170,17 @@ For engine-owned APIs outside these categories, prefer `ptr<T>` or `nptr<T>` for
 
 - The engine/entity **receiver** (first parameter) is always non-null, so it is `ptr<EngineType>` / `ptr<EntityType>`.
 - A non-null entity/ref argument or return is `ptr<T>`; a nullable one is `nptr<T>`, replacing the older bare `T*` spelling (nullability is now carried by the wrapper type).
+- **Container element types** may use the wrapper vocabulary too: a return `vector<ptr<T>>` and a parameter `readonly_vector<ptr<T>>` / `readonly_vector<nptr<T>>` are supported. Codegen reduces the element to the raw handle for the AngelScript metadata (the registered `T@[]` signature and the compatibility hash are unchanged), and — for **parameters** — re-spells the generated extern and `NativeCall` cast with the element wrapper so the glue matches the C++-mangled parameter (`container_element_wrapper` / `apply_container_element_wrapper` in `codegen.py`). Returns need no such match: C++ return types are not part of the mangled symbol, so a `vector<ptr<T>>` body links against the raw extern by layout-compat. The vector unmarshaller reads each element as its `value_type`, so wrapped elements work by pointer layout-compatibility.
+- `///@ ExportRefType` methods (e.g. the dialog accessors) may likewise return `ptr<T>` / `nptr<T>` instead of raw `T*`. Codegen records the return wrapper (`RefTypeMethod.ret_wrapper`) and appends `.get()` inside the generated `Wrapped::Call` body so the raw-`T*` glue return still matches; the script `.Ret` metadata stays the reduced handle type, so the registered signature and compatibility hash are unchanged.
 - The script-facing AngelScript registration is unchanged, so no `.fos`, bytecode, or save migration is required; only the C++ glue type changes. The client/server compatibility hash deliberately excludes the wrapper spelling.
 
 These script-binding shapes intentionally stay raw at the ABI edge:
 
-- Script-visible **container element types** (`vector<T*>` / `readonly_vector<T*>`, `FO_ENTITY_EVENT` payloads): the AngelScript generator owns the raw-handle vector ABI. Build contents from wrapper locals and unwrap only at the final handoff.
+- Script-visible **container element types** stay raw `vector<T*>` only where a wrapper cannot carry the contract: the raw-handle **bridge helpers** in `ScriptSystem.h` (`MakeScriptHandleVector*`), **ownership-transfer returns** that release `refcount_ptr` to the script (`ReleaseScriptOwnershipVector` — a `vector<ptr<T>>` would drop the ref → use-after-free), **const-strip returns** whose `const_cast` belongs inside the helper (`MakeMutableScriptHandleVector`, `MakeScriptRefHandleVectorAs`), and `FO_ENTITY_EVENT` payloads. Everywhere else, prefer the wrapper spelling above and build contents from wrapper locals.
 - Generic AngelScript plumbing, generated registration strings, handle slots, and `char*` / `char**` buffers and process argv.
 - `///@ EngineHook` callbacks: the engine **calls** these with raw pointers, so their definitions keep the raw signature.
 
-Inside an export body, bind any remaining raw input to a wrapper before ordinary engine work and unwrap (`.get()`) only at the final ABI/handoff line.
+Inside an export body, bind any remaining raw input to a wrapper before ordinary engine work and unwrap (`.get()`) only at the final ABI/handoff line. When a function's declared **return type is itself a raw pointer** (a `void*`/`T*` handed to a C or script API — SDL/ImGui/Spine allocators, script element accessors, generic readers), `return wrapper.get();` is allowed: the audit reads the function's return type (raw pointer, deduced `auto`, or a bare template parameter `-> T`) and treats such a `.get()` return as a genuine raw-pointer boundary rather than a wrapper unwrap. A `.get()` return whose enclosing function returns a **wrapper** (`nptr<T>`/`ptr<T>`) is still flagged — return the wrapper (`return x;`) or bind a named wrapper local. The mutable `get_no_const()` return keeps its stricter rule (only inside a `Return*` / `BorrowScript*`-named boundary). The `GetAddressOfReturnLocation()` placement-new return likewise routes through a `Return*`-named boundary (e.g. `ReturnGenericPointer`).
 
 
 ## Migration rules

@@ -1698,7 +1698,7 @@ namespace CommonMethods
         FO_STACK_TRACE_ENTRY();
 
         writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-        writer.WritePtr(token.data(), token.size());
+        writer.WriteStringBytes(token);
     }
 
     static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
@@ -1813,21 +1813,21 @@ namespace CommonMethods
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
-        auto* as_engine = ctx->GetEngine();
+        nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
         REQUIRE(as_engine != nullptr);
 
-        auto* hstring_type = as_engine->GetTypeInfoByDecl("hstring");
+        nptr<AngelScript::asITypeInfo> hstring_type = as_engine->GetTypeInfoByDecl("hstring");
         REQUIRE(hstring_type != nullptr);
 
-        auto* conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
+        nptr<AngelScript::asIScriptFunction> conv_method = hstring_type->GetMethodByDecl("string opImplConv() const");
         REQUIRE(conv_method != nullptr);
 
         hstring key = server->Hashes.ToHashedString("AlphaKey");
-        REQUIRE(ctx->Prepare(conv_method) >= 0);
+        REQUIRE(ctx->Prepare(conv_method.get()) >= 0);
         REQUIRE(ctx->SetObject(&key) >= 0);
         REQUIRE(context_mngr->RunContext(ctx, false));
 
-        const auto* result = static_cast<const string*>(ctx->GetReturnObject());
+        const string* result = static_cast<const string*>(ctx->GetReturnObject());
         REQUIRE(result != nullptr);
         CHECK(*result == "AlphaKey");
     }

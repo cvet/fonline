@@ -335,7 +335,7 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ItemP
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self)
+FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self)
 {
     auto inv_items = self->GetInvItems();
 
@@ -346,11 +346,11 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self)
         items.emplace_back(inv_items[i]);
     }
 
-    return MakeScriptHandleVector<ItemView>(items);
+    return items;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<ItemView>> Client_Critter_GetItems(ptr<CritterView> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
     auto inv_items = self->GetInvItems();
@@ -366,7 +366,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Critter_GetItems(ptr<CritterView> self, I
         }
     }
 
-    return MakeScriptHandleVector<ItemView>(items);
+    return items;
 }
 
 ///@ ExportMethod

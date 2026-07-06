@@ -1011,7 +1011,7 @@ auto EngineMetadata::GetGameSetting(string_view name) const -> const BaseTypeDes
         throw TypeResolveException("Setting not found", name);
     }
 
-    return *it->second.get();
+    return *it->second;
 }
 
 auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring>

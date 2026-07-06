@@ -14,6 +14,9 @@ DeclareRequiredValueOptions(
 	FO_DEV_NAME "Short name for project"
 	FO_NICE_NAME "More readable name for project"
 	FO_GEOMETRY "HEXAGONAL or SQUARE geometry mode"
+	FO_MAP_HEX_WIDTH "Map hex width in pixels"
+	FO_MAP_HEX_HEIGHT "Map hex height in pixels"
+	FO_MAP_CAMERA_ANGLE "Map camera angle in degrees"
 	FO_APP_ICON "Executable file icon"
 	FO_OUTPUT_PATH "Common output path")
 
@@ -78,6 +81,9 @@ RequireNonEmptyVariables(
 	FO_DEV_NAME
 	FO_NICE_NAME
 	FO_GEOMETRY
+	FO_MAP_HEX_WIDTH
+	FO_MAP_HEX_HEIGHT
+	FO_MAP_CAMERA_ANGLE
 	FO_APP_ICON
 	FO_OUTPUT_PATH)
 
@@ -97,6 +103,8 @@ else()
 endif()
 
 StatusMessage("Build hash: ${FO_BUILD_HASH}")
+
+SetValue(FO_CODEGEN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py")
 
 # Some info about build
 StatusMessage("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")

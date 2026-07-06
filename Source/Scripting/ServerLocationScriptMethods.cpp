@@ -138,11 +138,11 @@ FO_SCRIPT_API ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t
 
 // SyncScope: requires self; returned maps are covered by self while the location cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Location_GetMaps(ptr<Location> self)
+FO_SCRIPT_API vector<ptr<Map>> Server_Location_GetMaps(ptr<Location> self)
 {
     vector<ptr<Map>> maps = self->GetMaps();
 
-    return MakeScriptHandleVector<Map>(maps);
+    return maps;
 }
 
 // SyncScope: requires self; regenerates all child maps covered by the location cover.

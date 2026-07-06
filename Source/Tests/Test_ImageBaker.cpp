@@ -836,8 +836,8 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
     frame.NextY = reader.Read<int16_t>();
 
     const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-    const uint8_t* frame_data = reader.ReadPtr<uint8_t>(data_size).get();
-    frame.Data.assign(frame_data, frame_data + data_size);
+    const auto frame_data = reader.ReadBytes(data_size);
+    frame.Data.assign(frame_data.begin(), frame_data.end());
 
     CHECK(reader.Read<uint8_t>() == 42);
     CHECK_NOTHROW(reader.VerifyEnd());
@@ -869,8 +869,8 @@ static void AddSourceBinaryFile(BakerTests::TestRig& rig, string_view path, cons
         frame.NextY = reader.Read<int16_t>();
 
         const size_t data_size = numeric_cast<size_t>(frame.Width) * frame.Height * 4;
-        const uint8_t* frame_data = reader.ReadPtr<uint8_t>(data_size).get();
-        frame.Data.assign(frame_data, frame_data + data_size);
+        const_span<uint8_t> frame_data = reader.ReadBytes(data_size);
+        frame.Data.assign(frame_data.begin(), frame_data.end());
     }
 
     CHECK(reader.Read<uint8_t>() == 42);
@@ -1064,7 +1064,7 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<int16_t>() == dir + 1);
             CHECK(reader.Read<int16_t>() == -dir - 1);
 
-            const uint8_t* data = reader.ReadPtr<uint8_t>(4).get();
+            const_span<uint8_t> data = reader.ReadBytes(4);
             const uint8_t color_base = numeric_cast<uint8_t>(dir * 3 + 1);
             const vector<uint8_t> expected_data {
                 numeric_cast<uint8_t>(color_base * 4),
@@ -1072,7 +1072,7 @@ TEST_CASE("ImageBaker")
                 numeric_cast<uint8_t>((color_base + 2) * 4),
                 255,
             };
-            CHECK(vector<uint8_t>(data, data + 4) == expected_data);
+            CHECK(vector<uint8_t>(data.begin(), data.end()) == expected_data);
         }
 
         CHECK(reader.Read<uint8_t>() == 42);
@@ -1120,7 +1120,7 @@ TEST_CASE("ImageBaker")
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<int16_t>() == 2);
             CHECK(reader.Read<int16_t>() == 3);
-            CHECK(reader.ReadPtr<uint8_t>(4) != nullptr);
+            CHECK(reader.ReadBytes(4).size() == 4);
         }
 
         CHECK(reader.Read<uint8_t>() == 42);
@@ -1475,21 +1475,21 @@ TEST_CASE("ImageBaker")
             const auto next_y = reader.Read<int16_t>();
 
             const size_t data_size = numeric_cast<size_t>(width) * height * 4;
-            const auto* data = reader.ReadPtr<uint8_t>(data_size).get();
+            const_span<uint8_t> data = reader.ReadBytes(data_size);
 
             if (width == 3) {
                 CHECK(width == 3);
                 CHECK(height == 1);
                 CHECK(next_x == 1);
                 CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data, data + data_size) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
+                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0x33, 0x22, 0x11, 0xFF, 0x28, 0x1E, 0x14, 0xFF, 0, 0, 0, 0x40});
             }
             else {
                 CHECK(width == 1);
                 CHECK(height == 1);
                 CHECK(next_x == 0);
                 CHECK(next_y == 1);
-                CHECK(vector<uint8_t>(data, data + data_size) == vector<uint8_t> {0, 0, 0, 0});
+                CHECK(vector<uint8_t>(data.begin(), data.end()) == vector<uint8_t> {0, 0, 0, 0});
             }
 
             CHECK(reader.Read<bool>());
@@ -1703,7 +1703,7 @@ Frm=one.toy
             CHECK(reader.Read<uint16_t>() == 1);
             (void)reader.Read<int16_t>();
             (void)reader.Read<int16_t>();
-            (void)reader.ReadPtr<uint8_t>(4);
+            (void)reader.ReadBytes(4);
 
             CHECK(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 0);

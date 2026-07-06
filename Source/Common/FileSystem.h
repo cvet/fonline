@@ -81,10 +81,8 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> nptr<const uint8_t>;
     [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetSize() const -> size_t;
-    [[nodiscard]] auto GetCurBuf() const -> nptr<const uint8_t>;
     [[nodiscard]] auto GetCurDataSpan(size_t size) const -> const_span<uint8_t>;
     [[nodiscard]] auto GetCurPos() const -> size_t;
     // ReSharper disable CppInconsistentNaming
@@ -104,27 +102,24 @@ public:
     auto SeekFragment(string_view fragment) -> bool;
     void CopyData(span<uint8_t> buf);
     void ReadBytes(span<uint8_t> out);
+    void SetCurPos(size_t pos);
+    void GoForward(size_t offs);
+    void GoBack(size_t offs);
+
     template<typename T>
+        requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
     void ReadObject(T& out)
     {
-        static_assert(std::is_standard_layout_v<T>);
-        static_assert(std::is_trivially_copyable_v<T>);
-
         CopyData(make_span(&out, sizeof(T)));
     }
     template<typename T>
+        requires(std::is_standard_layout_v<T> && std::is_trivially_copyable_v<T>)
     void ReadObjectArray(span<T> out)
     {
-        static_assert(std::is_standard_layout_v<T>);
-        static_assert(std::is_trivially_copyable_v<T>);
-
         if (!out.empty()) {
             CopyData(make_span(out.data(), out.size() * sizeof(T)));
         }
     }
-    void SetCurPos(size_t pos);
-    void GoForward(size_t offs);
-    void GoBack(size_t offs);
 
 private:
     const_span<uint8_t> _buf;
@@ -144,7 +139,6 @@ public:
 
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetData() const -> vector<uint8_t>;
-    [[nodiscard]] auto GetBuf() const -> ptr<const uint8_t>;
     [[nodiscard]] auto GetDataSpan() const -> const_span<uint8_t>;
     [[nodiscard]] auto GetReader() const -> FileReader;
 

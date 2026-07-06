@@ -89,8 +89,7 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE TextPackKey>
     auto operator()(const FO_NAMESPACE TextPackKey& v) const noexcept
     {
         const FO_NAMESPACE hstring::hash_t hashes[] = {v.Collection.underlying_value().as_hash(), v.Key1.as_hash(), v.Key2.as_hash(), v.Key3.as_hash()};
-        FO_NAMESPACE ptr<const FO_NAMESPACE hstring::hash_t> hashes_data = hashes;
-        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes_data, sizeof(hashes)));
+        return FO_NAMESPACE HashStorage::DefaultHash(FO_NAMESPACE make_span(hashes));
     }
 };
 template<>

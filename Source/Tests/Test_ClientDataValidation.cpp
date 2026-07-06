@@ -507,7 +507,7 @@ TEST_CASE("ClientDataValidationFuzz")
         DataWriter writer(data);
         const string text = "hello";
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WritePtr(text.data(), text.length());
+        writer.WriteStringBytes(text);
         writer.Write<int32_t>(3); // int array element count
         writer.Write<int32_t>(1);
         writer.Write<int32_t>(2);

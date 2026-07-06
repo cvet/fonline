@@ -768,7 +768,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.get()))};
+    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
 
     {
         ScopedSyncContext ctx;
@@ -823,12 +823,12 @@ void ServerEngine::OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_pl
     FO_STACK_TRACE_ENTRY();
 
     if (unlogined_player) {
-        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.as_ptr().get()))};
+        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
         _workerPool->Cancel(unlogined_key);
     }
 
     if (!unlogined_player || !(player == unlogined_player)) {
-        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(player.get()))};
+        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
         _workerPool->Cancel(same_addr_key);
     }
 

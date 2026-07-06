@@ -150,7 +150,7 @@ static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) no
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    Preprocessor::LineNumberTranslator* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     Preprocessor::DeleteLineNumberTranslator(lnt);
     engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
 }

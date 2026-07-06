@@ -246,28 +246,22 @@ static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_p
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Window> {window.get(), [](SDL_Window* raw_window) {
-                                           FO_NO_STACK_TRACE_ENTRY();
-
-                                           if (raw_window != nullptr) {
-                                               ptr<SDL_Window> window = raw_window;
-                                               SDL_DestroyWindow(window.get());
-                                           }
-                                       }};
+    return make_unique_del_ptr(window, [](SDL_Window* raw_window) {
+        if (raw_window != nullptr) {
+            SDL_DestroyWindow(raw_window);
+        }
+    });
 }
 
 static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique_del_ptr<SDL_Renderer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return unique_del_ptr<SDL_Renderer> {renderer.get(), [](SDL_Renderer* raw_renderer) {
-                                             FO_NO_STACK_TRACE_ENTRY();
-
-                                             if (raw_renderer != nullptr) {
-                                                 ptr<SDL_Renderer> renderer = raw_renderer;
-                                                 SDL_DestroyRenderer(renderer.get());
-                                             }
-                                         }};
+    return make_unique_del_ptr(renderer, [](SDL_Renderer* raw_renderer) {
+        if (raw_renderer != nullptr) {
+            SDL_DestroyRenderer(raw_renderer);
+        }
+    });
 }
 
 struct TemporarySdlWindowRenderer
@@ -791,7 +785,7 @@ void Application::DestroyChildWindow(nptr<AppWindow> nullable_window)
 
     std::erase_if(_allWindows, [&](auto&& entry) { return entry == window; });
 
-    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return entry.get() == window.get(); });
+    const auto it = std::ranges::find_if(_childWindows, [&](const auto& entry) { return window == entry; });
 
     if (it == _childWindows.end()) {
         return;
@@ -2295,7 +2289,7 @@ void Application::EndFrame()
                     FO_VERIFY_AND_THROW(nullable_tex_data, "ImGui texture pixel data is null");
                     auto tex_data = nullable_tex_data.as_ptr();
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
-                    const const_span<ucolor> tex_pixels {tex_data.get(), tex_pixels_count};
+                    const auto tex_pixels = make_span(tex_data, tex_pixels_count);
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
                     im_tex->SetTexID(cast_to_void(font_tex.get()));
                     im_tex->SetStatus(ImTextureStatus_OK);
@@ -2312,7 +2306,7 @@ void Application::EndFrame()
                     nptr<RenderTexture> nullable_tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
                     FO_VERIFY_AND_THROW(nullable_tex, "ImGui texture id does not reference a render texture");
                     auto tex = nullable_tex.as_ptr();
-                    const const_span<ucolor> update_pixels {update_data.get(), update_size_in_pixels};
+                    const auto update_pixels = make_span(update_data, update_size_in_pixels);
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
@@ -2741,7 +2735,7 @@ void AppWindow::Destroy()
         if (_windowHandle && this != &_app->MainWindow) {
             auto window_handle = _windowHandle.as_ptr();
             ptr<const HeadlessWindowStub> window_stub = cast_from_void<HeadlessWindowStub*>(window_handle.get());
-            std::erase_if(_app->_ctx->NullWindowStubs, [window_stub](const auto& entry) { return entry.get() == window_stub.get(); });
+            std::erase_if(_app->_ctx->NullWindowStubs, [window_stub](const auto& entry) { return window_stub == entry; });
             _windowHandle = nullptr;
         }
 

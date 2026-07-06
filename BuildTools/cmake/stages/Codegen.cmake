@@ -87,7 +87,7 @@ endforeach()
 
 SetValue(FO_CODEGEN_COMMAND
     ${Python3_EXECUTABLE}
-    "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/codegen.py"
+    "${FO_CODEGEN_SCRIPT}"
     "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
 SetValue(codegenTouchCommand
     ${CMAKE_COMMAND}
@@ -97,7 +97,7 @@ SetValue(codegenTouchCommand
 AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
-    DEPENDS ${FO_CODEGEN_META_SOURCE}
+    DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 

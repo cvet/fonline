@@ -4374,7 +4374,7 @@ static void SetSelectionContour(ptr<ClientEntity> entity, ucolor color)
     // draws it. Mapper-only callers, but the Contour property exists on every Item/Critter.
     nptr<const Property> prop = entity->GetProperties()->GetRegistrator()->FindProperty("Contour");
 
-    if (prop != nullptr) {
+    if (prop) {
         entity->GetPropertiesForEdit()->SetValue<ucolor>(prop.as_ptr(), color);
     }
 }

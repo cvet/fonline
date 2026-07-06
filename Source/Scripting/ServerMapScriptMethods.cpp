@@ -298,14 +298,15 @@ FO_SCRIPT_API nptr<Item> Server_Map_GetItemInRadius(ptr<Map> self, mpos hex, int
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self)
 {
-    return MakeScriptHandleVector<Item>(self->GetItems());
+    span<ptr<Item>> items = self->GetItems();
+    return vector<ptr<Item>>(items.begin(), items.end());
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, hstring pid)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, hstring pid)
 {
     span<ptr<Item>> map_items = self->GetItems();
 
@@ -318,12 +319,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, hstring pid)
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, ptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
     span<ptr<Item>> map_items = self->GetItems();
 
@@ -336,24 +337,24 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, ptr<ProtoItem> pr
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
     vector<ptr<Item>> hex_items = self->GetItemsOnHex(hex);
-    return MakeScriptHandleVector<Item>(hex_items);
+    return hex_items;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -362,12 +363,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex,
         throw ScriptException("Invalid hex arg");
     }
 
-    return MakeScriptHandleVector<Item>(self->GetItemsInRadius(hex, radius));
+    return self->GetItemsInRadius(hex, radius);
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -387,12 +388,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex,
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -412,12 +413,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex,
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     span<ptr<Item>> map_items = self->GetItems();
@@ -431,12 +432,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItems(ptr<Map> self, ItemProperty prop
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
@@ -455,12 +456,12 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsOnHex(ptr<Map> self, mpos hex, It
         }
     }
 
-    return MakeScriptHandleVector<Item>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned items are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Item>> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -483,7 +484,7 @@ FO_SCRIPT_API vector<Item*> Server_Map_GetItemsInRadius(ptr<Map> self, mpos hex,
         }
     }
 
-    return MakeScriptHandleVector<Item>(items);
+    return items;
 }
 
 // SyncScope: requires self; returned static item is map-static data covered by the map cover.
@@ -520,19 +521,19 @@ FO_SCRIPT_API nptr<StaticItem> Server_Map_GetStaticItemOnHex(ptr<Map> self, mpos
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
     span<ptr<StaticItem>> hex_static_items = self->GetStaticItemsOnHex(hex);
-    return MakeScriptHandleVector<StaticItem>(hex_static_items);
+    return vector<ptr<StaticItem>>(hex_static_items.begin(), hex_static_items.end());
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, hstring pid)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -542,12 +543,12 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> sel
     }
 
     vector<ptr<StaticItem>> static_items = self->GetStaticItemsInRadius(hex, radius, pid);
-    return MakeScriptHandleVector<StaticItem>(static_items);
+    return static_items;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ptr<ProtoItem> proto)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -557,12 +558,12 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> sel
     }
 
     vector<ptr<StaticItem>> static_items = self->GetStaticItemsInRadius(hex, radius, proto->GetProtoId());
-    return MakeScriptHandleVector<StaticItem>(static_items);
+    return static_items;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsOnHex(ptr<Map> self, mpos hex, ItemProperty property, int32_t propertyValue)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -580,12 +581,12 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsOnHex(ptr<Map> self, 
         }
     }
 
-    return MakeScriptHandleVector<StaticItem>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItemsInRadius(ptr<Map> self, mpos hex, int32_t radius, ItemProperty property, int32_t propertyValue)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -606,28 +607,28 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItemsInRadius(ptr<Map> sel
         }
     }
 
-    return MakeScriptHandleVector<StaticItem>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self, hstring pid)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, hstring pid)
 {
     vector<ptr<StaticItem>> static_items = self->GetStaticItems(pid);
-    return MakeScriptHandleVector<StaticItem>(static_items);
+    return static_items;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self, ptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ptr<ProtoItem> proto)
 {
     vector<ptr<StaticItem>> static_items = self->GetStaticItems(proto->GetProtoId());
-    return MakeScriptHandleVector<StaticItem>(static_items);
+    return static_items;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self, ItemProperty property, int32_t propertyValue)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
@@ -641,15 +642,15 @@ FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self, ItemP
         }
     }
 
-    return MakeScriptHandleVector<StaticItem>(result);
+    return result;
 }
 
 // SyncScope: requires self; returned static items are map-static data covered by the map cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Map_GetStaticItems(ptr<Map> self)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Map_GetStaticItems(ptr<Map> self)
 {
     span<ptr<StaticItem>> map_static_items = self->GetStaticItems();
-    return MakeScriptHandleVector<StaticItem>(map_static_items);
+    return vector<ptr<StaticItem>>(map_static_items.begin(), map_static_items.end());
 }
 
 // SyncScope: requires self; returned critter is covered by self while the map cover remains.
@@ -695,7 +696,7 @@ FO_SCRIPT_API nptr<Critter> Server_Map_GetCritter(ptr<Map> self, CritterProperty
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersOnHex(ptr<Map> self, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersOnHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -709,12 +710,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersOnHex(ptr<Map> self, mpos h
         return dist1 < dist2;
     });
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInRadius(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersInRadius(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
     if (radius < 0) {
         throw ScriptException("Radius arg must not be negative", radius);
@@ -738,12 +739,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInRadius(ptr<Map> self, mpo
         return dist1 < dist2;
     });
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -756,12 +757,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, CritterFind
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, hstring pid, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -774,12 +775,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, hstring pid
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -792,12 +793,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, ptr<ProtoCr
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCritters(ptr<Map> self, CritterProperty property, int32_t propertyValue, CritterFindType findType)
 {
     auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -811,7 +812,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCritters(ptr<Map> self, CritterProp
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned path critters are covered by self while the map cover remains.
@@ -836,7 +837,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersInPath(ptr<Map> self, mpos 
 
 // SyncScope: requires self; returned observer critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -847,12 +848,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mp
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned observer critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mpos hex, int32_t radius, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -863,12 +864,12 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeeHex(ptr<Map> self, mp
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; returned observer critters are covered by self while the map cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, mpos fromHex, mpos toHex, CritterFindType findType)
 {
     vector<ptr<Critter>> critters;
     span<ptr<Critter>> map_critters = self->GetCritters();
@@ -881,7 +882,7 @@ FO_SCRIPT_API vector<Critter*> Server_Map_GetCrittersWhoSeePath(ptr<Map> self, m
         }
     }
 
-    return MakeScriptHandleVector<Critter>(critters);
+    return critters;
 }
 
 // SyncScope: requires self; path trace reads static/map blockers only.

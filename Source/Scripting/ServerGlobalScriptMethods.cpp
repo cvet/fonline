@@ -52,16 +52,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto RequireCurrentSyncContext(ptr<ServerEngine> server) -> ptr<SyncContext>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto nullable_ctx = server->GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(nullable_ctx, "Missing script execution context");
-
-    return nullable_ctx.as_ptr();
-}
-
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
@@ -390,7 +380,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_MoveItem(ptr<ServerEngine> server, ptr<Item
 
 // SyncScope: requires destination critter + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Critter> toCr)
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<nptr<Item>> items, ptr<Critter> toCr)
 {
     ValidateEntityAccess(toCr);
 
@@ -398,7 +388,8 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
         ValidateEntityAccess(nullable_item);
 
         if (nullable_item) {
-            ValidateEntityAccess(nullable_item->GetParentRaw());
+            auto item = nullable_item.as_ptr();
+            ValidateEntityAccess(item->GetParentRaw());
         }
     }
 
@@ -419,25 +410,30 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 
 // SyncScope: requires destination map + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Map> toMap, mpos toHex)
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<nptr<Item>> items, ptr<Map> toMap, mpos toHex)
 {
     ValidateEntityAccess(toMap);
 
-    for (auto* item : items) {
-        ValidateEntityAccess(item);
-        ValidateEntityAccess(item->GetParentRaw());
+    for (auto nullable_item : items) {
+        ValidateEntityAccess(nullable_item);
+
+        if (nullable_item) {
+            ptr<Item> item = nullable_item.as_ptr();
+            ValidateEntityAccess(item->GetParentRaw());
+        }
     }
 
     if (!toMap->GetSize().is_valid_pos(toHex)) {
         throw ScriptException("Invalid hexex args");
     }
 
-    for (nptr<Item> nullable_item : items) {
+    for (auto nullable_item : items) {
         if (!nullable_item) {
             continue;
         }
 
         auto item = nullable_item.as_ptr();
+
         if (item->IsDestroyed()) {
             continue;
         }
@@ -448,19 +444,20 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 
 // SyncScope: requires destination container item + every item and its current parent.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<Item*> items, ptr<Item> toCont, any_t stackId = any_t {})
+FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vector<nptr<Item>> items, ptr<Item> toCont, any_t stackId = any_t {})
 {
     ValidateEntityAccess(toCont);
 
-    for (nptr<Item> nullable_item : items) {
+    for (auto nullable_item : items) {
         ValidateEntityAccess(nullable_item);
 
         if (nullable_item) {
-            ValidateEntityAccess(nullable_item->GetParentRaw());
+            auto item = nullable_item.as_ptr();
+            ValidateEntityAccess(item->GetParentRaw());
         }
     }
 
-    for (nptr<Item> nullable_item : items) {
+    for (auto nullable_item : items) {
         if (!nullable_item) {
             continue;
         }
@@ -521,14 +518,15 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
 
 // SyncScope: requires every non-null entity + current parent when present; destroys each subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<ServerEntity*> entities)
+FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
-    for (nptr<ServerEntity> entity : entities) {
-        if (entity) {
+    for (auto nullable_entity : entities) {
+        if (nullable_entity) {
+            auto entity = nullable_entity.as_ptr();
             ValidateEntityAccess(entity);
             ValidateEntityAccess(entity->GetParentRaw());
 
-            server->EntityMngr.DestroyEntity(entity.as_ptr());
+            server->EntityMngr.DestroyEntity(entity);
         }
     }
 }
@@ -604,7 +602,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
 
 // SyncScope: requires every non-null item + current item parent; destroys each item subtree.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<Item*> items)
+FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_vector<nptr<Item>> items)
 {
     for (nptr<Item> item : items) {
         if (item) {
@@ -665,7 +663,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
 
 // SyncScope: requires every non-null cr + current source map when not player-controlled.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<Critter*> critters)
+FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<nptr<Critter>> critters)
 {
     for (nptr<Critter> cr : critters) {
         if (cr && !cr->GetControlledByPlayer()) {
@@ -975,7 +973,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server)
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
     vector<ptr<Map>> result;
@@ -992,12 +990,12 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, hstring
         }
     }
 
-    return MakeScriptHandleVector<Map>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
+FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<ProtoMap> proto)
 {
     nptr<const ProtoMap> proto_lookup = proto;
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
@@ -1010,7 +1008,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<Pr
             result.emplace_back(maps[i]);
         }
 
-        return MakeScriptHandleVector<Map>(result);
+        return result;
     }
 
     auto proto_ptr = proto_lookup.as_ptr();
@@ -1023,7 +1021,7 @@ FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server, nptr<Pr
         }
     }
 
-    return MakeScriptHandleVector<Map>(result);
+    return result;
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
@@ -1554,7 +1552,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server)
 
 // SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
     vector<ptr<Critter>> result;
@@ -1568,12 +1566,12 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, h
         }
     }
 
-    return MakeScriptHandleVector<Critter>(result);
+    return result;
 }
 
 // SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, ptr<ProtoCritter> proto)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server, ptr<ProtoCritter> proto)
 {
     vector<ptr<Critter>> result;
     vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
@@ -1587,7 +1585,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server, p
         }
     }
 
-    return MakeScriptHandleVector<Critter>(result);
+    return result;
 }
 
 // SyncScope: requires Game.Lock singleton; mutates global synchronized time, not a live entity.
@@ -1618,11 +1616,11 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
 
 // SyncScope: static proto-map read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<StaticItem*> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
+FO_SCRIPT_API vector<ptr<StaticItem>> Server_Game_GetStaticItemsForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {
     auto static_map = server->MapMngr.GetStaticMap(proto);
     const vector<ptr<StaticItem>>& static_items = static_map->StaticItems;
-    return MakeScriptHandleVector<StaticItem>(static_items);
+    return static_items;
 }
 
 // SyncScope: static proto-map read only; no live entity cover is required.
@@ -1821,7 +1819,7 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
 ///@ ExportMethod Async
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     const array<nptr<ServerEntity>, 1> entities {entity};
     ctx->SyncEntities(entities);
 }
@@ -1830,7 +1828,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 ///@ ExportMethod Async
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     const array<nptr<ServerEntity>, 2> entities {entity1, entity2};
     ctx->SyncEntities(entities);
 }
@@ -1839,27 +1837,28 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> 
 ///@ ExportMethod Async
 FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, ptr<ServerEntity> entity1, ptr<ServerEntity> entity2, ptr<ServerEntity> entity3)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     const array<nptr<ServerEntity>, 3> entities {entity1, entity2, entity3};
     ctx->SyncEntities(entities);
 }
 
 // SyncScope: replaces current cover with all non-null entities plus engine auto-widen partners.
 ///@ ExportMethod Async
-FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<ServerEntity*> entities)
+FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
     vector<nptr<ServerEntity>> non_null;
     non_null.reserve(entities.size());
 
-    for (nptr<ServerEntity> entity : entities) {
-        if (!entity) {
+    for (auto nullable_entity : entities) {
+        if (!nullable_entity) {
             throw ScriptException("Entity in array arg is null");
         }
 
+        auto entity = nullable_entity.as_ptr();
         non_null.emplace_back(entity);
     }
 
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ctx->SyncEntities(non_null);
 }
 
@@ -1867,7 +1866,7 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<Se
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncEnsure(ptr<ServerEngine> server, ptr<ServerEntity> entity)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ctx->EnsureEntitySynced(entity);
 }
 
@@ -1875,24 +1874,24 @@ FO_SCRIPT_API void Server_Game_SyncEnsure(ptr<ServerEngine> server, ptr<ServerEn
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ctx->Release();
 }
 
 // SyncScope: returns current held cover; does not change cover.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ServerEntity*> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     vector<ptr<ServerEntity>> held_entities = ctx->GetHeldEntities();
-    return MakeScriptHandleVector<ServerEntity>(held_entities);
+    return held_entities;
 }
 
 // SyncScope: sync-safe probe; returns whether entity is covered without emitting diagnostics.
 ///@ ExportMethod
 FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<ServerEntity> entity)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ignore_unused(ctx);
     return IsEntityAccessValid(entity, false);
 }
@@ -1901,7 +1900,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ctx->LockSingleton(server->GetEntityLock().get());
 }
 
@@ -1909,7 +1908,7 @@ FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
 {
-    auto ctx = RequireCurrentSyncContext(server);
+    auto ctx = server->RequireCurrentSyncContext();
     ctx->UnlockSingleton(server->GetEntityLock().get());
 }
 

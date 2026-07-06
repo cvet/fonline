@@ -249,7 +249,7 @@ namespace NativeDataProvider
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
-                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(const_cast<wrapped_t*>(arg.get()));
+                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
                 return ptr<void> {cast_to_void(entity->get_pp())};
             }
             else {
@@ -403,14 +403,14 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return static_cast<void**>(slot.get());
+        return slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlotPointer(ptr<void> slot_address) noexcept -> ptr<void*>
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void***>(slot_address.get());
+        return *slot_address.reinterpret_as<void**>();
     }
 
     template<typename T>
@@ -422,7 +422,7 @@ namespace NativeDataProvider
             return *GetHandleSlot(slot);
         }
         else {
-            return *cast_from_void<T**>(slot.get());
+            return *slot.reinterpret_as<T*>();
         }
     }
 
@@ -436,10 +436,10 @@ namespace NativeDataProvider
         }
 
         if constexpr (std::is_void_v<T>) {
-            return *static_cast<const void* const*>(slot.get());
+            return *slot.reinterpret_as<const void*>();
         }
         else {
-            return *static_cast<const T* const*>(slot.get());
+            return *slot.reinterpret_as<const T*>();
         }
     }
 
@@ -452,7 +452,7 @@ namespace NativeDataProvider
             *GetHandleSlot(slot) = value.get();
         }
         else {
-            *cast_from_void<T**>(slot.get()) = value.get();
+            *slot.reinterpret_as<T*>() = value.get();
         }
     }
 
@@ -467,7 +467,7 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void* const*>(slot.get());
+        return *slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlot(ptr<void> slot_address) noexcept -> nptr<void>

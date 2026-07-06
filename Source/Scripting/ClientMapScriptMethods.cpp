@@ -222,14 +222,14 @@ FO_SCRIPT_API vector<ItemView*> Client_Map_GetItems(ptr<MapView> self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex)
+FO_SCRIPT_API vector<ptr<ItemView>> Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
     }
 
     span<ptr<ItemHexView>> hex_items = self->GetItemsOnHex(hex);
-    return MakeScriptHandleVectorAs<ItemView, ItemHexView>(hex_items);
+    return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
 }
 
 ///@ ExportMethod
@@ -290,7 +290,7 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterInRadius(ptr<MapView> self,
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, CritterFindType findType = CritterFindType::Any)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, CritterFindType findType = CritterFindType::Any)
 {
     span<refcount_ptr<CritterHexView>> map_critters = self->GetCritters();
 
@@ -305,11 +305,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, Cri
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, hstring pid, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, hstring pid, CritterFindType findType)
 {
     span<refcount_ptr<CritterHexView>> map_critters = self->GetCritters();
     vector<ptr<CritterView>> critters;
@@ -322,11 +322,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, hst
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, ptr<ProtoCritter> proto, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCritters(ptr<MapView> self, ptr<ProtoCritter> proto, CritterFindType findType)
 {
     span<refcount_ptr<CritterHexView>> map_critters = self->GetCritters();
 
@@ -340,11 +340,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCritters(ptr<MapView> self, ptr
         }
     }
 
-    return MakeScriptHandleVector<CritterView>(critters);
+    return critters;
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(ptr<MapView> self, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersOnHex(ptr<MapView> self, mpos hex, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -358,11 +358,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersOnHex(ptr<MapView> self
         return dist1 < dist2;
     });
 
-    return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
+    return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(ptr<MapView> self, mpos hex, int32_t radius, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInRadius(ptr<MapView> self, mpos hex, int32_t radius, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(hex)) {
         throw ScriptException("Invalid hex arg");
@@ -376,11 +376,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInRadius(ptr<MapView> s
         return dist1 < dist2;
     });
 
-    return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
+    return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -391,11 +391,11 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersInPath(ptr<MapView> sel
 
     vector<ptr<CritterHexView>> critters;
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, nullptr, nullptr, nullptr, true);
-    return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
+    return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
+FO_SCRIPT_API vector<ptr<CritterView>> Client_Map_GetCrittersWithBlockInPath(ptr<MapView> self, mpos fromHex, mpos toHex, float32_t angle, int32_t dist, CritterFindType findType, mpos& preBlockHex, mpos& blockHex)
 {
     if (!self->GetSize().is_valid_pos(fromHex)) {
         throw ScriptException("Invalid fromHex arg");
@@ -406,7 +406,7 @@ FO_SCRIPT_API vector<CritterView*> Client_Map_GetCrittersWithBlockInPath(ptr<Map
 
     vector<ptr<CritterHexView>> critters;
     self->TraceBullet(fromHex, toHex, dist, angle, &critters, findType, &preBlockHex, &blockHex, nullptr, true);
-    return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
+    return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
 ///@ ExportMethod

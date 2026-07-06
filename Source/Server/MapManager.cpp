@@ -611,7 +611,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
         _engine->OnMapFinish.Fire(map);
         FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
-        FO_VERIFY_AND_THROW(map->GetLocation() == loc, "Map is attached to a different location during location destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
+        FO_VERIFY_AND_THROW(map->GetLocation() == loc, "Map is attached to a different location during location destruction", map->GetId(), loc->GetId(), map->GetLocation() ? map->GetLocation()->GetId() : ident_t {});
     }
 
     for (ptr<Map> map : loc->GetMaps()) {
@@ -666,7 +666,7 @@ void MapManager::DestroyMap(ptr<Map> map)
     loc->OnMapRemoved.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
-    FO_VERIFY_AND_THROW(map->GetLocation() == nptr<Location> {loc}, "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() != nullptr ? map->GetLocation()->GetId() : ident_t {});
+    FO_VERIFY_AND_THROW(map->GetLocation() == nptr<Location> {loc}, "Map is attached to a different location during map destruction", map->GetId(), loc->GetId(), map->GetLocation() ? map->GetLocation()->GetId() : ident_t {});
 
     DestroyMapInternal(map);
 }

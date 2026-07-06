@@ -145,7 +145,7 @@ template<typename T>
     auto object = GetGenericObject(gen);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(object.get());
+        return object;
     }
     else {
         return cast_from_void<T*>(object.get());
@@ -168,7 +168,7 @@ template<typename T>
     auto arg_address = GetGenericAddressArg(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get());
+        return arg_address;
     }
     else {
         return cast_from_void<T*>(arg_address.get());
@@ -183,7 +183,7 @@ template<typename T>
     auto arg_address = GetGenericArgAddress(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get());
+        return arg_address;
     }
     else {
         return cast_from_void<T*>(arg_address.get());
