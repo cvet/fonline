@@ -987,7 +987,6 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
             };
 
             for (auto& owner : _heldLockOwners) {
-
                 for (auto parent = owner->GetParentRaw(); parent; parent = parent->GetParentRaw()) {
                     auto parent_lock = parent->GetEntityLock();
 

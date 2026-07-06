@@ -247,10 +247,10 @@ static auto MakeSdlWindowHolder(ptr<SDL_Window> window) noexcept -> unique_del_p
     FO_NO_STACK_TRACE_ENTRY();
 
     return make_unique_del_ptr(window, [](SDL_Window* raw_window) {
-                                           if (raw_window != nullptr) {
-                                               SDL_DestroyWindow(raw_window);
-                                           }
-                                       });
+        if (raw_window != nullptr) {
+            SDL_DestroyWindow(raw_window);
+        }
+    });
 }
 
 static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique_del_ptr<SDL_Renderer>
@@ -258,10 +258,10 @@ static auto MakeSdlRendererHolder(ptr<SDL_Renderer> renderer) noexcept -> unique
     FO_NO_STACK_TRACE_ENTRY();
 
     return make_unique_del_ptr(renderer, [](SDL_Renderer* raw_renderer) {
-                                             if (raw_renderer != nullptr) {
-                                                 SDL_DestroyRenderer(raw_renderer);
-                                             }
-                                         });
+        if (raw_renderer != nullptr) {
+            SDL_DestroyRenderer(raw_renderer);
+        }
+    });
 }
 
 struct TemporarySdlWindowRenderer
