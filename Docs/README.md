@@ -23,6 +23,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [Applications.md](Applications.md) — executable/library entry points and CMake target ownership notes.
 - [Essentials.md](Essentials.md) — low-level platform, logging, memory, filesystem, serialization, sockets, and utility layer.
 - [SmartPointers.md](SmartPointers.md) — native C++ pointer ownership/nullability vocabulary and migration rules.
+- [ThreadSafetyAnalysis.md](ThreadSafetyAnalysis.md) — `FO_TSA_*` Clang Thread Safety Analysis annotations, locking primitives, and `-Werror=thread-safety` enforcement.
 
 ## Build and generation
 
