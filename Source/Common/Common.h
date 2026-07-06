@@ -61,8 +61,11 @@ extern bool IsTestingInProgress;
 // Each entity method declares the preconditions it requires with FO_VALIDATE_ENTITY(<flags>), so a method is
 // explicitly checked against being called at an incorrect time (wrong sync scope, or during/after destruction).
 // Flags (combine as needed, order-independent; they expand to the matching check on `this`):
-//   LOCKED         - the calling thread's sync context covers this entity. Uses the noexcept "strong" form
-//                    (reports the violation and exits) so it is safe in both noexcept and throwing methods.
+//   LOCKED         - the calling thread's sync context covers this entity. Throws the regular recoverable
+//                    ScriptException on an uncovered access, so at the script/job frontier the violation is
+//                    reported and the job continues instead of killing the server. An exception escaping a
+//                    noexcept method still terminates the process, so uncovered access to a noexcept-declared
+//                    accessor remains fatal — but the frontier-reachable throwing surface recovers.
 //   NOT_DESTROYED  - this entity is not already destroyed. The script access boundary already rejects a
 //                    destroyed receiver, so reaching a method on one means a stale pointer was dereferenced —
 //                    a corrupt-state invariant violation -> FO_STRONG_ASSERT (deterministic exit). noexcept-safe.
@@ -74,9 +77,9 @@ extern bool IsTestingInProgress;
 //                    FO_NO_VALIDATE_ENTITY_ACCESS marker.
 // Example: FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);
 class Entity;
-inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept;
+inline void ValidateEntityAccess(nptr<const Entity> entity);
 
-#define FO_VE_CHECK_LOCKED ValidateEntityAccessStrong(this);
+#define FO_VE_CHECK_LOCKED ValidateEntityAccess(this);
 #define FO_VE_CHECK_NOT_DESTROYING FO_VERIFY_AND_THROW(!this->IsDestroying(), "Entity method called while the entity is being destroyed", this->GetName());
 #define FO_VE_CHECK_NOT_DESTROYED FO_STRONG_ASSERT(!this->IsDestroyed(), "Entity method called on an already destroyed entity", this->GetName());
 #define FO_VE_CHECK_NONE
@@ -94,7 +97,7 @@ inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept;
 #define FO_VALIDATE_ENTITY(...) FO_VE_FOREACH(FO_VE_DISPATCH, __VA_ARGS__)
 
 // Explicit-entity access check (validates a passed-in entity argument rather than `this`).
-#define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccessStrong(entity)
+#define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;

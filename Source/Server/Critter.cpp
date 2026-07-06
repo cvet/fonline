@@ -382,6 +382,7 @@ void Critter::AttachPlayer(ptr<Player> player)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
+    ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(!player->GetControlledCritterId(), "Player already controls a critter");
     FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
@@ -404,6 +405,7 @@ void Critter::DetachPlayer()
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     nptr<Player> player = _player.load(std::memory_order_acquire);
     FO_VERIFY_AND_THROW(player, "Missing required player");
+    ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
 
     player->SetControlledCritterId({});

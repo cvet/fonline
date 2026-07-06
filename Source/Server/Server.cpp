@@ -796,7 +796,7 @@ auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::opti
     auto connection = unlogined_player->GetConnection();
 
     try {
-        ProcessConnection(connection);
+        ProcessConnection(unlogined_player);
         ProcessUnloginedPlayer(unlogined_player);
     }
     catch (const UnknownMessageException&) {
@@ -855,7 +855,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     auto connection = player->GetConnection();
 
     try {
-        ProcessConnection(connection);
+        ProcessConnection(player);
         ProcessPlayer(player);
     }
     catch (const NetBufferException& ex) {
@@ -1939,7 +1939,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
 
         if (!connection->IsHandshakeComplete()) {
             if (msg == NetMessage::Handshake) {
-                Process_Handshake(connection);
+                Process_Handshake(unlogined_player);
             }
             else {
                 throw GenericException("Expected handshake message", msg);
@@ -1948,7 +1948,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
         else {
             switch (msg) {
             case NetMessage::Ping:
-                Process_Ping(connection);
+                Process_Ping(unlogined_player);
                 unlogined_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile: {
@@ -1959,7 +1959,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
                 }
 
                 ptr<UpdaterBackend> updater_backend = &*_updaterBackend;
-                updater_backend->ProcessUpdateFile(connection, Settings->UpdateFileMaxPortionSize);
+                updater_backend->ProcessUpdateFile(unlogined_player, Settings->UpdateFileMaxPortionSize);
                 break;
             }
             case NetMessage::RemoteCall:
@@ -2033,7 +2033,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         switch (msg) {
         case NetMessage::Ping:
-            Process_Ping(connection);
+            Process_Ping(player);
             player->Send_TimeSync();
             break;
 
@@ -2068,9 +2068,11 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     }
 }
 
-void ServerEngine::ProcessConnection(ptr<ServerConnection> connection)
+void ServerEngine::ProcessConnection(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
+
+    auto connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         return;
@@ -2092,9 +2094,7 @@ void ServerEngine::ProcessConnection(ptr<ServerConnection> connection)
             return;
         }
 
-        auto out_buf = connection->WriteMsg(NetMessage::Ping);
-
-        out_buf->Write(false);
+        player->Send_Ping(false);
 
         connection->RegisterPingRequest(frame_time);
     }
@@ -2119,11 +2119,7 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
         return;
     }
 
-    auto out_buf = player->GetConnection()->WriteMsg(NetMessage::RemoteCall);
-
-    out_buf->Write<hstring>(name);
-    out_buf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
-    out_buf->Push(data);
+    player->Send_RemoteCall(name, data);
 }
 
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Properties> props) -> ptr<Critter>
@@ -2574,10 +2570,11 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     cr->Send_TimeSync();
 }
 
-void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
+void ServerEngine::Process_Handshake(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
@@ -2607,19 +2604,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
         (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
         (numeric_cast<uint32_t>(Random(1, 255)) << 0);
 
-    {
-        auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
-
-        out_buf->Write(compatibility_outdated);
-        out_buf->Write(updater_outdated);
-        out_buf->Write(out_encrypt_key);
-    }
-
-    {
-        auto out_buf = connection->WriteBuf();
-
-        out_buf->SetEncryptKey(out_encrypt_key);
-    }
+    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, out_encrypt_key);
 
     if (updater_outdated) {
         WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
@@ -2634,19 +2619,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
         update_desc = updater_backend->GetUpdateDescriptor(requested_binary_target);
     }
 
-    {
-        LockForPropertyAccess();
-        auto unlock_global_vars = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
-
-        const auto global_vars_data = StoreData(false);
-
-        auto out_buf = connection->WriteMsg(NetMessage::InitData);
-
-        out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
-        out_buf->Push(update_desc);
-        out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
-        out_buf->Write(GameTime.GetSynchronizedTime());
-    }
+    player->Send_InitData(update_desc);
 
     connection->MarkHandshakeComplete();
 
@@ -2655,7 +2628,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
     }
     else {
         WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);
-        SendAllReportedHashes(connection);
+        SendAllReportedHashes(player);
     }
 }
 
@@ -2776,7 +2749,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
     BroadcastReportedString(reported_string);
 }
 
-void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
+void ServerEngine::SendAllReportedHashes(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2784,6 +2757,7 @@ void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
 
     {
         scoped_lock locker {_reportedHashesLocker};
+
         snapshot.assign(_reportedStrings.begin(), _reportedStrings.end());
     }
 
@@ -2791,47 +2765,33 @@ void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
         return;
     }
 
-    auto out_buf = connection->WriteMsg(NetMessage::HashList);
-
-    out_buf->Write(numeric_cast<uint32_t>(snapshot.size()));
-
-    for (const auto& reported_string : snapshot) {
-        out_buf->Write(reported_string);
-    }
+    player->Send_HashList(snapshot);
 }
 
 void ServerEngine::BroadcastReportedString(string_view reported_string)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto send_to_connection = [reported_string](ptr<ServerConnection> conn) {
-        if (conn->IsHardDisconnected() || !conn->IsHandshakeComplete()) {
-            return;
-        }
+    const vector<string> hash_strings {string(reported_string)};
 
-        auto out_buf = conn->WriteMsg(NetMessage::HashList);
-
-        out_buf->Write(numeric_cast<uint32_t>(1));
-        out_buf->Write(reported_string);
-    };
-
-    for (ptr<Player> player : copy_hold_ref(EntityMngr.GetPlayers())) {
-        send_to_connection(player->GetConnection());
+    for (auto player : copy_hold_ref(EntityMngr.GetPlayers())) {
+        player->Send_HashList(hash_strings);
     }
 
     {
         scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
-            send_to_connection(player->GetConnection());
+            player->Send_HashList(hash_strings);
         }
     }
 }
 
-void ServerEngine::Process_Ping(ptr<ServerConnection> connection)
+void ServerEngine::Process_Ping(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     const auto answer = in_buf->Read<bool>();
@@ -2842,9 +2802,7 @@ void ServerEngine::Process_Ping(ptr<ServerConnection> connection)
         connection->RegisterPingAnswer(GameTime.GetFrameTime());
     }
     else {
-        auto out_buf = connection->WriteMsg(NetMessage::Ping);
-
-        out_buf->Write(true);
+        player->Send_Ping(true);
     }
 }
 

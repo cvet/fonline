@@ -724,6 +724,121 @@ void Player::Send_InfoMessage(EngineInfoMessage info_message, string_view extra_
     out_buf->Write(extra_text);
 }
 
+void Player::Send_HashList(const_span<string> hash_strings)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    scoped_lock conn_lock {_connectionLock};
+
+    if (_connection->IsHardDisconnected() || !_connection->IsHandshakeComplete()) {
+        return;
+    }
+
+    auto out_buf = _connection->WriteMsg(NetMessage::HashList);
+
+    out_buf->Write(numeric_cast<uint32_t>(hash_strings.size()));
+
+    for (const auto& hash_string : hash_strings) {
+        out_buf->Write(hash_string);
+    }
+}
+
+void Player::Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    scoped_lock conn_lock {_connectionLock};
+
+    auto out_buf = _connection->WriteMsg(NetMessage::RemoteCall);
+
+    out_buf->Write<hstring>(rpc_name);
+    out_buf->Write<int32_t>(numeric_cast<int32_t>(rpc_data.size()));
+    out_buf->Push(rpc_data);
+}
+
+void Player::Send_Ping(bool answer)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    scoped_lock conn_lock {_connectionLock};
+
+    auto out_buf = _connection->WriteMsg(NetMessage::Ping);
+
+    out_buf->Write(answer);
+}
+
+void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    // The out-buffer encrypt key must be installed on the same connection the answer was written to, so
+    // both steps happen under one connection-lock hold.
+    scoped_lock conn_lock {_connectionLock};
+
+    {
+        auto out_buf = _connection->WriteMsg(NetMessage::HandshakeAnswer);
+
+        out_buf->Write(compatibility_outdated);
+        out_buf->Write(updater_outdated);
+        out_buf->Write(out_encrypt_key);
+    }
+
+    {
+        auto out_buf = _connection->WriteBuf();
+
+        out_buf->SetEncryptKey(out_encrypt_key);
+    }
+}
+
+void Player::Send_InitData(const_span<uint8_t> update_desc)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    scoped_lock conn_lock {_connectionLock};
+
+    auto out_buf = _connection->WriteMsg(NetMessage::InitData);
+
+    out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
+    out_buf->Push(update_desc);
+
+    {
+        _engine->LockForPropertyAccess();
+        auto unlock_global_vars = scope_exit([this]() noexcept { _engine->UnlockForPropertyAccess(); });
+
+        const auto global_vars_data = _engine->StoreData(false);
+        out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
+    }
+
+    out_buf->Write(_engine->GameTime.GetSynchronizedTime());
+}
+
+void Player::Send_UpdateFileData(const_span<uint8_t> update_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    scoped_lock conn_lock {_connectionLock};
+
+    auto out_buf = _connection->WriteMsg(NetMessage::UpdateFileData);
+
+    out_buf->Write(numeric_cast<int32_t>(update_data.size()));
+
+    if (!update_data.empty()) {
+        out_buf->Push(update_data);
+    }
+}
+
 void Player::Send_ViewMap()
 {
     FO_STACK_TRACE_ENTRY();

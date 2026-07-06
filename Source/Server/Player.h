@@ -104,6 +104,12 @@ public:
     void Send_Teleport(ptr<const Critter> cr, mpos to_hex);
     void Send_TimeSync();
     void Send_InfoMessage(EngineInfoMessage info_message, string_view extra_text = "");
+    void Send_HashList(const_span<string> hash_strings);
+    void Send_RemoteCall(hstring rpc_name, const_span<uint8_t> rpc_data);
+    void Send_Ping(bool answer);
+    void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key);
+    void Send_InitData(const_span<uint8_t> update_desc);
+    void Send_UpdateFileData(const_span<uint8_t> update_data);
     void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> nullable_context_item);
     void Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> nullable_moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();

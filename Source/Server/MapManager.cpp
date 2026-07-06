@@ -680,6 +680,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
     // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
     while (map->HasSpectatorPlayers()) {
         ptr<Player> player = map->GetSpectatorPlayers().back();
+        ValidateEntityAccess(player);
         player->ResetViewMap();
         safe_call([&] { player->Send_LoadMap(nullptr); });
     }

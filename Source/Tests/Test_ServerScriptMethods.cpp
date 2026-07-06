@@ -1439,11 +1439,11 @@ namespace ScriptMethodsTest
 
     // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
     // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
-    // via the strong-validated SetMapId before registration pulled it into the sync context, and
-    // ValidateEntityAccessStrong aborts the whole process on an uncovered access. The crash MECHANISM
+    // via the LOCKED-validated SetMapId before registration pulled it into the sync context, and the
+    // LOCKED validation rejects an uncovered access (ScriptException). The crash MECHANISM
     // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
     // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
-    // fresh critter, so if registration ever stopped syncing fresh entities this would abort the server.
+    // fresh critter, so if registration ever stopped syncing fresh entities this would fail the call.
     [[Async]]
     int TestCreateCritterUnderSyncContext()
     {
