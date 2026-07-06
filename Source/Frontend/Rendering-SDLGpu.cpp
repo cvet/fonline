@@ -1594,17 +1594,20 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         return;
     }
 
-    // Uniform data is pushed into the command buffer on every draw, so the derived buffers are refreshed
-    // each time (equivalent to the reset-plus-lazy-refill flow of the buffer-object backends), while the
-    // externally fed buffers keep their last value inside the optionals to emulate GPU-buffer persistence
-    if (_needProjBuf) {
+    // Derive ProjBuf/MainTexBuf from renderer state ONLY when a caller has not already supplied them.
+    // 3D model draws set ProjBuf externally to the per-frame model projection (3dStuff), so overwriting
+    // it here with the renderer's current 2D ortho would project the skinned mesh off-screen and it
+    // would render nothing (only its 2D nameplate remained). The other externally fed buffers keep
+    // their last value inside the optionals to emulate GPU-buffer persistence; ProjBuf/MainTexBuf are
+    // reset at the end of the draw so the next non-model draw re-derives them.
+    if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
         ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_ctx->ProjMatrix);
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
-    if (_needMainTexBuf) {
+    if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
         ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
@@ -1704,14 +1707,22 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         push_uniform(_needScriptValueBuf, ScriptValueBuf, slots.VertScriptValueBuf, slots.FragScriptValueBuf);
         push_uniform(_needCameraBuf, CameraBuf, slots.VertCameraBuf, slots.FragCameraBuf);
 #if FO_ENABLE_3D
-        const size_t model_buf_size = sizeof(ModelBuffer) - (MODEL_MAX_BONES - MatrixCount) * sizeof(float32_t) * 16;
-        push_uniform(_needModelBuf, ModelBuf, slots.VertModelBuf, slots.FragModelBuf, model_buf_size);
+        // Push the full ModelBuffer (matching the Vulkan backend) rather than trimming to
+        // 32+64*MatrixCount bytes: SDL_GPU validates pushed uniform data against the shader's declared
+        // UBO size, so a short push can trip validation. The unused tail matrices are harmless — the
+        // shader reads only MatrixCount of them.
+        push_uniform(_needModelBuf, ModelBuf, slots.VertModelBuf, slots.FragModelBuf, sizeof(ModelBuffer));
         push_uniform(_needModelTexBuf, ModelTexBuf, slots.VertModelTexBuf, slots.FragModelTexBuf);
         push_uniform(_needModelAnimBuf, ModelAnimBuf, slots.VertModelAnimBuf, slots.FragModelAnimBuf);
 #endif
 
         SDL_DrawGPUIndexedPrimitives(render_pass.get(), draw_count, 1, numeric_cast<uint32_t>(start_index), 0, 0);
     }
+
+    // Derived buffers are per-draw: clear them so the next draw re-derives ProjBuf/MainTexBuf from the
+    // renderer state (or preserves a fresh externally-supplied ProjBuf, e.g. the next model's projection).
+    ProjBuf.reset();
+    MainTexBuf.reset();
 }
 
 FO_END_NAMESPACE
