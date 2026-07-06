@@ -2730,6 +2730,10 @@ namespace ScriptMethodsTest
         Game.Lock();
         Game.SyncRelease();
 
+        // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
+        // needed. Re-cover all three critters before destroying: each destroy restricts the
+        // context to its own target, so consecutive uncovered destroys would be rejected.
+        Game.Sync(cr1, cr2, cr3);
         Game.DestroyCritter(cr1);
         Game.DestroyCritter(cr2);
         Game.DestroyCritter(cr3);

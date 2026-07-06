@@ -1882,7 +1882,8 @@ FO_SCRIPT_API void Server_Game_SyncEnsure(ptr<ServerEngine> server, ptr<ServerEn
     ctx->EnsureEntitySynced(entity);
 }
 
-// SyncScope: releases the current entity cover; singleton Game.Lock bucket is preserved.
+// SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries
+// (SyncContext::Release drains both buckets); a Game.Lock taken before this call needs no Unlock after it.
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_SyncRelease(ptr<ServerEngine> server)
 {
