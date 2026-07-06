@@ -623,7 +623,11 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
                     throw SettingsException("Parent sub config not found", parent);
                 }
 
-                config_info.Settings = it->Settings;
+                // Merge, not assign: with multiple parents (Parent = A B) later parents override earlier
+                // ones per key, and the section's own settings (below) override all parents.
+                for (auto&& [key, value] : it->Settings) {
+                    config_info.Settings[key] = value;
+                }
             }
         }
 
