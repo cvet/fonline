@@ -451,27 +451,31 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
 
     _engine->EntityMngr.RegisterLocation(loc);
 
-    for (const auto map_pid : map_pids) {
-        auto nullable_map_proto = _engine->GetProtoMap(map_pid);
+    {
+        ScopedSyncContext create_scope;
 
-        if (!nullable_map_proto) {
-            throw GenericException("Map proto not found", map_pid);
+        for (const auto map_pid : map_pids) {
+            auto nullable_map_proto = _engine->GetProtoMap(map_pid);
+
+            if (!nullable_map_proto) {
+                throw GenericException("Map proto not found", map_pid);
+            }
+
+            auto map_proto = nullable_map_proto.as_ptr();
+            auto static_map = GetStaticMap(map_proto);
+            auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
+            _engine->EntityMngr.RegisterMap(map);
+            loc->AddMap(map);
+            GenerateMapContent(map);
         }
 
-        auto map_proto = nullable_map_proto.as_ptr();
-        auto static_map = GetStaticMap(map_proto);
-        auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
-        _engine->EntityMngr.RegisterMap(map);
-        loc->AddMap(map);
-        GenerateMapContent(map);
-    }
+        for (ptr<Map> map : copy_hold_ref(loc->GetMaps())) {
+            _engine->EntityMngr.CallInit(map, true);
+        }
 
-    for (ptr<Map> map : copy_hold_ref(loc->GetMaps())) {
-        _engine->EntityMngr.CallInit(map, true);
-    }
-
-    if (!loc->IsDestroyed()) {
-        _engine->EntityMngr.CallInit(loc, true);
+        if (!loc->IsDestroyed()) {
+            _engine->EntityMngr.CallInit(loc, true);
+        }
     }
 
     if (loc->IsDestroyed()) {
