@@ -408,11 +408,11 @@ void MapManager::DestroyMapContent(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(map);
+    ValidateEntityAccess(map);
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); map->HasCritters() || map->HasItems();) {
         for (ptr<Critter> cr : copy_hold_ref(map->GetCritters())) {
-            EnsureEntitySynced(cr);
+            ValidateEntityAccess(cr);
 
             if (cr->GetControlledByPlayer()) {
                 TransferToGlobal(cr, {});
@@ -426,7 +426,7 @@ void MapManager::DestroyMapContent(ptr<Map> map)
         }
 
         for (ptr<Item> item : copy_hold_ref(map->GetItems())) {
-            EnsureEntitySynced(item);
+            ValidateEntityAccess(item);
             _engine->ItemMngr.DestroyItem(item);
         }
 
@@ -594,7 +594,7 @@ void MapManager::DestroyLocation(ptr<Location> loc)
     }
 
     for (ptr<Map> map : loc->GetMaps()) {
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
         FO_VERIFY_AND_THROW(!map->IsDestroying(), "Map is already being destroyed");
     }
@@ -606,12 +606,12 @@ void MapManager::DestroyLocation(ptr<Location> loc)
         map->MarkAsDestroying();
     }
 
-    EnsureEntitySynced(loc);
+    ValidateEntityAccess(loc);
     _engine->OnLocationFinish.Fire(loc);
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
 
     for (ptr<Map> map : loc->GetMaps()) {
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         _engine->OnMapFinish.Fire(map);
         FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
         FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
@@ -864,7 +864,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     FO_STACK_TRACE_ENTRY();
 
     EnsureEntitySynced(cr);
-    EnsureEntitySynced(map);
+    ValidateEntityAccess(map);
 
     if (map != nullptr) {
         FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter transfer target hex is outside target map bounds", cr->GetId(), map->GetId(), hex, map->GetSize());
@@ -880,12 +880,12 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     const auto prev_map_id = cr->GetMapId();
     refcount_nptr<Map> prev_map_ref = prev_map_id ? cr->GetParent<Map>() : refcount_nptr<Map> {};
     FO_VERIFY_AND_THROW(!prev_map_id || !!prev_map_ref, "Previous map id is set but previous map was not found");
-    EnsureEntitySynced(prev_map_ref);
+    ValidateEntityAccess(prev_map_ref);
 
     if (map != nullptr && map != prev_map_ref) {
         auto loc = map->GetLocation();
         FO_VERIFY_AND_THROW(loc, "Missing location instance");
-        EnsureEntitySynced(loc);
+        ValidateEntityAccess(loc);
     }
 
     cr->StopMoving();
@@ -997,7 +997,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
                 return;
             }
 
-            EnsureEntitySynced(map);
+            ValidateEntityAccess(map);
             EnsureEntitySynced(cr);
 
             auto map_cr = map->GetCritter(cr->GetId());
@@ -1020,7 +1020,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
             FO_VERIFY_AND_THROW(cr->GetRawGlobalMapGroup(), "Critter has no global map group");
         }
 
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
 
         ProcessVisibleCritters(cr);
@@ -1030,7 +1030,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
             return;
         }
 
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
         _engine->OnCritterSendInitialInfo.Fire(cr);
 
@@ -1038,7 +1038,7 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
             return;
         }
 
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
 
         if (map) {
@@ -1202,7 +1202,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
             return;
         }
 
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
 
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
@@ -1223,7 +1223,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
                 return;
             }
 
-            EnsureEntitySynced(map);
+            ValidateEntityAccess(map);
             EnsureEntitySynced(cr);
 
             FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
@@ -1232,7 +1232,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> nullable_map)
             FO_VERIFY_AND_THROW(current_map_cr == current_expected_cr, "Critter is not registered in its map after disappearance notification", map->GetId(), cr->GetId(), cr->GetMapId());
         }
 
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
         EnsureEntitySynced(cr);
 
         cr->ClearVisibleEnitites();

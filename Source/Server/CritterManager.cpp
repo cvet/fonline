@@ -57,7 +57,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
     auto item_holder = item.hold_ref();
     ignore_unused(cr_holder);
     ignore_unused(item_holder);
-    EnsureEntitySynced(cr);
+    ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
 
     if (item->GetStackable()) {
@@ -118,7 +118,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(cr);
+    ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
 
     cr->RemoveItem(item);
@@ -156,7 +156,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
-    EnsureEntitySynced(map);
+    ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(map->GetSize().is_valid_pos(hex), "Critter creation hex is outside target map bounds", proto_id, map->GetId(), hex, map->GetSize());
 
     auto proto = _engine->GetProtoCritter(proto_id);
@@ -264,7 +264,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
         if (cr->GetMapId()) {
             auto nullable_map = cr->GetParent<Map>();
             FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-            EnsureEntitySynced(nullable_map.as_ptr());
+            ValidateEntityAccess(nullable_map.as_ptr());
         }
 
         for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->GetMapId() || cr->GetRawGlobalMapGroup() || cr->HasItems() || cr->HasInnerEntities() || cr->GetIsAttached() || cr->HasAttachedCritters();) {
@@ -289,7 +289,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                     auto nullable_map = cr->GetParent<Map>();
                     FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
                     auto map = nullable_map.as_ptr();
-                    EnsureEntitySynced(map);
+                    ValidateEntityAccess(map);
                     _engine->MapMngr.RemoveCritterFromMap(cr, map);
                 }
                 else if (cr->GetRawGlobalMapGroup()) {
@@ -319,11 +319,11 @@ void CritterManager::DestroyInventory(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(cr);
+    ValidateEntityAccess(cr);
 
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems();) {
         ptr<Item> item = cr->GetInvItems().front();
-        EnsureEntitySynced(item);
+        ValidateEntityAccess(item);
         _engine->ItemMngr.DestroyItem(item);
 
         const size_t remaining_deps = cr->GetInvItems().size();

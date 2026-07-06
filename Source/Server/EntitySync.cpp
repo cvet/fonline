@@ -575,12 +575,8 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
         return true;
     }
 
-    nptr<const SyncContext> current_ctx = SyncContext::GetCurrentOnThisThread();
+    auto current_ctx = SyncContext::GetCurrentOnThisThread();
     FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
-
-    if (current_ctx->IsEmpty()) {
-        return true;
-    }
 
     const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 

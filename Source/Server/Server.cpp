@@ -2338,11 +2338,11 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
         auto nullable_map = nullable_cr->GetParent<Map>();
         FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
         auto map = nullable_map.as_ptr();
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
 
         auto nullable_loc = map->GetLocation();
         FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-        EnsureEntitySynced(nullable_loc.as_ptr());
+        ValidateEntityAccess(nullable_loc.as_ptr());
     }
 
     auto nullable_prev_cr = player->GetControlledCritter();
