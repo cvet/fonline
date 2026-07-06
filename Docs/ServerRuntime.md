@@ -216,6 +216,8 @@ Inbound remote-call and property payload validation is centralized in `Source/Se
 
 `Source/Tests/Test_ClientDataValidation.cpp` exercises invalid UTF-8, invalid enum values, non-finite floats, unknown hashed strings, invalid bools, truncated payloads, and ref-type payload validation.
 
+`ProcessPlayer()` drains up to `MaxMessagesPerProcessPass` buffered messages per job pass in a loop. `PlayerJob()` syncs the player once before the loop, but every handler dispatch may run script (a remote call, a property write, a move event) and any script `Sync::Lock(...)` **replaces** the job's held lock set with exactly the requested entities — dropping the player's own cover. The drain loop therefore **re-syncs the player at the top of each iteration** (`SyncContext::SyncEntity(player)`, then bails if the player was destroyed by prior script) so each handler enters with the player covered exactly as the first message did. Without this, a second message's first player access through a `noexcept` accessor (e.g. `Player::GetConnection()` in `Process_RemoteCall()`) would trip the access-without-sync invariant and terminate the process, since a throw cannot escape the `noexcept` frontier to be recovered at the job boundary.
+
 For the wire-level model, see [Networking.md](Networking.md). For client behavior, see [ClientRuntime.md](ClientRuntime.md).
 
 ## Managers

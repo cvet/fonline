@@ -2016,7 +2016,9 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     const auto max_per_pass = Settings->MaxMessagesPerProcessPass;
     int32_t processed_msgs = 0;
 
-    while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
+    auto ctx = RequireCurrentSyncContext();
+
+    while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected() && !player->IsDestroyed()) {
         if (max_per_pass != 0 && processed_msgs >= max_per_pass) {
             break;
         }
@@ -2063,7 +2065,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         in_buf->ShrinkReadBuf();
 
         connection->RegisterActivity(GameTime.GetFrameTime());
-
+        ctx->SyncEntity(player);
         processed_msgs++;
     }
 }
