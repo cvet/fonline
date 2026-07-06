@@ -660,7 +660,7 @@ public:
     auto operator=(Application&&) noexcept = delete;
     ~Application();
 
-    [[nodiscard]] auto IsQuitRequested() const -> bool { return _quit; }
+    [[nodiscard]] auto IsQuitRequested() const -> bool;
     [[nodiscard]] auto GetRequestedQuitSuccess() const -> bool { return _quitSuccess; }
     [[nodiscard]] auto IsHeadless() const noexcept -> bool;
     [[nodiscard]] auto GetActiveWindow() noexcept -> nptr<AppWindow> { return _activeWindow; }
@@ -846,5 +846,6 @@ extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
 extern auto GetExeLogFileName() -> string;
 extern void ResolveUserWritablePath(GlobalSettings& settings);
 extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
+extern auto IsQuitSignalReceived() noexcept -> bool;
 
 FO_END_NAMESPACE

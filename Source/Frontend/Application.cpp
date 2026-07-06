@@ -1595,6 +1595,10 @@ void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (IsQuitSignalReceived()) {
+        RequestQuit();
+    }
+
     FO_VERIFY_AND_THROW(_ctx->RenderTargetTex == nullptr, "Context render target tex must be unset before this operation");
     auto active_renderer = GetActiveRenderer(_ctx);
     active_renderer->ClearRenderTarget(_ctx->ClearColor);
@@ -2399,6 +2403,13 @@ auto Application::IsHeadless() const noexcept -> bool
     return false;
 }
 
+auto Application::IsQuitRequested() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _quit || IsQuitSignalReceived();
+}
+
 void Application::RequestQuit(bool success) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -2422,7 +2433,13 @@ void Application::WaitForRequestedQuit()
     unique_lock locker {_quitLocker};
 
     while (!_quit) {
-        _quitEvent.wait(locker);
+        // Timed wait: the signal handler only latches the quit-signal flag (async-signal-safe), so this
+        // waiting thread is the one that converts it into a regular RequestQuit with logging/notification.
+        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+
+        if (IsQuitSignalReceived()) {
+            RequestQuit();
+        }
     }
 }
 

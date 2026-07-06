@@ -453,6 +453,10 @@ void Application::BeginFrame()
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (IsQuitSignalReceived()) {
+        RequestQuit();
+    }
+
     _onFrameBeginDispatcher();
 }
 
@@ -478,6 +482,13 @@ auto Application::IsHeadless() const noexcept -> bool
     return true;
 }
 
+auto Application::IsQuitRequested() const -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _quit || IsQuitSignalReceived();
+}
+
 void Application::RequestQuit(bool success) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -500,7 +511,11 @@ void Application::WaitForRequestedQuit()
     unique_lock locker {_quitLocker};
 
     while (!_quit) {
-        _quitEvent.wait(locker);
+        _quitEvent.wait_for(locker, std::chrono::milliseconds {100});
+
+        if (IsQuitSignalReceived()) {
+            RequestQuit();
+        }
     }
 }
 

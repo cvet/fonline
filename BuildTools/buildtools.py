@@ -1084,10 +1084,10 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 	reset_build_dir(build_dir)
 
 	if os.name == 'nt':
+		# No explicit -G: let CMake pick the newest installed Visual Studio (same as
+		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version.
 		run([
 			'cmake',
-			'-G',
-			'Visual Studio 17 2022',
 			'-A',
 			'x64',
 			*make_toolset_cmake_args(output, binary_output_postfix=binary_output_postfix),
