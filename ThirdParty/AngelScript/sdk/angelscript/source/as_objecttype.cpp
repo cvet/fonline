@@ -559,8 +559,34 @@ asCObjectProperty *asCObjectType::AddPropertyToClass(const asCString &propName, 
 
 	// Add extra bytes so that the property will be properly aligned
 #ifndef WIP_16BYTE_ALIGN
-	if( propSize == 2 && (size & 1) ) size += 1;
-	if( propSize > 2 && (size & 3) ) size += 4 - (size & 3);
+	// (FOnline Patch) Align each member to its real requirement instead of the historical 2/4-byte packing.
+	// 8-byte value-type members (registered alignment 8: ident/hstring/timespan/...), 8-byte built-in
+	// primitives (int64/uint64/double) and pointer-sized members (handles, funcdefs, non-POD value
+	// references) used to land on odd 4-byte boundaries inside script objects, so the application's
+	// constructor/accessor bridges dereferenced them misaligned (diagnosed on script-class 8-byte
+	// value-type members initialized in script constructors). Property offsets are recomputed on every
+	// bytecode load (the serializer stores property indices, not offsets), so this layout change is
+	// per-process and cross-bitness-safe; the object base comes from the engine allocator, which
+	// guarantees at least 8-byte alignment on every supported target.
+	{
+		asUINT alignment = 4;
+		if( propSize == 1 )
+			alignment = 1;
+		else if( propSize == 2 )
+			alignment = 2;
+		else if( dt.IsPrimitive() )
+			alignment = propSize >= 8 ? 8 : 4;
+		else if( dt.IsObjectHandle() || dt.IsFuncdef() || prop->type.IsReference() )
+			alignment = AS_PTR_SIZE * 4;
+		else
+		{
+			asCObjectType *ot = CastToObjectType(dt.GetTypeInfo());
+			if( ot != 0 && ot->alignment > 4 )
+				alignment = (asUINT)ot->alignment;
+		}
+		if( size & (alignment - 1) )
+			size += alignment - (size & (alignment - 1));
+	}
 #else
 	asUINT alignment = dt.GetAlignment();
 	const asUINT propSizeAlignmentDifference = size & (alignment-1);

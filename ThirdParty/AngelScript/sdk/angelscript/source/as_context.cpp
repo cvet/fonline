@@ -2133,7 +2133,7 @@ void asCContext::PrepareScriptFunction()
 
 	// Make sure there is space on the stack to execute the function
 	asDWORD *oldStackPointer = m_regs.stackPointer;
-	asUINT needSize = m_currentFunction->scriptData->stackNeeded + 1; // (FOnline Patch) +1 slack for the even-locals rounding below
+	asUINT needSize = m_currentFunction->scriptData->stackNeeded + 2; // (FOnline Patch) +2 slack for the frame-base alignment shift and the even-locals rounding below
 
 	// With a quick check we know right away that we don't need to call ReserveStackSpace and do other checks inside it
 	if (m_stackBlocks.GetLength() == 0 ||
@@ -2149,6 +2149,26 @@ void asCContext::PrepareScriptFunction()
 			                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
 			memcpy(m_regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
 		}
+	}
+
+	// (FOnline Patch) 8-byte align the frame base of every script call. The compiler lays 8-byte locals on
+	// even DWORD offsets relative to the frame base and the entry/block-move paths already land the base
+	// aligned, but a nested script call takes the base straight from the caller's stack pointer after an
+	// argument block whose DWORD size may be odd (sizes are per-bitness: pointers are 2 DWORDs on 64-bit,
+	// 1 on 32-bit), leaving the base 4-mod-8 and every 8-byte local in the frame misaligned. Relocating the
+	// just-pushed argument block one DWORD down is safe for the same reason the block-move memcpy above is:
+	// argument slots hold values or absolute pointers fixed up before the call (GETOBJ/GETREF), the callee
+	// addresses them relative to the shifted frame base, and the caller's stack pointer is restored from the
+	// call state saved before the shift (asBC_RET does PopCallState, then pops the arguments arithmetically
+	// with l_sp += w on the restored value). Runtime-only and re-derived per target bitness - nothing baked,
+	// the serialized bytecode is untouched. The extra DWORD is covered by the +2 slack above.
+	if( (((asPWORD)m_regs.stackPointer) & 7) != 0 )
+	{
+		int numDwords = m_currentFunction->GetSpaceNeededForArguments() +
+		                (m_currentFunction->objectType ? AS_PTR_SIZE : 0) +
+		                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
+		memmove(m_regs.stackPointer - 1, m_regs.stackPointer, sizeof(asDWORD)*numDwords);
+		m_regs.stackPointer -= 1;
 	}
 
 	// Update framepointer
