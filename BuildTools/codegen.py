@@ -132,8 +132,10 @@ class ExportMethodTag:
     comment: CommentLines
     ret_nullable: bool = False
     # ptr<T> / nptr<T> wrapper spellings for the return value and the engine/entity
-    # receiver (the skipped first parameter). C++-glue detail, not part of the script hash.
+    # receiver (the skipped first parameter), plus ptr<T> / nptr<T> container element wrapper
+    # spellings for vector/readonly_vector returns. C++-glue detail, not part of the script hash.
     ret_wrapper: bool = False
+    ret_container_element_wrapper: str = ''
     receiver_wrapper: bool = False
 
 
@@ -864,7 +866,7 @@ def parse_method_args(args_text: str, valid_types: set[str], skip_first_arg: boo
     return result_args
 
 
-def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool]:
+def parse_export_method_signature(tag_context: str, valid_types: set[str], game_entities: list[str]) -> tuple[str, str, str, str, list[MethodArg], bool, bool, str, bool]:
     line_tokens = tokenize(tag_context)
     brace_open_pos = tag_context.find('(')
     brace_close_pos = find_matching_cpp_paren(tag_context, brace_open_pos)
@@ -874,7 +876,8 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
     assert function_token_index > 1, tag_context
     function_name = line_tokens[function_token_index - 1]
     return_tokens = line_tokens[1:function_token_index - 1]
-    ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(''.join(return_tokens))
+    raw_ret_type_text = ''.join(return_tokens)
+    ret_type_text, ret_wrapper, ret_wrapper_nullable = strip_pointer_wrapper(raw_ret_type_text)
     ret = engine_type_to_meta_type(ret_type_text, valid_types)
     # Raw pointers are nullable by default; non-null is expressed only via ptr<T>.
     ret_nullable = ret_wrapper_nullable if ret_wrapper else is_validated_pointer_meta_type(ret)
@@ -896,7 +899,7 @@ def parse_export_method_signature(tag_context: str, valid_types: set[str], game_
         first_arg = receiver_args[0].rsplit(' ', 1)[0] if ' ' in receiver_args[0] else receiver_args[0]
         _, receiver_wrapper, _ = strip_pointer_wrapper(first_arg)
 
-    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, receiver_wrapper
+    return target, entity, name, ret, parse_method_args(function_args, valid_types, skip_first_arg=True), ret_nullable, ret_wrapper, container_element_wrapper(raw_ret_type_text), receiver_wrapper
 
 
 def resolve_event_target(tag_context: str, game_entities_info: Mapping[str, EntityInfo]) -> tuple[str, str]:
@@ -1441,9 +1444,9 @@ def parse_export_method_tags(valid_types: set[str]) -> None:
             method_context = require_str_context(tag_context, 'ExportMethod')
             export_flags = tokenize(tag_info)
 
-            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
+            target, entity, name, ret, result_args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = parse_export_method_signature(method_context, valid_types, game_entities)
 
-            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, receiver_wrapper=receiver_wrapper))
+            codegen_tags['ExportMethod'].append(ExportMethodTag(target, entity, name, ret, result_args, export_flags, comment, ret_nullable=ret_nullable, ret_wrapper=ret_wrapper, ret_container_element_wrapper=ret_container_element_wrapper, receiver_wrapper=receiver_wrapper))
             # Hash only the script-facing fields. The ptr<T>/nptr<T> wrapper spelling is a C++-glue
             # detail (nullability is already carried by `nullable`), so it must not change the
             # client/server compatibility hash when a raw signature is converted to a wrapper.
@@ -1799,7 +1802,7 @@ def resolve_method_registration_info(entity: str, method_tag: ExportMethodTag, t
     return MethodRegistrationInfo(
         function_name=method_tag.target + '_' + engine_entity_type_name + '_' + method_tag.name,
         engine_entity_type_extern=apply_pointer_wrapper(engine_entity_type_extern, method_tag.receiver_wrapper, False),
-        return_type=apply_pointer_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'), method_tag.ret_wrapper, method_tag.ret_nullable),
+        return_type=apply_container_element_wrapper(apply_pointer_wrapper(meta_type_to_engine_type(method_tag.ret, method_tag.target, False, self_entity='Entity'), method_tag.ret_wrapper, method_tag.ret_nullable), method_tag.ret_container_element_wrapper),
     )
 
 
