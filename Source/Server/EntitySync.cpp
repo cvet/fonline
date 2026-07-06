@@ -1040,14 +1040,15 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         return;
     }
 
-    // A fully empty sync context is the legacy/unrestricted access mode. Registering a freshly
-    // created entity inside that mode must not turn the scope into a partial lock set, otherwise the
-    // very next access to an unrelated entity starts failing spuriously. Singleton locks (Game.Lock)
-    // still make the context restricted, so fresh entities created under them must be added.
-    if (_heldLocks.empty() && _singletonLocks.empty()) {
-        return;
-    }
-
+    // The entity's own lock is ALWAYS taken here, including under a still-empty context. A freshly
+    // registered/created entity is a real, uncovered lock the moment it exists; leaving it unlocked
+    // let another worker legitimately Sync it (its content's time events, a peer job) and mutate its
+    // properties while the creating thread was still initializing it uncovered — the CreateLocation
+    // Properties data race. Taking the lock makes the creator hold its fresh subtree exclusively for
+    // the rest of the job, so those concurrent jobs queue until it is done. Consequence: a job that
+    // creates and registers an entity thereby becomes restricted (its later accesses are validated
+    // against the held set), so a former empty-context path that touches an *unrelated* entity after
+    // a create must Sync that entity explicitly.
     auto lock = entity->GetEntityLock();
 
     if (!lock) {
