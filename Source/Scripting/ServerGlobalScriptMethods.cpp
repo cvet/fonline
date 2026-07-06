@@ -637,11 +637,14 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Critter> cr)
 {
-    if (cr && !cr->GetControlledByPlayer()) {
+    if (cr) {
         ValidateEntityAccess(cr);
-        ValidateEntityAccess(cr->GetParentRaw());
 
-        server->CrMngr.DestroyCritter(cr.as_ptr());
+        if (!cr->GetControlledByPlayer()) {
+            ValidateEntityAccess(cr->GetParentRaw());
+
+            server->CrMngr.DestroyCritter(cr.as_ptr());
+        }
     }
 }
 
@@ -652,11 +655,14 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
     if (crId) {
         auto nullable_cr = server->EntityMngr.GetCritter(crId);
 
-        if (nullable_cr && !nullable_cr->GetControlledByPlayer()) {
+        if (nullable_cr) {
             ValidateEntityAccess(nullable_cr);
-            ValidateEntityAccess(nullable_cr->GetParentRaw());
 
-            server->CrMngr.DestroyCritter(nullable_cr.as_ptr());
+            if (!nullable_cr->GetControlledByPlayer()) {
+                ValidateEntityAccess(nullable_cr->GetParentRaw());
+
+                server->CrMngr.DestroyCritter(nullable_cr.as_ptr());
+            }
         }
     }
 }
@@ -666,11 +672,14 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
 FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonly_vector<nptr<Critter>> critters)
 {
     for (nptr<Critter> cr : critters) {
-        if (cr && !cr->GetControlledByPlayer()) {
+        if (cr) {
             ValidateEntityAccess(cr);
-            ValidateEntityAccess(cr->GetParentRaw());
 
-            server->CrMngr.DestroyCritter(cr.as_ptr());
+            if (!cr->GetControlledByPlayer()) {
+                ValidateEntityAccess(cr->GetParentRaw());
+
+                server->CrMngr.DestroyCritter(cr.as_ptr());
+            }
         }
     }
 }
@@ -683,12 +692,15 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
         if (id) {
             auto nullable_cr = server->EntityMngr.GetCritter(id);
 
-            if (nullable_cr && !nullable_cr->GetControlledByPlayer()) {
+            if (nullable_cr) {
                 auto cr = nullable_cr.as_ptr();
                 ValidateEntityAccess(cr);
-                ValidateEntityAccess(cr->GetParentRaw());
 
-                server->CrMngr.DestroyCritter(cr);
+                if (!cr->GetControlledByPlayer()) {
+                    ValidateEntityAccess(cr->GetParentRaw());
+
+                    server->CrMngr.DestroyCritter(cr);
+                }
             }
         }
     }

@@ -159,6 +159,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
+    EnsureEntitySynced(map);
 
     if (count <= 0) {
         throw ItemManagerException("Invalid items cound");
@@ -220,6 +221,12 @@ void ItemManager::DestroyItem(ptr<Item> item)
     // Finish events
     _engine->OnItemFinish.Fire(item);
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
+
+    if (item->GetOwnership() != ItemOwnership::Nowhere) {
+        auto nullable_holder = item->GetParent();
+        FO_VERIFY_AND_THROW(nullable_holder, "Missing required holder");
+        EnsureEntitySynced(nullable_holder.as_ptr());
+    }
 
     // Tear off from environment
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {

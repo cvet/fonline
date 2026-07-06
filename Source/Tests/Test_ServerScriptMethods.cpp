@@ -1460,10 +1460,13 @@ namespace ScriptMethodsTest
         if (created is null) return -3;
         if (!Game.IsEntityLocked(created)) return -4;
 
-        Game.SyncRelease();
-
+        // Destroy while both critters are still covered ({anchor} from the explicit Sync, {created}
+        // from registration self-sync): destroying restricts the context, so a released-then-destroy
+        // sequence would leave the second critter uncovered.
         Game.DestroyCritter(created);
         Game.DestroyCritter(anchor);
+
+        Game.SyncRelease();
 
         return 0;
     }

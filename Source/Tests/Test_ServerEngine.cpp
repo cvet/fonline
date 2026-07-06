@@ -1442,13 +1442,17 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
     ctx.Release();
 
-    // EnsureEntitySynced is a no-op in fully empty/unrestricted mode: registering a fresh entity must
-    // not accidentally turn the scope into a partial lock set. Once a scope is restricted (including
-    // a singleton Game.Lock-style lock), it adds one lock and is idempotent when already covered.
+    // EnsureEntitySynced ALWAYS takes the entity's own lock, including under a still-empty context:
+    // a freshly registered entity is a real, uncovered lock the moment it exists, and leaving it
+    // unlocked would let a concurrent job mutate it while the creator is still initializing it.
+    // The context thereby becomes restricted — the pulled entity is covered, an unrelated sibling
+    // is not. With a singleton lock held it likewise adds the one lock and stays idempotent.
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.IsEmpty());
+    CHECK_FALSE(ctx.IsEmpty());
+    CHECK(ctx.ValidateAccess(cr_a));
     CHECK(IsEntityAccessValid(cr_a));
-    CHECK(IsEntityAccessValid(cr_b));
+    CHECK_FALSE(IsEntityAccessValid(cr_b));
+    ctx.Release();
 
     ctx.LockSingleton(server->GetEntityLock().get());
     ctx.EnsureEntitySynced(cr_a);

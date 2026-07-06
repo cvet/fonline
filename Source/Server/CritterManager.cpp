@@ -239,12 +239,11 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(!cr->GetControlledByPlayer(), "Critter is controlled by a player in an NPC-only operation");
-
     auto cr_holder = cr.hold_ref();
     ignore_unused(cr_holder);
 
     EnsureEntitySynced(cr);
+    FO_VERIFY_AND_THROW(!cr->GetControlledByPlayer(), "Critter is controlled by a player in an NPC-only operation");
 
     // Skip redundant calls
     if (cr->IsDestroying() || cr->IsDestroyed()) {
