@@ -24,6 +24,17 @@ namespace FOnline
             return InvokeCore(funcName, args ?? Array.Empty<object?>());
         }
 
+        public static bool Invoke<TResult>(string funcName, ref TResult result)
+        {
+            object?[] args = { result };
+            bool invoked = InvokeCore(funcName, args);
+            if (invoked)
+            {
+                CopyInvokeResult(args, 0, ref result);
+            }
+            return invoked;
+        }
+
         public static bool Invoke<TResult>(string funcName, object? arg0, ref TResult result)
         {
             object?[] args = { arg0, result };
