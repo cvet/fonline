@@ -8,7 +8,7 @@ DepthWrite = False
 DepthFunc = Always
 
 [VertexShader]
-layout(binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
+layout(set = 0, binding = 0, std140) uniform ProjBuf { mat4 ProjMatrix; };
 
 layout(location = 0) in vec3 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -30,8 +30,8 @@ void main(void)
 }
 
 [FragmentShader]
-layout(binding = 0) uniform sampler2D MainTex;
-layout(binding = 1, std140) uniform EggBuf { vec4 EggData[3]; };
+layout(set = 1, binding = 0) uniform sampler2D MainTex;
+layout(set = 0, binding = 1, std140) uniform EggBuf { vec4 EggData[3]; };
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;

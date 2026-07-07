@@ -249,7 +249,7 @@ namespace NativeDataProvider
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
-                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(const_cast<wrapped_t*>(arg.get()));
+                ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
                 return ptr<void> {cast_to_void(entity->get_pp())};
             }
             else {
@@ -403,14 +403,14 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return static_cast<void**>(slot.get());
+        return slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlotPointer(ptr<void> slot_address) noexcept -> ptr<void*>
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void***>(slot_address.get());
+        return *slot_address.reinterpret_as<void**>();
     }
 
     template<typename T>
@@ -422,7 +422,7 @@ namespace NativeDataProvider
             return *GetHandleSlot(slot);
         }
         else {
-            return *cast_from_void<T**>(slot.get());
+            return *slot.reinterpret_as<T*>();
         }
     }
 
@@ -436,10 +436,10 @@ namespace NativeDataProvider
         }
 
         if constexpr (std::is_void_v<T>) {
-            return *static_cast<const void* const*>(slot.get());
+            return *slot.reinterpret_as<const void*>();
         }
         else {
-            return *static_cast<const T* const*>(slot.get());
+            return *slot.reinterpret_as<const T*>();
         }
     }
 
@@ -452,7 +452,7 @@ namespace NativeDataProvider
             *GetHandleSlot(slot) = value.get();
         }
         else {
-            *cast_from_void<T**>(slot.get()) = value.get();
+            *slot.reinterpret_as<T*>() = value.get();
         }
     }
 
@@ -467,7 +467,7 @@ namespace NativeDataProvider
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        return *static_cast<void* const*>(slot.get());
+        return *slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlot(ptr<void> slot_address) noexcept -> nptr<void>
@@ -573,7 +573,9 @@ namespace NativeDataCaller
             return temp.emplace(target_entity.get());
         }
         else if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
-            return temp.emplace(*cast_from_void<raw_t*>(data.get()));
+            // Mutable slot is the address of the caller's variable, so bind the reference to it directly:
+            // the native callee mutates the caller's storage in place and no write-back is needed
+            return *cast_from_void<raw_t*>(data.get());
         }
         else if constexpr (std::is_reference_v<T>) {
             return **cast_from_void<raw_t**>(data.get());
@@ -895,7 +897,7 @@ template<typename T, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<T> entry) noexcept -> ptr<T> { return entry; });
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
@@ -903,22 +905,7 @@ template<typename T, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<const T> entry) noexcept -> ptr<T> { return const_cast<T*>(std::addressof(*entry)); });
-}
-
-template<typename T>
-[[nodiscard]] auto ReleaseScriptOwnershipVector(vector<refcount_ptr<T>>&& entries)
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<T*> result; // SmartPointerAudit: script ABI raw container.
-    result.reserve(entries.size());
-
-    for (refcount_ptr<T>& entry : entries) {
-        result.emplace_back(std::move(entry).release_ownership());
-    }
-
-    return result;
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return const_cast<T*>(entry.get()); });
 }
 
 template<typename T, typename U, typename TContainer>
@@ -926,7 +913,7 @@ template<typename T, typename U, typename TContainer>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return MakeScriptHandleVectorWith<T>(entries, [](ptr<U> entry) noexcept -> ptr<U> { return entry; });
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>

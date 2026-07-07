@@ -101,11 +101,11 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
 
 // SyncScope: requires self; returns inner item handles covered by self while the cover remains.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Item*> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
+FO_SCRIPT_API vector<ptr<Item>> Server_Item_GetItems(ptr<Item> self, any_t stackId = any_t {})
 {
     vector<ptr<Item>> items = self->GetInnerItems(stackId);
 
-    return MakeScriptHandleVector<Item>(items);
+    return items;
 }
 
 // SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
@@ -180,8 +180,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>
@@ -221,8 +219,6 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
@@ -249,8 +245,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
     default:
         throw ScriptException("Invalid ownership");
     }
-
-    FO_UNREACHABLE_PLACE();
 }
 
 FO_END_NAMESPACE

@@ -45,6 +45,8 @@ static void RunSelfTestCrash(string_view mode);
 [[noreturn]] static void CrashByStrongAssert();
 static void ThrowSelfTestException();
 FO_NO_INLINE static auto RecurseUntilStackOverflow(int depth) -> int;
+using StackOverflowRecursor = int (*)(int);
+static auto GetStackOverflowRecursor() -> StackOverflowRecursor;
 
 void DiagnosticSelfTest::RunIfRequested()
 {
@@ -158,13 +160,23 @@ static auto RecurseUntilStackOverflow(int depth) -> int
     blocker[0] = static_cast<char>(depth & 0xFF);
     blocker[sizeof(blocker) - 1] = static_cast<char>(depth & 0xFF);
 
-    const int deeper = RecurseUntilStackOverflow(depth + 1);
+    const StackOverflowRecursor recursor = GetStackOverflowRecursor();
+    const int deeper = recursor(depth + 1);
 
     return deeper + blocker[0] + blocker[sizeof(blocker) - 1];
 }
 FO_MSVC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()
 FO_GCC_IGNORE_WARNINGS_POP()
+
+static auto GetStackOverflowRecursor() -> StackOverflowRecursor
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    static StackOverflowRecursor volatile recursor = RecurseUntilStackOverflow;
+
+    return recursor;
+}
 
 static void CrashByIntegerDivideByZero()
 {

@@ -206,7 +206,7 @@ void MapSprite::SetLight(CornerType corner, ptr<const ucolor> light, msize size)
         const size_t width = numeric_cast<size_t>(size.width);
         const size_t height = numeric_cast<size_t>(size.height);
         const size_t light_count = width * height;
-        const_span<ucolor> lights {light.get(), light_count};
+        const auto lights = make_span(light, light_count);
         const auto light_at = [&lights](size_t pos) noexcept -> ptr<const ucolor> {
             FO_STRONG_ASSERT(pos < lights.size(), "Light index is out of range");
             return &lights[pos];

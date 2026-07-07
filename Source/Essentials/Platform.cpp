@@ -32,6 +32,7 @@
 //
 
 #include "Platform.h"
+#include "ExceptionHandling.h"
 #include "StackTrace.h"
 #include "StringUtils.h"
 
@@ -517,7 +518,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "processor_info");
         ptr<const integer_t> processor_info = raw_processor_info;
         ptr<const processor_cpu_load_info_data_t> load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
-        span<const processor_cpu_load_info_data_t> load_info {load_info_data.get(), processor_count};
+        const auto load_info = make_span(load_info_data, processor_count);
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
 

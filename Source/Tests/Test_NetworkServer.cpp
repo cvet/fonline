@@ -39,11 +39,30 @@
 #include "NetworkServer.h"
 #include "Test_BakerHelpers.h"
 
+#if FO_HAVE_WEB_SOCKETS
+#define ASIO_STANDALONE 1
+#define ASIO_NO_DEPRECATED 1
+#include "asio.hpp"
+// ReSharper disable CppInconsistentNaming
+#define _WEBSOCKETPP_CPP11_FUNCTIONAL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
+#define _WEBSOCKETPP_CPP11_SYSTEM_ERROR_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
+#define _WEBSOCKETPP_CPP11_RANDOM_DEVICE_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
+#define _WEBSOCKETPP_CPP11_MEMORY_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
+#define _WEBSOCKETPP_CPP11_STL_ // NOLINT(clang-diagnostic-reserved-macro-identifier, bugprone-reserved-identifier)
+// ReSharper restore CppInconsistentNaming
+FO_DISABLE_WARNINGS_PUSH()
+#include "websocketpp/client.hpp"
+#include "websocketpp/config/asio_no_tls_client.hpp"
+FO_DISABLE_WARNINGS_POP()
+#endif
+
 FO_BEGIN_NAMESPACE
 
 namespace
 {
-    static std::atomic_uint16_t TestServerPort {47000};
+    // Base 47100: the sequential fetch_add(1) walk must not cross 47001, which Windows reserves for the
+    // WinRM HTTP listener on effectively every machine (bind fails with WSAEACCES there).
+    static std::atomic_uint16_t TestServerPort {47100};
 
     template<typename Predicate>
     auto WaitForCondition(Predicate&& predicate, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
@@ -223,6 +242,106 @@ TEST_CASE("NetworkServerAsioRearmsAcceptAfterCallbackException")
 
     second_connection->Disconnect();
     second_client.close();
+}
+#endif
+
+#if FO_HAVE_WEB_SOCKETS
+// End-to-end WebSocket transport coverage (previously none, which is what let the transport's threading
+// bugs ship). A real websocketpp client connects and sends a binary frame that must reach the connection's
+// receive callback (the flaky inbound-delivery regression), then a server-side Disconnect() from the engine
+// thread plus Shutdown() must tear the connection down without racing the websocketpp io thread - the
+// terminate()->close() teardown and the weak_from_this() handler lifetime. The sanitizer CI jobs turn any
+// residual use-after-free in this path into a hard failure.
+TEST_CASE("NetworkServerWebSocketsDeliversFrameAndTearsDownCleanly")
+{
+    REQUIRE(net_sockets::startup());
+
+    auto settings = MakeServerNetworkSettings();
+    const auto port = TestServerPort.fetch_add(1);
+    BakerTests::OverrideSetting(settings.WebSocketPort, static_cast<int32_t>(port));
+    BakerTests::OverrideSetting(settings.SecuredWebSockets, false);
+
+    mutex state_mutex;
+    shared_ptr<NetworkServerConnection> accepted_conn;
+    vector<uint8_t> received;
+
+    auto server = NetworkServer::StartWebSocketsServer(&settings, [&](shared_ptr<NetworkServerConnection> conn) {
+        conn->SetAsyncCallbacks([]() -> const_span<uint8_t> { return {}; },
+            [&](const_span<uint8_t> buf) {
+                const scoped_lock lock {state_mutex};
+                received.insert(received.end(), buf.begin(), buf.end());
+            },
+            []() {});
+
+        const scoped_lock lock {state_mutex};
+        accepted_conn = std::move(conn);
+    });
+
+    const auto shutdown_server = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    websocketpp::client<websocketpp::config::asio_client> client;
+    client.clear_access_channels(websocketpp::log::alevel::all);
+    client.clear_error_channels(websocketpp::log::elevel::all);
+    client.init_asio();
+
+    const vector<uint8_t> payload {1, 2, 3};
+
+    client.set_open_handler([&client, &payload](const websocketpp::connection_hdl& hdl) {
+        std::error_code send_error;
+        client.send(hdl, payload.data(), payload.size(), websocketpp::frame::opcode::binary, send_error);
+        ignore_unused(send_error);
+    });
+
+    std::error_code connect_error;
+    const auto connection = client.get_connection("ws://127.0.0.1:" + std::to_string(port), connect_error);
+    REQUIRE_FALSE(connect_error);
+
+    std::error_code subprotocol_error;
+    connection->add_subprotocol("binary", subprotocol_error);
+    REQUIRE_FALSE(subprotocol_error);
+
+    client.connect(connection);
+
+    std::thread client_thread {[&client] {
+        try {
+            client.run();
+        }
+        catch (...) {
+        }
+    }};
+    const auto stop_client = scope_exit([&client, &client_thread]() noexcept {
+        safe_call([&client] { client.stop(); });
+        safe_call([&client_thread] {
+            if (client_thread.joinable()) {
+                client_thread.join();
+            }
+        });
+    });
+
+    REQUIRE(WaitForCondition(
+        [&] {
+            const scoped_lock lock {state_mutex};
+            return received.size() >= payload.size();
+        },
+        std::chrono::milliseconds {5000}));
+
+    shared_ptr<NetworkServerConnection> connection_to_close;
+    {
+        const scoped_lock lock {state_mutex};
+        CHECK(received == payload);
+        REQUIRE(accepted_conn);
+        connection_to_close = accepted_conn;
+    }
+
+    connection_to_close->Disconnect();
+    CHECK(connection_to_close->IsDisconnected());
+
+    client.stop();
+    if (client_thread.joinable()) {
+        client_thread.join();
+    }
+
+    server->Shutdown();
 }
 #endif
 

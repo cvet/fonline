@@ -35,6 +35,7 @@
 #include "DataSerialization.h"
 #include "DiskFileSystem.h"
 #include "Logging.h"
+#include "Player.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
@@ -173,10 +174,11 @@ auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -
     return desc_it != _binaryTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
-void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size)
+void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     const auto file_index = in_buf->Read<uint32_t>();
@@ -240,21 +242,20 @@ void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t
         }
     }
 
-    auto out_buf = connection->WriteMsg(NetMessage::UpdateFileData);
-
-    out_buf->Write(numeric_cast<int32_t>(update_portion_size));
+    const_span<uint8_t> update_data {};
 
     if (update_portion_size != 0) {
         if (update_file.InMemory) {
             const size_t offset = numeric_cast<size_t>(start_offset);
             FO_STRONG_ASSERT(offset < update_file.MemoryData.size(), "Byte offset is past the end of the update data buffer");
-            ptr<const uint8_t> update_data = update_file.MemoryData.data() + offset;
-            out_buf->Push(update_data, update_portion_size);
+            update_data = {update_file.MemoryData.data() + offset, update_portion_size};
         }
         else {
-            out_buf->Push(disk_update_data.data(), update_portion_size);
+            update_data = {disk_update_data.data(), update_portion_size};
         }
     }
+
+    player->Send_UpdateFileData(update_data);
 }
 
 FO_END_NAMESPACE

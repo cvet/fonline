@@ -29,6 +29,7 @@ import android.view.WindowManager;
 
     Because of this, that's where we set up the SDL thread
 */
+@SuppressWarnings("deprecation")
 public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     View.OnApplyWindowInsetsListener, View.OnKeyListener, View.OnTouchListener, SensorEventListener  {
 

@@ -111,6 +111,7 @@ public:
     [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
 
     void SetDispatcherHooks(DispatcherHooks hooks);
+    void PauseDispatcherHooks();
     void ClearDispatcherHooks();
 
     auto StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
@@ -136,6 +137,7 @@ private:
     unordered_set<refcount_ptr<Entity>> _timeEventEntities {};
     std::atomic_uint32_t _timeEventCounter {};
     DispatcherHooks _dispatcher {};
+    std::atomic_bool _dispatcherPaused {};
     any_t _emptyAnyValue {};
 };
 

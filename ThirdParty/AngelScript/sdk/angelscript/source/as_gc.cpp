@@ -387,11 +387,15 @@ int asCGarbageCollector::DestroyNewGarbage()
 			if( GetNewObjectsCount() == 0 ) // (FOnline Patch)
 				return 0;
 
-			// Update the seqAtSweepStart which is used to determine when 
+			// Update the seqAtSweepStart which is used to determine when
 			// to move an object from the new set to the old set
+			// (FOnline Patch) numAdded is incremented under gcCritical in AddScriptObjectToGC; read it
+			// under the same lock so a concurrent script thread's registration cannot race this sweep.
+			ENTERCRITICALSECTION(gcCritical);
 			seqAtSweepStart[0] = seqAtSweepStart[1];
 			seqAtSweepStart[1] = seqAtSweepStart[2];
 			seqAtSweepStart[2] = numAdded;
+			LEAVECRITICALSECTION(gcCritical);
 
 			destroyNewIdx = (asUINT)-1;
 			destroyNewState = destroyGarbage_loop;

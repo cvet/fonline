@@ -83,6 +83,10 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
+    if (_context->Settings->BakeLanguages.empty()) {
+        throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
+    }
+
     // Process files
     if (_context->BakeChecker) {
         bool check_result = false;

@@ -382,6 +382,7 @@ void Critter::AttachPlayer(ptr<Player> player)
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
+    ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(!player->GetControlledCritterId(), "Player already controls a critter");
     FO_VERIFY_AND_THROW(!_player.load(std::memory_order_acquire), "Player is already set");
     FO_VERIFY_AND_THROW(!player->GetViewMap(), "Player still has an active view map");
@@ -404,6 +405,7 @@ void Critter::DetachPlayer()
     FO_VERIFY_AND_THROW(GetControlledByPlayer(), "Critter is not controlled by a player");
     nptr<Player> player = _player.load(std::memory_order_acquire);
     FO_VERIFY_AND_THROW(player, "Missing required player");
+    ValidateEntityAccess(player);
     FO_VERIFY_AND_THROW(player->GetControlledCritterId() == GetId(), "Player controlled critter id does not match this critter");
 
     player->SetControlledCritterId({});
@@ -1104,10 +1106,10 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    auto nullable_map = GetParent<Map>();
+    auto map = GetParent<Map>();
 
-    if (nullable_map) {
-        return nullable_map.as_ptr()->GetSpectatorPlayersForSend();
+    if (map) {
+        return map->GetSpectatorPlayersForSend();
     }
 
     return {};
@@ -1125,13 +1127,13 @@ auto Critter::GetBroadcastRecipients(nptr<const Player> ignore_player) -> vector
     recipients.reserve(_visibleCrWhoSeeMe.size() + spectators.size());
 
     for (ptr<Critter> cr : _visibleCrWhoSeeMe) {
-        if (refcount_nptr<Player> player = cr->GetPlayerForSend(); player && player.get() != ignore_player.get()) {
+        if (refcount_nptr<Player> player = cr->GetPlayerForSend(); player && player != ignore_player) {
             recipients.emplace_back(std::move(player).take_not_null());
         }
     }
 
     for (refcount_ptr<Player> player : spectators) {
-        if (player.get() != ignore_player.get()) {
+        if (player != ignore_player) {
             recipients.emplace_back(std::move(player));
         }
     }
@@ -1192,7 +1194,7 @@ void Critter::SendAndBroadcast(nptr<const Player> ignore_player, const function<
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (nptr<Player> self_player = _player.load(std::memory_order_acquire); self_player && self_player.get() != ignore_player.get()) {
+    if (nptr<Player> self_player = _player.load(std::memory_order_acquire); self_player && self_player != ignore_player) {
         player_callback(self_player.as_ptr());
     }
 

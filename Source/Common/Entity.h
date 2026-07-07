@@ -352,22 +352,4 @@ inline void ValidateEntityAccess(nptr<const Entity> entity)
     }
 }
 
-// Null-tolerant strong validation for noexcept entity methods.
-inline void ValidateEntityAccessStrong(nptr<const Entity> entity) noexcept
-{
-    if (!entity) {
-        return;
-    }
-
-    try {
-        entity->ValidateAccess();
-    }
-    catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
-    }
-    catch (...) {
-        FO_UNKNOWN_EXCEPTION();
-    }
-}
-
 FO_END_NAMESPACE

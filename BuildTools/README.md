@@ -188,7 +188,7 @@ Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-s
 
 Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
 
-The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Configuration values come from the project main config `Android.*` settings, including the launcher icon PNG source and the Android signing settings.
+The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Android configuration values come from the baked target config for the selected package config, so `SubConfig` overrides affect APK metadata. Android SDKs that require application manifest metadata can use `Android.ManifestMetaData.<android:name> = <android:value>` settings; the packager emits them as `<meta-data>` entries inside `<application>`. SDK Gradle setup can use `Android.GradleMavenRepository.<name> = <url>` and `Android.GradleDependency.<name> = <Gradle dependency statement>` to add package-config-specific Maven repositories and `dependencies { ... }` entries. Package-specific Java sources can use `Android.JavaSource.<name> = <path/to/File.java>`; the packager copies each non-empty source into the generated app package namespace and patches `$PACKAGE$` / `$CONFIG$`.
 
 Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. `package.py` passes `Android.KeystorePassword` and `Android.KeyPassword` to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` environment variables instead of writing them into the generated Gradle project. If you build the generated Gradle project manually, set those variables before `./gradlew assembleRelease`; if the signing settings are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
@@ -225,7 +225,7 @@ Packaged Windows binaries can be code-signed at release time so antivirus/SmartS
 self-update flow downloads and executes a runtime DLL, so an unsigned client is the main heuristic trigger).
 Signing is **off by default** (current behavior: unsigned) and tool-agnostic:
 
-- Set `Windows.CodeSigningHook` in the project main config to an **executable script** on the packaging host.
+- Set `Packaging.CodeSigningHook` in the project main config to an **executable script** on the packaging host.
 - During `finalize_output`, before any Zip/Tar/Wix/Raw step, `package.py` calls `<hook> <absolute-pe-path>`
   once for **every `*.exe`/`*.dll`** staged under the package tree — launcher exes (incl. the OpenGL variant),
   the runtime DLLs, and the client-runtime **update payloads** (the downloaded-and-executed DLL). Signing last

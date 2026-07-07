@@ -142,6 +142,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-undefined': make_validation_target('linux', 'unit-tests', 'San_Undefined', run_target_name='RunUnitTests'),
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
+	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
 }
 
@@ -356,6 +357,14 @@ def resolve_android_sdk_host_tag() -> str:
 	return 'linux'
 
 
+def resolve_android_ndk_host_tag() -> str:
+	if os.name == 'nt':
+		return 'windows'
+	if sys.platform == 'darwin':
+		return 'darwin'
+	return 'linux'
+
+
 def resolve_emscripten_toolchain(env: Mapping[str, str]) -> Path:
 	return Path(env['FO_EMSDK']) / 'upstream' / 'emscripten' / 'cmake' / 'Modules' / 'Platform' / 'Emscripten.cmake'
 
@@ -418,7 +427,12 @@ def make_emsdk_configure_cmd(toolchain_file: Path, *args: object) -> list[str]:
 
 
 def make_android_configure_cmd(toolchain_file: str, toolchain_settings: Sequence[str], *args: object) -> list[str]:
-	return make_unix_makefiles_configure_cmd(f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(toolchain_file)}', *toolchain_settings, *args)
+	configure_cmd = ['cmake', f'-DCMAKE_TOOLCHAIN_FILE={to_cmake_path(toolchain_file)}', *toolchain_settings, *stringify_args(*args)]
+	if os.name == 'nt':
+		configure_cmd[1:1] = ['-G', 'Ninja Multi-Config', f'-DCMAKE_MAKE_PROGRAM={discover_windows_ninja()}']
+	else:
+		configure_cmd[1:1] = ['-G', 'Unix Makefiles']
+	return configure_cmd
 
 
 def make_xcode_configure_cmd(cmake_bin: str, *args: object) -> list[str]:
@@ -827,6 +841,20 @@ def run_capture_text(
 	).strip()
 
 
+def run_with_input(cmd: Sequence[object], input_text: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
+	log('Run:', ' '.join(str(part) for part in cmd))
+	subprocess.run(
+		[str(part) for part in cmd],
+		input=input_text,
+		text=True,
+		encoding='utf-8',
+		cwd=cwd,
+		env=dict(env) if env is not None else None,
+		stdout=subprocess.DEVNULL,
+		check=True,
+	)
+
+
 def run_bash(command: str, cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', command)
 	subprocess.check_call(['bash', '-lc', command], cwd=cwd, env=dict(env) if env is not None else None)
@@ -908,6 +936,14 @@ def build_android_ndk_version(env: Mapping[str, str]) -> str:
 	if not version:
 		raise SystemExit('FO_ANDROID_NDK_VERSION is not configured')
 	return version
+
+
+def build_android_ndk_workspace_version(env: Mapping[str, str]) -> str:
+	return f'{build_android_ndk_version(env)}-{resolve_android_ndk_host_tag()}'
+
+
+def build_android_ndk_archive_name(env: Mapping[str, str]) -> str:
+	return f'{build_android_ndk_version(env)}-{resolve_android_ndk_host_tag()}.zip'
 
 
 def build_android_sdk_version(env: Mapping[str, str]) -> str:
@@ -1106,10 +1142,10 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 	reset_build_dir(build_dir)
 
 	if os.name == 'nt':
+		# No explicit -G: let CMake pick the newest installed Visual Studio (same as
+		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version.
 		run([
 			'cmake',
-			'-G',
-			'Visual Studio 17 2022',
 			'-A',
 			'x64',
 			*make_toolset_cmake_args(output, binary_output_postfix=binary_output_postfix),
@@ -1145,7 +1181,7 @@ def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_android_ndk_version(env)
-	archive_name = f'{version}-linux.zip'
+	archive_name = build_android_ndk_archive_name(env)
 	archive_path = workspace / archive_name
 	ndk_source_dir = workspace / version
 	ndk_target_dir = workspace / 'android-ndk'
@@ -1185,18 +1221,13 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(extract_root)
 	remove_path_if_exists(archive_path)
 
-	sdkmanager = cmdline_tools_latest / 'bin' / 'sdkmanager'
-	if not sdkmanager.is_file():
-		raise SystemExit(f'sdkmanager not found after extraction: {sdkmanager}')
+	sdkmanager = resolve_android_sdkmanager(cmdline_tools_latest)
 
 	sdk_env = os.environ.copy()
 	sdk_env['ANDROID_HOME'] = str(android_sdk_root)
 	sdk_env['ANDROID_SDK_ROOT'] = str(android_sdk_root)
 
-	run_bash(
-		f'yes | {shlex.quote(str(sdkmanager))} --sdk_root={shlex.quote(str(android_sdk_root))} --licenses >/dev/null',
-		env=sdk_env,
-	)
+	run_with_input([sdkmanager, f'--sdk_root={android_sdk_root}', '--licenses'], 'y\n' * 256, env=sdk_env)
 	run(
 		[
 			sdkmanager,
@@ -1205,6 +1236,17 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 		],
 		env=sdk_env,
 	)
+
+
+def resolve_android_sdkmanager(cmdline_tools_latest: Path) -> Path:
+	bin_dir = cmdline_tools_latest / 'bin'
+	candidates = [bin_dir / 'sdkmanager']
+	if os.name == 'nt':
+		candidates.insert(0, bin_dir / 'sdkmanager.bat')
+	for candidate in candidates:
+		if candidate.is_file():
+			return candidate
+	raise SystemExit('sdkmanager not found after extraction: ' + ', '.join(str(candidate) for candidate in candidates))
 
 
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
@@ -1349,7 +1391,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'toolset': build_toolset_version,
 		'emscripten': lambda: build_emscripten_version(env),
 		'android-sdk': lambda: build_android_sdk_version(env),
-		'android-ndk': lambda: build_android_ndk_version(env),
+		'android-ndk': lambda: build_android_ndk_workspace_version(env),
 		'dotnet': lambda: build_dotnet_version(env),
 		'xwin': lambda: build_xwin_workspace_version(env),
 		'msan-libcxx': lambda: build_msan_libcxx_version(env),
@@ -1762,6 +1804,10 @@ def run_platform_configure_build(
 	configure_args = [*extra_cmake_args, *cmake_args]
 	build_env = make_platform_configure_env(platform_name, compiler_name)
 	configure_cmd = make_platform_configure_cmd(platform_name, source_path, configure_args, env)
+	if _cached_generator_mismatch(build_dir, configure_cmd):
+		log(f'Reset stale build dir {build_dir} (cached generator differs from current configure command)')
+		reset_build_dir(build_dir)
+
 	run_platform_configure_step(platform_name, configure_cmd, build_dir, env, build_env)
 
 	run_platform_build_step(platform_name, build_dir, config, env, build_env)
@@ -1786,6 +1832,15 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
 		reset_build_dir(build_dir)
 
+	extra_cmake_args = make_output_path_cmake_args(output, binary_output_postfix)
+
+	# San_Memory needs the MSan-instrumented libc++ prefix at configure time (the build embeds an
+	# rpath to it, so the resulting binary needs no runtime LD_LIBRARY_PATH). The workspace part is
+	# prepared separately (prepare-workspace msan-libcxx); mirror what run_validation() passes so
+	# `build <platform> <target> San_Memory*` works the same as the validate path.
+	if config.startswith('San_Memory'):
+		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(resolve_msan_libcxx_root(env))}')
+
 	ready_path = build_dir / 'READY'
 	reset_marker(ready_path)
 
@@ -1796,13 +1851,14 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 		build_dir,
 		config,
 		env,
-		extra_cmake_args=make_output_path_cmake_args(output, binary_output_postfix),
+		extra_cmake_args=extra_cmake_args,
 	)
 
 	ready_path.touch()
 
 
 _CMAKE_CACHE_COMPILER_RE = re.compile(r'^(CMAKE_(?:C|CXX)_COMPILER):FILEPATH=(.+)$', re.MULTILINE)
+_CMAKE_CACHE_GENERATOR_RE = re.compile(r'^CMAKE_GENERATOR:INTERNAL=(.+)$', re.MULTILINE)
 
 
 def _cached_compiler_mismatch(build_dir: Path, build_env: Mapping[str, str] | None) -> bool:
@@ -1826,6 +1882,26 @@ def _cached_compiler_mismatch(build_dir: Path, build_env: Mapping[str, str] | No
 		if actual and actual != expected:
 			return True
 	return False
+
+
+def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) -> bool:
+	expected_generator: str | None = None
+	for index, part in enumerate(configure_cmd):
+		if part == '-G' and index + 1 < len(configure_cmd):
+			expected_generator = configure_cmd[index + 1]
+			break
+	if expected_generator is None:
+		return False
+
+	cache_file = build_dir / 'CMakeCache.txt'
+	if not cache_file.exists():
+		return False
+	try:
+		text = cache_file.read_text(encoding='utf-8', errors='replace')
+	except OSError:
+		return False
+	match = _CMAKE_CACHE_GENERATOR_RE.search(text)
+	return bool(match and match.group(1).strip() != expected_generator)
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:

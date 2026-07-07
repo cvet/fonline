@@ -204,7 +204,7 @@ FO_SCRIPT_API void Client_Item_MoveToHex(ptr<ItemView> self, mpos hex, float32_t
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ptr<ItemView> self)
+FO_SCRIPT_API vector<ptr<ItemView>> Client_Item_GetInnerItems(ptr<ItemView> self)
 {
     span<refcount_ptr<ItemView>> inner_items = self->GetInnerItems();
 
@@ -215,7 +215,7 @@ FO_SCRIPT_API vector<ItemView*> Client_Item_GetInnerItems(ptr<ItemView> self)
         items.emplace_back(inner_items[i]);
     }
 
-    return MakeScriptHandleVector<ItemView>(items);
+    return items;
 }
 
 ///@ ExportMethod

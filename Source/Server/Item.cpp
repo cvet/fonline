@@ -247,7 +247,7 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
         if (nullable_item_already) {
             auto item_already = nullable_item_already.as_ptr();
 
-            if (item_already == item.get()) {
+            if (item_already == item) {
                 return item;
             }
 

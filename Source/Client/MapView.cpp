@@ -1509,7 +1509,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         auto ls = it->second.as_ptr();
 
         // Ignore redundant updates
-        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity) {
+        if (!ls->Finishing && ls->Hex == hex && ls->Color == color && ls->Distance == distance && ls->Flags == flags && ls->Intensity == intensity && ls->Offset == offset) {
             return;
         }
 
@@ -1521,6 +1521,7 @@ void MapView::UpdateLightSource(ident_t id, mpos hex, ucolor color, int32_t dist
         ls->Distance = distance;
         ls->Flags = flags;
         ls->Intensity = intensity;
+        ls->Offset = offset;
 
         apply_updated_light_source(ls);
     }
@@ -1552,7 +1553,22 @@ void MapView::CleanLightSourceOffsets(ident_t id)
 
     if (it != _lightSources.end()) {
         auto& ls = it->second;
-        ls->Offset = nullptr;
+
+        if (ls->Offset) {
+            // Already-built light primitives hold this raw offset pointer (PointOffset), which points into
+            // the entity view that is being destroyed right now; null them in place so even the current
+            // frame cannot dereference the freed storage. A rebuild is not needed: the offset participates
+            // in primitives only through PointOffset.
+            for (auto& points : _lightPoints) {
+                for (auto& point : points) {
+                    if (point.PointOffset == ls->Offset) {
+                        point.PointOffset = nullptr;
+                    }
+                }
+            }
+
+            ls->Offset = nullptr;
+        }
     }
 }
 

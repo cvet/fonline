@@ -41,7 +41,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(UpdaterException);
 
-class ServerConnection;
+class Player;
 
 class UpdaterBackend final
 {
@@ -55,7 +55,7 @@ public:
     [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 
     void LoadFromClientResources(const GlobalSettings& settings);
-    void ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size);
+    void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 
 private:
     struct UpdateFileData

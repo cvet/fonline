@@ -308,11 +308,6 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         settings.ApplyInternalConfig();
     }
 
-    // Apply command-line settings once before local-config lookup so writable-root overrides (and any
-    // related path knobs) affect the cache path itself. ApplyCommandLine runs again later for normal
-    // precedence over local config.
-    settings.ApplyCommandLine(args);
-
     // Resolve the installed-client writable root now that the config is applied, so the local-config
     // cache below — and all later cache/log/update writes — land in the per-user writable directory.
     ResolveUserWritablePath(settings);
@@ -437,12 +432,30 @@ auto GetExeLogFileName() -> string
 }
 
 #if FO_LINUX || FO_MAC
+// Written from the signal handler, so it must stay async-signal-safe: a lock-free atomic store is
+// the only thing the handler may do (no logging, allocation or condition-variable work — malloc or
+// a cv notify from a signal can deadlock against the interrupted thread). Process-global by nature:
+// a signal targets the process, not an engine instance. Consumed via IsQuitSignalReceived().
+static std::atomic<bool> QuitSignalReceived {};
+static_assert(std::atomic<bool>::is_always_lock_free);
+
 static void SignalHandler(int sig)
 {
     std::signal(sig, SignalHandler);
-    GetApp()->RequestQuit();
+    QuitSignalReceived.store(true, std::memory_order_release);
 }
 #endif
+
+auto IsQuitSignalReceived() noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX || FO_MAC
+    return QuitSignalReceived.load(std::memory_order_acquire);
+#else
+    return false;
+#endif
+}
 
 static void SetupSignals()
 {

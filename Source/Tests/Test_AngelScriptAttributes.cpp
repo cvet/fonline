@@ -1545,7 +1545,7 @@ TEST_CASE("AngelScriptAttributes", "[angelscript][attributes]")
         int32_t arr_value = 42;
         arr->SetValue(1, &arr_value);
         CHECK(arr->GetSize() == 2);
-        CHECK(*cast_from_void<int32_t*>(arr->At(1).get()) == 42);
+        CHECK(*arr->AtAs<int32_t>(1) == 42);
 
         auto cached_arr = CreateScriptArray(engine, "array<int>");
         CHECK(cached_arr->IsEmpty());

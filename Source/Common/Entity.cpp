@@ -59,11 +59,10 @@ void Entity::Release() const noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto old = _refCounter.fetch_sub(1, std::memory_order_release);
+    const auto old = _refCounter.fetch_sub(1, std::memory_order_acq_rel);
     FO_STRONG_ASSERT(old > 0, "Release called for expired entity", old);
 
     if (old == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
         delete this;
     }
 }
@@ -501,7 +500,7 @@ auto EntityEvent::FireEvent(FuncCallData& call) noexcept -> Entity::EventResult
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), Entity::EventResult::ContinueChain, "Destroyed entity tried to fire an entity event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    auto* callbacks = _callbacks.load(std::memory_order_acquire);
+    nptr<vector<Entity::EventCallbackData>> callbacks = _callbacks.load(std::memory_order_acquire);
     FO_STRONG_ASSERT(callbacks, "Entity event fired without cached callbacks", _callbackName);
     return _entity->FireEvent(*callbacks, call);
 }
@@ -512,7 +511,7 @@ auto EntityEvent::CheckCallbacks() -> bool
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), false, "Destroyed entity tried to check callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    if (auto* callbacks = _callbacks.load(std::memory_order_acquire); callbacks != nullptr) {
+    if (nptr<vector<Entity::EventCallbackData>> callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
         return !callbacks->empty();
     }
 

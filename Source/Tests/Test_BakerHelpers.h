@@ -145,7 +145,7 @@ namespace BakerTests
 
         for (const auto& [section_name, entries] : sections) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-            writer.WritePtr(section_name.data(), section_name.length());
+            writer.WriteStringBytes(section_name);
             writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
             for (const auto& tokens : entries) {
@@ -153,7 +153,7 @@ namespace BakerTests
 
                 for (const string_view token : tokens) {
                     writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                    writer.WritePtr(token.data(), token.length());
+                    writer.WriteStringBytes(token);
                 }
             }
         }
@@ -223,7 +223,7 @@ namespace BakerTests
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
         writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.WriteStringBytes(type_name.as_str());
 
         for (const auto& [proto_name, configure] : protos) {
             ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrator(type_name).as_ptr()};
@@ -238,9 +238,9 @@ namespace BakerTests
             ignore_unused(str_hashes);
 
             writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-            writer.WritePtr(proto_name.data(), proto_name.length());
+            writer.WriteStringBytes(proto_name);
             writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-            writer.WritePtr(props_data.data(), props_data.size());
+            writer.WriteBytes(props_data);
         }
 
         return protos_data;

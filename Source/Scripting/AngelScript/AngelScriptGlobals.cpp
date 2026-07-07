@@ -54,22 +54,6 @@ static auto LookupScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) noe
     return cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
 }
 
-template<typename T>
-static auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return cast_from_void<const T*>(value.get());
-}
-
-static auto ReadGenericAddressArgHandle(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> nptr<void>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ptr<void> arg_slot = gen->GetAddressOfArg(arg_index);
-    return NativeDataProvider::ReadHandleSlot(arg_slot);
-}
-
 template<size_t... I>
 [[noreturn]] static void ThrowWithArgs(string_view message, const vector<string>& obj_infos, std::index_sequence<I...> /*unused*/)
 {
@@ -90,7 +74,7 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     obj_infos.reserve(ArgsCount);
 
     for (AngelScript::asUINT i = 1; i < numeric_cast<AngelScript::asUINT>(generic->GetArgCount()); i++) {
-        const auto nullable_obj = ReadGenericAddressArgHandle(generic, i);
+        const auto nullable_obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
         const auto obj_type_id = generic->GetArgTypeId(i);
         obj_infos.emplace_back(nullable_obj ? GetScriptObjectInfo(nullable_obj.as_ptr(), obj_type_id) : string {"null"});
     }
@@ -205,16 +189,15 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
     for (size_t index = 0; index < args_count; index++) {
         ptr<void> arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
         ptr<const ComplexTypeDesc> arg_type = &func_desc->Args[index].Type;
-        const bool pass_indirect = arg_type->Kind != ComplexTypeKind::Simple || arg_type->IsMutable || arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType;
 
-        if (pass_indirect) {
-            if (arg_type->Kind == ComplexTypeKind::Simple && !arg_type->BaseType.IsEntity && !arg_type->BaseType.IsRefType) {
-                indirect_args[index] = arg_data;
-            }
-            else {
-                indirect_args[index] = MemReadUnaligned<void*>(arg_data);
-            }
+        // Mutable simple arguments follow the unified slot contract: the slot is the address of the
+        // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
+        // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
+        // re-packed into a local handle cell so the callee sees a plain handle slot.
+        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
+        if (repack_into_handle_cell) {
+            indirect_args[index] = MemReadUnaligned<void*>(arg_data);
             args_data.emplace_back(static_cast<void*>(indirect_args[index].get_pp()));
         }
         else {

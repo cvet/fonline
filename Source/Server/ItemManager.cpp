@@ -68,7 +68,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 {
     FO_STACK_TRACE_ENTRY();
 
-    EnsureEntitySynced(holder.dyn_cast<ServerEntity>());
+    ValidateEntityAccess(holder.dyn_cast<ServerEntity>());
     EnsureEntitySynced(item);
 
     switch (item->GetOwnership()) {
@@ -159,6 +159,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, int32_t c
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
+    ValidateEntityAccess(map);
 
     if (count <= 0) {
         throw ItemManagerException("Invalid items cound");
@@ -221,6 +222,12 @@ void ItemManager::DestroyItem(ptr<Item> item)
     _engine->OnItemFinish.Fire(item);
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
+    if (item->GetOwnership() != ItemOwnership::Nowhere) {
+        auto nullable_holder = item->GetParent();
+        FO_VERIFY_AND_THROW(nullable_holder, "Missing required holder");
+        ValidateEntityAccess(nullable_holder.as_ptr());
+    }
+
     // Tear off from environment
     for (size_t prev_deps = std::numeric_limits<size_t>::max(); item->GetOwnership() != ItemOwnership::Nowhere || item->HasInnerItems() || item->HasInnerEntities();) {
         try {
@@ -230,9 +237,9 @@ void ItemManager::DestroyItem(ptr<Item> item)
 
             while (item->HasInnerItems()) {
                 ptr<Item> inner = item->GetAllInnerItems().front();
-                // Inner item has its own EntityLock; pull it into the current sync context so the
-                // recursive DestroyItem call passes its sync checks.
-                EnsureEntitySynced(inner);
+                // Inner item is covered through the captured container's chain; the recursive
+                // DestroyItem takes the inner item's own lock itself as its teardown capture.
+                ValidateEntityAccess(inner);
                 DestroyItem(inner);
             }
 

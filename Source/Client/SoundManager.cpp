@@ -430,7 +430,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
 
         if (bytes_read > 0) {
             FO_VERIFY_AND_THROW(output_buf != nullptr, "Ogg read output buffer is null");
-            file_context->Reader.CopyData(make_span(output_buf, bytes_read));
+            file_context->Reader.ReadBytes(make_span(output_buf, bytes_read));
         }
 
         return bytes_read;

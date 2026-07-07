@@ -772,7 +772,7 @@ void ServerEngine::OnPlayerConnected(ptr<Player> unlogined_player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.get()))};
+    const auto key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
 
     {
         ScopedSyncContext ctx;
@@ -800,7 +800,7 @@ auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::opti
     auto connection = unlogined_player->GetConnection();
 
     try {
-        ProcessConnection(connection);
+        ProcessConnection(unlogined_player);
         ProcessUnloginedPlayer(unlogined_player);
     }
     catch (const UnknownMessageException&) {
@@ -827,12 +827,12 @@ void ServerEngine::OnPlayerLogined(ptr<Player> player, nptr<Player> unlogined_pl
     FO_STACK_TRACE_ENTRY();
 
     if (unlogined_player) {
-        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(unlogined_player.as_ptr().get()))};
+        const auto unlogined_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(unlogined_player.as_uintptr())};
         _workerPool->Cancel(unlogined_key);
     }
 
     if (!unlogined_player || !(player == unlogined_player)) {
-        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = numeric_cast<size_t>(std::bit_cast<uintptr_t>(player.get()))};
+        const auto same_addr_key = WorkerJobKey {.Type = WorkerJobType::UnloginedPlayer, .Id = static_cast<size_t>(player.as_uintptr())};
         _workerPool->Cancel(same_addr_key);
     }
 
@@ -859,7 +859,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     auto connection = player->GetConnection();
 
     try {
-        ProcessConnection(connection);
+        ProcessConnection(player);
         ProcessPlayer(player);
     }
     catch (const NetBufferException& ex) {
@@ -1006,7 +1006,8 @@ void ServerEngine::Shutdown()
     // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
-    // primary SyncContext.
+    // primary SyncContext. The whole world is locked into it below, once the sequenced teardown
+    // (network join, time-event cancel, worker-pool drain) has made this thread the sole owner.
     ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
@@ -1050,12 +1051,19 @@ void ServerEngine::Shutdown()
     const bool reached_running_state = _workerPool.has_value();
 
     if (reached_running_state) {
+        // Cut the time-event dispatcher off BEFORE draining the pool: an in-flight job's script may still
+        // StartTimeEvent during the drain, and a fresh Submit would enqueue a job that WorkerPool::Clear
+        // never cancel-marked (an Asap-repeating one keeps the untimed WaitIdle below from ever returning),
+        // while after _workerPool.reset() the Submit/Cancel hooks would dereference the empty optional.
+        // Pausing is an atomic flag, so it is safe against concurrent lock-free hook reads; the hook
+        // objects themselves are cleared further down, once teardown is single-threaded.
+        WriteLog("Shutdown stage: TimeEventMngr.PauseDispatcherHooks");
+        TimeEventMngr.PauseDispatcherHooks();
+
         // Fully drain and reset the worker pool BEFORE clearing _mainWorker. Only _mainWorker drives
         // the whole-world sync handshake: its SyncPointJob calls SyncPoint(), which releases any thread
         // parked in Lock(). If a pool job is blocked on that handshake, stopping _mainWorker first would
         // strand it and hang WaitIdle, so the main worker is always torn down last.
-        WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
-        TimeEventMngr.ClearDispatcherHooks();
         WriteLog("Shutdown stage: workerPool.Clear");
         _workerPool->Clear();
 
@@ -1096,6 +1104,24 @@ void ServerEngine::Shutdown()
 
     WriteLog("Shutdown stage: mainWorker.Clear");
     _mainWorker.Clear();
+
+    // Clear the dispatcher hook objects only after BOTH the worker pool and the main worker are gone:
+    // NotifySchedule/NotifyCancel read the hook std::functions lock-free from worker threads, so
+    // move-assigning them earlier raced those reads. The hooks are already inert — PauseDispatcherHooks
+    // cut them off before the pool drain — so this only releases the captured state now that teardown
+    // is single-threaded.
+    WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
+    TimeEventMngr.ClearDispatcherHooks();
+
+    // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
+    // free: take the whole world into the shutdown context explicitly — the engine singleton lock
+    // (covers engine properties and held custom entities) plus every parentless root — so the
+    // remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
+    // disconnects) run fully covered. The scope-exit Release() drains both buckets.
+    WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
+    shutdown_ctx.GetContext().LockSingleton(GetEntityLock().get());
+    SyncWholeWorld(shutdown_ctx.GetContext());
+
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
 
@@ -1108,7 +1134,6 @@ void ServerEngine::Shutdown()
     ClearAllTimeEvents();
 
     WriteLog("Shutdown stage: per-entity unsubscribe (count={})", EntityMngr.GetEntitiesCount());
-
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
     for (size_t i = 0; i < entities.size(); i++) {
@@ -1165,6 +1190,9 @@ void ServerEngine::Shutdown()
         scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
+            // Unlogined players are not in the entity registry, so the whole-world lock above did not
+            // reach them; capture each one before the validated disconnect/destroy touches.
+            EnsureEntitySynced(player);
             player->GetConnection()->HardDisconnect();
             player->MarkAsDestroyed();
         }
@@ -1206,13 +1234,40 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         }
     }
 
-    // Now this thread is allowed to touch engine state - stand up a SyncContext to satisfy the
-    // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
+    // Now this thread is allowed to touch engine state - stand up a SyncContext and take the whole
+    // world into it explicitly: the engine's singleton lock (covers the engine entity and its held
+    // custom entities) plus every parentless root entity (a root's lock covers its whole subtree via
+    // the ancestor-chain walk). Every worker is drained at the sync point, so all locks are free and
+    // the acquisition is uncontended. Entities created by the holder afterwards are captured by
+    // registration; Unlock's Release() drains both buckets.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
     auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Activate();
+    external_lock_sync_ctx->LockSingleton(GetEntityLock().get());
+    SyncWholeWorld(*external_lock_sync_ctx);
     return true;
+}
+
+void ServerEngine::SyncWholeWorld(SyncContext& ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Every registered entity chains up to a parentless root (locations, global-map critters, players,
+    // orphaned items) or to the engine itself (held custom entities — covered by the engine singleton
+    // lock the caller takes alongside). Locking the roots therefore covers the whole world.
+    vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
+
+    vector<nptr<ServerEntity>> roots;
+    roots.reserve(entities.size());
+
+    for (auto& entity : entities) {
+        if (!entity->GetParentRaw()) {
+            roots.emplace_back(entity.as_ptr());
+        }
+    }
+
+    ctx.SyncEntities(roots);
 }
 
 void ServerEngine::Unlock()
@@ -1927,7 +1982,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
 
         if (!connection->IsHandshakeComplete()) {
             if (msg == NetMessage::Handshake) {
-                Process_Handshake(connection);
+                Process_Handshake(unlogined_player);
             }
             else {
                 throw GenericException("Expected handshake message", msg);
@@ -1936,7 +1991,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
         else {
             switch (msg) {
             case NetMessage::Ping:
-                Process_Ping(connection);
+                Process_Ping(unlogined_player);
                 unlogined_player->Send_TimeSync();
                 break;
             case NetMessage::GetUpdateFile: {
@@ -1947,7 +2002,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
                 }
 
                 ptr<UpdaterBackend> updater_backend = &*_updaterBackend;
-                updater_backend->ProcessUpdateFile(connection, Settings->UpdateFileMaxPortionSize);
+                updater_backend->ProcessUpdateFile(unlogined_player, Settings->UpdateFileMaxPortionSize);
                 break;
             }
             case NetMessage::RemoteCall:
@@ -2004,7 +2059,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     const auto max_per_pass = Settings->MaxMessagesPerProcessPass;
     int32_t processed_msgs = 0;
 
-    while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected()) {
+    while (!connection->IsHardDisconnected() && !connection->IsGracefulDisconnected() && !player->IsDestroyed()) {
         if (max_per_pass != 0 && processed_msgs >= max_per_pass) {
             break;
         }
@@ -2021,7 +2076,7 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
 
         switch (msg) {
         case NetMessage::Ping:
-            Process_Ping(connection);
+            Process_Ping(player);
             player->Send_TimeSync();
             break;
 
@@ -2056,9 +2111,11 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
     }
 }
 
-void ServerEngine::ProcessConnection(ptr<ServerConnection> connection)
+void ServerEngine::ProcessConnection(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
+
+    auto connection = player->GetConnection();
 
     if (connection->IsHardDisconnected()) {
         return;
@@ -2080,9 +2137,7 @@ void ServerEngine::ProcessConnection(ptr<ServerConnection> connection)
             return;
         }
 
-        auto out_buf = connection->WriteMsg(NetMessage::Ping);
-
-        out_buf->Write(false);
+        player->Send_Ping(false);
 
         connection->RegisterPingRequest(frame_time);
     }
@@ -2107,11 +2162,7 @@ void ServerEngine::HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, co
         return;
     }
 
-    auto out_buf = player->GetConnection()->WriteMsg(NetMessage::RemoteCall);
-
-    out_buf->Write<hstring>(name);
-    out_buf->Write<int32_t>(numeric_cast<int32_t>(data.size()));
-    out_buf->Push(data);
+    player->Send_RemoteCall(name, data);
 }
 
 auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Properties> props) -> ptr<Critter>
@@ -2325,6 +2376,17 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
     EnsureEntitySynced(player);
     EnsureEntitySynced(nullable_cr);
+
+    if (nullable_cr && nullable_cr->GetMapId()) {
+        auto nullable_map = nullable_cr->GetParent<Map>();
+        FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
+        auto map = nullable_map.as_ptr();
+        ValidateEntityAccess(map);
+
+        auto nullable_loc = map->GetLocation();
+        FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
+        ValidateEntityAccess(nullable_loc.as_ptr());
+    }
 
     auto nullable_prev_cr = player->GetControlledCritter();
     auto prev_cr_holder = nullable_prev_cr.try_hold_ref();
@@ -2562,10 +2624,11 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     cr->Send_TimeSync();
 }
 
-void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
+void ServerEngine::Process_Handshake(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     // Net protocol
@@ -2595,19 +2658,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
         (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
         (numeric_cast<uint32_t>(Random(1, 255)) << 0);
 
-    {
-        auto out_buf = connection->WriteMsg(NetMessage::HandshakeAnswer);
-
-        out_buf->Write(compatibility_outdated);
-        out_buf->Write(updater_outdated);
-        out_buf->Write(out_encrypt_key);
-    }
-
-    {
-        auto out_buf = connection->WriteBuf();
-
-        out_buf->SetEncryptKey(out_encrypt_key);
-    }
+    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, out_encrypt_key);
 
     if (updater_outdated) {
         WriteLog("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);
@@ -2622,19 +2673,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
         update_desc = updater_backend->GetUpdateDescriptor(requested_binary_target);
     }
 
-    {
-        LockForPropertyAccess();
-        auto unlock_global_vars = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
-
-        const auto global_vars_data = StoreData(false);
-
-        auto out_buf = connection->WriteMsg(NetMessage::InitData);
-
-        out_buf->Write(numeric_cast<uint32_t>(update_desc.size()));
-        out_buf->Push(update_desc);
-        out_buf->WritePropsData(*global_vars_data.Data, *global_vars_data.Sizes);
-        out_buf->Write(GameTime.GetSynchronizedTime());
-    }
+    player->Send_InitData(update_desc);
 
     connection->MarkHandshakeComplete();
 
@@ -2643,7 +2682,7 @@ void ServerEngine::Process_Handshake(ptr<ServerConnection> connection)
     }
     else {
         WriteLog("Connected client {} for binary target {}", connection->GetHost(), requested_binary_target);
-        SendAllReportedHashes(connection);
+        SendAllReportedHashes(player);
     }
 }
 
@@ -2764,7 +2803,7 @@ void ServerEngine::RegisterClientReportedHash(ptr<ServerConnection> connection, 
     BroadcastReportedString(reported_string);
 }
 
-void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
+void ServerEngine::SendAllReportedHashes(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2772,6 +2811,7 @@ void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
 
     {
         scoped_lock locker {_reportedHashesLocker};
+
         snapshot.assign(_reportedStrings.begin(), _reportedStrings.end());
     }
 
@@ -2779,47 +2819,33 @@ void ServerEngine::SendAllReportedHashes(ptr<ServerConnection> connection)
         return;
     }
 
-    auto out_buf = connection->WriteMsg(NetMessage::HashList);
-
-    out_buf->Write(numeric_cast<uint32_t>(snapshot.size()));
-
-    for (const auto& reported_string : snapshot) {
-        out_buf->Write(reported_string);
-    }
+    player->Send_HashList(snapshot);
 }
 
 void ServerEngine::BroadcastReportedString(string_view reported_string)
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto send_to_connection = [reported_string](ptr<ServerConnection> conn) {
-        if (conn->IsHardDisconnected() || !conn->IsHandshakeComplete()) {
-            return;
-        }
+    const vector<string> hash_strings {string(reported_string)};
 
-        auto out_buf = conn->WriteMsg(NetMessage::HashList);
-
-        out_buf->Write(numeric_cast<uint32_t>(1));
-        out_buf->Write(reported_string);
-    };
-
-    for (ptr<Player> player : copy_hold_ref(EntityMngr.GetPlayers())) {
-        send_to_connection(player->GetConnection());
+    for (auto player : copy_hold_ref(EntityMngr.GetPlayers())) {
+        player->Send_HashList(hash_strings);
     }
 
     {
         scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
-            send_to_connection(player->GetConnection());
+            player->Send_HashList(hash_strings);
         }
     }
 }
 
-void ServerEngine::Process_Ping(ptr<ServerConnection> connection)
+void ServerEngine::Process_Ping(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();
 
     const auto answer = in_buf->Read<bool>();
@@ -2830,9 +2856,7 @@ void ServerEngine::Process_Ping(ptr<ServerConnection> connection)
         connection->RegisterPingAnswer(GameTime.GetFrameTime());
     }
     else {
-        auto out_buf = connection->WriteMsg(NetMessage::Ping);
-
-        out_buf->Write(true);
+        player->Send_Ping(true);
     }
 }
 
@@ -4588,6 +4612,12 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     auto ctx = RequireCurrentSyncContext();
     ctx->SyncEntity(player);
+
+    // Wrap the script handler in its own nested SyncContext on top of the job's primary cover,
+    // mirroring event dispatch: inner `Sync::Lock(...)` calls only mutate the nested layer, so
+    // the primary's player cover survives the handler and the next buffered message in the
+    // ProcessPlayer drain loop enters with the player still locked.
+    ScopedSyncContext nested;
 
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }

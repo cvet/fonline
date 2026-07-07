@@ -2133,7 +2133,7 @@ void asCContext::PrepareScriptFunction()
 
 	// Make sure there is space on the stack to execute the function
 	asDWORD *oldStackPointer = m_regs.stackPointer;
-	asUINT needSize = m_currentFunction->scriptData->stackNeeded + 1; // (FOnline Patch) +1 slack for the even-locals rounding below
+	asUINT needSize = m_currentFunction->scriptData->stackNeeded + 2; // (FOnline Patch) +2 slack for the frame-base alignment shift and the even-locals rounding below
 
 	// With a quick check we know right away that we don't need to call ReserveStackSpace and do other checks inside it
 	if (m_stackBlocks.GetLength() == 0 ||
@@ -2149,6 +2149,26 @@ void asCContext::PrepareScriptFunction()
 			                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
 			memcpy(m_regs.stackPointer, oldStackPointer, sizeof(asDWORD)*numDwords);
 		}
+	}
+
+	// (FOnline Patch) 8-byte align the frame base of every script call. The compiler lays 8-byte locals on
+	// even DWORD offsets relative to the frame base and the entry/block-move paths already land the base
+	// aligned, but a nested script call takes the base straight from the caller's stack pointer after an
+	// argument block whose DWORD size may be odd (sizes are per-bitness: pointers are 2 DWORDs on 64-bit,
+	// 1 on 32-bit), leaving the base 4-mod-8 and every 8-byte local in the frame misaligned. Relocating the
+	// just-pushed argument block one DWORD down is safe for the same reason the block-move memcpy above is:
+	// argument slots hold values or absolute pointers fixed up before the call (GETOBJ/GETREF), the callee
+	// addresses them relative to the shifted frame base, and the caller's stack pointer is restored from the
+	// call state saved before the shift (asBC_RET does PopCallState, then pops the arguments arithmetically
+	// with l_sp += w on the restored value). Runtime-only and re-derived per target bitness - nothing baked,
+	// the serialized bytecode is untouched. The extra DWORD is covered by the +2 slack above.
+	if( (((asPWORD)m_regs.stackPointer) & 7) != 0 )
+	{
+		int numDwords = m_currentFunction->GetSpaceNeededForArguments() +
+		                (m_currentFunction->objectType ? AS_PTR_SIZE : 0) +
+		                (m_currentFunction->DoesReturnOnStack() ? AS_PTR_SIZE : 0);
+		memmove(m_regs.stackPointer - 1, m_regs.stackPointer, sizeof(asDWORD)*numDwords);
+		m_regs.stackPointer -= 1;
 	}
 
 	// Update framepointer
@@ -4692,15 +4712,24 @@ static const void *const dispatch_table[256] = {
 			//                         to use a memory pool to avoid reallocating the memory all the time
 
 			asUINT size = asBC_DWORDARG(l_bc);
+			// (FOnline Patch) A value-type element smaller than a dword is packed in the list buffer at its
+			// exact size, but its per-element asBC_COPY writes a dword-rounded number of bytes, so the copy of
+			// a trailing sub-dword element spills up to three bytes past the dense payload (heap-buffer-overflow
+			// caught by AddressSanitizer). The guard must live here at the allocation site and can never be
+			// retired: asCWriter zeroes the AllocMem size on save and asCReader::SListAdjuster::AdjustAllocMem
+			// recomputes the dense size on every bytecode load, so compile-time padding never survives into
+			// saved bytecode. Skip the pad if it would wrap, keeping a corrupt giant size failing loudly at
+			// allocation instead of silently under-allocating.
+			asUINT allocSize = size <= 0xFFFFFFFFu - 3u ? size + 3u : size;
 			asBYTE **var = (asBYTE**)(l_fp - asBC_SWORDARG0(l_bc));
 #ifndef WIP_16BYTE_ALIGN
-			*var = asNEWARRAY(asBYTE, size);
+			*var = asNEWARRAY(asBYTE, allocSize);
 #else
-			*var = asNEWARRAYALIGNED(asBYTE, size, MAX_TYPE_ALIGNMENT);
+			*var = asNEWARRAYALIGNED(asBYTE, allocSize, MAX_TYPE_ALIGNMENT);
 #endif
 
 			// Clear the buffer for the pointers that will be placed in it
-			memset(*var, 0, size);
+			memset(*var, 0, allocSize);
 		}
 		l_bc += 2;
 		NEXT_INSTRUCTION();
@@ -4916,11 +4945,10 @@ static const void *const dispatch_table[256] = {
 				// Pop the int arg from the stack
 				int arg = *(int*)l_sp;
 				l_sp++;
-#if AS_PTR_SIZE == 2
-				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot
-				// (see asCDataType::GetArgSlotSizeOnStackDWords), so pop the slot padding as well
+				// (FOnline Patch) even argument slots: the 1-DWORD int arg occupies a 2-DWORD padded slot on
+				// every pointer size (see asCDataType::GetArgSlotSizeOnStackDWords) — the compiler bakes the
+				// padding push into the bytecode, so 32-bit must pop it too or the stack desyncs.
 				l_sp++;
-#endif
 
 				// Call the method
 				m_callingSystemFunction = m_engine->scriptFunctions[i];
@@ -5980,9 +6008,10 @@ int asCContext::CallGeneric(asCScriptFunction *descr)
 	{
 		varArgCount = *args;
 
-		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on 64-bit targets
-		args += AS_PTR_SIZE == 2 ? 2 : 1;
-		popSize += AS_PTR_SIZE == 2 ? 2 : 1;
+		// (FOnline Patch) even variadic count slot: the count occupies 2 DWORDs on every pointer size
+		// (the compiler bakes the padding push, so 32-bit must pop the same amount)
+		args += 2;
+		popSize += 2;
 
 		// Calculate the arguments that need to be popped
 		asCDataType variadicType = descr->parameterTypes[descr->parameterTypes.GetLength() - 1];

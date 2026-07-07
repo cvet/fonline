@@ -42,7 +42,7 @@ TEST_CASE("ProtoBaker")
 
         for (const auto& [section_name, entries] : sections) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-            writer.WritePtr(section_name.data(), section_name.length());
+            writer.WriteStringBytes(section_name);
             writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
             for (const auto& tokens : entries) {
@@ -50,7 +50,7 @@ TEST_CASE("ProtoBaker")
 
                 for (const string_view token : tokens) {
                     writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                    writer.WritePtr(token.data(), token.length());
+                    writer.WriteStringBytes(token);
                 }
             }
         }

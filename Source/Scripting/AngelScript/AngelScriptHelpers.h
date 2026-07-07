@@ -127,6 +127,10 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 [[nodiscard]] auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>;
 // GetAddressOfArg returns the address of the argument's storage slot, which always exists, so it is non-null.
 [[nodiscard]] auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>;
+[[nodiscard]] auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>;
+[[nodiscard]] auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>;
+[[nodiscard]] auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>;
+[[nodiscard]] auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>;
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept;
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept;
@@ -141,7 +145,7 @@ template<typename T>
     auto object = GetGenericObject(gen);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(object.get());
+        return object;
     }
     else {
         return cast_from_void<T*>(object.get());
@@ -164,7 +168,7 @@ template<typename T>
     auto arg_address = GetGenericAddressArg(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get());
+        return arg_address;
     }
     else {
         return cast_from_void<T*>(arg_address.get());
@@ -179,11 +183,19 @@ template<typename T>
     auto arg_address = GetGenericArgAddress(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
-        return static_cast<T*>(arg_address.get());
+        return arg_address;
     }
     else {
         return cast_from_void<T*>(arg_address.get());
     }
+}
+
+template<typename T>
+[[nodiscard]] inline auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return value.reinterpret_as<T>();
 }
 
 #ifdef AS_MAX_PORTABILITY

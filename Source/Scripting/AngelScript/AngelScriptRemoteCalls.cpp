@@ -78,17 +78,6 @@ static auto CollectModuleScriptFunctions(ptr<const AngelScript::asIScriptModule>
     return funcs;
 }
 
-static auto RemoteCallBufferAt(span<uint8_t> data, size_t offset, size_t size) noexcept -> ptr<uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(size != 0, "Buffer slice size is zero");
-    FO_STRONG_ASSERT(offset < data.size(), "Buffer slice offset is out of range");
-    FO_STRONG_ASSERT(size <= data.size() - offset, "Buffer slice extends past buffer end");
-
-    return &data[offset];
-}
-
 static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -173,7 +162,7 @@ static auto ReadMutableObjectHandleSlot(nptr<const void> slot) noexcept -> nptr<
         return nullptr;
     }
 
-    return *static_cast<void* const*>(const_cast<void*>(slot.get()));
+    return *slot.reinterpret_as<void*>();
 }
 
 static auto ResolveInboundRemoteCallImplementation(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, const RemoteCallDesc& inbound_call) -> nptr<AngelScript::asIScriptFunction>
@@ -323,7 +312,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         FO_VERIFY_AND_THROW(size <= sizeof(uint64_t), "Remote call plain argument is too large", size, sizeof(uint64_t));
         RemoteCallPlainArgData& storage = std::get<RemoteCallPlainArgData>(temp_data.emplace_back(RemoteCallPlainArgData {}));
         ptr<uint8_t> storage_bytes = storage.Bytes;
-        reader.ReadPtr(cast_to_void(storage_bytes.get()), size);
+        reader.ReadBytes({storage_bytes.get(), size});
         return cast_to_void(storage_bytes.get());
     };
 
@@ -372,9 +361,8 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
                 if (field.Type.Size != 0) {
                     FO_VERIFY_AND_THROW(nullable_field_data, "Decoded struct field data is null");
                     auto field_data = nullable_field_data.as_ptr();
-                    span<uint8_t> buf_span {*buf};
-                    auto field_dest = RemoteCallBufferAt(buf_span, field.Offset, field.Type.Size);
-                    MemCopy(field_dest, field_data, field.Type.Size);
+                    size_t field_pos = field.Offset;
+                    span_write_bytes(make_span(*buf), field_pos, make_span(field_data.get(), field.Type.Size));
                 }
             }
             nptr<uint8_t> buf_data = buf->data();

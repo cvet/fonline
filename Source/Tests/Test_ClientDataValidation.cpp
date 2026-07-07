@@ -419,6 +419,56 @@ TEST_CASE("ClientDataValidation")
     }
 }
 
+TEST_CASE("ClientDataValidationPropertyBlobPadding")
+{
+    // Property raw blobs keep interior items aligned with zero padding; the inbound validator must
+    // accept well-formed aligned blobs and reject untrusted payloads with non-zero padding bytes
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+
+    PropertyRegistrator registrator("PropertyBlobEntity", EngineSideKind::ServerSide, &meta.Hashes, &meta);
+    auto str_arr_prop = registrator.RegisterProperty({"Common", "string[]", "StrArr", "Mutable", "PublicSync"});
+    auto wide_dict_prop = registrator.RegisterProperty({"Common", "uint8=>int64", "WideDict", "Mutable", "PublicSync"});
+
+    Properties props(&registrator);
+
+    // string[] {"a", "bc"}: count@0, len@4, 'a'@8, zero padding 9..12, len@12, "bc"@16..18
+    props.SetValue(str_arr_prop.get(), vector<string> {"a", "bc"});
+
+    vector<uint8_t> str_arr_data;
+    {
+        const auto raw_data = props.GetRawData(str_arr_prop.get());
+        REQUIRE(raw_data.size() == 18);
+        str_arr_data.assign(raw_data.begin(), raw_data.end());
+    }
+
+    CHECK_NOTHROW(ValidateInboundPropertyData(str_arr_prop.get(), str_arr_data, meta));
+
+    str_arr_data[9] = 0xFF;
+    CHECK_THROWS_AS(ValidateInboundPropertyData(str_arr_prop.get(), str_arr_data, meta), ClientDataValidationException);
+
+    // dict<uint8, int64>: key@0, zero padding 1..8, value@8..16
+    const auto wide_dict_value = []() {
+        AnyData::Dict dict;
+        dict.Emplace("1", int64_t {0x1111111111111111});
+        return AnyData::Value {std::move(dict)};
+    }();
+
+    PropertiesSerializator::LoadPropertyFromValue(&props, wide_dict_prop.get(), wide_dict_value, meta.Hashes, meta);
+
+    vector<uint8_t> wide_dict_data;
+    {
+        const auto raw_data = props.GetRawData(wide_dict_prop.get());
+        REQUIRE(raw_data.size() == 16);
+        wide_dict_data.assign(raw_data.begin(), raw_data.end());
+    }
+
+    CHECK_NOTHROW(ValidateInboundPropertyData(wide_dict_prop.get(), wide_dict_data, meta));
+
+    wide_dict_data[3] = 1;
+    CHECK_THROWS_AS(ValidateInboundPropertyData(wide_dict_prop.get(), wide_dict_data, meta), ClientDataValidationException);
+}
+
 TEST_CASE("ClientDataValidationFuzz")
 {
     // Broad fuzz over the untrusted remote-call validator: build one valid payload that drives the whole
@@ -457,7 +507,7 @@ TEST_CASE("ClientDataValidationFuzz")
         DataWriter writer(data);
         const string text = "hello";
         writer.Write<int32_t>(numeric_cast<int32_t>(text.length()));
-        writer.WritePtr(text.data(), text.length());
+        writer.WriteStringBytes(text);
         writer.Write<int32_t>(3); // int array element count
         writer.Write<int32_t>(1);
         writer.Write<int32_t>(2);

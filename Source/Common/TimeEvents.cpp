@@ -583,6 +583,17 @@ void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks)
     FO_STACK_TRACE_ENTRY();
 
     _dispatcher = std::move(hooks);
+    _dispatcherPaused.store(false, std::memory_order_release);
+}
+
+void TimeEventManager::PauseDispatcherHooks()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Notifications are read lock-free from worker threads, so the hook objects themselves may only be
+    // reassigned once every worker is gone; pausing through the atomic flag is the thread-safe way to cut
+    // the dispatcher off while workers are still draining
+    _dispatcherPaused.store(true, std::memory_order_release);
 }
 
 void TimeEventManager::ClearDispatcherHooks()
@@ -596,7 +607,7 @@ void TimeEventManager::NotifySchedule(ptr<Entity> entity, uint32_t event_id, tim
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_dispatcher.Schedule) {
+    if (_dispatcher.Schedule && !_dispatcherPaused.load(std::memory_order_acquire)) {
         _dispatcher.Schedule(entity.hold_ref(), event_id, delay);
     }
 }
@@ -605,7 +616,7 @@ void TimeEventManager::NotifyCancel(uint32_t event_id)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (_dispatcher.Cancel) {
+    if (_dispatcher.Cancel && !_dispatcherPaused.load(std::memory_order_acquire)) {
         _dispatcher.Cancel(event_id);
     }
 }

@@ -11,6 +11,8 @@ FO_DISABLE_WARNINGS_POP()
 FO_BEGIN_NAMESPACE
 
 #if FO_HAVE_MONGO
+FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -76,8 +78,9 @@ public:
                 FO_VERIFY_AND_THROW(!!nullable_collection_doc, "Cursor returned a null collection document");
                 auto collection_doc = nullable_collection_doc.as_ptr();
                 bson_iter_t collection_iter;
+                auto aligned_collection_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(collection_doc.get());
 
-                if (bson_iter_init_find(&collection_iter, collection_doc.get(), "name")) {
+                if (bson_iter_init_find(&collection_iter, aligned_collection_doc, "name")) {
                     nptr<const char> collection_name = bson_iter_utf8(&collection_iter, nullptr);
 
                     if (!collection_name) {
@@ -103,11 +106,15 @@ public:
 
         nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
         FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+            bson_destroy(aligned_doc);
+        });
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
+        auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
 
-        if (!mongoc_client_command_simple(client.get(), "admin", ping_ptr.get(), nullptr, &reply, &error)) {
+        if (!mongoc_client_command_simple(client.get(), "admin", aligned_ping, nullptr, &reply, &error)) {
             throw DataBaseException("DbMongo Can't ping database", error.message);
         }
 
@@ -183,9 +190,13 @@ protected:
 
         nptr<bson_t> nullable_opts = BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}");
         FO_VERIFY_AND_THROW(nullable_opts, "Failed to build query options document");
-        auto opts = make_unique_del_ptr(nullable_opts.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        auto opts = make_unique_del_ptr(nullable_opts.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+            bson_destroy(aligned_doc);
+        });
         ptr<const bson_t> opts_ptr = opts.get();
-        nptr<mongoc_cursor_t> cursor = mongoc_collection_find_with_opts(collection.get(), &filter, opts_ptr.get(), nullptr);
+        auto aligned_opts = std::assume_aligned<BSON_ALIGN_OF_PTR>(opts_ptr.get());
+        nptr<mongoc_cursor_t> cursor = mongoc_collection_find_with_opts(collection.get(), &filter, aligned_opts, nullptr);
 
         if (!cursor) {
             throw DataBaseException("DbMongo mongoc_collection_find", collection_name);
@@ -198,8 +209,9 @@ protected:
             FO_VERIFY_AND_THROW(!!nullable_document, "Cursor returned a null document");
             auto document = nullable_document.as_ptr();
             bson_iter_t iter;
+            auto aligned_document = std::assume_aligned<BSON_ALIGN_OF_PTR>(document.get());
 
-            if (!bson_iter_init(&iter, document.get())) {
+            if (!bson_iter_init(&iter, aligned_document)) {
                 throw DataBaseException("DbMongo bson_iter_init", collection_name);
             }
             if (!bson_iter_next(&iter)) {
@@ -385,11 +397,15 @@ protected:
 
         nptr<bson_t> nullable_ping = BCON_NEW("ping", BCON_INT32(1));
         FO_VERIFY_AND_THROW(nullable_ping, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED { bson_destroy(doc.get()); });
+        auto ping = make_unique_del_ptr(nullable_ping.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+            auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
+            bson_destroy(aligned_doc);
+        });
         ptr<const bson_t> ping_ptr = ping.get();
         bson_t reply;
         bson_error_t error;
-        const auto ok = mongoc_client_command_simple(_client.get(), "admin", ping_ptr.get(), nullptr, &reply, &error);
+        auto aligned_ping = std::assume_aligned<BSON_ALIGN_OF_PTR>(ping_ptr.get());
+        const auto ok = mongoc_client_command_simple(_client.get(), "admin", aligned_ping, nullptr, &reply, &error);
 
         if (ok) {
             bson_destroy(&reply);
@@ -447,18 +463,20 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
+        auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
+
         std::visit(
-            [&](const auto& value) {
+            [&, aligned_bson](const auto& value) {
                 using T = std::decay_t<decltype(value)>;
 
                 if constexpr (std::is_same_v<T, ident_t>) {
-                    if (!bson_append_int64(bson.get(), "_id", 3, value.underlying_value())) {
+                    if (!bson_append_int64(aligned_bson, "_id", 3, value.underlying_value())) {
                         throw DataBaseException("DbMongo bson_append_int64", collection_name, value);
                     }
                 }
                 else {
                     ptr<const char> key_value = value.c_str();
-                    if (!bson_append_utf8(bson.get(), "_id", 3, key_value.get(), numeric_cast<int32_t>(value.length()))) {
+                    if (!bson_append_utf8(aligned_bson, "_id", 3, key_value.get(), numeric_cast<int32_t>(value.length()))) {
                         throw DataBaseException("DbMongo bson_append_utf8", collection_name, value);
                     }
                 }
@@ -477,6 +495,8 @@ auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, str
 {
     return SafeAlloc::MakeUnique<DbMongo>(db_settings, uri, db_name, std::move(panic_callback));
 }
+
+FO_CLANG_IGNORE_WARNINGS_POP()
 #endif
 
 FO_END_NAMESPACE

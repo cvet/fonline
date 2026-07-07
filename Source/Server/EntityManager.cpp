@@ -724,8 +724,8 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
     }
 
     try {
-        item->SetStatic(false);
         RegisterItem(item);
+        item->SetStatic(false);
         item->SetPersistent(true);
     }
     catch (const std::exception& ex) {
@@ -1270,7 +1270,7 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
 
     processed.emplace(entity);
 
-    EnsureEntitySynced(entity);
+    ValidateEntityAccess(entity);
 
     if (!entity->IsPersistent()) {
         WriteLog("Store entity {} {} in database", entity->GetTypeName(), entity->GetId());
@@ -1291,7 +1291,7 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
 
     processed.emplace(entity);
 
-    EnsureEntitySynced(entity);
+    ValidateEntityAccess(entity);
 
     ForEachPersistentChildEntity(entity, [this, &processed](ptr<ServerEntity> child) { MakeNonPersistentRecursive(child, processed); });
 

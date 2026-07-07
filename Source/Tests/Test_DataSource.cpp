@@ -375,7 +375,7 @@ TEST_CASE("DataSource")
 
         const auto root_buf = non_recursive->OpenFile("root.txt", size, write_time);
         REQUIRE(root_buf);
-        CHECK(string_view {reinterpret_cast<const char*>(root_buf.get()), size} == "root");
+        CHECK(root_buf.as_ptr().reinterpret_as<const char>().as_str(size) == "root");
         CHECK_FALSE(non_recursive->OpenFile("nested/child.txt", size, write_time));
         CHECK_FALSE(non_recursive->OpenFile("missing.txt", size, write_time));
         CHECK(non_recursive->GetFileNames("nested", false, "txt").empty());
@@ -518,7 +518,7 @@ TEST_CASE("DataSource")
 
         const auto buf = zip_pack->OpenFile("nested/entry.txt", size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "zip-data");
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == "zip-data");
         CHECK_FALSE(zip_pack->OpenFile("missing.txt", size, write_time));
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
@@ -567,7 +567,7 @@ TEST_CASE("DataSource")
         REQUIRE(buf);
         CHECK(size == 3);
         CHECK(write_time != 0);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "two");
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == "two");
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
@@ -591,7 +591,7 @@ TEST_CASE("DataSource")
         REQUIRE(buf);
         CHECK(size == 8);
         CHECK(write_time != 0);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "bos-data");
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == "bos-data");
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
@@ -625,7 +625,7 @@ TEST_CASE("DataSource")
 
         const auto buf = dat_pack->OpenFile("nested/entry.txt", size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "dat-data");
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == "dat-data");
         CHECK_FALSE(dat_pack->OpenFile("missing.txt", size, write_time));
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
@@ -737,7 +737,7 @@ TEST_CASE("DataSource")
 
         const auto buf = dat_pack->OpenFile("deep/packed.txt", size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == content);
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == content);
 
         (void)fs_remove_dir_tree(temp_dir); // best-effort: a mounted pack keeps the data file open until destroyed; Windows blocks deletion of open files
     }
@@ -849,7 +849,7 @@ TEST_CASE("DataSource")
 
         const auto buf = files_list->OpenFile(listed_file, size, write_time);
         REQUIRE(buf);
-        CHECK(string_view {reinterpret_cast<const char*>(buf.get()), size} == "listed-data");
+        CHECK(buf.as_ptr().reinterpret_as<const char>().as_str(size) == "listed-data");
         CHECK_FALSE(files_list->OpenFile(strex(temp_dir).combine_path("missing.txt").str(), size, write_time));
 
         const auto filtered = files_list->GetFileNames(temp_dir, true, "bin");

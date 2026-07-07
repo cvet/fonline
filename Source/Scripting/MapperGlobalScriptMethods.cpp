@@ -162,11 +162,11 @@ FO_SCRIPT_API nptr<ItemView> Mapper_Game_GetItemOnHex(ptr<MapperEngine> mapper, 
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ItemView*> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> mapper, mpos hex)
+FO_SCRIPT_API vector<ptr<ItemView>> Mapper_Game_GetItemsOnHex(ptr<MapperEngine> mapper, mpos hex)
 {
     auto map = RequireCurMapperMap(mapper);
     span<ptr<ItemHexView>> hex_items = map->GetItemsOnHex(hex);
-    return MakeScriptHandleVectorAs<ItemView, ItemHexView>(hex_items);
+    return vector<ptr<ItemView>>(hex_items.begin(), hex_items.end());
 }
 
 ///@ ExportMethod
@@ -184,11 +184,11 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<CritterView*> Mapper_Game_GetCrittersOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<CritterView>> Mapper_Game_GetCrittersOnHex(ptr<MapperEngine> mapper, mpos hex, CritterFindType findType)
 {
     auto map = RequireCurMapperMap(mapper);
     vector<ptr<CritterHexView>> critters = map->GetCrittersOnHex(hex, findType);
-    return MakeScriptHandleVectorAs<CritterView, CritterHexView>(critters);
+    return vector<ptr<CritterView>>(critters.begin(), critters.end());
 }
 
 ///@ ExportMethod
@@ -214,7 +214,7 @@ FO_SCRIPT_API void Mapper_Game_DeleteEntity(ptr<MapperEngine> mapper, ptr<Client
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly_vector<ClientEntity*> entities)
+FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly_vector<nptr<ClientEntity>> entities)
 {
     for (nptr<ClientEntity> nullable_entity : entities) {
         if (!nullable_entity) {
@@ -222,6 +222,7 @@ FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly
         }
 
         auto entity = nullable_entity.as_ptr();
+
         if (!entity->IsDestroyed()) {
             mapper->DeleteEntity(entity);
         }
@@ -240,7 +241,7 @@ FO_SCRIPT_API void Mapper_Game_SelectEntity(ptr<MapperEngine> mapper, ptr<Client
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Mapper_Game_SelectEntities(ptr<MapperEngine> mapper, readonly_vector<ClientEntity*> entities, bool set)
+FO_SCRIPT_API void Mapper_Game_SelectEntities(ptr<MapperEngine> mapper, readonly_vector<nptr<ClientEntity>> entities, bool set)
 {
     for (nptr<ClientEntity> entity : entities) {
         if (entity) {
@@ -261,7 +262,7 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_GetSelectedEntity(ptr<MapperEngine>
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(ptr<MapperEngine> mapper)
+FO_SCRIPT_API vector<ptr<ClientEntity>> Mapper_Game_GetSelectedEntities(ptr<MapperEngine> mapper)
 {
     vector<ptr<ClientEntity>> entities;
     entities.reserve(mapper->SelectedEntities.size());
@@ -270,7 +271,7 @@ FO_SCRIPT_API vector<ClientEntity*> Mapper_Game_GetSelectedEntities(ptr<MapperEn
         entities.emplace_back(mapper->SelectedEntities[i]);
     }
 
-    return MakeScriptHandleVector<ClientEntity>(entities);
+    return entities;
 }
 
 ///@ ExportMethod
@@ -286,7 +287,7 @@ FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<C
 {
     nptr<const Property> prop = entity->GetProperties()->GetRegistrator()->FindProperty(propName);
 
-    if (prop == nullptr) {
+    if (!prop) {
         throw ScriptException("Unknown property", propName);
     }
 
@@ -325,7 +326,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMap(ptr<MapperEngine> mapper, string_
         corrected_width, corrected_height, corrected_width / 2, corrected_height / 2)
                                 .str();
 
-    return mapper->LoadMapFromText(name, map_text).get();
+    return mapper->LoadMapFromText(name, map_text);
 }
 
 ///@ ExportMethod
@@ -338,7 +339,7 @@ FO_SCRIPT_API nptr<MapView> Mapper_Game_NewMapFromText(ptr<MapperEngine> mapper,
         throw ScriptException("Map text has no [ProtoMap] section");
     }
 
-    return mapper->LoadMapFromText(name, string(text)).get();
+    return mapper->LoadMapFromText(name, string(text));
 }
 
 ///@ ExportMethod
@@ -386,7 +387,7 @@ FO_SCRIPT_API void Mapper_Game_ShowMap(ptr<MapperEngine> mapper, ptr<MapView> ma
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mapper, int32_t& index)
+FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mapper, int32_t& index)
 {
     index = -1;
 
@@ -405,7 +406,7 @@ FO_SCRIPT_API vector<MapView*> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> mappe
         result.emplace_back(mapper->LoadedMaps[i]);
     }
 
-    return MakeScriptHandleVector<MapView>(result);
+    return result;
 }
 
 ///@ ExportMethod

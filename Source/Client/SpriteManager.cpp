@@ -270,8 +270,9 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
         auto factory = _spriteFactories[i].as_ptr();
+        SpriteFactory& factory_ref = *factory;
 
-        if (std::type_index(typeid(*factory)) == ti) {
+        if (std::type_index(typeid(factory_ref)) == ti) {
             return factory;
         }
     }

@@ -1439,11 +1439,11 @@ namespace ScriptMethodsTest
 
     // Regression for the roster-switch server crash. That crash was Game.LoadCritter under a held
     // Sync: the freshly loaded critter (a Critter owns its EntityLock from construction) was mutated
-    // via the strong-validated SetMapId before registration pulled it into the sync context, and
-    // ValidateEntityAccessStrong aborts the whole process on an uncovered access. The crash MECHANISM
+    // via the LOCKED-validated SetMapId before registration pulled it into the sync context, and the
+    // LOCKED validation rejects an uncovered access (ScriptException). The crash MECHANISM
     // is reproduced here without the DB (the in-memory test DB cannot reload an unloaded entity):
     // creating a critter under a NON-EMPTY context runs the very same AddCritterToMap -> SetMapId on a
-    // fresh critter, so if registration ever stopped syncing fresh entities this would abort the server.
+    // fresh critter, so if registration ever stopped syncing fresh entities this would fail the call.
     [[Async]]
     int TestCreateCritterUnderSyncContext()
     {
@@ -1460,10 +1460,13 @@ namespace ScriptMethodsTest
         if (created is null) return -3;
         if (!Game.IsEntityLocked(created)) return -4;
 
-        Game.SyncRelease();
-
+        // Destroy while both critters are still covered ({anchor} from the explicit Sync, {created}
+        // from registration self-sync): destroying restricts the context, so a released-then-destroy
+        // sequence would leave the second critter uncovered.
         Game.DestroyCritter(created);
         Game.DestroyCritter(anchor);
+
+        Game.SyncRelease();
 
         return 0;
     }
@@ -2727,6 +2730,10 @@ namespace ScriptMethodsTest
         Game.Lock();
         Game.SyncRelease();
 
+        // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
+        // needed. Re-cover all three critters before destroying: each destroy restricts the
+        // context to its own target, so consecutive uncovered destroys would be rejected.
+        Game.Sync(cr1, cr2, cr3);
         Game.DestroyCritter(cr1);
         Game.DestroyCritter(cr2);
         Game.DestroyCritter(cr3);
@@ -2806,11 +2813,11 @@ namespace ScriptMethodsTest
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.WriteStringBytes(type_name.as_str());
         writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WritePtr(props_data.data(), props_data.size());
+        writer.WriteBytes(props_data);
 
         return protos_data;
     }
@@ -2832,11 +2839,11 @@ namespace ScriptMethodsTest
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint32_t>(uint32_t {1});
         writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WritePtr(type_name.as_str().data(), type_name.as_str().length());
+        writer.WriteStringBytes(type_name.as_str());
         writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WritePtr(proto_name.data(), proto_name.length());
+        writer.WriteStringBytes(proto_name);
         writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WritePtr(props_data.data(), props_data.size());
+        writer.WriteBytes(props_data);
 
         return protos_data;
     }

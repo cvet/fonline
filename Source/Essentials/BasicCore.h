@@ -67,6 +67,7 @@
 #include <condition_variable>
 #include <csignal>
 #include <cstdarg>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -168,10 +169,10 @@
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)
-#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode) __pragma(warning(push)) __pragma(warning(disable : warning_сode))
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code) __pragma(warning(push)) __pragma(warning(disable : warning_code))
 #define FO_MSVC_IGNORE_WARNINGS_POP() __pragma(warning(pop))
 #else
-#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_сode)
+#define FO_MSVC_IGNORE_WARNINGS_PUSH(warning_code)
 #define FO_MSVC_IGNORE_WARNINGS_POP()
 #endif
 
@@ -246,6 +247,8 @@ FO_BEGIN_NAMESPACE
 using float32_t = float;
 using float64_t = double;
 
+inline constexpr size_t MAX_SERIALIZED_ALIGNMENT = 8; // Fixed cross-platform serialized-data alignment contract
+
 // Check the sizes of base types
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(size_t) >= 4);
@@ -253,6 +256,10 @@ static_assert(sizeof(int) >= 4);
 static_assert(sizeof(float32_t) == 4);
 static_assert(sizeof(float64_t) == 8);
 static_assert(CHAR_BIT == 8); // NOLINT(misc-redundant-expression)
+static_assert((MAX_SERIALIZED_ALIGNMENT & (MAX_SERIALIZED_ALIGNMENT - 1)) == 0);
+static_assert(alignof(int64_t) <= MAX_SERIALIZED_ALIGNMENT);
+static_assert(alignof(uint64_t) <= MAX_SERIALIZED_ALIGNMENT);
+static_assert(alignof(float64_t) <= MAX_SERIALIZED_ALIGNMENT);
 
 // Bind to global scope frequently used types
 using std::array;

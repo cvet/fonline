@@ -33,10 +33,16 @@ if(FO_BUILD_COMMON_LIB)
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.cpp"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering.h"
             "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Direct3D.cpp"
-            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp")
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-OpenGL.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-Vulkan.cpp"
+            "${FO_ENGINE_ROOT}/Source/Frontend/Rendering-SDLGpu.cpp")
         AddCoreStaticLibrary(AppFrontend FO_APP_FRONTEND_SOURCE
             APPEND_TO_GROUP FO_CORE_LIBS_GROUP
             LINK_LIBS ${FO_RENDER_SYSTEM_LIBS} ${FO_RENDER_LIBS})
+        # Vulkan builds against the headers vendored with SDL3 (no external SDK); the loader is resolved
+        # dynamically at runtime, so only these headers are needed at build time. target_include_directories
+        # requires an absolute path, so anchor the relative FO_SDL_DIR at the project source root.
+        TargetIncludeDirectories(AppFrontend SYSTEM PUBLIC $<$<BOOL:${FO_HAVE_VULKAN}>:${CMAKE_SOURCE_DIR}/${FO_SDL_DIR}/src/video/khronos>)
     endif()
 
     AddCoreStaticLibrary(CommonLib FO_COMMON_SOURCE

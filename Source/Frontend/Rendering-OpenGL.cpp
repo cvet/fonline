@@ -65,6 +65,8 @@ FO_BEGIN_NAMESPACE
     X(glAttachShader, PFNGLATTACHSHADERPROC); \
     X(glBindBuffer, PFNGLBINDBUFFERPROC); \
     X(glBindBufferBase, PFNGLBINDBUFFERBASEPROC); \
+    X(glBindBufferRange, PFNGLBINDBUFFERRANGEPROC); \
+    X(glBufferSubData, PFNGLBUFFERSUBDATAPROC); \
     X(glBindFramebuffer, PFNGLBINDFRAMEBUFFERPROC); \
     X(glBindFramebufferEXT, PFNGLBINDFRAMEBUFFEREXTPROC); \
     X(glBindRenderbuffer, PFNGLBINDRENDERBUFFERPROC); \
@@ -229,6 +231,18 @@ struct OpenGL_Renderer::Context
     unique_nptr<RenderTexture> DummyTexture {};
     irect32 ViewPortRect {};
 
+    // SetRenderTarget elision cache; invalidated on resize and on destruction of the cached texture
+    nptr<RenderTexture> CurrentRenderTarget {};
+    bool CurrentRenderTargetValid {};
+
+    // Shared bump-allocated uniform buffer: blocks upload per draw with one glBufferSubData and
+    // bind via glBindBufferRange; orphaned once per frame in Present()
+    GLuint UniformBumpBuf {};
+    size_t UniformBumpOffset {};
+    size_t UniformBumpCapacity {};
+    GLint UniformOffsetAlignment {1};
+    vector<uint8_t> UniformScratch {};
+
     // ReSharper disable CppInconsistentNaming
     bool OGL_version_2_0 {};
     bool OGL_vertex_buffer_object {};
@@ -316,20 +330,6 @@ public:
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
-
-    GLuint Ubo_ProjBuf {};
-    GLuint Ubo_MainTexBuf {};
-    GLuint Ubo_EggBuf {};
-    GLuint Ubo_SpriteBorderBuf {};
-    GLuint Ubo_TimeBuf {};
-    GLuint Ubo_RandomValueBuf {};
-    GLuint Ubo_ScriptValueBuf {};
-    GLuint Ubo_CameraBuf {};
-#if FO_ENABLE_3D
-    GLuint Ubo_ModelBuf {};
-    GLuint Ubo_ModelTexBuf {};
-    GLuint Ubo_ModelAnimBuf {};
-#endif
 
 private:
     ptr<OpenGL_Renderer::Context> _ctx;
@@ -570,6 +570,17 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &ctx->BaseFrameBufObj));
     ctx->BaseFrameBufSize = {settings.ScreenWidth, settings.ScreenHeight};
 
+    // Shared bump-allocated uniform buffer (see the Context field comment)
+    if (GL_HAS_CTX(uniform_buffer_object, ctx.get())) {
+        GL(glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &ctx->UniformOffsetAlignment));
+        ctx->UniformOffsetAlignment = std::max(ctx->UniformOffsetAlignment, 1);
+        ctx->UniformBumpCapacity = numeric_cast<size_t>(4 * 1024 * 1024); // 4 MB
+        GL(glGenBuffers(1, &ctx->UniformBumpBuf));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+    }
+
     // Calculate atlas size
     GLint max_texture_size;
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
@@ -618,6 +629,12 @@ OpenGL_Renderer::~OpenGL_Renderer()
 
     ctx->DummyTexture.reset();
 
+    // The GL context must still be current for this delete.
+    if (ctx->UniformBumpBuf != 0) {
+        glDeleteBuffers(1, &ctx->UniformBumpBuf);
+        ctx->UniformBumpBuf = 0;
+    }
+
 #if !FO_WEB
     if (ctx->GlContext) {
         if (ctx->SdlWindow) {
@@ -639,6 +656,11 @@ OpenGL_Renderer::~OpenGL_Renderer()
     ctx->TargetSize = {};
     ctx->ProjMatrix = {};
     ctx->ViewPortRect = {};
+    ctx->CurrentRenderTarget = nullptr;
+    ctx->CurrentRenderTargetValid = false;
+    ctx->UniformBumpOffset = 0;
+    ctx->UniformBumpCapacity = 0;
+    ctx->UniformScratch.clear();
     ctx->OGL_version_2_0 = false;
     ctx->OGL_vertex_buffer_object = false;
     ctx->OGL_framebuffer_object = false;
@@ -661,6 +683,14 @@ void OpenGL_Renderer::Present()
 
     if (const auto err = glGetError(); err != GL_NO_ERROR) {
         throw RenderingException("OpenGL error", err);
+    }
+
+    // Rewind the bump buffer with fresh (orphaned) storage; the driver keeps the old one alive
+    if (ctx->UniformBumpBuf != 0) {
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, ctx->UniformBumpBuf));
+        GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+        GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+        ctx->UniformBumpOffset = 0;
     }
 }
 
@@ -702,7 +732,15 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
     FO_VERIFY_AND_THROW(status == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer is incomplete", status);
 
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, ctx->BaseFrameBufObj));
+    // Restore the actual current target's framebuffer (creation can happen mid-frame while a
+    // texture target is selected)
+    if (ctx->CurrentRenderTargetValid && ctx->CurrentRenderTarget) {
+        auto cur_target = RenderBackendCast<OpenGL_Texture>(ctx->CurrentRenderTarget.as_ptr());
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, cur_target->FramebufObj));
+    }
+    else {
+        GL(glBindFramebuffer(GL_FRAMEBUFFER, ctx->BaseFrameBufObj));
+    }
 
     return std::move(opengl_tex);
 }
@@ -911,6 +949,12 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
     auto ctx = _ctx.as_ptr();
 
+    // The requested target is already fully applied (bind, viewport, projection); the projection
+    // stays valid across the skip because SetOrthoDepthRange keeps OrthoNear/OrthoFar in sync.
+    if (ctx->CurrentRenderTargetValid && tex == ctx->CurrentRenderTarget) {
+        return;
+    }
+
     int32_t vp_ox;
     int32_t vp_oy;
     int32_t vp_width;
@@ -953,6 +997,8 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(screen_width), numeric_cast<float32_t>(screen_height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
 
     ctx->TargetSize = {screen_width, screen_height};
+    ctx->CurrentRenderTarget = tex;
+    ctx->CurrentRenderTargetValid = true;
 }
 
 void OpenGL_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
@@ -1050,6 +1096,9 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 
     ctx->BaseFrameBufSize = size;
 
+    // The back-buffer viewport math depends on the new size; drop the elision cache
+    ctx->CurrentRenderTargetValid = false;
+
     if (ctx->BaseFrameBufObjBinded) {
         SetRenderTarget(nullptr);
     }
@@ -1058,6 +1107,11 @@ void OpenGL_Renderer::OnResizeWindow(isize32 size)
 OpenGL_Texture::~OpenGL_Texture()
 {
     FO_STACK_TRACE_ENTRY();
+
+    // A new texture may reuse this address; a stale cache entry would elide its first select
+    if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget.get() == static_cast<RenderTexture*>(this)) {
+        _ctx->CurrentRenderTargetValid = false;
+    }
 
     if (DepthBuffer != 0) {
         glDeleteRenderbuffers(1, &DepthBuffer);
@@ -1376,28 +1430,6 @@ OpenGL_Effect::~OpenGL_Effect()
             glDeleteProgram(Program[i]);
         }
     }
-
-    if (GL_HAS(uniform_buffer_object)) {
-        const auto delete_ubo = [](GLuint& ubo) {
-            if (ubo != 0) {
-                glDeleteBuffers(1, &ubo);
-            }
-        };
-
-        delete_ubo(Ubo_ProjBuf);
-        delete_ubo(Ubo_MainTexBuf);
-        delete_ubo(Ubo_EggBuf);
-        delete_ubo(Ubo_SpriteBorderBuf);
-        delete_ubo(Ubo_TimeBuf);
-        delete_ubo(Ubo_RandomValueBuf);
-        delete_ubo(Ubo_ScriptValueBuf);
-        delete_ubo(Ubo_CameraBuf);
-#if FO_ENABLE_3D
-        delete_ubo(Ubo_ModelBuf);
-        delete_ubo(Ubo_ModelTexBuf);
-        delete_ubo(Ubo_ModelAnimBuf);
-#endif
-    }
 }
 
 void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
@@ -1482,40 +1514,108 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
+    // Every shader-required block must be written and bound EVERY draw: a stale binding would
+    // point into the shared bump buffer, whose storage dies at the per-frame orphan — so
+    // default-initialize any required-but-unset buffer to zero (mirrors the Vulkan backend).
+    if (_needEggBuf && !EggBuf.has_value()) {
+        EggBuf = EggBuffer();
+    }
+    if (_needSpriteBorderBuf && !SpriteBorderBuf.has_value()) {
+        SpriteBorderBuf = SpriteBorderBuffer();
+    }
+    if (_needTimeBuf && !TimeBuf.has_value()) {
+        TimeBuf = TimeBuffer();
+    }
+    if (_needRandomValueBuf && !RandomValueBuf.has_value()) {
+        RandomValueBuf = RandomValueBuffer();
+    }
+    if (_needScriptValueBuf && !ScriptValueBuf.has_value()) {
+        ScriptValueBuf = ScriptValueBuffer();
+    }
+    if (_needCameraBuf && !CameraBuf.has_value()) {
+        CameraBuf = CameraBuffer();
+    }
+#if FO_ENABLE_3D
+    if (_needModelBuf && !ModelBuf.has_value()) {
+        ModelBuf = ModelBuffer();
+    }
+    if (_needModelTexBuf && !ModelTexBuf.has_value()) {
+        ModelTexBuf = ModelTexBuffer();
+    }
+    if (_needModelAnimBuf && !ModelAnimBuf.has_value()) {
+        ModelAnimBuf = ModelAnimBuffer();
+    }
+#endif
+
+    constexpr size_t max_uniform_blocks = 11;
+    size_t block_offsets[max_uniform_blocks] = {};
+    size_t block_sizes[max_uniform_blocks] = {};
+
     if (GL_HAS(uniform_buffer_object)) {
-        const auto upload_ubo = [&](bool need_buf, auto& buf, GLuint& ubo, bool reset_buf) {
+        const size_t alignment = numeric_cast<size_t>(_ctx->UniformOffsetAlignment);
+        auto& scratch = _ctx->UniformScratch;
+        scratch.clear();
+        size_t block_index = 0;
+
+        const auto gather_block = [&](bool need_buf, auto& buf, bool reset_buf) {
+            FO_VERIFY_AND_THROW(block_index < max_uniform_blocks, "Too many OpenGL uniform blocks in draw");
+
             if (!need_buf || !buf.has_value()) {
+                block_index++;
                 return;
             }
 
-            if (ubo == 0) {
-                GL(glGenBuffers(1, &ubo));
-            }
-
             const auto& buf_value = buf.value();
-
-            GL(glBindBuffer(GL_UNIFORM_BUFFER, ubo));
-            GL(glBufferData(GL_UNIFORM_BUFFER, sizeof(buf_value), &buf_value, GL_DYNAMIC_DRAW));
-            GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+            const size_t aligned_offset = (scratch.size() + alignment - 1) & ~(alignment - 1);
+            scratch.resize(aligned_offset + sizeof(buf_value));
+            MemCopy(scratch.data() + aligned_offset, &buf_value, sizeof(buf_value));
+            block_offsets[block_index] = aligned_offset;
+            block_sizes[block_index] = sizeof(buf_value);
+            block_index++;
 
             if (reset_buf) {
                 buf.reset();
             }
         };
 
-        upload_ubo(_needProjBuf, ProjBuf, Ubo_ProjBuf, true);
-        upload_ubo(_needMainTexBuf, MainTexBuf, Ubo_MainTexBuf, true);
-        upload_ubo(_needEggBuf, EggBuf, Ubo_EggBuf, true);
-        upload_ubo(_needSpriteBorderBuf, SpriteBorderBuf, Ubo_SpriteBorderBuf, true);
-        upload_ubo(_needTimeBuf, TimeBuf, Ubo_TimeBuf, true);
-        upload_ubo(_needRandomValueBuf, RandomValueBuf, Ubo_RandomValueBuf, true);
-        upload_ubo(_needScriptValueBuf, ScriptValueBuf, Ubo_ScriptValueBuf, false);
-        upload_ubo(_needCameraBuf, CameraBuf, Ubo_CameraBuf, true);
+        gather_block(_needProjBuf, ProjBuf, true);
+        gather_block(_needMainTexBuf, MainTexBuf, true);
+        gather_block(_needEggBuf, EggBuf, true);
+        gather_block(_needSpriteBorderBuf, SpriteBorderBuf, true);
+        gather_block(_needTimeBuf, TimeBuf, true);
+        gather_block(_needRandomValueBuf, RandomValueBuf, true);
+        gather_block(_needScriptValueBuf, ScriptValueBuf, false);
+        gather_block(_needCameraBuf, CameraBuf, true);
 #if FO_ENABLE_3D
-        upload_ubo(_needModelBuf, ModelBuf, Ubo_ModelBuf, true);
-        upload_ubo(_needModelTexBuf, ModelTexBuf, Ubo_ModelTexBuf, true);
-        upload_ubo(_needModelAnimBuf, ModelAnimBuf, Ubo_ModelAnimBuf, true);
+        gather_block(_needModelBuf, ModelBuf, true);
+        gather_block(_needModelTexBuf, ModelTexBuf, true);
+        gather_block(_needModelAnimBuf, ModelAnimBuf, true);
 #endif
+
+        if (!scratch.empty()) {
+            // Rewind and re-specify (orphan) the bump storage when the draw does not fit — the
+            // driver keeps the old storage alive for the already-issued draws that reference it.
+            size_t base_offset = (_ctx->UniformBumpOffset + alignment - 1) & ~(alignment - 1);
+
+            if (base_offset + scratch.size() > _ctx->UniformBumpCapacity) {
+                GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+                GL(glBufferData(GL_UNIFORM_BUFFER, numeric_cast<GLsizeiptr>(_ctx->UniformBumpCapacity), nullptr, GL_DYNAMIC_DRAW));
+                base_offset = 0;
+            }
+            else {
+                GL(glBindBuffer(GL_UNIFORM_BUFFER, _ctx->UniformBumpBuf));
+            }
+
+            GL(glBufferSubData(GL_UNIFORM_BUFFER, numeric_cast<GLintptr>(base_offset), numeric_cast<GLsizeiptr>(scratch.size()), scratch.data()));
+            GL(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+            _ctx->UniformBumpOffset = base_offset + scratch.size();
+
+            for (size_t i = 0; i < max_uniform_blocks; i++) {
+                if (block_sizes[i] != 0) {
+                    block_offsets[i] += base_offset;
+                }
+            }
+        }
     }
 
     const auto draw_count = numeric_cast<GLsizei>(indices_to_draw.value_or(opengl_dbuf->IndCount));
@@ -1529,25 +1629,29 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 #endif
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto bind_ubo = [this](GLuint ubo, int32_t pos) {
-                if (ubo != 0 && pos != -1) {
-                    GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, ubo));
-                    ignore_unused(this); // this captured in GL debug
+            size_t bind_block_index = 0;
+
+            const auto bind_block = [&](int32_t pos) {
+                const size_t block_index = bind_block_index;
+                bind_block_index++;
+
+                if (block_sizes[block_index] != 0 && pos != -1) {
+                    GL(glBindBufferRange(GL_UNIFORM_BUFFER, pos, _ctx->UniformBumpBuf, numeric_cast<GLintptr>(block_offsets[block_index]), numeric_cast<GLsizeiptr>(block_sizes[block_index])));
                 }
             };
 
-            bind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
-            bind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
-            bind_ubo(Ubo_EggBuf, _posEggBuf[pass]);
-            bind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
-            bind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
-            bind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
-            bind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
-            bind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
+            bind_block(_posProjBuf[pass]);
+            bind_block(_posMainTexBuf[pass]);
+            bind_block(_posEggBuf[pass]);
+            bind_block(_posSpriteBorderBuf[pass]);
+            bind_block(_posTimeBuf[pass]);
+            bind_block(_posRandomValueBuf[pass]);
+            bind_block(_posScriptValueBuf[pass]);
+            bind_block(_posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            bind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
-            bind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
-            bind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
+            bind_block(_posModelBuf[pass]);
+            bind_block(_posModelTexBuf[pass]);
+            bind_block(_posModelAnimBuf[pass]);
 #endif
         }
 
@@ -1619,24 +1723,29 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         if (GL_HAS(uniform_buffer_object)) {
-            const auto unbind_ubo = [this](GLuint ubo, int32_t pos) {
-                if (ubo != 0 && pos != -1) {
+            size_t unbind_block_index = 0;
+
+            const auto unbind_block = [&](int32_t pos) {
+                const size_t block_index = unbind_block_index;
+                unbind_block_index++;
+
+                if (block_sizes[block_index] != 0 && pos != -1) {
                     GL(glBindBufferBase(GL_UNIFORM_BUFFER, pos, 0));
-                    ignore_unused(this); // this captured in GL debug
                 }
             };
 
-            unbind_ubo(Ubo_ProjBuf, _posProjBuf[pass]);
-            unbind_ubo(Ubo_MainTexBuf, _posMainTexBuf[pass]);
-            unbind_ubo(Ubo_SpriteBorderBuf, _posSpriteBorderBuf[pass]);
-            unbind_ubo(Ubo_TimeBuf, _posTimeBuf[pass]);
-            unbind_ubo(Ubo_RandomValueBuf, _posRandomValueBuf[pass]);
-            unbind_ubo(Ubo_ScriptValueBuf, _posScriptValueBuf[pass]);
-            unbind_ubo(Ubo_CameraBuf, _posCameraBuf[pass]);
+            unbind_block(_posProjBuf[pass]);
+            unbind_block(_posMainTexBuf[pass]);
+            unbind_block(_posEggBuf[pass]);
+            unbind_block(_posSpriteBorderBuf[pass]);
+            unbind_block(_posTimeBuf[pass]);
+            unbind_block(_posRandomValueBuf[pass]);
+            unbind_block(_posScriptValueBuf[pass]);
+            unbind_block(_posCameraBuf[pass]);
 #if FO_ENABLE_3D
-            unbind_ubo(Ubo_ModelBuf, _posModelBuf[pass]);
-            unbind_ubo(Ubo_ModelTexBuf, _posModelTexBuf[pass]);
-            unbind_ubo(Ubo_ModelAnimBuf, _posModelAnimBuf[pass]);
+            unbind_block(_posModelBuf[pass]);
+            unbind_block(_posModelTexBuf[pass]);
+            unbind_block(_posModelAnimBuf[pass]);
 #endif
         }
     }

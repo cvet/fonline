@@ -280,7 +280,7 @@ auto Map::GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>
     vector<refcount_ptr<Player>> recipients;
     recipients.reserve(_spectatorPlayers.size());
 
-    for (ptr<Player> player : _spectatorPlayers) {
+    for (auto player : _spectatorPlayers) {
         recipients.emplace_back(player.hold_ref());
     }
 
@@ -513,7 +513,7 @@ void Map::AddItem(ptr<Item> item, mpos hex, nptr<Critter> dropper)
     const mpos initial_item_hex = item->GetHex();
 
     // Process critters view
-    for (ptr<Critter> cr : copy_hold_ref(_critters)) {
+    for (auto cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -642,7 +642,7 @@ void Map::RemoveItem(ident_t item_id)
     }
 
     // Process critters view
-    for (ptr<Critter> cr : copy_hold_ref(_critters)) {
+    for (auto cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -677,8 +677,8 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
 
         // Pure fan-out to every map critter's player plus the spectators (both resolved lock-free, pinned).
         // Send_Property validates the subject (this map) and reads its data live; the map is in sync here.
-        for (ptr<Critter> cr : _critters) {
-            if (refcount_nptr<Player> player = cr->GetPlayerForSend()) {
+        for (auto cr : _critters) {
+            if (auto player = cr->GetPlayerForSend()) {
                 player->Send_Property(type, prop, entity);
             }
         }
@@ -694,7 +694,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         auto item = nullable_item.as_ptr();
         FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
         FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
-        FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item.get(), "Map item index returned a different item instance");
+        FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
         auto map_holder = refcount_ptr<Map>::from_add_ref(this);
         auto item_holder = item.hold_ref();
         ignore_unused(map_holder);
@@ -703,7 +703,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         const ident_t initial_item_map_id = item->GetMapId();
         const mpos initial_item_hex = item->GetHex();
 
-        for (ptr<Critter> cr : copy_hold_ref(_critters)) {
+        for (auto cr : copy_hold_ref(_critters)) {
             if (cr->CheckVisibleItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
                 ValidateEntityAccess(cr);
@@ -775,8 +775,8 @@ auto Map::HasLivingCritter(mpos hex, nptr<const Critter> ignore_cr) const noexce
 
     const auto& field = _hexField->GetCellForReading(hex);
 
-    for (ptr<const Critter> cr : field.Critters) {
-        nptr<const Critter> field_cr = cr;
+    for (auto cr : field.Critters) {
+        auto field_cr = cr;
 
         if (!field_cr->IsDead() && !(field_cr == ignore_cr)) {
             return true;
@@ -802,7 +802,7 @@ void Map::ChangeViewItem(ptr<Item> item)
     const ident_t initial_item_map_id = item->GetMapId();
     const mpos initial_item_hex = item->GetHex();
 
-    for (ptr<Critter> cr : copy_hold_ref(_critters)) {
+    for (auto cr : copy_hold_ref(_critters)) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -909,7 +909,7 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, nptr<const Critter> picker) -
 
     ptr<Field> field2 = _hexField->GetCellForWriting(hex);
 
-    for (ptr<Item> item : field2->Items) {
+    for (auto item : field2->Items) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (!picker || picker->CanSeeItemOnMap(item))) {
             return item.as_nptr();
         }
@@ -953,7 +953,7 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<ptr<Item>>
             if (!field.Items.empty()) {
                 ptr<Field> field2 = _hexField->GetCellForWriting(hex_around);
 
-                for (ptr<Item> item : field2->Items) {
+                for (auto item : field2->Items) {
                     if (seen.insert(item->GetId()).second) {
                         items.emplace_back(item);
                     }
@@ -980,7 +980,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) noexcept -> vector<ptr<Item>>
     ptr<Field> field2 = _hexField->GetCellForWriting(hex);
     vector<ptr<Item>> triggers;
 
-    for (ptr<Item> item : field2->Items) {
+    for (auto item : field2->Items) {
         if (item->GetIsTrigger()) {
             triggers.emplace_back(item);
         }
@@ -1028,7 +1028,7 @@ void Map::RecacheHexFlags(ptr<Field> field)
     field->MovableWithGag = !field->ManualBlock;
 
     if (!field->Items.empty()) {
-        for (ptr<const Item> item : field->Items) {
+        for (auto item : field->Items) {
             if (!item->GetNoBlock()) {
                 field->HasNoMoveItem = true;
                 field->MovableWithGag = field->MovableWithGag && item->GetIsGag();
@@ -1073,7 +1073,7 @@ auto Map::IsCritterOnHex(mpos hex, CritterFindType find_type) const -> bool
             return true;
         }
 
-        for (ptr<const Critter> cr : field.Critters) {
+        for (auto cr : field.Critters) {
             if (cr->CheckFind(find_type)) {
                 return true;
             }
@@ -1092,7 +1092,7 @@ auto Map::IsCritterOnHex(mpos hex, ptr<const Critter> cr) const -> bool
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        for (ptr<const Critter> field_cr : field.Critters) {
+        for (auto field_cr : field.Critters) {
             if (field_cr == cr) {
                 return true;
             }
@@ -1126,7 +1126,7 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> nptr<
     if (field.HasCritter) {
         ptr<Field> field2 = _hexField->GetCellForWriting(hex);
 
-        for (ptr<Critter> cr : field2->Critters) {
+        for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
                 return cr.as_nptr();
             }
@@ -1147,7 +1147,7 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Cr
     if (field.HasCritter) {
         ptr<Field> field2 = _hexField->GetCellForWriting(hex);
 
-        for (ptr<Critter> cr : field2->Critters) {
+        for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
                 critters.emplace_back(cr);
             }
@@ -1166,7 +1166,7 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) const -> vector<
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        for (ptr<const Critter> cr : field.Critters) {
+        for (auto cr : field.Critters) {
             if (cr->CheckFind(find_type)) {
                 critters.emplace_back(cr);
             }
@@ -1197,7 +1197,7 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
 
             ptr<Field> field2 = _hexField->GetCellForWriting(cur_hex);
 
-            for (ptr<Critter> cr : field2->Critters) {
+            for (auto cr : field2->Critters) {
                 if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
                     critters.emplace_back(cr);
                 }
@@ -1225,7 +1225,7 @@ auto Map::GetStaticItem(ident_t id) noexcept -> nptr<StaticItem>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (const auto it = _staticMap->StaticItemsById.find(id); it != _staticMap->StaticItemsById.end()) {
-        return it->second.as_nptr();
+        return it->second;
     }
 
     return nullptr;
@@ -1242,9 +1242,9 @@ auto Map::GetStaticItemOnHex(mpos hex, hstring pid) noexcept -> nptr<StaticItem>
         return nullptr;
     }
 
-    for (ptr<StaticItem> item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
-        if (!pid || item->GetProtoId() == pid) {
-            return item.as_nptr();
+    for (auto static_item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
+        if (!pid || static_item->GetProtoId() == pid) {
+            return static_item;
         }
     }
 
@@ -1258,9 +1258,9 @@ auto Map::GetStaticItems(hstring pid) -> vector<ptr<StaticItem>>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vector<ptr<StaticItem>> items;
 
-    for (ptr<StaticItem> item : _staticMap->StaticItems) {
-        if (!pid || item->GetProtoId() == pid) {
-            items.emplace_back(item);
+    for (auto static_item : _staticMap->StaticItems) {
+        if (!pid || static_item->GetProtoId() == pid) {
+            items.emplace_back(static_item);
         }
     }
 
@@ -1303,9 +1303,9 @@ auto Map::GetStaticItemsInRadius(mpos hex, int32_t radius, hstring pid) -> vecto
                 continue;
             }
 
-            for (ptr<StaticItem> item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
-                if (seen.insert(item).second && (!pid || item->GetProtoId() == pid)) {
-                    items.emplace_back(item);
+            for (auto static_item : const_cast<StaticMap::Field&>(static_field).StaticItems) {
+                if (seen.insert(static_item).second && (!pid || static_item->GetProtoId() == pid)) {
+                    items.emplace_back(static_item);
                 }
             }
         }
@@ -1380,18 +1380,18 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerStaticItemOnHex(from_hex)) {
-        for (ptr<StaticItem> item : GetTriggerStaticItemsOnHex(from_hex)) {
-            if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc.Call(cr.get(), item.get(), false, dir);
+        for (auto static_item : GetTriggerStaticItemsOnHex(from_hex)) {
+            if (static_item->TriggerScriptFunc) {
+                static_item->TriggerScriptFunc.Call(cr.get(), static_item.get(), false, dir);
 
                 if (is_trigger_context_changed()) {
                     return;
                 }
             }
 
-            ValidateEntityAccess(item);
+            ValidateEntityAccess(static_item);
             ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(item, cr, false, dir);
+            _engine->OnStaticItemWalk.Fire(static_item, cr, false, dir);
 
             if (is_trigger_context_changed()) {
                 return;
@@ -1400,18 +1400,18 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerStaticItemOnHex(to_hex)) {
-        for (ptr<StaticItem> item : GetTriggerStaticItemsOnHex(to_hex)) {
-            if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc.Call(cr.get(), item.get(), true, dir);
+        for (auto static_item : GetTriggerStaticItemsOnHex(to_hex)) {
+            if (static_item->TriggerScriptFunc) {
+                static_item->TriggerScriptFunc.Call(cr.get(), static_item.get(), true, dir);
 
                 if (is_trigger_context_changed()) {
                     return;
                 }
             }
 
-            ValidateEntityAccess(item);
+            ValidateEntityAccess(static_item);
             ValidateEntityAccess(cr);
-            _engine->OnStaticItemWalk.Fire(item, cr, true, dir);
+            _engine->OnStaticItemWalk.Fire(static_item, cr, true, dir);
 
             if (is_trigger_context_changed()) {
                 return;
@@ -1420,7 +1420,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerItemOnHex(from_hex)) {
-        for (ptr<Item> item : GetTriggerItemsOnHex(from_hex)) {
+        for (auto item : GetTriggerItemsOnHex(from_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -1436,7 +1436,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     }
 
     if (IsTriggerItemOnHex(to_hex)) {
-        for (ptr<Item> item : GetTriggerItemsOnHex(to_hex)) {
+        for (auto item : GetTriggerItemsOnHex(to_hex)) {
             if (item->IsDestroyed()) {
                 continue;
             }
@@ -1484,7 +1484,7 @@ auto Map::CheckGagItem(mpos hex, const function<bool(ptr<const Item>)>& gag_call
         return false;
     }
 
-    for (ptr<const Item> item : field.Items) {
+    for (auto item : field.Items) {
         if (item->GetIsGag() && (!gag_callback || !gag_callback(item))) {
             return false;
         }

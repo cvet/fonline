@@ -251,23 +251,27 @@ private:
     };
 
     void SyncPoint();
+    // Locks every parentless root entity into `ctx`, covering the whole registered world through the
+    // ancestor-chain walk. Callable only when every worker is quiesced (external sync-point lock,
+    // single-threaded shutdown) — all locks are free then, so the acquisition is uncontended.
+    void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessUnloginedPlayer(ptr<Player> unlogined_player);
     void ProcessPlayer(ptr<Player> player);
-    void ProcessConnection(ptr<ServerConnection> connection);
+    void ProcessConnection(ptr<Player> player);
     void HandleOutboundRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data) override;
 
     void LoadReportedHashes();
     void RegisterClientReportedHash(ptr<ServerConnection> connection, hstring::hash_t hash);
     void ProcessPendingUnresolvedHash(ptr<ServerConnection> connection);
-    void SendAllReportedHashes(ptr<ServerConnection> connection);
+    void SendAllReportedHashes(ptr<Player> player);
     void BroadcastReportedString(string_view reported_string);
 
     auto FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult override;
 
-    void Process_Handshake(ptr<ServerConnection> connection);
-    void Process_Ping(ptr<ServerConnection> connection);
+    void Process_Handshake(ptr<Player> player);
+    void Process_Ping(ptr<Player> player);
     void Process_UnresolvedHash(ptr<ServerConnection> connection);
     void Process_Move(ptr<Player> player);
     void Process_StopMove(ptr<Player> player);

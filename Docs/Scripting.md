@@ -87,10 +87,18 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
 
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
-For generic AngelScript calls, mutable script parameters must be read from the actual reference slot:
-`out`/`inout` arguments use `asIScriptGeneric::GetArgAddress()`, while ordinary input arguments use
-`GetAddressOfArg()`. This distinction is required for script-visible `int32&`, value-type refs such as `mpos&`,
-and any exported native method that writes back through a C++ non-const lvalue reference.
+The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
+value itself for primitives/enums/value types (`int32&`, `mpos&`, `string&`), the handle cell for object handles
+(`Critter@&`). Every AngelScript-side producer follows this contract: `ScriptGenericCall()` (classifying by the
+registration-time `MethodDesc`/`EntityEventDesc` argument descriptors — the same data that emitted the `&`/`@&`
+declaration) and the `Invoke` family resolve mutable arguments through `asIScriptGeneric::GetArgAddress()` (the
+pointer held on the stack), while ordinary input arguments use `GetAddressOfArg()`. Consumers rely on it
+symmetrically:
+`NativeDataCaller::ConvertArg`/`ReturnArg` read and write back through the slot, and the AngelScript-to-
+AngelScript branch of `ScriptFuncCall()` (script-fired events with by-ref args, `Invoke` targeting a script
+function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regression coverage:
+`Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
+`Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
 `Yield(ms)` suspends the current AngelScript context and asks the active engine to resume it later through
 `ScheduleDelayedCallback()`. On multithreaded servers, zero-delay or short-delay resumes may run on another worker

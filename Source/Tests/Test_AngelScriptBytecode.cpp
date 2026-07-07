@@ -65,6 +65,13 @@ namespace
         int LeakedCount {};
     };
 
+    struct NativeResource
+    {
+        ptr<ResourceTrackerState> State;
+        int Id {};
+        int RefCount {};
+    };
+
     class BytecodeStream final : public asIBinaryStream
     {
     public:
@@ -191,6 +198,43 @@ namespace
         state->LastObservedId = id;
     }
 
+    static auto MakeNativeResource() -> NativeResource*
+    {
+        auto state = GetTrackerState(GetActiveEngine());
+        const int id = ++state->NextId;
+        state->ActiveRefs[id] = 1;
+        return new NativeResource {.State = state, .Id = id, .RefCount = 1};
+    }
+
+    static void NativeResourceAddRef(void* obj)
+    {
+        auto self = cast_from_void<NativeResource*>(obj);
+        self->RefCount++;
+        self->State->ActiveRefs[self->Id]++;
+    }
+
+    static void NativeResourceRelease(void* obj)
+    {
+        auto self = cast_from_void<NativeResource*>(obj);
+        self->RefCount--;
+
+        auto& active_refs = self->State->ActiveRefs;
+        const auto it = active_refs.find(self->Id);
+        if (it == active_refs.end() || it->second == 0) {
+            self->State->DoubleFreeCount++;
+        }
+        else {
+            it->second--;
+            if (it->second == 0) {
+                active_refs.erase(it);
+            }
+        }
+
+        if (self->RefCount == 0) {
+            delete self;
+        }
+    }
+
     // PtrSizedVal is a value type whose size equals sizeof(void*), simulating hstring.
     // On 64-bit it occupies 8 bytes (2 DWORDs), on 32-bit it occupies 4 bytes (1 DWORD).
     // This exercises the portable bytecode format's stack normalization for platform-dependent value types.
@@ -296,6 +340,11 @@ namespace
         CHECK(engine->RegisterGlobalFunction("int AcquireResource()", FO_SCRIPT_FUNC(AcquireResource), FO_SCRIPT_FUNC_CONV) >= 0);
         CHECK(engine->RegisterGlobalFunction("void ReleaseResource(int)", FO_SCRIPT_FUNC(ReleaseResource), FO_SCRIPT_FUNC_CONV) >= 0);
         CHECK(engine->RegisterGlobalFunction("void ObserveResource(int)", FO_SCRIPT_FUNC(ObserveResource), FO_SCRIPT_FUNC_CONV) >= 0);
+
+        CHECK(engine->RegisterObjectType("NativeResource", 0, asOBJ_REF) >= 0);
+        CHECK(engine->RegisterObjectBehaviour("NativeResource", asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(NativeResourceAddRef), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        CHECK(engine->RegisterObjectBehaviour("NativeResource", asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(NativeResourceRelease), FO_SCRIPT_FUNC_THIS_CONV) >= 0);
+        CHECK(engine->RegisterGlobalFunction("NativeResource@ MakeNativeResource()", FO_SCRIPT_FUNC(MakeNativeResource), FO_SCRIPT_FUNC_CONV) >= 0);
 
         // Register pointer-sized value type (like hstring)
         // POD with APP_CLASS + APP_CLASS_ALLINTS: engine handles construct/destruct/copy automatically
@@ -694,6 +743,23 @@ void AssignNullToNonNullable()
     required = null;
     ObserveResource(-999);
 }
+
+void NullableLocalReleasedOnScopeExit()
+{
+    Resource? optional = Resource();
+    ObserveResource(optional != null ? 2 : 0);
+}
+
+void NativeOwnedNullableLocalReleasedOnScopeExit()
+{
+    NativeResource? optional = MakeNativeResource();
+    if (optional is null) {
+        ObserveResource(-2);
+        return;
+    }
+
+    ObserveResource(optional !is null ? 4 : -2);
+}
 )";
 
         nptr<asIScriptModule> module = engine->GetModule("NullableModule", asGM_ALWAYS_CREATE);
@@ -736,8 +802,42 @@ void AssignNullToNonNullable()
             ctx->Release();
         }
 
+        // A non-null nullable handle must release its object when the local
+        // leaves scope, even if no later assignment overwrites the slot.
+        {
+            state.LastObservedId = 0;
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void NullableLocalReleasedOnScopeExit()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
+            const auto result = ctx->Execute();
+            CHECK(result == asEXECUTION_FINISHED);
+            ctx->Release();
+            CHECK(state.LastObservedId == 2);
+        }
+
+        {
+            state.LastObservedId = 0;
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl("void NativeOwnedNullableLocalReleasedOnScopeExit()");
+            REQUIRE(func);
+            nptr<asIScriptContext> ctx = engine->CreateContext();
+            REQUIRE(ctx);
+            CHECK(ctx->Prepare(func.get()) >= 0);
+            const auto result = ctx->Execute();
+            CHECK(result == asEXECUTION_FINISHED);
+            ctx->Release();
+            CHECK(state.LastObservedId == 4);
+        }
+
         engine->SetUserData(nullptr);
         CHECK(engine->GarbageCollect(asGC_FULL_CYCLE) >= 0);
+        int leaked_count = 0;
+        for (const auto& [id, ref_count] : state.ActiveRefs) {
+            static_cast<void>(id);
+            leaked_count += ref_count;
+        }
+        CHECK(leaked_count == 0);
     }
 
     SECTION("CompileTimeRejectsNullableToNonNullableAssignment")
@@ -1887,8 +1987,8 @@ void GuardedReadAfterEarlyReturn()
         engine->SetUserData(&state);
 
         // Run guarded reads; neither should throw.
-        for (const string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void GuardedReadInThenBranch()", "void GuardedReadAfterEarlyReturn()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -1967,8 +2067,8 @@ void NarrowsCompoundOrAfterReturn()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void NarrowsCompoundAnd()", "void NarrowsCompoundOrAfterReturn()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2127,9 +2227,9 @@ void NullAssignToNarrowedRefParam()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
+        for (const char* decl : {"void NullAssignToNarrowedLocal()", "void NullAssignToCompoundNarrowedLocal()", "void NullAssignToNarrowedRefParam()"}) {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2239,8 +2339,8 @@ void DistinctHandles()
         engine->SetUserData(&state);
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles.
-        for (const string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void SameHandle()", "void DistinctHandles()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2307,8 +2407,8 @@ void TagsDiffer()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void TagsEqual()", "void TagsDiffer()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2373,8 +2473,8 @@ void NullableParameter()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
+        for (const char* decl : {"void NullableReturn()", "void NullableParameter()"}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2665,17 +2765,17 @@ int RunInitList()
 }
 )";
 
-    auto* module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
+    nptr<asIScriptModule> module = engine->GetModule("InitListModule", asGM_ALWAYS_CREATE);
     REQUIRE(module != nullptr);
     CHECK(module->AddScriptSection("initlist_test", InitListScript.data(), numeric_cast<unsigned>(InitListScript.size())) >= 0);
     REQUIRE(module->Build() >= 0);
 
-    auto* func = module->GetFunctionByDecl("int RunInitList()");
+    nptr<asIScriptFunction> func = module->GetFunctionByDecl("int RunInitList()");
     REQUIRE(func != nullptr);
 
-    auto* ctx = engine->CreateContext();
+    nptr<asIScriptContext> ctx = engine->CreateContext();
     REQUIRE(ctx != nullptr);
-    CHECK(ctx->Prepare(func) >= 0);
+    CHECK(ctx->Prepare(func.get()) >= 0);
     REQUIRE(ctx->Execute() == asEXECUTION_FINISHED);
     CHECK(ctx->GetReturnDWord() == 8U);
     ctx->Release();
