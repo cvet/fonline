@@ -1175,7 +1175,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1218,7 +1222,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1259,9 +1267,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         const auto blocked_hex = path_hexes[2];
 
         map->SetHexManualBlock(blocked_hex, true, true);
-        auto unblock_hex = scope_exit([map, blocked_hex]() noexcept {
-            safe_call([map, blocked_hex] {
+        auto unblock_hex = scope_exit([server, map, blocked_hex]() noexcept {
+            safe_call([server, map, blocked_hex] {
                 if (!map->IsDestroyed()) {
+                    auto ctx = server->RequireCurrentSyncContext();
+                    ctx->EnsureEntitySynced(map);
                     map.get_no_const()->SetHexManualBlock(blocked_hex, false, false);
                 }
             });
@@ -1273,7 +1283,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&cr] { return !cr->IsMoving(); }));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::HexBusy);
@@ -1291,9 +1305,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 // Per-entity sync rail (multithreading): SyncContext minimal-cover / escalation /
 // ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
 // tests in Test_EntitySync.cpp cannot reach this - they have no entity hierarchy
-// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under the
-// engine singleton lock, then the lock is released because SyncEntities refuses to
-// run while a singleton lock is held (deadlock prevention).
+// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under an
+// external ServerEngine::Lock; entity registration self-syncs newly created entities.
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
@@ -1561,6 +1574,9 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
                     cleanup_ctx.Deactivate();
                 });
             });
+
+            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a, player_b};
+            cleanup_ctx.SyncEntities(attached_players);
 
             if (cr_a->GetPlayer()) {
                 cr_a->DetachPlayer();
@@ -2025,6 +2041,16 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     // coins redistributed across holders.
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
+
+    vector<nptr<ServerEntity>> sync_holders;
+    sync_holders.reserve(holders.size());
+
+    for (auto cr : holders) {
+        sync_holders.emplace_back(cr.as_ptr());
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->SyncEntities(sync_holders);
 
     int64_t total = 0;
     for (auto cr : holders) {

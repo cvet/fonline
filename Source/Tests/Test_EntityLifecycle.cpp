@@ -1432,6 +1432,10 @@ TEST_CASE("PlayerRegistrationCppApi")
         int32_t dir_calls = 0;
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
+        auto ctx = server->RequireCurrentSyncContext();
+        const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), cr.as_nptr(), map.as_nptr()};
+        ctx->SyncEntities(sync_entities);
+
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
         CHECK_FALSE(static_cast<bool>(cr->GetPlayer()));
         CHECK(cr->GetMapId() == map->GetId());
