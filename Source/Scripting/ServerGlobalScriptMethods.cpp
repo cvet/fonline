@@ -919,7 +919,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToNewRecord(ptr<ServerEngine> s
     }
 
     auto player = server->LoginPlayerToNewRecord(unloginedPlayer);
-    return player.as_ptr();
+    return player;
 }
 
 // SyncScope: requires unloginedPlayer; login mutates that player/session record.
@@ -933,7 +933,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
     }
 
     auto player = server->LoginPlayerToTempSession(unloginedPlayer);
-    return player.as_ptr();
+    return player;
 }
 
 // SyncScope: requires unloginedPlayer; login mutates that player/session record and database-backed player id.
@@ -950,7 +950,7 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngi
     }
 
     auto player = server->LoginPlayerToExistentRecord(unloginedPlayer, playerId);
-    return player.as_ptr();
+    return player;
 }
 
 // SyncScope: registry lookup only; returned player handle is not covered for later reads/mutations.

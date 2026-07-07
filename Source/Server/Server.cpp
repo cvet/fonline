@@ -2845,7 +2845,7 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     }
 }
 
-auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>
+auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2894,16 +2894,18 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
     const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
     if (login_result == Entity::EventResult::StopChain) {
+        auto connection = player->GetConnection();
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
+        player->SetLogined(false);
         player->DetachCritter();
         player->ResetViewMap();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
-        player->SetLogined(false);
-        player->GetConnection()->GracefulDisconnect();
-        return nullptr;
+        connection->GracefulDisconnect();
+        disconnect_on_error.release();
+        throw GenericException("New player login rejected by OnPlayerLogin");
     }
 
     OnPlayerLogined(player, unlogined_player);
@@ -2911,7 +2913,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
     return player;
 }
 
-auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>
+auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2980,14 +2982,16 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
         if (login_result == Entity::EventResult::StopChain) {
+            auto connection = player->GetConnection();
+            player->SetLogined(false);
             player->DetachCritter();
             player->ResetViewMap();
             player->MarkAsDestroyed();
             EntityMngr.UnregisterPlayer(player);
             registered_player = false;
-            player->SetLogined(false);
-            player->GetConnection()->GracefulDisconnect();
-            return nullptr;
+            connection->GracefulDisconnect();
+            disconnect_on_error.release();
+            throw GenericException("Existing player login rejected by OnPlayerLogin");
         }
     }
     else {
@@ -2996,8 +3000,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player.as_nptr()};
         ctx->SyncEntities(sync_entities);
 
-        if (player->IsDestroyed() || unlogined_player->IsDestroyed()) {
-            return nullptr;
+        if (player->IsDestroyed()) {
+            disconnect_on_error.release();
+            throw GenericException("Existing player was destroyed during reconnect sync");
+        }
+        if (unlogined_player->IsDestroyed()) {
+            disconnect_on_error.release();
+            throw GenericException("Unlogined player was destroyed during reconnect sync");
         }
 
         // Kick previous
@@ -3016,7 +3025,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             player->GetConnection()->GracefulDisconnect();
             unlogined_player->SetLogined(false);
             unlogined_player->MarkAsDestroyed();
-            return nullptr;
+            disconnect_on_error.release();
+            throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
 
         unlogined_player->MarkAsDestroyed();
@@ -3033,10 +3043,10 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     OnPlayerLogined(player, unlogined_player);
 
     disconnect_on_error.release();
-    return nullable_player;
+    return player;
 }
 
-auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>
+auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3075,13 +3085,15 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> npt
     const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
     if (login_result == Entity::EventResult::StopChain) {
+        auto connection = player->GetConnection();
+        player->SetLogined(false);
         player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
-        player->SetLogined(false);
-        player->GetConnection()->GracefulDisconnect();
-        return nullptr;
+        connection->GracefulDisconnect();
+        disconnect_on_error.release();
+        throw GenericException("Temporary player login rejected by OnPlayerLogin");
     }
 
     OnPlayerLogined(player, unlogined_player);

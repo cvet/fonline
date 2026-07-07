@@ -179,10 +179,8 @@ namespace ServerItemsTest
 
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto nullable_player = server->LoginPlayerToNewRecord(unlogined_player);
-        FO_VERIFY_AND_THROW(!!nullable_player, "Player login to new record failed");
-
-        return nullable_player.as_ptr();
+        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        return player;
     }
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
