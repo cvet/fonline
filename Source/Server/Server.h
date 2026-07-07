@@ -251,6 +251,10 @@ private:
     };
 
     void SyncPoint();
+    // Locks every parentless root entity into `ctx`, covering the whole registered world through the
+    // ancestor-chain walk. Callable only when every worker is quiesced (external sync-point lock,
+    // single-threaded shutdown) — all locks are free then, so the acquisition is uncontended.
+    void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessUnloginedPlayer(ptr<Player> unlogined_player);

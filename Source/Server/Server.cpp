@@ -1002,7 +1002,8 @@ void ServerEngine::Shutdown()
     // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
-    // primary SyncContext.
+    // primary SyncContext. The whole world is locked into it below, once the sequenced teardown
+    // (network join, time-event cancel, worker-pool drain) has made this thread the sole owner.
     ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
@@ -1108,6 +1109,15 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
+    // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
+    // free: take the whole world into the shutdown context explicitly — the engine singleton lock
+    // (covers engine properties and held custom entities) plus every parentless root — so the
+    // remaining stages (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player
+    // disconnects) run fully covered. The scope-exit Release() drains both buckets.
+    WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
+    shutdown_ctx.GetContext().LockSingleton(GetEntityLock().get());
+    SyncWholeWorld(shutdown_ctx.GetContext());
+
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
 
@@ -1120,7 +1130,6 @@ void ServerEngine::Shutdown()
     ClearAllTimeEvents();
 
     WriteLog("Shutdown stage: per-entity unsubscribe (count={})", EntityMngr.GetEntitiesCount());
-
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
     for (size_t i = 0; i < entities.size(); i++) {
@@ -1177,6 +1186,9 @@ void ServerEngine::Shutdown()
         scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
+            // Unlogined players are not in the entity registry, so the whole-world lock above did not
+            // reach them; capture each one before the validated disconnect/destroy touches.
+            EnsureEntitySynced(player);
             player->GetConnection()->HardDisconnect();
             player->MarkAsDestroyed();
         }
@@ -1218,13 +1230,40 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         }
     }
 
-    // Now this thread is allowed to touch engine state - stand up a SyncContext to satisfy the
-    // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
+    // Now this thread is allowed to touch engine state - stand up a SyncContext and take the whole
+    // world into it explicitly: the engine's singleton lock (covers the engine entity and its held
+    // custom entities) plus every parentless root entity (a root's lock covers its whole subtree via
+    // the ancestor-chain walk). Every worker is drained at the sync point, so all locks are free and
+    // the acquisition is uncontended. Entities created by the holder afterwards are captured by
+    // registration; Unlock's Release() drains both buckets.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
     auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
     external_lock_sync_ctx->Activate();
+    external_lock_sync_ctx->LockSingleton(GetEntityLock().get());
+    SyncWholeWorld(*external_lock_sync_ctx);
     return true;
+}
+
+void ServerEngine::SyncWholeWorld(SyncContext& ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Every registered entity chains up to a parentless root (locations, global-map critters, players,
+    // orphaned items) or to the engine itself (held custom entities — covered by the engine singleton
+    // lock the caller takes alongside). Locking the roots therefore covers the whole world.
+    vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
+
+    vector<nptr<ServerEntity>> roots;
+    roots.reserve(entities.size());
+
+    for (auto& entity : entities) {
+        if (!entity->GetParentRaw()) {
+            roots.emplace_back(entity.as_ptr());
+        }
+    }
+
+    ctx.SyncEntities(roots);
 }
 
 void ServerEngine::Unlock()

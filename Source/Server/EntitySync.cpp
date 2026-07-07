@@ -553,6 +553,10 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
         WriteLog("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
+
+    // The offending call site. An uncovered access is always a bug to fix, and script-side catch
+    // handlers otherwise swallow the exception before its stack is ever reported.
+    safe_call([] { WriteLog("SyncDiag   stack:\n{}", FormatStackTrace(GetStackTrace())); });
 }
 
 // Answers "is `entity` covered by a lock the current thread already holds?" in a single coverage pass.
@@ -577,6 +581,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
 
     auto current_ctx = SyncContext::GetCurrentOnThisThread();
     FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
+    ignore_unused(current_ctx);
 
     const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 

@@ -1367,11 +1367,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
     // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
     // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
-    // plus the null/empty short-circuits.
+    // plus the null short-circuit and the stop-the-world universal-cover grant.
 
-    // Empty context: no held locks → the access gate grants everything, including a null entity.
+    // Strict model: an empty context is NOT exempt — no held lock means no entity access. Only a
+    // null entity short-circuits to granted.
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
     // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
@@ -1482,7 +1483,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a)); // empty again → unrestricted
+    CHECK_FALSE(IsEntityAccessValid(cr_a)); // empty again → strict model: still no cover, access denied
 }
 
 // ============================================================================
