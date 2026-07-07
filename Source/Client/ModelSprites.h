@@ -96,7 +96,7 @@ public:
     ~ModelSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr.as_ptr(); }
+    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr; }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 

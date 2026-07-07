@@ -74,7 +74,7 @@ auto PropertyRawData::GetPtr() noexcept -> ptr<void>
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_passedPtr) {
-        return _passedPtr.as_ptr();
+        return _passedPtr;
     }
 
     return _useDynamic ? ptr<void> {_dynamicBuf.get()} : ptr<void> {_localBuf};
@@ -111,7 +111,7 @@ void PropertyRawData::Pass(nptr<const void> value, size_t size)
 
     FO_VERIFY_AND_THROW(value || size == 0, "Source value pointer is null for non-zero size");
 
-    _passedPtr = cast_to_void(cast_from_void<const uint8_t*>(value.get()));
+    _passedPtr = value.reinterpret_as<uint8_t>().void_cast();
     _dataSize = size;
     _useDynamic = false;
 }
@@ -421,13 +421,11 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
             new_size = align_up(new_size, prop->GetDataAlignment());
 
             if (_overlayData) {
-                nptr<uint8_t> nullable_new_data_bytes = new_data.get();
-                nptr<const uint8_t> nullable_overlay_data_bytes = _overlayData.get();
-                FO_STRONG_ASSERT(nullable_new_data_bytes, "New overlay data buffer is null");
-                FO_STRONG_ASSERT(nullable_overlay_data_bytes, "Existing overlay data buffer is null");
+                nptr<uint8_t> new_data_bytes = new_data.get();
+                nptr<const uint8_t> overlay_data_bytes = _overlayData.get();
+                FO_STRONG_ASSERT(new_data_bytes, "New overlay data buffer is null");
+                FO_STRONG_ASSERT(overlay_data_bytes, "Existing overlay data buffer is null");
 
-                auto new_data_bytes = nullable_new_data_bytes.as_ptr();
-                auto overlay_data_bytes = nullable_overlay_data_bytes.as_ptr();
                 auto target = new_data_bytes.offset(new_size);
                 auto source = overlay_data_bytes.offset(entry.DataOffset);
                 MemCopy(target, source, entry.DataSize);
@@ -588,13 +586,11 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
         if (_overlayDataSize != 0) {
             _overlayData = SafeAlloc::MakeUniqueArr<uint8_t>(_overlayDataSize);
 
-            nptr<uint8_t> nullable_overlay_data = _overlayData.get();
-            nptr<const uint8_t> nullable_other_overlay_data = other._overlayData.get();
-            FO_STRONG_ASSERT(nullable_overlay_data, "Target overlay data buffer is null");
-            FO_STRONG_ASSERT(nullable_other_overlay_data, "Source overlay data buffer is null");
+            nptr<uint8_t> overlay_data = _overlayData.get();
+            nptr<const uint8_t> other_overlay_data = other._overlayData.get();
+            FO_STRONG_ASSERT(overlay_data, "Target overlay data buffer is null");
+            FO_STRONG_ASSERT(other_overlay_data, "Source overlay data buffer is null");
 
-            auto overlay_data = nullable_overlay_data.as_ptr();
-            auto other_overlay_data = nullable_other_overlay_data.as_ptr();
             MemCopy(overlay_data, other_overlay_data, _overlayDataSize);
         }
         else {
@@ -603,13 +599,11 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
     }
     else {
         if (_registrator->_wholePodDataSize != 0) {
-            nptr<uint8_t> nullable_pod_data = _podData.get();
-            nptr<const uint8_t> nullable_other_pod_data = other._podData.get();
-            FO_STRONG_ASSERT(nullable_pod_data, "Target POD data buffer is null");
-            FO_STRONG_ASSERT(nullable_other_pod_data, "Source POD data buffer is null");
+            nptr<uint8_t> pod_data = _podData.get();
+            nptr<const uint8_t> other_pod_data = other._podData.get();
+            FO_STRONG_ASSERT(pod_data, "Target POD data buffer is null");
+            FO_STRONG_ASSERT(other_pod_data, "Source POD data buffer is null");
 
-            auto pod_data = nullable_pod_data.as_ptr();
-            auto other_pod_data = nullable_other_pod_data.as_ptr();
             MemCopy(pod_data, other_pod_data, _registrator->_wholePodDataSize);
         }
 
@@ -620,13 +614,11 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
                 _complexData[i].second = complex_data_size;
 
                 if (complex_data_size != 0) {
-                    nptr<uint8_t> nullable_complex_data = _complexData[i].first.get();
-                    nptr<const uint8_t> nullable_other_complex_data = other._complexData[i].first.get();
-                    FO_STRONG_ASSERT(nullable_complex_data, "Target complex data buffer is null");
-                    FO_STRONG_ASSERT(nullable_other_complex_data, "Source complex data buffer is null");
+                    nptr<uint8_t> complex_data = _complexData[i].first.get();
+                    nptr<const uint8_t> other_complex_data = other._complexData[i].first.get();
+                    FO_STRONG_ASSERT(complex_data, "Target complex data buffer is null");
+                    FO_STRONG_ASSERT(other_complex_data, "Source complex data buffer is null");
 
-                    auto complex_data = nullable_complex_data.as_ptr();
-                    auto other_complex_data = nullable_other_complex_data.as_ptr();
                     MemCopy(complex_data, other_complex_data, complex_data_size);
                 }
             }
@@ -656,10 +648,9 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
                 return {};
             }
 
-            nptr<const uint8_t> nullable_pod_data = props._podData.get();
-            FO_STRONG_ASSERT(nullable_pod_data, "POD data buffer is null");
+            nptr<const uint8_t> pod_data = props._podData.get();
+            FO_STRONG_ASSERT(pod_data, "POD data buffer is null");
 
-            auto pod_data = nullable_pod_data.as_ptr();
             auto data = pod_data.offset(data_prop.DataIndex);
             return {data.get(), data_prop.DataSize};
         }
@@ -669,10 +660,9 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
             return {};
         }
 
-        nptr<const uint8_t> nullable_complex_data_bytes = complex_data.first.get();
-        FO_STRONG_ASSERT(nullable_complex_data_bytes, "Complex data buffer is null");
+        nptr<const uint8_t> complex_data_bytes = complex_data.first.get();
+        FO_STRONG_ASSERT(complex_data_bytes, "Complex data buffer is null");
 
-        auto complex_data_bytes = nullable_complex_data_bytes.as_ptr();
         return {complex_data_bytes.get(), complex_data.second};
     };
 
@@ -680,7 +670,8 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
     vector<span<const uint8_t>> entries_raw_data;
 
     for (const auto& data_prop : _registrator->_dataProperties) {
-        auto prop = data_prop.Prop.as_ptr();
+        auto prop = data_prop.Prop;
+        FO_STRONG_ASSERT(prop, "Data property entry is null");
         const auto other_raw_data = get_full_raw_data(other, data_prop);
 
         if (!RawDataEqual(_baseProps->GetRawData(prop), other_raw_data)) {
@@ -721,10 +712,9 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
                 auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
                 data_offset = align_up(data_offset, prop->GetDataAlignment());
 
-                nptr<uint8_t> nullable_overlay_data = _overlayData.get();
-                FO_STRONG_ASSERT(nullable_overlay_data, "Overlay data buffer is null");
+                nptr<uint8_t> overlay_data = _overlayData.get();
+                FO_STRONG_ASSERT(overlay_data, "Overlay data buffer is null");
 
-                auto overlay_data = nullable_overlay_data.as_ptr();
                 auto target = overlay_data.offset(data_offset);
                 MemCopy(target, entries_raw_data[entry_index].data(), entry.DataSize);
                 entry.DataOffset = numeric_cast<uint32_t>(data_offset);
@@ -769,10 +759,9 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
             span<const uint8_t> other_raw_data;
             if (entry.DataSize != 0) {
-                nptr<const uint8_t> nullable_other_overlay_data = other._overlayData.get();
-                FO_STRONG_ASSERT(nullable_other_overlay_data, "Source overlay data buffer is null");
+                nptr<const uint8_t> other_overlay_data = other._overlayData.get();
+                FO_STRONG_ASSERT(other_overlay_data, "Source overlay data buffer is null");
 
-                auto other_overlay_data = nullable_other_overlay_data.as_ptr();
                 auto other_overlay_entry_data = other_overlay_data.offset(entry.DataOffset);
                 other_raw_data = {other_overlay_entry_data.get(), entry.DataSize};
             }
@@ -812,9 +801,8 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
     }
     else {
         const auto get_pod_data = [this]() noexcept -> const_span<uint8_t> {
-            nptr<const uint8_t> nullable_pod_data = _podData.get();
-            FO_STRONG_ASSERT(nullable_pod_data, "POD data buffer is null");
-            auto pod_data = nullable_pod_data.as_ptr();
+            nptr<const uint8_t> pod_data = _podData.get();
+            FO_STRONG_ASSERT(pod_data, "POD data buffer is null");
             return {pod_data.get(), _registrator->_wholePodDataSize};
         };
 
@@ -922,7 +910,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
     const auto whole_pod_data_size = reader.Read<uint32_t>();
     FO_VERIFY_AND_THROW(whole_pod_data_size == _registrator->_wholePodDataSize, "Serialized POD property block was baked for a different property layout", _registrator->GetTypeName(), whole_pod_data_size, _registrator->_wholePodDataSize);
     const auto has_overlay_data = reader.Read<bool>();
-    FO_VERIFY_AND_THROW(!!_baseProps == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrator->GetTypeName(), has_overlay_data, _baseProps != nullptr);
+    FO_VERIFY_AND_THROW((_baseProps != nullptr) == has_overlay_data, "Serialized property storage mode does not match the target property container", _registrator->GetTypeName(), has_overlay_data, _baseProps != nullptr);
 
     if (_baseProps) {
         ResetOverlayData();
@@ -934,7 +922,8 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
             FO_VERIFY_AND_THROW(prop_index > 0 && prop_index < _registrator->_registeredProperties.size(), "Serialized overlay property index is outside registrator bounds", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), overlay_entries_count);
             const unique_nptr<Property>& prop_owner = _registrator->_registeredProperties[prop_index];
             FO_VERIFY_AND_THROW(prop_owner, "Serialized overlay property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size());
-            auto prop = prop_owner.as_ptr();
+            auto prop = prop_owner.as_nptr();
+            FO_VERIFY_AND_THROW(prop, "Property is null");
             const auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
             SetRawData(prop, data);
@@ -1012,7 +1001,7 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
         }
 
         if (!cache->PropertyIndices.empty()) {
-            const ptr<const uint16_t> property_indices = cache->PropertyIndices.data();
+            const auto property_indices = make_ptr(cache->PropertyIndices.data());
             cache->Data.insert(cache->Data.begin() + 1, property_indices.reinterpret_as<uint8_t>().get());
             cache->Sizes.insert(cache->Sizes.begin() + 1, numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
         }
@@ -1043,7 +1032,7 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
 
         // Store complex properties data
         if (!cache->PropertyIndices.empty()) {
-            const ptr<const uint16_t> property_indices = cache->PropertyIndices.data();
+            const auto property_indices = make_ptr(cache->PropertyIndices.data());
             cache->Data.push_back(property_indices.reinterpret_as<uint8_t>().get());
             cache->Sizes.push_back(numeric_cast<uint32_t>(cache->PropertyIndices.size() * sizeof(uint16_t)));
 
@@ -1065,14 +1054,13 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
     FO_VERIFY_AND_THROW(all_data.size() == all_data_sizes.size(), "Serialized property payload pointer list and size list have different lengths", _registrator->GetTypeName(), all_data.size(), all_data_sizes.size());
 
-    const auto read_raw_data_span = [](nptr<const uint8_t> nullable_data, size_t size) noexcept -> span<const uint8_t> {
+    const auto read_raw_data_span = [](nptr<const uint8_t> data, size_t size) noexcept -> span<const uint8_t> {
         if (size == 0) {
             return {};
         }
 
-        FO_STRONG_ASSERT(nullable_data, "Raw data pointer is null for non-zero size");
-        auto bytes = nullable_data.as_ptr();
-        return {bytes.get(), size};
+        FO_STRONG_ASSERT(data, "Raw data pointer is null for non-zero size");
+        return {data.get(), size};
     };
 
     const auto apply_separate_props_data = [this, &read_raw_data_span](const vector<nptr<const uint8_t>>& separate_data, const vector<uint32_t>& separate_sizes) {
@@ -1084,19 +1072,19 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
         FO_VERIFY_AND_THROW(separate_sizes[0] == property_data_count * sizeof(uint16_t), "Serialized property index table size is not aligned to uint16 entries", _registrator->GetTypeName(), separate_sizes[0], sizeof(uint16_t));
         FO_VERIFY_AND_THROW(separate_data.size() == 1 + property_data_count, "Serialized separate property payload count does not match index table count", _registrator->GetTypeName(), separate_data.size(), property_data_count);
         FO_VERIFY_AND_THROW(separate_data[0], "Property index table payload is null");
-        auto property_indices = separate_data[0].as_ptr();
 
         for (uint32_t i = 0; i < property_data_count; i++) {
             uint16_t prop_index {};
             auto prop_index_target = ptr<uint16_t> {&prop_index}.reinterpret_as<uint8_t>();
-            auto prop_index_source = property_indices.offset(i * sizeof(uint16_t));
+            auto prop_index_source = separate_data[0].offset(i * sizeof(uint16_t));
             MemCopy(prop_index_target, prop_index_source, sizeof(uint16_t));
 
             FO_VERIFY_AND_THROW(prop_index > 0, "Serialized separate property payload references the reserved zero property index", _registrator->GetTypeName(), i, property_data_count);
             FO_VERIFY_AND_THROW(prop_index < _registrator->_registeredProperties.size(), "Serialized separate property index is outside the registrator property table", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), i, property_data_count);
             const unique_nptr<Property>& prop_owner = _registrator->_registeredProperties[prop_index];
             FO_VERIFY_AND_THROW(prop_owner, "Serialized separate property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, i, property_data_count);
-            auto prop = prop_owner.as_ptr();
+            auto prop = prop_owner.as_nptr();
+            FO_VERIFY_AND_THROW(prop, "Property is null");
             const auto data_size = separate_sizes[1 + i];
             const auto data = separate_data[1 + i];
             SetRawData(prop, read_raw_data_span(data, data_size));
@@ -1113,8 +1101,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
         if (full_sizes[0] != 0) {
             FO_VERIFY_AND_THROW(full_data[0], "POD data payload is null");
-            auto pod_data = full_data[0].as_ptr();
-            MemCopy(target._podData, pod_data, full_sizes[0]);
+            MemCopy(target._podData, full_data[0], full_sizes[0]);
         }
 
         if (full_data.size() > 1) {
@@ -1122,8 +1109,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
             FO_VERIFY_AND_THROW(complex_data_count > 0, "Serialized full property payload contains a complex index table with no entries", _registrator->GetTypeName(), full_sizes[1]);
             vector<uint16_t> complex_indicies(complex_data_count);
             FO_VERIFY_AND_THROW(full_data[1], "Complex index table payload is null");
-            auto complex_indices_data = full_data[1].as_ptr();
-            MemCopy(complex_indicies.data(), complex_indices_data, full_sizes[1]);
+            MemCopy(complex_indicies.data(), full_data[1], full_sizes[1]);
 
             for (size_t i = 0; i < complex_indicies.size(); i++) {
                 FO_VERIFY_AND_THROW(complex_indicies[i] > 0, "Serialized complex property index table references the reserved zero property index", _registrator->GetTypeName(), i, complex_indicies.size());
@@ -1149,9 +1135,8 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
     uint8_t store_type = 0;
     FO_VERIFY_AND_THROW(all_data[0], "Store-type marker payload is null");
-    auto store_type_data = all_data[0].as_ptr();
     auto store_type_target = ptr<uint8_t> {&store_type};
-    MemCopy(store_type_target, store_type_data, sizeof(store_type));
+    MemCopy(store_type_target, all_data[0], sizeof(store_type));
 
     vector<nptr<const uint8_t>> payload_data(all_data.begin() + 1, all_data.end());
     vector<uint32_t> payload_sizes(all_data_sizes.begin() + 1, all_data_sizes.end());
@@ -1222,15 +1207,13 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
             continue;
         }
 
-        auto nullable_prop = registrator->FindProperty(key);
+        auto prop = registrator->FindProperty(key);
 
-        if (!nullable_prop) {
+        if (!prop) {
             WriteLog("Failed to load unknown property {}", key);
             errors++;
             continue;
         }
-
-        auto prop = nullable_prop.as_ptr();
 
         if (prop->IsDisabled()) {
             if (registrator->GetSide() == EngineSideKind::ServerSide && prop->IsClientOnly()) {
@@ -1358,13 +1341,11 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
                     return false;
                 }
                 if (entry.DataSize != 0) {
-                    nptr<const uint8_t> nullable_overlay_data = _overlayData.get();
-                    nptr<const uint8_t> nullable_other_overlay_data = other._overlayData.get();
-                    FO_VERIFY_AND_THROW(nullable_overlay_data, "Overlay data buffer is null");
-                    FO_VERIFY_AND_THROW(nullable_other_overlay_data, "Other overlay data buffer is null");
+                    nptr<const uint8_t> overlay_data = _overlayData.get();
+                    nptr<const uint8_t> other_overlay_data = other._overlayData.get();
+                    FO_VERIFY_AND_THROW(overlay_data, "Overlay data buffer is null");
+                    FO_VERIFY_AND_THROW(other_overlay_data, "Other overlay data buffer is null");
 
-                    auto overlay_data = nullable_overlay_data.as_ptr();
-                    auto other_overlay_data = nullable_other_overlay_data.as_ptr();
                     auto entry_data = overlay_data.offset(entry.DataOffset);
                     auto other_entry_data = other_overlay_data.offset(other_entry.DataOffset);
 
@@ -1388,10 +1369,9 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
                 return {};
             }
 
-            nptr<const uint8_t> nullable_pod_data = props._podData.get();
-            FO_STRONG_ASSERT(nullable_pod_data, "POD data buffer is null");
+            nptr<const uint8_t> pod_data = props._podData.get();
+            FO_STRONG_ASSERT(pod_data, "POD data buffer is null");
 
-            auto pod_data = nullable_pod_data.as_ptr();
             auto data = pod_data.offset(data_prop.DataIndex);
             return {data.get(), data_prop.DataSize};
         }
@@ -1401,15 +1381,15 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
             return {};
         }
 
-        nptr<const uint8_t> nullable_complex_data_bytes = complex_data.first.get();
-        FO_STRONG_ASSERT(nullable_complex_data_bytes, "Complex data buffer is null");
+        nptr<const uint8_t> complex_data_bytes = complex_data.first.get();
+        FO_STRONG_ASSERT(complex_data_bytes, "Complex data buffer is null");
 
-        auto complex_data_bytes = nullable_complex_data_bytes.as_ptr();
         return {complex_data_bytes.get(), complex_data.second};
     };
 
     for (const auto& data_prop : _registrator->_dataProperties) {
-        auto prop = data_prop.Prop.as_ptr();
+        auto prop = data_prop.Prop;
+        FO_VERIFY_AND_THROW(prop, "Property is null");
 
         if (vec_exists(ignore_props, prop)) {
             continue;
@@ -1478,17 +1458,14 @@ auto Properties::GetRawData(ptr<const Property> prop) const noexcept -> span<con
     FO_STRONG_ASSERT(_registrator == prop->_registrator, "Invalid property for raw data", _registrator->GetTypeName(), string_view {prop->GetName()}, prop->_registrator->GetTypeName());
 
     if (_baseProps) {
-        if (auto nullable_entry = FindOverlayEntry(prop)) {
-            auto entry = nullable_entry.as_ptr();
-
+        if (auto entry = FindOverlayEntry(prop)) {
             if (entry->DataSize == 0) {
                 return {};
             }
 
-            nptr<const uint8_t> nullable_overlay_data = _overlayData.get();
-            FO_STRONG_ASSERT(nullable_overlay_data, "Overlay data buffer is null");
+            nptr<const uint8_t> overlay_data = _overlayData.get();
+            FO_STRONG_ASSERT(overlay_data, "Overlay data buffer is null");
 
-            auto overlay_data = nullable_overlay_data.as_ptr();
             auto entry_data = overlay_data.offset(entry->DataOffset);
             return {entry_data.get(), entry->DataSize};
         }
@@ -1515,8 +1492,7 @@ auto Properties::GetRawDataSize(ptr<const Property> prop) const noexcept -> size
     FO_STRONG_ASSERT(_registrator == prop->_registrator, "Invalid property for raw data size", _registrator->GetTypeName(), string_view {prop->GetName()}, prop->_registrator->GetTypeName());
 
     if (_baseProps) {
-        if (auto nullable_entry = FindOverlayEntry(prop)) {
-            auto entry = nullable_entry.as_ptr();
+        if (auto entry = FindOverlayEntry(prop)) {
             return entry->DataSize;
         }
 
@@ -1543,8 +1519,7 @@ void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_dat
     shared_lock locker {*_dataLocker};
 
     if (_baseProps) {
-        if (auto nullable_entry = FindOverlayEntry(prop)) {
-            auto entry = nullable_entry.as_ptr();
+        if (auto entry = FindOverlayEntry(prop)) {
             const auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             prop_data.Set(raw_data.data(), raw_data.size());
             return;
@@ -1565,8 +1540,7 @@ auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> ra
     shared_lock locker {*_dataLocker};
 
     if (_baseProps) {
-        if (auto nullable_entry = FindOverlayEntry(prop)) {
-            auto entry = nullable_entry.as_ptr();
+        if (auto entry = FindOverlayEntry(prop)) {
             const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
             return RawDataEqual(raw_data, current_overlay_data);
         }
@@ -1601,10 +1575,9 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
                 return {};
             }
 
-            nptr<const uint8_t> nullable_overlay_data = _overlayData.get();
-            FO_STRONG_ASSERT(nullable_overlay_data, "Overlay data buffer is null");
+            nptr<const uint8_t> overlay_data = _overlayData.get();
+            FO_STRONG_ASSERT(overlay_data, "Overlay data buffer is null");
 
-            auto overlay_data = nullable_overlay_data.as_ptr();
             auto entry_data = overlay_data.offset(entry.DataOffset);
             return {entry_data.get(), entry.DataSize};
         };
@@ -1613,16 +1586,14 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
                 return;
             }
 
-            nptr<uint8_t> nullable_overlay_data = _overlayData.get();
-            FO_STRONG_ASSERT(nullable_overlay_data, "Overlay data buffer is null");
+            nptr<uint8_t> overlay_data = _overlayData.get();
+            FO_STRONG_ASSERT(overlay_data, "Overlay data buffer is null");
 
-            auto overlay_data = nullable_overlay_data.as_ptr();
             auto target = overlay_data.offset(data_offset);
             MemCopy(target, data.data(), data.size());
         };
 
-        if (auto nullable_entry = FindOverlayEntry(prop)) {
-            auto entry = nullable_entry.as_ptr();
+        if (auto entry = FindOverlayEntry(prop)) {
             const auto current_overlay_data = get_overlay_raw_data(*entry);
 
             if (RawDataEqual(raw_data, current_overlay_data)) {
@@ -1679,10 +1650,9 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
             FO_STRONG_ASSERT(prop->_podDataOffset.has_value(), "Plain property has no pod data offset while writing raw data", prop->GetName(), _registrator->GetTypeName());
 
             if (!raw_data.empty()) {
-                nptr<uint8_t> nullable_pod_data = _podData.get();
-                FO_STRONG_ASSERT(nullable_pod_data, "POD data buffer is null");
+                nptr<uint8_t> pod_data = _podData.get();
+                FO_STRONG_ASSERT(pod_data, "POD data buffer is null");
 
-                auto pod_data = nullable_pod_data.as_ptr();
                 auto target = pod_data.offset(*prop->_podDataOffset);
                 MemCopy(target, raw_data.data(), raw_data.size());
             }
@@ -1704,10 +1674,9 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
             }
 
             if (!raw_data.empty()) {
-                nptr<uint8_t> nullable_complex_data_bytes = complex_data.first.get();
-                FO_STRONG_ASSERT(nullable_complex_data_bytes, "Complex data buffer is null");
+                nptr<uint8_t> complex_data_bytes = complex_data.first.get();
+                FO_STRONG_ASSERT(complex_data_bytes, "Complex data buffer is null");
 
-                auto complex_data_bytes = nullable_complex_data_bytes.as_ptr();
                 MemCopy(complex_data_bytes, raw_data.data(), raw_data.size());
             }
         }
@@ -2015,13 +1984,11 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_prop = _registrator->GetPropertyByIndex(property_index);
+    auto prop = _registrator->GetPropertyByIndex(property_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw PropertiesException("Property not found", property_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
@@ -2029,20 +1996,18 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsInt(prop);
+    return GetPlainDataValueAsInt(prop.as_ptr());
 }
 
 auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_prop = _registrator->GetPropertyByIndex(property_index);
+    auto prop = _registrator->GetPropertyByIndex(property_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw PropertiesException("Property not found", property_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non plain data property", prop->GetName());
@@ -2050,20 +2015,18 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsAny(prop);
+    return GetPlainDataValueAsAny(prop.as_ptr());
 }
 
 void Properties::SetValueAsInt(int32_t property_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_prop = _registrator->GetPropertyByIndex(property_index);
+    auto prop = _registrator->GetPropertyByIndex(property_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw PropertiesException("Property not found", property_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
@@ -2078,13 +2041,11 @@ void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_prop = _registrator->GetPropertyByIndex(property_index);
+    auto prop = _registrator->GetPropertyByIndex(property_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw PropertiesException("Property not found", property_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set any value to non plain data property", prop->GetName());
@@ -2099,13 +2060,11 @@ void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_prop = _registrator->GetPropertyByIndex(property_index);
+    auto prop = _registrator->GetPropertyByIndex(property_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw PropertiesException("Property not found", property_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non plain data property", prop->GetName());
@@ -2200,7 +2159,7 @@ void Properties::SetValueAsAnyProps(int32_t property_index, const any_t& value)
         throw PropertiesException("Can't set value to non mutable property", prop->GetName());
     }
 
-    ApplyPropertyFromText(prop.as_ptr(), value);
+    ApplyPropertyFromText(prop, value);
 }
 
 auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
@@ -2269,15 +2228,24 @@ PropertyRegistrator::~PropertyRegistrator()
     FO_STACK_TRACE_ENTRY();
 }
 
+auto PropertyRegistrator::GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const unique_nptr<Property>& prop = _registeredProperties[property_index];
+    FO_STRONG_ASSERT(prop, "Property at index is null");
+    return prop;
+}
+
 auto PropertyRegistrator::GetPropertyByIndex(int32_t property_index) const noexcept -> nptr<const Property>
 {
     FO_STACK_TRACE_ENTRY();
 
     // Skip None entry
     if (property_index >= 1 && static_cast<size_t>(property_index) < _registeredProperties.size()) {
-        const unique_nptr<Property>& nullable_prop = _registeredProperties[numeric_cast<size_t>(property_index)];
-        FO_STRONG_ASSERT(nullable_prop, "Property at index is null");
-        return nullable_prop.as_ptr();
+        const unique_nptr<Property>& prop = _registeredProperties[numeric_cast<size_t>(property_index)];
+        FO_STRONG_ASSERT(prop, "Property at index is null");
+        return prop;
     }
 
     return nullptr;
@@ -2673,12 +2641,10 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         }
     }
 
-    for (unique_nptr<Property>& nullable_other_prop : _registeredProperties) {
-        if (!nullable_other_prop) {
+    for (unique_nptr<Property>& other_prop : _registeredProperties) {
+        if (!other_prop) {
             continue;
         }
-
-        auto other_prop = nullable_other_prop.as_ptr();
 
         if (!other_prop->_podDataOffset.has_value() || other_prop == prop.get()) {
             continue;
@@ -2723,7 +2689,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     _registeredProperties.emplace_back(std::move(prop));
-    return _registeredProperties.back().as_ptr();
+    return _registeredProperties.back();
 }
 
 FO_END_NAMESPACE

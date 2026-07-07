@@ -55,8 +55,7 @@ ServerEntity::~ServerEntity()
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
     // but if something slipped through, this destructor still releases cleanly.
-    if (nptr<ServerEntity> nullable_parent = _parent.load(std::memory_order_relaxed); nullable_parent) {
-        auto parent = nullable_parent.as_ptr();
+    if (auto parent = _parent.load(std::memory_order_relaxed); parent) {
         parent->Release();
     }
 }

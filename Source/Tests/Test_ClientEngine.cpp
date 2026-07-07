@@ -195,12 +195,11 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
     const auto critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
-    auto nullable_critter_proto = client->GetProtoCritter(critter_pid);
-    REQUIRE(static_cast<bool>(nullable_critter_proto));
-    auto critter_proto = nullable_critter_proto.as_ptr();
+    auto critter_proto = client->GetProtoCritter(critter_pid);
+    REQUIRE(static_cast<bool>(critter_proto));
 
     auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto.as_ptr());
 
     REQUIRE(client->GetEntity(player->GetId()) == player);
     REQUIRE(client->GetEntity(critter->GetId()) == critter);

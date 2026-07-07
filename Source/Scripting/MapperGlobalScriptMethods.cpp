@@ -81,24 +81,13 @@ static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_map = mapper_ptr->GetCurMap();
+    auto map = mapper_ptr->GetCurMap();
 
-    if (!nullable_map) {
+    if (!map) {
         throw ScriptException("No current map shown in the mapper");
     }
 
-    return nullable_map.as_ptr();
-}
-
-static auto MapperColorDataAt(vector<ucolor>& data, size_t offset) noexcept -> ptr<ucolor>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(offset < data.size(), "Color offset out of bounds");
-
-    nptr<ucolor> nullable_data = data.data();
-    auto data_begin = nullable_data.as_ptr();
-    return data_begin.get() + offset;
+    return map;
 }
 
 ///@ ExportMethod
@@ -179,7 +168,7 @@ FO_SCRIPT_API nptr<CritterView> Mapper_Game_GetCritterOnHex(ptr<MapperEngine> ma
         return nullptr;
     }
 
-    ptr<CritterHexView> cr = critters.front();
+    auto cr = critters.front();
     return cr;
 }
 
@@ -204,7 +193,7 @@ FO_SCRIPT_API void Mapper_Game_MoveEntity(ptr<MapperEngine> mapper, nptr<ClientE
         throw ScriptException("Invalid hex args");
     }
 
-    mapper->MoveEntity(entity.as_ptr(), hex);
+    mapper->MoveEntity(entity, hex);
 }
 
 ///@ ExportMethod
@@ -216,12 +205,10 @@ FO_SCRIPT_API void Mapper_Game_DeleteEntity(ptr<MapperEngine> mapper, ptr<Client
 ///@ ExportMethod
 FO_SCRIPT_API void Mapper_Game_DeleteEntities(ptr<MapperEngine> mapper, readonly_vector<nptr<ClientEntity>> entities)
 {
-    for (nptr<ClientEntity> nullable_entity : entities) {
-        if (!nullable_entity) {
+    for (nptr<ClientEntity> entity : entities) {
+        if (!entity) {
             continue;
         }
-
-        auto entity = nullable_entity.as_ptr();
 
         if (!entity->IsDestroyed()) {
             mapper->DeleteEntity(entity);
@@ -246,10 +233,10 @@ FO_SCRIPT_API void Mapper_Game_SelectEntities(ptr<MapperEngine> mapper, readonly
     for (nptr<ClientEntity> entity : entities) {
         if (entity) {
             if (set) {
-                mapper->SelectAdd(entity.as_ptr());
+                mapper->SelectAdd(entity);
             }
             else {
-                mapper->SelectRemove(entity.as_ptr());
+                mapper->SelectRemove(entity);
             }
         }
     }
@@ -285,7 +272,7 @@ FO_SCRIPT_API nptr<ClientEntity> Mapper_Game_FindEntityById(ptr<MapperEngine> ma
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<ClientEntity> entity, string_view propName, string_view valueText)
 {
-    nptr<const Property> prop = entity->GetProperties()->GetRegistrator()->FindProperty(propName);
+    auto prop = entity->GetProperties()->GetRegistrator()->FindProperty(propName);
 
     if (!prop) {
         throw ScriptException("Unknown property", propName);
@@ -394,7 +381,7 @@ FO_SCRIPT_API vector<ptr<MapView>> Mapper_Game_GetLoadedMaps(ptr<MapperEngine> m
     auto cur_map = mapper->GetCurMap();
 
     for (int32_t i = 0, j = numeric_cast<int32_t>(mapper->LoadedMaps.size()); i < j; i++) {
-        if (cur_map && mapper->LoadedMaps[i] == cur_map.as_ptr()) {
+        if (cur_map && mapper->LoadedMaps[i] == cur_map) {
             index = i;
         }
     }
@@ -489,7 +476,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetItemPids(ptr<MapperEngine> mapper, int32_t 
             auto proto = mapper->GetProtoItem(item_pid);
 
             if (proto) {
-                protos.emplace_back(proto.as_ptr());
+                protos.emplace_back(proto);
             }
         }
 
@@ -548,7 +535,7 @@ FO_SCRIPT_API void Mapper_Game_TabSetCritterPids(ptr<MapperEngine> mapper, int32
         for (const auto pid : critterPids) {
             auto proto = mapper->GetProtoCritter(pid);
             FO_VERIFY_AND_THROW(proto, "Unknown critter proto id for sub tab");
-            protos.emplace_back(proto.as_ptr());
+            protos.emplace_back(proto);
         }
 
         if (!protos.empty()) {
@@ -723,13 +710,12 @@ FO_SCRIPT_API void Mapper_Game_SetMapperOverlayVisible(ptr<MapperEngine> mapper,
 ///@ ExportMethod
 FO_SCRIPT_API bool Mapper_Game_IsMapperOverlayVisible(ptr<MapperEngine> mapper)
 {
-    auto nullable_map = mapper->GetCurMap();
+    auto map = mapper->GetCurMap();
 
-    if (!nullable_map) {
+    if (!map) {
         return false;
     }
 
-    auto map = nullable_map.as_ptr();
     return map->IsShowMapperOverlay();
 }
 
@@ -760,13 +746,12 @@ FO_SCRIPT_API vector<int32_t> Mapper_Game_GetMapperTrackOverlayKinds(ptr<MapperE
 ///@ ExportMethod
 FO_SCRIPT_API vector<mpos> Mapper_Game_GetMapperScrollBorderHexes(ptr<MapperEngine> mapper)
 {
-    auto nullable_map = mapper->GetCurMap();
+    auto map = mapper->GetCurMap();
 
-    if (!nullable_map) {
+    if (!map) {
         return {};
     }
 
-    auto map = nullable_map.as_ptr();
     const irect32 scroll_area = map->GetScrollAxialArea();
 
     if (scroll_area.is_zero()) {
@@ -883,13 +868,12 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
     // from there. Two paints per save is acceptable for batch tooling.
     mapper->DrawMapperFrame();
 
-    auto nullable_main_rt = mapper->SprMngr.GetMainRenderTarget();
+    auto main_rt = mapper->SprMngr.GetMainRenderTarget();
 
-    if (!nullable_main_rt) {
+    if (!main_rt) {
         throw ScriptException("SpriteManager has no main render target (FO_DIRECT_SPRITES_DRAW build?)");
     }
 
-    auto main_rt = nullable_main_rt.as_ptr();
     auto texture = main_rt->GetTexture();
     const auto size = texture->Size;
     auto pixels = texture->GetTextureRegion({0, 0}, size);
@@ -905,9 +889,9 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
             for (int32_t y = 0; y < size.height / 2; y++) {
                 const auto top = numeric_cast<size_t>(y) * width;
                 const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                auto row = MapperColorDataAt(row_buf, 0);
-                auto top_row = MapperColorDataAt(pixels, top);
-                auto bottom_row = MapperColorDataAt(pixels, bottom);
+                auto row = ptr<ucolor> {row_buf.data()};
+                auto top_row = ptr<ucolor> {pixels.data() + top};
+                auto bottom_row = ptr<ucolor> {pixels.data() + bottom};
                 MemCopy(row, top_row, row_bytes);
                 MemCopy(top_row, bottom_row, row_bytes);
                 MemCopy(bottom_row, row, row_bytes);

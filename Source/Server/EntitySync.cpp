@@ -774,7 +774,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
                 continue;
             }
 
-            nptr<EntityLock> lock = entity->GetEntityLock();
+            auto lock = entity->GetEntityLock();
 
             if (!lock) {
                 continue;
@@ -1121,7 +1121,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
             // propagated lock `entity` is a child that could be reparented out mid-hold, which would free
             // the owning ancestor's `_ownedLock` storage while `_heldLocks` still references it.
             _heldLocks.emplace_back(lock.get());
-            _heldLockOwners.emplace_back(FindLockOwner(entity.as_ptr(), lock));
+            _heldLockOwners.emplace_back(FindLockOwner(entity, lock));
 
             for (size_t i = 0; i < add_marks.size(); i++) {
                 _heldDescendantHolds.emplace_back(add_marks[i]);
@@ -1378,7 +1378,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks, cons
         }
     };
 
-    for (nptr<SyncContext> ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
+    for (auto ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
         for (nptr<EntityLock> lock : ancestor->_heldLocks) {
             add_excl(lock.get());
         }
@@ -1483,7 +1483,7 @@ void SyncContext::AcquireLocksOrderedFair(const vector<EntityLock*>& locks, cons
             }
         }
 
-        for (nptr<SyncContext> ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
+        for (auto ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
             ancestor->_heldLocks.clear();
             ancestor->_heldLockOwners.clear();
             ancestor->_heldDescendantHolds.clear();

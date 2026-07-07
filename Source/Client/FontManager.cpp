@@ -129,10 +129,11 @@ void FontManager::BuildFont(int32_t index)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<FontData> font = &*_allFonts[index];
+    auto font = make_ptr(&*_allFonts[index]);
 
     // Fix texture coordinates
-    auto atlas_spr = font->ImageNormal.as_ptr();
+    auto atlas_spr = font->ImageNormal;
+    FO_VERIFY_AND_THROW(atlas_spr, "Atlas sprite is null");
     auto tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
     auto tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
     auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
@@ -338,7 +339,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
             size_t letter_len = letter_buf.length() - utf8_letter_begin;
             FO_STRONG_ASSERT(utf8_letter_begin <= letter_buf.size(), "String offset is past the end of the string");
-            ptr<const char> letter_pos = letter_buf.c_str() + utf8_letter_begin;
+            auto letter_pos = make_ptr(letter_buf.c_str() + utf8_letter_begin);
             auto letter = utf8::Decode(letter_pos, letter_len);
 
             if (!utf8::IsValid(letter)) {
@@ -531,7 +532,8 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 
     auto& str = fi.Text;
     const auto flags = fi.Format.Flags;
-    auto font = fi.CurFont.as_ptr();
+    auto font = fi.CurFont;
+    FO_VERIFY_AND_THROW(font, "Font is null");
     const auto r = fi.Rect;
     const auto infinity_w = r.width == 0;
     const auto infinity_h = r.height == 0;

@@ -450,7 +450,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
                     const string name = setting_value.substr(pos, end_pos - pos);
 
                     if (is_env || is_target_env) {
-                        const nptr<const char> env = !name.empty() ? std::getenv(name.c_str()) : nullptr;
+                        const auto env = make_nptr(!name.empty() ? std::getenv(name.c_str()) : nullptr);
 
                         if (env) {
                             resolved_value += setting_value.substr(prev_pos, pos - prev_pos - len) + string(env.get());

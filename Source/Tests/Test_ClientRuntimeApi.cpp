@@ -59,7 +59,7 @@ TEST_CASE("ClientRuntimeApi")
         const ClientRuntimeRunFunc stub_run = +[](int32_t argc, char** argv, ClientRuntimeResult* raw_runtime_result) noexcept {
             const CommandLineArgs args {argc, argv};
             if (raw_runtime_result != nullptr) {
-                ptr<ClientRuntimeResult> result = raw_runtime_result;
+                auto result = make_ptr(raw_runtime_result);
                 result->StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
                 result->ResultKind = ClientRuntimeResultKind::Shutdown;
                 result->Success = args.empty();

@@ -59,7 +59,8 @@ public:
             return nullptr;
         }
 
-        auto atlas = _atlas.as_ptr();
+        auto atlas = _atlas;
+        FO_VERIFY_AND_THROW(atlas, "Atlas is null");
         return atlas->GetTexture();
     }
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
@@ -150,7 +151,7 @@ public:
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
 private:
-    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> nullable_pixels) -> shared_ptr<AtlasSprite>;
+    auto FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels) -> shared_ptr<AtlasSprite>;
 
     ptr<SpriteManager> _sprMngr;
     vector<ucolor> _borderBuf {};

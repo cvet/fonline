@@ -239,12 +239,12 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         vert.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         vert.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        ptr<const char> shader_version_text = shader_version_str.c_str();
-        ptr<const char> shader_defines_text = shader_defines.c_str();
-        nptr<const char> shader_defines_ex_text = shader_defines_ex.c_str();
-        ptr<const char> shader_defines_ex2_text = shader_defines_ex2.c_str();
-        ptr<const char> shader_common_text = shader_common_content.c_str();
-        ptr<const char> vertex_pass_text = vertex_pass_content.c_str();
+        auto shader_version_text = make_ptr(shader_version_str.c_str());
+        auto shader_defines_text = make_ptr(shader_defines.c_str());
+        auto shader_defines_ex_text = make_nptr(shader_defines_ex.c_str());
+        auto shader_defines_ex2_text = make_ptr(shader_defines_ex2.c_str());
+        auto shader_common_text = make_ptr(shader_common_content.c_str());
+        auto vertex_pass_text = make_ptr(vertex_pass_content.c_str());
         const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -256,7 +256,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         frag.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_0);
         frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_0);
         frag.setShiftBindingForSet(glslang::EResUbo, 0, 0);
-        ptr<const char> fragment_pass_text = fragment_pass_content.c_str();
+        auto fragment_pass_text = make_ptr(fragment_pass_content.c_str());
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
@@ -282,7 +282,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         for (int32_t i = 0; i < program.getNumUniformVariables(); i++) {
             const auto& uniform = program.getUniform(i);
             if (uniform.getType()->getBasicType() == glslang::EbtSampler) {
-                ptr<const char> uniform_name = uniform.name.c_str();
+                auto uniform_name = make_ptr(uniform.name.c_str());
                 program_info += strex("{} = {}\n", uniform.name, program.getUniformBinding(program.getReflectionIndex(uniform_name.get())));
 
 #define CHECK_TEX(tex_name) \
@@ -302,7 +302,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 
         for (int32_t i = 0; i < program.getNumUniformBlocks(); i++) {
             const auto& uniform_block = program.getUniformBlock(i);
-            ptr<const char> uniform_block_name = uniform_block.name.c_str();
+            auto uniform_block_name = make_ptr(uniform_block.name.c_str());
             program_info += strex("{} = {}\n", uniform_block.name, program.getUniformBlockBinding(program.getReflectionIndex(uniform_block_name.get())));
 
 #define CHECK_BUF(buf) \

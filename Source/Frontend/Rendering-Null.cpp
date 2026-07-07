@@ -264,8 +264,7 @@ public:
                 auto size_data = GetFallbackTextureSizeData();
 
                 if (custom_tex) {
-                    auto main_tex = custom_tex.as_ptr();
-                    size_data = main_tex->SizeData;
+                    size_data = custom_tex->SizeData;
                 }
 
                 ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
@@ -396,9 +395,8 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
         return;
     }
 
-    auto nullable_null_tex = _currentRenderTarget.dyn_cast<Null_Texture>();
-    FO_VERIFY_AND_THROW(nullable_null_tex, "Missing required null texture");
-    auto null_tex = nullable_null_tex.as_ptr();
+    auto null_tex = _currentRenderTarget.dyn_cast<Null_Texture>();
+    FO_VERIFY_AND_THROW(null_tex, "Missing required null texture");
     null_tex->Clear(color.value());
 }
 

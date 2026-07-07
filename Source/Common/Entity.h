@@ -168,7 +168,7 @@ public:
     struct TimeEventData
     {
         using FuncType = variant<ScriptFunc<void>, ScriptFunc<void, any_t>, ScriptFunc<void, vector<any_t>>, // All possible variants for time events
-            ScriptFunc<void, TimeEventContext*>, ScriptFunc<void, ScriptSelfEntity*>, ScriptFunc<void, ScriptSelfEntity*, any_t>, ScriptFunc<void, ScriptSelfEntity*, vector<any_t>>, ScriptFunc<void, ScriptSelfEntity*, TimeEventContext*>>;
+            ScriptFunc<void, ptr<TimeEventContext>>, ScriptFunc<void, ptr<ScriptSelfEntity>>, ScriptFunc<void, ptr<ScriptSelfEntity>, any_t>, ScriptFunc<void, ptr<ScriptSelfEntity>, vector<any_t>>, ScriptFunc<void, ptr<ScriptSelfEntity>, ptr<TimeEventContext>>>;
 
         uint32_t Id {};
         FuncType Func {};
@@ -315,7 +315,7 @@ public:
             size_t storage_index = 0;
             array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);
@@ -326,7 +326,7 @@ public:
             nptr<Entity> first_arg = _entity;
             array<ptr<void>, sizeof...(Args) + 1> args_data {static_cast<void*>(first_arg.get_pp()), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
-            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             return FireEvent(call);

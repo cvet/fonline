@@ -196,10 +196,9 @@ namespace SPK::FO
 
         FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         ptr<RenderBuffer> render_buffer = renderBuffer;
-        auto nullable_spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
-        FO_VERIFY_AND_THROW(nullable_spark_render_buffer, "Render buffer is not a spark render buffer");
+        auto spark_render_buffer = render_buffer.dyn_cast<SparkRenderBuffer>();
+        FO_VERIFY_AND_THROW(spark_render_buffer, "Render buffer is not a spark render buffer");
 
-        auto spark_render_buffer = nullable_spark_render_buffer.as_ptr();
         spark_render_buffer->PositionAtStart();
 
         if (_modelView != _particleMngr->_viewMatrix) {
@@ -247,11 +246,11 @@ namespace SPK::FO
         FO_VERIFY_AND_THROW(_texture, "Missing required texture");
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
-        ptr<const float32_t> projection_matrix_values = glm::value_ptr(_particleMngr->_viewProjMatrix);
+        auto projection_matrix_values = make_ptr(glm::value_ptr(_particleMngr->_viewProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->MainTex = _texture;
 
-        spark_render_buffer->Render(group.getNbParticles() << 2, _effect.as_ptr());
+        spark_render_buffer->Render(group.getNbParticles() << 2, _effect);
     }
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
@@ -423,8 +422,7 @@ namespace SPK::FO
         lookVector.set(0.0f, 0.0f, 1.0f);
         upVector.set(0.0f, 1.0f, 0.0f);
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("draw size"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("draw size"); attrib) {
             const auto tmpSize = attrib->getValues<int32_t>();
 
             switch (tmpSize.size()) {
@@ -440,23 +438,19 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("draw in scene"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("draw in scene"); attrib) {
             _drawInScene = attrib->getValue<bool>();
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("effect"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("effect"); attrib) {
             SetEffectName(string(attrib->getValue<std::string>()));
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("texture"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("texture"); attrib) {
             SetTextureName(string(attrib->getValue<std::string>()));
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("scale"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("scale"); attrib) {
             const auto tmpScale = attrib->getValues<float32_t>();
 
             switch (tmpScale.size()) {
@@ -471,8 +465,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("atlas dimensions"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("atlas dimensions"); attrib) {
             const auto tmpAtlasDimensions = attrib->getValues<uint32_t>();
 
             switch (tmpAtlasDimensions.size()) {
@@ -487,8 +480,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("look orientation"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("look orientation"); attrib) {
             const auto lookOrient = attrib->getValue<std::string>();
 
             if (lookOrient == "LOOK_CAMERA_PLANE") {
@@ -505,8 +497,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("up orientation"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("up orientation"); attrib) {
             const auto upOrient = attrib->getValue<std::string>();
 
             if (upOrient == "UP_CAMERA") {
@@ -523,8 +514,7 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked axis"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked axis"); attrib) {
             const auto lockAx = attrib->getValue<std::string>();
 
             if (lockAx == "LOCK_LOOK") {
@@ -535,13 +525,11 @@ namespace SPK::FO
             }
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked look vector"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked look vector"); attrib) {
             lookVector = attrib->getValue<Vector3D>();
         }
 
-        if (nptr<const IO::Attribute> nullable_attrib = descriptor.getAttributeWithValue("locked up vector"); nullable_attrib) {
-            auto attrib = nullable_attrib.as_ptr();
+        if (auto attrib = descriptor.getAttributeWithValue("locked up vector"); attrib) {
             upVector = attrib->getValue<Vector3D>();
         }
     }

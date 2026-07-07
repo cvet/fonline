@@ -203,7 +203,7 @@ auto SpriteSheet::GetCurSpr() const -> ptr<const Sprite>
         dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
     }
 
-    return dir_sheet->_spr[_curIndex].as_ptr();
+    return dir_sheet->_spr[_curIndex];
 }
 
 auto SpriteSheet::GetCurSpr() -> ptr<Sprite>
@@ -216,7 +216,7 @@ auto SpriteSheet::GetCurSpr() -> ptr<Sprite>
         dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
     }
 
-    return dir_sheet->_spr[_curIndex].as_ptr();
+    return dir_sheet->_spr[_curIndex];
 }
 
 auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
@@ -372,14 +372,14 @@ auto SpriteSheet::GetSpr(int32_t num_frm) const -> ptr<const Sprite>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _spr[num_frm % _framesCount].as_ptr();
+    return _spr[num_frm % _framesCount];
 }
 
 auto SpriteSheet::GetSpr(int32_t num_frm) -> ptr<Sprite>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _spr[num_frm % _framesCount].as_ptr();
+    return _spr[num_frm % _framesCount];
 }
 
 auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
@@ -391,7 +391,7 @@ auto SpriteSheet::GetDir(mdir dir) const -> nptr<const SpriteSheet>
         return this;
     }
 
-    return _dirs[dir_value - 1].as_nptr();
+    return _dirs[dir_value - 1];
 }
 
 auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
@@ -403,7 +403,7 @@ auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
         return this;
     }
 
-    return _dirs[dir_value - 1].as_nptr();
+    return _dirs[dir_value - 1];
 }
 
 DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) :
@@ -439,9 +439,8 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
 
         for (uint8_t i = 0; i < dirs; i++) {
             const mdir dir = hdir(i);
-            auto nullable_dir_anim = anim->GetDir(dir);
-            FO_VERIFY_AND_THROW(nullable_dir_anim, "Sprite sheet is missing the requested direction");
-            auto dir_anim = nullable_dir_anim.as_ptr();
+            auto dir_anim = anim->GetDir(dir);
+            FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
             const auto ox = reader.GetLEInt16();
             const auto oy = reader.GetLEInt16();
 
@@ -519,7 +518,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     }
 }
 
-auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> nullable_pixels) -> shared_ptr<AtlasSprite>
+auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 offset, nptr<const ucolor> pixels) -> shared_ptr<AtlasSprite>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -530,11 +529,10 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
     vector<bool> hit_test_data;
 
-    if (nullable_pixels) {
-        auto pixels = nullable_pixels.as_ptr();
+    if (pixels) {
         const size_t width = numeric_cast<size_t>(size.width);
         const size_t height = numeric_cast<size_t>(size.height);
-        const auto pixel_data = make_span(pixels, width * height);
+        const auto pixel_data = make_span(pixels.as_ptr(), width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 

@@ -129,8 +129,8 @@ void NetBuffer::CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, s
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const uint8_t> from_buf = cast_from_void<const uint8_t*>(from.get());
-    ptr<uint8_t> to_buf = cast_from_void<uint8_t*>(to.get());
+    auto from_buf = from.reinterpret_as<uint8_t>();
+    auto to_buf = to.reinterpret_as<uint8_t>();
 
     for (size_t i = 0; i < len; i++) {
         to_buf[i] = from_buf[i] ^ crypt_key;

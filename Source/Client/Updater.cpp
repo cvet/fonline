@@ -89,8 +89,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        auto splash_pic = _splashPic.as_ptr();
-        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
     _sprMngr.EndScene();
 
@@ -169,8 +168,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        auto splash_pic = _splashPic.as_ptr();
-        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
@@ -705,7 +703,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
-            ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
+            auto target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
             MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
@@ -846,6 +844,7 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
+
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
     return "Windows-win64";
 #elif defined(_M_IX86) || defined(__i386__)
@@ -855,7 +854,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Windows-unknown";
 #endif
+
 #elif FO_LINUX
+
 #if defined(__x86_64__)
     return "Linux-x64";
 #elif defined(__aarch64__)
@@ -867,7 +868,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Linux-unknown";
 #endif
+
 #elif FO_ANDROID
+
 #if defined(__aarch64__)
     return "Android-arm64";
 #elif defined(__i386__)
@@ -877,7 +880,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Android-unknown";
 #endif
+
 #elif FO_MAC
+
 #if defined(__aarch64__)
     return "macOS-arm64";
 #elif defined(__x86_64__)
@@ -885,7 +890,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "macOS-unknown";
 #endif
+
 #elif FO_IOS
+
 #if defined(__aarch64__)
     return "iOS-arm64";
 #elif defined(__x86_64__)
@@ -893,6 +900,7 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "iOS-unknown";
 #endif
+
 #elif FO_WEB
     return "Web-wasm";
 #else

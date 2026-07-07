@@ -63,7 +63,7 @@ protected:
         if (it == _collections.end()) {
             nptr<unqlite> db;
             const string db_path = strex("{}/{}.unqlite", _storageDir, collection_name);
-            ptr<const char> db_path_ptr = db_path.c_str();
+            auto db_path_ptr = make_ptr(db_path.c_str());
             const auto r = unqlite_open(db.get_pp(), db_path_ptr.get(), _openFlags);
 
             if (r != UNQLITE_OK) {
@@ -71,7 +71,7 @@ protected:
             }
 
             FO_VERIFY_AND_THROW(db, "Opened database handle is null");
-            _collections.emplace(collection_name, db.as_ptr());
+            _collections.emplace(collection_name, db);
         }
     }
 
@@ -102,19 +102,17 @@ protected:
 
         while (unqlite_kv_cursor_valid_entry(cursor.get()) != 0) {
             vector<uint8_t> key_data;
-            ptr<void> key_data_user_data = cast_to_void(&key_data);
+            auto key_data_user_data = make_ptr(&key_data).void_cast();
 
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor.get(),
                 [](const void* output, unsigned output_len, void* user_data) {
-                    nptr<vector<uint8_t>> nullable_result = cast_from_void<vector<uint8_t>*>(user_data);
-                    FO_VERIFY_AND_THROW(!!nullable_result, "Missing key callback user data");
-                    auto result = nullable_result.as_ptr();
-                    nptr<const uint8_t> nullable_output_data = cast_from_void<const uint8_t*>(output);
+                    nptr<vector<uint8_t>> result = cast_from_void<vector<uint8_t>*>(user_data);
+                    FO_VERIFY_AND_THROW(result, "Missing key callback user data");
+                    auto output_data = cast_from_void<const uint8_t*>(output);
 
                     if (output_len != 0) {
-                        FO_VERIFY_AND_THROW(!!nullable_output_data, "Missing key callback output data");
-                        auto output_data = nullable_output_data.as_ptr();
+                        FO_VERIFY_AND_THROW(output_data, "Missing key callback output data");
                         const auto output_bytes = make_const_span(output_data, output_len);
                         result->assign(output_bytes.begin(), output_bytes.end());
                     }
@@ -124,7 +122,7 @@ protected:
 
                     return UNQLITE_OK;
                 },
-                key_data_user_data.get());
+                key_data_user_data);
 
             if (kv_cursor_key_callback != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_kv_cursor_init", kv_cursor_key_callback);
@@ -163,7 +161,7 @@ protected:
         ptr<unqlite> db = GetCollection(collection_name);
 
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
-        nptr<const uint8_t> key_data = key.data();
+        auto key_data = make_nptr(key.data());
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(db.get(), key_data.get(), key_size, [](const void*, unsigned, void*) { return UNQLITE_OK; }, nullptr);
 
@@ -175,7 +173,7 @@ protected:
         bson_init(&bson);
         DocumentToBson(doc, &bson);
 
-        nptr<const uint8_t> bson_data = bson_get_data(&bson);
+        auto bson_data = make_nptr(bson_get_data(&bson));
 
         if (!bson_data) {
             throw DataBaseException("DbUnQLite bson_get_data");
@@ -218,7 +216,7 @@ protected:
         bson_init(&bson);
         DocumentToBson(actual_doc, &bson);
 
-        nptr<const uint8_t> bson_data = bson_get_data(&bson);
+        auto bson_data = make_nptr(bson_get_data(&bson));
 
         if (!bson_data) {
             throw DataBaseException("DbUnQLite bson_get_data");
@@ -334,16 +332,15 @@ private:
     {
         FO_STACK_TRACE_ENTRY();
 
-        nptr<unqlite> nullable_ping_db;
+        nptr<unqlite> ping_db;
         const string ping_db_path = strex("{}/Ping.unqlite", _storageDir);
-        ptr<const char> ping_db_path_ptr = ping_db_path.c_str();
+        auto ping_db_path_ptr = make_ptr(ping_db_path.c_str());
 
-        if (unqlite_open(nullable_ping_db.get_pp(), ping_db_path_ptr.get(), _openFlags) != UNQLITE_OK) {
+        if (unqlite_open(ping_db.get_pp(), ping_db_path_ptr.get(), _openFlags) != UNQLITE_OK) {
             throw DataBaseException("DbUnQLite Can't open db", ping_db_path);
         }
 
-        FO_VERIFY_AND_THROW(nullable_ping_db, "Opened ping database handle is null");
-        auto ping_db = nullable_ping_db.as_ptr();
+        FO_VERIFY_AND_THROW(ping_db, "Opened ping database handle is null");
 
         constexpr uint32_t ping = 42u;
 
@@ -389,27 +386,26 @@ private:
         const auto key = MakeUnQLiteKey(id, GetCollectionKeyType(collection_name));
         const int32_t key_size = numeric_cast<int32_t>(key.size());
         AnyData::Document doc;
-        ptr<void> document_user_data = cast_to_void(&doc);
+        auto document_user_data = make_ptr(&doc).void_cast();
 
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db.get(), key.data(), key_size,
             [](const void* output, unsigned output_len, void* user_data) {
                 bson_t bson;
-                nptr<const uint8_t> output_data = cast_from_void<const uint8_t*>(output);
-                FO_VERIFY_AND_THROW(!!output_data, "Missing fetch callback output data");
+                auto output_data = cast_from_void<const uint8_t*>(output);
+                FO_VERIFY_AND_THROW(output_data, "Missing fetch callback output data");
 
                 if (!bson_init_static(&bson, output_data.get(), output_len)) {
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
-                nptr<AnyData::Document> nullable_document = cast_from_void<AnyData::Document*>(user_data);
-                FO_VERIFY_AND_THROW(!!nullable_document, "Missing fetch callback document user data");
-                auto document = nullable_document.as_ptr();
+                auto document = cast_from_void<AnyData::Document*>(user_data);
+                FO_VERIFY_AND_THROW(document, "Missing fetch callback document user data");
                 BsonToDocument(&bson, *document);
 
                 return UNQLITE_OK;
             },
-            document_user_data.get());
+            document_user_data);
 
         if (kv_fetch_callback != UNQLITE_OK && kv_fetch_callback != UNQLITE_NOTFOUND) {
             throw DataBaseException("DbUnQLite unqlite_kv_fetch_callback", kv_fetch_callback);

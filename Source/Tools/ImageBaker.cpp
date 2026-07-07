@@ -54,7 +54,7 @@ static auto ImageSpanBytesAt(span<const uint8_t> data, size_t pos) noexcept -> p
 
     FO_STRONG_ASSERT(pos < data.size(), "Image byte offset is out of range");
 
-    ptr<const uint8_t> data_pos = data.data() + pos;
+    auto data_pos = make_ptr(data.data() + pos);
     return data_pos;
 }
 
@@ -65,7 +65,7 @@ static auto ImageVectorDataAt(vector<T>& data, size_t pos) noexcept -> ptr<T>
 
     FO_STRONG_ASSERT(pos < data.size(), "Image element index is out of range");
 
-    ptr<T> data_pos = data.data() + pos;
+    auto data_pos = make_ptr(data.data() + pos);
     return data_pos;
 }
 
@@ -2330,7 +2330,7 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<png_struct> png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    auto png_ptr = make_nptr(png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr));
     FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
     nptr<png_info> info_ptr;
 
@@ -2364,18 +2364,18 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
                     return;
                 }
 
-                ptr<const uint8_t*> io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
-                ptr<const uint8_t> source = *io_ptr;
-                ptr<uint8_t> target = png_data;
+                auto io_ptr = make_ptr(static_cast<const uint8_t**>(png_get_io_ptr(png_ptr)));
+                auto source = make_ptr(*io_ptr);
+                auto target = make_ptr(png_data);
                 MemCopy(target, source, length);
-                ptr<const uint8_t> next_source = source.get() + length;
+                auto next_source = source.offset(length);
                 *io_ptr = next_source.get();
             }
         };
 
         // Get info
         nptr<const uint8_t> png_data_cursor = data;
-        png_set_read_fn(png_ptr.get(), cast_to_void(png_data_cursor.get_pp()), &PngReader::Read);
+        png_set_read_fn(png_ptr.get(), make_nptr(png_data_cursor.get_pp()).void_cast(), &PngReader::Read);
         png_read_info(png_ptr.get(), info_ptr.get());
 
         png_uint_32 width = 0;
@@ -2494,7 +2494,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
     if (type == 2) {
         if (read_size != 0) {
             auto read_data_begin = ImageVectorDataAt(read_data, 0);
-            read_tga(cast_to_void(read_data_begin.get()), numeric_cast<size_t>(read_size));
+            read_tga(make_nptr(read_data_begin.get()).void_cast(), numeric_cast<size_t>(read_size));
         }
     }
     else {
@@ -2531,7 +2531,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
 
                 if (to_read != 0) {
                     auto read_data_pos = ImageVectorDataAt(read_data, numeric_cast<size_t>(bytes_read));
-                    read_tga(cast_to_void(read_data_pos.get()), numeric_cast<size_t>(to_read));
+                    read_tga(make_nptr(read_data_pos.get()).void_cast(), numeric_cast<size_t>(to_read));
                 }
                 bytes_read += run_len;
 

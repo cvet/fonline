@@ -196,7 +196,8 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
             sound->ConvertedBufCur = 0;
 
             if (sound->OggStream) {
-                auto ogg_stream = sound->OggStream.as_ptr();
+                auto ogg_stream = sound->OggStream.as_nptr();
+                FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
                 ov_raw_seek(ogg_stream.get(), 0);
             }
 
@@ -384,8 +385,8 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    nptr<uint8_t> acm_data_ptr = acm_data.data();
-    FO_VERIFY_AND_THROW(acm_data.empty() || !!acm_data_ptr, "Non-empty ACM data has a null pointer");
+    auto acm_data_ptr = make_nptr(acm_data.data());
+    FO_VERIFY_AND_THROW(acm_data.empty() || acm_data_ptr, "Non-empty ACM data has a null pointer");
     auto acm = SafeAlloc::MakeUnique<CACMUnpacker>(acm_data_ptr.get(), numeric_cast<int32_t>(acm_data.size()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
@@ -398,7 +399,7 @@ auto SoundManager::LoadAcm(ptr<Sound> sound, string_view fname, bool is_music) -
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
     FO_STRONG_ASSERT(!base_buf.empty(), "Sound data is empty");
     FO_STRONG_ASSERT(base_buf.size() % sizeof(uint16_t) == 0, "Sound data size is not 16-bit aligned");
-    nptr<uint8_t> base_buf_bytes = base_buf.data();
+    auto base_buf_bytes = make_nptr(base_buf.data());
     auto buf = base_buf_bytes.reinterpret_as<uint16_t>();
     const auto dec_data = acm->readAndDecompress(buf.get(), buf_size);
 
@@ -423,9 +424,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     ov_callbacks callbacks;
 
     callbacks.read_func = [](void* output_buf, size_t size, size_t count, void* datasource) -> size_t {
-        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
-        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
-        auto file_context = nullable_file_context.as_ptr();
+        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         const size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
         if (bytes_read > 0) {
@@ -437,9 +437,8 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32_t whence) -> int32_t {
-        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
-        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
-        auto file_context = nullable_file_context.as_ptr();
+        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
 
         switch (whence) {
         case SEEK_SET:
@@ -464,33 +463,32 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     };
 
     callbacks.close_func = [](void* datasource) -> int32_t {
-        nptr<OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
-        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
-        auto file_context = nullable_file_context.as_ptr();
-        auto owned_file_context = adopt_unique_ptr(file_context);
+        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
+        auto owned_file_context = adopt_unique_ptr(file_context.as_ptr());
         ignore_unused(owned_file_context);
         return 0;
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        nptr<const OggFileContext> nullable_file_context = cast_from_void<OggFileContext*>(datasource);
-        FO_VERIFY_AND_THROW(nullable_file_context, "Missing Ogg file context");
-        auto file_context = nullable_file_context.as_ptr();
+        auto file_context = make_nptr(static_cast<const OggFileContext*>(datasource));
+        FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };
 
     auto ogg_stream_owner = SafeAlloc::MakeUnique<OggVorbis_File>();
-    ptr<OggVorbis_File> released_ogg_stream = std::move(ogg_stream_owner).release();
+    auto released_ogg_stream = ogg_stream_owner.release();
     sound->OggStream = make_unique_del_ptr(released_ogg_stream, [](OggVorbis_File* raw_vf) noexcept {
-        ptr<OggVorbis_File> vf = raw_vf;
+        auto vf = make_ptr(raw_vf);
         auto owned_vf = adopt_unique_ptr(vf);
         ov_clear(owned_vf.get());
     });
-    auto ogg_stream = sound->OggStream.as_ptr();
+    auto ogg_stream = sound->OggStream.as_nptr();
+    FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
 
     FileReader reader = file.GetReader();
     auto file_context = SafeAlloc::MakeUnique<OggFileContext>(OggFileContext {std::move(file), std::move(reader)});
-    const auto error = ov_open_callbacks(cast_to_void(file_context.get()), ogg_stream.get(), nullptr, 0, callbacks);
+    const auto error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
         WriteLog("Open OGG file '{}' fail, error:", fname);
@@ -517,10 +515,10 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
         return false;
     }
 
-    ptr<OggFileContext> released_file_context = std::move(file_context).release();
+    auto released_file_context = file_context.release();
     ignore_unused(released_file_context);
 
-    nptr<const vorbis_info> vi = ov_info(ogg_stream.get(), -1);
+    auto vi = make_nptr(ov_info(ogg_stream.get(), -1));
     FO_VERIFY_AND_THROW(vi, "Vorbis info is null");
 
     sound->OriginalFormat = AppAudio::AUDIO_FORMAT_S16;
@@ -568,7 +566,8 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(sound->OggStream, "Sound has no Ogg stream to read");
-    auto ogg_stream = sound->OggStream.as_ptr();
+    auto ogg_stream = sound->OggStream.as_nptr();
+    FO_VERIFY_AND_THROW(ogg_stream, "Ogg stream is null");
     long result;
     int32_t decoded = 0;
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};

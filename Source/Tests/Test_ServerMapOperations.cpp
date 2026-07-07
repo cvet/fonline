@@ -624,7 +624,7 @@ namespace MapOpsTest
 
         // Search in radius by property
         Item? foundProp = map.GetItemInRadius(center, 5, ItemProperty::Count, item.Count);
-        if (foundProp is null) return -7;
+        if (foundProperty is null) return -7;
 
         // Get items in radius (list)
         array<Item> inRadius = map.GetItemsInRadius(center, 5);

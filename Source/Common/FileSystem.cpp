@@ -88,8 +88,7 @@ auto FileHeader::GetDiskPath() const -> string
     FO_VERIFY_AND_THROW(!_filePath.empty(), "Loaded file header has an empty path while building a disk path", _dataSource->GetPackName(), _fileSize, _writeTime);
     FO_VERIFY_AND_THROW(_dataSource->IsDiskDir(), "File header disk path requested from a non-directory data source", _filePath, _dataSource->GetPackName());
 
-    auto data_source = _dataSource.as_ptr();
-    return strex(data_source->GetPackName()).combine_path(_filePath);
+    return strex(_dataSource->GetPackName()).combine_path(_filePath);
 }
 
 auto FileHeader::GetSize() const -> size_t
@@ -116,7 +115,7 @@ auto FileHeader::GetDataSource() const -> ptr<const DataSource>
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    return _dataSource.as_ptr();
+    return _dataSource;
 }
 
 auto FileHeader::Copy() const -> FileHeader
@@ -125,8 +124,7 @@ auto FileHeader::Copy() const -> FileHeader
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    auto data_source = _dataSource.as_ptr();
-    return FileHeader(_filePath, _fileSize, _writeTime, data_source);
+    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.as_ptr());
 }
 
 File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
@@ -161,8 +159,7 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        auto source = _fileBuf.as_ptr();
-        MemCopy(result.data(), source, result.size());
+        MemCopy(result.data(), _fileBuf.as_ptr(), result.size());
     }
 
     return result;
@@ -179,8 +176,7 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        auto source = _fileBuf.as_ptr();
-        MemCopy(result.data(), source, result.size());
+        MemCopy(result.data(), _fileBuf.as_ptr(), result.size());
     }
 
     return result;
@@ -193,8 +189,7 @@ auto File::GetDataSpan() const -> const_span<uint8_t>
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf.as_ptr();
-    return const_span<uint8_t> {file_data.get(), _fileSize};
+    return const_span<uint8_t> {_fileBuf.get(), _fileSize};
 }
 
 auto File::GetReader() const -> FileReader
@@ -204,8 +199,7 @@ auto File::GetReader() const -> FileReader
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
     FO_VERIFY_AND_THROW(_fileBuf, "Input file buffer is empty");
 
-    auto file_data = _fileBuf.as_ptr();
-    const_span<uint8_t> file_span = {file_data.get(), _fileSize};
+    const_span<uint8_t> file_span = {_fileBuf.get(), _fileSize};
     return FileReader(file_span);
 }
 

@@ -88,14 +88,14 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    auto data_chars = make_ptr(reinterpret_cast<const char*>(data.data()));
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing metadata output file", output_path, res_pack.Name, path, data.size());
             };
 
-            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .ForceSyncMode = true});
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
@@ -149,15 +149,15 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    ptr<const char> data_chars = reinterpret_cast<const char*>(data.data());
+                    auto data_chars = make_ptr(reinterpret_cast<const char*>(data.data()));
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
                 FO_VERIFY_AND_THROW(file, "Failed while writing AngelScript output file", output_path, res_pack.Name, path, data.size());
             };
 
-            nptr<const BakingSettings> settings_ptr = &GetApp()->Settings;
-            nptr<const FileSystem> metadata_files_ptr = &metadata_files;
+            auto settings_ptr = make_nptr(&GetApp()->Settings);
+            auto metadata_files_ptr = make_nptr(&metadata_files);
             auto baking_ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = res_pack.Name, .WriteData = write_file, .BakedFiles = metadata_files_ptr, .ForceSyncMode = true});
             auto scripts_baker = AngelScriptBaker(std::move(baking_ctx));
 

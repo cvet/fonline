@@ -120,7 +120,8 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     system->initialize();
 
     ParticleSystem particles {this};
-    auto particles_impl = particles._impl.as_ptr();
+    auto particles_impl = particles._impl.as_nptr();
+    FO_VERIFY_AND_THROW(particles_impl, "Particles implementation is null");
     particles_impl->System = system;
     particles_impl->BaseSystem = base_system;
 
@@ -160,7 +161,8 @@ auto ParticleSystem::GetBaseSystem() -> nptr<SPK::System>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
     nptr<SPK::System> base_system = impl->BaseSystem.get();
     return base_system;
 }
@@ -176,7 +178,8 @@ auto ParticleSystem::GetDrawSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
     int32_t max_draw_width = 0;
     int32_t max_draw_height = 0;
 
@@ -202,7 +205,8 @@ auto ParticleSystem::GetDrawInScene() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
 
     for (size_t i = 0; i < impl->System->getNbGroups(); i++) {
         auto&& group = impl->System->getGroup(i);
@@ -234,7 +238,8 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
 
     if (!impl->System->isActive()) {
         return;
@@ -268,7 +273,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         result_pos_mat = view_offset_mat * world * pos_offset_mat;
     }
 
-    ptr<const float32_t> result_pos_matrix_values = glm::value_ptr(result_pos_mat);
+    auto result_pos_matrix_values = make_ptr(glm::value_ptr(result_pos_mat));
     impl->System->getTransform().set(result_pos_matrix_values.get());
 
     if (const auto local_pos = impl->BaseSystem->getTransform().getLocalPos(); local_pos != SPK::Vector3D()) {
@@ -282,7 +287,8 @@ void ParticleSystem::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
 
     if (!impl->System->isActive()) {
         return;
@@ -303,7 +309,8 @@ void ParticleSystem::Respawn()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
     impl->System = SPK::SPKObject::copy(impl->BaseSystem);
     impl->System->initialize();
 
@@ -316,7 +323,8 @@ void ParticleSystem::Draw()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
+    auto impl = _impl.as_nptr();
+    FO_VERIFY_AND_THROW(impl, "Implementation is null");
     const auto time = GetTime();
     float32_t dt = (time - _lastDrawTime).to_ms<float32_t>() * 0.001f;
 

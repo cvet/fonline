@@ -178,14 +178,12 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     }
 
     ClientRuntimeExports exports {};
-    auto nullable_runtime_module = TryLoadRuntime(requested_runtime, exports);
+    auto runtime_module = TryLoadRuntime(requested_runtime, exports);
 
-    if (!nullable_runtime_module) {
+    if (!runtime_module) {
         WriteLog("Client runtime host: failed to load DLL {}", requested_runtime.Path);
         return std::nullopt;
     }
-
-    auto runtime_module = nullable_runtime_module.as_ptr();
 
     string loaded_runtime_name = exports.Metadata.RuntimeName != nullptr ? string(exports.Metadata.RuntimeName) : string();
     string loaded_build_hash = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
@@ -342,7 +340,7 @@ static auto GetClient() -> ptr<ClientEngine>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
-    return Data->Client.as_ptr();
+    return Data->Client;
 }
 
 static void MainEntry([[maybe_unused]] void* data)
@@ -417,7 +415,7 @@ static void MainEntry([[maybe_unused]] void* data)
                 }
 
                 ClientStartupSettingsHook(GetApp()->Settings, 1, false);
-                ptr<GlobalSettings> settings = &GetApp()->Settings;
+                auto settings = make_ptr(&GetApp()->Settings);
                 Data->Client = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetClientResources(*settings), &GetApp()->MainWindow);
 #if FO_HEADLESS_APP
                 auto client = GetClient();
@@ -477,14 +475,13 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     FO_STACK_TRACE_ENTRY();
 
     WriteLog("Client runtime host: loading DLL {}", requested_runtime.Path);
-    nptr<void> nullable_runtime_module = Platform::LoadModule(requested_runtime.Path);
+    auto runtime_module = Platform::LoadModule(requested_runtime.Path);
 
-    if (!nullable_runtime_module) {
+    if (!runtime_module) {
         WriteLog("Client runtime host: LoadModule failed for {}", requested_runtime.Path);
         return nullptr;
     }
 
-    auto runtime_module = nullable_runtime_module.as_ptr();
     const auto query_exports = Platform::GetFuncAddr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports");
 
     if (query_exports == nullptr) {
@@ -515,7 +512,7 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     }
 
     WriteLog("Client runtime host: accepted DLL {}, runtime {}, build {}, compatibility {}, ABI {}", requested_runtime.Path, exports.Metadata.RuntimeName, exports.Metadata.BuildHash, exports.Metadata.CompatibilityVersion, exports.Metadata.HostAbiVersion);
-    return nullable_runtime_module;
+    return runtime_module;
 }
 
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool

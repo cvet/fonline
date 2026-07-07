@@ -60,7 +60,7 @@ public:
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            return _outBuf.as_ptr();
+            return _outBuf;
         }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
@@ -86,7 +86,7 @@ public:
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            return _inBuf.as_ptr();
+            return _inBuf;
         }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock() FO_TSA_ACQUIRE();

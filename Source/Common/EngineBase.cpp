@@ -219,7 +219,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         type->IsSingleton = true;
     }
 
-    return entry.first->second.PropRegistrator.as_ptr();
+    return entry.first->second.PropRegistrator;
 }
 
 auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<PropertyRegistrator>
@@ -248,7 +248,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     RegisterBaseType(name);
 
-    return entry.first->second.PropRegistrator.as_ptr();
+    return entry.first->second.PropRegistrator;
 }
 
 void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_view target_type, string_view entry, EntityHolderEntrySync sync, bool persistent)
@@ -448,7 +448,7 @@ void EngineMetadata::RegisterEntityMethod(string_view entity_name, MethodDesc&& 
 
     const auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
-    ptr<EntityTypeDesc> entity_info = it->second;
+    auto entity_info = it->second;
 
     entity_info->Methods.emplace_back(std::move(method));
 }
@@ -461,7 +461,7 @@ void EngineMetadata::RegisterEntityMethods(string_view entity_name, vector<Metho
 
     const auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
-    ptr<EntityTypeDesc> entity_info = it->second;
+    auto entity_info = it->second;
 
     FO_VERIFY_AND_THROW(entity_info->Methods.empty(), "Entity info methods must be empty before this operation");
     entity_info->Methods = std::move(methods);
@@ -475,7 +475,7 @@ void EngineMetadata::RegisterEntityEvents(string_view entity_name, vector<Entity
 
     const auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
-    ptr<EntityTypeDesc> entity_info = it->second;
+    auto entity_info = it->second;
 
     FO_VERIFY_AND_THROW(entity_info->Events.empty(), "Entity info events must be empty before this operation");
     entity_info->Events = std::move(events);
@@ -489,7 +489,7 @@ void EngineMetadata::RegisterEntityEvent(string_view entity_name, EntityEventDes
 
     const auto it = _entityTypesByStr.find(entity_name);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Lookup failed in entity types by str");
-    ptr<EntityTypeDesc> entity_info = it->second;
+    auto entity_info = it->second;
 
     entity_info->Events.emplace_back(std::move(event));
 }
@@ -700,12 +700,12 @@ auto EngineMetadata::GetPropertyRegistratorForEdit(string_view type_name) -> ptr
     const auto it = _entityTypesByStr.find(type_name);
 
     if (it != _entityTypesByStr.end()) {
-        return it->second->PropRegistrator.as_ptr();
+        return it->second->PropRegistrator;
     }
 
     const auto it2 = _fixedTypesByStr.find(type_name);
     FO_VERIFY_AND_THROW(it2 != _fixedTypesByStr.end(), "Lookup failed in fixed types by str");
-    return it2->second->PropRegistrator.as_ptr();
+    return it2->second->PropRegistrator;
 }
 
 auto EngineMetadata::IsValidBaseType(string_view type_str) const noexcept -> bool
@@ -782,10 +782,10 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
     FO_STACK_TRACE_ENTRY();
 
     const auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
-    auto nullable_holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
-    FO_VERIFY_AND_THROW(nullable_holder_prop, "Missing required holder property");
+    auto holder_prop = holder->GetProperties()->GetRegistrator()->FindProperty(prop_name);
+    FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
-    return nullable_holder_prop.as_ptr();
+    return holder_prop;
 }
 
 auto EngineMetadata::GetBaseType(string_view type_str) const -> const BaseTypeDesc&

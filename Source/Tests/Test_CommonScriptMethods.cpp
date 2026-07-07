@@ -159,23 +159,20 @@ namespace CommonMethods
     int TestGetProtoItems()
     {
         array<ProtoItem> protos = Game.GetProtoItems();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
     int TestGetProtoCritters()
     {
         array<ProtoCritter> protos = Game.GetProtoCritters();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
     int TestGetProtoMaps()
     {
         array<ProtoMap> protos = Game.GetProtoMaps();
-        if (protos is null) return -1;
         // Maps may be 0 if none defined in test setup - just verify no crash
         return 0;
     }
@@ -183,8 +180,7 @@ namespace CommonMethods
     int TestGetProtoLocations()
     {
         array<ProtoLocation> protos = Game.GetProtoLocations();
-        if (protos is null) return -1;
-        if (protos.length() == 0) return -2;
+        if (protos.length() == 0) return -1;
         return 0;
     }
 
@@ -1805,9 +1801,8 @@ namespace CommonMethods
         FO_STACK_TRACE_ENTRY();
 
         auto backend = GetScriptBackend(server);
-        auto nullable_context_mngr = backend->GetContextMngr();
-        REQUIRE(nullable_context_mngr);
-        auto context_mngr = nullable_context_mngr.as_ptr();
+        auto context_mngr = backend->GetContextMngr();
+        REQUIRE(context_mngr);
 
         auto ctx = context_mngr->RequestContext();
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
@@ -2316,18 +2311,16 @@ TEST_CASE("CommonCppApiTests")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
-        auto nullable_item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
-        auto nullable_item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
-        REQUIRE(static_cast<bool>(nullable_item1));
-        REQUIRE(static_cast<bool>(nullable_item2));
+        auto item1 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 5);
+        auto item2 = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 3);
+        REQUIRE(static_cast<bool>(item1));
+        REQUIRE(static_cast<bool>(item2));
 
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
-        auto item2 = nullable_item2.as_ptr();
-        auto item1 = nullable_item1.as_ptr();
-        server->ItemMngr.DestroyItem(item2);
-        server->ItemMngr.DestroyItem(item1);
+        server->ItemMngr.DestroyItem(item2.as_ptr());
+        server->ItemMngr.DestroyItem(item1.as_ptr());
         server->CrMngr.DestroyCritter(cr);
     }
 

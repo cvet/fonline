@@ -299,8 +299,8 @@ public:
     auto LoadMap(string_view map_name) -> nptr<MapView>;
     auto LoadMapFromText(string_view map_name, const string& map_text) -> nptr<MapView>;
     void ShowMap(ptr<MapView> map);
-    auto IsMapDirty(nptr<MapView> nullable_map) const -> bool;
-    void SetMapDirty(nptr<MapView> nullable_map, bool dirty = true);
+    auto IsMapDirty(nptr<MapView> map) const -> bool;
+    void SetMapDirty(nptr<MapView> map, bool dirty = true);
     void SaveCurrentMap();
     void ResetCurrentMapChanges();
     void SaveMap(ptr<MapView> map, string_view custom_name);
@@ -316,12 +316,12 @@ public:
     auto RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> owner = nullptr) -> nptr<ClientEntity>;
     void RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<ItemView> item);
     auto FindEntityById(ptr<MapView> map, ident_t id) -> nptr<ClientEntity>;
-    auto GetUndoContext(nptr<MapView> nullable_map, bool create) -> nptr<UndoContext>;
-    auto GetUndoContext(nptr<const MapView> nullable_map, bool create) const -> nptr<const UndoContext>;
-    void ClearUndoContext(nptr<MapView> nullable_map);
-    void RemapUndoContext(nptr<MapView> nullable_old_map, nptr<MapView> nullable_new_map);
+    auto GetUndoContext(nptr<MapView> map, bool create) -> nptr<UndoContext>;
+    auto GetUndoContext(nptr<const MapView> map, bool create) const -> nptr<const UndoContext>;
+    void ClearUndoContext(nptr<MapView> map);
+    void RemapUndoContext(nptr<MapView> old_map, nptr<MapView> new_map);
     void PushUndoOp(nptr<MapView> map, UndoOp op);
-    auto CaptureMapSnapshot(nptr<const MapView> nullable_map) const -> string;
+    auto CaptureMapSnapshot(nptr<const MapView> map) const -> string;
     auto RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_name, const string& map_text) -> bool;
 
     ///@ ExportEvent

@@ -351,9 +351,9 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
-    void ReceiveCustomEntities(nptr<Entity> nullable_holder);
+    void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
-    void ReceiveCritterMoving(nptr<CritterHexView> nullable_cr);
+    void ReceiveCritterMoving(nptr<CritterHexView> cr);
 
     void OnSendGlobalValue(ptr<Entity> entity, ptr<const Property> prop);
     void OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> prop);

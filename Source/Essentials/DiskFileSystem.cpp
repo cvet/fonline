@@ -315,7 +315,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
     uint64_t hash = offset;
 
     while (stream) {
-        nptr<char> read_buf = buf.data();
+        auto read_buf = make_nptr(buf.data());
         stream.read(read_buf.get(), numeric_cast<std::streamsize>(buf.size()));
 
         const auto read_size = numeric_cast<size_t>(stream.gcount());
@@ -397,7 +397,7 @@ auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
     }
 
     const std::streamsize stream_len = numeric_cast<std::streamsize>(buf.size());
-    ptr<char> target_chars = reinterpret_cast<char*>(buf.data());
+    auto target_chars = make_ptr(reinterpret_cast<char*>(buf.data()));
     stream.read(target_chars.get(), stream_len);
     return !!stream && stream.gcount() == stream_len;
 }

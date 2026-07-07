@@ -383,9 +383,9 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
             return false;
         }
 
-        ptr<ScalarType> scalar_ptr = &scalar;
+        auto scalar_ptr = make_ptr(&scalar);
         auto target = scalar_ptr.template reinterpret_as<uint8_t>();
-        ptr<const uint8_t> source = data.data() + pos;
+        auto source = make_ptr(data.data() + pos);
         MemCopy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);
         return true;
@@ -439,7 +439,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     }
     else {
         FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
-        ptr<const uint8_t> payload_begin = data.data() + pos;
+        auto payload_begin = make_ptr(data.data() + pos);
         packet.Payload = {payload_begin.get(), payload_size};
     }
 

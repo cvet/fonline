@@ -756,44 +756,43 @@ void ModelDescriptionParser::ApplyFloatValue(BakerModelDescriptionLink& link, st
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<float32_t> nullable_target = nullptr;
+    nptr<float32_t> target = nullptr;
 
     if (field == "RotX") {
-        nullable_target = &link.RotX;
+        target = &link.RotX;
     }
     else if (field == "RotY") {
-        nullable_target = &link.RotY;
+        target = &link.RotY;
     }
     else if (field == "RotZ") {
-        nullable_target = &link.RotZ;
+        target = &link.RotZ;
     }
     else if (field == "MoveX") {
-        nullable_target = &link.MoveX;
+        target = &link.MoveX;
     }
     else if (field == "MoveY") {
-        nullable_target = &link.MoveY;
+        target = &link.MoveY;
     }
     else if (field == "MoveZ") {
-        nullable_target = &link.MoveZ;
+        target = &link.MoveZ;
     }
     else if (field == "ScaleX") {
-        nullable_target = &link.ScaleX;
+        target = &link.ScaleX;
     }
     else if (field == "ScaleY") {
-        nullable_target = &link.ScaleY;
+        target = &link.ScaleY;
     }
     else if (field == "ScaleZ") {
-        nullable_target = &link.ScaleZ;
+        target = &link.ScaleZ;
     }
     else if (field == "Speed") {
-        nullable_target = &link.SpeedAjust;
+        target = &link.SpeedAjust;
     }
     else {
         FO_UNREACHABLE_PLACE();
     }
 
-    FO_VERIFY_AND_THROW(nullable_target, "Model description field did not resolve to a target value", field);
-    auto target = nullable_target.as_ptr();
+    FO_VERIFY_AND_THROW(target, "Model description field did not resolve to a target value", field);
 
     switch (mode) {
     case AssignMode::Set:

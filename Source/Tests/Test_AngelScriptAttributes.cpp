@@ -70,8 +70,8 @@ namespace
             }
 
             REQUIRE(_readPos + size <= _buf->size());
-            ptr<void> target = raw_data;
-            ptr<const asBYTE> source = &_buf->at(_readPos);
+            auto target = make_ptr(raw_data);
+            auto source = make_ptr(&_buf->at(_readPos));
             MemCopy(target, source, size);
             _readPos += size;
             return 0;
@@ -88,8 +88,8 @@ namespace
             }
 
             _buf->resize(_writePos + size);
-            ptr<asBYTE> target = &_buf->at(_writePos);
-            ptr<const void> source = raw_data;
+            auto target = make_ptr(&_buf->at(_writePos));
+            auto source = make_ptr(raw_data);
             MemCopy(target, source, size);
             _writePos += size;
             return 0;
@@ -293,9 +293,8 @@ namespace
         static void Callback(const asSMessageInfo* msg, void* param)
         {
             ptr<const asSMessageInfo> message = msg;
-            nptr<ScriptMessages> nullable_self = cast_from_void<ScriptMessages*>(param);
-            FO_VERIFY_AND_THROW(nullable_self, "Script object instance is null");
-            auto self = nullable_self.as_ptr();
+            auto self = cast_from_void<ScriptMessages*>(param);
+            FO_VERIFY_AND_THROW(self, "Script object instance is null");
             nptr<const char> section = message->section;
             nptr<const char> text = message->message;
 
@@ -314,25 +313,24 @@ namespace
     {
         auto pp_ctx = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
         REQUIRE(nptr<Preprocessor::Context> {pp_ctx});
-        auto pp_ctx_ptr = pp_ctx.as_ptr();
 
         for (const auto define : defines) {
-            Preprocessor::Define(pp_ctx_ptr.get(), std::string(define));
+            Preprocessor::Define(pp_ctx.get(), std::string(define));
         }
         Preprocessor::StringOutStream pp_errors;
         Preprocessor::LexemList lexems;
         auto loader = SingleScriptLoader {string(path), string(script)};
         const auto std_path = std::string {path};
 
-        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx_ptr.get(), std_path, lexems, &pp_errors, &loader);
+        const auto pp_errors_count = Preprocessor::PreprocessToLexems(pp_ctx.get(), std_path, lexems, &pp_errors, &loader);
         REQUIRE(pp_errors_count == 0);
         REQUIRE(pp_errors.String.empty());
 
         ParsedScript result;
-        result.Records = ParseFunctionAttributeRecords(pp_ctx_ptr, lexems, result.Errors);
+        result.Records = ParseFunctionAttributeRecords(pp_ctx, lexems, result.Errors);
 
         Preprocessor::StringOutStream out;
-        Preprocessor::PrintLexemList(pp_ctx_ptr.get(), lexems, out);
+        Preprocessor::PrintLexemList(pp_ctx.get(), lexems, out);
         result.Source = std::move(out.String);
         return result;
     }
@@ -355,9 +353,9 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        nptr<asIScriptEngine> nullable_engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-        REQUIRE(nullable_engine);
-        auto engine = make_unique_del_ptr(nullable_engine.as_ptr(), ReleaseScriptEngine);
+        auto created_engine = make_nptr(asCreateScriptEngine(ANGELSCRIPT_VERSION));
+        REQUIRE(created_engine);
+        auto engine = make_unique_del_ptr(created_engine.as_ptr(), ReleaseScriptEngine);
 
         REQUIRE(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
         auto message_callback_user_data = MessageCallbackUserData(messages);
@@ -413,10 +411,10 @@ namespace
 
     static auto BuildModule(ptr<asIScriptEngine> engine, string_view module_name, string_view source, ScriptMessages& messages) -> ptr<asIScriptModule>
     {
-        nptr<asIScriptModule> nullable_module = engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(nullable_module);
-        REQUIRE(nullable_module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
-        const auto build_result = nullable_module->Build();
+        auto module = make_nptr(engine->GetModule(string(module_name).c_str(), asGM_ALWAYS_CREATE));
+        REQUIRE(module);
+        REQUIRE(module->AddScriptSection(string(module_name).c_str(), source.data(), source.length()) >= 0);
+        const auto build_result = module->Build();
         if (build_result < 0) {
             for (const auto& entry : messages.Entries) {
                 INFO("AS message: " << entry);
@@ -427,7 +425,7 @@ namespace
             INFO(messages.Entries.front());
         }
         CHECK(messages.Entries.empty());
-        return nullable_module.as_ptr();
+        return module;
     }
 
     static auto FindScriptFunction(ptr<asIScriptModule> mod, string_view decl) -> nptr<asIScriptFunction>
@@ -1650,11 +1648,10 @@ void NamespacedCall()
         INFO(bind_error);
         REQUIRE(bind_error.empty());
 
-        auto nullable_func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
-        CheckAttributes(nullable_func, {"Primary(2)", "Secondary"});
-        auto func = nullable_func.as_ptr();
-        CHECK(HasFunctionAttribute(func, "Primary"));
-        CHECK(FindFunctionAttribute(func, "Primary") == "Primary(2)");
+        auto func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
+        CheckAttributes(func, {"Primary(2)", "Secondary"});
+        CHECK(HasFunctionAttribute(func.as_ptr(), "Primary"));
+        CHECK(FindFunctionAttribute(func.as_ptr(), "Primary") == "Primary(2)");
     }
 
     SECTION("KeepsTopLevelAttributesOutsideClosedClass")
@@ -1724,9 +1721,8 @@ void NamespacedCall()
         auto load_engine_holder = MakeEngine(load_messages);
         ptr<asIScriptEngine> load_engine = load_engine_holder.get();
 
-        nptr<asIScriptModule> nullable_load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
-        REQUIRE(nullable_load_mod);
-        auto load_mod = nullable_load_mod.as_ptr();
+        nptr<asIScriptModule> load_mod = load_engine->GetModule("AttrRoundtripLoad", asGM_ALWAYS_CREATE);
+        REQUIRE(load_mod);
 
         auto load_stream = BytecodeStream {bytecode};
         REQUIRE(load_mod->LoadByteCode(&load_stream) >= 0);
@@ -1735,16 +1731,16 @@ void NamespacedCall()
         const auto records = DeserializeFunctionAttributeRecords(reader);
         reader.VerifyEnd();
 
-        const auto bind_error = BindFunctionAttributeRecords(load_mod, records);
+        const auto bind_error = BindFunctionAttributeRecords(load_mod.as_ptr(), records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
-        CHECK(ValidateAttributedFunctionUsage(load_mod).empty());
+        CHECK(ValidateAttributedFunctionUsage(load_mod.as_ptr()).empty());
 
-        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Foo()"), {"Primary"});
-        CheckAttributes(FindScriptFunction(load_mod, "int AttrTest::Multi(int)"), {"One", "Two"});
-        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Overload()"), {"NoArgs"});
-        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Overload(int)"), {"WithInt"});
-        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Plain()"), {});
+        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Foo()"), {"Primary"});
+        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "int AttrTest::Multi(int)"), {"One", "Two"});
+        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Overload()"), {"NoArgs"});
+        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Overload(int)"), {"WithInt"});
+        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Plain()"), {});
     }
 
     SECTION("RejectsInvalidPlacement")

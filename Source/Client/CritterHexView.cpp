@@ -73,9 +73,8 @@ void CritterHexView::OnDestroySelf()
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
-        model->ClearAnimationCallbacks();
-        model->SetAnimInitCallback({});
+        _model->ClearAnimationCallbacks();
+        _model->SetAnimInitCallback({});
     }
 
     _modelSpr.reset();
@@ -102,8 +101,7 @@ void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
     FO_STACK_TRACE_ENTRY();
 
     if (_moving) {
-        auto moving_ptr = _moving.as_ptr();
-        moving_ptr->Complete(MovingState::Stopped);
+        _moving->Complete(MovingState::Stopped);
     }
 
     _moving = std::move(moving);
@@ -116,8 +114,7 @@ void CritterHexView::StopMoving()
     FO_STACK_TRACE_ENTRY();
 
     if (_moving) {
-        auto moving = _moving.as_ptr();
-        moving->Complete(MovingState::Stopped);
+        _moving->Complete(MovingState::Stopped);
     }
 
     _moving.reset();
@@ -159,10 +156,8 @@ void CritterHexView::MoveAttachedCritters()
     const auto hex = GetHex();
     const auto hex_offset = GetHexOffset();
 
-    for (const auto cr_id : _attachedCritters) {
-        if (nptr<CritterHexView> nullable_cr = _map->GetCritter(cr_id)) {
-            auto cr = nullable_cr.as_ptr();
-
+    for (const ident_t cr_id : _attachedCritters) {
+        if (auto cr = _map->GetCritter(cr_id)) {
             if (cr->GetHex() != hex) {
                 _map->MoveCritter(cr, hex, false);
             }
@@ -193,8 +188,7 @@ void CritterHexView::Action(CritterAction action, int32_t action_data, nptr<Enti
 
 #if FO_ENABLE_3D
         if (_model) {
-            auto model = _model.as_ptr();
-            _resetTime = _engine->GameTime.GetFrameTime() + model->GetAnimDuration();
+            _resetTime = _engine->GameTime.GetFrameTime() + _model->GetAnimDuration();
             _needReset = true;
         }
         else
@@ -244,9 +238,7 @@ void CritterHexView::NextAnim()
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
-
-        if (!model->ResolveAnimation(_curAnim->StateAnim, _curAnim->ActionAnim)) {
+        if (!_model->ResolveAnimation(_curAnim->StateAnim, _curAnim->ActionAnim)) {
             NextAnim();
             return;
         }
@@ -254,14 +246,12 @@ void CritterHexView::NextAnim()
     else
 #endif
     {
-        auto nullable_frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), _curAnim->StateAnim, _curAnim->ActionAnim, GetDir());
+        auto frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), _curAnim->StateAnim, _curAnim->ActionAnim, GetDir());
 
-        if (!nullable_frames) {
+        if (!frames) {
             NextAnim();
             return;
         }
-
-        auto frames = nullable_frames.as_ptr();
 
         _curAnim->Frames = frames;
         _curAnim->FrameIndex = 0;
@@ -273,13 +263,12 @@ void CritterHexView::NextAnim()
 #if FO_ENABLE_3D
     if (_model) {
         constexpr auto anim_flags = CombineEnum(ModelAnimFlags::PlayOnce, ModelAnimFlags::NoRotate);
-        auto model = _model.as_ptr();
-        model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), 0.0f, anim_flags);
+        _model->PlayAnim(_curAnim->StateAnim, _curAnim->ActionAnim, GetModelLayersData(), 0.0f, anim_flags);
     }
     else
 #endif
     {
-        SetAnimSpr(_curAnim->Frames.as_ptr(), _curAnim->FrameIndex);
+        SetAnimSpr(_curAnim->Frames, _curAnim->FrameIndex);
     }
 }
 
@@ -290,12 +279,10 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
     refcount_nptr<Entity> resolved_context_item {};
 
     if (context_item) {
-        if (auto nullable_item = context_item.dyn_cast<ItemView>()) {
-            auto item = nullable_item.as_ptr();
+        if (auto item = context_item.dyn_cast<ItemView>()) {
             resolved_context_item = item->CreateRefClone();
         }
-        else if (nptr<ProtoItem> nullable_proto = context_item.dyn_cast<ProtoItem>(); nullable_proto) {
-            auto proto = nullable_proto.as_ptr();
+        else if (auto proto = context_item.dyn_cast<ProtoItem>()) {
             resolved_context_item = proto.hold_ref();
         }
         else {
@@ -324,21 +311,19 @@ void CritterHexView::RefreshView(bool no_smooth)
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
         const auto scale_factor = GetScaleFactor();
         const auto scale = scale_factor != 0 ? numeric_cast<float32_t>(scale_factor) / 1000.0f : 1.0f;
-        model->SetScale(scale, scale, scale);
+        _model->SetScale(scale, scale, scale);
 
         int32_t moving_speed = 0;
 
         if (IsMoving()) {
-            auto nullable_moving = GetMoving();
-            FO_VERIFY_AND_THROW(nullable_moving, "Critter movement state is missing");
-            auto moving = nullable_moving.as_ptr();
+            auto moving = GetMoving();
+            FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
             moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving->GetSpeed()) / scale);
         }
 
-        model->UpdatePose(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
+        _model->UpdatePose(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
     }
 #endif
 
@@ -352,13 +337,11 @@ void CritterHexView::RefreshView(bool no_smooth)
 
 #if FO_ENABLE_3D
         if (_model) {
-            auto model = _model.as_ptr();
-
             if (IsMoving() && GetCondition() == CritterCondition::Alive) {
-                action_anim = model->GetMovingAnim();
+                action_anim = _model->GetMovingAnim();
             }
 
-            if (!model->ResolveAnimation(state_anim, action_anim)) {
+            if (!_model->ResolveAnimation(state_anim, action_anim)) {
                 state_anim = CritterStateAnim::Unarmed;
                 action_anim = CritterActionAnim::Idle;
             }
@@ -368,12 +351,12 @@ void CritterHexView::RefreshView(bool no_smooth)
             auto anim_flags = no_smooth ? ModelAnimFlags::NoSmooth : ModelAnimFlags::None;
 
             if (GetCondition() == CritterCondition::Alive) {
-                model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
+                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), 0.0f, anim_flags);
             }
             else {
                 anim_flags = CombineEnum(anim_flags, ModelAnimFlags::Freeze);
                 const float32_t frozen_time = GetCondition() == CritterCondition::Dead ? 1.0f : 0.0f;
-                model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
+                _model->PlayAnim(state_anim, action_anim, GetModelLayersData(), frozen_time, anim_flags);
             }
         }
         else
@@ -382,9 +365,8 @@ void CritterHexView::RefreshView(bool no_smooth)
             ignore_unused(no_smooth);
 
             if (IsMoving() && GetCondition() == CritterCondition::Alive) {
-                auto nullable_moving = GetMoving();
-                FO_VERIFY_AND_THROW(nullable_moving, "Critter movement state is missing");
-                auto moving = nullable_moving.as_ptr();
+                auto moving = GetMoving();
+                FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
 
                 if (moving->GetSpeed() < numeric_cast<uint16_t>(_engine->Settings->RunAnimStartSpeed)) {
                     action_anim = CritterActionAnim::Walk;
@@ -394,14 +376,13 @@ void CritterHexView::RefreshView(bool no_smooth)
                 }
             }
 
-            auto nullable_frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
+            auto frames = _engine->ResMngr.GetCritterAnimFrames(GetModelName(), state_anim, action_anim, GetDir());
 
-            if (!nullable_frames) {
-                nullable_frames = _engine->ResMngr.GetCritterDummyFrames();
+            if (!frames) {
+                frames = _engine->ResMngr.GetCritterDummyFrames();
             }
 
-            FO_VERIFY_AND_THROW(nullable_frames, "Critter animation frames are missing");
-            auto frames = nullable_frames.as_ptr();
+            FO_VERIFY_AND_THROW(frames, "Critter animation frames are missing");
 
             _idle2dAnim.StateAnim = state_anim;
             _idle2dAnim.ActionAnim = action_anim;
@@ -418,7 +399,7 @@ void CritterHexView::RefreshView(bool no_smooth)
                 }
             }
 
-            SetAnimSpr(_idle2dAnim.Frames.as_ptr(), _idle2dAnim.FrameIndex);
+            SetAnimSpr(_idle2dAnim.Frames, _idle2dAnim.FrameIndex);
         }
     }
 }
@@ -429,8 +410,7 @@ auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionA
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
-        return model->HasAnimation(state_anim, action_anim);
+        return _model->HasAnimation(state_anim, action_anim);
     }
 #endif
 
@@ -444,8 +424,8 @@ auto CritterHexView::GetModelLayersData() const -> ptr<const int32_t>
 
     const auto prop_raw_data = GetProperties()->GetRawData(GetPropertyModelLayers());
     FO_VERIFY_AND_THROW(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT, "Model layer property raw data size does not match layer count", prop_raw_data.size(), MODEL_LAYERS_COUNT, sizeof(int32_t));
-    nptr<const uint8_t> data = prop_raw_data.data();
-    return data.reinterpret_as<int32_t>().as_ptr();
+    auto data = make_nptr(prop_raw_data.data());
+    return data.reinterpret_as<int32_t>();
 }
 
 void CritterHexView::RefreshModel()
@@ -455,8 +435,7 @@ void CritterHexView::RefreshModel()
     vector<ModelAnimationCallback> animCallbacks {};
 
     if (_model) {
-        auto model = _model.as_ptr();
-        animCallbacks = model->TakeAnimationCallbacks();
+        animCallbacks = _model->TakeAnimationCallbacks();
     }
 
     _spr = nullptr;
@@ -475,24 +454,22 @@ void CritterHexView::RefreshModel()
 
             _spr = _modelSpr.as_nptr();
 
-            nptr<ModelInstance> nullable_model = _modelSpr->GetModel();
-            FO_VERIFY_AND_THROW(nullable_model, "Model sprite is missing its model instance");
-            auto model = nullable_model.as_ptr();
+            _model = _modelSpr->GetModel();
+            FO_VERIFY_AND_THROW(_model, "Model sprite is missing its model instance");
 
-            _model = nullable_model;
-            model->SetAnimationCallbacks(std::move(animCallbacks));
-            model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) FO_DEFERRED {
+            _model->SetAnimationCallbacks(std::move(animCallbacks));
+            _model->SetAnimInitCallback([this](CritterStateAnim& state_anim, CritterActionAnim& action_anim) FO_DEFERRED {
                 // Callback from 3d
                 _engine->OnCritterAnimationInit.Fire(this, state_anim, action_anim, nullptr);
             });
 
-            model->SetLookDir(GetDir());
-            model->SetMoveDir(GetDir(), false);
+            _model->SetLookDir(GetDir());
+            _model->SetMoveDir(GetDir(), false);
 
             if (_map->IsMapperMode()) {
-                model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
-                model->PrewarmParticles();
-                model->StartMeshGeneration();
+                _model->PlayAnim(CritterStateAnim::Unarmed, CritterActionAnim::Idle, GetModelLayersData(), 0.0f, ModelAnimFlags::None);
+                _model->PrewarmParticles();
+                _model->StartMeshGeneration();
             }
         }
         else {
@@ -524,13 +501,11 @@ void CritterHexView::ChangeLookDir(mdir dir)
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
-
-        if (!model->HasBodyRotation()) {
-            model->SetMoveDir(dir, true);
+        if (!_model->HasBodyRotation()) {
+            _model->SetMoveDir(dir, true);
         }
 
-        model->SetLookDir(dir);
+        _model->SetLookDir(dir);
     }
 #endif
 
@@ -543,8 +518,7 @@ void CritterHexView::ChangeMoveDir(mdir dir)
 
 #if FO_ENABLE_3D
     if (_model) {
-        auto model = _model.as_ptr();
-        model->SetMoveDir(dir, true);
+        _model->SetMoveDir(dir, true);
     }
     else
 #endif
@@ -601,7 +575,8 @@ void CritterHexView::Process()
 
         if (root_motion_drive && cur_anim.Frames != _walkAnchorAnim) {
             const auto pos = EvaluateMovementDisplacement();
-            auto new_anim = cur_anim.Frames.as_ptr();
+            auto new_anim = cur_anim.Frames;
+            FO_VERIFY_AND_THROW(new_anim, "New animation is null");
 
             const auto sum_total = [](ptr<const SpriteSheet> sheet) -> ipos32 {
                 ipos32 sum {};
@@ -653,7 +628,7 @@ void CritterHexView::Process()
         int32_t frm_index;
 
         if (root_motion_drive) {
-            frm_index = EvaluateMovementFrameIndex(cur_anim.Frames.as_ptr());
+            frm_index = EvaluateMovementFrameIndex(cur_anim.Frames);
         }
         else {
             const auto anim_proc = (_engine->GameTime.GetFrameTime() - _animStartTime).to_ms<int32_t>() * 100 / cur_anim.FramesDuration.to_ms<int32_t>();
@@ -663,11 +638,11 @@ void CritterHexView::Process()
 
         if (root_motion_drive) {
             cur_anim.FrameIndex = frm_index;
-            SetAnimSpr(cur_anim.Frames.as_ptr(), cur_anim.FrameIndex);
+            SetAnimSpr(cur_anim.Frames, cur_anim.FrameIndex);
         }
         else if (frm_index != cur_anim.FrameIndex) {
             cur_anim.FrameIndex = frm_index;
-            SetAnimSpr(cur_anim.Frames.as_ptr(), cur_anim.FrameIndex);
+            SetAnimSpr(cur_anim.Frames, cur_anim.FrameIndex);
         }
     }
 
@@ -676,8 +651,7 @@ void CritterHexView::Process()
 
 #if FO_ENABLE_3D
         if (_model) {
-            auto model = _model.as_ptr();
-            anim_complete = !model->IsAnimationPlaying();
+            anim_complete = !_model->IsAnimationPlaying();
         }
         else
 #endif
@@ -733,9 +707,8 @@ void CritterHexView::ProcessMoving()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_moving = GetMoving();
-    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
-    auto moving = nullable_moving.as_ptr();
+    auto moving = GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
@@ -751,7 +724,6 @@ void CritterHexView::ProcessMoving()
     if (moved || hex_offset != progress.HexOffset) {
 #if FO_ENABLE_3D
         if (_model) {
-            auto model = _model.as_ptr();
             ipos32 model_offset;
 
             if (moved) {
@@ -761,7 +733,7 @@ void CritterHexView::ProcessMoving()
             model_offset.x -= hex_offset.x - progress.HexOffset.x;
             model_offset.y -= hex_offset.y - progress.HexOffset.y;
 
-            model->MoveModel(model_offset);
+            _model->MoveModel(model_offset);
         }
 #endif
 
@@ -876,9 +848,8 @@ auto CritterHexView::EvaluateMovementDisplacement() const -> ipos32
 
     FO_VERIFY_AND_THROW(IsMoving(), "Critter is not currently moving");
 
-    auto nullable_moving = GetMoving();
-    FO_VERIFY_AND_THROW(nullable_moving, "Critter movement state is missing");
-    auto moving = nullable_moving.as_ptr();
+    auto moving = GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
 
     const auto start_hex = moving->GetStartHex();
     const auto start_hex_offset = moving->GetStartHexOffset();

@@ -449,14 +449,7 @@ public:
     [[nodiscard]] auto GetPropertiesCount() const noexcept -> size_t { return _registeredProperties.size(); }
     [[nodiscard]] auto FindProperty(string_view property_name) const -> nptr<const Property>;
     [[nodiscard]] auto GetPropertyByIndex(int32_t property_index) const noexcept -> nptr<const Property>;
-    [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        const unique_nptr<Property>& nullable_prop = _registeredProperties[property_index];
-        FO_STRONG_ASSERT(nullable_prop, "Property at index is null");
-        return nullable_prop.as_ptr();
-    }
+    [[nodiscard]] auto GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>;
     [[nodiscard]] auto GetWholeDataSize() const noexcept -> size_t { return _wholePodDataSize; }
     [[nodiscard]] auto GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>;
     [[nodiscard]] auto GetComponents() const noexcept -> const unordered_map<string, ptr<const Property>>& { return _registeredComponents; }
@@ -530,7 +523,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match requested value type", prop->GetName(), raw_data.size(), sizeof(T));
-    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    const auto raw_data_ptr = make_ptr(raw_data.data());
     return *raw_data_ptr.reinterpret_as<T>();
 }
 
@@ -560,7 +553,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
     const auto raw_data = GetRawData(prop);
     FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    const auto raw_data_ptr = make_ptr(raw_data.data());
     return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>());
 }
 
@@ -626,7 +619,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const ptr<const uint8_t> arr_size_data = data.data();
+            const auto arr_size_data = make_ptr(data.data());
             const uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
@@ -634,7 +627,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const ptr<const uint8_t> str_size_data = data.data() + data_pos;
+                const auto str_size_data = make_ptr(data.data() + data_pos);
                 const uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
@@ -651,7 +644,7 @@ auto Properties::GetValue(ptr<const Property> prop) const -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for (const auto i : iterate_range(arr_size)) {
-                const ptr<const uint8_t> hash_data = data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t);
+                const auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
                 const hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 const auto hvalue = ResolveHash(hash);
                 result.emplace_back(hvalue);
@@ -685,7 +678,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(T), "Property raw data size mismatch in fast value getter", prop->GetName(), sizeof(T), raw_data.size());
-    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    const auto raw_data_ptr = make_ptr(raw_data.data());
     return *raw_data_ptr.reinterpret_as<T>();
 }
 
@@ -703,7 +696,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
     const auto raw_data = GetRawData(prop);
     FO_STRONG_ASSERT(raw_data.size() == sizeof(hstring::hash_t), "Property raw hash data size mismatch in hstring fast value getter", prop->GetName(), sizeof(hstring::hash_t), raw_data.size());
-    const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+    const auto raw_data_ptr = make_ptr(raw_data.data());
     return ResolveHash(*raw_data_ptr.reinterpret_as<hstring::hash_t>(), nullptr);
 }
 
@@ -754,7 +747,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
 
             size_t data_pos = 0;
             FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "Array length prefix exceeds available data");
-            const ptr<const uint8_t> arr_size_data = data.data();
+            const auto arr_size_data = make_ptr(data.data());
             const uint32_t arr_size = *arr_size_data.reinterpret_as<uint32_t>();
             data_pos += sizeof(arr_size);
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
@@ -762,7 +755,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             for ([[maybe_unused]] const auto i : iterate_range(arr_size)) {
                 data_pos = align_up(data_pos, sizeof(uint32_t));
                 FO_VERIFY_AND_THROW(data_pos + sizeof(uint32_t) <= data.size(), "String length prefix exceeds available data");
-                const ptr<const uint8_t> str_size_data = data.data() + data_pos;
+                const auto str_size_data = make_ptr(data.data() + data_pos);
                 const uint32_t str_size = *str_size_data.reinterpret_as<uint32_t>();
                 data_pos += sizeof(str_size);
                 FO_VERIFY_AND_THROW(data_pos + str_size <= data.size(), "String payload exceeds available data");
@@ -779,7 +772,7 @@ auto Properties::GetValueFast(ptr<const Property> prop) const noexcept -> T
             result.reserve(arr_size != 0 ? arr_size + 8 : 0);
 
             for (const auto i : iterate_range(arr_size)) {
-                const ptr<const uint8_t> hash_data = data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t);
+                const auto hash_data = make_ptr(data.data() + numeric_cast<size_t>(i) * sizeof(hstring::hash_t));
                 const hstring::hash_t hash = *hash_data.reinterpret_as<hstring::hash_t>();
                 const auto hvalue = ResolveHash(hash, nullptr);
                 result.emplace_back(hvalue);
@@ -825,7 +818,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     else {
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(T), "Property raw data size does not match assigned value type", prop->GetName(), raw_data.size(), sizeof(T));
-        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const auto raw_data_ptr = make_ptr(raw_data.data());
         const T cur_value = *raw_data_ptr.reinterpret_as<T>();
         bool equal;
 
@@ -848,7 +841,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                const ptr<const T> new_value_ptr = &new_value;
+                const auto new_value_ptr = make_ptr(&new_value);
                 SetRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
             }
 
@@ -888,7 +881,7 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
         const auto new_value_hash = new_value.as_hash();
         const auto raw_data = GetRawData(prop);
         FO_VERIFY_AND_THROW(raw_data.size() == sizeof(hstring::hash_t), "Hash property raw data size does not match assigned hash storage size", prop->GetName(), raw_data.size(), sizeof(hstring::hash_t));
-        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const auto raw_data_ptr = make_ptr(raw_data.data());
         const hstring::hash_t cur_value_hash = *raw_data_ptr.reinterpret_as<hstring::hash_t>();
 
         if (new_value_hash != cur_value_hash) {
@@ -903,8 +896,8 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                const ptr<const hstring::hash_t> new_value_hash_ptr = &new_value_hash;
-                SetRawData(prop, {new_value_hash_ptr.reinterpret_as<uint8_t>().get(), sizeof(hstring::hash_t)});
+                const auto new_value_hash_ptr = make_ptr(&new_value_hash);
+                SetRawData(prop, {new_value_hash_ptr.template reinterpret_as<uint8_t>().get(), sizeof(hstring::hash_t)});
             }
 
             if (_entity) {

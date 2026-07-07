@@ -60,7 +60,7 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
-        return _anim.as_ptr();
+        return _anim;
     }
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return _isMoving; }
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }

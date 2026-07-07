@@ -512,7 +512,7 @@ auto EntityEvent::CheckCallbacks() -> bool
 
     FO_VERIFY_AND_RETURN_VALUE(!_entity->IsDestroyed(), false, "Destroyed entity tried to check callbacks for an event", _entity->GetName(), _entity->GetTypeName(), _entity->GetId(), _callbackName);
 
-    if (nptr<vector<Entity::EventCallbackData>> callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
+    if (auto callbacks = _callbacks.load(std::memory_order_acquire); callbacks) {
         return !callbacks->empty();
     }
 

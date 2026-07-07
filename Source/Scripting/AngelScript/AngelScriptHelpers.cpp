@@ -91,39 +91,37 @@ auto GetScriptBackend(ptr<BaseEngine> engine) -> ptr<AngelScriptBackend>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_backend = engine->GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX);
-    FO_VERIFY_AND_THROW(nullable_backend, "Missing AngelScript backend");
-    return nullable_backend.as_ptr();
+    auto backend = engine->GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
+    return backend;
 }
 
 auto GetScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<AngelScriptBackend>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
-    FO_VERIFY_AND_THROW(nullable_backend, "Missing AngelScript backend");
-    return nullable_backend.as_ptr();
+    auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
+    return backend;
 }
 
 auto GetEngineMetadata(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<const EngineMetadata>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
-    FO_VERIFY_AND_THROW(nullable_backend, "Missing AngelScript backend");
-    auto backend = nullable_backend.as_ptr();
-    nptr<const EngineMetadata> nullable_meta = backend->GetMetadata();
-    FO_VERIFY_AND_THROW(nullable_meta, "Missing engine metadata");
-    return nullable_meta.as_ptr();
+    auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
+    auto meta = backend->GetMetadata();
+    FO_VERIFY_AND_THROW(meta, "Missing engine metadata");
+    return meta;
 }
 
 auto GetGameEngine(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<BaseEngine>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
-    FO_VERIFY_AND_THROW(nullable_backend, "Missing AngelScript backend");
-    auto backend = nullable_backend.as_ptr();
+    auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
+    FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend->GetGameEngine();
 }
 
@@ -136,25 +134,22 @@ void CheckScriptEntityNonNull(nptr<const Entity> entity)
     }
 }
 
-void CheckScriptEntityNonDestroyed(nptr<const Entity> nullable_entity)
+void CheckScriptEntityNonDestroyed(nptr<const Entity> entity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (nullable_entity) {
-        auto entity = nullable_entity.as_ptr();
-
+    if (entity) {
         if (entity->IsDestroyed()) {
             throw ScriptException("Access to destroyed entity");
         }
     }
 }
 
-void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> nullable_entity)
+void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> entity)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (nullable_entity) {
-        auto entity = nullable_entity.as_ptr();
+    if (entity) {
         entity->ValidateAccess();
 
         if (entity->IsDestroyed()) {
@@ -211,7 +206,7 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
         result = "callback";
 
         for (size_t i = 0; i < type.CallbackArgs->size(); i++) {
-            ptr<const ComplexTypeDesc> cb_arg = &(*type.CallbackArgs)[i];
+            auto cb_arg = make_ptr(&(*type.CallbackArgs)[i]);
             result += "_";
 
             if (cb_arg->Kind == ComplexTypeKind::None) {
@@ -286,7 +281,7 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
     result.reserve(128);
 
     for (size_t i = 0; i < args.size(); i++) {
-        ptr<const ArgDesc> arg = &args[i];
+        auto arg = make_ptr(&args[i]);
 
         if (i > 0) {
             result += ", ";
@@ -425,10 +420,10 @@ static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
     FO_STACK_TRACE_ENTRY();
 
     ptr<AngelScript::asIScriptEngine> as_engine = engine;
-    auto nullable_cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
+    auto cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
 
-    if (nullable_cache) {
-        CleanupScriptTypeInfoCache(nullable_cache.as_ptr());
+    if (cache) {
+        CleanupScriptTypeInfoCache(cache);
     }
 
     as_engine->SetUserData(nullptr, AS_TYPE_INFO_CACHE_USER_DATA);
@@ -438,17 +433,17 @@ static auto GetTypeInfoCache(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
+    auto cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
 
-    if (!nullable_cache) {
+    if (!cache) {
         auto cache_owner = SafeAlloc::MakeUnique<ScriptTypeInfoCache>();
-        ptr<ScriptTypeInfoCache> cache_ptr = std::move(cache_owner).release();
-        as_engine->SetUserData(cast_to_void(cache_ptr.get()), AS_TYPE_INFO_CACHE_USER_DATA);
+        auto cache_ptr = cache_owner.release();
+        as_engine->SetUserData(make_nptr(cache_ptr.get()).void_cast(), AS_TYPE_INFO_CACHE_USER_DATA);
         as_engine->SetEngineUserDataCleanupCallback(CleanupTypeInfoCache, AS_TYPE_INFO_CACHE_USER_DATA);
-        nullable_cache = cache_ptr;
+        cache = cache_ptr;
     }
 
-    return nullable_cache.as_ptr();
+    return cache;
 }
 
 static auto LookupCachedTypeInfo(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> ptr<AngelScript::asITypeInfo>
@@ -465,9 +460,8 @@ static auto LookupCachedTypeInfo(ptr<AngelScript::asIScriptEngine> as_engine, st
 
     const auto type_id = as_engine->GetTypeIdByDecl(type_key.c_str());
     FO_VERIFY_AND_THROW(type_id, "Missing AngelScript type id");
-    nptr<AngelScript::asITypeInfo> nullable_info = as_engine->GetTypeInfoById(type_id);
-    FO_VERIFY_AND_THROW(nullable_info, "Missing AngelScript type info");
-    auto type_info = nullable_info.as_ptr();
+    nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoById(type_id);
+    FO_VERIFY_AND_THROW(type_info, "Missing AngelScript type info");
     cache->Map.emplace(type_key, type_info);
     return type_info;
 }
@@ -486,9 +480,8 @@ static auto LookupCachedTypeInfoForProperty(ptr<AngelScript::asIScriptEngine> as
     const auto type_name = MakeScriptPropertyName(prop);
     const auto type_id = as_engine->GetTypeIdByDecl(type_name.c_str());
     FO_VERIFY_AND_THROW(type_id, "Missing AngelScript type id");
-    nptr<AngelScript::asITypeInfo> nullable_info = as_engine->GetTypeInfoById(type_id);
-    FO_VERIFY_AND_THROW(nullable_info, "Missing AngelScript type info");
-    auto type_info = nullable_info.as_ptr();
+    nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoById(type_id);
+    FO_VERIFY_AND_THROW(type_info, "Missing AngelScript type info");
     cache->ByProperty.emplace(prop, type_info);
     cache->Map.try_emplace(type_name, type_info);
     return type_info;
@@ -571,14 +564,12 @@ void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
         cast_from_void<string*>(construct_addr.get())->~string();
     }
     else if (prop->IsArray()) {
-        if (auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(construct_addr)) {
-            auto arr = nullable_arr.as_ptr();
+        if (auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(construct_addr)) {
             arr->Release();
         }
     }
     else if (prop->IsDict()) {
-        if (auto nullable_dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(construct_addr)) {
-            auto dict = nullable_dict.as_ptr();
+        if (auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(construct_addr)) {
             dict->Release();
         }
     }
@@ -606,7 +597,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
         auto engine = GetGameEngine(as_engine);
         const auto type_name = engine->Hashes.ToHashedString(prop->GetBaseTypeName());
-        nptr<const ProtoEntity> proto = engine->GetProtoEntity(type_name, pid);
+        auto proto = engine->GetProtoEntity(type_name, pid);
 
         if (!proto) {
             throw ScriptException("Unable to resolve proto", prop->GetName(), pid);
@@ -685,7 +676,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 for (uint32_t i = 0; i < arr_size; i++) {
                     uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                     string str = span_read_string(data_span, data_pos, str_size);
-                    arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
+                    arr->SetValue(numeric_cast<int32_t>(i), make_nptr(&str).void_cast());
                 }
             }
         }
@@ -716,7 +707,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = span_read_bytes(data_span, data_pos, sizeof(hstring::hash_t));
-                    nptr<Entity> fixed_type = resolve_fixed_type(value_data);
+                    auto fixed_type = resolve_fixed_type(value_data);
                     arr->SetValue(numeric_cast<int32_t>(i), fixed_type.get_pp());
                 }
             }
@@ -731,7 +722,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                 for (uint32_t i = 0; i < arr_size; i++) {
                     auto value_data = span_read_bytes(data_span, data_pos, sizeof(hstring::hash_t));
                     const auto hvalue = resolve_hash(value_data);
-                    arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&hvalue));
+                    arr->SetValue(numeric_cast<int32_t>(i), make_nptr(&hvalue).void_cast());
                 }
             }
         }
@@ -805,7 +796,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 const uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                                 string str = span_read_string(data_span, data_pos, str_size);
-                                arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&str));
+                                arr->SetValue(numeric_cast<int32_t>(i), make_nptr(&str).void_cast());
                             }
                         }
                         else if (prop->IsBaseTypeRefType()) {
@@ -824,7 +815,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 auto value_data = span_read_aligned_bytes(data_span, data_pos, sizeof(hstring::hash_t), alignment_for_size(sizeof(hstring::hash_t)));
-                                nptr<Entity> fixed_type = resolve_fixed_type(value_data);
+                                auto fixed_type = resolve_fixed_type(value_data);
                                 arr->SetValue(numeric_cast<int32_t>(i), fixed_type.get_pp());
                             }
                         }
@@ -834,7 +825,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             for (uint32_t i = 0; i < arr_size; i++) {
                                 auto value_data = span_read_aligned_bytes(data_span, data_pos, sizeof(hstring::hash_t), alignment_for_size(sizeof(hstring::hash_t)));
                                 const auto hvalue = resolve_hash(value_data);
-                                arr->SetValue(numeric_cast<int32_t>(i), cast_to_void(&hvalue));
+                                arr->SetValue(numeric_cast<int32_t>(i), make_nptr(&hvalue).void_cast());
                             }
                         }
                         else if (prop->IsBaseTypeEnum()) {
@@ -881,25 +872,25 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const uint32_t key_len = span_read_aligned_object<uint32_t>(data_span, data_pos);
                         const string key_str = span_read_string(data_span, data_pos, key_len);
                         const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
-                        refcount_ptr<ScriptArray> arr = read_array(arr_size);
-                        dict->Set(cast_to_void(&key_str), static_cast<void*>(arr.get_pp()));
+                        auto arr = read_array(arr_size);
+                        dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(arr.get_pp()));
                         continue;
                     }
 
                     auto key = span_read_aligned_bytes(data_span, data_pos, prop->GetDictKeyTypeSize(), alignment_for_size(prop->GetDictKeyTypeSize()));
                     const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
-                    refcount_ptr<ScriptArray> arr = read_array(arr_size);
+                    auto arr = read_array(arr_size);
 
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set(cast_to_void(&hkey), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(arr.get_pp()));
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const int32_t ekey = resolve_enum(key);
-                        dict->Set(cast_to_void(&ekey), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(arr.get_pp()));
                     }
                     else {
-                        dict->Set(cast_to_void(key.data()), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(arr.get_pp()));
                     }
                 }
             }
@@ -913,7 +904,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const string key_str = span_read_string(data_span, data_pos, key_len);
                         const uint32_t str_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                         string str = span_read_string(data_span, data_pos, str_size);
-                        dict->Set(cast_to_void(&key_str), cast_to_void(&str));
+                        dict->Set(make_nptr(&key_str).void_cast(), make_nptr(&str).void_cast());
                         continue;
                     }
 
@@ -923,14 +914,14 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set(cast_to_void(&hkey), cast_to_void(&str));
+                        dict->Set(make_nptr(&hkey).void_cast(), make_nptr(&str).void_cast());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const int32_t ekey = resolve_enum(key);
-                        dict->Set(cast_to_void(&ekey), cast_to_void(&str));
+                        dict->Set(make_nptr(&ekey).void_cast(), make_nptr(&str).void_cast());
                     }
                     else {
-                        dict->Set(cast_to_void(key.data()), cast_to_void(&str));
+                        dict->Set(make_nptr(key.data()).void_cast(), make_nptr(&str).void_cast());
                     }
                 }
             }
@@ -960,20 +951,20 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const string key_str = span_read_string(data_span, data_pos, key_len);
 
                         if (prop->IsBaseTypeRefType()) {
-                            refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                            dict->Set(cast_to_void(&key_str), static_cast<void*>(ref_obj.get_pp()));
+                            auto ref_obj = read_ref_obj();
+                            dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(ref_obj.get_pp()));
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
-                            nptr<Entity> fixed_type = read_fixed_type();
-                            dict->Set(cast_to_void(&key_str), static_cast<void*>(fixed_type.get_pp()));
+                            auto fixed_type = read_fixed_type();
+                            dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(fixed_type.get_pp()));
                         }
                         else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = read_hash();
-                            dict->Set(cast_to_void(&key_str), cast_to_void(&hvalue));
+                            dict->Set(make_nptr(&key_str).void_cast(), make_nptr(&hvalue).void_cast());
                         }
                         else {
                             const_span<uint8_t> value_data = read_raw_value();
-                            dict->Set(cast_to_void(&key_str), cast_to_void(value_data.data()));
+                            dict->Set(make_nptr(&key_str).void_cast(), make_nptr(value_data.data()).void_cast());
                         }
                     }
                     else {
@@ -983,58 +974,58 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                             const auto hkey = resolve_hash(key);
 
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                dict->Set(cast_to_void(&hkey), static_cast<void*>(ref_obj.get_pp()));
+                                auto ref_obj = read_ref_obj();
+                                dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
-                                dict->Set(cast_to_void(&hkey), static_cast<void*>(fixed_type.get_pp()));
+                                auto fixed_type = read_fixed_type();
+                                dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
-                                dict->Set(cast_to_void(&hkey), cast_to_void(&hvalue));
+                                dict->Set(make_nptr(&hkey).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
                                 const_span<uint8_t> value_data = read_raw_value();
-                                dict->Set(cast_to_void(&hkey), cast_to_void(value_data.data()));
+                                dict->Set(make_nptr(&hkey).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
                         else if (prop->IsDictKeyEnum()) {
                             const int32_t ekey = resolve_enum(key);
 
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                dict->Set(cast_to_void(&ekey), static_cast<void*>(ref_obj.get_pp()));
+                                auto ref_obj = read_ref_obj();
+                                dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
-                                dict->Set(cast_to_void(&ekey), static_cast<void*>(fixed_type.get_pp()));
+                                auto fixed_type = read_fixed_type();
+                                dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
-                                dict->Set(cast_to_void(&ekey), cast_to_void(&hvalue));
+                                dict->Set(make_nptr(&ekey).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
                                 const_span<uint8_t> value_data = read_raw_value();
-                                dict->Set(cast_to_void(&ekey), cast_to_void(value_data.data()));
+                                dict->Set(make_nptr(&ekey).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
                         else {
                             if (prop->IsBaseTypeRefType()) {
-                                refcount_ptr<DynamicRefTypeInstance> ref_obj = read_ref_obj();
-                                dict->Set(cast_to_void(key.data()), static_cast<void*>(ref_obj.get_pp()));
+                                auto ref_obj = read_ref_obj();
+                                dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(ref_obj.get_pp()));
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
-                                nptr<Entity> fixed_type = read_fixed_type();
-                                dict->Set(cast_to_void(key.data()), static_cast<void*>(fixed_type.get_pp()));
+                                auto fixed_type = read_fixed_type();
+                                dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(fixed_type.get_pp()));
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
-                                dict->Set(cast_to_void(key.data()), cast_to_void(&hvalue));
+                                dict->Set(make_nptr(key.data()).void_cast(), make_nptr(&hvalue).void_cast());
                             }
                             else {
                                 const_span<uint8_t> value_data = read_raw_value();
-                                dict->Set(cast_to_void(key.data()), cast_to_void(value_data.data()));
+                                dict->Set(make_nptr(key.data()).void_cast(), make_nptr(value_data.data()).void_cast());
                             }
                         }
                     }
@@ -1058,10 +1049,9 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
     const auto resolve_proto_hash = [](nptr<const Entity> entity) -> hstring::hash_t {
         if (entity) {
-            auto nullable_proto_entity = entity.dyn_cast<const ProtoEntity>();
-            FO_VERIFY_AND_THROW(nullable_proto_entity, "Missing required prototype entity");
-            auto proto = nullable_proto_entity.as_ptr();
-            return proto->GetProtoId().as_hash();
+            auto proto_entity = entity.dyn_cast<const ProtoEntity>();
+            FO_VERIFY_AND_THROW(proto_entity, "Missing required prototype entity");
+            return proto_entity->GetProtoId().as_hash();
         }
         else {
             return {};
@@ -1076,7 +1066,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             prop_data.SetAs<hstring::hash_t>(pid);
         }
         else if (prop->IsBaseTypeHash()) {
-            const auto hash = cast_from_void<const hstring*>(as_obj.get())->as_hash();
+            const auto hash = as_obj.reinterpret_as<const hstring>()->as_hash();
             FO_VERIFY_AND_THROW(prop->GetBaseSize() == sizeof(hash), "Property base size does not match hash storage size", prop->GetBaseSize(), sizeof(hash));
             prop_data.SetAs<hstring::hash_t>(hash);
         }
@@ -1092,34 +1082,31 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
         }
     }
     else if (prop->IsString()) {
-        auto str = cast_from_void<const string*>(as_obj.get());
+        auto str = as_obj.reinterpret_as<const string>();
         prop_data.Pass(str->data(), str->length());
     }
     else if (prop->IsArray()) {
-        auto nullable_arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(as_obj);
+        auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(as_obj);
 
         if (prop->IsArrayOfString()) {
             uint32_t arr_size = 0;
 
-            if (nullable_arr) {
-                auto arr = nullable_arr.as_ptr();
+            if (arr) {
                 arr_size = numeric_cast<uint32_t>(arr->GetSize());
             }
 
             if (arr_size != 0) {
-                auto arr = nullable_arr.as_ptr();
-
                 // Calculate size
                 size_t data_size = sizeof(uint32_t);
 
                 for (uint32_t i = 0; i < arr_size; i++) {
-                    ptr<const string> str = arr->AtAs<const string>(i);
+                    auto str = arr->AtAs<const string>(i);
                     data_size = align_up(data_size, sizeof(uint32_t));
                     data_size += sizeof(uint32_t) + numeric_cast<uint32_t>(str->length());
                 }
 
                 // Make buffer
-                ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
@@ -1127,7 +1114,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 span_write_aligned_object(buf_span, data_pos, arr_size);
 
                 for (uint32_t i = 0; i < arr_size; i++) {
-                    ptr<const string> str = arr->AtAs<const string>(i);
+                    auto str = arr->AtAs<const string>(i);
 
                     const auto str_size = numeric_cast<uint32_t>(str->length());
                     span_write_aligned_object(buf_span, data_pos, str_size);
@@ -1140,8 +1127,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
         else {
             uint32_t arr_size = 0;
 
-            if (nullable_arr) {
-                auto arr = nullable_arr.as_ptr();
+            if (arr) {
                 arr_size = numeric_cast<uint32_t>(arr->GetSize());
             }
 
@@ -1149,8 +1135,6 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 if (arr_size == 0) {
                     return 0;
                 }
-
-                auto arr = nullable_arr.as_ptr();
 
                 if (prop->IsBaseTypeRefType()) {
                     size_t size = sizeof(uint32_t);
@@ -1173,10 +1157,8 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             }();
 
             if (data_size != 0) {
-                auto arr = nullable_arr.as_ptr();
-
                 if (prop->IsBaseTypeRefType()) {
-                    ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                    auto buf = prop_data.Alloc(data_size);
                     MemFill(buf, 0, data_size);
                     auto buf_span = make_span(buf, data_size);
                     size_t data_pos = 0;
@@ -1194,7 +1176,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                     FO_VERIFY_AND_THROW(data_pos == data_size, "Serialized property byte count does not match buffer size");
                 }
                 else if (prop->IsBaseTypeProtoReference()) {
-                    ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                    auto buf = prop_data.Alloc(data_size);
                     auto buf_span = make_span(buf, data_size);
                     size_t data_pos = 0;
 
@@ -1208,7 +1190,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                     FO_VERIFY_AND_THROW(data_pos == data_size, "Serialized property byte count does not match buffer size");
                 }
                 else if (prop->IsBaseTypeHash()) {
-                    ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                    auto buf = prop_data.Alloc(data_size);
                     auto buf_span = make_span(buf, data_size);
                     size_t data_pos = 0;
 
@@ -1225,7 +1207,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         prop_data.Pass(arr->At(0), data_size);
                     }
                     else {
-                        ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                        auto buf = prop_data.Alloc(data_size);
                         auto buf_span = make_span(buf, data_size);
                         size_t data_pos = 0;
 
@@ -1240,7 +1222,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                     prop_data.Pass(arr->At(0), data_size);
                 }
                 else if (prop->IsBaseTypeStruct()) {
-                    ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                    auto buf = prop_data.Alloc(data_size);
                     auto buf_span = make_span(buf, data_size);
                     size_t data_pos = 0;
 
@@ -1266,7 +1248,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 for (auto&& [key, value] : *dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
-                        ptr<const string> key_str = dict->KeyAs<const string>(key);
+                        auto key_str = dict->KeyAs<const string>(key);
                         const auto key_len = numeric_cast<uint32_t>(key_str->length());
                         data_size = align_up(data_size, sizeof(uint32_t));
                         data_size += sizeof(key_len) + key_len;
@@ -1276,11 +1258,10 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         data_size += prop->GetDictKeyTypeSize();
                     }
 
-                    nptr<const ScriptArray> nullable_arr = dict->ValueAs<ScriptArray>(value);
+                    auto arr = dict->ValueAs<ScriptArray>(value);
                     uint32_t arr_size = 0;
 
-                    if (nullable_arr) {
-                        auto arr = nullable_arr.as_ptr();
+                    if (arr) {
                         arr_size = numeric_cast<uint32_t>(arr->GetSize());
                     }
 
@@ -1292,10 +1273,8 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                             continue;
                         }
 
-                        auto arr = nullable_arr.as_ptr();
-
                         for (uint32_t i = 0; i < arr_size; i++) {
-                            ptr<const string> str = arr->AtAs<const string>(i);
+                            auto str = arr->AtAs<const string>(i);
                             data_size = align_up(data_size, sizeof(uint32_t));
                             data_size += sizeof(uint32_t) + numeric_cast<uint32_t>(str->length());
                         }
@@ -1304,8 +1283,6 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         if (arr_size == 0) {
                             continue;
                         }
-
-                        auto arr = nullable_arr.as_ptr();
 
                         for (uint32_t i = 0; i < arr_size; i++) {
                             auto ref_data = ConvertRefTypeScriptObjectToProperty(prop, arr->AtAs<void>(i));
@@ -1327,16 +1304,16 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
 
                 // Make buffer
-                ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
-                    nptr<const ScriptArray> nullable_arr = dict->ValueAs<ScriptArray>(value);
+                    auto arr = dict->ValueAs<ScriptArray>(value);
 
                     if (prop->IsDictKeyString()) {
-                        ptr<const string> key_str = dict->KeyAs<const string>(key);
+                        auto key_str = dict->KeyAs<const string>(key);
                         const auto key_len = numeric_cast<uint32_t>(key_str->length());
                         span_write_aligned_object(buf_span, data_pos, key_len);
                         span_write_string(buf_span, data_pos, *key_str);
@@ -1351,19 +1328,16 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                     uint32_t arr_size = 0;
 
-                    if (nullable_arr) {
-                        auto arr = nullable_arr.as_ptr();
+                    if (arr) {
                         arr_size = numeric_cast<uint32_t>(arr->GetSize());
                     }
 
                     span_write_aligned_object(buf_span, data_pos, arr_size);
 
                     if (arr_size != 0) {
-                        auto arr = nullable_arr.as_ptr();
-
                         if (prop->IsDictOfArrayOfString()) {
                             for (uint32_t i = 0; i < arr_size; i++) {
-                                ptr<const string> str = arr->AtAs<const string>(i);
+                                auto str = arr->AtAs<const string>(i);
                                 const auto str_size = numeric_cast<uint32_t>(str->length());
 
                                 span_write_aligned_object(buf_span, data_pos, str_size);
@@ -1428,7 +1402,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
                 for (auto&& [key, value] : *dict->GetMap()) {
                     if (prop->IsDictKeyString()) {
-                        ptr<const string> key_str = dict->KeyAs<const string>(key);
+                        auto key_str = dict->KeyAs<const string>(key);
                         const auto key_len = numeric_cast<uint32_t>(key_str->length());
                         data_size = align_up(data_size, sizeof(uint32_t));
                         data_size += sizeof(key_len) + key_len;
@@ -1438,7 +1412,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                         data_size += prop->GetDictKeyTypeSize();
                     }
 
-                    ptr<const string> str = dict->ValueAs<const string>(value);
+                    auto str = dict->ValueAs<const string>(value);
                     const auto str_size = numeric_cast<uint32_t>(str->length());
 
                     data_size = align_up(data_size, sizeof(uint32_t));
@@ -1446,16 +1420,16 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
 
                 // Make buffer
-                ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
-                    ptr<const string> str = dict->ValueAs<const string>(value);
+                    auto str = dict->ValueAs<const string>(value);
 
                     if (prop->IsDictKeyString()) {
-                        ptr<const string> key_str = dict->KeyAs<const string>(key);
+                        auto key_str = dict->KeyAs<const string>(key);
                         const auto key_len = numeric_cast<uint32_t>(key_str->length());
                         span_write_aligned_object(buf_span, data_pos, key_len);
                         span_write_string(buf_span, data_pos, *key_str);
@@ -1482,7 +1456,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 size_t data_size = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
-                    ptr<const string> key_str = dict->KeyAs<const string>(key);
+                    auto key_str = dict->KeyAs<const string>(key);
                     const auto key_len = numeric_cast<uint32_t>(key_str->length());
                     data_size = align_up(data_size, sizeof(uint32_t));
                     data_size += sizeof(key_len) + key_len;
@@ -1504,13 +1478,13 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
                 }
 
                 // Make buffer
-                ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
 
                 for (auto&& [key, value] : *dict->GetMap()) {
-                    ptr<const string> key_str = dict->KeyAs<const string>(key);
+                    auto key_str = dict->KeyAs<const string>(key);
                     const auto key_len = numeric_cast<uint32_t>(key_str->length());
 
                     span_write_aligned_object(buf_span, data_pos, key_len);
@@ -1574,7 +1548,7 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
             }();
 
             if (data_size != 0) {
-                ptr<uint8_t> buf = prop_data.Alloc(data_size);
+                auto buf = prop_data.Alloc(data_size);
                 MemFill(buf, 0, data_size);
                 auto buf_span = make_span(buf, data_size);
                 size_t data_pos = 0;
@@ -1653,21 +1627,20 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
         break;
     }
 
-    nptr<AngelScript::asIScriptContext> ctx = AngelScript::asGetActiveContext();
+    auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-    nptr<const AngelScript::asITypeInfo> nullable_as_type_info = as_engine->GetTypeInfoById(type_id);
-    FO_VERIFY_AND_THROW(nullable_as_type_info, "Missing required AngelScript type info");
-    auto type_info = nullable_as_type_info.as_ptr();
-    const string type_name = type_info->GetName();
+    nptr<const AngelScript::asITypeInfo> as_type_info = as_engine->GetTypeInfoById(type_id);
+    FO_VERIFY_AND_THROW(as_type_info, "Missing required AngelScript type info");
+    const string type_name = as_type_info->GetName();
     auto meta = GetEngineMetadata(as_engine);
 
     if (type_name == "string") {
-        auto value = cast_from_void<const string*>(script_obj.get());
+        auto value = script_obj.reinterpret_as<const string>();
         return strex("string: {}", *value);
     }
     if (type_name == "hstring") {
-        auto value = cast_from_void<const hstring*>(script_obj.get());
+        auto value = script_obj.reinterpret_as<const hstring>();
         return strex("hstring: {}", *value);
     }
     if (type_name == "any") {
@@ -1686,7 +1659,7 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
         return strex("synctime: {}", *cast_from_void<const synctime*>(script_obj.get()));
     }
 
-    if (const auto enum_value_count = type_info->GetEnumValueCount(); enum_value_count != 0) {
+    if (const auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
         int32_t enum_value = 0;
 
         if (meta->IsValidBaseType(type_name)) {
@@ -1706,7 +1679,7 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
 
         for (AngelScript::asUINT i = 0; i < enum_value_count; i++) {
             AngelScript::asINT64 check_enum_value = 0;
-            ptr<const char> enum_value_name = type_info->GetEnumValueByIndex(i, &check_enum_value);
+            ptr<const char> enum_value_name = as_type_info->GetEnumValueByIndex(i, &check_enum_value);
 
             if (check_enum_value == enum_value) {
                 return strex("{}: {}", type_name, enum_value_name.get());
@@ -1849,14 +1822,13 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    auto fields_registrator = base_type.RefType->FieldsRegistrator.as_ptr();
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(fields_registrator);
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator.as_ptr());
     ref_instance->LoadFromRawData(base_type, raw_data);
 
     return ref_instance;
 }
 
-auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> nullable_as_obj) -> vector<uint8_t>
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1864,12 +1836,11 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<voi
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    if (!nullable_as_obj) {
+    if (!as_obj) {
         return {};
     }
 
-    auto as_object = nullable_as_obj.as_ptr();
-    ptr<DynamicRefTypeInstance> ref_instance = cast_from_void<DynamicRefTypeInstance*>(as_object.get());
+    auto ref_instance = as_obj.reinterpret_as<DynamicRefTypeInstance>();
     const_span<uint8_t> raw_data = ref_instance->GetSerializedRawData(base_type);
 
     return {raw_data.begin(), raw_data.end()};
@@ -1904,18 +1875,18 @@ auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<vo
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_object = gen->GetObject();
-    FO_STRONG_ASSERT(nullable_object, "Generic call object is null");
-    return nullable_object.as_ptr();
+    nptr<void> object = gen->GetObject();
+    FO_STRONG_ASSERT(object, "Generic call object is null");
+    return object;
 }
 
 auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_auxiliary = gen->GetAuxiliary();
-    FO_STRONG_ASSERT(nullable_auxiliary, "Generic call auxiliary is null");
-    return nullable_auxiliary.as_ptr();
+    nptr<void> auxiliary = gen->GetAuxiliary();
+    FO_STRONG_ASSERT(auxiliary, "Generic call auxiliary is null");
+    return auxiliary;
 }
 
 auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>
@@ -1929,9 +1900,9 @@ auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_i
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_arg_address = gen->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Generic call argument address is null");
-    return nullable_arg_address.as_ptr();
+    nptr<void> arg_address = gen->GetAddressOfArg(arg_index);
+    FO_STRONG_ASSERT(arg_address, "Generic call argument address is null");
+    return arg_address;
 }
 
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept
@@ -1975,7 +1946,7 @@ auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<void> slot_address = static_cast<void*>(slot->get_pp());
+    auto slot_address = make_ptr(static_cast<void*>(slot->get_pp()));
     return slot_address;
 }
 
@@ -1983,18 +1954,18 @@ auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_arg_address = ctx->GetAddressOfArg(arg_index);
-    FO_STRONG_ASSERT(nullable_arg_address, "Context argument address is null");
-    return nullable_arg_address.as_ptr();
+    nptr<void> arg_address = ctx->GetAddressOfArg(arg_index);
+    FO_STRONG_ASSERT(arg_address, "Context argument address is null");
+    return arg_address;
 }
 
 auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<void> nullable_return_value = ctx->GetAddressOfReturnValue();
-    FO_STRONG_ASSERT(nullable_return_value, "Context return value address is null");
-    return nullable_return_value.as_ptr();
+    nptr<void> return_value = ctx->GetAddressOfReturnValue();
+    FO_STRONG_ASSERT(return_value, "Context return value address is null");
+    return return_value;
 }
 
 auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>

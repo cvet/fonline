@@ -200,7 +200,7 @@ namespace
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
                 type.Size = sizeof(int32_t);
-                nptr<const BaseTypeDesc> int32_type = &_types.at("int32");
+                auto int32_type = make_nptr(&_types.at("int32"));
                 type.EnumUnderlyingType = int32_type;
                 return type;
             };
@@ -230,7 +230,7 @@ namespace
 
                 BaseTypeDesc type;
                 type.Name = "Waypoint";
-                nptr<const StructLayoutDesc> waypoint_layout = &_layouts.at("Waypoint");
+                auto waypoint_layout = make_nptr(&_layouts.at("Waypoint"));
                 type.StructLayout = waypoint_layout;
                 type.Size = type.StructLayout->Size;
                 type.IsComplexStruct = true;
@@ -255,8 +255,8 @@ namespace
                 type.Name = "RouteSnapshot";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteSnapshot");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteSnapshot"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -277,8 +277,8 @@ namespace
                 type.Name = "RouteEnvelope";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteEnvelope");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteEnvelope"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -434,7 +434,7 @@ namespace
             const auto type_hname = _proto_hashes.ToHashedString(type_name);
             const auto proto_hname = _proto_hashes.ToHashedString(proto_id);
             FO_VERIFY_AND_THROW(_proto_registrator.has_value(), "Proto registrator not initialized");
-            ptr<const PropertyRegistrator> proto_registrator = &*_proto_registrator;
+            auto proto_registrator = make_ptr(&*_proto_registrator);
 
             _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, proto_registrator, nullptr));
         }
@@ -462,15 +462,14 @@ namespace
         result.reserve(raw_data.size());
 
         for (size_t i = 0; i < raw_data.size(); i++) {
-            const auto nullable_data = raw_data[i];
+            const auto data = raw_data[i];
             const auto size = raw_sizes[i];
 
             if (size == 0) {
                 result.emplace_back();
             }
             else {
-                REQUIRE(nullable_data);
-                auto data = nullable_data.as_ptr();
+                REQUIRE(data);
                 const auto data_span = make_const_span(data, size);
                 result.emplace_back(data_span.begin(), data_span.end());
             }
@@ -602,13 +601,13 @@ namespace
         [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
-            return ProbeIntProp.as_ptr();
+            return ProbeIntProp;
         }
 
         [[nodiscard]] auto GetProbeStringProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
-            return ProbeStringProp.as_ptr();
+            return ProbeStringProp;
         }
 
         [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
@@ -738,7 +737,7 @@ namespace
         static auto GetSpecProp(const PerfPropertySpec& spec) -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(spec.Prop, "Perf property spec has no property");
-            return spec.Prop.as_ptr();
+            return spec.Prop;
         }
     };
 
@@ -788,13 +787,13 @@ namespace
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
     private:
@@ -1029,19 +1028,19 @@ namespace
         [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(FloatLabelsProp, "Float labels property not registered");
-            return FloatLabelsProp.as_ptr();
+            return FloatLabelsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
@@ -1418,7 +1417,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1458,7 +1458,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1497,7 +1498,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 

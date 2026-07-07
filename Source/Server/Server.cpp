@@ -104,9 +104,9 @@ auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_ctx = GetCurrentSyncContext();
-    FO_VERIFY_AND_THROW(nullable_ctx, "Missing script execution context");
-    return nullable_ctx.as_ptr();
+    auto ctx = GetCurrentSyncContext();
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    return ctx;
 }
 
 auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
@@ -419,7 +419,8 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
     const auto wrap_post_setter = [this](void (ServerEngine::*callback)(ptr<Entity>, ptr<const Property>)) -> PropertyPostSetCallback {
         return [this, callback](nptr<Entity> entity, ptr<const Property> prop) FO_DEFERRED {
             FO_VERIFY_AND_THROW(entity, "Missing entity in property post-setter");
-            auto entity_ptr = entity.as_ptr();
+            auto entity_ptr = entity;
+            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
             (this->*callback)(entity_ptr, prop);
         };
     };
@@ -430,9 +431,8 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
         const auto& registrator = type_desc.PropRegistrator;
 
         for (size_t i = 1; i < registrator->GetPropertiesCount(); i++) {
-            auto nullable_prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            FO_VERIFY_AND_THROW(nullable_prop, "Property not found by index");
-            auto prop = nullable_prop.as_ptr();
+            auto prop = registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
             if (prop->IsDisabled()) {
                 continue;
@@ -452,12 +452,12 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
     {
         const auto set_send_callbacks = [](nptr<const PropertyRegistrator> registrator, const PropertyPostSetCallback& callback) {
             FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator.as_ptr();
+            auto registrator_ptr = registrator;
+            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
 
             for (size_t i = 1; i < registrator_ptr->GetPropertiesCount(); i++) {
-                auto nullable_prop = registrator_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i));
-                FO_VERIFY_AND_THROW(nullable_prop, "Property not found by index");
-                auto prop = nullable_prop.as_ptr();
+                auto prop = registrator_ptr->GetPropertyByIndex(numeric_cast<int32_t>(i));
+                FO_VERIFY_AND_THROW(prop, "Property not found by index");
 
                 if (prop->IsDisabled()) {
                     continue;
@@ -490,27 +490,28 @@ auto ServerEngine::InitMetadataJob() -> std::optional<timespan>
     {
         const auto set_setter = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertySetCallback callback) {
             FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator.as_ptr();
+            auto registrator_ptr = registrator;
+            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
 
-            auto nullable_prop = registrator_ptr->GetPropertyByIndex(prop_index);
-            FO_VERIFY_AND_THROW(nullable_prop, "Property not found by index");
-            auto prop = nullable_prop.as_ptr();
+            auto prop = registrator_ptr->GetPropertyByIndex(prop_index);
+            FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddSetter(std::move(callback));
         };
         const auto set_post_setter = [](nptr<const PropertyRegistrator> registrator, int32_t prop_index, PropertyPostSetCallback callback) {
             FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
-            auto registrator_ptr = registrator.as_ptr();
+            auto registrator_ptr = registrator;
+            FO_VERIFY_AND_THROW(registrator_ptr, "Property registrator pointer is null");
 
-            auto nullable_prop = registrator_ptr->GetPropertyByIndex(prop_index);
-            FO_VERIFY_AND_THROW(nullable_prop, "Property not found by index");
-            auto prop = nullable_prop.as_ptr();
+            auto prop = registrator_ptr->GetPropertyByIndex(prop_index);
+            FO_VERIFY_AND_THROW(prop, "Property not found by index");
             prop->AddPostSetter(std::move(callback));
         };
 
         set_post_setter(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), Critter::LookDistance_RegIndex, wrap_post_setter(&ServerEngine::OnSetCritterLookDistance));
         set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Count_RegIndex, [this](nptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data) FO_DEFERRED {
             FO_VERIFY_AND_THROW(entity, "Missing entity in property setter");
-            auto entity_ptr = entity.as_ptr();
+            auto entity_ptr = entity;
+            FO_VERIFY_AND_THROW(entity_ptr, "Entity pointer is null");
             OnSetItemCount(entity_ptr, prop, data.GetPtr());
         });
         set_post_setter(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), Item::Hidden_RegIndex, wrap_post_setter(&ServerEngine::OnSetItemHidden));
@@ -923,7 +924,7 @@ void ServerEngine::UpdateCpuStats(nanotime cur_time)
     Platform::CpuUsageSnapshot current_snapshot = Platform::GetCpuUsageSnapshot();
 
     if (_stats.LastCpuUsageSnapshot.has_value()) {
-        ptr<const Platform::CpuUsageSnapshot> previous_snapshot = &*_stats.LastCpuUsageSnapshot;
+        auto previous_snapshot = make_ptr(&*_stats.LastCpuUsageSnapshot);
         const size_t core_count = std::min(previous_snapshot->Cores.size(), current_snapshot.Cores.size());
         const size_t logical_core_count = std::max<size_t>(numeric_cast<size_t>(current_snapshot.LogicalCoreCount), 1);
 
@@ -1077,8 +1078,7 @@ void ServerEngine::Shutdown()
             size_t aborted_locks = 0;
 
             for (const auto& entity : entities) {
-                if (auto nullable_lock = entity->GetEntityLock()) {
-                    auto lock = nullable_lock.as_ptr();
+                if (auto lock = entity->GetEntityLock()) {
                     lock->AbortPendingWaiters();
                     aborted_locks++;
                 }
@@ -1129,8 +1129,7 @@ void ServerEngine::Shutdown()
         entity->UnsubscribeAllEvents();
         entity->ClearAllTimeEvents();
 
-        if (nptr<Item> nullable_item = entity.dyn_cast<Item>()) {
-            auto item = nullable_item.as_ptr();
+        if (auto item = entity.dyn_cast<Item>()) {
             item->StaticScriptFunc = {};
             item->TriggerScriptFunc = {};
         }
@@ -1222,7 +1221,8 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
-    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
+    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_nptr();
+    FO_VERIFY_AND_THROW(external_lock_sync_ctx, "External lock sync context is null");
     external_lock_sync_ctx->Activate();
     return true;
 }
@@ -1232,7 +1232,8 @@ void ServerEngine::Unlock()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
-    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_ptr();
+    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_nptr();
+    FO_VERIFY_AND_THROW(external_lock_sync_ctx, "External lock sync context is null");
     external_lock_sync_ctx->Release();
     external_lock_sync_ctx->Deactivate();
     ExternalLockSyncCtx.reset();
@@ -1472,7 +1473,7 @@ void ServerEngine::DrawGui()
     function<void(ptr<const Item>)> draw_item;
 
     draw_item = [&](ptr<const Item> item) {
-        ImGui::PushID(cast_to_void(item.get()));
+        ImGui::PushID(make_nptr(item.get()).void_cast());
 
         const auto label = strex("{} ({}) x{}", item->GetName(), item->GetId(), item->GetCount()).str();
 
@@ -1517,7 +1518,7 @@ void ServerEngine::DrawGui()
     };
 
     const auto draw_critter = [&](ptr<const Critter> cr) {
-        ImGui::PushID(cast_to_void(cr.get()));
+        ImGui::PushID(make_nptr(cr.get()).void_cast());
 
         const string_view cond_str = cond_to_str(cr->GetCondition());
         const auto label = strex("{} ({}) [{}]", cr->GetName(), cr->GetId(), cond_str).str();
@@ -1569,7 +1570,7 @@ void ServerEngine::DrawGui()
     };
 
     const auto draw_map = [&](ptr<const Map> map) {
-        ImGui::PushID(cast_to_void(map.get()));
+        ImGui::PushID(make_nptr(map.get()).void_cast());
 
         const auto label = strex("{} ({})", map->GetProtoId(), map->GetId()).str();
 
@@ -1629,12 +1630,12 @@ void ServerEngine::DrawGui()
 
         for (size_t i = 0; i < players.size(); i++) {
             auto player = players[i].as_ptr();
-            ImGui::PushID(cast_to_void(player.get()));
+            ImGui::PushID(make_nptr(player.get()).void_cast());
 
             const auto label = strex("{} ({})", player->GetName(), player->GetId()).str();
 
             if (ImGui::TreeNode(label.c_str())) {
-                const auto nullable_controlled_critter = player->GetControlledCritter();
+                const auto controlled_critter = player->GetControlledCritter();
                 auto connection = player->GetConnection();
 
                 if (begin_info_table("##PlayerSummary")) {
@@ -1656,13 +1657,12 @@ void ServerEngine::DrawGui()
                 }
 
                 if (ImGui::TreeNode("Properties")) {
-                    draw_properties_table(player.as_ptr());
+                    draw_properties_table(player);
                     ImGui::TreePop();
                 }
 
-                if (nullable_controlled_critter) {
+                if (controlled_critter) {
                     if (ImGui::TreeNode("Controlled critter")) {
-                        auto controlled_critter = nullable_controlled_critter.as_ptr();
                         draw_critter(controlled_critter);
                         ImGui::TreePop();
                     }
@@ -1714,7 +1714,7 @@ void ServerEngine::DrawGui()
 
         for (size_t i = 0; i < locations.size(); i++) {
             auto loc = locations[i].as_ptr();
-            ImGui::PushID(cast_to_void(loc.get()));
+            ImGui::PushID(make_nptr(loc.get()).void_cast());
 
             const auto label = strex("{} ({})", loc->GetProtoId(), loc->GetId()).str();
 
@@ -1728,7 +1728,7 @@ void ServerEngine::DrawGui()
                 }
 
                 if (ImGui::TreeNode("Properties")) {
-                    draw_properties_table(loc.as_ptr());
+                    draw_properties_table(loc);
                     ImGui::TreePop();
                 }
 
@@ -1893,8 +1893,7 @@ auto ServerEngine::CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net
     // `Sync::Lock(player)`. Network-thread path has no current context - the conditional skips
     // safely there; the player isn't reachable from script until it's placed into the unlogined
     // list anyway.
-    if (nptr<SyncContext> nullable_outermost = SyncContext::GetOutermostOnThisThread()) {
-        auto outermost = nullable_outermost.as_ptr();
+    if (auto outermost = SyncContext::GetOutermostOnThisThread()) {
         outermost->EnsureEntitySynced(unlogined_player);
     }
 
@@ -1958,7 +1957,7 @@ void ServerEngine::ProcessUnloginedPlayer(ptr<Player> unlogined_player)
                     break;
                 }
 
-                ptr<UpdaterBackend> updater_backend = &*_updaterBackend;
+                auto updater_backend = make_ptr(&*_updaterBackend);
                 updater_backend->ProcessUpdateFile(unlogined_player, Settings->UpdateFileMaxPortionSize);
                 break;
             }
@@ -2128,13 +2127,12 @@ auto ServerEngine::CreateCritter(hstring pid, bool for_player, nptr<const Proper
 
     WriteLog(LogType::Info, "Create critter {}", pid);
 
-    auto nullable_proto = GetProtoCritter(pid);
+    auto proto = GetProtoCritter(pid);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw GenericException("Critter proto not found", pid);
     }
 
-    auto proto = nullable_proto.as_ptr();
     auto cr = SafeAlloc::MakeRefCounted<Critter>(this, ident_t {}, proto, props);
 
     EntityMngr.RegisterCritter(cr);
@@ -2176,11 +2174,10 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     bool is_error = false;
     refcount_nptr<Critter> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
-    auto nullable_cr = cr_holder.as_nptr();
+    auto cr = cr_holder.as_nptr();
 
     if (is_error) {
-        if (nullable_cr) {
-            auto cr = nullable_cr.as_ptr();
+        if (cr) {
             cr->MarkAsDestroying();
             UnloadCritterInnerEntities(cr);
             cr->MarkAsDestroyed();
@@ -2190,11 +2187,9 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
         throw GenericException("Critter data base loading error");
     }
 
-    if (!nullable_cr) {
+    if (!cr) {
         throw GenericException("Critter proto removed by migration rule", cr_id);
     }
-
-    auto cr = nullable_cr.as_ptr();
 
     if (for_player) {
         cr->MarkIsForPlayer();
@@ -2276,7 +2271,8 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
     function<void(ptr<Entity>)> unload_inner_entities;
 
     unload_inner_entities = [this, &unload_inner_entities](ptr<Entity> holder) {
-        auto inner_entities = holder->GetInnerEntities().as_ptr();
+        auto inner_entities = holder->GetInnerEntities();
+        FO_VERIFY_AND_THROW(inner_entities, "Inner entities collection is null");
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {
@@ -2326,47 +2322,44 @@ void ServerEngine::UnloadCritterInnerEntities(ptr<Critter> cr)
     }
 }
 
-void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullable_cr)
+void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
     EnsureEntitySynced(player);
-    EnsureEntitySynced(nullable_cr);
+    EnsureEntitySynced(cr);
 
-    if (nullable_cr && nullable_cr->GetMapId()) {
-        auto nullable_map = nullable_cr->GetParent<Map>();
-        FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-        auto map = nullable_map.as_ptr();
+    if (cr && cr->GetMapId()) {
+        auto map = cr->GetParent<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
         ValidateEntityAccess(map);
 
-        auto nullable_loc = map->GetLocation();
-        FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-        ValidateEntityAccess(nullable_loc.as_ptr());
+        auto loc = map->GetLocation();
+        FO_VERIFY_AND_THROW(loc, "Missing location instance");
+        ValidateEntityAccess(loc);
     }
 
-    auto nullable_prev_cr = player->GetControlledCritter();
-    auto prev_cr_holder = nullable_prev_cr.try_hold_ref();
+    auto prev_cr = player->GetControlledCritter();
+    auto prev_cr_holder = prev_cr.try_hold_ref();
     ignore_unused(prev_cr_holder);
-    EnsureEntitySynced(nullable_prev_cr);
+    EnsureEntitySynced(prev_cr);
 
-    if (!nullable_cr) {
-        if (!nullable_prev_cr) {
+    if (!cr) {
+        if (!prev_cr) {
             return;
         }
 
-        auto prev_cr = nullable_prev_cr.as_ptr();
         WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
         player->DetachCritter();
         return;
     }
 
-    auto cr = nullable_cr.as_ptr();
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
 
     nptr<Critter> target_cr = cr;
 
-    if (nullable_prev_cr == target_cr) {
+    if (prev_cr == target_cr) {
         throw GenericException("Player critter already selected");
     }
     if (!cr->GetControlledByPlayer()) {
@@ -2380,14 +2373,13 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
 
     player->ResetViewMap();
 
-    if (nullable_prev_cr) {
-        auto prev_cr = nullable_prev_cr.as_ptr();
+    if (prev_cr) {
         prev_cr->DetachPlayer();
     }
 
     cr->AttachPlayer(player);
 
-    SendCritterInitialInfo(cr, nullable_prev_cr);
+    SendCritterInitialInfo(cr, prev_cr);
 
     auto controlled_cr = player->GetControlledCritter();
     nptr<Critter> selected_cr = cr;
@@ -2401,9 +2393,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullabl
         return;
     }
 
-    if (nullable_prev_cr) {
-        auto prev_cr = nullable_prev_cr.as_ptr();
-
+    if (prev_cr) {
         ValidateEntityAccess(player);
         ValidateEntityAccess(cr);
         ValidateEntityAccess(prev_cr);
@@ -2426,54 +2416,50 @@ void ServerEngine::DestroyUnloadedCritter(ident_t cr_id)
     DbStorage.Delete(Hashes.ToHashedString("Critters"), cr_id);
 }
 
-void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullable_prev_cr)
+void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr)
 {
     FO_STACK_TRACE_ENTRY();
 
     auto cr_holder = cr.hold_ref();
-    auto prev_cr_holder = nullable_prev_cr.try_hold_ref();
+    auto prev_cr_holder = prev_cr.try_hold_ref();
     ignore_unused(cr_holder);
     ignore_unused(prev_cr_holder);
     ValidateEntityAccess(cr);
-    ValidateEntityAccess(nullable_prev_cr);
+    ValidateEntityAccess(prev_cr);
 
-    refcount_nptr<Map> nullable_map {};
+    refcount_nptr<Map> map {};
 
     if (cr->GetMapId()) {
-        nullable_map = require_refcount_ptr(cr->GetParent<Map>());
+        map = require_refcount_ptr(cr->GetParent<Map>());
     }
 
     ident_t map_id {};
 
-    if (nullable_map) {
-        auto map = nullable_map.as_ptr();
+    if (map) {
         map_id = map->GetId();
     }
 
     ident_t prev_cr_id {};
 
-    if (nullable_prev_cr) {
-        auto prev_cr = nullable_prev_cr.as_ptr();
+    if (prev_cr) {
         prev_cr_id = prev_cr->GetId();
     }
 
-    FO_VERIFY_AND_THROW(!!cr->GetMapId() == !!nullable_map, "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map_id, prev_cr_id);
-    ValidateEntityAccess(nullable_map);
+    FO_VERIFY_AND_THROW((cr->GetMapId() != ident_t {}) == static_cast<bool>(map), "Critter map id and parent map presence disagree before sending initial info", cr->GetId(), cr->GetMapId(), map_id, prev_cr_id);
+    ValidateEntityAccess(map);
 
     cr->Send_TimeSync();
 
     const bool same_map = [&]() {
-        if (!nullable_prev_cr) {
+        if (!prev_cr) {
             return false;
         }
 
-        auto prev_cr = nullable_prev_cr.as_ptr();
         return prev_cr->GetMapId() == cr->GetMapId();
     }();
 
     if (same_map) {
         // Remove entities diff
-        auto prev_cr = nullable_prev_cr.as_ptr();
         cr->Send_RemoveCritter(prev_cr);
 
         for (ptr<Critter> visible_cr : prev_cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
@@ -2484,28 +2470,26 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
 
         for (const auto item_id : prev_cr->GetVisibleItems()) {
             if (!cr->IsSeeItem(item_id)) {
-                if (refcount_nptr<Item> nullable_item = EntityMngr.GetItem(item_id); nullable_item) {
-                    auto item = nullable_item.as_ptr();
-                    cr->Send_RemoveItemFromMap(item);
+                if (auto item = EntityMngr.GetItem(item_id)) {
+                    cr->Send_RemoveItemFromMap(item.as_ptr());
                 }
             }
         }
     }
     else {
-        if (nullable_map) {
-            auto map = nullable_map.as_ptr();
-            auto nullable_loc = map->GetLocation();
-            FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-            ValidateEntityAccess(nullable_loc);
+        if (map) {
+            auto loc = map->GetLocation();
+            FO_VERIFY_AND_THROW(loc, "Missing location instance");
+            ValidateEntityAccess(loc);
         }
 
-        cr->Send_LoadMap(nullable_map);
+        cr->Send_LoadMap(map);
     }
 
     cr->Broadcast_Action(CritterAction::Connect, 0, nullptr);
     cr->Send_AddCritter(cr);
 
-    if (!nullable_map) {
+    if (!map) {
         for (ptr<Critter> group_cr : cr->GetGlobalMapGroup()) {
             if (group_cr != cr) {
                 cr->Send_AddCritter(group_cr);
@@ -2514,10 +2498,8 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
     }
     else {
         // Send current critters
-        for (ptr<Critter> visible_cr : cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
+        for (auto visible_cr : cr->GetCritters(CritterSeeType::WhoISee, CritterFindType::Any)) {
             if (same_map) {
-                auto prev_cr = nullable_prev_cr.as_ptr();
-
                 if (prev_cr->IsSeeCritter(visible_cr->GetId())) {
                     continue;
                 }
@@ -2529,16 +2511,13 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
         // Send current items on map
         for (const auto item_id : cr->GetVisibleItems()) {
             if (same_map) {
-                auto prev_cr = nullable_prev_cr.as_ptr();
-
                 if (prev_cr->IsSeeItem(item_id)) {
                     continue;
                 }
             }
 
-            if (refcount_nptr<Item> nullable_item = EntityMngr.GetItem(item_id); nullable_item) {
-                auto item = nullable_item.as_ptr();
-                cr->Send_AddItemOnMap(item);
+            if (auto item = EntityMngr.GetItem(item_id)) {
+                cr->Send_AddItemOnMap(item.as_ptr());
             }
         }
     }
@@ -2550,9 +2529,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
         return;
     }
 
-    if (nullable_map) {
-        auto map = nullable_map.as_ptr();
-
+    if (map) {
         if (map->IsDestroyed() || cr->GetMapId() != map->GetId()) {
             return;
         }
@@ -2569,9 +2546,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullabl
         }
     }
 
-    if (nptr<Player> nullable_player = cr->GetPlayer()) {
-        auto player = nullable_player.as_ptr();
-
+    if (auto player = cr->GetPlayer()) {
         if (player->GetViewMap()) {
             player->Send_ViewMap();
         }
@@ -2626,7 +2601,7 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     const_span<uint8_t> update_desc {};
 
     if (_updaterBackend) {
-        ptr<UpdaterBackend> updater_backend = &*_updaterBackend;
+        auto updater_backend = make_ptr(&*_updaterBackend);
         update_desc = updater_backend->GetUpdateDescriptor(requested_binary_target);
     }
 
@@ -2897,13 +2872,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     }
 
     refcount_nptr<Player> player_ref {};
-    nptr<Player> nullable_player {};
+    nptr<Player> player {};
     bool registered_player = false;
     bool reconnect_swapped = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
-        if (reconnect_swapped) {
-            safe_call([&] { nullable_player->SwapConnection(unlogined_player); });
+        if (reconnect_swapped && player) {
+            safe_call([&] { player->SwapConnection(unlogined_player); });
         }
 
         if (registered_player) {
@@ -2921,11 +2896,12 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     }};
 
     player_ref = EntityMngr.GetPlayer(player_id);
-    nullable_player = player_ref;
+    player = player_ref;
 
-    if (!nullable_player) {
-        nullable_player = unlogined_player;
-        auto player = nullable_player.as_ptr();
+    if (!player) {
+        player = unlogined_player;
+        FO_VERIFY_AND_THROW(player, "Player must resolve to the unlogined player when the stored record is absent");
+
         const auto player_doc = DbStorage.Get(PlayersCollectionName, player_id);
 
         if (player_doc.Empty()) {
@@ -2961,7 +2937,6 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         }
     }
     else {
-        auto player = nullable_player.as_ptr();
         auto ctx = RequireCurrentSyncContext();
         const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player.as_nptr()};
         ctx->SyncEntities(sync_entities);
@@ -2991,19 +2966,17 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
 
         unlogined_player->MarkAsDestroyed();
 
-        auto nullable_cr = player->GetControlledCritter();
+        auto cr = player->GetControlledCritter();
 
-        if (nullable_cr) {
-            auto cr = nullable_cr.as_ptr();
+        if (cr) {
             SendCritterInitialInfo(cr, nullptr);
         }
     }
 
-    auto player = nullable_player.as_ptr();
     OnPlayerLogined(player, unlogined_player);
 
     disconnect_on_error.release();
-    return nullable_player;
+    return player;
 }
 
 auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>
@@ -3090,49 +3063,45 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     in_buf.Unlock();
 
-    auto nullable_map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
-    if (!nullable_map) {
+    if (!map) {
         WriteLog("Process_Move: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto map = std::move(nullable_map).take_not_null();
-    auto map_ptr = map.as_ptr();
-    auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto nullable_cr = cr_ref.as_nptr();
+    auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, cr};
     ctx->SyncEntities(sync_entities);
 
-    if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
+    if (player->IsDestroyed() || map->IsDestroyed()) {
         return;
     }
 
-    if (!nullable_cr) {
-        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (!cr) {
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = nullable_cr.as_ptr();
     nptr<Critter> expected_cr = cr;
 
-    if (cr->IsDestroyed() || map_ptr->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+        WriteLog("Process_Move: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (speed == 0) {
-        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName());
-        player->Send_Moving(cr);
+        WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
     if (cr->GetIsAttached()) {
-        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName());
-        player->Send_Attachments(cr);
-        player->Send_Moving(cr);
+        WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        player->Send_Attachments(cr.as_ptr());
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
@@ -3141,20 +3110,20 @@ void ServerEngine::Process_Move(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr.as_ptr(), corrected_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map_ptr->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
         return;
     }
-    if (cr->GetMapId() != map_ptr->GetId() || map_ptr->GetCritter(cr_id) != expected_cr) {
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
     if (move_result == EventResult::StopChain) {
-        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), speed);
-        player->Send_Moving(cr);
+        WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
@@ -3162,11 +3131,11 @@ void ServerEngine::Process_Move(ptr<Player> player)
     const auto cr_hex = cr->GetHex();
 
     if (cr_hex != start_hex) {
-        const auto find_result = MapMngr.FindPath(map_ptr, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
+        const auto find_result = MapMngr.FindPath(map.as_ptr(), cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
-            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
-            player->Send_Moving(cr);
+            WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
+            player->Send_Moving(cr.as_ptr());
             return;
         }
 
@@ -3187,16 +3156,16 @@ void ServerEngine::Process_Move(ptr<Player> player)
         auto validate_hex = cr_hex;
         size_t valid_step_count = 0;
 
-        const auto check_hex = [map_ptr](mpos h) -> HexBlockResult { return map_ptr->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
+        const auto check_hex = [map](mpos h) -> HexBlockResult { return map->IsHexMovable(h) ? HexBlockResult::Passable : HexBlockResult::Blocked; };
 
         for (const auto& step : steps) {
             auto next_hex = validate_hex;
 
-            if (!GeometryHelper::MoveHexByDir(next_hex, step, map_ptr->GetSize())) {
+            if (!GeometryHelper::MoveHexByDir(next_hex, step, map->GetSize())) {
                 break;
             }
 
-            const auto block = PathFinding::CheckHexWithMultihex(next_hex, step, multihex, map_ptr->GetSize(), check_hex);
+            const auto block = PathFinding::CheckHexWithMultihex(next_hex, step, multihex, map->GetSize(), check_hex);
 
             if (block == HexBlockResult::Blocked) {
                 break;
@@ -3207,8 +3176,8 @@ void ServerEngine::Process_Move(ptr<Player> player)
         }
 
         if (valid_step_count == 0) {
-            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
-            player->Send_Moving(cr);
+            WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
+            player->Send_Moving(cr.as_ptr());
             return;
         }
 
@@ -3229,23 +3198,23 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     if (end_hex_offset.x < -GameSettings::MAP_HEX_WIDTH / 2 || end_hex_offset.x > GameSettings::MAP_HEX_WIDTH / 2) {
-        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), end_hex_offset.x, end_hex_offset.y);
+        WriteLog("Process_Move: end_hex_offset.x out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
     if (end_hex_offset.y < -GameSettings::MAP_HEX_HEIGHT / 2 || end_hex_offset.y > GameSettings::MAP_HEX_HEIGHT / 2) {
-        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), end_hex_offset.x, end_hex_offset.y);
+        WriteLog("Process_Move: end_hex_offset.y out of range, player '{}', critter '{}' ({}) on map '{}', offset ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), end_hex_offset.x, end_hex_offset.y);
     }
 
     const auto clamped_end_hex_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
     const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
 
     nptr<const Player> initiator = player;
-    StartCritterMoving(cr, numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
+    StartCritterMoving(cr.as_ptr(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
 
     if (path_truncated) {
-        player->Send_Moving(cr);
+        player->Send_Moving(cr.as_ptr());
     }
     if (corrected_speed != numeric_cast<int32_t>(speed)) {
-        player->Send_MovingSpeed(cr);
+        player->Send_MovingSpeed(cr.as_ptr());
     }
 }
 
@@ -3265,48 +3234,44 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     in_buf.Unlock();
 
-    auto nullable_map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
-    if (!nullable_map) {
+    if (!map) {
         WriteLog("Process_StopMove: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto map = std::move(nullable_map).take_not_null();
-    auto map_ptr = map.as_ptr();
-    auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto nullable_cr = cr_ref.as_nptr();
+    auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, cr};
     ctx->SyncEntities(sync_entities);
 
-    if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
+    if (player->IsDestroyed() || map->IsDestroyed()) {
         return;
     }
 
-    if (!nullable_cr) {
-        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (!cr) {
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = nullable_cr.as_ptr();
-    nptr<Critter> expected_cr = cr;
+    auto expected_cr = cr;
 
-    if (cr->IsDestroyed() || map_ptr->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+        WriteLog("Process_StopMove: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
     if (cr->GetIsAttached()) {
-        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName());
-        player->Send_Attachments(cr);
-        player->Send_Moving(cr);
+        WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        player->Send_Attachments(cr.as_ptr());
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
     if (!cr->IsMoving()) {
-        player->Send_Moving(cr);
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
@@ -3315,43 +3280,43 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr.as_ptr(), zero_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map_ptr->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
         return;
     }
-    if (cr->GetMapId() != map_ptr->GetId() || map_ptr->GetCritter(cr_id) != expected_cr) {
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
     if (move_result == EventResult::StopChain) {
-        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName());
-        player->Send_Moving(cr);
+        WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
     const uint32_t stop_moving_uid = cr->GetMovingUid();
 
-    ReconcileCritterStopPosition(player, cr, map_ptr, client_hex, client_hex_offset, client_dir);
+    ReconcileCritterStopPosition(player, cr.as_ptr(), map.as_ptr(), client_hex, client_hex_offset, client_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map_ptr->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
         return;
     }
-    if (cr->GetMapId() != map_ptr->GetId() || map_ptr->GetCritter(cr_id) != expected_cr) {
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
     if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
-        player->Send_Moving(cr);
+        player->Send_Moving(cr.as_ptr());
         return;
     }
 
     nptr<const Player> ignore_player = player;
-    StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
+    StopCritterMoving(cr.as_ptr(), MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr.as_ptr()); }); });
 }
 
 void ServerEngine::Process_Dir(ptr<Player> player)
@@ -3367,36 +3332,32 @@ void ServerEngine::Process_Dir(ptr<Player> player)
 
     in_buf.Unlock();
 
-    auto nullable_map = EntityMngr.GetMap(map_id);
+    auto map = EntityMngr.GetMap(map_id);
 
-    if (!nullable_map) {
+    if (!map) {
         WriteLog("Process_Dir: map not found, player '{}', map_id {}, cr_id {}", player->GetName(), map_id, cr_id);
         return;
     }
 
-    auto map = std::move(nullable_map).take_not_null();
-    auto map_ptr = map.as_ptr();
-    auto cr_ref = EntityMngr.GetCritter(cr_id);
-    auto nullable_cr = cr_ref.as_nptr();
+    auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, nullable_cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
     ctx->SyncEntities(sync_entities);
 
-    if (player->IsDestroyed() || map_ptr->IsDestroyed()) {
+    if (player->IsDestroyed() || map->IsDestroyed()) {
         return;
     }
 
-    if (!nullable_cr) {
-        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (!cr) {
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
-    auto cr = nullable_cr.as_ptr();
-    nptr<Critter> expected_cr = cr;
+    auto expected_cr = cr;
 
-    if (cr->IsDestroyed() || map_ptr->GetCritter(cr_id) != expected_cr) {
-        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map_ptr->GetName(), map_id, cr_id);
+    if (cr->IsDestroyed() || map->GetCritter(cr_id) != expected_cr) {
+        WriteLog("Process_Dir: critter not found, player '{}', map '{}' ({}), cr_id {}", player->GetName(), map->GetName(), map_id, cr_id);
         return;
     }
 
@@ -3405,25 +3366,25 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr.as_ptr(), checked_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
     }
-    if (cr->IsDestroyed() || map_ptr->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+    if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
         return;
     }
-    if (cr->GetMapId() != map_ptr->GetId() || map_ptr->GetCritter(cr_id) != expected_cr) {
+    if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
     if (dir_result == EventResult::StopChain) {
-        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map_ptr->GetName(), dir.angle());
-        player->Send_Dir(cr);
+        WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
+        player->Send_Dir(cr.as_ptr());
         return;
     }
 
     cr->ChangeDir(checked_dir);
-    cr->SendAndBroadcast(player, [cr](ptr<Player> p) { p->Send_Dir(cr); });
+    cr->SendAndBroadcast(player, [cr](ptr<Player> p) { p->Send_Dir(cr.as_ptr()); });
 }
 
 void ServerEngine::Process_Property(ptr<Player> player)
@@ -3473,144 +3434,101 @@ void ServerEngine::Process_Property(ptr<Player> player)
     in_buf.Unlock();
 
     bool is_public = false;
-    nptr<const Property> nullable_prop;
-    refcount_nptr<ServerEntity> entity_ref {};
-    nptr<Entity> nullable_entity;
-    const auto get_property = [](nptr<const PropertyRegistrator> nullable_registrator, uint16_t property_index_) -> nptr<const Property> {
-        FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
-        auto registrator = nullable_registrator.as_ptr();
+    nptr<const Property> prop;
+    nptr<Entity> entity;
+    const auto get_property = [](nptr<const PropertyRegistrator> registrator, uint16_t property_index_) -> nptr<const Property> {
+        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
         return registrator->GetPropertyByIndex(numeric_cast<int32_t>(property_index_));
     };
 
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(GameProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            nullable_entity = this;
+        if (prop) {
+            entity = this;
         }
         break;
     case NetProperty::Player:
-        nullable_prop = get_property(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(PlayerProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            nullable_entity = player;
+        if (prop) {
+            entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            auto nullable_cr = EntityMngr.GetCritter(cr_id);
-
-            if (nullable_cr) {
-                entity_ref = std::move(nullable_cr).take_not_null();
-                nullable_entity = entity_ref;
-            }
+        if (prop) {
+            entity = EntityMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        nullable_prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(CritterProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            nullable_entity = cr;
+        if (prop) {
+            entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            auto nullable_item = EntityMngr.GetItem(item_id);
-
-            if (nullable_item) {
-                auto item = nullable_item.as_ptr();
-
-                if (!item->GetHidden()) {
-                    entity_ref = std::move(nullable_item).take_not_null();
-                    nullable_entity = entity_ref;
-                }
-            }
+        if (prop) {
+            entity = EntityMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
-            auto nullable_cr = EntityMngr.GetCritter(cr_id);
+        if (prop) {
+            auto cr2 = EntityMngr.GetCritter(cr_id);
 
-            if (nullable_cr) {
-                auto cr_ptr = nullable_cr.as_ptr();
-                auto nullable_item = cr_ptr->GetInvItem(item_id);
+            if (cr2) {
+                auto item = cr2->GetInvItem(item_id);
 
-                if (nullable_item) {
-                    auto item = nullable_item.as_ptr();
-
-                    if (!item->GetHidden()) {
-                        entity_ref = std::move(nullable_cr).take_not_null(); // Keep the inventory item alive via entity_ref's lock
-                        nullable_entity = item;
-                    }
+                if (item && !item->GetHidden()) {
+                    entity = item;
                 }
             }
         }
         break;
     case NetProperty::ChosenItem:
-        nullable_prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(ItemProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
+        if (prop) {
             if (cr) {
-                auto cr_ptr = cr.as_ptr();
-                auto nullable_item = cr_ptr->GetInvItem(item_id);
+                auto item = cr->GetInvItem(item_id);
 
-                if (nullable_item) {
-                    auto item = nullable_item.as_ptr();
-
-                    if (!item->GetHidden()) {
-                        nullable_entity = item;
-                    }
+                if (item && !item->GetHidden()) {
+                    entity = item;
                 }
             }
         }
         break;
     case NetProperty::Map:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
+        if (prop) {
             if (cr) {
-                auto cr_ptr = cr.as_ptr();
-                auto nullable_map = cr_ptr->GetParent<Map>();
-
-                if (nullable_map) {
-                    auto map_holder = std::move(nullable_map).take_not_null();
-                    entity_ref = std::move(map_holder);
-                    nullable_entity = entity_ref;
-                }
+                entity = cr->GetParent<Map>();
             }
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        nullable_prop = get_property(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), property_index);
+        prop = get_property(GetPropertyRegistrator(LocationProperties::ENTITY_TYPE_NAME), property_index);
 
-        if (nullable_prop) {
+        if (prop) {
             if (cr) {
-                auto cr_ptr = cr.as_ptr();
-                auto nullable_map = cr_ptr->GetParent<Map>();
+                auto map = cr->GetParent<Map>();
 
-                if (nullable_map) {
-                    auto map = nullable_map.as_ptr();
-                    auto nullable_loc = map->GetLocation();
-
-                    if (nullable_loc) {
-                        auto loc = nullable_loc.as_ptr();
-                        auto loc_holder = require_refcount_ptr(EntityMngr.GetLocation(loc->GetId()));
-                        entity_ref = std::move(loc_holder);
-                        nullable_entity = entity_ref;
-                    }
+                if (map) {
+                    entity = map->GetLocation();
                 }
             }
         }
@@ -3619,15 +3537,12 @@ void ServerEngine::Process_Property(ptr<Player> player)
         break;
     }
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw GenericException("Unknown property index", player->GetName(), type, property_index);
     }
-    if (!nullable_entity) {
+    if (!entity) {
         throw GenericException("Entity not found for property", player->GetName(), type, property_index, cr_id, item_id);
     }
-
-    auto entity = nullable_entity.as_ptr();
-    auto prop = nullable_prop.as_ptr();
 
     if (prop->IsDisabled()) {
         throw GenericException("Property is disabled", prop->GetName(), player->GetName(), type, entity->GetName());
@@ -3776,9 +3691,8 @@ void ServerEngine::OnSendPlayerValue(ptr<Entity> entity, ptr<const Property> pro
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_player = entity.dyn_cast<Player>();
-    FO_VERIFY_AND_THROW(nullable_player, "Missing player instance");
-    auto player = nullable_player.as_ptr();
+    auto player = entity.dyn_cast<Player>();
+    FO_VERIFY_AND_THROW(player, "Missing player instance");
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
@@ -3787,9 +3701,8 @@ void ServerEngine::OnSendCritterValue(ptr<Entity> entity, ptr<const Property> pr
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_cr = entity.dyn_cast<Critter>();
-    FO_VERIFY_AND_THROW(nullable_cr, "Missing critter instance");
-    auto cr = nullable_cr.as_ptr();
+    auto cr = entity.dyn_cast<Critter>();
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
     if (prop->IsPublicSync() || prop->IsOwnerSync()) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
@@ -3803,9 +3716,8 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_item = entity.dyn_cast<Item>();
-    FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-    auto item = nullable_item.as_ptr();
+    auto item = entity.dyn_cast<Item>();
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStatic() && item->GetId()) {
         switch (item->GetOwnership()) {
@@ -3828,10 +3740,10 @@ void ServerEngine::OnSendItemValue(ptr<Entity> entity, ptr<const Property> prop)
         } break;
         case ItemOwnership::MapHex: {
             if (prop->IsPublicSync()) {
-                auto map_ptr = require_refcount_ptr(item->GetParent<Map>());
+                auto map = require_refcount_ptr(item->GetParent<Map>());
 
                 if (item->CanSendItem(true)) {
-                    map_ptr->SendProperty(NetProperty::MapItem, prop, item);
+                    map->SendProperty(NetProperty::MapItem, prop, item);
                 }
             }
         } break;
@@ -3846,9 +3758,8 @@ void ServerEngine::OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop)
     FO_STACK_TRACE_ENTRY();
 
     if (prop->IsPublicSync()) {
-        auto nullable_map = entity.dyn_cast<Map>();
-        FO_VERIFY_AND_THROW(nullable_map, "Missing map instance");
-        auto map = nullable_map.as_ptr();
+        auto map = entity.dyn_cast<Map>();
+        FO_VERIFY_AND_THROW(map, "Missing map instance");
 
         map->SendProperty(NetProperty::Map, prop, map);
     }
@@ -3859,9 +3770,8 @@ void ServerEngine::OnSendLocationValue(ptr<Entity> entity, ptr<const Property> p
     FO_STACK_TRACE_ENTRY();
 
     if (prop->IsPublicSync()) {
-        auto nullable_loc = entity.dyn_cast<Location>();
-        FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-        auto loc = nullable_loc.as_ptr();
+        auto loc = entity.dyn_cast<Location>();
+        FO_VERIFY_AND_THROW(loc, "Missing location instance");
 
         for (ptr<Map> map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -3873,9 +3783,8 @@ void ServerEngine::OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Propert
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_custom_entity = entity.dyn_cast<CustomEntity>();
-    FO_VERIFY_AND_THROW(nullable_custom_entity, "Missing custom entity instance");
-    auto custom_entity = nullable_custom_entity.as_ptr();
+    auto custom_entity = entity.dyn_cast<CustomEntity>();
+    FO_VERIFY_AND_THROW(custom_entity, "Missing custom entity instance");
 
     EntityMngr.ForEachCustomEntityView(custom_entity, [&](ptr<Player> player, bool owner) {
         if (owner || prop->IsPublicSync()) {
@@ -3888,10 +3797,9 @@ void ServerEngine::OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Proper
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_cr = entity.dyn_cast<Critter>();
-    FO_VERIFY_AND_THROW(nullable_cr, "Missing critter instance");
+    auto cr = entity.dyn_cast<Critter>();
+    FO_VERIFY_AND_THROW(cr, "Missing critter instance");
 
-    auto cr = nullable_cr.as_ptr();
     MapMngr.ProcessVisibleCritters(cr);
 
     ptr<const Property> look_distance_prop = cr->GetPropertyLookDistance();
@@ -3906,10 +3814,9 @@ void ServerEngine::OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, 
 
     ignore_unused(prop);
 
-    auto nullable_item = entity.dyn_cast<Item>();
+    auto item = entity.dyn_cast<Item>();
     const auto new_count = MemReadUnaligned<uint32_t>(new_value);
-    FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-    auto item = nullable_item.as_ptr();
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (!item->GetStackable() && new_count != 1) {
         throw GenericException("Trying to change count of not stackable item");
@@ -3925,9 +3832,8 @@ void ServerEngine::OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop)
 
     ignore_unused(prop);
 
-    auto nullable_item = entity.dyn_cast<Item>();
-    FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-    auto item = nullable_item.as_ptr();
+    auto item = entity.dyn_cast<Item>();
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map = require_refcount_ptr(item->GetParent<Map>());
@@ -3954,9 +3860,8 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
     ignore_unused(prop);
 
     // NoBlock, ShootThru, IsGag, IsTrigger
-    auto nullable_item = entity.dyn_cast<Item>();
-    FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-    auto item = nullable_item.as_ptr();
+    auto item = entity.dyn_cast<Item>();
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map = require_refcount_ptr(item->GetParent<Map>());
@@ -3970,9 +3875,8 @@ void ServerEngine::OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property
 
     ignore_unused(prop);
 
-    auto nullable_item = entity.dyn_cast<Item>();
-    FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
-    auto item = nullable_item.as_ptr();
+    auto item = entity.dyn_cast<Item>();
+    FO_VERIFY_AND_THROW(item, "Missing item instance");
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto map_holder = require_refcount_ptr(item->GetParent<Map>());
@@ -3987,9 +3891,8 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
-    auto nullable_moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
-    auto moving = nullable_moving.as_ptr();
+    auto moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     const auto validate_moving = [this, cr, expected_uid = cr->GetMovingUid(), expected_map_id = cr->GetMapId(), map](mpos expected_hex) -> bool {
@@ -4139,9 +4042,8 @@ auto ServerEngine::ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter>
 
     FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
 
-    auto nullable_moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(nullable_moving, "Missing active movement state");
-    auto moving = nullable_moving.as_ptr();
+    auto moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance = 2;
@@ -4403,9 +4305,8 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     cr->StopMoving(MovingState::Stopped);
     cr->SetMoving(std::move(moving));
 
-    auto nullable_moving_context = cr->GetMoving();
-    FO_VERIFY_AND_THROW(nullable_moving_context, "Missing active movement state");
-    auto moving_context = nullable_moving_context.as_ptr();
+    auto moving_context = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
     moving_context->ValidateRuntimeState();
     cr->SetMovingSpeed(moving_context->GetSpeed());
 
@@ -4448,8 +4349,8 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     }
 
     auto map = parent.dyn_cast<Map>();
-    FO_STRONG_ASSERT(!parent || !!map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
-    FO_STRONG_ASSERT(!!cr->GetMapId() == !!map, "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    FO_STRONG_ASSERT(!parent || map, "Critter is on a non-map parent entity during movement job", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
+    FO_STRONG_ASSERT((cr->GetMapId() != ident_t {}) == static_cast<bool>(map), "Critter map id and parent map presence disagree during critter synchronization", cr->GetId(), cr->GetMapId(), map ? map->GetId() : ident_t {});
 
     try {
         if (map && !cr->GetIsAttached()) {

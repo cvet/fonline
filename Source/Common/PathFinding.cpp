@@ -212,7 +212,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
                 }
 
                 const auto next_hex = map_size.from_raw_pos(raw_next_hex);
-                ptr<int16_t> grid_cell = grid_at(next_hex);
+                auto grid_cell = grid_at(next_hex);
 
                 if (*grid_cell != 0) {
                     continue;

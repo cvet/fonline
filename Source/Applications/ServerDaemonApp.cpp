@@ -57,7 +57,7 @@ int main(int argc, char** argv)
         InitApp(args, AppInitFlags::PrebakeResources);
 
         {
-            ptr<GlobalSettings> settings = &GetApp()->Settings;
+            auto settings = make_ptr(&GetApp()->Settings);
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {

@@ -45,7 +45,7 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>;
 
 // SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, Item*, bool> initFunc)
+FO_SCRIPT_API void Server_Item_SetupScript(ptr<Item> self, ScriptFunc<void, ptr<Item>, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -81,7 +81,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, hstring pid, int32_t
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count, stackId);
-    return item.as_ptr();
+    return item;
 }
 
 // SyncScope: requires self; creates and attaches a new inner item under the container cover.
@@ -96,7 +96,7 @@ FO_SCRIPT_API ptr<Item> Server_Item_AddItem(ptr<Item> self, ptr<ProtoItem> proto
     }
 
     auto item = self->GetEngine()->ItemMngr.AddItemContainer(self, proto->GetProtoId(), count, stackId);
-    return item.as_ptr();
+    return item;
 }
 
 // SyncScope: requires self; returns inner item handles covered by self while the cover remains.
@@ -153,13 +153,12 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
-        auto cr_ptr = cr.as_ptr();
 
-        if (!cr_ptr->GetMapId()) {
+        if (!cr->GetMapId()) {
             return nullptr;
         }
 
-        auto map = RequireParent<Map>(cr_ptr, "Critter ownership, map not found");
+        auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
 
         return std::move(map);
     } break;
@@ -189,16 +188,15 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
-        auto cr_ptr = cr.as_ptr();
 
-        if (!cr_ptr->GetMapId()) {
+        if (!cr->GetMapId()) {
             hex = {};
             return nullptr;
         }
 
-        auto map = RequireParent<Map>(cr_ptr, "Critter ownership, map not found");
+        auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
 
-        hex = cr_ptr->GetHex();
+        hex = cr->GetHex();
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {

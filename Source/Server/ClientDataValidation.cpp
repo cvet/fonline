@@ -58,7 +58,7 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
     T value {};
 
     if (!data.empty()) {
-        ptr<uint8_t> target = ptr<T> {&value}.template reinterpret_as<uint8_t>();
+        auto target = ptr<T> {&value}.template reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), sizeof(T));
     }
 
@@ -74,7 +74,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     int32_t value = 0;
 
     if (!data.empty()) {
-        ptr<uint8_t> target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
+        auto target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), data.size());
     }
 
@@ -335,7 +335,8 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
     FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type descriptor");
     FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    auto fields_registrator = ref_type.RefType->FieldsRegistrator.as_ptr();
+    auto fields_registrator = ref_type.RefType->FieldsRegistrator;
+    FO_VERIFY_AND_THROW(fields_registrator, "Reference type fields registrator is null");
     size_t offset = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {

@@ -81,7 +81,7 @@ auto Location::GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _proto.dyn_cast<ProtoLocation>().as_ptr();
+    return _proto.dyn_cast<ProtoLocation>();
 }
 
 auto Location::GetMaps() const -> vector<ptr<const Map>>

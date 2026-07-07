@@ -47,7 +47,8 @@ auto PropertiesSerializator::SaveToDocument(ptr<const Properties> props, nptr<co
     AnyData::Document doc;
 
     for (size_t i = 1; i < props->GetRegistrator()->GetPropertiesCount(); i++) {
-        auto prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i)).as_ptr();
+        auto prop = props->GetRegistrator()->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        FO_VERIFY_AND_THROW(prop, "Property is null");
 
         if (prop->IsDisabled()) {
             continue;
@@ -105,10 +106,9 @@ auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyDa
 
         try {
             // Find property
-            auto nullable_prop = props->GetRegistrator()->FindProperty(doc_key);
+            auto prop = props->GetRegistrator()->FindProperty(doc_key);
 
-            if (nullable_prop && !nullable_prop->IsDisabled() && nullable_prop->IsPersistent()) {
-                auto prop = nullable_prop.as_ptr();
+            if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
             else {
@@ -226,7 +226,7 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
         }
     }
 
-    ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
+    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
     result = string_view {&str[begin], pos - begin};
     return next_token;
 }
@@ -257,7 +257,7 @@ static auto RawMutableObjectBytes(T& value) noexcept -> ptr<uint8_t>
 
     static_assert(std::is_trivially_copyable_v<T>);
 
-    ptr<T> value_ptr = &value;
+    auto value_ptr = make_ptr(&value);
     return value_ptr.template reinterpret_as<uint8_t>();
 }
 
@@ -268,7 +268,7 @@ static auto RawObjectBytes(const T& value) noexcept -> ptr<const uint8_t>
 
     static_assert(std::is_trivially_copyable_v<T>);
 
-    ptr<const T> value_ptr = &value;
+    auto value_ptr = make_ptr(&value);
     return value_ptr.template reinterpret_as<const uint8_t>();
 }
 
@@ -276,7 +276,7 @@ static auto RawWritePtrAt(ptr<uint8_t> data, size_t pos) noexcept -> ptr<uint8_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return data.get() + pos;
+    return data.offset(pos);
 }
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool
@@ -400,13 +400,12 @@ static auto ReadPropertyRawUInt32(ptr<const Property> prop, string_view message,
     return ReadRawValue<uint32_t>(bytes);
 }
 
-static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void> nullable_source, size_t size)
+static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void> source, size_t size)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (size != 0) {
-        FO_VERIFY_AND_THROW(nullable_source, "Raw write source is null for a non-empty copy");
-        auto source = nullable_source.as_ptr();
+        FO_VERIFY_AND_THROW(source, "Raw write source is null for a non-empty copy");
         auto target_pos = RawWritePtrAt(target, data_pos);
         MemCopy(target_pos, source, size);
     }
@@ -441,7 +440,7 @@ static void WriteCursorBytes(RawWriteCursor& cursor, nptr<const void> source, si
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(cursor.Data, "Write cursor has no target buffer");
-    WriteRawBytes(cursor.Data.as_ptr(), cursor.Pos, source, size);
+    WriteRawBytes(cursor.Data, cursor.Pos, source, size);
 }
 
 template<typename T>
@@ -759,11 +758,11 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Propert
     FO_STACK_TRACE_ENTRY();
 
     const auto decoded = StringEscaping::DecodeString(text);
-    nptr<const char> s = decoded.c_str();
+    auto s = make_nptr(decoded.c_str());
     string_view token;
 
     for (const auto& field : base_type.StructLayout->Fields) {
-        s = ReadTextTokenView(s.as_ptr(), token);
+        s = ReadTextTokenView(s, token);
 
         if (!s) {
             throw PropertySerializationException("Wrong struct size (from text)");
@@ -772,7 +771,7 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Propert
         AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
     }
 
-    if (ReadTextTokenView(s.as_ptr(), token)) {
+    if (ReadTextTokenView(s, token)) {
         throw PropertySerializationException("Wrong struct size (from text)");
     }
 }
@@ -884,7 +883,7 @@ static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& bas
     FO_STACK_TRACE_ENTRY();
 
     const auto decoded = encoded_text ? StringEscaping::DecodeString(text) : string(text);
-    nptr<const char> s = decoded.c_str();
+    auto s = make_nptr(decoded.c_str());
     string_view token;
     vector<uint8_t> data;
     data.reserve(std::max<size_t>(decoded.length() + sizeof(uint32_t), 32));
@@ -894,7 +893,7 @@ static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& bas
         data.resize(sizeof(uint32_t));
     }
 
-    while ((s = ReadTextTokenView(s.as_ptr(), token))) {
+    while ((s = ReadTextTokenView(s, token))) {
         AppendBaseTypeFromText(data, prop, base_type, token, hash_resolver, name_resolver);
         arr_size++;
     }
@@ -1058,7 +1057,8 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         }
     }
     else if (base_type.IsComplexStruct) {
-        auto struct_layout = base_type.StructLayout.as_ptr();
+        auto struct_layout = base_type.StructLayout;
+        FO_VERIFY_AND_THROW(struct_layout, "Struct layout is null");
         AnyData::Array struct_value;
         struct_value.Reserve(struct_layout->Fields.size());
 
@@ -1111,7 +1111,7 @@ static auto GetRefTypeFieldsRegistrator(const BaseTypeDesc& base_type) -> ptr<co
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType != nullptr, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator != nullptr, "Reference type has no fields registrator");
-    return base_type.RefType->FieldsRegistrator.as_ptr();
+    return base_type.RefType->FieldsRegistrator;
 }
 
 static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, const function<void(ptr<const Property>, const_span<uint8_t>)>& callback)
@@ -1122,8 +1122,7 @@ static void ForEachRefTypeFieldRawData(string_view owner_name, const BaseTypeDes
     size_t data_pos = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto nullable_field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-        auto field_prop = nullable_field_prop.as_ptr();
+        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
@@ -1168,10 +1167,9 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
     size_t last_non_default_field = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto nullable_field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-        auto field_prop = nullable_field_prop.as_ptr();
-        const auto field_raw_data = field_props.GetRawData(field_prop);
-        const auto is_default = IsDefaultPropertyRawData(field_prop, field_raw_data);
+        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        const auto field_raw_data = field_props.GetRawData(field_prop.as_ptr());
+        const auto is_default = IsDefaultPropertyRawData(field_prop.as_ptr(), field_raw_data);
 
         field_raw_entries[i] = field_raw_data;
         field_is_default[i] = is_default;
@@ -1277,13 +1275,12 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     Properties field_props(fields_registrator);
 
     for (auto&& [field_name, field_value] : dict) {
-        auto nullable_field_prop = fields_registrator->FindProperty(field_name);
+        auto field_prop = fields_registrator->FindProperty(field_name);
 
-        if (!nullable_field_prop) {
+        if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
 
-        auto field_prop = nullable_field_prop.as_ptr();
         PropertiesSerializator::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
     }
 
@@ -1311,16 +1308,15 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         const string_view field_name = fields_arr[i].AsString();
-        auto nullable_field_prop = fields_registrator->FindProperty(field_name);
+        auto field_prop = fields_registrator->FindProperty(field_name);
 
-        if (!nullable_field_prop) {
+        if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
         if (!seen_fields.emplace(field_name).second) {
             throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 
-        auto field_prop = nullable_field_prop.as_ptr();
         PropertiesSerializator::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
     }
 
@@ -1334,7 +1330,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    ptr<const BaseTypeDesc> base_type = &prop->GetBaseType();
+    auto base_type = make_ptr(&prop->GetBaseType());
     size_t data_pos = 0;
     const auto read_array_size = [&]() -> uint32_t { return ReadPropertyRawUInt32(prop, "Corrupted array property data", raw_data, data_pos); };
     const auto read_dict_size = [&]() -> uint32_t { return ReadPropertyRawUInt32(prop, "Corrupted dict property data", raw_data, data_pos); };
@@ -1400,7 +1396,7 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
         AnyData::Dict dict;
 
         if (!raw_data.empty()) {
-            ptr<const BaseTypeDesc> dict_key_type = &prop->GetDictKeyType();
+            auto dict_key_type = make_ptr(&prop->GetDictKeyType());
 
             if (dict_key_type->IsSimpleStruct) {
                 dict_key_type = &dict_key_type->StructLayout->Fields.front().Type;
@@ -1703,7 +1699,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<c
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    ptr<const BaseTypeDesc> base_type = &prop->GetBaseType();
+    auto base_type = make_ptr(&prop->GetBaseType());
     size_t data_pos = 0;
     const auto read_array_size = [&]() -> uint32_t { return ReadPropertyRawUInt32(prop, "Corrupted array property data", raw_data, data_pos); };
     const auto read_dict_size = [&]() -> uint32_t { return ReadPropertyRawUInt32(prop, "Corrupted dict property data", raw_data, data_pos); };
@@ -1770,7 +1766,7 @@ auto PropertiesSerializator::SavePropertyToText(ptr<const Property> prop, span<c
         string dict_str;
         dict_str.reserve(std::max<size_t>(raw_data.size() * 2, 128));
         bool next_iteration = false;
-        ptr<const BaseTypeDesc> dict_key_type = &prop->GetDictKeyType();
+        auto dict_key_type = make_ptr(&prop->GetDictKeyType());
 
         if (dict_key_type->IsSimpleStruct) {
             dict_key_type = &dict_key_type->StructLayout->Fields.front().Type;
@@ -1991,7 +1987,8 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         }
     }
     else if (base_type.IsComplexStruct) {
-        auto struct_layout = base_type.StructLayout.as_ptr();
+        auto struct_layout = base_type.StructLayout;
+        FO_VERIFY_AND_THROW(struct_layout, "Struct layout is null");
 
         if (value.Type() == AnyData::ValueType::Array) {
             const auto& struct_value = value.AsArray();
@@ -2069,7 +2066,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    ptr<const BaseTypeDesc> base_type = &prop->GetBaseType();
+    auto base_type = make_ptr(&prop->GetBaseType());
 
     // Parse value
     if (prop->IsPlainData()) {
@@ -2086,7 +2083,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
         }
         else {
             uint8_t primitive_data[sizeof(size_t)];
-            ptr<uint8_t> data = primitive_data;
+            auto data = make_ptr(primitive_data);
             size_t data_pos = 0;
 
             ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, value, data, data_pos);
@@ -2208,7 +2205,7 @@ void PropertiesSerializator::LoadPropertyFromValue(ptr<const Property> prop, con
             return;
         }
 
-        ptr<const BaseTypeDesc> dict_key_type = &prop->GetDictKeyType();
+        auto dict_key_type = make_ptr(&prop->GetDictKeyType());
 
         if (dict_key_type->IsSimpleStruct) {
             dict_key_type = &dict_key_type->StructLayout->Fields.front().Type;
@@ -2447,11 +2444,11 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
         if (prop->IsBaseTypeComplexStruct()) {
             data.reserve(prop->GetBaseSize());
             const string source_text {text};
-            nptr<const char> s = source_text.c_str();
+            auto s = make_nptr(source_text.c_str());
             string_view token;
 
             for (const auto& field : prop->GetBaseTypeLayout().Fields) {
-                s = ReadTextTokenView(s.as_ptr(), token);
+                s = ReadTextTokenView(s, token);
                 if (!s) {
                     throw PropertySerializationException("Wrong struct size (from text)");
                 }
@@ -2459,7 +2456,7 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
                 AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
             }
 
-            if (ReadTextTokenView(s.as_ptr(), token)) {
+            if (ReadTextTokenView(s, token)) {
                 throw PropertySerializationException("Wrong struct size (from text)");
             }
         }
@@ -2504,12 +2501,12 @@ void PropertiesSerializator::LoadPropertyFromText(ptr<Properties> props, ptr<con
     }
     else if (prop->IsDict()) {
         const string source_text {text};
-        nptr<const char> s = source_text.c_str();
+        auto s = make_nptr(source_text.c_str());
         string_view key_token;
         string_view value_token;
         data.reserve(std::max<size_t>(text.length() * 2, 64));
 
-        while ((s = ReadTextTokenView(s.as_ptr(), key_token)) && (s = ReadTextTokenView(s.as_ptr(), value_token))) {
+        while ((s = ReadTextTokenView(s, key_token)) && (s = ReadTextTokenView(s, value_token))) {
             AppendBaseTypeFromText(data, prop, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
 
             if (prop->IsDictOfArray()) {

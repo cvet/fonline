@@ -67,8 +67,7 @@ auto GetApp() noexcept -> ptr<Application>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(IsAppInitialized(), "Application accessed before initialization");
-    auto app = App.as_ptr();
-    return app;
+    return App;
 }
 
 void ResetApp() noexcept
@@ -115,7 +114,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Tracy
 #if FO_TRACY
-    ptr<const char> program_name = FO_NICE_NAME.c_str();
+    auto program_name = make_ptr(FO_NICE_NAME.c_str());
     TracySetProgramName(program_name.get());
 #endif
 

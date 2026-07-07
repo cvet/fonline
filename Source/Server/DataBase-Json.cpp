@@ -142,7 +142,7 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t length = 0;
-        nptr<char> json_lookup = bson_as_canonical_extended_json(&bson, &length);
+        auto json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &length));
 
         if (!json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
@@ -191,7 +191,7 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t new_length = 0;
-        nptr<char> new_json_lookup = bson_as_canonical_extended_json(&bson, &new_length);
+        auto new_json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &new_length));
 
         if (!new_json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
