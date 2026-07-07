@@ -106,6 +106,7 @@ private:
     void Net_OnDisconnect();
     void Net_OnInitData();
     void Net_OnTimeSync();
+    void Net_OnHashList();
     void Net_OnUpdateFileData();
 
     auto IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool;

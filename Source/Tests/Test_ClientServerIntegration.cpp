@@ -41,6 +41,7 @@
 #include "DataSerialization.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -363,6 +364,19 @@ namespace ClientServerIntegrationClient
 
         return false;
     }
+
+    static auto WaitForUpdaterResult(Updater& updater) -> bool
+    {
+        for (int32_t i = 0; i < 2000; i++) {
+            if (updater.Process()) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
 }
 
 TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
@@ -598,6 +612,50 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(second_client, server, 2));
     REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
     CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    const auto reported = server->Hashes.ToHashedString("integration_test_updater_hash");
+
+    client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
+    client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
+    client->GetConnection()->OutBuf->EndMsg();
+
+    REQUIRE(WaitForLearnedHash(client, reported.as_hash(), "integration_test_updater_hash"));
+    client->Disconnect();
+
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+    CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
+    CHECK_FALSE(updater.IsAborted());
 }
 
 TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
