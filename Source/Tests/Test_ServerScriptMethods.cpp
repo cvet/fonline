@@ -1460,10 +1460,13 @@ namespace ScriptMethodsTest
         if (created is null) return -3;
         if (!Game.IsEntityLocked(created)) return -4;
 
-        Game.SyncRelease();
-
+        // Destroy while both critters are still covered ({anchor} from the explicit Sync, {created}
+        // from registration self-sync): destroying restricts the context, so a released-then-destroy
+        // sequence would leave the second critter uncovered.
         Game.DestroyCritter(created);
         Game.DestroyCritter(anchor);
+
+        Game.SyncRelease();
 
         return 0;
     }
@@ -2727,6 +2730,10 @@ namespace ScriptMethodsTest
         Game.Lock();
         Game.SyncRelease();
 
+        // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
+        // needed. Re-cover all three critters before destroying: each destroy restricts the
+        // context to its own target, so consecutive uncovered destroys would be rejected.
+        Game.Sync(cr1, cr2, cr3);
         Game.DestroyCritter(cr1);
         Game.DestroyCritter(cr2);
         Game.DestroyCritter(cr3);

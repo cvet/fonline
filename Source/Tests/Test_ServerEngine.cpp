@@ -1367,11 +1367,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
     // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
     // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
-    // plus the null/empty short-circuits.
+    // plus the null short-circuit and the stop-the-world universal-cover grant.
 
-    // Empty context: no held locks → the access gate grants everything, including a null entity.
+    // Strict model: an empty context is NOT exempt — no held lock means no entity access. Only a
+    // null entity short-circuits to granted.
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
     // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
@@ -1442,13 +1443,17 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
     ctx.Release();
 
-    // EnsureEntitySynced is a no-op in fully empty/unrestricted mode: registering a fresh entity must
-    // not accidentally turn the scope into a partial lock set. Once a scope is restricted (including
-    // a singleton Game.Lock-style lock), it adds one lock and is idempotent when already covered.
+    // EnsureEntitySynced ALWAYS takes the entity's own lock, including under a still-empty context:
+    // a freshly registered entity is a real, uncovered lock the moment it exists, and leaving it
+    // unlocked would let a concurrent job mutate it while the creator is still initializing it.
+    // The context thereby becomes restricted — the pulled entity is covered, an unrelated sibling
+    // is not. With a singleton lock held it likewise adds the one lock and stays idempotent.
     ctx.EnsureEntitySynced(cr_a);
-    CHECK(ctx.IsEmpty());
+    CHECK_FALSE(ctx.IsEmpty());
+    CHECK(ctx.ValidateAccess(cr_a));
     CHECK(IsEntityAccessValid(cr_a));
-    CHECK(IsEntityAccessValid(cr_b));
+    CHECK_FALSE(IsEntityAccessValid(cr_b));
+    ctx.Release();
 
     ctx.LockSingleton(server->GetEntityLock().get());
     ctx.EnsureEntitySynced(cr_a);
@@ -1478,7 +1483,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a)); // empty again → unrestricted
+    CHECK_FALSE(IsEntityAccessValid(cr_a)); // empty again → strict model: still no cover, access denied
 }
 
 // ============================================================================

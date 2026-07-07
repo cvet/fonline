@@ -814,8 +814,7 @@ FO_SCRIPT_API void Server_Critter_MakeControllable(ptr<Critter> self, bool contr
     if (self->GetMapId()) {
         auto map = self->GetParent<Map>();
         FO_VERIFY_AND_THROW(map, "Missing map instance");
-
-        EnsureEntitySynced(map);
+        ValidateEntityAccess(map);
     }
 
     if (controllable) {

@@ -305,6 +305,8 @@ public:
     auto operator=(const ScopedSyncContext&) -> ScopedSyncContext& = delete;
     auto operator=(ScopedSyncContext&&) -> ScopedSyncContext& = delete;
 
+    [[nodiscard]] auto GetContext() noexcept -> SyncContext& { return _ctx; }
+
     void Sync(nptr<ServerEntity> entity) { _ctx.SyncEntity(entity); }
 
 private:
