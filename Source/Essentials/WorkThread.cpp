@@ -221,7 +221,17 @@ void WorkThread::ThreadEntry() noexcept
                 locker.lock();
 
                 while (_paused && !_finish) {
-                    _workSignal.wait(locker);
+                    if (_clearJobs) {
+                        _jobs.clear();
+                        _clearJobs = false;
+
+                        locker.unlock();
+                        _doneSignal.notify_all();
+                        locker.lock();
+                    }
+                    else {
+                        _workSignal.wait(locker);
+                    }
                 }
 
                 if (_jobs.empty()) {
