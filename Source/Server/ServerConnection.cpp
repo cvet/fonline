@@ -356,6 +356,7 @@ void ServerConnection::HardDisconnect()
 {
     FO_STACK_TRACE_ENTRY();
 
+    SetDataArrivedCallback({});
     _netConnection->Disconnect();
 }
 

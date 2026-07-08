@@ -22,6 +22,34 @@ TEST_CASE("Settings")
         CHECK_THROWS_AS(settings.GetResourcePacks(), SettingsException);
     }
 
+    SECTION("SubConfigMultiParentMergesLeftToRight")
+    {
+        GlobalSettings settings {false};
+        ConfigFile config {"Test.fomain",
+            "[SubConfig]\n"
+            "Name = BaseA\n"
+            "OnlyA = fromA\n"
+            "Shared = fromA\n"
+            "[SubConfig]\n"
+            "Name = BaseB\n"
+            "OnlyB = fromB\n"
+            "Shared = fromB\n"
+            "[SubConfig]\n"
+            "Name = Mixed\n"
+            "Parent = BaseA BaseB\n"
+            "Own = child\n"};
+
+        settings.ApplyConfigFile(config, "cfg");
+        settings.ApplySubConfigSection("Mixed");
+
+        // Multiple parents merge (not replace): both parents' unique keys survive, later parents
+        // override earlier ones on shared keys, and the child's own settings sit on top.
+        CHECK(settings.GetCustomSetting("OnlyA") == "fromA");
+        CHECK(settings.GetCustomSetting("OnlyB") == "fromB");
+        CHECK(settings.GetCustomSetting("Shared") == "fromB");
+        CHECK(settings.GetCustomSetting("Own") == "child");
+    }
+
     SECTION("ApplyConfigFileParsesSubConfigsAndResourcePacks")
     {
         GlobalSettings settings {false};

@@ -276,6 +276,12 @@ server â†’ client: UpdateFileData { update_portion: int32, raw bytes[update
 
 The server picks `update_portion` (capped by `Network.UpdateFileMaxPortionSize`, currently 5 MB in this project â€” see [LastFrontier.fomain](../../LastFrontier.fomain)). The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
 
+The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
+server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
+reported as unresolved runtime hashes. The updater consumes that message and records the strings in its
+private hash storage before continuing resource or binary transfer; `HashList` is not an update-file
+payload and does not change the `GetUpdateFile` / `UpdateFileData` state machine.
+
 Server-side validation (in [../Source/Server/UpdaterBackend.cpp](../Source/Server/UpdaterBackend.cpp)):
 
 - `file_index` out of range â†’ `LogType::Warning` + `HardDisconnect`.

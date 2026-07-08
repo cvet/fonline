@@ -2233,8 +2233,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? new_player = Game.LoginPlayerToNewRecord(unlogined);
-        if (new_player is null) return -2;
+        Player new_player = Game.LoginPlayerToNewRecord(unlogined);
         if (new_player.Id == ZERO_IDENT) return -3;
 
         Player? fetched_player = Game.GetPlayer(new_player.Id);
@@ -2253,8 +2252,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
-        if (reconnected_player is null) return -2;
+        Player reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
         if (reconnected_player.Id != playerId) return -3;
 
 )"
@@ -2267,8 +2265,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? temp_player = Game.LoginPlayerToTempSession(unlogined);
-        if (temp_player is null) return -2;
+        Player temp_player = Game.LoginPlayerToTempSession(unlogined);
 
         temp_player.HardDisconnect();
         return 0;
@@ -2278,31 +2275,30 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? player = Game.LoginPlayerToNewRecord(unlogined);
-        if (player is null) return -2;
+        Player player = Game.LoginPlayerToNewRecord(unlogined);
 
         ident playerId = player.Id;
         int catches = 0;
 
         try {
-            Player? new_player = Game.LoginPlayerToNewRecord(player);
-            if (new_player !is null) return -3;
+            Game.LoginPlayerToNewRecord(player);
+            return -3;
         }
         catch {
             catches++;
         }
 
         try {
-            Player? temp_player = Game.LoginPlayerToTempSession(player);
-            if (temp_player !is null) return -4;
+            Game.LoginPlayerToTempSession(player);
+            return -4;
         }
         catch {
             catches++;
         }
 
         try {
-            Player? existing_player = Game.LoginPlayerToExistentRecord(player, playerId);
-            if (existing_player !is null) return -5;
+            Game.LoginPlayerToExistentRecord(player, playerId);
+            return -5;
         }
         catch {
             catches++;
@@ -2321,8 +2317,8 @@ namespace ScriptMethodsTest
         unlogined.SetName("ScriptLoginZero");
 
         try {
-            Player? player = Game.LoginPlayerToExistentRecord(unlogined, ZERO_IDENT);
-            if (player !is null) return -2;
+            Game.LoginPlayerToExistentRecord(unlogined, ZERO_IDENT);
+            return -2;
         }
         catch {
             unlogined.HardDisconnect();
@@ -2731,11 +2727,13 @@ namespace ScriptMethodsTest
         Game.SyncRelease();
 
         // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
-        // needed. Re-cover all three critters before destroying: each destroy restricts the
-        // context to its own target, so consecutive uncovered destroys would be rejected.
-        Game.Sync(cr1, cr2, cr3);
+        // needed. Re-cover each critter immediately before destroying: each destroy restricts
+        // the context to its own target, so consecutive uncovered destroys would be rejected.
+        Game.Sync(cr1);
         Game.DestroyCritter(cr1);
+        Game.Sync(cr2);
         Game.DestroyCritter(cr2);
+        Game.Sync(cr3);
         Game.DestroyCritter(cr3);
 
         return 0;

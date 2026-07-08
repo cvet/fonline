@@ -117,9 +117,9 @@ public:
     void DrawGui();
 
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
-    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>;
-    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>;
-    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
@@ -251,9 +251,6 @@ private:
     };
 
     void SyncPoint();
-    // Locks every parentless root entity into `ctx`, covering the whole registered world through the
-    // ancestor-chain walk. Callable only when every worker is quiesced (external sync-point lock,
-    // single-threaded shutdown) — all locks are free then, so the acquisition is uncontended.
     void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);

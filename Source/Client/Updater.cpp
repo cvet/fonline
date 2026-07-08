@@ -102,6 +102,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _conn.SetDisconnectHandler([this]() FO_DEFERRED { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NetMessage::InitData, [this]() FO_DEFERRED { Net_OnInitData(); });
     _conn.AddMessageHandler(NetMessage::TimeSync, [this]() FO_DEFERRED { Net_OnTimeSync(); });
+    _conn.AddMessageHandler(NetMessage::HashList, [this]() FO_DEFERRED { Net_OnHashList(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
     // Connect
@@ -620,6 +621,23 @@ void Updater::Net_OnTimeSync()
 
     const auto time = _conn.InBuf->Read<synctime>();
     _gameTime.SetSynchronizedTimeMonotonic(time);
+}
+
+void Updater::Net_OnHashList()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const uint32_t count = _conn.InBuf->Read<uint32_t>();
+
+    for (uint32_t i = 0; i < count; i++) {
+        const string str = _conn.InBuf->Read<string>();
+
+        _hashStorage.ToHashedString(str);
+    }
+
+    if (count != 0) {
+        WriteLog("Client updater: learned {} previously unresolved hash(es) from server", count);
+    }
 }
 
 void Updater::Net_OnUpdateFileData()

@@ -292,6 +292,9 @@ namespace EntityLifecycle
                 PlayerDestroyedAfterLoginDisconnectCalls++;
             }
         }
+        if (PlayerEventMode == 5) {
+            return EventResult::StopChain;
+        }
 
         return EventResult::ContinueChain;
     }
@@ -444,6 +447,17 @@ namespace EntityLifecycle
         return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
     }
 
+    static auto CreatePreparedUnloginedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
+    {
+        shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+        auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
+
+        unlogined_player->SetName(name);
+        unlogined_player->SetLastControlledCritterId(ident_t {1});
+
+        return unlogined_player;
+    }
+
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, shared_ptr<NetworkServerConnection> net_connection, string_view name) -> ptr<Player>;
 
     static auto CreateLoggedPlayer(ptr<ServerEngine> server, string_view name) -> ptr<Player>
@@ -457,13 +471,11 @@ namespace EntityLifecycle
         FO_VERIFY_AND_THROW(net_connection, "Missing required net connection");
 
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
-
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
-        auto nullable_player = server->LoginPlayerToNewRecord(unlogined_player);
-        FO_VERIFY_AND_THROW(!!nullable_player, "Player login to new record failed");
 
-        return nullable_player.as_ptr();
+        auto player = server->LoginPlayerToNewRecord(unlogined_player);
+        return player;
     }
 
     static void SendStopCritterMove(ptr<TestNetworkConnection> connection, ptr<ServerEngine> server, ident_t map_id, ident_t cr_id, mpos client_hex, ipos16 client_hex_offset, mdir client_dir)
@@ -1282,6 +1294,50 @@ TEST_CASE("PlayerRegistrationCppApi")
         CHECK(player1->GetId() != player2->GetId());
     }
 
+    SECTION("LoginPlayerToNewRecordThrowsWhenPlayerLoginStopsChain")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(5));
+
+        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectNewRecord");
+        CHECK_THROWS_WITH(server->LoginPlayerToNewRecord(unlogined_player), Catch::Matchers::ContainsSubstring("New player login rejected by OnPlayerLogin"));
+    }
+
+    SECTION("LoginPlayerToExistentRecordThrowsWhenPlayerLoginStopsChain")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto player = CreateLoggedPlayer(server, "RejectReconnect");
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(5));
+
+        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectReconnectNext");
+        CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(unlogined_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+    }
+
+    SECTION("LoginPlayerToTempSessionThrowsWhenPlayerLoginStopsChain")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetPlayerEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(5));
+
+        auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectTempSession");
+        CHECK_THROWS_WITH(server->LoginPlayerToTempSession(unlogined_player), Catch::Matchers::ContainsSubstring("Temporary player login rejected by OnPlayerLogin"));
+    }
+
     SECTION("PlayerLoginHardDisconnectDefersDestructionToPlayerJob")
     {
         auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
@@ -1329,7 +1385,6 @@ TEST_CASE("PlayerRegistrationCppApi")
         unlogined_player->SetName("TempSessionDisconnect");
 
         auto player = server->LoginPlayerToTempSession(unlogined_player);
-        REQUIRE(static_cast<bool>(player));
 
         int32_t login_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetPlayerLoginCalls"), login_calls));
@@ -1431,6 +1486,10 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         int32_t dir_calls = 0;
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), cr.as_nptr(), map.as_nptr()};
+        ctx->SyncEntities(sync_entities);
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
         CHECK_FALSE(static_cast<bool>(cr->GetPlayer()));
