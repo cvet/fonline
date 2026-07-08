@@ -493,7 +493,6 @@ namespace ServerEngineInitGateTest
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
-        FO_VERIFY_AND_THROW(player, "Player login to new record failed");
 
         return player;
     }
@@ -1567,7 +1566,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
                 });
             });
 
-            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a, player_b};
+            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a_holder, player_b_holder};
             cleanup_ctx.SyncEntities(attached_players);
 
             if (cr_a->GetPlayer()) {

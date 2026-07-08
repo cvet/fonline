@@ -474,7 +474,6 @@ namespace EntityLifecycle
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
-        FO_VERIFY_AND_THROW(player, "Player login to new record failed");
 
         return player;
     }
@@ -1484,7 +1483,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), cr.as_nptr(), map.as_nptr()};
+        const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), cr.as_nptr(), map};
         ctx->SyncEntities(sync_entities);
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));

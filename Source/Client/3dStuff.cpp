@@ -309,8 +309,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
         return nullptr;
     }
 
-    ptr<MeshTexture> mesh_tex = SafeAlloc::MakeRaw<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex, tex_data);
-
+    auto mesh_tex = SafeAlloc::MakeRaw<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex, tex_data);
     return mesh_tex;
 }
 

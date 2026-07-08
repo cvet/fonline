@@ -235,8 +235,7 @@ int main(int argc, char** argv)
                 auto service_cfg_storage = make_ptr(service_cfg_buf);
                 auto service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();
 
-                DWORD dw = 0;
-                if (::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
+                if (DWORD dw = 0; ::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
                     error = true;
                 }
                 else if (path != service_cfg->lpBinaryPathName) {

@@ -180,7 +180,6 @@ namespace ServerItemsTest
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
-        FO_VERIFY_AND_THROW(player, "Player login to new record failed");
 
         return player;
     }

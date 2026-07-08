@@ -55,13 +55,8 @@ public:
     [[nodiscard]] auto GetAtlas() -> nptr<TextureAtlas> { return _atlas; }
     [[nodiscard]] auto GetBatchTexture() const -> nptr<const RenderTexture> override
     {
-        if (!_atlas) {
-            return nullptr;
-        }
-
-        auto atlas = _atlas;
-        FO_VERIFY_AND_THROW(atlas, "Atlas is null");
-        return atlas->GetTexture();
+        FO_VERIFY_AND_THROW(_atlas, "Atlas is null");
+        return _atlas->GetTexture();
     }
     [[nodiscard]] auto IsCopyable() const -> bool override { return true; }
     [[nodiscard]] auto MakeCopy() const -> shared_ptr<Sprite> override;
