@@ -683,7 +683,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         MemCopy(arg_data, mutable_entry, base_type->Size);
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Array) {
-                        auto arr = make_nptr(static_cast<ScriptArray*>(mutable_entry.get_no_const()));
+                        auto arr = cast_from_void<ScriptArray*>(mutable_entry);
                         FO_VERIFY_AND_THROW(arr, "Mutable argument array handle is null");
                         const int32_t arr_size = arr->GetSize();
                         call.Accessor->ClearArray(arg_data);
@@ -695,7 +695,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         arr->Release();
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Dict) {
-                        auto dict = make_nptr(static_cast<ScriptDict*>(mutable_entry.get_no_const()));
+                        auto dict = cast_from_void<ScriptDict*>(mutable_entry);
                         FO_VERIFY_AND_THROW(dict, "Mutable argument dictionary handle is null");
                         auto dict_map = dict->GetMap();
                         call.Accessor->ClearDict(arg_data);

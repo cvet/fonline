@@ -397,7 +397,7 @@ auto stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
     }
 
     const std::streamsize stream_len = numeric_cast<std::streamsize>(buf.size());
-    auto target_chars = make_ptr(reinterpret_cast<char*>(buf.data()));
+    auto target_chars = make_ptr(buf.data()).reinterpret_as<char>();
     stream.read(target_chars.get(), stream_len);
     return !!stream && stream.gcount() == stream_len;
 }

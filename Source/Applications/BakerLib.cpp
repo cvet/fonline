@@ -54,7 +54,7 @@ FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
     CreateGlobalData();
     LogToFile(strex("{}_BakerLib.log", FO_DEV_NAME));
 
-    auto settings = make_nptr(static_cast<BakingSettings*>(baking_settings));
+    auto settings = cast_from_void<BakingSettings*>(baking_settings);
 
     if (!settings) {
         WriteLog("Baker DLL: baking rejected, settings pointer is null");

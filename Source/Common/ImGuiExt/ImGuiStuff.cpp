@@ -60,7 +60,7 @@ static void ImGuiFree(void* raw_mem, void* user_data)
 
     ignore_unused(user_data);
 
-    auto bytes = make_nptr(static_cast<uint8_t*>(raw_mem));
+    auto bytes = cast_from_void<uint8_t*>(raw_mem);
 
     if (!bytes) {
         return;

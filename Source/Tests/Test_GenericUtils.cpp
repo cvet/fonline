@@ -41,8 +41,8 @@ TEST_CASE("GenericUtils")
 {
     SECTION("WyHash")
     {
-        const auto data = make_ptr(reinterpret_cast<const uint8_t*>("abcdefg"));
-        const auto data2 = make_ptr(reinterpret_cast<const uint8_t*>("abcdefh"));
+        const auto data = make_ptr("abcdefg").reinterpret_as<uint8_t>();
+        const auto data2 = make_ptr("abcdefh").reinterpret_as<uint8_t>();
 
         CHECK(hashing_ex::hash(data.get(), 4) != 0);
         CHECK(hashing_ex::hash(data.get(), 4) != hashing_ex::hash(data.get(), 5));

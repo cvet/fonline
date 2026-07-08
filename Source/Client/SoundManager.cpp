@@ -424,7 +424,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     ov_callbacks callbacks;
 
     callbacks.read_func = [](void* output_buf, size_t size, size_t count, void* datasource) -> size_t {
-        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        auto file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         const size_t bytes_read = std::min(file_context->Reader.GetSize() - file_context->Reader.GetCurPos(), size * count);
 
@@ -437,7 +437,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     };
 
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int32_t whence) -> int32_t {
-        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        auto file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
 
         switch (whence) {
@@ -463,7 +463,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     };
 
     callbacks.close_func = [](void* datasource) -> int32_t {
-        auto file_context = make_nptr(static_cast<OggFileContext*>(datasource));
+        auto file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         auto owned_file_context = adopt_unique_ptr(file_context.as_ptr());
         ignore_unused(owned_file_context);
@@ -471,7 +471,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     };
 
     callbacks.tell_func = [](void* datasource) -> long {
-        auto file_context = make_nptr(static_cast<const OggFileContext*>(datasource));
+        auto file_context = cast_from_void<const OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
         return numeric_cast<long>(file_context->Reader.GetCurPos());
     };

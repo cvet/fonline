@@ -88,7 +88,7 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open metadata output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    auto data_chars = make_ptr(reinterpret_cast<const char*>(data.data()));
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
                 FO_VERIFY_AND_THROW(file, "Failed to open AngelScript output file for writing", output_path, res_pack.Name, path, data.size());
 
                 if (!data.empty()) {
-                    auto data_chars = make_ptr(reinterpret_cast<const char*>(data.data()));
+                    auto data_chars = make_ptr(data.data()).reinterpret_as<char>();
                     file.write(data_chars.get(), numeric_cast<std::streamsize>(data.size()));
                 }
 

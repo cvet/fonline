@@ -384,7 +384,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     if (!Settings.DisableAudio) {
         if (SDL_WasInit(SDL_INIT_AUDIO) != 0 || SDL_InitSubSystem(SDL_INIT_AUDIO)) {
             const auto stream_callback = [](void* userdata, SDL_AudioStream* stream, int32_t additional_amount, int32_t total_amount) FO_DEFERRED {
-                auto app = make_nptr(static_cast<Application*>(userdata));
+                auto app = cast_from_void<Application*>(userdata);
                 FO_VERIFY_AND_THROW(app, "Audio stream callback received a null application pointer");
                 ignore_unused(total_amount);
 
@@ -2281,7 +2281,7 @@ void Application::EndFrame()
                     const auto tex_size = isize(im_tex->Width, im_tex->Height);
                     FO_VERIFY_AND_THROW(tex_size.square() * 4 == numeric_cast<size_t>(im_tex->GetSizeInBytes()), "ImGui texture byte size does not match square RGBA texture dimensions", tex_size.square() * 4, im_tex->GetSizeInBytes());
                     auto font_tex = active_renderer->CreateTexture(tex_size, true, false);
-                    auto tex_data = make_nptr(static_cast<const ucolor*>(im_tex->GetPixels()));
+                    auto tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
                     FO_VERIFY_AND_THROW(tex_data, "ImGui texture pixel data is null");
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
                     const auto tex_pixels = make_span(tex_data.as_ptr(), tex_pixels_count);
@@ -2293,18 +2293,18 @@ void Application::EndFrame()
                 else if (im_tex->Status == ImTextureStatus_WantUpdates) {
                     const auto update_pos = ipos32(im_tex->UpdateRect.x, im_tex->UpdateRect.y);
                     const auto update_size = isize32(im_tex->UpdateRect.w, im_tex->UpdateRect.h);
-                    auto update_data = make_nptr(static_cast<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y)));
+                    auto update_data = cast_from_void<const ucolor*>(im_tex->GetPixelsAt(update_pos.x, update_pos.y));
                     FO_VERIFY_AND_THROW(update_data, "ImGui texture pixel data is null");
                     const size_t update_pitch = numeric_cast<size_t>(im_tex->Width);
                     const size_t update_size_in_pixels = update_size.height != 0 ? (numeric_cast<size_t>(update_size.height - 1) * update_pitch) + numeric_cast<size_t>(update_size.width) : 0;
-                    auto tex = make_nptr(static_cast<RenderTexture*>(im_tex->GetTexID()));
+                    auto tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
                     FO_VERIFY_AND_THROW(tex, "ImGui texture id does not reference a render texture");
                     const auto update_pixels = make_span(update_data.as_ptr(), update_size_in_pixels);
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }
                 else if (im_tex->Status == ImTextureStatus_WantDestroy) {
-                    auto tex = make_nptr(static_cast<RenderTexture*>(im_tex->GetTexID()));
+                    auto tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
                     FO_VERIFY_AND_THROW(tex, "ImGui texture id does not reference a render texture");
                     const auto it = std::find(_imguiTextures.begin(), _imguiTextures.end(), tex.get());
                     FO_VERIFY_AND_THROW(it != _imguiTextures.end(), "Lookup failed in imgui textures");
@@ -2364,7 +2364,7 @@ void Application::EndFrame()
 
                 if (clip_rect_l < fb_width && clip_rect_t < fb_height && clip_rect_r >= 0 && clip_rect_b >= 0) {
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
-                    auto texture = make_nptr(static_cast<RenderTexture*>(pcmd->TexRef.GetTexID()));
+                    auto texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
                     FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
                     imgui_effect->DrawBuffer(imgui_draw_buf, pcmd->IdxOffset, pcmd->ElemCount, texture);
                     active_renderer->DisableScissor();

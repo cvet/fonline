@@ -59,7 +59,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        auto pstr = make_nptr(static_cast<const string*>(str));
+        auto pstr = cast_from_void<const string*>(str);
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
         const auto owned_string = adopt_unique_ptr(pstr.as_ptr());
         ignore_unused(owned_string);
@@ -70,7 +70,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        auto pstr = make_nptr(static_cast<const string*>(str));
+        auto pstr = cast_from_void<const string*>(str);
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
 
         if (raw_length != nullptr) {
