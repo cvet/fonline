@@ -35,6 +35,14 @@
 
 FO_BEGIN_NAMESPACE
 
+struct NetworkClientInterthreadState
+{
+    std::atomic_bool Alive {true};
+    std::atomic_bool RequestDisconnect {};
+    mutex ReceivedLocker {};
+    vector<uint8_t> Received FO_TSA_GUARDED_BY(ReceivedLocker) {};
+};
+
 class NetworkClientConnection_Interthread final : public NetworkClientConnection
 {
 public:
@@ -43,7 +51,7 @@ public:
     NetworkClientConnection_Interthread(NetworkClientConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkClientConnection_Interthread&) = delete;
     auto operator=(NetworkClientConnection_Interthread&&) noexcept = delete;
-    ~NetworkClientConnection_Interthread() override = default;
+    ~NetworkClientConnection_Interthread() override;
 
     auto CheckStatusImpl(bool for_write) -> bool override;
     auto SendDataImpl(const_span<uint8_t> buf) -> size_t override;
@@ -51,10 +59,8 @@ public:
     void DisconnectImpl() noexcept override;
 
 private:
+    shared_ptr<NetworkClientInterthreadState> _interthreadState {};
     InterthreadDataCallback _interthreadSend {};
-    mutex _interthreadReceivedLocker {};
-    vector<uint8_t> _interthreadReceived FO_TSA_GUARDED_BY(_interthreadReceivedLocker) {};
-    std::atomic_bool _interthreadRequestDisconnect {};
 };
 
 auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
@@ -69,7 +75,7 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto port = numeric_cast<uint16_t>(_settings->ServerPort);
+    const uint16_t port = numeric_cast<uint16_t>(_settings->ServerPort);
 
     function<InterthreadDataCallback(InterthreadDataCallback)> listener;
 
@@ -85,14 +91,21 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
         listener = it->second;
     }
 
-    _interthreadSend = listener([this](const_span<uint8_t> buf) FO_DEFERRED {
-        if (!buf.empty()) {
-            scoped_lock locker {_interthreadReceivedLocker};
+    _interthreadState = SafeAlloc::MakeShared<NetworkClientInterthreadState>();
+    auto state = _interthreadState;
 
-            _interthreadReceived.insert(_interthreadReceived.end(), buf.begin(), buf.end());
+    _interthreadSend = listener([state](const_span<uint8_t> buf) mutable FO_DEFERRED {
+        if (!state->Alive.load()) {
+            return;
+        }
+
+        if (!buf.empty()) {
+            scoped_lock locker {state->ReceivedLocker};
+
+            state->Received.insert(state->Received.end(), buf.begin(), buf.end());
         }
         else {
-            _interthreadRequestDisconnect = true;
+            state->RequestDisconnect = true;
         }
     });
 
@@ -102,18 +115,27 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
     _isConnected = true;
 }
 
+NetworkClientConnection_Interthread::~NetworkClientConnection_Interthread()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    DisconnectImpl();
+}
+
 auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_interthreadRequestDisconnect) {
+    auto state = _interthreadState;
+
+    if (state->RequestDisconnect) {
         Disconnect();
         return false;
     }
 
-    scoped_lock locker {_interthreadReceivedLocker};
+    scoped_lock locker {state->ReceivedLocker};
 
-    return for_write ? true : !_interthreadReceived.empty();
+    return for_write ? true : !state->Received.empty();
 }
 
 auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) -> size_t
@@ -129,17 +151,19 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 {
     FO_STACK_TRACE_ENTRY();
 
-    scoped_lock locker {_interthreadReceivedLocker};
+    auto state = _interthreadState;
 
-    FO_VERIFY_AND_THROW(!_interthreadReceived.empty(), "Interthread client receive was called without a pending packet", buf.size());
-    const auto recv_size = _interthreadReceived.size();
+    scoped_lock locker {state->ReceivedLocker};
+
+    FO_VERIFY_AND_THROW(!state->Received.empty(), "Interthread client receive was called without a pending packet", buf.size());
+    const size_t recv_size = state->Received.size();
 
     while (buf.size() < recv_size) {
         buf.resize(buf.size() * 2);
     }
 
-    MemCopy(buf.data(), _interthreadReceived.data(), recv_size);
-    _interthreadReceived.clear();
+    MemCopy(buf.data(), state->Received.data(), recv_size);
+    state->Received.clear();
 
     return recv_size;
 }
@@ -149,13 +173,22 @@ void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
     FO_STACK_TRACE_ENTRY();
 
     InterthreadDataCallback interthread_send;
+    auto state = _interthreadState;
 
-    if (!_interthreadRequestDisconnect) {
+    state->Alive = false;
+
+    if (!state->RequestDisconnect) {
         interthread_send = std::move(_interthreadSend);
     }
 
     _interthreadSend = nullptr;
-    _interthreadRequestDisconnect = false;
+    state->RequestDisconnect = false;
+
+    {
+        scoped_lock locker {state->ReceivedLocker};
+
+        state->Received.clear();
+    }
 
     if (interthread_send) {
         safe_call([&] { interthread_send({}); });

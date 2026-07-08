@@ -553,6 +553,10 @@ static void LogUncoveredEntity(nptr<const ServerEntity> entity) noexcept
     for (auto walk = try_hold_entity(widen); walk; walk = walk->GetParentRaw()) {
         WriteLog("SyncDiag   widen: '{}' id={} lock={}", walk->GetName(), walk->GetId(), lock_state(walk->GetEntityLock()));
     }
+
+    // The offending call site. An uncovered access is always a bug to fix, and script-side catch
+    // handlers otherwise swallow the exception before its stack is ever reported.
+    safe_call([] { WriteLog("SyncDiag   stack:\n{}", FormatStackTrace(GetStackTrace())); });
 }
 
 // Answers "is `entity` covered by a lock the current thread already holds?" in a single coverage pass.
@@ -577,6 +581,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
 
     auto current_ctx = SyncContext::GetCurrentOnThisThread();
     FO_STRONG_ASSERT(current_ctx, "Entity access validation needs active sync context");
+    ignore_unused(current_ctx);
 
     const auto try_hold_entity = [](nptr<const ServerEntity> e) -> refcount_nptr<const ServerEntity> { return e.try_hold_ref(); };
 
@@ -613,7 +618,7 @@ SyncContext::~SyncContext()
     FO_STACK_TRACE_ENTRY();
 
     // Contract: holders MUST drain locks via explicit `Release()` before destruction.
-    // Production tear-down paths (`WrapJobWithSync`, `FireEvent` per-callback nested,
+    // Production tear-down paths (`WrapJobWithSync`, `ServerEngine::RunScriptContext`,
     // `ServerEngine::Unlock`) wrap `Release()` in `safe_call` and run it before the
     // SyncContext goes out of scope. Tests construct SyncContexts that never acquire
     // locks. A non-empty bucket here means a code path created a SyncContext that
@@ -634,7 +639,7 @@ void SyncContext::Activate() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Save the previous current so a nested context (e.g. one created per event callback)
+    // Save the previous current so a nested context (e.g. one created for script execution)
     // can pop back cleanly. Outermost Activate sees the slot empty and saves nullptr.
     _previousContext = CurrentContext;
     CurrentContext = this;

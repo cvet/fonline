@@ -92,7 +92,7 @@ class AngelScriptContextManager final
 public:
     using DelayedScheduler = function<void(timespan delay, function<void()> body)>;
 
-    explicit AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
+    explicit AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, ptr<BaseEngine> engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
@@ -114,6 +114,7 @@ private:
     void CreateContext() FO_TSA_REQUIRES(_poolLocker);
 
     ptr<AngelScript::asIScriptEngine> _asEngine;
+    ptr<BaseEngine> _engine;
     timespan _overrunTimeout;
     mutable mutex _poolLocker {};
     vector<refcount_ptr<AngelScript::asIScriptContext>> _freeContexts FO_TSA_GUARDED_BY(_poolLocker) {};

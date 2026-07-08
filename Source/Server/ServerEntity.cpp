@@ -217,7 +217,12 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
         nptr<const SyncContext> ctx = SyncContext::GetCurrentOnThisThread();
         nptr<const EntityLock> lock = GetEntityLock();
-        FO_VERIFY_AND_CONTINUE(!ctx || ctx->IsEmpty() || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
+        // Strict access model: reparenting a live entity requires its OWN lock held directly (ancestor
+        // coverage is a read-path right only; there is no empty-context free pass). The only exemption
+        // is a thread with no sync context at all (non-server threads). Stop-the-world owners
+        // (ServerEngine::Lock / Shutdown) satisfy this naturally: their reparents run through the
+        // capture paths (EnsureEntitySynced), which take the entity's own lock.
+        FO_VERIFY_AND_CONTINUE(!ctx || (lock && lock->IsLockedByCurrentThread()), "Reparent of a live entity without holding its own lock", GetName(), GetId());
     }
 
     if (parent) {
@@ -251,12 +256,6 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         EventResult result = EventResult::ContinueChain;
 
         try {
-            // Wrap this callback in its own nested SyncContext on top of the dispatcher's
-            // primary cover. Inner `Sync::Lock(...)` calls only mutate the nested layer, so
-            // the primary's locks (the event's entity args) are preserved across the chain
-            // and the next sibling sees them locked again.
-            ScopedSyncContext nested;
-
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {

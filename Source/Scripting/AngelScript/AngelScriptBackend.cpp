@@ -785,7 +785,7 @@ void AngelScriptBackend::BindRequiredStuff()
 
         const auto overrun_report_time = std::chrono::milliseconds(_settings->OverrunReportTime);
 
-        _contextMngr.emplace(_asEngine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
+        _contextMngr.emplace(_asEngine, engine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer) {
                 nlohmann::json body;
                 body["reason"] = reason;

@@ -52,6 +52,21 @@
 
 FO_BEGIN_NAMESPACE
 
+// Script-facing lookups treat an entity inside its destroy window as already gone: method calls on a
+// destroying entity throw, so handing one out would force IsDestroying boilerplate at every call site.
+// A registry entry only sits in this window while its teardown events (hide/finish) are firing.
+template<typename T>
+static auto DropDestroyingEntity(refcount_nptr<T> entity) -> refcount_nptr<T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (entity && entity->IsDestroying()) {
+        return refcount_nptr<T> {};
+    }
+
+    return entity;
+}
+
 // SyncScope: no existing entity cover required; creates a detached critter, cover it before cross-entity use.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer)
@@ -283,7 +298,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
         throw ScriptException("Item id arg is zero");
     }
 
-    auto item = server->EntityMngr.GetItem(itemId);
+    auto item = DropDestroyingEntity(server->EntityMngr.GetItem(itemId));
     return ReleaseNullableScriptOwnership(std::move(item));
 }
 
@@ -829,7 +844,7 @@ FO_SCRIPT_API nptr<Critter> Server_Game_GetCritter(ptr<ServerEngine> server, ide
         return nullptr;
     }
 
-    auto cr = server->EntityMngr.GetCritter(crId);
+    auto cr = DropDestroyingEntity(server->EntityMngr.GetCritter(crId));
     return ReleaseNullableScriptOwnership(std::move(cr));
 }
 
@@ -841,7 +856,7 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
         return nullptr;
     }
 
-    auto entity = server->EntityMngr.GetEntity(entityId);
+    auto entity = DropDestroyingEntity(server->EntityMngr.GetEntity(entityId));
     return ReleaseNullableScriptOwnership(std::move(entity));
 }
 
@@ -924,7 +939,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
         return nullptr;
     }
 
-    auto player = server->EntityMngr.GetPlayer(playerId);
+    auto player = DropDestroyingEntity(server->EntityMngr.GetPlayer(playerId));
     return ReleaseNullableScriptOwnership(std::move(player));
 }
 
@@ -932,7 +947,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t mapId)
 {
-    auto map = server->EntityMngr.GetMap(mapId);
+    auto map = DropDestroyingEntity(server->EntityMngr.GetMap(mapId));
     return ReleaseNullableScriptOwnership(std::move(map));
 }
 
@@ -1016,7 +1031,7 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, npt
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ident_t locId)
 {
-    auto loc = server->EntityMngr.GetLocation(locId);
+    auto loc = DropDestroyingEntity(server->EntityMngr.GetLocation(locId));
     return ReleaseNullableScriptOwnership(std::move(loc));
 }
 
@@ -1045,7 +1060,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, L
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
 
     for (size_t i = 0; i != locs.size(); i++) {
-        if (locs[i]->GetValueAsInt(prop) == propertyValue) {
+        if (!locs[i]->IsDestroying() && locs[i]->GetValueAsInt(prop) == propertyValue) {
             return ReleaseScriptOwnership(std::move(locs[i]));
         }
     }
@@ -1954,6 +1969,22 @@ FO_SCRIPT_API int32_t Server_Game_GetCritterRegistryCount(ptr<ServerEngine> serv
 FO_SCRIPT_API int32_t Server_Game_GetItemRegistryCount(ptr<ServerEngine> server)
 {
     return static_cast<int32_t>(server->EntityMngr.GetItemsCount());
+}
+
+// SyncScope: registry snapshot of proto ids only; reads the registry map without touching entity state,
+// so no entity cover is required. Intended for test-harness leak diagnostics.
+///@ ExportMethod
+FO_SCRIPT_API vector<hstring> Server_Game_GetItemRegistryProtoIds(ptr<ServerEngine> server)
+{
+    vector<hstring> proto_ids;
+    vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
+    proto_ids.reserve(items.size());
+
+    for (const auto& item : items) {
+        proto_ids.emplace_back(item->GetProtoId());
+    }
+
+    return proto_ids;
 }
 
 FO_END_NAMESPACE

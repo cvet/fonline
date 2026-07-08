@@ -1225,8 +1225,8 @@ TEST_CASE("SyncContextNegative")
 
 // ============================================================================
 // SyncContext singleton-lock bucket (Game.Lock) — kept SEPARATE from the per-Sync
-// held-lock set so a later Sync replacement cannot drop it, recursive, and it must
-// block Sync (the {Engine,Entity} <-> {Entity,Engine} deadlock-prevention guard).
+// held-lock set so a later Sync replacement cannot drop it, recursive, and script
+// locks must block Sync (the {Engine,Entity} <-> {Entity,Engine} guard).
 // ============================================================================
 
 TEST_CASE("SyncContextSingletonLock")

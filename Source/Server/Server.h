@@ -95,6 +95,7 @@ public:
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
+    void RunScriptContext(const function<void()>& callback) override;
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
@@ -117,9 +118,9 @@ public:
     void DrawGui();
 
     auto CreateUnloginedPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
-    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>;
-    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>;
-    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>;
+    auto LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>;
+    auto LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>;
+    auto LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>;
 
     auto CreateCritter(hstring pid, bool for_player, nptr<const Properties> props = nullptr) -> ptr<Critter>;
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
@@ -251,6 +252,7 @@ private:
     };
 
     void SyncPoint();
+    void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessUnloginedPlayer(ptr<Player> unlogined_player);

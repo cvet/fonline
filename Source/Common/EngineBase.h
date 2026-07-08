@@ -165,18 +165,14 @@ public:
 
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
-    [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
+    [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
 
-        return _imgui;
-    }
-    [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
-
+    auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
     virtual void Shutdown() { }
     void FrameAdvance();
 
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
+    virtual void RunScriptContext(const function<void()>& callback);
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler);

@@ -128,8 +128,9 @@ auto AngelScriptContextExtendedData::Get(ptr<const AngelScript::asIScriptContext
     return cast_from_void<const AngelScriptContextExtendedData*>(ctx->GetUserData());
 }
 
-AngelScriptContextManager::AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback) :
+AngelScriptContextManager::AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, ptr<BaseEngine> engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback) :
     _asEngine {as_engine},
+    _engine {engine},
     _overrunTimeout {overrun_timeout},
     _debuggerStopCallback {std::move(debugger_stop_callback)}
 {
@@ -377,7 +378,8 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     if (execution_reserved) {
-        FO_VERIFY_AND_THROW(ctx_ext->ExecutionActive.load(), "Script execution context is not reserved");
+        const bool active = ctx_ext->ExecutionActive.load();
+        FO_VERIFY_AND_THROW(active, "Script execution context is not reserved");
     }
     else {
         const bool already_active = ctx_ext->ExecutionActive.exchange(true);
@@ -422,14 +424,18 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
 
         const auto execution_time = TimeMeter();
 
-        try {
-            exec_result = ctx->Execute();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            ctx->SetException(ex.what());
-            exec_result = AngelScript::asEXECUTION_EXCEPTION;
-        }
+        const auto execute_context = [&exec_result, &ctx] {
+            try {
+                exec_result = ctx->Execute();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                ctx->SetException(ex.what());
+                exec_result = AngelScript::asEXECUTION_EXCEPTION;
+            }
+        };
+
+        _engine->RunScriptContext(execute_context);
 
         if (_overrunTimeout) {
             const auto execution_duration = execution_time.GetDuration();

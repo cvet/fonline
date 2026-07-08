@@ -51,17 +51,11 @@ public:
         explicit OutBufAccessor(ptr<ServerConnection> owner, optional<NetMessage> msg) FO_TSA_ACQUIRE(owner->_outBufLocker);
         OutBufAccessor() = delete;
         OutBufAccessor(const OutBufAccessor&) = delete;
-        // Move ctor cannot express capability transfer for the analyzer; the moved-from guard is left inert by the move
         OutBufAccessor(OutBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor() noexcept(false) FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetOutBuffer>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _outBuf;
-        }
+        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf; }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
@@ -77,17 +71,11 @@ public:
         explicit InBufAccessor(ptr<ServerConnection> owner) FO_TSA_ACQUIRE(owner->_inBufLocker);
         InBufAccessor() = delete;
         InBufAccessor(const InBufAccessor&) = delete;
-        // Move ctor cannot express capability transfer for the analyzer; the moved-from guard is left inert by the move
         InBufAccessor(InBufAccessor&&) noexcept FO_TSA_NO_ANALYSIS = default;
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor() FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetInBuffer>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _inBuf;
-        }
+        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf; }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock() FO_TSA_ACQUIRE();
         void Unlock() noexcept FO_TSA_RELEASE();

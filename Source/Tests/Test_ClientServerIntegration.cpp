@@ -31,6 +31,8 @@
 // SOFTWARE.
 
 #include <charconv>
+#include <chrono>
+#include <filesystem>
 
 #include "catch_amalgamated.hpp"
 
@@ -41,6 +43,7 @@
 #include "DataSerialization.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
+#include "Updater.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -203,6 +206,47 @@ namespace ClientServerIntegrationClient
         return settings;
     }
 
+    static auto MakeTempClientUpdaterBakeDir(string_view name) -> string
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+        const string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
+        const std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs_make_path(dir_name)};
+        return fs_path_to_string(base);
+    }
+
+    static auto PrepareClientUpdaterBakeOutput() -> string
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const string bake_dir = MakeTempClientUpdaterBakeDir("resources");
+        const string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
+
+        REQUIRE(fs_create_directories(fonts_dir));
+
+        constexpr string_view default_font = R"(Version 2
+Image Default.png
+YAdvance 1
+
+Letter ' '
+  PositionX 0
+  PositionY 0
+  Width 1
+  Height 1
+  XAdvance 1
+
+End
+)";
+
+        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.fofnt").str(), default_font));
+
+        const vector<uint8_t> default_font_sprite = BakerTests::MakeMinimalBakedSprite();
+        REQUIRE(fs_write_file(strex(fonts_dir).combine_path("Default.png").str(), default_font_sprite));
+
+        return bake_dir;
+    }
+
     static auto MakeServerTestResources() -> FileSystem
     {
         const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
@@ -355,6 +399,19 @@ namespace ClientServerIntegrationClient
             const hstring resolved = client->Hashes.ResolveHash(hash, &failed);
 
             if (!failed && string_view {resolved.as_str()} == expected_string) {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+
+        return false;
+    }
+
+    static auto WaitForUpdaterResult(Updater& updater) -> bool
+    {
+        for (int32_t i = 0; i < 2000; i++) {
+            if (updater.Process()) {
                 return true;
             }
 
@@ -598,6 +655,53 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(second_client, server, 2));
     REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
     CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+
+    auto server_settings = MakeServerTestSettings(port);
+    auto client_settings = MakeClientTestSettings(port);
+    const string updater_bake_output = PrepareClientUpdaterBakeOutput();
+    const auto cleanup_updater_bake_output = scope_exit([&updater_bake_output]() noexcept { fs_remove_dir_tree(updater_bake_output); });
+    BakerTests::OverrideSetting(client_settings.BakeOutput, updater_bake_output);
+
+    auto server = MakeServerEngine(server_settings);
+    auto client = MakeClientEngine(client_settings);
+
+    const auto shutdown = scope_exit([&server, &client]() noexcept {
+        safe_call([&client] { client->Shutdown(); });
+
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const auto startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    client->Connect();
+    REQUIRE(WaitForConnected(client, server));
+
+    const auto reported = server->Hashes.ToHashedString("integration_test_updater_hash");
+
+    client->GetConnection()->OutBuf->StartMsg(NetMessage::UnresolvedHash);
+    client->GetConnection()->OutBuf->Write<hstring::hash_t>(reported.as_hash());
+    client->GetConnection()->OutBuf->EndMsg();
+
+    REQUIRE(WaitForLearnedHash(client, reported.as_hash(), "integration_test_updater_hash"));
+    client->Disconnect();
+
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+    CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
+    CHECK_FALSE(updater.IsAborted());
 }
 
 TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")

@@ -1174,15 +1174,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        const auto critter_stopped = [&cr] {
-            auto sync_ctx = SyncContext::GetCurrentOnThisThread();
-            FO_VERIFY_AND_THROW(sync_ctx, "Sync context is null");
-            ptr<Critter> synced_cr = cr;
-            sync_ctx->SyncEntity(synced_cr);
-            return !synced_cr->IsMoving();
-        };
-
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, critter_stopped));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1224,15 +1220,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        const auto critter_stopped = [&cr] {
-            auto sync_ctx = SyncContext::GetCurrentOnThisThread();
-            FO_VERIFY_AND_THROW(sync_ctx, "Sync context is null");
-            ptr<Critter> synced_cr = cr;
-            sync_ctx->SyncEntity(synced_cr);
-            return !synced_cr->IsMoving();
-        };
-
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, critter_stopped));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::Success);
@@ -1272,16 +1264,12 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         const auto blocked_hex = path_hexes[2];
 
         map->SetHexManualBlock(blocked_hex, true, true);
-        auto unblock_hex = scope_exit([map, blocked_hex]() noexcept {
-            safe_call([map, blocked_hex] {
-                auto sync_ctx = SyncContext::GetCurrentOnThisThread();
-                if (sync_ctx) {
-                    auto synced_map = map;
-                    sync_ctx->SyncEntity(synced_map);
-
-                    if (synced_map && !synced_map->IsDestroyed()) {
-                        synced_map->SetHexManualBlock(blocked_hex, false, false);
-                    }
+        auto unblock_hex = scope_exit([server, map, blocked_hex]() noexcept {
+            safe_call([server, map, blocked_hex] {
+                if (!map->IsDestroyed()) {
+                    auto ctx = server->RequireCurrentSyncContext();
+                    ctx->EnsureEntitySynced(map);
+                    map.get_no_const()->SetHexManualBlock(blocked_hex, false, false);
                 }
             });
         });
@@ -1292,15 +1280,11 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         server->StartCritterMoving(cr.get(), moving, nullptr);
         REQUIRE(cr->GetMovingContext() != nullptr);
 
-        const auto critter_stopped = [&cr] {
-            auto sync_ctx = SyncContext::GetCurrentOnThisThread();
-            FO_VERIFY_AND_THROW(sync_ctx, "Sync context is null");
-            ptr<Critter> synced_cr = cr;
-            sync_ctx->SyncEntity(synced_cr);
-            return !synced_cr->IsMoving();
-        };
-
-        REQUIRE(WaitForUnlockedServerCondition(server, locked, critter_stopped));
+        REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
 
         CHECK_FALSE(cr->IsMoving());
         CHECK(cr->GetMovingState() == MovingState::HexBusy);
@@ -1318,9 +1302,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
 // Per-entity sync rail (multithreading): SyncContext minimal-cover / escalation /
 // ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
 // tests in Test_EntitySync.cpp cannot reach this - they have no entity hierarchy
-// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under the
-// engine singleton lock, then the lock is released because SyncEntities refuses to
-// run while a singleton lock is held (deadlock prevention).
+// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under an
+// external ServerEngine::Lock; entity registration self-syncs newly created entities.
 // ============================================================================
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
@@ -1393,11 +1376,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
     // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
     // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
-    // plus the null/empty short-circuits.
+    // plus the null short-circuit and the stop-the-world universal-cover grant.
 
-    // Empty context: no held locks → the access gate grants everything, including a null entity.
+    // Strict model: an empty context is NOT exempt — no held lock means no entity access. Only a
+    // null entity short-circuits to granted.
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a));
+    CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
     // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
@@ -1508,7 +1492,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(IsEntityAccessValid(cr_b));
     ctx.Release();
     CHECK(ctx.IsEmpty());
-    CHECK(IsEntityAccessValid(cr_a)); // empty again → unrestricted
+    CHECK_FALSE(IsEntityAccessValid(cr_a)); // empty again → strict model: still no cover, access denied
 }
 
 // ============================================================================
@@ -1582,6 +1566,9 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
                     cleanup_ctx.Deactivate();
                 });
             });
+
+            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a, player_b};
+            cleanup_ctx.SyncEntities(attached_players);
 
             if (cr_a->GetPlayer()) {
                 cr_a->DetachPlayer();
@@ -2047,6 +2034,16 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
 
+    vector<nptr<ServerEntity>> sync_holders;
+    sync_holders.reserve(holders.size());
+
+    for (auto cr : holders) {
+        sync_holders.emplace_back(cr.as_ptr());
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->SyncEntities(sync_holders);
+
     int64_t total = 0;
     for (auto cr : holders) {
         auto stack = cr->GetInvItemByPid(coin_pid);
@@ -2390,10 +2387,12 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     // barrier while holding a lock (that would be a harness-level deadlock independent of the rail).
     // Once both threads pass the barrier they acquire {primary cover} then {nested cross cover}
     // back-to-back, so the two opposite-order cross-acquires overlap and the 2-cycle is hammered
-    // every round. No lock is held across any wait point in the harness itself.
+    // every round. The outer barrier is lock-free; the inner barrier intentionally waits while each
+    // thread holds only its own primary lock.
     std::atomic<int32_t> arrive {0};
     std::atomic<int32_t> generation {0};
-    std::atomic<int32_t> primary_held {0};
+    std::atomic<int32_t> primary_arrive {0};
+    std::atomic<int32_t> primary_generation {0};
 
     const auto barrier = [&](int32_t round) {
         const int32_t gen = generation.load(std::memory_order_acquire);
@@ -2408,11 +2407,26 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         }
     };
 
+    const auto primary_barrier = [&](int32_t round) -> bool {
+        const int32_t gen = primary_generation.load(std::memory_order_acquire);
+        if (primary_arrive.fetch_add(1, std::memory_order_acq_rel) + 1 == 2) {
+            primary_arrive.store(0, std::memory_order_release);
+            primary_generation.store(round + 1, std::memory_order_release);
+            return true;
+        }
+
+        const auto deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
+        while (primary_generation.load(std::memory_order_acquire) == gen && !failed.load(std::memory_order_acquire) && nanotime::now() < deadline) {
+            std::this_thread::yield();
+        }
+
+        return primary_generation.load(std::memory_order_acquire) != gen && !failed.load(std::memory_order_acquire);
+    };
+
     const auto cross_thread = [&](ServerEntity* own, ServerEntity* peer) {
         for (int32_t round = 0; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
             // Outer rendezvous while holding NO lock, so both threads start the locked section
-            // together (and the per-round primary_held counter starts clean).
-            primary_held.store(0, std::memory_order_relaxed);
+            // together.
             barrier(round);
 
             SyncContext primary;
@@ -2430,24 +2444,20 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
                 // in OPPOSITE order while each holds (via its primary) the lock the other needs — a
                 // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
                 // escalation; an unfixed engine spins forever (regression caught by the watchdog).
-                // The give-up threshold is a generous wall-clock deadline, not a fixed spin count, so a
-                // descheduled-but-progressing peer on a loaded host cannot trip a false "setup broken".
-                primary_held.fetch_add(1, std::memory_order_acq_rel);
-                const auto rendezvous_deadline = nanotime::now() + timespan {std::chrono::seconds {10}};
-                while (primary_held.load(std::memory_order_acquire) < 2 && !failed.load(std::memory_order_acquire) && nanotime::now() < rendezvous_deadline) {
-                    std::this_thread::yield();
-                }
+                // The generation counter avoids the reset race of a plain per-round counter: a fast
+                // thread entering the next round must not make its peer miss this round's rendezvous.
+                const bool primary_met = primary_barrier(round);
 
                 // The rendezvous MUST be met before the nested cross-acquire: if the peer never
                 // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
                 // never forms, and even a broken engine would slip through as a false PASS. The peer
                 // only has to take one uncontended primary lock, so missing the generous deadline means
                 // the setup is broken — fail hard instead of running a non-diagnostic acquire.
-                if (primary_held.load(std::memory_order_acquire) < 2) {
+                if (!primary_met) {
                     failed.store(true, std::memory_order_release);
                 }
                 else {
-                    // Nested context (like a per-callback FireEvent scope) requesting BOTH critters.
+                    // Nested context (like script execution) requesting BOTH critters.
                     SyncContext nested;
                     nested.Activate();
                     auto nested_cleanup = scope_exit([&]() noexcept {
@@ -2479,9 +2489,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::thread t2(cross_thread, cr_b.get(), cr_a.get());
 
     // Watchdog: a correct implementation finishes the cross-rounds in well under a second even on a
-    // loaded host. If the threads deadlock, detect it and fail cleanly. We can't safely unblock a real
-    // deadlock, so on timeout we Shutdown (aborts pending entity-lock waiters) and detach — but the
-    // fixed engine never reaches the timeout. Both threads run ROUNDS rounds, so the target is 2*ROUNDS.
+    // loaded host. If the threads deadlock, detect it, wake shutdown-abortable waiters, then join before
+    // reporting the failure. Both threads run ROUNDS rounds, so the target is 2*ROUNDS.
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
     const auto deadline = nanotime::now() + timespan {std::chrono::seconds {30}};
     bool timed_out = false;
@@ -2493,20 +2502,19 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
+    if (timed_out) {
+        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit.
+        failed.store(true, std::memory_order_release);
+        server->Shutdown();
+    }
+
+    t1.join();
+    t2.join();
+
     CHECK_FALSE(timed_out); // a hang here is the sync-rail nested cross-entity deadlock (regression)
     CHECK_FALSE(failed.load());
 
-    if (timed_out) {
-        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit
-        // rather than hang the whole suite. The CHECK above already recorded the failure.
-        failed.store(true, std::memory_order_release);
-        server->Shutdown();
-        t1.detach();
-        t2.detach();
-    }
-    else {
-        t1.join();
-        t2.join();
+    if (!timed_out && !failed.load()) {
         CHECK(rounds_done.load() == total_rounds);
     }
 
@@ -2514,6 +2522,10 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
         // Detach so the map refcounts drop cleanly before Shutdown.
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         locked = true;
+        auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
+        REQUIRE(static_cast<bool>(cleanup_ctx));
+        vector<nptr<ServerEntity>> cleanup_req {cr_a.get(), cr_b.get()};
+        cleanup_ctx->SyncEntities(cleanup_req);
         cr_a->SetParent(nullptr);
         cr_b->SetParent(nullptr);
     }

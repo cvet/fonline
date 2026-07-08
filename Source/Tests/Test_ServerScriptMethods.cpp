@@ -2233,8 +2233,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? new_player = Game.LoginPlayerToNewRecord(unlogined);
-        if (new_player is null) return -2;
+        Player new_player = Game.LoginPlayerToNewRecord(unlogined);
         if (new_player.Id == ZERO_IDENT) return -3;
 
         Player? fetched_player = Game.GetPlayer(new_player.Id);
@@ -2253,8 +2252,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
-        if (reconnected_player is null) return -2;
+        Player reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
         if (reconnected_player.Id != playerId) return -3;
 
 )"
@@ -2267,8 +2265,7 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? temp_player = Game.LoginPlayerToTempSession(unlogined);
-        if (temp_player is null) return -2;
+        Player temp_player = Game.LoginPlayerToTempSession(unlogined);
 
         temp_player.HardDisconnect();
         return 0;
@@ -2278,31 +2275,30 @@ namespace ScriptMethodsTest
     {
         if (unlogined is null) return -1;
 
-        Player? player = Game.LoginPlayerToNewRecord(unlogined);
-        if (player is null) return -2;
+        Player player = Game.LoginPlayerToNewRecord(unlogined);
 
         ident playerId = player.Id;
         int catches = 0;
 
         try {
-            Player? new_player = Game.LoginPlayerToNewRecord(player);
-            if (new_player !is null) return -3;
+            Game.LoginPlayerToNewRecord(player);
+            return -3;
         }
         catch {
             catches++;
         }
 
         try {
-            Player? temp_player = Game.LoginPlayerToTempSession(player);
-            if (temp_player !is null) return -4;
+            Game.LoginPlayerToTempSession(player);
+            return -4;
         }
         catch {
             catches++;
         }
 
         try {
-            Player? existing_player = Game.LoginPlayerToExistentRecord(player, playerId);
-            if (existing_player !is null) return -5;
+            Game.LoginPlayerToExistentRecord(player, playerId);
+            return -5;
         }
         catch {
             catches++;
@@ -2321,8 +2317,8 @@ namespace ScriptMethodsTest
         unlogined.SetName("ScriptLoginZero");
 
         try {
-            Player? player = Game.LoginPlayerToExistentRecord(unlogined, ZERO_IDENT);
-            if (player !is null) return -2;
+            Game.LoginPlayerToExistentRecord(unlogined, ZERO_IDENT);
+            return -2;
         }
         catch {
             unlogined.HardDisconnect();
@@ -2604,6 +2600,37 @@ namespace ScriptMethodsTest
 
     int PropertySetterCallCount = 0;
     int PropertySetterTransformCallCount = 0;
+    Critter? PropertySetterSyncIsolationTarget = null;
+    int PropertySetterSyncIsolationCallCount = 0;
+    int PropertySetterSyncIsolationError = 0;
+
+    [[PropertySetter]] [[Async]]
+    void OnLookDistanceSyncIsolationSetter(Critter cr)
+    {
+        PropertySetterSyncIsolationCallCount++;
+
+        if (!Game.IsEntityLocked(cr)) {
+            PropertySetterSyncIsolationError = -12;
+            return;
+        }
+        if (cr.LookDistance != 41) {
+            PropertySetterSyncIsolationError = -13;
+            return;
+        }
+        if (PropertySetterSyncIsolationTarget is null) {
+            PropertySetterSyncIsolationError = -10;
+            return;
+        }
+
+        Game.Sync(PropertySetterSyncIsolationTarget);
+        if (!Game.IsEntityLocked(PropertySetterSyncIsolationTarget)) {
+            PropertySetterSyncIsolationError = -11;
+            return;
+        }
+        if (!Game.IsEntityLocked(cr)) {
+            PropertySetterSyncIsolationError = -14;
+        }
+    }
 
     void TestPropertyGetterNoneThrows()
     {
@@ -2662,6 +2689,38 @@ namespace ScriptMethodsTest
         }
 
         Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    [[Async]]
+    int TestRunContextSyncScopeIsolatesPropertySetter()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter other = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null || other is null) return -1;
+
+        PropertySetterSyncIsolationTarget = other;
+        PropertySetterSyncIsolationCallCount = 0;
+        PropertySetterSyncIsolationError = 0;
+        Game.AddPropertySetter(CritterProperty::LookDistance, OnLookDistanceSyncIsolationSetter);
+
+        Game.Sync(cr);
+        if (!Game.IsEntityLocked(cr)) return -2;
+
+        cr.LookDistance = 41;
+        if (PropertySetterSyncIsolationCallCount != 1) return -3;
+        if (PropertySetterSyncIsolationError != 0) return PropertySetterSyncIsolationError;
+        if (!Game.IsEntityLocked(cr)) return -4;
+        if (Game.IsEntityLocked(other)) return -5;
+
+        Game.SyncRelease();
+        PropertySetterSyncIsolationTarget = null;
+
+        Game.Sync(cr);
+        Game.DestroyCritter(cr);
+        Game.Sync(other);
+        Game.DestroyCritter(other);
+
         return 0;
     }
 
@@ -2731,11 +2790,13 @@ namespace ScriptMethodsTest
         Game.SyncRelease();
 
         // SyncRelease drained both buckets (entity cover and the singleton), so no Unlock is
-        // needed. Re-cover all three critters before destroying: each destroy restricts the
-        // context to its own target, so consecutive uncovered destroys would be rejected.
-        Game.Sync(cr1, cr2, cr3);
+        // needed. Re-cover each critter immediately before destroying: each destroy restricts
+        // the context to its own target, so consecutive uncovered destroys would be rejected.
+        Game.Sync(cr1);
         Game.DestroyCritter(cr1);
+        Game.Sync(cr2);
         Game.DestroyCritter(cr2);
+        Game.Sync(cr3);
         Game.DestroyCritter(cr3);
 
         return 0;
@@ -3786,6 +3847,14 @@ TEST_CASE("ServerMiscScriptOperations")
     SECTION("PropertySetterTransformCallback")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterTransformCallback"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("RunContextSyncScopeIsolatesPropertySetter")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRunContextSyncScopeIsolatesPropertySetter"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

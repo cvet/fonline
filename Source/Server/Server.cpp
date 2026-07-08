@@ -109,6 +109,15 @@ auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
     return ctx;
 }
 
+void ServerEngine::RunScriptContext(const function<void()>& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ScopedSyncContext nested;
+
+    callback();
+}
+
 auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
@@ -127,11 +136,6 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         EventResult result = EventResult::ContinueChain;
 
         try {
-            // Wrap each callback in its own nested SyncContext on top of the dispatcher's primary
-            // cover. Inner `Sync::Lock(...)` only mutates the nested layer; the primary's locks
-            // (the event's entity args) survive across the chain.
-            ScopedSyncContext nested;
-
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
@@ -1003,7 +1007,8 @@ void ServerEngine::Shutdown()
     // Shutdown runs synchronously on the caller's thread (test thread or main app), which has
     // no SyncContext active. Stand one up here so DestroyAllEntities, MapMngr.DestroyLocation
     // and friends can satisfy the engine-wide invariant that any entity touch happens under a
-    // primary SyncContext.
+    // primary SyncContext. The whole world is locked into it below, once the sequenced teardown
+    // (network join, time-event cancel, worker-pool drain) has made this thread the sole owner.
     ScopedSyncContext shutdown_ctx;
 
     WriteLog("Shutdown stage: willFinishDispatcher");
@@ -1108,6 +1113,13 @@ void ServerEngine::Shutdown()
     WriteLog("Shutdown stage: TimeEventMngr.ClearDispatcherHooks");
     TimeEventMngr.ClearDispatcherHooks();
 
+    // From here teardown is single-threaded (pool and main worker are gone) and every entity lock is
+    // free: take every registered entity into the shutdown context explicitly so the remaining stages
+    // (OnFinish handlers, per-entity unsubscribe, DestroyAllEntities, player disconnects) run covered.
+    // The scope-exit Release() drains the held locks.
+    WriteLog("Shutdown stage: lock whole world (count={})", EntityMngr.GetEntitiesCount());
+    SyncWholeWorld(shutdown_ctx.GetContext());
+
     WriteLog("Shutdown stage: healthWriter.Clear");
     _healthWriter.Clear();
 
@@ -1120,7 +1132,6 @@ void ServerEngine::Shutdown()
     ClearAllTimeEvents();
 
     WriteLog("Shutdown stage: per-entity unsubscribe (count={})", EntityMngr.GetEntitiesCount());
-
     vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
 
     for (size_t i = 0; i < entities.size(); i++) {
@@ -1176,6 +1187,9 @@ void ServerEngine::Shutdown()
         scoped_lock locker {_unloginedPlayersLocker};
 
         for (auto& player : _unloginedPlayers) {
+            // Unlogined players are not in the entity registry, so the whole-world lock above did not
+            // reach them; capture each one before the validated disconnect/destroy touches.
+            EnsureEntitySynced(player);
             player->GetConnection()->HardDisconnect();
             player->MarkAsDestroyed();
         }
@@ -1217,14 +1231,32 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         }
     }
 
-    // Now this thread is allowed to touch engine state - stand up a SyncContext to satisfy the
-    // engine-wide invariant for any RegisterX / DestroyX / event-fire that may follow.
+    // Now this thread is allowed to touch engine state: stand up an active SyncContext for explicit
+    // Sync/Ensure calls made by the external lock holder. The external lock owns only the engine sync
+    // point; it does not pre-lock the world.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
     auto external_lock_sync_ctx = ExternalLockSyncCtx.as_nptr();
     FO_VERIFY_AND_THROW(external_lock_sync_ctx, "External lock sync context is null");
     external_lock_sync_ctx->Activate();
+
     return true;
+}
+
+void ServerEngine::SyncWholeWorld(SyncContext& ctx)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<refcount_ptr<ServerEntity>> entities = EntityMngr.GetEntities();
+
+    vector<nptr<ServerEntity>> sync_entities;
+    sync_entities.reserve(entities.size());
+
+    for (auto& entity : entities) {
+        sync_entities.emplace_back(entity.as_ptr());
+    }
+
+    ctx.SyncEntities(sync_entities);
 }
 
 void ServerEngine::Unlock()
@@ -1259,7 +1291,7 @@ void ServerEngine::SyncPoint()
     if (_syncRequest > 0) {
         // Make ServerEngine::Lock a true stop-the-world. The main worker is about to park here until
         // every external lock holder releases, but worker-pool jobs would otherwise keep mutating
-        // entities in parallel — so an external reader holding only the engine lock would race them.
+        // entities in parallel, racing the external holder's controlled access.
         // Pause and drain the pool so the lock holder has exclusive, race-free access; resume once the
         // last holder unlocks. `_workerPool` may already be gone during late shutdown; that reset is
         // serialized on `_syncLocker`, so this null check under the lock is race-free.
@@ -2792,7 +2824,7 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     }
 }
 
-auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<Player>
+auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2806,7 +2838,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
         vec_remove_unique_value(_unloginedPlayers, player_holder);
     }
 
-    ptr<Player> player = unlogined_player;
+    auto player = unlogined_player;
     bool registered_player = false;
     bool inserted_player_record = false;
 
@@ -2814,14 +2846,16 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
         if (inserted_player_record) {
             safe_call([&] { DbStorage.Delete(PlayersCollectionName, player->GetId()); });
         }
+
+        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+
         if (registered_player) {
             safe_call([&] { player->DetachCritter(); });
             safe_call([&] { player->ResetViewMap(); });
             safe_call([&] { player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(player); });
         }
-        safe_call([&] { player->SetLogined(false); });
-        safe_call([&] { player->GetConnection()->HardDisconnect(); });
     }};
 
     EntityMngr.RegisterPlayer(player, ident_t {});
@@ -2839,16 +2873,18 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
     const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
     if (login_result == Entity::EventResult::StopChain) {
+        auto connection = player->GetConnection();
         DbStorage.Delete(PlayersCollectionName, player->GetId());
         inserted_player_record = false;
+        player->SetLogined(false);
         player->DetachCritter();
         player->ResetViewMap();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
-        player->SetLogined(false);
-        player->GetConnection()->GracefulDisconnect();
-        return nullptr;
+        connection->GracefulDisconnect();
+        disconnect_on_error.release();
+        throw GenericException("New player login rejected by OnPlayerLogin");
     }
 
     OnPlayerLogined(player, unlogined_player);
@@ -2856,7 +2892,7 @@ auto ServerEngine::LoginPlayerToNewRecord(ptr<Player> unlogined_player) -> nptr<
     return player;
 }
 
-auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> nptr<Player>
+auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ident_t player_id) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2881,6 +2917,9 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             safe_call([&] { player->SwapConnection(unlogined_player); });
         }
 
+        safe_call([&] { unlogined_player->SetLogined(false); });
+        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
+
         if (registered_player) {
             safe_call([&] { unlogined_player->DetachCritter(); });
             safe_call([&] { unlogined_player->ResetViewMap(); });
@@ -2890,9 +2929,6 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         else {
             safe_call([&] { unlogined_player->MarkAsDestroyed(); });
         }
-
-        safe_call([&] { unlogined_player->SetLogined(false); });
-        safe_call([&] { unlogined_player->GetConnection()->HardDisconnect(); });
     }};
 
     player_ref = EntityMngr.GetPlayer(player_id);
@@ -2926,14 +2962,16 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
         if (login_result == Entity::EventResult::StopChain) {
+            auto connection = player->GetConnection();
+            player->SetLogined(false);
             player->DetachCritter();
             player->ResetViewMap();
             player->MarkAsDestroyed();
             EntityMngr.UnregisterPlayer(player);
             registered_player = false;
-            player->SetLogined(false);
-            player->GetConnection()->GracefulDisconnect();
-            return nullptr;
+            connection->GracefulDisconnect();
+            disconnect_on_error.release();
+            throw GenericException("Existing player login rejected by OnPlayerLogin");
         }
     }
     else {
@@ -2941,8 +2979,13 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player.as_nptr()};
         ctx->SyncEntities(sync_entities);
 
-        if (player->IsDestroyed() || unlogined_player->IsDestroyed()) {
-            return nullptr;
+        if (player->IsDestroyed()) {
+            disconnect_on_error.release();
+            throw GenericException("Existing player was destroyed during reconnect sync");
+        }
+        if (unlogined_player->IsDestroyed()) {
+            disconnect_on_error.release();
+            throw GenericException("Unlogined player was destroyed during reconnect sync");
         }
 
         // Kick previous
@@ -2961,7 +3004,8 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             player->GetConnection()->GracefulDisconnect();
             unlogined_player->SetLogined(false);
             unlogined_player->MarkAsDestroyed();
-            return nullptr;
+            disconnect_on_error.release();
+            throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
 
         unlogined_player->MarkAsDestroyed();
@@ -2979,7 +3023,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     return player;
 }
 
-auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> nptr<Player>
+auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> ptr<Player>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2997,13 +3041,14 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> npt
     bool registered_player = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
+        safe_call([&] { player->SetLogined(false); });
+        safe_call([&] { player->GetConnection()->HardDisconnect(); });
+
         if (registered_player) {
             safe_call([&] { player->DetachCritter(); });
             safe_call([&] { player->MarkAsDestroyed(); });
             safe_call([&] { EntityMngr.UnregisterPlayer(player); });
         }
-        safe_call([&] { player->SetLogined(false); });
-        safe_call([&] { player->GetConnection()->HardDisconnect(); });
     }};
 
     EntityMngr.RegisterPlayer(player, ident_t {}, false);
@@ -3017,13 +3062,15 @@ auto ServerEngine::LoginPlayerToTempSession(ptr<Player> unlogined_player) -> npt
     const EventResult login_result = OnPlayerLogin.Fire(player, nullptr);
 
     if (login_result == Entity::EventResult::StopChain) {
+        auto connection = player->GetConnection();
+        player->SetLogined(false);
         player->DetachCritter();
         player->MarkAsDestroyed();
         EntityMngr.UnregisterPlayer(player);
         registered_player = false;
-        player->SetLogined(false);
-        player->GetConnection()->GracefulDisconnect();
-        return nullptr;
+        connection->GracefulDisconnect();
+        disconnect_on_error.release();
+        throw GenericException("Temporary player login rejected by OnPlayerLogin");
     }
 
     OnPlayerLogined(player, unlogined_player);
@@ -4470,12 +4517,6 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     auto ctx = RequireCurrentSyncContext();
     ctx->SyncEntity(player);
-
-    // Wrap the script handler in its own nested SyncContext on top of the job's primary cover,
-    // mirroring event dispatch: inner `Sync::Lock(...)` calls only mutate the nested layer, so
-    // the primary's player cover survives the handler and the next buffered message in the
-    // ProcessPlayer drain loop enters with the player still locked.
-    ScopedSyncContext nested;
 
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }
