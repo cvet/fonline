@@ -2600,6 +2600,37 @@ namespace ScriptMethodsTest
 
     int PropertySetterCallCount = 0;
     int PropertySetterTransformCallCount = 0;
+    Critter? PropertySetterSyncIsolationTarget = null;
+    int PropertySetterSyncIsolationCallCount = 0;
+    int PropertySetterSyncIsolationError = 0;
+
+    [[PropertySetter]] [[Async]]
+    void OnLookDistanceSyncIsolationSetter(Critter cr)
+    {
+        PropertySetterSyncIsolationCallCount++;
+
+        if (!Game.IsEntityLocked(cr)) {
+            PropertySetterSyncIsolationError = -12;
+            return;
+        }
+        if (cr.LookDistance != 41) {
+            PropertySetterSyncIsolationError = -13;
+            return;
+        }
+        if (PropertySetterSyncIsolationTarget is null) {
+            PropertySetterSyncIsolationError = -10;
+            return;
+        }
+
+        Game.Sync(PropertySetterSyncIsolationTarget);
+        if (!Game.IsEntityLocked(PropertySetterSyncIsolationTarget)) {
+            PropertySetterSyncIsolationError = -11;
+            return;
+        }
+        if (!Game.IsEntityLocked(cr)) {
+            PropertySetterSyncIsolationError = -14;
+        }
+    }
 
     void TestPropertyGetterNoneThrows()
     {
@@ -2658,6 +2689,38 @@ namespace ScriptMethodsTest
         }
 
         Game.DestroyCritter(cr);
+        return 0;
+    }
+
+    [[Async]]
+    int TestRunContextSyncScopeIsolatesPropertySetter()
+    {
+        Critter cr = Game.CreateCritter("TestCritter".hstr(), false);
+        Critter other = Game.CreateCritter("TestCritter".hstr(), false);
+        if (cr is null || other is null) return -1;
+
+        PropertySetterSyncIsolationTarget = other;
+        PropertySetterSyncIsolationCallCount = 0;
+        PropertySetterSyncIsolationError = 0;
+        Game.AddPropertySetter(CritterProperty::LookDistance, OnLookDistanceSyncIsolationSetter);
+
+        Game.Sync(cr);
+        if (!Game.IsEntityLocked(cr)) return -2;
+
+        cr.LookDistance = 41;
+        if (PropertySetterSyncIsolationCallCount != 1) return -3;
+        if (PropertySetterSyncIsolationError != 0) return PropertySetterSyncIsolationError;
+        if (!Game.IsEntityLocked(cr)) return -4;
+        if (Game.IsEntityLocked(other)) return -5;
+
+        Game.SyncRelease();
+        PropertySetterSyncIsolationTarget = null;
+
+        Game.Sync(cr);
+        Game.DestroyCritter(cr);
+        Game.Sync(other);
+        Game.DestroyCritter(other);
+
         return 0;
     }
 
@@ -3784,6 +3847,14 @@ TEST_CASE("ServerMiscScriptOperations")
     SECTION("PropertySetterTransformCallback")
     {
         auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestPropertySetterTransformCallback"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == 0);
+    }
+
+    SECTION("RunContextSyncScopeIsolatesPropertySetter")
+    {
+        auto func = server->FindFunc<int32_t>(get_func("ScriptMethodsTest::TestRunContextSyncScopeIsolatesPropertySetter"));
         REQUIRE(func);
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);

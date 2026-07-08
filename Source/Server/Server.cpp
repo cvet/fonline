@@ -109,6 +109,15 @@ auto ServerEngine::RequireCurrentSyncContext() const -> ptr<SyncContext>
     return nullable_ctx.as_ptr();
 }
 
+void ServerEngine::RunScriptContext(const function<void()>& callback)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ScopedSyncContext nested;
+
+    callback();
+}
+
 auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData& call) noexcept -> EventResult
 {
     FO_STACK_TRACE_ENTRY();
@@ -127,11 +136,6 @@ auto ServerEngine::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         EventResult result = EventResult::ContinueChain;
 
         try {
-            // Wrap each callback in its own nested SyncContext on top of the dispatcher's primary
-            // cover. Inner `Sync::Lock(...)` only mutates the nested layer; the primary's locks
-            // (the event's entity args) survive across the chain.
-            ScopedSyncContext nested;
-
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
@@ -4612,12 +4616,6 @@ void ServerEngine::Process_RemoteCall(ptr<Player> player)
 
     auto ctx = RequireCurrentSyncContext();
     ctx->SyncEntity(player);
-
-    // Wrap the script handler in its own nested SyncContext on top of the job's primary cover,
-    // mirroring event dispatch: inner `Sync::Lock(...)` calls only mutate the nested layer, so
-    // the primary's player cover survives the handler and the next buffered message in the
-    // ProcessPlayer drain loop enters with the player still locked.
-    ScopedSyncContext nested;
 
     HandleInboundRemoteCall(remote_call_name, player, remote_call_data);
 }

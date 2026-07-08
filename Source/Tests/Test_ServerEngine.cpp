@@ -2464,7 +2464,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
                     failed.store(true, std::memory_order_release);
                 }
                 else {
-                    // Nested context (like a per-callback FireEvent scope) requesting BOTH critters.
+                    // Nested context (like script execution) requesting BOTH critters.
                     SyncContext nested;
                     nested.Activate();
                     auto nested_cleanup = scope_exit([&]() noexcept {
