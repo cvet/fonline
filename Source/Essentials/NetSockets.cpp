@@ -72,9 +72,8 @@ static auto MakeSocketHolder(socket_t sock) -> unique_del_ptr<socket_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return make_unique_del_ptr(SafeAlloc::MakeRaw<socket_t>(sock), [](ptr<socket_t> p) {
-        FO_STACK_TRACE_ENTRY();
-
+    auto socket_holder = SafeAlloc::MakeUnique<socket_t>(sock);
+    return make_unique_del_ptr(socket_holder.release(), [](ptr<socket_t> p) {
         auto owned_socket = adopt_unique_ptr(p);
         FO_VERIFY_AND_THROW(*owned_socket != INVALID_SOCKET_VALUE, "Socket handle is invalid");
         CloseSocket(*owned_socket);
@@ -260,8 +259,8 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     }
 
     addr.sin_addr.s_addr = *resolved;
-
     auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+
     if (::connect(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;
@@ -388,6 +387,7 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
 #endif
 
     auto error_data = ptr<int32_t> {&error}.reinterpret_as<char>();
+
     if (::getsockopt(*_sock, SOL_SOCKET, SO_ERROR, error_data.get(), &len) != 0) {
         return -1;
     }
@@ -450,6 +450,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
     addr.sin_addr.s_addr = *resolved;
 
     auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;
@@ -548,6 +549,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
     addr.sin_addr.s_addr = *resolved;
 
     auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
         return false;

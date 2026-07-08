@@ -924,9 +924,8 @@ void CleanupScriptFunctionAttributes(AngelScript::asIScriptFunction* raw_func)
 
     FO_VERIFY_AND_THROW(raw_func != nullptr, "Missing script function for attribute cleanup");
     auto func = make_ptr(raw_func);
-    auto user_data = GetMutableFunctionAttributesUserData(func);
 
-    if (user_data) {
+    if (auto user_data = GetMutableFunctionAttributesUserData(func)) {
         CleanupScriptFunctionAttributeUserData(user_data);
     }
 }
@@ -1276,20 +1275,16 @@ static auto ClassifyFunctionAttributes(ptr<const AngelScript::asIScriptFunction>
     has_blocking = false;
     markers.clear();
 
-    auto user_data = GetFunctionAttributesUserData(func);
+    if (auto user_data = GetFunctionAttributesUserData(func)) {
+        for (const auto& attr : user_data->Attributes) {
+            const auto base = GetAttributeBaseName(attr);
 
-    if (!user_data) {
-        return;
-    }
-
-    for (const auto& attr : user_data->Attributes) {
-        const auto base = GetAttributeBaseName(attr);
-
-        if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
-            has_blocking = true;
-        }
-        else {
-            markers.emplace_back(base);
+            if (IsDirectCallBlockingAttribute(base, project_blocking_extras)) {
+                has_blocking = true;
+            }
+            else {
+                markers.emplace_back(base);
+            }
         }
     }
 }

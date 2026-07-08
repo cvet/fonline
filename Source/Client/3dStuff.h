@@ -195,7 +195,7 @@ public:
 
     [[nodiscard]] auto CreateModel(string_view name) -> unique_nptr<ModelInstance>;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>;
-    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> nptr<MeshTexture>;
+    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> unique_nptr<MeshTexture>;
 
     void PreloadModel(string_view name);
 
@@ -462,6 +462,7 @@ private:
     unordered_set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
+    vector<unique_ptr<ModelCutData>> _cutData {};
     bool _shadowDisabled {};
     bool _disableBackwardAnim {};
     isize32 _drawSize {};
@@ -495,6 +496,7 @@ private:
     ptr<ModelBone> _rootBone;
     vector<ptr<ModelBone>> _allBones {};
     vector<ptr<ModelBone>> _allDrawBones {};
+    vector<unique_ptr<MeshTexture>> _textures {};
 };
 
 FO_END_NAMESPACE

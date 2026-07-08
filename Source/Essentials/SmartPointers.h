@@ -52,6 +52,15 @@ concept try_refcountable = refcountable<T> && requires(T t) {
 template<typename From, typename To>
 concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from); };
 
+namespace details
+{
+    template<typename T>
+    [[nodiscard]] FO_FORCE_INLINE auto make_void_ptr(T* value) noexcept -> void*
+    {
+        return const_cast<void*>(static_cast<const void*>(value));
+    }
+}
+
 template<typename T>
 class refcount_ptr;
 template<typename T>
@@ -340,7 +349,7 @@ public:
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
     // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
-    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return const_cast<void*>(static_cast<const void*>(_ptr)); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
         requires(refcountable<U>)
@@ -593,7 +602,7 @@ public:
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
     // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
-    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return const_cast<void*>(static_cast<const void*>(_ptr)); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
         requires(refcountable<U>)
@@ -749,6 +758,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> ptr<T> { return ptr<T> {std::exchange(_ptr, nullptr)}; }
@@ -899,6 +909,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> nptr<T> { return nptr<T> {std::exchange(_ptr, nullptr)}; }
@@ -1075,6 +1086,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return ptr<const T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
@@ -1311,6 +1323,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() noexcept -> T** { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
@@ -1689,6 +1702,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_obj); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_obj); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_obj); }
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] FO_FORCE_INLINE auto use_count() const noexcept -> size_t { return _block != nullptr ? _block->strong_ref_count() : 0; }
     template<typename U>
@@ -1870,6 +1884,7 @@ public:
     }
     // ReSharper disable once CppInconsistentNaming
     [[nodiscard]] FO_FORCE_INLINE auto use_count() const noexcept -> size_t { return _block != nullptr ? _block->strong_ref_count() : 0; }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_obj); }
 
 private:
     shared_ptr_control_block* _block {};
@@ -1975,6 +1990,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _arr; }
     [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _arr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _arr; }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_arr); }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_arr, nullptr); }
     FO_FORCE_INLINE void reset(T* arr = nullptr) noexcept { delete[] std::exchange(_arr, arr); }
 
@@ -2063,6 +2079,7 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_ptr, nullptr); }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
@@ -2150,6 +2167,7 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return _owner; }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return _owner; }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return _owner; }
+    [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return _owner.void_cast(); }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> ptr<T> { return ptr<T> {_owner.release()}; }
     [[nodiscard]] FO_FORCE_INLINE operator unique_del_nptr<T>() && noexcept { return unique_del_nptr<T> {std::move(_owner)}; }
 

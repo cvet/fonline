@@ -1288,7 +1288,7 @@ void ScriptArray::PrecacheSubTypeData()
         return;
     }
 
-    _subTypeData = SafeAlloc::MakeRaw<ScriptArrayTypeData>();
+    auto sub_type_data = SafeAlloc::MakeUnique<ScriptArrayTypeData>();
 
     const bool must_be_const = (_subTypeId & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
@@ -1342,35 +1342,36 @@ void ScriptArray::PrecacheSubTypeData()
                 }
 
                 if (is_cmp) {
-                    if (_subTypeData->CmpFunc || _subTypeData->CmpFuncReturnCode != AngelScript::asSUCCESS) {
-                        _subTypeData->CmpFunc.reset();
-                        _subTypeData->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
+                    if (sub_type_data->CmpFunc || sub_type_data->CmpFuncReturnCode != AngelScript::asSUCCESS) {
+                        sub_type_data->CmpFunc.reset();
+                        sub_type_data->CmpFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
-                        _subTypeData->CmpFunc = func;
+                        sub_type_data->CmpFunc = func;
                     }
                 }
                 else if (is_eq) {
-                    if (_subTypeData->EqFunc || _subTypeData->EqFuncReturnCode != AngelScript::asSUCCESS) {
-                        _subTypeData->EqFunc.reset();
-                        _subTypeData->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
+                    if (sub_type_data->EqFunc || sub_type_data->EqFuncReturnCode != AngelScript::asSUCCESS) {
+                        sub_type_data->EqFunc.reset();
+                        sub_type_data->EqFuncReturnCode = AngelScript::asMULTIPLE_FUNCTIONS;
                     }
                     else {
-                        _subTypeData->EqFunc = func;
+                        sub_type_data->EqFunc = func;
                     }
                 }
             }
         }
     }
 
-    if (!_subTypeData->EqFunc && _subTypeData->EqFuncReturnCode == AngelScript::asSUCCESS) {
-        _subTypeData->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
+    if (!sub_type_data->EqFunc && sub_type_data->EqFuncReturnCode == AngelScript::asSUCCESS) {
+        sub_type_data->EqFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
-    if (!_subTypeData->CmpFunc && _subTypeData->CmpFuncReturnCode == AngelScript::asSUCCESS) {
-        _subTypeData->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
+    if (!sub_type_data->CmpFunc && sub_type_data->CmpFuncReturnCode == AngelScript::asSUCCESS) {
+        sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 
-    _typeInfo->SetUserData(make_nptr(_subTypeData.get()).void_cast(), AS_TYPE_ARRAY_CACHE);
+    _subTypeData = sub_type_data.release();
+    _typeInfo->SetUserData(_subTypeData.void_cast(), AS_TYPE_ARRAY_CACHE);
 }
 
 void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)

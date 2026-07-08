@@ -153,6 +153,11 @@ namespace
     concept has_lvalue_release_ownership = requires(T value) { value.release_ownership(); };
 
     template<typename T>
+    concept has_void_cast = requires(T value) {
+        { value.void_cast() } -> std::same_as<void*>;
+    };
+
+    template<typename T>
     concept has_refcount_ptr_named_factories = requires(T* raw) {
         { refcount_ptr<T>::from_add_ref(raw) } -> std::same_as<refcount_ptr<T>>;
         { refcount_ptr<T>::try_from_add_ref(raw) } -> std::same_as<refcount_nptr<T>>;
@@ -209,6 +214,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!has_default_reset<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_ptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_ptr<PtrBase>&>().release()), ptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<unique_ptr<PtrBase>>);
 
         STATIC_REQUIRE(std::is_default_constructible_v<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_constructible_v<unique_nptr<PtrBase>, std::nullptr_t>);
@@ -217,8 +223,12 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(has_default_reset<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_nptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_nptr<PtrBase>&>().release()), nptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<unique_nptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<unique_arr_ptr<PtrBase>>);
         STATIC_REQUIRE(has_lvalue_release<unique_del_ptr<PtrBase>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<PtrBase>&>().release()), ptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<unique_del_ptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<unique_del_nptr<PtrBase>>);
 
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, refcount_ptr<RefCountedValue>&&>);
         STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, refcount_nptr<RefCountedValue>&&>);
@@ -240,6 +250,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!has_default_reset<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(has_void_cast<refcount_ptr<RefCountedValue>>);
 
         STATIC_REQUIRE(std::is_default_constructible_v<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, std::nullptr_t>);
@@ -247,6 +258,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(explicitly_bool_testable<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(has_default_reset<refcount_nptr<RefCountedValue>>);
         STATIC_REQUIRE(has_lvalue_release_ownership<refcount_nptr<RefCountedValue>>);
+        STATIC_REQUIRE(has_void_cast<refcount_nptr<RefCountedValue>>);
 
         STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, RefCountedValue*>);
         STATIC_REQUIRE(!std::is_assignable_v<refcount_ptr<RefCountedValue>&, RefCountedValue*>);
@@ -256,6 +268,8 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_convertible_v<shared_ptr<PtrDerived>&, ptr<PtrBase>>);
         STATIC_REQUIRE(std::is_convertible_v<shared_ptr<PtrDerived>&, nptr<PtrBase>>);
         STATIC_REQUIRE(!std::is_constructible_v<shared_ptr<PtrBase>, ptr<PtrDerived>>);
+        STATIC_REQUIRE(has_void_cast<shared_ptr<PtrBase>>);
+        STATIC_REQUIRE(has_void_cast<weak_ptr<PtrBase>>);
     }
 
     SECTION("PtrVocabularySupportsMoveResetAndDynCast")
@@ -368,6 +382,72 @@ TEST_CASE("SmartPointers")
         CHECK(*maybe_second == 20);
     }
 
+    SECTION("PointerVocabularySupportsOpaqueVoidCast")
+    {
+        PtrDerived value {63};
+        PtrBase* base_value = &value;
+        ptr<PtrBase> borrowed {base_value};
+        nptr<PtrBase> maybe_borrowed {base_value};
+        nptr<PtrBase> empty_borrowed;
+
+        CHECK(borrowed.void_cast() == static_cast<void*>(base_value));
+        CHECK(maybe_borrowed.void_cast() == static_cast<void*>(base_value));
+        CHECK(empty_borrowed.void_cast() == nullptr);
+
+        auto unique_owner = SafeAlloc::MakeUnique<PtrDerived>(64);
+        ptr<PtrDerived> borrowed_unique_owner = unique_owner;
+        CHECK(unique_owner.void_cast() == borrowed_unique_owner.void_cast());
+
+        auto array_owner = SafeAlloc::MakeUniqueArr<int32_t>(2);
+        unique_arr_ptr<int32_t> empty_array_owner;
+        CHECK(array_owner.void_cast() != nullptr);
+        CHECK(empty_array_owner.void_cast() == nullptr);
+
+        int32_t destroy_count = 0;
+        auto raw_ref = MakeUnreferencedRefCountedValue(66, &destroy_count);
+
+        {
+            refcount_ptr<RefCountedValue> ref_owner = refcount_ptr<RefCountedValue>::from_add_ref(raw_ref.get());
+            refcount_nptr<RefCountedValue> maybe_ref_owner = ref_owner;
+            refcount_nptr<RefCountedValue> empty_ref_owner;
+
+            CHECK(ref_owner.void_cast() == raw_ref.void_cast());
+            CHECK(maybe_ref_owner.void_cast() == raw_ref.void_cast());
+            CHECK(empty_ref_owner.void_cast() == nullptr);
+        }
+
+        CHECK(destroy_count == 1);
+
+        auto shared_owner = SafeAlloc::MakeShared<PtrDerived>(67);
+        shared_ptr<PtrDerived> empty_shared_owner;
+        weak_ptr<PtrDerived> weak_owner = shared_owner;
+        weak_ptr<PtrDerived> empty_weak_owner;
+
+        ptr<PtrDerived> borrowed_shared_owner = shared_owner;
+        CHECK(shared_owner.void_cast() == borrowed_shared_owner.void_cast());
+        CHECK(empty_shared_owner.void_cast() == nullptr);
+        CHECK(weak_owner.void_cast() == shared_owner.void_cast());
+        CHECK(empty_weak_owner.void_cast() == nullptr);
+
+        auto custom_owner = make_unique_del_ptr(SafeAlloc::MakeRaw<int32_t>(68), [](int32_t* raw_value) noexcept {
+            delete raw_value;
+        });
+        ptr<int32_t> borrowed_custom_owner = custom_owner;
+        CHECK(custom_owner.void_cast() == borrowed_custom_owner.void_cast());
+
+        nptr<int32_t> nullable_custom_value = SafeAlloc::MakeRaw<int32_t>(69);
+        auto maybe_custom_owner = make_unique_del_ptr(nullable_custom_value, [](int32_t* raw_value) noexcept {
+            delete raw_value;
+        });
+        nptr<int32_t> borrowed_maybe_custom_owner = maybe_custom_owner;
+        CHECK(maybe_custom_owner.void_cast() == borrowed_maybe_custom_owner.void_cast());
+
+        auto empty_custom_owner = make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept {
+            ignore_unused(raw_value);
+        });
+        CHECK(empty_custom_owner.void_cast() == nullptr);
+    }
+
     SECTION("UniquePtrReleaseTransfersOwnership")
     {
         auto unique_value = SafeAlloc::MakeUnique<PtrDerived>(77);
@@ -405,6 +485,7 @@ TEST_CASE("SmartPointers")
         REQUIRE(maybe_borrowed_from_owner);
         CHECK(borrowed_from_maybe_owner.get() == maybe_owned.get());
         CHECK(maybe_borrowed_from_owner.get() == maybe_owned.get());
+        CHECK(maybe_owned.void_cast() == maybe_borrowed_from_owner.void_cast());
         CHECK(borrowed_from_maybe_owner->Value == 82);
         CHECK(maybe_borrowed_from_owner->Value == 82);
     }
@@ -466,6 +547,7 @@ TEST_CASE("SmartPointers")
 
         unique_nptr<PtrBase> empty_ptr;
         CHECK_FALSE(empty_ptr);
+        CHECK(empty_ptr.void_cast() == nullptr);
 
         auto owned_ptr = SafeAlloc::MakeUnique<PtrDerived>(88);
         unique_nptr<PtrBase> ptr {std::move(owned_ptr)};
@@ -473,6 +555,8 @@ TEST_CASE("SmartPointers")
         CHECK(owned_ptr.get() == nullptr);
 
         REQUIRE(ptr);
+        nptr<PtrBase> maybe_borrowed_ptr = ptr;
+        CHECK(ptr.void_cast() == maybe_borrowed_ptr.void_cast());
         CHECK(ptr->Value == 88);
 
         auto derived = ptr.dyn_cast<PtrDerived>();

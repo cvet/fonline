@@ -91,6 +91,14 @@ auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
     }
 }
 
+auto AtlasSprite::GetBatchTexture() const -> nptr<const RenderTexture>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_atlas, "Atlas is null");
+    return _atlas->GetTexture();
+}
+
 auto AtlasSprite::MakeCopy() const -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();

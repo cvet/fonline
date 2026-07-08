@@ -292,7 +292,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> nptr<MeshTexture>
+auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> unique_nptr<MeshTexture>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -309,8 +309,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
         return nullptr;
     }
 
-    auto mesh_tex = SafeAlloc::MakeRaw<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex, tex_data);
-    return mesh_tex;
+    return SafeAlloc::MakeUnique<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex, tex_data);
 }
 
 auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
@@ -1235,6 +1234,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             else {
                 texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
+
             FO_VERIFY_AND_THROW(texture, "Texture was not loaded", tex_name);
 
             // Assign it
@@ -2444,7 +2444,10 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         auto area = _modelMngr->GetHierarchy(raw_cut.FileName);
         FO_VERIFY_AND_THROW(area, "Cut file was not found", raw_cut.FileName);
 
-        ptr<ModelCutData> cut = SafeAlloc::MakeRaw<ModelCutData>();
+        auto cut_holder = SafeAlloc::MakeUnique<ModelCutData>();
+        ptr<ModelCutData> cut = cut_holder;
+        _cutData.emplace_back(std::move(cut_holder));
+
         link.CutInfo.emplace_back(cut);
         cut->Layers = raw_cut.Layers;
         cut->UnskinBone1 = !raw_cut.UnskinBone1.empty() ? _modelMngr->GetBoneHashedString(raw_cut.UnskinBone1) : hstring {};
@@ -2876,8 +2879,9 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
     auto texture = _modelMngr->LoadTexture(tex_name, _fileName);
     FO_VERIFY_AND_THROW(texture, "Model texture could not be loaded", tex_name, _fileName);
+    _textures.emplace_back(texture.take_not_null());
 
-    return texture;
+    return _textures.back();
 }
 
 auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>

@@ -1126,8 +1126,8 @@ EmbeddedFile::EmbeddedFile()
         auto embedded_size_target = ptr<uint32_t> {&embedded_size}.reinterpret_as<uint8_t>();
         MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
-        ptr<EmbeddedZipMemStream> mem_stream = SafeAlloc::MakeRaw<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
-        return ReturnEmbeddedZipMemStreamHandle(mem_stream);
+        auto mem_stream = SafeAlloc::MakeUnique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
+        return ReturnEmbeddedZipMemStreamHandle(mem_stream.release());
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);

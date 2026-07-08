@@ -425,7 +425,7 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
         return cached_sub_type_data;
     }
 
-    ptr<ScriptDictTypeData> sub_type_data = SafeAlloc::MakeRaw<ScriptDictTypeData>();
+    auto sub_type_data = SafeAlloc::MakeUnique<ScriptDictTypeData>();
 
     const bool must_be_const = (type_id & AngelScript::asTYPEID_HANDLETOCONST) != 0;
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
@@ -516,8 +516,9 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
         sub_type_data->CmpFuncReturnCode = AngelScript::asNO_FUNCTION;
     }
 
-    ti->SetUserData(make_nptr(sub_type_data.get()).void_cast(), AS_TYPE_DICT_CACHE);
-    return sub_type_data;
+    auto released_sub_type_data = sub_type_data.release();
+    ti->SetUserData(released_sub_type_data.void_cast(), AS_TYPE_DICT_CACHE);
+    return released_sub_type_data;
 }
 
 auto ScriptDict::IsEmpty() const -> bool
