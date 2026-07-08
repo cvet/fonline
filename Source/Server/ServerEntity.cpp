@@ -257,12 +257,6 @@ auto ServerEntity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCal
         EventResult result = EventResult::ContinueChain;
 
         try {
-            // Wrap this callback in its own nested SyncContext on top of the dispatcher's
-            // primary cover. Inner `Sync::Lock(...)` calls only mutate the nested layer, so
-            // the primary's locks (the event's entity args) are preserved across the chain
-            // and the next sibling sees them locked again.
-            ScopedSyncContext nested;
-
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {

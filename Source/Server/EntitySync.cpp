@@ -618,7 +618,7 @@ SyncContext::~SyncContext()
     FO_STACK_TRACE_ENTRY();
 
     // Contract: holders MUST drain locks via explicit `Release()` before destruction.
-    // Production tear-down paths (`WrapJobWithSync`, `FireEvent` per-callback nested,
+    // Production tear-down paths (`WrapJobWithSync`, `ServerEngine::RunScriptContext`,
     // `ServerEngine::Unlock`) wrap `Release()` in `safe_call` and run it before the
     // SyncContext goes out of scope. Tests construct SyncContexts that never acquire
     // locks. A non-empty bucket here means a code path created a SyncContext that
@@ -639,7 +639,7 @@ void SyncContext::Activate() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Save the previous current so a nested context (e.g. one created per event callback)
+    // Save the previous current so a nested context (e.g. one created for script execution)
     // can pop back cleanly. Outermost Activate sees the slot empty and saves nullptr.
     _previousContext = CurrentContext;
     CurrentContext = this;

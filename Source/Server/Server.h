@@ -95,6 +95,7 @@ public:
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
+    void RunScriptContext(const function<void()>& callback) override;
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }

@@ -869,7 +869,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
             ConvertPropsToScriptObject(prop, prop_data, construct_addr, as_engine);
             FO_AS_VERIFY(ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr.get()));
 
-            const auto run_ok = context_mngr->RunContext(ctx, false);
+            const bool run_ok = context_mngr->RunContext(ctx, false);
             FO_VERIFY_AND_THROW(run_ok, "Script context execution failed");
 
             prop_data = ConvertScriptToPropsObject(prop, construct_addr);
@@ -878,8 +878,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
         });
     }
     else {
-        // React-only setter: runs after the value is committed (post-setter), so the callback sees the new value
-        // and executes inside the writing caller's lock cover.
+        // React-only setter: runs after the value is committed (post-setter), so the callback sees the new value.
         prop->AddPostSetter([=](nptr<Entity> nullable_entity, ptr<const Property>) mutable FO_DEFERRED {
             int32_t as_result = 0;
             FO_VERIFY_AND_THROW(!!nullable_entity, "Property setter target entity is null");
