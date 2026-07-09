@@ -484,7 +484,7 @@ auto Entity::EnsureTimeEvents() -> ptr<TimeEventList>
         _timeEvents.emplace();
     }
 
-    return ptr<TimeEventList> {&*_timeEvents};
+    return make_ptr(&*_timeEvents);
 }
 
 EntityEvent::EntityEvent(ptr<Entity> entity, string_view callback_name) noexcept :

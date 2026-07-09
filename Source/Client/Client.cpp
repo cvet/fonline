@@ -54,11 +54,11 @@ auto GetClientResources(GlobalSettings& settings) -> FileSystem
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
-    EffectMngr(Settings, ptr<FileSystem> {&Resources}, window->GetRender()),
-    SprMngr(Settings, window, ptr<FileSystem> {&Resources}, ptr<GameTimer> {&GameTime}, ptr<EffectManager> {&EffectMngr}, ptr<HashResolver> {&Hashes}),
-    FontMngr(ptr<SpriteManager> {&SprMngr}),
-    ResMngr(Settings, ptr<FileSystem> {&Resources}, ptr<SpriteManager> {&SprMngr}, ptr<AnimationResolver> {this}),
-    SndMngr(Settings, ptr<FileSystem> {&Resources}, window->GetAudio()),
+    EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
+    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    FontMngr(make_ptr(&SprMngr)),
+    ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
+    SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
@@ -213,11 +213,11 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MeatdataRegistrator& mapper_registrator) :
     BaseEngine(settings, std::move(resources), mapper_registrator),
-    EffectMngr(Settings, ptr<FileSystem> {&Resources}, window->GetRender()),
-    SprMngr(Settings, window, ptr<FileSystem> {&Resources}, ptr<GameTimer> {&GameTime}, ptr<EffectManager> {&EffectMngr}, ptr<HashResolver> {&Hashes}),
-    FontMngr(ptr<SpriteManager> {&SprMngr}),
-    ResMngr(Settings, ptr<FileSystem> {&Resources}, ptr<SpriteManager> {&SprMngr}, ptr<AnimationResolver> {this}),
-    SndMngr(Settings, ptr<FileSystem> {&Resources}, window->GetAudio()),
+    EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
+    SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes)),
+    FontMngr(make_ptr(&SprMngr)),
+    ResMngr(Settings, make_ptr(&Resources), make_ptr(&SprMngr), make_ptr(this)),
+    SndMngr(Settings, make_ptr(&Resources), window->GetAudio()),
     Cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _conn(Settings)
 {
@@ -2834,8 +2834,7 @@ void ClientEngine::ProcessVideo()
 
     if (_video) {
         _video->Tex->UpdateTextureRegion({}, _video->Tex->Size, _video->Clip.RenderFrame());
-        auto video_tex = _video->Tex.as_ptr();
-        SprMngr.DrawTexture(video_tex, false);
+        SprMngr.DrawTexture(_video->Tex, false);
 
         if (_video->Clip.IsStopped()) {
             _video.reset();

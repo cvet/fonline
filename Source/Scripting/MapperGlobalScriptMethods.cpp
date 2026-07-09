@@ -889,9 +889,9 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
             for (int32_t y = 0; y < size.height / 2; y++) {
                 const auto top = numeric_cast<size_t>(y) * width;
                 const auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
-                auto row = ptr<ucolor> {row_buf.data()};
-                auto top_row = ptr<ucolor> {pixels.data() + top};
-                auto bottom_row = ptr<ucolor> {pixels.data() + bottom};
+                auto row = make_ptr(row_buf.data());
+                auto top_row = make_ptr(pixels.data() + top);
+                auto bottom_row = make_ptr(pixels.data() + bottom);
                 MemCopy(row, top_row, row_bytes);
                 MemCopy(top_row, bottom_row, row_bytes);
                 MemCopy(bottom_row, row, row_bytes);

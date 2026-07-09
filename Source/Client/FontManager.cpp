@@ -164,25 +164,24 @@ void FontManager::BuildFont(int32_t index)
         font->SpaceWidth = font->Letters[numeric_cast<uint32_t>(' ')].XAdvance;
     }
 
-    auto si_bordered = font->ImageBordered.as_nptr();
     font->FontTexBordered = nullptr;
 
-    if (si_bordered) {
-        font->FontTexBordered = si_bordered->GetAtlas()->GetTexture();
+    if (font->ImageBordered) {
+        font->FontTexBordered = font->ImageBordered->GetAtlas()->GetTexture();
     }
 
     const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
     const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
-    const auto bordered_ox = si_bordered ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width) * si_bordered->GetAtlasRect().x) : 0;
-    const auto bordered_oy = si_bordered ? iround<int32_t>(numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height) * si_bordered->GetAtlasRect().y) : 0;
+    const auto bordered_ox = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width) * font->ImageBordered->GetAtlasRect().x) : 0;
+    const auto bordered_oy = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height) * font->ImageBordered->GetAtlasRect().y) : 0;
 
     // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return &tex_data[y * width + x]; };
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return make_ptr(&tex_data[y * width + x]); };
     vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
     vector<ucolor> data_bordered;
 
-    if (si_bordered) {
-        data_bordered = si_bordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize());
+    if (font->ImageBordered) {
+        data_bordered = font->ImageBordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, font->ImageBordered->GetSize());
     }
 
     // Normalize color to gray
@@ -194,15 +193,15 @@ void FontManager::BuildFont(int32_t index)
                 if (a != 0) {
                     *pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {128, 128, 128, a};
 
-                    if (si_bordered) {
-                        *pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {128, 128, 128, a};
+                    if (font->ImageBordered) {
+                        *pixel_at(data_bordered, font->ImageBordered->GetSize().width, x, y) = ucolor {128, 128, 128, a};
                     }
                 }
                 else {
                     *pixel_at(data_normal, atlas_spr->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
 
-                    if (si_bordered) {
-                        *pixel_at(data_bordered, si_bordered->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
+                    if (font->ImageBordered) {
+                        *pixel_at(data_bordered, font->ImageBordered->GetSize().width, x, y) = ucolor {0, 0, 0, 0};
                     }
                 }
             }
@@ -212,17 +211,17 @@ void FontManager::BuildFont(int32_t index)
     }
 
     // Fill border
-    if (si_bordered) {
-        for (auto y = 1; y < si_bordered->GetSize().height - 2; y++) {
-            for (auto x = 1; x < si_bordered->GetSize().width - 2; x++) {
+    if (font->ImageBordered) {
+        for (auto y = 1; y < font->ImageBordered->GetSize().height - 2; y++) {
+            for (auto x = 1; x < font->ImageBordered->GetSize().width - 2; x++) {
                 if (*pixel_at(data_normal, atlas_spr->GetSize().width, x, y) != ucolor::clear) {
                     for (auto xx = -1; xx <= 1; xx++) {
                         for (auto yy = -1; yy <= 1; yy++) {
                             const auto ox = x + xx;
                             const auto oy = y + yy;
 
-                            if (*pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) == ucolor::clear) {
-                                *pixel_at(data_bordered, si_bordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
+                            if (*pixel_at(data_bordered, font->ImageBordered->GetSize().width, ox, oy) == ucolor::clear) {
+                                *pixel_at(data_bordered, font->ImageBordered->GetSize().width, ox, oy) = ucolor {0, 0, 0, 255};
                             }
                         }
                     }
@@ -230,13 +229,13 @@ void FontManager::BuildFont(int32_t index)
             }
         }
 
-        si_bordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, si_bordered->GetSize(), data_bordered);
+        font->ImageBordered->GetAtlas()->GetTexture()->UpdateTextureRegion({bordered_ox, bordered_oy}, font->ImageBordered->GetSize(), data_bordered);
 
         // Fix texture coordinates on bordered texture
-        tex_w = numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().width);
-        tex_h = numeric_cast<float32_t>(si_bordered->GetAtlas()->GetSize().height);
-        image_x = tex_w * si_bordered->GetAtlasRect().x;
-        image_y = tex_h * si_bordered->GetAtlasRect().y;
+        tex_w = numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width);
+        tex_h = numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height);
+        image_x = tex_w * font->ImageBordered->GetAtlasRect().x;
+        image_y = tex_h * font->ImageBordered->GetAtlasRect().y;
 
         for (auto& letter : font->Letters | std::views::values) {
             const auto x = numeric_cast<float32_t>(letter.Pos.x);

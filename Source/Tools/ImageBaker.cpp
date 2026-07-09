@@ -2364,7 +2364,8 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
                     return;
                 }
 
-                auto io_ptr = make_ptr(static_cast<const uint8_t**>(png_get_io_ptr(png_ptr)));
+                auto io_ptr = cast_from_void<const uint8_t**>(png_get_io_ptr(png_ptr));
+                FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
                 auto source = make_ptr(*io_ptr);
                 auto target = make_ptr(png_data);
                 MemCopy(target, source, length);

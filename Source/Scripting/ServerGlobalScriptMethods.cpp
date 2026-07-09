@@ -1900,7 +1900,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->LockSingleton(server->GetEntityLock().get());
+    ctx->LockSingleton(server->GetEntityLock());
 }
 
 // SyncScope: unlocks the Game singleton bucket; entity cover is unchanged.
@@ -1908,7 +1908,7 @@ FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->UnlockSingleton(server->GetEntityLock().get());
+    ctx->UnlockSingleton(server->GetEntityLock());
 }
 
 // SyncScope: process metric read only; no entity cover is required.

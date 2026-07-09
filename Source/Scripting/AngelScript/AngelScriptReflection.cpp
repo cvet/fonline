@@ -606,7 +606,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             FO_VERIFY_AND_THROW(enum_type, "Missing global enum type at index");
 
             auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type.as_ptr());
-            auto value = make_ptr(static_cast<void*>(type.get_pp()));
+            auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }
     }
@@ -624,7 +624,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             FO_VERIFY_AND_THROW(enum_type, "Missing module enum type at index");
 
             auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type.as_ptr());
-            auto value = make_ptr(static_cast<void*>(type.get_pp()));
+            auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }
     }

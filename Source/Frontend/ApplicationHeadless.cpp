@@ -50,10 +50,10 @@ const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
-    MainWindow {ptr<Application> {this}},
-    Render {ptr<Application> {this}},
-    Input {ptr<Application> {this}},
-    Audio {ptr<Application> {this}},
+    MainWindow {make_ptr(this)},
+    Render {make_ptr(this)},
+    Input {make_ptr(this)},
+    Audio {make_ptr(this)},
     _ctx {SafeAlloc::MakeUnique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();

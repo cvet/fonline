@@ -353,7 +353,7 @@ private:
     std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
     optional<UpdaterBackend> _updaterBackend {};
-    TextPack _defaultLang {ptr<HashResolver> {&Hashes}};
+    TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _unloginedPlayersLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};

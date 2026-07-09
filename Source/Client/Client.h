@@ -377,7 +377,7 @@ protected:
     ClientConnection _conn;
     bool _connectionRequest {};
     EventUnsubscriber _eventUnsubscriber {};
-    TextPack _curLang {ptr<HashResolver> {&Hashes}};
+    TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
     unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};

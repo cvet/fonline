@@ -62,7 +62,7 @@ void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _sprMngr->_updateSprites.emplace(ptr<const Sprite>(this), weak_from_this());
+    _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
 SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<HashResolver> hash_resolver) :

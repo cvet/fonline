@@ -50,7 +50,7 @@ void MapSprite::Invalidate() noexcept
     FO_NO_STACK_TRACE_ENTRY();
 
     if (_owner) [[likely]] {
-        _owner->Invalidate(ptr<MapSprite>(this));
+        _owner->Invalidate(make_ptr(this));
     }
 }
 

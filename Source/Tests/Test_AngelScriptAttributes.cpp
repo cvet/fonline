@@ -355,12 +355,12 @@ namespace
 
         auto created_engine = make_nptr(asCreateScriptEngine(ANGELSCRIPT_VERSION));
         REQUIRE(created_engine);
-        auto engine = make_unique_del_ptr(created_engine.as_ptr(), ReleaseScriptEngine);
+        auto engine = make_unique_del_ptr(created_engine, ReleaseScriptEngine);
 
         REQUIRE(engine->SetEngineProperty(asEP_OPTIMIZE_BYTECODE, false) >= 0);
         auto message_callback_user_data = MessageCallbackUserData(messages);
         REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), message_callback_user_data.get(), asCALL_CDECL) >= 0);
-        return engine;
+        return take_not_null(engine);
     }
 
     static void RegisterDummyEventApi(ptr<asIScriptEngine> engine)

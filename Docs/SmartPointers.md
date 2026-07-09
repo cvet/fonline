@@ -253,19 +253,15 @@ python3 Tools/SmartPointerAudit/smart_pointer_audit.py \
   --raw-pointer-abi-baseline Tools/SmartPointerAudit/raw_pointer_abi_baseline.tsv \
   --raw-pointer-container-baseline Tools/SmartPointerAudit/raw_pointer_container_baseline.tsv \
   --raw-pointer-container-abi-baseline Tools/SmartPointerAudit/raw_pointer_container_abi_baseline.tsv \
-  --unique-nptr-baseline Tools/SmartPointerAudit/unique_nptr_baseline.tsv \
-  --unique-del-nptr-baseline Tools/SmartPointerAudit/unique_del_nptr_baseline.tsv \
   --nonnull-member-allowlist Tools/SmartPointerAudit/nonnull_member_allowlist.tsv \
   --reference-member-allowlist Tools/SmartPointerAudit/reference_member_allowlist.tsv \
   --raw-pointer-low-level-allowlist Tools/SmartPointerAudit/raw_pointer_low_level_allowlist.tsv \
   --raw-pointer-abi-allowlist Tools/SmartPointerAudit/raw_pointer_abi_allowlist.tsv \
   --raw-pointer-container-abi-allowlist Tools/SmartPointerAudit/raw_pointer_container_abi_allowlist.tsv \
-  --raw-pointer-header-abi-allowlist Tools/SmartPointerAudit/raw_pointer_header_abi_allowlist.tsv \
-  --unique-nptr-allowlist Tools/SmartPointerAudit/unique_nptr_allowlist.tsv \
-  --unique-del-nptr-allowlist Tools/SmartPointerAudit/unique_del_nptr_allowlist.tsv
+  --raw-pointer-header-abi-allowlist Tools/SmartPointerAudit/raw_pointer_header_abi_allowlist.tsv
 python3 Tools/SmartPointerAudit/smart_pointer_clang_query.py --diff-base origin/main --require-tooling
 ```
 
-The first command is the regular textual non-regression audit: raw pointer, reviewed ABI/container, and nullable unique-owner counts may shrink freely but must not grow without an intentional baseline update, while line-level allowlists keep reviewed reference-member, raw ABI, low-level raw, and nullable owner quarantine rows from drifting. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and carries no baseline — every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
+The first command is the regular textual non-regression audit: raw pointer and reviewed ABI/container counts may shrink freely but must not grow without an intentional baseline update, while line-level allowlists keep reviewed reference-member, raw ABI, and low-level raw rows from drifting. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and carries no baseline — every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
 
 As an embedding-project example, Last Frontier runs the full audit invocation in CI on every push and exposes the same command locally as the `Analyze :: Smart Pointer Audit` VS Code task (bundled into its `Analyze All` and pre-commit validation tasks).

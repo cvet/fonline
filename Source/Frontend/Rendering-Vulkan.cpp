@@ -1235,7 +1235,8 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         return;
     }
 
-    auto vk_dbuf = dbuf.cast<Vulkan_DrawBuffer>();
+    auto vk_dbuf = dbuf.dyn_cast<Vulkan_DrawBuffer>();
+    FO_VERIFY_AND_THROW(vk_dbuf, "Vulkan draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
     if (!custom_tex && ModelTex[0]) {
@@ -1248,19 +1249,20 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
     FO_VERIFY_AND_THROW(main_tex_source, "Vulkan dummy texture is not created");
-    auto main_tex = main_tex_source.cast<const Vulkan_Texture>();
+    auto main_tex = main_tex_source.dyn_cast<const Vulkan_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "Vulkan main texture is not of the expected backend type");
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-        ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -1383,7 +1385,8 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             if (_posIndoorMaskTex[pass] != -1) {
                 nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
                 FO_VERIFY_AND_THROW(indoor_tex_source, "Vulkan dummy texture is not created");
-                auto indoor_tex = indoor_tex_source.cast<const Vulkan_Texture>();
+                auto indoor_tex = indoor_tex_source.dyn_cast<const Vulkan_Texture>();
+                FO_VERIFY_AND_THROW(indoor_tex, "Vulkan indoor mask texture is not of the expected backend type");
                 append_sampler(_posIndoorMaskTex[pass], indoor_tex);
             }
 
@@ -1391,7 +1394,8 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
             for (size_t model_tex_index = 0; model_tex_index < MODEL_MAX_TEXTURES; model_tex_index++) {
                 nptr<const RenderTexture> model_tex_source = ModelTex[model_tex_index] ? ModelTex[model_tex_index] : _ctx->DummyTexture;
                 FO_VERIFY_AND_THROW(model_tex_source, "Vulkan dummy texture is not created");
-                auto model_tex = model_tex_source.cast<const Vulkan_Texture>();
+                auto model_tex = model_tex_source.dyn_cast<const Vulkan_Texture>();
+                FO_VERIFY_AND_THROW(model_tex, "Vulkan model texture is not of the expected backend type");
                 append_sampler(_posModelTex[pass][model_tex_index], model_tex);
             }
 #endif
@@ -3075,7 +3079,8 @@ static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
     rp_begin.pClearValues = clear_values;
 
     if (ctx->CurrentRenderTarget) {
-        auto vk_tex = ctx->CurrentRenderTarget.cast<Vulkan_Texture>();
+        auto vk_tex = ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>();
+        FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
         EnsureTextureRenderTargetResources(ctx, vk_tex);
         FO_VERIFY_AND_THROW(vk_tex->TextureFramebuffer != nullptr, "Render target framebuffer is not created");
         FO_VERIFY_AND_THROW(vk_tex->TextureImage != nullptr, "Render target image is not created");
@@ -3157,7 +3162,8 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
         int32_t rt_h = ctx->SwapchainSize.height;
 
         if (ctx->CurrentRenderTarget) {
-            auto rt_tex = ctx->CurrentRenderTarget.cast<const Vulkan_Texture>();
+            auto rt_tex = ctx->CurrentRenderTarget.dyn_cast<const Vulkan_Texture>();
+            FO_VERIFY_AND_THROW(rt_tex, "Vulkan render target texture is not of the expected backend type");
             rt_w = rt_tex->Size.width;
             rt_h = rt_tex->Size.height;
         }
@@ -3263,7 +3269,8 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     EndCurrentRenderPass(_ctx);
 
     if (_ctx->CurrentRenderTarget) {
-        auto prev_tex = _ctx->CurrentRenderTarget.cast<Vulkan_Texture>();
+        auto prev_tex = _ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>();
+        FO_VERIFY_AND_THROW(prev_tex, "Vulkan render target texture is not of the expected backend type");
         TransitionColorImage(_ctx->CommandBuffer, prev_tex->TextureImage, prev_tex->TextureImageLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         prev_tex->TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
@@ -3274,7 +3281,8 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         ApplySwapchainTargetMetrics(_ctx, _ctx->SwapchainSize);
     }
     else {
-        auto vk_tex = _ctx->CurrentRenderTarget.cast<const Vulkan_Texture>();
+        auto vk_tex = _ctx->CurrentRenderTarget.dyn_cast<const Vulkan_Texture>();
+        FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
         _ctx->ViewPort = irect32 {0, 0, vk_tex->Size.width, vk_tex->Size.height};
         _ctx->TargetSize = vk_tex->Size;
     }

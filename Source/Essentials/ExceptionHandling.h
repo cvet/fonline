@@ -66,7 +66,7 @@ extern void InstallCrashHandlerStackForThisThread() noexcept;
         } \
         template<typename... Args> \
         exception_name(const FO_NAMESPACE StackTraceData& st, FO_NAMESPACE string_view message, Args&&... args) noexcept : \
-            base_exception_name(#exception_name, FO_NAMESPACE nptr<const FO_NAMESPACE StackTraceData> {&st}, message, std::forward<Args>(args)...) \
+            base_exception_name(#exception_name, FO_NAMESPACE make_nptr(&st), message, std::forward<Args>(args)...) \
         { \
         } \
         exception_name(const exception_name& other) noexcept : \

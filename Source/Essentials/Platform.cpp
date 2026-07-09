@@ -98,7 +98,7 @@ static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
         return ::GetModuleHandleW(nullptr);
     }
 
-    return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get();
+    return module_handle.reinterpret_as<std::remove_pointer_t<HMODULE>>().get();
 }
 
 static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
@@ -302,7 +302,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
+    auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
     if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
     }
@@ -319,7 +319,7 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS_EX pmc {};
-    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)> {&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+    auto pmc_counters = make_ptr(&pmc).reinterpret_as<PROCESS_MEMORY_COUNTERS>();
 
     if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
         return pmc.PrivateUsage;
@@ -517,7 +517,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
         FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
         auto processor_info = make_ptr(raw_processor_info);
-        ptr<const processor_cpu_load_info_data_t> load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
+        auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
         const auto load_info = make_span(load_info_data, processor_count);
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
@@ -543,7 +543,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};
         mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-        ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
+        auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
 
         if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
             return 0;

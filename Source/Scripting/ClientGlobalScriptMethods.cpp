@@ -668,8 +668,7 @@ FO_SCRIPT_API void Client_Game_DrawVideoPlayback(ptr<ClientEngine> client, nptr<
         resources->Tex->UpdateTextureRegion({}, resources->Tex->Size, resources->Clip.RenderFrame());
 
         const irect32 r = {pos.x, pos.y, size.width, size.height};
-        auto video_tex = resources->Tex.as_ptr();
-        client->SprMngr.DrawTexture(video_tex, false, nullptr, &r);
+        client->SprMngr.DrawTexture(resources->Tex, false, nullptr, &r);
     }
 
     if (resources->Clip.IsStopped()) {

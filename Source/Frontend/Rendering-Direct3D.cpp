@@ -950,7 +950,8 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     int32_t screen_height;
 
     if (tex) {
-        auto d3d_tex = tex.cast<Direct3D_Texture>();
+        auto d3d_tex = tex.dyn_cast<Direct3D_Texture>();
+        FO_VERIFY_AND_THROW(d3d_tex, "Direct3D render target texture is not of the expected backend type");
         _ctx->CurRenderTarget = d3d_tex->RenderTargetView;
         _ctx->CurDepthStencil = d3d_tex->DepthStencilView;
 
@@ -1131,8 +1132,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 
     FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested Direct3D texture pixel is outside texture bounds", pos, Size);
 
-    ptr<Direct3D_Renderer::Context> ctx = _ctx;
-    auto d3d_device_context = ctx->D3DDeviceContext;
+    auto d3d_device_context = _ctx->D3DDeviceContext;
     FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
 
     D3D11_BOX src_box;
@@ -1143,17 +1143,17 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     src_box.front = 0;
     src_box.back = 1;
 
-    d3d_device_context->CopySubresourceRegion(ctx->OnePixStagingTex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(_ctx->OnePixStagingTex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    const auto d3d_map_staging_texture = d3d_device_context->Map(ctx->OnePixStagingTex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
+    const auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for the one-pixel staging texture", d3d_map_staging_texture, pos, Size);
 
     auto mapped_data = make_nptr(tex_resource.pData);
     FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
     const ucolor result = *mapped_data.reinterpret_as<ucolor>();
 
-    d3d_device_context->Unmap(ctx->OnePixStagingTex.get(), 0);
+    d3d_device_context->Unmap(_ctx->OnePixStagingTex.get(), 0);
 
     return result;
 }
@@ -1169,10 +1169,9 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
-    ptr<Direct3D_Renderer::Context> ctx = _ctx;
-    auto d3d_device = ctx->D3DDevice;
+    auto d3d_device = _ctx->D3DDevice;
     FO_VERIFY_AND_THROW(d3d_device, "Direct3D device is null");
-    auto d3d_device_context = ctx->D3DDeviceContext;
+    auto d3d_device_context = _ctx->D3DDeviceContext;
     FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
 
     vector<ucolor> result;
@@ -1395,7 +1394,8 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto d3d_dbuf = dbuf.cast<Direct3D_DrawBuffer>();
+    auto d3d_dbuf = dbuf.dyn_cast<Direct3D_DrawBuffer>();
+    FO_VERIFY_AND_THROW(d3d_dbuf, "Direct3D draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
     if (!custom_tex && ModelTex[0]) {
@@ -1408,7 +1408,8 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
     nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
     FO_VERIFY_AND_THROW(main_tex_source, "Direct3D dummy texture is not created");
-    auto main_tex = main_tex_source.cast<const Direct3D_Texture>();
+    auto main_tex = main_tex_source.dyn_cast<const Direct3D_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "Direct3D main texture is not of the expected backend type");
 
     auto draw_mode = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
@@ -1471,15 +1472,15 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
 
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-        ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -1578,7 +1579,8 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         if (_posIndoorMaskTex[pass] != -1) {
             nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
             FO_VERIFY_AND_THROW(indoor_tex_source, "Direct3D dummy texture is not created");
-            auto indoor_tex = indoor_tex_source.cast<const Direct3D_Texture>();
+            auto indoor_tex = indoor_tex_source.dyn_cast<const Direct3D_Texture>();
+            FO_VERIFY_AND_THROW(indoor_tex, "Direct3D indoor mask texture is not of the expected backend type");
             _ctx->D3DDeviceContext->PSSetShaderResources(_posIndoorMaskTex[pass], 1, indoor_tex->ShaderTexView.get_pp());
             _ctx->D3DDeviceContext->PSSetSamplers(_posIndoorMaskTex[pass], 1, find_tex_sampler(indoor_tex));
         }
@@ -1589,7 +1591,8 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
                 if (_posModelTex[pass][i] != -1) {
                     nptr<RenderTexture> model_tex_source = ModelTex[i] ? ModelTex[i] : _ctx->DummyTexture;
                     FO_VERIFY_AND_THROW(model_tex_source, "Direct3D dummy texture is not created");
-                    auto model_tex = model_tex_source.cast<Direct3D_Texture>();
+                    auto model_tex = model_tex_source.dyn_cast<Direct3D_Texture>();
+                    FO_VERIFY_AND_THROW(model_tex, "Direct3D model texture is not of the expected backend type");
                     _ctx->D3DDeviceContext->PSSetShaderResources(_posModelTex[pass][i], 1, model_tex->ShaderTexView.get_pp());
                     _ctx->D3DDeviceContext->PSSetSamplers(_posModelTex[pass][i], 1, find_tex_sampler(model_tex));
                 }

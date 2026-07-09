@@ -93,38 +93,34 @@ DataBase::DataBase(unique_ptr<DataBaseImpl> impl) :
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Missing database backend state");
-    (void)_impl.as_ptr();
 }
 
 auto DataBase::InValidState() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_STRONG_ASSERT(impl, "Database implementation is null");
-    return impl->InValidState();
+    FO_STRONG_ASSERT(_impl, "Database implementation is null");
+    return _impl->InValidState();
 }
 
 auto DataBase::GetDbRequestsPerMinute() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    return impl->GetDbRequestsPerMinute();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDbRequestsPerMinute();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
-    auto ids = impl->GetAllRecordIds(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto ids = _impl->GetAllRecordIds(collection_name);
 
     for (auto& id : ids) {
-        id = DecodeBackendDbKey(id, key_type, impl->GetStringKeyEscaping());
+        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
 
         if (GetDbKeyType(id) != key_type) {
             throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
@@ -138,9 +134,8 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::IntId) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
@@ -159,9 +154,8 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::String) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
@@ -180,72 +174,64 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    return impl->GetDocument(collection_name, id);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    return !impl->GetDocument(collection_name, id).Empty();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return !_impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->Insert(collection_name, id, doc);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->Update(collection_name, id, key, value);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->Delete(collection_name, id);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Delete(collection_name, id);
 }
 
 void DataBase::StartCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->StartCommitChanges();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->StartCommitChanges();
 }
 
 void DataBase::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->WaitCommitChanges();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->WaitCommitChanges();
 }
 
 void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_nptr();
-    FO_STRONG_ASSERT(impl, "Database implementation is null");
-    impl->ClearChanges();
+    FO_STRONG_ASSERT(_impl, "Database implementation is null");
+    _impl->ClearChanges();
 }
 
 void DataBase::DrawGui()
@@ -257,9 +243,8 @@ void DataBase::DrawGui()
         return;
     }
 
-    auto impl = _impl.as_nptr();
-    FO_VERIFY_AND_THROW(impl, "Implementation is null");
-    impl->DrawGui();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->DrawGui();
 }
 
 DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :

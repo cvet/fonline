@@ -54,9 +54,9 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
     _gameTime(settings),
-    _effectMngr(settings, ptr<FileSystem> {&_resources}, window->GetRender()),
-    _sprMngr(settings, window, ptr<FileSystem> {&_resources}, ptr<GameTimer> {&_gameTime}, ptr<EffectManager> {&_effectMngr}, ptr<HashResolver> {&_hashStorage}),
-    _fontMngr(ptr<SpriteManager> {&_sprMngr})
+    _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
+    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
+    _fontMngr(make_ptr(&_sprMngr))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -671,7 +671,7 @@ void Updater::Net_OnUpdateFileData()
     const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        _tempFile.write(ptr<const uint8_t> {_updateFileBuf.data()}.reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
+        _tempFile.write(make_ptr(_updateFileBuf.data()).reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -721,7 +721,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
-            auto target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
+            auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
             MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
@@ -737,7 +737,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(cache_key, const_span<uint8_t> {ptr<const CachedHash> {&entry}.reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
+    _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
 }

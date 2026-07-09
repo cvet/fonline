@@ -2435,8 +2435,7 @@ void MapperEngine::DrawContentWindowImGui()
                 for (size_t i = 0; i < inner_items.size(); i++) {
                     auto inner_item = inner_items[i].as_ptr();
                     auto label = strex("{} x{}", inner_item->GetName(), inner_item->GetCount());
-                    const auto selected_item = InContItem.as_nptr();
-                    const auto selected = selected_item == inner_item.as_nptr();
+                    const auto selected = InContItem == inner_item;
 
                     if (ImGui::Selectable(label.c_str(), selected)) {
                         InContItem = inner_items[i];
@@ -2530,8 +2529,7 @@ void MapperEngine::DrawContentWindowImGui()
                     continue;
                 }
 
-                auto loaded_map = map.as_nptr();
-                const bool is_current = GetCurMap() == loaded_map;
+                const bool is_current = GetCurMap() == map;
 
                 if (is_current) {
                     label = strex("* {}", label);
@@ -3018,7 +3016,7 @@ void MapperEngine::DrawInspectorImGui()
             return false;
         }
 
-        auto front_entity = SelectedEntities.front().as_nptr();
+        nptr<ClientEntity> front_entity = SelectedEntities.front();
         nptr<const ClientEntity> inspected_entity = entity;
         return front_entity == inspected_entity;
     };

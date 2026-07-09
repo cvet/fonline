@@ -50,7 +50,7 @@ extern void ServerInitHook(ptr<ServerEngine>);
 // (and other off-thread callers) Lock to pause the main worker and then mutate engine state on
 // their own thread; that thread needs a SyncContext active for the engine-wide invariant. Lock
 // constructs+activates one, Unlock releases+deactivates it.
-thread_local unique_nptr<SyncContext> ExternalLockSyncCtx {};
+thread_local optional<SyncContext> ExternalLockSyncCtx {};
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem
 {
@@ -63,10 +63,10 @@ auto GetServerResources(GlobalSettings& settings) -> FileSystem
 
 ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources) :
     BaseEngine(settings, std::move(resources), [&] { RegisterServerMetadata(this, &resources); }),
-    EntityMngr(ptr<ServerEngine> {this}),
-    MapMngr(ptr<ServerEngine> {this}),
-    CrMngr(ptr<ServerEngine> {this}),
-    ItemMngr(ptr<ServerEngine> {this})
+    EntityMngr(make_ptr(this)),
+    MapMngr(make_ptr(this)),
+    CrMngr(make_ptr(this)),
+    ItemMngr(make_ptr(this))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1235,10 +1235,8 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // Sync/Ensure calls made by the external lock holder. The external lock owns only the engine sync
     // point; it does not pre-lock the world.
     FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
-    ExternalLockSyncCtx = SafeAlloc::MakeUnique<SyncContext>();
-    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_nptr();
-    FO_VERIFY_AND_THROW(external_lock_sync_ctx, "External lock sync context is null");
-    external_lock_sync_ctx->Activate();
+    ExternalLockSyncCtx.emplace();
+    ExternalLockSyncCtx->Activate();
 
     return true;
 }
@@ -1264,10 +1262,8 @@ void ServerEngine::Unlock()
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(ExternalLockSyncCtx, "Missing required external lock sync context");
-    auto external_lock_sync_ctx = ExternalLockSyncCtx.as_nptr();
-    FO_VERIFY_AND_THROW(external_lock_sync_ctx, "External lock sync context is null");
-    external_lock_sync_ctx->Release();
-    external_lock_sync_ctx->Deactivate();
+    ExternalLockSyncCtx->Release();
+    ExternalLockSyncCtx->Deactivate();
     ExternalLockSyncCtx.reset();
 
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
@@ -2206,7 +2202,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
 
     bool is_error = false;
     refcount_nptr<Critter> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
-    auto cr = cr_holder.as_nptr();
+    nptr<Critter> cr = cr_holder;
 
     if (is_error) {
         if (cr) {
@@ -2976,7 +2972,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     }
     else {
         auto ctx = RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player.as_nptr()};
+        const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player};
         ctx->SyncEntities(sync_entities);
 
         if (player->IsDestroyed()) {
@@ -3120,7 +3116,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -3291,7 +3287,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto cr = EntityMngr.GetCritter(cr_id);
     auto ctx = RequireCurrentSyncContext();
 
-    const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), nptr<ServerEntity> {map}, cr};
+    const array<nptr<ServerEntity>, 3> sync_entities {player, map, cr};
     ctx->SyncEntities(sync_entities);
 
     if (player->IsDestroyed() || map->IsDestroyed()) {
@@ -4376,7 +4372,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     auto parent = cr->GetParentRaw();
 
     if (parent) {
-        const array<nptr<ServerEntity>, 2> sync_entities {nptr<ServerEntity> {parent}, cr.as_nptr()};
+        const array<nptr<ServerEntity>, 2> sync_entities {parent, cr};
         ctx->SyncEntities(sync_entities);
 
         if (cr->GetParentRaw() != parent || parent->IsDestroyed() || cr->IsDestroyed()) {

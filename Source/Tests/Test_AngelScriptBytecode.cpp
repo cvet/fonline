@@ -162,7 +162,9 @@ namespace
 
         auto engine = make_nptr(asCreateScriptEngine());
         REQUIRE(engine);
-        return make_unique_del_ptr(engine.as_ptr(), ReleaseScriptEngine);
+        auto engine_owner = make_unique_del_ptr(engine, ReleaseScriptEngine);
+        REQUIRE(engine_owner);
+        return take_not_null(engine_owner);
     }
 
     static auto AcquireResource() -> int
@@ -208,14 +210,16 @@ namespace
 
     static void NativeResourceAddRef(void* obj)
     {
-        auto self = make_ptr(static_cast<NativeResource*>(obj));
+        auto self = cast_from_void<NativeResource*>(obj);
+        FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount++;
         self->State->ActiveRefs[self->Id]++;
     }
 
     static void NativeResourceRelease(void* obj)
     {
-        auto self = make_ptr(static_cast<NativeResource*>(obj));
+        auto self = cast_from_void<NativeResource*>(obj);
+        FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount--;
 
         auto& active_refs = self->State->ActiveRefs;

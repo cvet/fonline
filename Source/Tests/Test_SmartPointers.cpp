@@ -429,22 +429,16 @@ TEST_CASE("SmartPointers")
         CHECK(weak_owner.void_cast() == shared_owner.void_cast());
         CHECK(empty_weak_owner.void_cast() == nullptr);
 
-        auto custom_owner = make_unique_del_ptr(SafeAlloc::MakeRaw<int32_t>(68), [](int32_t* raw_value) noexcept {
-            delete raw_value;
-        });
+        auto custom_owner = make_unique_del_ptr(SafeAlloc::MakeRaw<int32_t>(68), [](int32_t* raw_value) noexcept { delete raw_value; });
         ptr<int32_t> borrowed_custom_owner = custom_owner;
         CHECK(custom_owner.void_cast() == borrowed_custom_owner.void_cast());
 
-        nptr<int32_t> nullable_custom_value = SafeAlloc::MakeRaw<int32_t>(69);
-        auto maybe_custom_owner = make_unique_del_ptr(nullable_custom_value, [](int32_t* raw_value) noexcept {
-            delete raw_value;
-        });
+        auto maybe_custom_value = SafeAlloc::MakeRaw<int32_t>(69);
+        auto maybe_custom_owner = make_unique_del_ptr(maybe_custom_value, [](int32_t* raw_value) noexcept { delete raw_value; });
         nptr<int32_t> borrowed_maybe_custom_owner = maybe_custom_owner;
         CHECK(maybe_custom_owner.void_cast() == borrowed_maybe_custom_owner.void_cast());
 
-        auto empty_custom_owner = make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept {
-            ignore_unused(raw_value);
-        });
+        auto empty_custom_owner = make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept { ignore_unused(raw_value); });
         CHECK(empty_custom_owner.void_cast() == nullptr);
     }
 

@@ -255,14 +255,7 @@ struct OpenGL_Renderer::Context
     // ReSharper restore CppInconsistentNaming
 };
 
-static auto GetOpenGlContext(ptr<OpenGL_Renderer::Context> ctx) noexcept -> ptr<OpenGL_Renderer::Context>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return ctx;
-}
-
-static auto GetOpenGlContext(const unique_nptr<OpenGL_Renderer::Context>& ctx) -> ptr<const OpenGL_Renderer::Context>
+static auto GetOpenGlContext(nptr<OpenGL_Renderer::Context> ctx) -> ptr<OpenGL_Renderer::Context>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -709,7 +702,8 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     // Restore the actual current target's framebuffer (creation can happen mid-frame while a
     // texture target is selected)
     if (_ctx->CurrentRenderTargetValid && _ctx->CurrentRenderTarget) {
-        auto cur_target = _ctx->CurrentRenderTarget.cast<OpenGL_Texture>();
+        auto cur_target = _ctx->CurrentRenderTarget.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(cur_target, "OpenGL render target texture is not of the expected backend type");
         GL(glBindFramebuffer(GL_FRAMEBUFFER, cur_target->FramebufObj));
     }
     else {
@@ -937,7 +931,8 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     int32_t screen_height;
 
     if (tex) {
-        auto opengl_tex = tex.cast<OpenGL_Texture>();
+        auto opengl_tex = tex.dyn_cast<OpenGL_Texture>();
+        FO_VERIFY_AND_THROW(opengl_tex, "OpenGL render target texture is not of the expected backend type");
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
         _ctx->BaseFrameBufObjBinded = false;
 
@@ -1408,7 +1403,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto opengl_dbuf = dbuf.cast<OpenGL_DrawBuffer>();
+    auto opengl_dbuf = dbuf.dyn_cast<OpenGL_DrawBuffer>();
+    FO_VERIFY_AND_THROW(opengl_dbuf, "OpenGL draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
     if (!custom_tex && ModelTex[0]) {
@@ -1421,7 +1417,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
     FO_VERIFY_AND_THROW(main_tex_source, "OpenGL dummy texture is not created");
-    auto main_tex = main_tex_source.cast<const OpenGL_Texture>();
+    auto main_tex = main_tex_source.dyn_cast<const OpenGL_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "OpenGL main texture is not of the expected backend type");
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1475,15 +1472,15 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     // Uniforms
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-        ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -1639,7 +1636,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (_posIndoorMaskTex[pass] != -1) {
             nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
             FO_VERIFY_AND_THROW(indoor_tex_source, "OpenGL dummy texture is not created");
-            auto indoor_tex = indoor_tex_source.cast<const OpenGL_Texture>();
+            auto indoor_tex = indoor_tex_source.dyn_cast<const OpenGL_Texture>();
+            FO_VERIFY_AND_THROW(indoor_tex, "OpenGL indoor mask texture is not of the expected backend type");
             GL(glActiveTexture(GL_TEXTURE0 + _posIndoorMaskTex[pass]));
             GL(glBindTexture(GL_TEXTURE_2D, indoor_tex->TexId));
             GL(glActiveTexture(GL_TEXTURE0));
@@ -1651,7 +1649,8 @@ void OpenGL_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 if (_posModelTex[pass][i] != -1) {
                     nptr<RenderTexture> model_tex_source = ModelTex[i] ? ModelTex[i] : _ctx->DummyTexture;
                     FO_VERIFY_AND_THROW(model_tex_source, "OpenGL dummy texture is not created");
-                    auto model_tex = model_tex_source.cast<OpenGL_Texture>();
+                    auto model_tex = model_tex_source.dyn_cast<OpenGL_Texture>();
+                    FO_VERIFY_AND_THROW(model_tex, "OpenGL model texture is not of the expected backend type");
                     GL(glActiveTexture(GL_TEXTURE0 + _posModelTex[pass][i]));
                     GL(glBindTexture(GL_TEXTURE_2D, model_tex->TexId));
                     GL(glActiveTexture(GL_TEXTURE0));

@@ -170,7 +170,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     cr_hexes.reserve(128);
 
     const auto grid_offset = input.FromHex;
-    const auto grid_at = [&](mpos hex) -> ptr<int16_t> { return &grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]; };
+    const auto grid_at = [&](mpos hex) -> ptr<int16_t> { return make_ptr(&grid_buffer[((max_len + 1) + hex.y - grid_offset.y) * numeric_cast<int32_t>(grid_side) + ((max_len + 1) + hex.x - grid_offset.x)]); };
 
     size_t next_hexes_read = 0;
     size_t gag_hexes_read = 0;

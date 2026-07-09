@@ -319,7 +319,7 @@ ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti) :
     _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(ti, 0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(ti, 1))},
-    _data {ScriptDictComparator(ptr<ScriptDict> {this})}
+    _data {ScriptDictComparator(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -335,7 +335,7 @@ ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) :
     _valueTypeId {ti->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(ti, 0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(ti, 1))},
-    _data {ScriptDictComparator(ptr<ScriptDict> {this})}
+    _data {ScriptDictComparator(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -361,7 +361,7 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
     _valueTypeId {_typeInfo->GetSubTypeId(1)},
     _keyTypeData {PrecacheSubTypeData(_keyTypeId, GetDictSubTypeForPrecache(_typeInfo, 0))},
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(_typeInfo, 1))},
-    _data {ScriptDictComparator(ptr<ScriptDict> {this})}
+    _data {ScriptDictComparator(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
 

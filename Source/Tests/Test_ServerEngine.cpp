@@ -1463,7 +1463,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_FALSE(IsEntityAccessValid(cr_b));
     ctx.Release();
 
-    ctx.LockSingleton(server->GetEntityLock().get());
+    ctx.LockSingleton(server->GetEntityLock());
     ctx.EnsureEntitySynced(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(IsEntityAccessValid(cr_a));
@@ -1584,10 +1584,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     REQUIRE(static_cast<bool>(item_a));
 
     // The widen link must be live in both directions before we test the cover.
-    auto player_entity_lookup = player_a_holder.as_ptr().cast<ServerEntity>();
-    auto cr_entity_lookup = cr_a.cast<ServerEntity>();
-    REQUIRE(cr_a->GetSyncWidenEntity() == player_entity_lookup);
-    REQUIRE(player_a_holder->GetSyncWidenEntity() == cr_entity_lookup);
+    REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
+    REQUIRE(player_a_holder->GetSyncWidenEntity() == cr_a);
 
     server->Unlock();
     locked = false;

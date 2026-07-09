@@ -317,20 +317,6 @@ public:
         requires(dynamically_castable_to<T, const U>)
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>;
 
-    template<typename U>
-        requires(requires(T* p) { static_cast<U*>(p); })
-    FO_FORCE_INLINE auto cast() noexcept -> nptr<U>
-    {
-        return nptr<U>(static_cast<U*>(_ptr));
-    }
-
-    template<typename U>
-        requires(requires(const T* p) { static_cast<const U*>(p); })
-    FO_FORCE_INLINE auto cast() const noexcept -> nptr<const U>
-    {
-        return nptr<const U>(static_cast<const U*>(_ptr));
-    }
-
     // Reinterpret the pointee type through void for low-level byte/ABI views (e.g. `ucolor` <-> `uint8_t`),
     // replacing the `cast_from_void<U*>(cast_to_void(p.get()))` idiom. A `ptr<void>` source is also supported
     // (`void` -> `U`, as `GetPtrAs<U>()` uses). Source-pointee constness is preserved, so this can never
@@ -569,20 +555,6 @@ public:
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>
     {
         return nptr<const U>(dynamic_cast<const U*>(_ptr));
-    }
-
-    template<typename U>
-        requires(requires(T* p) { static_cast<U*>(p); })
-    FO_FORCE_INLINE auto cast() noexcept -> ptr<U>
-    {
-        return ptr<U>(static_cast<U*>(_ptr));
-    }
-
-    template<typename U>
-        requires(requires(const T* p) { static_cast<const U*>(p); })
-    FO_FORCE_INLINE auto cast() const noexcept -> ptr<const U>
-    {
-        return ptr<const U>(static_cast<const U*>(_ptr));
     }
 
     // Reinterpret the pointee type through void for low-level byte/ABI views, replacing the
@@ -2079,6 +2051,16 @@ public:
     }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return nptr<T>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return nptr<const T>(_ptr); }
+    template<typename U>
+    [[nodiscard]] FO_FORCE_INLINE auto reinterpret_as() noexcept
+    {
+        return as_nptr().template reinterpret_as<U>();
+    }
+    template<typename U>
+    [[nodiscard]] FO_FORCE_INLINE auto reinterpret_as() const noexcept
+    {
+        return as_nptr().template reinterpret_as<U>();
+    }
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> T* { return std::exchange(_ptr, nullptr); }
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
@@ -2167,6 +2149,16 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto as_ptr() const noexcept -> ptr<const T> { return _owner; }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() noexcept -> nptr<T> { return _owner; }
     [[nodiscard]] FO_FORCE_INLINE auto as_nptr() const noexcept -> nptr<const T> { return _owner; }
+    template<typename U>
+    [[nodiscard]] FO_FORCE_INLINE auto reinterpret_as() noexcept
+    {
+        return as_ptr().template reinterpret_as<U>();
+    }
+    template<typename U>
+    [[nodiscard]] FO_FORCE_INLINE auto reinterpret_as() const noexcept
+    {
+        return as_ptr().template reinterpret_as<U>();
+    }
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return _owner.void_cast(); }
     [[nodiscard]] FO_FORCE_INLINE auto release() noexcept -> ptr<T> { return ptr<T> {_owner.release()}; }
     [[nodiscard]] FO_FORCE_INLINE operator unique_del_nptr<T>() && noexcept { return unique_del_nptr<T> {std::move(_owner)}; }
@@ -2191,6 +2183,13 @@ template<typename T>
 [[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>
 {
     return unique_ptr<T> {value.get()};
+}
+
+template<typename T>
+[[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
+{
+    ptr<T> checked_value = value;
+    return adopt_unique_ptr(checked_value);
 }
 
 template<typename T, typename Deleter>

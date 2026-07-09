@@ -102,7 +102,7 @@ public:
 
         auto ping_doc = make_nptr(BCON_NEW("ping", BCON_INT32(1)));
         FO_VERIFY_AND_THROW(ping_doc, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(ping_doc.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+        auto ping = make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });
@@ -186,7 +186,7 @@ protected:
 
         auto opts_doc = make_nptr(BCON_NEW("projection", "{", "_id", BCON_BOOL(true), "}"));
         FO_VERIFY_AND_THROW(opts_doc, "Failed to build query options document");
-        auto opts = make_unique_del_ptr(opts_doc.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+        auto opts = make_unique_del_ptr(opts_doc, [](ptr<bson_t> doc) FO_DEFERRED {
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });
@@ -392,7 +392,7 @@ protected:
 
         auto ping_doc = make_nptr(BCON_NEW("ping", BCON_INT32(1)));
         FO_VERIFY_AND_THROW(ping_doc, "Failed to build ping command document");
-        auto ping = make_unique_del_ptr(ping_doc.as_ptr(), [](ptr<bson_t> doc) FO_DEFERRED {
+        auto ping = make_unique_del_ptr(ping_doc, [](ptr<bson_t> doc) FO_DEFERRED {
             auto aligned_doc = std::assume_aligned<BSON_ALIGN_OF_PTR>(doc.get());
             bson_destroy(aligned_doc);
         });

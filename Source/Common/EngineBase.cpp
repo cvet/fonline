@@ -144,7 +144,7 @@ struct EngineBaseData
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
 EngineMetadata::EngineMetadata(const MeatdataRegistrator& registrator) :
-    _protoMngr(ptr<EngineMetadata> {this})
+    _protoMngr(make_ptr(this))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -179,13 +179,14 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
 
     auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
-    EntityTypeDesc desc;
-    desc.Exported = exported;
-    desc.IsGlobal = is_global;
-    desc.HasProtos = has_protos;
-    desc.HasStatics = has_statics;
-    desc.HasAbstract = has_abstract;
-    desc.PropRegistrator = std::move(registrator);
+    EntityTypeDesc desc {
+        .Exported = exported,
+        .IsGlobal = is_global,
+        .HasProtos = has_protos,
+        .HasStatics = has_statics,
+        .HasAbstract = has_abstract,
+        .PropRegistrator = std::move(registrator),
+    };
 
     const auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -208,9 +209,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     if (!exported) {
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
 
-        auto prop_registrator = entry.first->second.PropRegistrator.as_ptr();
-        prop_registrator->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
-        prop_registrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
+        entry.first->second.PropRegistrator->RegisterProperty({"Common", "ident", "CustomHolderId", "Persistent", "CoreProperty", "SharedProperty"});
+        entry.first->second.PropRegistrator->RegisterProperty({"Common", "hstring", "CustomHolderEntry", "Persistent", "CoreProperty", "SharedProperty"});
     }
 
     auto type = RegisterBaseType(name);
@@ -234,10 +234,14 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
-    EntityTypeDesc desc;
-    desc.Exported = exported;
-    desc.HasProtos = true;
-    desc.PropRegistrator = std::move(registrator);
+    EntityTypeDesc desc {
+        .Exported = exported,
+        .IsGlobal = false,
+        .HasProtos = true,
+        .HasStatics = false,
+        .HasAbstract = false,
+        .PropRegistrator = std::move(registrator),
+    };
 
     const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
@@ -679,7 +683,12 @@ auto EngineMetadata::GetPropertyRegistrator(hstring type_name) const noexcept ->
     }
 
     const auto it2 = _fixedTypes.find(type_name);
-    return it2 != _fixedTypes.end() ? nptr<const PropertyRegistrator> {it2->second.PropRegistrator} : nullptr;
+
+    if (it2 != _fixedTypes.end()) {
+        return it2->second.PropRegistrator;
+    }
+
+    return nullptr;
 }
 
 auto EngineMetadata::GetPropertyRegistrator(string_view type_name) const noexcept -> nptr<const PropertyRegistrator>
@@ -1131,8 +1140,8 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     Settings {settings},
     Resources {std::move(resources)},
     GameTime(Settings),
-    TimeEventMngr(ptr<BaseEngine> {this}),
-    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(ptr<BaseEngine> {this})}
+    TimeEventMngr(make_ptr(this)),
+    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
 

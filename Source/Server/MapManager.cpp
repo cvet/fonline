@@ -523,7 +523,7 @@ void MapManager::RegenerateMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(map.as_nptr());
+    ValidateEntityAccess(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
     auto map_holder = map.hold_ref();
@@ -643,7 +643,7 @@ void MapManager::DestroyMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(map.as_nptr());
+    ValidateEntityAccess(map);
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
 
@@ -660,7 +660,7 @@ void MapManager::DestroyMap(ptr<Map> map)
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
     auto loc_ptr = loc.as_ptr().hold_ref();
     ValidateEntityAccess(loc_ptr);
-    ValidateEntityAccess(map.as_nptr());
+    ValidateEntityAccess(map);
     loc_ptr->OnMapRemoved.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     FO_VERIFY_AND_THROW(!loc_ptr->IsDestroyed(), "Location is already destroyed");
@@ -1299,7 +1299,7 @@ void MapManager::ProcessCritterLook(ptr<Map> map, ptr<Critter> cr, ptr<Critter> 
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(map.as_nptr());
+    ValidateEntityAccess(map);
 
     auto map_holder = map.hold_ref();
     auto cr_holder = cr.hold_ref();

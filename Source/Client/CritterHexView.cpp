@@ -452,7 +452,7 @@ void CritterHexView::RefreshModel()
         if (_modelSpr) {
             _modelSpr->PlayDefault();
 
-            _spr = _modelSpr.as_nptr();
+            _spr = _modelSpr;
 
             _model = _modelSpr->GetModel();
             FO_VERIFY_AND_THROW(_model, "Model sprite is missing its model instance");

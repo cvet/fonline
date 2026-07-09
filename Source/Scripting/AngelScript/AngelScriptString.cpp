@@ -61,7 +61,7 @@ public:
 
         auto pstr = cast_from_void<const string*>(str);
         FO_VERIFY_AND_THROW(pstr, "String pointer is null");
-        const auto owned_string = adopt_unique_ptr(pstr.as_ptr());
+        const auto owned_string = adopt_unique_ptr(pstr);
         ignore_unused(owned_string);
         return 0;
     }
@@ -865,13 +865,12 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     return ReleaseScriptOwnership(std::move(array));
 }
 
-static auto ScriptString_Join(const string& str, const ScriptArray* array) -> string
+static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -> string
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (!array) {
-        throw ScriptException("Array is null");
-    }
+    auto array = make_nptr(raw_array);
+    FO_VERIFY_AND_THROW(array, "Script string join array is null");
 
     string result;
 

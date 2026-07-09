@@ -863,35 +863,13 @@ namespace
 
         PropertiesPerfFixture() :
             Registrator("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            PublicIntProps {RegisterPublicIntProperties(Registrator)},
+            PublicStringProps {RegisterPublicStringProperties(Registrator)},
+            OwnerBoolProps {RegisterOwnerBoolProperties(Registrator)},
             Proto(&Registrator),
             Full(&Registrator),
             DerivedSource(&Registrator, &Proto)
         {
-            PublicIntProps.reserve(48);
-            PublicStringProps.reserve(12);
-            OwnerBoolProps.reserve(8);
-
-            for (int i = 0; i < 48; i++) {
-                string prop_name {"Value"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicIntProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 12; i++) {
-                string prop_name {"Name"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicStringProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 8; i++) {
-                string prop_name {"OwnerFlag"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
-                OwnerBoolProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
                 Proto.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
                 Full.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
@@ -933,6 +911,52 @@ namespace
             set<hstring> str_hashes;
             Full.StoreAllData(FullAllData, str_hashes);
             DerivedSource.StoreAllData(DerivedAllData, str_hashes);
+        }
+
+    private:
+        static auto RegisterPublicIntProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(48);
+
+            for (size_t i = 0; i < 48; i++) {
+                string prop_name {"Value"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterPublicStringProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(12);
+
+            for (size_t i = 0; i < 12; i++) {
+                string prop_name {"Name"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterOwnerBoolProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(8);
+
+            for (size_t i = 0; i < 8; i++) {
+                string prop_name {"OwnerFlag"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
         }
     };
 

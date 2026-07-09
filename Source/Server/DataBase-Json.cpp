@@ -148,7 +148,7 @@ protected:
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
-        auto json = make_unique_del_ptr(json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
+        auto json = make_unique_del_ptr(json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
         const auto pretty_json = nlohmann::json::parse(json.get());
@@ -197,7 +197,7 @@ protected:
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
-        auto new_json = make_unique_del_ptr(new_json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
+        auto new_json = make_unique_del_ptr(new_json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
         const auto pretty_json = nlohmann::json::parse(new_json.get());

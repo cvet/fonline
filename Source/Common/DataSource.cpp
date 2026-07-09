@@ -208,7 +208,7 @@ private:
     string _fileName {};
     mutable mutex _zipHandleLocker {};
     mutable nptr<void> _zipHandle FO_TSA_GUARDED_BY(_zipHandleLocker) {};
-    unique_nptr<std::ifstream> _fileStream {};
+    unique_ptr<std::ifstream> _fileStream;
     uint64_t _writeTime {};
 };
 
@@ -616,21 +616,21 @@ bool FalloutDat::ReadTree()
         auto tree_span = make_span(tree_data, tree_size);
 
         while (tree_pos < tree_size) {
-            auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
+            auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
             uint32_t fnsz = 0;
-            auto fnsz_target = ptr<uint32_t> {&fnsz}.reinterpret_as<uint8_t>();
+            auto fnsz_target = make_ptr(&fnsz).reinterpret_as<uint8_t>();
             ptr<const uint8_t> fnsz_source = tree_entry;
             MemCopy(fnsz_target, fnsz_source, sizeof(fnsz));
 
             uint32_t type = 0;
-            auto type_target = ptr<uint32_t> {&type}.reinterpret_as<uint8_t>();
+            auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
             auto type_source = tree_entry.offset(4 + fnsz + 4);
             MemCopy(type_target, type_source, sizeof(type));
 
             if (fnsz != 0 && type != 0x400) { // Not folder
                 string raw_name;
                 raw_name.resize(numeric_cast<size_t>(fnsz));
-                auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+                auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
                 auto raw_name_source = tree_entry.offset(4);
                 MemCopy(raw_name_target, raw_name_source, raw_name.size());
                 string name = strex(raw_name).normalize_path_slashes();
@@ -718,9 +718,9 @@ bool FalloutDat::ReadTree()
     auto tree_span = make_span(tree_data, tree_size);
 
     while (tree_pos < tree_size) {
-        auto tree_entry = ptr<uint8_t> {tree_span.data()}.offset(tree_pos);
+        auto tree_entry = make_ptr(tree_span.data()).offset(tree_pos);
         uint32_t name_len = 0;
-        auto name_len_target = ptr<uint32_t> {&name_len}.reinterpret_as<uint8_t>();
+        auto name_len_target = make_ptr(&name_len).reinterpret_as<uint8_t>();
         ptr<const uint8_t> name_len_source = tree_entry;
         MemCopy(name_len_target, name_len_source, sizeof(name_len));
 
@@ -731,7 +731,7 @@ bool FalloutDat::ReadTree()
         if (name_len != 0) {
             string raw_name;
             raw_name.resize(numeric_cast<size_t>(name_len));
-            auto raw_name_target = ptr<char> {raw_name.data()}.reinterpret_as<uint8_t>();
+            auto raw_name_target = make_ptr(raw_name.data()).reinterpret_as<uint8_t>();
             auto raw_name_source = tree_entry.offset(4);
             MemCopy(raw_name_target, raw_name_source, raw_name.size());
             string name = strex(raw_name).normalize_path_slashes();
@@ -772,7 +772,7 @@ auto FalloutDat::GetFileInfo(string_view path, size_t& size, uint64_t& write_tim
 
     auto file_info = it->second;
     uint32_t real_size = 0;
-    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target, real_size_source, sizeof(real_size));
 
@@ -795,22 +795,22 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64_t& write_time) 
 
     auto file_info = it->second;
     uint8_t type = 0;
-    auto type_target = ptr<uint8_t> {&type}.reinterpret_as<uint8_t>();
+    auto type_target = make_ptr(&type).reinterpret_as<uint8_t>();
     auto type_source = file_info;
     MemCopy(type_target, type_source, sizeof(type));
 
     uint32_t real_size = 0;
-    auto real_size_target = ptr<uint32_t> {&real_size}.reinterpret_as<uint8_t>();
+    auto real_size_target = make_ptr(&real_size).reinterpret_as<uint8_t>();
     auto real_size_source = file_info.offset(1);
     MemCopy(real_size_target, real_size_source, sizeof(real_size));
 
     uint32_t packed_size = 0;
-    auto packed_size_target = ptr<uint32_t> {&packed_size}.reinterpret_as<uint8_t>();
+    auto packed_size_target = make_ptr(&packed_size).reinterpret_as<uint8_t>();
     auto packed_size_source = file_info.offset(5);
     MemCopy(packed_size_target, packed_size_source, sizeof(packed_size));
 
     int32_t offset = 0;
-    auto offset_target = ptr<int32_t> {&offset}.reinterpret_as<uint8_t>();
+    auto offset_target = make_ptr(&offset).reinterpret_as<uint8_t>();
     auto offset_source = file_info.offset(9);
     MemCopy(offset_target, offset_source, sizeof(offset));
 
@@ -903,17 +903,15 @@ static auto ReturnEmbeddedZipMemStreamHandle(ptr<EmbeddedZipMemStream> mem_strea
     return mem_stream.void_cast();
 }
 
-ZipFile::ZipFile(string_view fname)
+ZipFile::ZipFile(string_view fname) :
+    _fileName {fname},
+    _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName))}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _fileName = fname;
 
     scoped_lock locker {_zipHandleLocker};
 
     zlib_filefunc_def ffunc;
-
-    _fileStream = SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName));
 
     if (!*_fileStream) {
         throw DataSourceException("Can't open zip file", _fileName);
@@ -967,7 +965,7 @@ ZipFile::ZipFile(string_view fname)
         return 0;
     };
 
-    ffunc.opaque = make_nptr(_fileStream.get()).void_cast();
+    ffunc.opaque = _fileStream.void_cast();
 
     auto zip_handle = make_nptr(unzOpen2(string(_fileName).c_str(), &ffunc));
     const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
@@ -1123,7 +1121,7 @@ EmbeddedFile::EmbeddedFile()
 
         uint32_t embedded_size = 0;
 
-        auto embedded_size_target = ptr<uint32_t> {&embedded_size}.reinterpret_as<uint8_t>();
+        auto embedded_size_target = make_ptr(&embedded_size).reinterpret_as<uint8_t>();
         MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
         auto mem_stream = SafeAlloc::MakeUnique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);

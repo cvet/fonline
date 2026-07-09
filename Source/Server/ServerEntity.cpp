@@ -215,8 +215,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     FO_VALIDATE_ENTITY(NONE);
 
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
-        nptr<const SyncContext> ctx = SyncContext::GetCurrentOnThisThread();
-        nptr<const EntityLock> lock = GetEntityLock();
+        auto ctx = SyncContext::GetCurrentOnThisThread();
+        auto lock = GetEntityLock();
         // Strict access model: reparenting a live entity requires its OWN lock held directly (ancestor
         // coverage is a read-path right only; there is no empty-context free pass). The only exemption
         // is a thread with no sync context at all (non-server threads). Stop-the-world owners

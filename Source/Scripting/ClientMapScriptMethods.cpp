@@ -830,7 +830,10 @@ FO_SCRIPT_API bool Client_Map_IsOutsideArea(ptr<MapView> self, mpos hex)
 ///@ ExportMethod
 FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, nptr<CritterView> cr, DrawOrderType drawOrder, int32_t flushEffectSubtype = -1)
 {
-    auto customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
+    nptr<RenderEffect> customFlushEffect = nullptr;
+    if (flushEffectSubtype >= 0) {
+        customFlushEffect = self->GetEngine()->GetOffscreenEffect(flushEffectSubtype);
+    }
 
     auto fog = self->AddFog(cr, drawOrder, customFlushEffect);
     return fog;
@@ -843,7 +846,10 @@ FO_SCRIPT_API ptr<FogLayer> Client_Map_AddFog(ptr<MapView> self, mpos hex, DrawO
         throw ScriptException("Invalid hex arg");
     }
 
-    auto customFlushEffect = flushEffectSubtype >= 0 ? self->GetEngine()->GetOffscreenEffect(flushEffectSubtype).as_nptr() : nullptr;
+    nptr<RenderEffect> customFlushEffect = nullptr;
+    if (flushEffectSubtype >= 0) {
+        customFlushEffect = self->GetEngine()->GetOffscreenEffect(flushEffectSubtype);
+    }
 
     auto fog = self->AddFog(hex, drawOrder, customFlushEffect);
     return fog;

@@ -267,7 +267,7 @@ public:
                     size_data = custom_tex->SizeData;
                 }
 
-                ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
+                auto main_texture_size = main_tex_buf->MainTexSize;
                 MemCopy(main_texture_size, size_data, 4 * sizeof(float32_t));
             }
         }

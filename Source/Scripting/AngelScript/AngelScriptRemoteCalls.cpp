@@ -344,7 +344,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
             auto ref_obj = CreateRefTypeScriptObjectFromRawData(type, ref_raw_data);
             ptr<refcount_ptr<DynamicRefTypeInstance>> ref_obj_ptr = &std::get<refcount_ptr<DynamicRefTypeInstance>>(temp_data.emplace_back(std::move(ref_obj)));
-            auto ref_obj_handle = make_ptr(static_cast<void*>(ref_obj_ptr->get_pp()));
+            auto ref_obj_handle = make_ptr(ref_obj_ptr->get_pp()).reinterpret_as<void>();
             return ref_obj_handle;
         }
         else if (type.IsStruct) {
@@ -386,7 +386,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
         FO_VERIFY_AND_THROW(inbound_call.Args.size() + 1 == func->GetParamCount(), "Inbound server remote call argument count does not match function signature", inbound_call.Name, inbound_call.Args.size(), func->GetParamCount());
         // Store a pointer into the entity parameter's own handle slot: the parameter outlives the ScriptFuncCall
         // below. A local copy would be destroyed at the end of this block, leaving data_storage dangling.
-        data_storage.emplace_back(static_cast<void*>(entity.get_pp()));
+        data_storage.emplace_back(make_ptr(entity.get_pp()).void_cast());
         arg_index++;
     }
     else {
@@ -407,7 +407,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             auto arr_holder = CreateScriptArray(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto arr = arr_holder.as_ptr();
             ptr<refcount_ptr<ScriptArray>> arr_ref = &std::get<refcount_ptr<ScriptArray>>(temp_data.emplace_back(std::move(arr_holder)));
-            data_storage.emplace_back(static_cast<void*>(arr_ref->get_pp()));
+            data_storage.emplace_back(make_ptr(arr_ref->get_pp()).void_cast());
             arg_index++;
             arr->Reserve(arr_size);
 
@@ -423,7 +423,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
             ptr<refcount_ptr<ScriptDict>> dict_ref = &std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(std::move(dict_holder)));
-            data_storage.emplace_back(static_cast<void*>(dict_ref->get_pp()));
+            data_storage.emplace_back(make_ptr(dict_ref->get_pp()).void_cast());
             arg_index++;
 
             for (int32_t j = 0; j < dict_size; j++) {
@@ -438,7 +438,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
             auto dict_holder = CreateScriptDict(as_engine, MakeScriptTypeName(arg->Type).c_str());
             auto dict = dict_holder.as_ptr();
             ptr<refcount_ptr<ScriptDict>> dict_ref = &std::get<refcount_ptr<ScriptDict>>(temp_data.emplace_back(std::move(dict_holder)));
-            data_storage.emplace_back(static_cast<void*>(dict_ref->get_pp()));
+            data_storage.emplace_back(make_ptr(dict_ref->get_pp()).void_cast());
             arg_index++;
 
             for (int32_t j = 0; j < dict_size; j++) {

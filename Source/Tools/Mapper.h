@@ -93,7 +93,7 @@ public:
         EntityBuf(EntityBuf&&) noexcept = default;
         // Properties move assignment is deleted, so the defaulted variant would be implicitly deleted anyway
         auto operator=(EntityBuf&&) noexcept -> EntityBuf& = delete;
-        [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? nptr<const Properties> {&*Props} : nullptr; }
+        [[nodiscard]] auto GetProps() const noexcept -> nptr<const Properties> { return Props ? make_nptr(&*Props) : nullptr; }
     };
 
     struct UndoOp

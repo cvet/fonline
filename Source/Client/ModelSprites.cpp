@@ -174,12 +174,11 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
-    _settings {settings}
+    _settings {settings},
+    _modelMngr {SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), effect_mngr, &spr_mngr->GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
+        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); })}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _modelMngr = SafeAlloc::MakeUnique<ModelManager>(settings, spr_mngr->GetResources(), effect_mngr, &spr_mngr->GetRender(), game_time, hash_resolver, name_resolver, anim_name_resolver, //
-        [this, hash_resolver](string_view path) mutable FO_DEFERRED { return LoadTexture(hash_resolver->ToHashedString(path)); });
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>

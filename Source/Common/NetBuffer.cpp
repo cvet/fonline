@@ -51,7 +51,7 @@ auto NetBuffer::GetData() noexcept -> const_span<uint8_t>
         return {};
     }
 
-    auto data = ptr<uint8_t> {_bufData.data()};
+    auto data = make_ptr(_bufData.data());
     return {data.get(), _bufEndPos};
 }
 
@@ -148,7 +148,7 @@ void NetOutBuffer::Push(nptr<const void> buf, size_t len)
     FO_VERIFY_AND_THROW(buf, "Network buffer push received a null source for a non-empty write");
 
     GrowBuf(len);
-    auto target = ptr<uint8_t> {_bufData.data()}.offset(_bufEndPos);
+    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
     CopyBuf(buf.as_ptr(), target, EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufEndPos += len;
 }
@@ -162,8 +162,8 @@ void NetOutBuffer::Push(const_span<uint8_t> buf)
     }
 
     GrowBuf(buf.size());
-    auto source = ptr<const uint8_t> {buf.data()};
-    auto target = ptr<uint8_t> {_bufData.data()}.offset(_bufEndPos);
+    auto source = make_ptr(buf.data());
+    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
     CopyBuf(source, target, EncryptKey(numeric_cast<int32_t>(buf.size())), buf.size());
     _bufEndPos += buf.size();
 }
@@ -184,8 +184,8 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
     const size_t move_len = _bufEndPos - len;
 
     if (move_len != 0) {
-        auto target = ptr<uint8_t> {_bufData.data()};
-        auto source = ptr<uint8_t> {_bufData.data()}.offset(len);
+        auto target = make_ptr(_bufData.data());
+        auto source = make_ptr(_bufData.data()).offset(len);
         MemMove(target, source, move_len);
     }
 
@@ -240,14 +240,14 @@ void NetOutBuffer::EndMsg()
 
     // Verify signature
     uint32_t msg_signature;
-    auto msg_signature_source = ptr<uint8_t> {_bufData.data()}.offset(_startedBufPos);
-    auto msg_signature_target = ptr<uint32_t> {&msg_signature}.reinterpret_as<uint8_t>();
+    auto msg_signature_source = make_ptr(_bufData.data()).offset(_startedBufPos);
+    auto msg_signature_target = make_ptr(&msg_signature).reinterpret_as<uint8_t>();
     CopyBuf(msg_signature_source, msg_signature_target, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
     FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
 
     // Write actual message length
-    auto msg_len_source = ptr<const uint32_t> {&msg_len}.reinterpret_as<uint8_t>();
-    auto msg_len_target = ptr<uint8_t> {_bufData.data()}.offset(_startedBufPos + sizeof(msg_signature));
+    auto msg_len_source = make_ptr(&msg_len).reinterpret_as<uint8_t>();
+    auto msg_len_target = make_ptr(_bufData.data()).offset(_startedBufPos + sizeof(msg_signature));
     CopyBuf(msg_len_source, msg_len_target, EncryptKey(0), sizeof(msg_len));
 
     // Return to the end
@@ -259,7 +259,7 @@ void NetOutBuffer::WriteHashedString(hstring value)
     FO_STACK_TRACE_ENTRY();
 
     const auto hash = value.as_hash();
-    auto hash_bytes = ptr<const hstring::hash_t> {&hash}.reinterpret_as<uint8_t>();
+    auto hash_bytes = make_ptr(&hash).reinterpret_as<uint8_t>();
     Push(hash_bytes, sizeof(hash));
 }
 
@@ -281,8 +281,8 @@ void NetInBuffer::AddData(const_span<uint8_t> buf)
     }
 
     GrowBuf(buf.size());
-    auto source = ptr<const uint8_t> {buf.data()};
-    auto target = ptr<uint8_t> {_bufData.data()}.offset(_bufEndPos);
+    auto source = make_ptr(buf.data());
+    auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
     CopyBuf(source, target, 0, buf.size());
     _bufEndPos += buf.size();
 }
@@ -313,7 +313,7 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
 
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
 
-    auto source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
+    auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
     CopyBuf(source, buf.as_ptr(), EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufReadPos += len;
 }
@@ -335,8 +335,8 @@ void NetInBuffer::ShrinkReadBuf()
     else if (_bufReadPos != 0) {
         const size_t move_len = _bufEndPos - _bufReadPos;
 
-        auto target = ptr<uint8_t> {_bufData.data()};
-        auto source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
+        auto target = make_ptr(_bufData.data());
+        auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
         MemMove(target, source, move_len);
 
         _bufEndPos -= _bufReadPos;
@@ -383,22 +383,22 @@ auto NetInBuffer::ReadMsg() -> NetMessage
     }
 
     uint32_t msg_signature;
-    auto msg_signature_source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
-    auto msg_signature_target = ptr<uint32_t> {&msg_signature}.reinterpret_as<uint8_t>();
+    auto msg_signature_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    auto msg_signature_target = make_ptr(&msg_signature).reinterpret_as<uint8_t>();
     CopyBuf(msg_signature_source, msg_signature_target, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
     _bufReadPos += sizeof(msg_signature);
     FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Incoming network message signature does not match protocol marker", msg_signature, NETMSG_SIGNATURE, _bufReadPos, _bufEndPos);
 
     uint32_t msg_len;
-    auto msg_len_source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
-    auto msg_len_target = ptr<uint32_t> {&msg_len}.reinterpret_as<uint8_t>();
+    auto msg_len_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    auto msg_len_target = make_ptr(&msg_len).reinterpret_as<uint8_t>();
     CopyBuf(msg_len_source, msg_len_target, EncryptKey(sizeof(msg_len)), sizeof(msg_len));
     _bufReadPos += sizeof(msg_len);
     FO_VERIFY_AND_THROW(msg_len >= sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len), "Incoming network message length is smaller than the protocol header", msg_len, sizeof(NetMessage) + sizeof(msg_signature) + sizeof(msg_len));
 
     NetMessage msg;
-    auto msg_source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
-    auto msg_target = ptr<NetMessage> {&msg}.reinterpret_as<uint8_t>();
+    auto msg_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    auto msg_target = make_ptr(&msg).reinterpret_as<uint8_t>();
     CopyBuf(msg_source, msg_target, EncryptKey(sizeof(msg)), sizeof(msg));
     _bufReadPos += sizeof(NetMessage);
 
@@ -432,8 +432,8 @@ auto NetInBuffer::NeedProcess() -> bool
     }
 
     uint32_t msg_signature;
-    auto msg_signature_source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos);
-    auto msg_signature_target = ptr<uint32_t> {&msg_signature}.reinterpret_as<uint8_t>();
+    auto msg_signature_source = make_ptr(_bufData.data()).offset(_bufReadPos);
+    auto msg_signature_target = make_ptr(&msg_signature).reinterpret_as<uint8_t>();
     CopyBuf(msg_signature_source, msg_signature_target, EncryptKey(0), sizeof(msg_signature));
 
     if (msg_signature != NETMSG_SIGNATURE) {
@@ -448,8 +448,8 @@ auto NetInBuffer::NeedProcess() -> bool
 
     uint32_t msg_len;
     EncryptKey(sizeof(msg_signature));
-    auto msg_len_source = ptr<uint8_t> {_bufData.data()}.offset(_bufReadPos + sizeof(msg_signature));
-    auto msg_len_target = ptr<uint32_t> {&msg_len}.reinterpret_as<uint8_t>();
+    auto msg_len_source = make_ptr(_bufData.data()).offset(_bufReadPos + sizeof(msg_signature));
+    auto msg_len_target = make_ptr(&msg_len).reinterpret_as<uint8_t>();
     CopyBuf(msg_len_source, msg_len_target, EncryptKey(0), sizeof(msg_len));
     EncryptKey(-const_numeric_cast<int32_t>(sizeof(msg_signature)));
 

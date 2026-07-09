@@ -72,8 +72,6 @@ struct MeshTexture
 
 struct MeshData
 {
-    void Load(DataReader& reader, HashResolver& hash_resolver);
-
     ptr<ModelBone> Owner;
     vector<Vertex3D> Vertices {};
     vector<vindex_t> Indices {};
@@ -98,13 +96,6 @@ struct MeshInstance
 
 struct ModelBone
 {
-    void Load(DataReader& reader, HashResolver& hash_resolver);
-    void FixAfterLoad(ptr<ModelBone> root_bone);
-    auto Find(hstring bone_name) const noexcept -> nptr<const ModelBone>;
-    auto Find(hstring bone_name) noexcept -> nptr<ModelBone>;
-    [[nodiscard]] auto GetAttachedMesh() const noexcept -> nptr<const MeshData> { return AttachedMesh ? nptr<const MeshData> {&*AttachedMesh} : nullptr; }
-    [[nodiscard]] auto GetAttachedMesh() noexcept -> nptr<MeshData> { return AttachedMesh ? nptr<MeshData> {&*AttachedMesh} : nullptr; }
-
     hstring Name {};
     mat44 TransformationMatrix {};
     mat44 GlobalTransformationMatrix {};
@@ -195,7 +186,6 @@ public:
 
     [[nodiscard]] auto CreateModel(string_view name) -> unique_nptr<ModelInstance>;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>;
-    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> unique_nptr<MeshTexture>;
 
     void PreloadModel(string_view name);
 

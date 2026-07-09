@@ -217,7 +217,7 @@ auto FileReader::GetStr() const -> string
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()};
+        auto source = make_ptr(_buf.data());
         MemCopy(result.data(), source, result.size());
     }
 
@@ -232,7 +232,7 @@ auto FileReader::GetData() const -> vector<uint8_t>
     result.resize(_buf.size());
 
     if (!result.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()};
+        auto source = make_ptr(_buf.data());
         MemCopy(result.data(), source, result.size());
     }
 
@@ -265,7 +265,7 @@ auto FileReader::GetCurDataSpan(size_t size) const -> const_span<uint8_t>
         throw FileSystemExeption("Invalid read size");
     }
 
-    auto data = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+    auto data = make_ptr(_buf.data()).offset(_curPos);
     return const_span<uint8_t> {data.get(), size};
 }
 
@@ -345,7 +345,7 @@ void FileReader::CopyData(span<uint8_t> buf)
         throw FileSystemExeption("Invalid read size");
     }
 
-    auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+    auto source = make_ptr(_buf.data()).offset(_curPos);
     MemCopy(buf.data(), source, buf.size());
     _curPos += buf.size();
 }
@@ -377,7 +377,7 @@ auto FileReader::GetStrNT() -> string
             throw FileSystemExeption("Invalid null terminated string length");
         }
 
-        auto cur_byte = ptr<const uint8_t> {_buf.data()}.offset(_curPos + len);
+        auto cur_byte = make_ptr(_buf.data()).offset(_curPos + len);
 
         if (*cur_byte == 0) {
             break;
@@ -390,7 +390,7 @@ auto FileReader::GetStrNT() -> string
     str.resize(numeric_cast<size_t>(len));
 
     if (!str.empty()) {
-        auto source = ptr<const uint8_t> {_buf.data()}.offset(_curPos);
+        auto source = make_ptr(_buf.data()).offset(_curPos);
         MemCopy(str.data(), source, str.size());
     }
 

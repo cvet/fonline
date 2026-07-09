@@ -412,7 +412,6 @@ private:
 
     ptr<const PropertyRegistrator> _registrator;
     nptr<const Properties> _baseProps {};
-    mutable unique_nptr<shared_mutex> _dataLocker {};
 
     unique_arr_ptr<uint8_t> _podData {};
     unique_arr_ptr<pair<unique_arr_ptr<uint8_t>, size_t>> _complexData {};

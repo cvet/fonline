@@ -1091,7 +1091,7 @@ auto ScriptArray::GetArrayItemPointer(int32_t index) -> ptr<void>
 
     auto buffer = GetBuffer();
     FO_VERIFY_AND_THROW(buffer, "Array buffer is null");
-    return buffer.as_ptr().reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
+    return buffer.reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
 }
 
 auto ScriptArray::GetArrayItemPointer(int32_t index) const -> ptr<void>
@@ -1100,7 +1100,7 @@ auto ScriptArray::GetArrayItemPointer(int32_t index) const -> ptr<void>
 
     auto buffer = GetBuffer();
     FO_VERIFY_AND_THROW(buffer, "Array buffer is null");
-    return buffer.as_ptr().reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
+    return buffer.reinterpret_as<uint8_t>().offset(numeric_cast<size_t>(index * _elementSize)).void_cast();
 }
 
 auto ScriptArray::GetDataPointer(ptr<void> buf) const -> ptr<void>

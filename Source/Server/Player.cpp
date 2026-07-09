@@ -114,7 +114,7 @@ auto Player::GetViewMap() const noexcept -> nptr<const ViewMapContext>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-    return _viewMap ? nptr<const ViewMapContext> {&*_viewMap} : nullptr;
+    return _viewMap ? make_nptr(&*_viewMap) : nullptr;
 }
 
 auto Player::GetViewMapTarget() const noexcept -> nptr<const Map>

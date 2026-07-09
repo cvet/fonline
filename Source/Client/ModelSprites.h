@@ -106,7 +106,7 @@ private:
 
     ptr<SpriteManager> _sprMngr;
     ptr<RenderSettings> _settings;
-    unique_nptr<ModelManager> _modelMngr {};
+    unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};
 };

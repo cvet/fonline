@@ -141,8 +141,8 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
         if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
             // Flush last part of buffer
             auto offset = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
-            auto target = ptr<uint8_t> {output.data()};
-            auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
+            auto target = make_ptr(output.data());
+            auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
             MemCopy(target, source, offset);
             sound->ConvertedBufCur += offset;
 
@@ -154,8 +154,8 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
                     write = output.size() - offset;
                 }
 
-                auto stream_target = ptr<uint8_t> {output.data()}.offset(offset);
-                auto stream_source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
+                auto stream_target = make_ptr(output.data()).offset(offset);
+                auto stream_source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
                 MemCopy(stream_target, stream_source, write);
                 sound->ConvertedBufCur += write;
                 offset += write;
@@ -163,15 +163,15 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
             // Cut off end
             if (offset < output.size()) {
-                auto silence_target = ptr<uint8_t> {output.data()}.offset(offset);
+                auto silence_target = make_ptr(output.data()).offset(offset);
                 MemFill(silence_target, silence, output.size() - offset);
             }
         }
         else {
             // Copy
             if (!output.empty()) {
-                auto target = ptr<uint8_t> {output.data()};
-                auto source = ptr<const uint8_t> {sound->ConvertedBuf.data()}.offset(sound->ConvertedBufCur);
+                auto target = make_ptr(output.data());
+                auto source = make_ptr(sound->ConvertedBuf.data()).offset(sound->ConvertedBufCur);
                 MemCopy(target, source, output.size());
             }
             sound->ConvertedBufCur += output.size();
@@ -210,7 +210,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
         // Give silent
         if (!output.empty()) {
-            auto silence_target = ptr<uint8_t> {output.data()};
+            auto silence_target = make_ptr(output.data());
             MemFill(silence_target, silence, output.size());
         }
         return true;
@@ -218,7 +218,7 @@ auto SoundManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
     // Give silent
     if (!output.empty()) {
-        auto silence_target = ptr<uint8_t> {output.data()};
+        auto silence_target = make_ptr(output.data());
         MemFill(silence_target, silence, output.size());
     }
 
@@ -320,7 +320,7 @@ auto SoundManager::LoadWav(ptr<Sound> sound, string_view fname) -> bool
         return false;
     }
 
-    span<uint8_t> wave_format_bytes = span<uint8_t> {ptr<WaveFormatEx> {&waveformatex}.reinterpret_as<uint8_t>().get(), sizeof(WaveFormatEx)}.first(wave_format_base_size);
+    span<uint8_t> wave_format_bytes = span<uint8_t> {make_ptr(&waveformatex).reinterpret_as<uint8_t>().get(), sizeof(WaveFormatEx)}.first(wave_format_base_size);
     reader.ReadBytes(wave_format_bytes);
 
     if (waveformatex.WFormatTag != 1) {
@@ -465,7 +465,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     callbacks.close_func = [](void* datasource) -> int32_t {
         auto file_context = cast_from_void<OggFileContext*>(datasource);
         FO_VERIFY_AND_THROW(file_context, "Missing Ogg file context");
-        auto owned_file_context = adopt_unique_ptr(file_context.as_ptr());
+        auto owned_file_context = adopt_unique_ptr(file_context);
         ignore_unused(owned_file_context);
         return 0;
     };
@@ -532,7 +532,7 @@ auto SoundManager::LoadOgg(ptr<Sound> sound, string_view fname) -> bool
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
-        auto output = (ptr<uint8_t> {base_buf.data()}.offset(numeric_cast<size_t>(decoded))).reinterpret_as<char>();
+        auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
         const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = numeric_cast<int32_t>(ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr));
 
@@ -573,7 +573,7 @@ auto SoundManager::StreamOgg(ptr<Sound> sound) -> bool
     span<uint8_t> base_buf = span<uint8_t> {sound->BaseBuf.data(), sound->BaseBuf.size()};
 
     while (true) {
-        auto output = (ptr<uint8_t> {base_buf.data()}.offset(numeric_cast<size_t>(decoded))).reinterpret_as<char>();
+        auto output = make_ptr(base_buf.data()).offset(numeric_cast<size_t>(decoded)).reinterpret_as<char>();
         const int32_t read_size = numeric_cast<int32_t>(_streamingPortion - decoded);
         result = ov_read(ogg_stream.get(), output.get(), read_size, 0, 2, 1, nullptr);
 

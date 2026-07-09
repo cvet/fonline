@@ -112,7 +112,7 @@ static auto Global_GetContextExceptionCount() -> int32_t
 
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx.as_ptr());
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     return ctx_ext->ExceptionCount;
 }
@@ -181,7 +181,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
 
         if (repack_into_handle_cell) {
             indirect_args[index] = MemReadUnaligned<void*>(arg_data);
-            args_data.emplace_back(static_cast<void*>(indirect_args[index].get_pp()));
+            args_data.emplace_back(make_ptr(indirect_args[index].get_pp()).void_cast());
         }
         else {
             args_data.emplace_back(arg_data);
@@ -816,7 +816,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     };
 
     static GlobalSettings dummy_settings(false);
-    auto settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : ptr<GlobalSettings> {&dummy_settings};
+    auto settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : make_ptr(&dummy_settings);
 
 #define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, const_cast<type&>(settings->name), false)
 #define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, settings->name, true)

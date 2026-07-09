@@ -229,7 +229,7 @@ void span_write_aligned_object_bytes(span<uint8_t> buffer, size_t& pos, const T&
 
 inline void span_write_string(span<uint8_t> buffer, size_t& pos, string_view value)
 {
-    span_write_bytes(buffer, pos, nptr<const void> {value.data()}, value.length());
+    span_write_bytes(buffer, pos, make_nptr(value.data()), value.length());
 }
 
 class DataReader
@@ -260,7 +260,7 @@ public:
     void ReadStringBytes(string& out)
     {
         if (!out.empty()) {
-            ReadBytes({ptr<char>(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
+            ReadBytes({make_ptr(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
         }
     }
 
@@ -339,7 +339,7 @@ public:
             return nullptr;
         }
 
-        return ptr<const uint8_t> {bytes.data()}.reinterpret_as<const T>();
+        return make_ptr(bytes.data()).reinterpret_as<const T>();
     }
 
     void ReadPtr(nptr<void> out, size_t size)
@@ -412,7 +412,7 @@ public:
     void ReadStringBytes(string& out)
     {
         if (!out.empty()) {
-            ReadBytes({ptr<char>(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
+            ReadBytes({make_ptr(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
         }
     }
 
@@ -438,7 +438,7 @@ public:
             return nullptr;
         }
 
-        return ptr<uint8_t> {bytes.data()}.reinterpret_as<T>();
+        return make_ptr(bytes.data()).reinterpret_as<T>();
     }
 
     void ReadPtr(nptr<void> out, size_t size)
@@ -520,7 +520,7 @@ public:
     void WriteStringBytes(string_view data)
     {
         if (!data.empty()) {
-            WriteBytes({ptr<const char>(data.data()).reinterpret_as<uint8_t>().get(), data.size()});
+            WriteBytes({make_ptr(data.data()).reinterpret_as<uint8_t>().get(), data.size()});
         }
     }
 

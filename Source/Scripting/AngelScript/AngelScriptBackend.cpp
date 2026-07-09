@@ -270,7 +270,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     if (_engine && _settings->DebuggerEnabled) {
         if (!_debuggerEndpointServer) {
             try {
-                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
+                _debuggerEndpointServer.emplace(make_ptr(this));
             }
             catch (...) {
                 WriteLog("Can't start AngelScript debugger endpoint server");
@@ -587,7 +587,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         root_script.append("\"\n");
     }
 
-    auto preprocessor_context = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
+    auto preprocessor_context = make_unique_del_ptr(make_ptr(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
 
     Preprocessor::UndefAll(preprocessor_context.get());
 

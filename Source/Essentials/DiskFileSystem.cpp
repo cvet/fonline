@@ -226,7 +226,7 @@ auto fs_write_file(string_view path, const_span<uint8_t> content) -> bool
     }
 
     if (!content.empty()) {
-        file.write(ptr<const uint8_t> {content.data()}.reinterpret_as<char>().get(), static_cast<std::streamsize>(content.size()));
+        file.write(make_ptr(content.data()).reinterpret_as<char>().get(), static_cast<std::streamsize>(content.size()));
     }
 
     file.flush();
@@ -321,7 +321,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
         const auto read_size = numeric_cast<size_t>(stream.gcount());
 
         if (read_size != 0) {
-            nptr<const uint8_t> hash_bytes = read_buf.reinterpret_as<const uint8_t>();
+            auto hash_bytes = read_buf.reinterpret_as<const uint8_t>();
             hash = step(hash, hash_bytes.as_ptr(), read_size);
         }
 

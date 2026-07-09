@@ -259,7 +259,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
     }
 
     addr.sin_addr.s_addr = *resolved;
-    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::connect(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -313,7 +313,7 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
     }
 #endif
 
-    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
     const auto r = ::connect(sock, addr_ptr.get(), sizeof(addr));
 
     if (r == SOCKET_ERROR_VALUE) {
@@ -366,7 +366,7 @@ auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
     }
 
     int32_t optval = enabled ? 1 : 0;
-    auto optval_data = ptr<const int32_t> {&optval}.reinterpret_as<const char>();
+    auto optval_data = make_ptr(&optval).reinterpret_as<const char>();
 
     return ::setsockopt(*_sock, IPPROTO_TCP, TCP_NODELAY, optval_data.get(), sizeof(optval)) == 0;
 }
@@ -386,7 +386,7 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
     socklen_t len = sizeof(error);
 #endif
 
-    auto error_data = ptr<int32_t> {&error}.reinterpret_as<char>();
+    auto error_data = make_ptr(&error).reinterpret_as<char>();
 
     if (::getsockopt(*_sock, SOL_SOCKET, SO_ERROR, error_data.get(), &len) != 0) {
         return -1;
@@ -403,7 +403,7 @@ auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::send(*_sock, ptr<const uint8_t> {data.data()}.reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0);
+    return ::send(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0);
 }
 
 auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
@@ -414,7 +414,7 @@ auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
         return 0;
     }
 
-    return ::recv(*_sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0);
+    return ::recv(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0);
 }
 
 void tcp_socket::close() noexcept
@@ -449,7 +449,7 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -492,7 +492,7 @@ auto tcp_server::accept() noexcept -> tcp_socket
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
-    auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
     const socket_t client_sock = ::accept(*_listenSock, addr_ptr.get(), &addr_len);
 
     if (client_sock == INVALID_SOCKET_VALUE) {
@@ -524,7 +524,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 #if !FO_WEB
     if (reuse_addr) {
         constexpr int32_t opt = 1;
-        auto opt_data = ptr<const int32_t> {&opt}.reinterpret_as<const char>();
+        auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
 
         if (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, opt_data.get(), sizeof(opt)) == SOCKET_ERROR_VALUE) {
             CloseSocket(sock);
@@ -548,7 +548,7 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
 
     if (::bind(sock, addr_ptr.get(), sizeof(addr)) == SOCKET_ERROR_VALUE) {
         CloseSocket(sock);
@@ -592,7 +592,7 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
 
 #if !FO_WEB
     const int32_t opt = enabled ? 1 : 0;
-    auto opt_data = ptr<const int32_t> {&opt}.reinterpret_as<const char>();
+    auto opt_data = make_ptr(&opt).reinterpret_as<const char>();
     return ::setsockopt(*_sock, SOL_SOCKET, SO_BROADCAST, opt_data.get(), sizeof(opt)) != SOCKET_ERROR_VALUE;
 #else
     return false;
@@ -619,8 +619,8 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
 
     addr.sin_addr.s_addr = *resolved;
 
-    auto addr_ptr = ptr<const sockaddr_in> {&addr}.reinterpret_as<const sockaddr>();
-    return ::sendto(*_sock, ptr<const uint8_t> {data.data()}.reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr));
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<const sockaddr>();
+    return ::sendto(*_sock, make_ptr(data.data()).reinterpret_as<const char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), sizeof(addr));
 }
 
 auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
@@ -641,8 +641,8 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
 #else
     socklen_t addr_len = sizeof(addr);
 #endif
-    auto addr_ptr = ptr<sockaddr_in> {&addr}.reinterpret_as<sockaddr>();
-    const int32_t result = ::recvfrom(*_sock, ptr<uint8_t> {data.data()}.reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
+    auto addr_ptr = make_ptr(&addr).reinterpret_as<sockaddr>();
+    const int32_t result = ::recvfrom(*_sock, make_ptr(data.data()).reinterpret_as<char>().get(), numeric_cast<int32_t>(data.size()), 0, addr_ptr.get(), &addr_len);
 
     if (result <= 0) {
         return result;

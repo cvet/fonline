@@ -429,7 +429,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     for (auto proto_it = protos.cbegin(); proto_it != protos.cend(); ++proto_it) {
         ptr<Entity> entity = proto_it->second.get_no_const();
         nptr<Entity> entity_arg = entity;
-        auto value = make_ptr(static_cast<void*>(entity_arg.get_pp()));
+        auto value = make_ptr(entity_arg.get_pp()).reinterpret_as<void>();
         result->InsertLast(value);
     }
 
@@ -471,7 +471,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
         if (proto->GetValueAsAny(prop) == *prop_value) {
             ptr<Entity> entity = proto_it->second.get_no_const();
             nptr<Entity> entity_arg = entity;
-            auto value = make_ptr(static_cast<void*>(entity_arg.get_pp()));
+            auto value = make_ptr(entity_arg.get_pp()).reinterpret_as<void>();
             result->InsertLast(value);
         }
     }
@@ -625,7 +625,7 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
 
         for (ptr<Entity> result_entity : result_entities) {
             nptr<Entity> result_entity_arg = result_entity;
-            auto value = make_ptr(static_cast<void*>(result_entity_arg.get_pp()));
+            auto value = make_ptr(result_entity_arg.get_pp()).reinterpret_as<void>();
             arr->InsertLast(value);
         }
 
@@ -947,7 +947,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
         vector<ptr<void>> args_data;
         args_data.reserve(base_call.ArgsData.size() + 1);
 
-        args_data.emplace_back(static_cast<void*>(engine_arg.get_pp()));
+        args_data.emplace_back(make_ptr(engine_arg.get_pp()).void_cast());
 
         for (size_t i = 0; i < base_call.ArgsData.size(); i++) {
             args_data.emplace_back(base_call.ArgsData[i]);
@@ -1311,8 +1311,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
     // Register properties
     for (auto&& [type_name, type_desc] : meta->GetEntityTypes()) {
-        auto registrator = type_desc.PropRegistrator.as_nptr();
-        FO_VERIFY_AND_THROW(registrator, "Property registrator is null");
+        auto registrator = type_desc.PropRegistrator.as_ptr();
         const string_view type_name_str = type_name.as_str();
         const string class_name = type_desc.IsGlobal ? strex("{}Singleton", type_name_str).str() : string(type_name_str);
         const string abstract_class_name = strex("Abstract{}", class_name).str();
@@ -1386,8 +1385,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     }
 
     for (auto&& [type_name, type_desc] : meta->GetFixedTypes()) {
-        auto registrator = type_desc.PropRegistrator.as_nptr();
-        FO_VERIFY_AND_THROW(registrator, "Property registrator is null");
+        auto registrator = type_desc.PropRegistrator.as_ptr();
         const string_view type_name_str = type_name.as_str();
         const string type_name_storage {type_name_str};
 

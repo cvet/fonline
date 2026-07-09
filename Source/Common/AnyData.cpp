@@ -414,7 +414,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
     }
 
     for (size_t i = 0; i < str.length();) {
-        auto s = ptr<const char> {str.data()}.offset(i);
+        auto s = make_ptr(str.data()).offset(i);
         size_t length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -470,7 +470,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     string result;
     result.reserve(str.length());
 
-    auto s = ptr<const char> {str.data()};
+    auto s = make_ptr(str.data());
     size_t length = str.length();
     utf8::Decode(s, length);
 
@@ -478,7 +478,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = ptr<const char> {str.data()}.offset(i);
+        s = make_ptr(str.data()).offset(i);
         length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -498,7 +498,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 throw AnyDataException("Invalid escape sequence in string", string(str));
             }
 
-            s = ptr<const char> {str.data()}.offset(i);
+            s = make_ptr(str.data()).offset(i);
             length = str.length() - i;
             utf8::Decode(s, length);
 

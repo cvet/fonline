@@ -125,7 +125,7 @@ struct EntityTypeDesc
     bool HasProtos {};
     bool HasStatics {};
     bool HasAbstract {};
-    unique_nptr<PropertyRegistrator> PropRegistrator {};
+    unique_ptr<PropertyRegistrator> PropRegistrator;
     unordered_map<hstring, HolderEntryDesc> HolderEntries {};
     vector<MethodDesc> Methods {};
     vector<EntityEventDesc> Events {};
@@ -201,13 +201,13 @@ public:
     [[nodiscard]] auto GetValueAsAny(int32_t prop_index) const -> any_t;
     [[nodiscard]] auto HasInnerEntities() const noexcept -> bool { return _innerEntities && !_innerEntities->empty(); }
     [[nodiscard]] auto GetInnerEntitiesCount() const noexcept -> size_t;
-    [[nodiscard]] auto GetInnerEntities() const noexcept -> nptr<const InnerEntityMap> { return _innerEntities ? nptr<const InnerEntityMap> {&*_innerEntities} : nullptr; }
-    [[nodiscard]] auto GetInnerEntities() noexcept -> nptr<InnerEntityMap> { return _innerEntities ? nptr<InnerEntityMap> {&*_innerEntities} : nullptr; }
+    [[nodiscard]] auto GetInnerEntities() const noexcept -> nptr<const InnerEntityMap> { return _innerEntities ? make_nptr(&*_innerEntities) : nullptr; }
+    [[nodiscard]] auto GetInnerEntities() noexcept -> nptr<InnerEntityMap> { return _innerEntities ? make_nptr(&*_innerEntities) : nullptr; }
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
-    [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? nptr<const TimeEventList> {&*_timeEvents} : nullptr; }
-    [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? nptr<TimeEventList> {&*_timeEvents} : nullptr; }
+    [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
+    [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
 
     auto StoreData(bool with_protected) const -> Properties::StoredData;
@@ -324,7 +324,7 @@ public:
             array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
             size_t storage_index = 0;
             nptr<Entity> first_arg = _entity;
-            array<ptr<void>, sizeof...(Args) + 1> args_data {static_cast<void*>(first_arg.get_pp()), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
+            array<ptr<void>, sizeof...(Args) + 1> args_data {make_ptr(first_arg.get_pp()).void_cast(), ([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
 
             auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};

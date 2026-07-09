@@ -270,11 +270,11 @@ static auto TryCreateTemporarySdlWindowRenderer(ptr<const char> title, int32_t w
 
     if (!created) {
         if (renderer_out) {
-            auto renderer = MakeSdlRendererHolder(renderer_out.as_ptr());
+            auto renderer = MakeSdlRendererHolder(renderer_out);
             ignore_unused(renderer);
         }
         if (window_out) {
-            auto window = MakeSdlWindowHolder(window_out.as_ptr());
+            auto window = MakeSdlWindowHolder(window_out);
             ignore_unused(window);
         }
 
@@ -284,7 +284,7 @@ static auto TryCreateTemporarySdlWindowRenderer(ptr<const char> title, int32_t w
     FO_VERIFY_AND_THROW(window_out, "SDL returned a null window despite successful creation");
     FO_VERIFY_AND_THROW(renderer_out, "SDL returned a null renderer despite successful creation");
 
-    return TemporarySdlWindowRenderer {MakeSdlWindowHolder(window_out.as_ptr()), MakeSdlRendererHolder(renderer_out.as_ptr())};
+    return TemporarySdlWindowRenderer {MakeSdlWindowHolder(window_out), MakeSdlRendererHolder(renderer_out)};
 }
 
 static auto GetSdlDisplayMode(SDL_DisplayID display_id) -> ptr<const SDL_DisplayMode>
@@ -334,10 +334,10 @@ static void SdlMemFree(void* mem) noexcept
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
-    MainWindow {ptr<Application> {this}},
-    Render {ptr<Application> {this}},
-    Input {ptr<Application> {this}},
-    Audio {ptr<Application> {this}},
+    MainWindow {make_ptr(this)},
+    Render {make_ptr(this)},
+    Input {make_ptr(this)},
+    Audio {make_ptr(this)},
     _ctx {SafeAlloc::MakeUnique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
@@ -413,7 +413,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
             auto opened_audio_stream = make_nptr(SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr, stream_callback, make_nptr(this).void_cast()));
 
             if (opened_audio_stream) {
-                auto audio_stream = make_unique_del_ptr(opened_audio_stream.as_ptr(), [](SDL_AudioStream* raw_audio_stream) {
+                auto audio_stream = make_unique_del_ptr(opened_audio_stream, [](SDL_AudioStream* raw_audio_stream) {
                     if (raw_audio_stream != nullptr) {
                         auto audio_stream = make_ptr(raw_audio_stream);
                         SDL_DestroyAudioStream(audio_stream.get());
@@ -793,7 +793,12 @@ void Application::DestroyChildWindow(nptr<AppWindow> window)
     }
 
     if (_activeWindow == window) {
-        _activeWindow = !_childWindows.empty() && !(nptr<AppWindow> {_childWindows.front()} == window) ? nptr<AppWindow> {_childWindows.front()} : main_window.as_nptr();
+        if (!_childWindows.empty() && _childWindows.front() != window) {
+            _activeWindow = _childWindows.front();
+        }
+        else {
+            _activeWindow = main_window;
+        }
     }
 
     if (_currentRenderingWindow == window) {
@@ -1073,27 +1078,25 @@ auto Application::ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AppWindow> window = _activeWindow;
-
-    if (!window || !window->_isVirtual) {
+    if (!_activeWindow || !_activeWindow->_isVirtual) {
         return delta;
     }
 
-    const auto& rect = window->_displayRect;
+    const auto& rect = _activeWindow->_displayRect;
 
-    if (rect.width <= 0 || rect.height <= 0 || window->_virtualSize.width <= 0 || window->_virtualSize.height <= 0) {
+    if (rect.width <= 0 || rect.height <= 0 || _activeWindow->_virtualSize.width <= 0 || _activeWindow->_virtualSize.height <= 0) {
         return delta;
     }
 
-    const isize32 screen_size = window->GetScreenSize();
-    const irect32 content_rect = MakeAspectFitRect(screen_size, window->_virtualSize);
+    const isize32 screen_size = _activeWindow->GetScreenSize();
+    const irect32 content_rect = MakeAspectFitRect(screen_size, _activeWindow->_virtualSize);
 
     if (content_rect.width <= 0 || content_rect.height <= 0) {
         return delta;
     }
 
-    const int32_t local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(window->_virtualSize.width) * numeric_cast<float32_t>(screen_size.width) / (numeric_cast<float32_t>(rect.width) * numeric_cast<float32_t>(content_rect.width)));
-    const int32_t local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(window->_virtualSize.height) * numeric_cast<float32_t>(screen_size.height) / (numeric_cast<float32_t>(rect.height) * numeric_cast<float32_t>(content_rect.height)));
+    const int32_t local_dx = iround<int32_t>(numeric_cast<float32_t>(delta.x) * numeric_cast<float32_t>(_activeWindow->_virtualSize.width) * numeric_cast<float32_t>(screen_size.width) / (numeric_cast<float32_t>(rect.width) * numeric_cast<float32_t>(content_rect.width)));
+    const int32_t local_dy = iround<int32_t>(numeric_cast<float32_t>(delta.y) * numeric_cast<float32_t>(_activeWindow->_virtualSize.height) * numeric_cast<float32_t>(screen_size.height) / (numeric_cast<float32_t>(rect.height) * numeric_cast<float32_t>(content_rect.height)));
 
     return {local_dx, local_dy};
 }
@@ -1106,7 +1109,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
         auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
         handle->Size = size;
 
-        ptr<HeadlessWindowStub> headless_window = handle;
+        auto headless_window = handle.as_ptr();
         _ctx->NullWindowStubs.emplace_back(std::move(handle));
 
         return headless_window.reinterpret_as<WindowInternalHandle>();
@@ -1438,7 +1441,7 @@ void Application::RefreshGamepadConnection()
         return;
     }
 
-    auto gamepads = make_unique_del_ptr(queried_gamepads.as_ptr(), [](SDL_JoystickID* raw_data) {
+    auto gamepads = make_unique_del_ptr(queried_gamepads, [](SDL_JoystickID* raw_data) {
         if (raw_data != nullptr) {
             auto data = make_ptr(raw_data);
             SDL_free(data.get());
@@ -1604,13 +1607,11 @@ void Application::BeginFrame()
     const bool imgui_capture_keyboard = io.WantCaptureKeyboard || io.WantTextInput;
 
     const auto host_pos_inside_active_virtual = [&](ipos32 host_pos) -> bool {
-        auto aw = _activeWindow;
-
-        if (!aw || !aw->_isVirtual) {
+        if (!_activeWindow || !_activeWindow->_isVirtual) {
             return false;
         }
 
-        const auto& r = aw->_displayRect;
+        const auto& r = _activeWindow->_displayRect;
         return r.width > 0 && r.height > 0 && //
             host_pos.x >= r.x && host_pos.x < r.x + r.width && //
             host_pos.y >= r.y && host_pos.y < r.y + r.height;
@@ -1618,12 +1619,11 @@ void Application::BeginFrame()
 
     const auto switch_active_to_hovered_child = [&](ipos32 host_pos) {
         for (size_t i = 0; i != _childWindows.size(); ++i) {
-            auto child = _childWindows[i].as_ptr();
-            const auto& r = child->_displayRect;
+            const auto& r = _childWindows[i]->_displayRect;
 
             if (r.width > 0 && r.height > 0 && host_pos.x >= r.x && host_pos.x < r.x + r.width && host_pos.y >= r.y && host_pos.y < r.y + r.height) {
-                if (!(_activeWindow == child.as_nptr())) {
-                    _activeWindow = child.as_nptr();
+                if (_activeWindow != _childWindows[i]) {
+                    _activeWindow = _childWindows[i];
                 }
                 break;
             }
@@ -1950,7 +1950,7 @@ void Application::BeginFrame()
                     paste_ev.Code = KeyCode::Text;
                     auto sdl_clipboard_text = make_nptr(SDL_GetClipboardText());
                     if (sdl_clipboard_text) {
-                        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text.as_ptr(), [](char* raw_data) {
+                        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text, [](char* raw_data) {
                             FO_NO_STACK_TRACE_ENTRY();
 
                             if (raw_data != nullptr) {
@@ -2320,9 +2320,6 @@ void Application::EndFrame()
     const auto fb_height = iround<int32_t>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
 
     if (_imguiEffect && _imguiDrawBuf && fb_width > 0 && fb_height > 0) {
-        ptr<RenderEffect> imgui_effect = _imguiEffect;
-        ptr<RenderDrawBuffer> imgui_draw_buf = _imguiDrawBuf;
-
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
         const auto clip_scale = draw_data->FramebufferScale;
@@ -2331,11 +2328,11 @@ void Application::EndFrame()
         for (int32_t cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
             ptr<const ImDrawList> cmd_list = draw_data->CmdLists[cmd];
 
-            imgui_draw_buf->Vertices.resize(cmd_list->VtxBuffer.Size);
-            imgui_draw_buf->VertCount = imgui_draw_buf->Vertices.size();
+            _imguiDrawBuf->Vertices.resize(cmd_list->VtxBuffer.Size);
+            _imguiDrawBuf->VertCount = _imguiDrawBuf->Vertices.size();
 
             for (int32_t i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-                auto& v = imgui_draw_buf->Vertices[i];
+                auto& v = _imguiDrawBuf->Vertices[i];
                 const auto& iv = cmd_list->VtxBuffer[i];
                 v.PosX = iv.pos.x;
                 v.PosY = iv.pos.y;
@@ -2344,14 +2341,14 @@ void Application::EndFrame()
                 v.Color = ucolor {iv.col};
             }
 
-            imgui_draw_buf->Indices.resize(cmd_list->IdxBuffer.Size);
-            imgui_draw_buf->IndCount = imgui_draw_buf->Indices.size();
+            _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
+            _imguiDrawBuf->IndCount = _imguiDrawBuf->Indices.size();
 
             for (int32_t i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-                imgui_draw_buf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
+                _imguiDrawBuf->Indices[i] = numeric_cast<vindex_t>(cmd_list->IdxBuffer[i]);
             }
 
-            imgui_draw_buf->Upload(imgui_effect->GetUsage());
+            _imguiDrawBuf->Upload(_imguiEffect->GetUsage());
 
             for (int32_t cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 auto pcmd = make_ptr(&cmd_list->CmdBuffer[cmd_i]);
@@ -2366,7 +2363,7 @@ void Application::EndFrame()
                     active_renderer->EnableScissor({clip_rect_l, clip_rect_t, clip_rect_r - clip_rect_l, clip_rect_b - clip_rect_t});
                     auto texture = cast_from_void<RenderTexture*>(pcmd->TexRef.GetTexID());
                     FO_VERIFY_AND_THROW(texture, "ImGui texture id does not reference a render texture");
-                    imgui_effect->DrawBuffer(imgui_draw_buf, pcmd->IdxOffset, pcmd->ElemCount, texture);
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, texture);
                     active_renderer->DisableScissor();
                 }
             }
@@ -3027,7 +3024,7 @@ auto AppInput::GetClipboardText() -> const string&
 
     auto sdl_clipboard_text = make_nptr(SDL_GetClipboardText());
     if (sdl_clipboard_text) {
-        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text.as_ptr(), [](char* raw_data) {
+        auto clipboard_text = make_unique_del_ptr(sdl_clipboard_text, [](char* raw_data) {
             if (raw_data != nullptr) {
                 auto data = make_ptr(raw_data);
                 SDL_free(data.get());
@@ -3084,7 +3081,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         }
 
         FO_VERIFY_AND_THROW(dst_data, "SDL audio conversion returned null output data");
-        auto converted_data = make_unique_del_ptr(dst_data.as_ptr(), [](uint8_t* raw_data) {
+        auto converted_data = make_unique_del_ptr(dst_data, [](uint8_t* raw_data) {
             FO_NO_STACK_TRACE_ENTRY();
 
             if (raw_data != nullptr) {
@@ -3096,8 +3093,7 @@ auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vect
         buf.resize(numeric_cast<size_t>(dst_len));
 
         if (!buf.empty()) {
-            ptr<uint8_t> converted_data_ptr = converted_data;
-            MemCopy(buf.data(), converted_data_ptr, buf.size());
+            MemCopy(buf.data(), converted_data, buf.size());
         }
     }
 

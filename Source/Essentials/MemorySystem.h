@@ -183,7 +183,7 @@ public:
 
 private:
     template<typename T, typename AllocFunc>
-    static auto AllocWithBackupRetry(AllocFunc&& alloc, const char* alloc_desc, const char* exhausted_desc, size_t count, size_t size) -> ptr<T>
+    static auto AllocWithBackupRetry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
         nptr<T> ptr = alloc();
 

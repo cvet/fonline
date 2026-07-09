@@ -58,7 +58,7 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
     T value {};
 
     if (!data.empty()) {
-        auto target = ptr<T> {&value}.template reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).template reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), sizeof(T));
     }
 
@@ -74,7 +74,7 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
     int32_t value = 0;
 
     if (!data.empty()) {
-        auto target = ptr<int32_t> {&value}.reinterpret_as<uint8_t>();
+        auto target = make_ptr(&value).reinterpret_as<uint8_t>();
         MemCopy(target, data.data(), data.size());
     }
 

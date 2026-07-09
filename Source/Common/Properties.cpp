@@ -77,7 +77,7 @@ auto PropertyRawData::GetPtr() noexcept -> ptr<void>
         return _passedPtr;
     }
 
-    return _useDynamic ? ptr<void> {_dynamicBuf.get()} : ptr<void> {_localBuf};
+    return _useDynamic ? make_ptr(_dynamicBuf.get()) : make_ptr(_localBuf);
 }
 
 auto PropertyRawData::Alloc(size_t size) -> ptr<uint8_t>
@@ -156,8 +156,7 @@ void Property::AddPostSetter(PropertyPostSetCallback setter) const
 
 Properties::Properties(ptr<const PropertyRegistrator> registrator, nptr<const Properties> base) noexcept :
     _registrator {registrator},
-    _baseProps {base},
-    _dataLocker {SafeAlloc::MakeUnique<shared_mutex>()}
+    _baseProps {base}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -920,10 +919,8 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
         for (uint32_t i = 0; i < overlay_entries_count; i++) {
             const auto prop_index = reader.Read<uint16_t>();
             FO_VERIFY_AND_THROW(prop_index > 0 && prop_index < _registrator->_registeredProperties.size(), "Serialized overlay property index is outside registrator bounds", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), overlay_entries_count);
-            const unique_nptr<Property>& prop_owner = _registrator->_registeredProperties[prop_index];
-            FO_VERIFY_AND_THROW(prop_owner, "Serialized overlay property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size());
-            auto prop = prop_owner.as_nptr();
-            FO_VERIFY_AND_THROW(prop, "Property is null");
+            auto prop = _registrator->_registeredProperties[prop_index].as_nptr();
+            FO_VERIFY_AND_THROW(prop, "Serialized overlay property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size());
             const auto data_size = reader.Read<uint32_t>();
             const_span<uint8_t> data = reader.ReadBytes(data_size);
             SetRawData(prop, data);
@@ -1075,16 +1072,14 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
         for (uint32_t i = 0; i < property_data_count; i++) {
             uint16_t prop_index {};
-            auto prop_index_target = ptr<uint16_t> {&prop_index}.reinterpret_as<uint8_t>();
+            auto prop_index_target = make_ptr(&prop_index).reinterpret_as<uint8_t>();
             auto prop_index_source = separate_data[0].offset(i * sizeof(uint16_t));
             MemCopy(prop_index_target, prop_index_source, sizeof(uint16_t));
 
             FO_VERIFY_AND_THROW(prop_index > 0, "Serialized separate property payload references the reserved zero property index", _registrator->GetTypeName(), i, property_data_count);
             FO_VERIFY_AND_THROW(prop_index < _registrator->_registeredProperties.size(), "Serialized separate property index is outside the registrator property table", _registrator->GetTypeName(), prop_index, _registrator->_registeredProperties.size(), i, property_data_count);
-            const unique_nptr<Property>& prop_owner = _registrator->_registeredProperties[prop_index];
-            FO_VERIFY_AND_THROW(prop_owner, "Serialized separate property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, i, property_data_count);
-            auto prop = prop_owner.as_nptr();
-            FO_VERIFY_AND_THROW(prop, "Property is null");
+            auto prop = _registrator->_registeredProperties[prop_index].as_nptr();
+            FO_VERIFY_AND_THROW(prop, "Serialized separate property index does not resolve to a registered property", _registrator->GetTypeName(), prop_index, i, property_data_count);
             const auto data_size = separate_sizes[1 + i];
             const auto data = separate_data[1 + i];
             SetRawData(prop, read_raw_data_span(data, data_size));
@@ -1135,7 +1130,7 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
     uint8_t store_type = 0;
     FO_VERIFY_AND_THROW(all_data[0], "Store-type marker payload is null");
-    auto store_type_target = ptr<uint8_t> {&store_type};
+    auto store_type_target = make_ptr(&store_type);
     MemCopy(store_type_target, all_data[0], sizeof(store_type));
 
     vector<nptr<const uint8_t>> payload_data(all_data.begin() + 1, all_data.end());
@@ -1516,8 +1511,6 @@ void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_dat
 {
     FO_STACK_TRACE_ENTRY();
 
-    shared_lock locker {*_dataLocker};
-
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
             const auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
@@ -1537,8 +1530,6 @@ auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> ra
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    shared_lock locker {*_dataLocker};
-
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
             const auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
@@ -1554,8 +1545,6 @@ auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> ra
 void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept
 {
     FO_STACK_TRACE_ENTRY();
-
-    scoped_lock locker {*_dataLocker};
 
     FO_STRONG_ASSERT(_registrator == prop->_registrator, "Invalid property for raw data write", _registrator->GetTypeName(), string_view {prop->GetName()}, prop->_registrator->GetTypeName());
     FO_STRONG_ASSERT(!prop->IsPlainData() || prop->GetBaseSize() == raw_data.size(), "Plain property raw data write size mismatch", prop->GetName(), _registrator->GetTypeName(), prop->GetBaseSize(), raw_data.size());
@@ -2232,7 +2221,7 @@ auto PropertyRegistrator::GetPropertyByIndexUnsafe(size_t property_index) const 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const unique_nptr<Property>& prop = _registeredProperties[property_index];
+    auto prop = _registeredProperties[property_index].as_nptr();
     FO_STRONG_ASSERT(prop, "Property at index is null");
     return prop;
 }
@@ -2243,7 +2232,7 @@ auto PropertyRegistrator::GetPropertyByIndex(int32_t property_index) const noexc
 
     // Skip None entry
     if (property_index >= 1 && static_cast<size_t>(property_index) < _registeredProperties.size()) {
-        const unique_nptr<Property>& prop = _registeredProperties[numeric_cast<size_t>(property_index)];
+        auto prop = _registeredProperties[numeric_cast<size_t>(property_index)].as_nptr();
         FO_STRONG_ASSERT(prop, "Property at index is null");
         return prop;
     }
@@ -2641,7 +2630,9 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         }
     }
 
-    for (unique_nptr<Property>& other_prop : _registeredProperties) {
+    for (auto& other_prop_owner : _registeredProperties) {
+        auto other_prop = other_prop_owner.as_nptr();
+
         if (!other_prop) {
             continue;
         }

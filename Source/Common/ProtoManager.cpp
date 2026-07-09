@@ -53,7 +53,7 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto proto_borrow = proto.as_nptr();
+    nptr<ProtoEntity> proto_borrow = proto;
 
     if (auto loc = proto_borrow.dyn_cast<ProtoLocation>()) {
         _locProtos.insert_or_assign(proto->GetProtoId(), loc);

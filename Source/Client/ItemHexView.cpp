@@ -251,7 +251,7 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    _spr = _anim.as_nptr();
+    _spr = _anim;
     RefreshOffs();
 }
 

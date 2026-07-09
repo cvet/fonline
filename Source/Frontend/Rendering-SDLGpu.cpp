@@ -956,7 +956,8 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     int32_t screen_height;
 
     if (tex) {
-        auto sdl_tex = tex.cast<SDLGpu_Texture>();
+        auto sdl_tex = tex.dyn_cast<SDLGpu_Texture>();
+        FO_VERIFY_AND_THROW(sdl_tex, "SDL_GPU render target texture is not of the expected backend type");
         _ctx->CurRenderTarget = sdl_tex;
 
         vp_ox = 0;
@@ -1146,15 +1147,13 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
     FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
 
-    ptr<SDLGpu_Renderer::Context> ctx = _ctx;
-
     // Reads must observe everything drawn so far, so flush the recorded work first
-    FlushPendingClears(ctx);
+    FlushPendingClears(_ctx);
 
     const size_t read_size = numeric_cast<size_t>(size.width) * size.height * sizeof(ucolor);
-    auto transfer_buf = EnsureTransferBuffer(ctx, ctx->DownloadTransferBuf, ctx->DownloadTransferBufSize, read_size, true);
+    auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->DownloadTransferBuf, _ctx->DownloadTransferBufSize, read_size, true);
 
-    auto copy_pass = EnsureCopyPass(ctx);
+    auto copy_pass = EnsureCopyPass(_ctx);
 
     SDL_GPUTextureRegion src_region = {};
     src_region.texture = TexHandle.get_no_const();
@@ -1169,14 +1168,14 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 
     SDL_DownloadFromGPUTexture(copy_pass.get(), &src_region, &transfer_info);
 
-    SubmitAndWait(ctx);
+    SubmitAndWait(_ctx);
 
     vector<ucolor> result;
     result.resize(numeric_cast<size_t>(size.width) * size.height);
 
-    auto mapped = MapTransferBuffer(ctx, transfer_buf, false);
+    auto mapped = MapTransferBuffer(_ctx, transfer_buf, false);
     MemCopy(result.data(), mapped, read_size);
-    SDL_UnmapGPUTransferBuffer(ctx->Device.get(), transfer_buf.get());
+    SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     return result;
 }
@@ -1197,16 +1196,14 @@ void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         return;
     }
 
-    ptr<SDLGpu_Renderer::Context> ctx = _ctx;
-
     const size_t upload_size = required_size * sizeof(ucolor);
-    auto transfer_buf = EnsureTransferBuffer(ctx, ctx->UploadTransferBuf, ctx->UploadTransferBufSize, upload_size, false);
+    auto transfer_buf = EnsureTransferBuffer(_ctx, _ctx->UploadTransferBuf, _ctx->UploadTransferBufSize, upload_size, false);
 
-    auto mapped = MapTransferBuffer(ctx, transfer_buf, true);
+    auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
     MemCopy(mapped, data.data(), upload_size);
-    SDL_UnmapGPUTransferBuffer(ctx->Device.get(), transfer_buf.get());
+    SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
-    auto copy_pass = EnsureCopyPass(ctx);
+    auto copy_pass = EnsureCopyPass(_ctx);
 
     SDL_GPUTextureTransferInfo transfer_info = {};
     transfer_info.transfer_buffer = transfer_buf.get();
@@ -1280,12 +1277,10 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    ptr<SDLGpu_Renderer::Context> ctx = _ctx;
-
     // (Re)create GPU buffers with some slack
     if (!VertexBuf || upload_vertices > VertexBufSize) {
         if (VertexBuf) {
-            SDL_ReleaseGPUBuffer(ctx->Device.get(), VertexBuf.get());
+            SDL_ReleaseGPUBuffer(_ctx->Device.get(), VertexBuf.get());
             VertexBuf = nullptr;
         }
 
@@ -1295,13 +1290,13 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         vbuf_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
         vbuf_info.size = numeric_cast<uint32_t>(VertexBufSize * vert_size);
 
-        VertexBuf = SDL_CreateGPUBuffer(ctx->Device.get(), &vbuf_info);
+        VertexBuf = SDL_CreateGPUBuffer(_ctx->Device.get(), &vbuf_info);
         FO_VERIFY_AND_THROW(VertexBuf, "SDL_CreateGPUBuffer failed for a vertex buffer", SDL_GetError(), upload_vertices, vert_size, VertexBufSize, usage);
     }
 
     if (!IndexBuf || upload_indices > IndexBufSize) {
         if (IndexBuf) {
-            SDL_ReleaseGPUBuffer(ctx->Device.get(), IndexBuf.get());
+            SDL_ReleaseGPUBuffer(_ctx->Device.get(), IndexBuf.get());
             IndexBuf = nullptr;
         }
 
@@ -1311,15 +1306,15 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         ibuf_info.usage = SDL_GPU_BUFFERUSAGE_INDEX;
         ibuf_info.size = numeric_cast<uint32_t>(IndexBufSize * sizeof(vindex_t));
 
-        IndexBuf = SDL_CreateGPUBuffer(ctx->Device.get(), &ibuf_info);
+        IndexBuf = SDL_CreateGPUBuffer(_ctx->Device.get(), &ibuf_info);
         FO_VERIFY_AND_THROW(IndexBuf, "SDL_CreateGPUBuffer failed for an index buffer", SDL_GetError(), upload_indices, sizeof(vindex_t), IndexBufSize);
     }
 
     // Stage vertices and indices through the per-buffer transfer buffer
     const size_t total_data_size = vertices_data_size + indices_data_size;
-    auto transfer_buf = EnsureTransferBuffer(ctx, TransferBuf, TransferBufSize, total_data_size, false);
+    auto transfer_buf = EnsureTransferBuffer(_ctx, TransferBuf, TransferBufSize, total_data_size, false);
 
-    auto mapped = MapTransferBuffer(ctx, transfer_buf, true);
+    auto mapped = MapTransferBuffer(_ctx, transfer_buf, true);
     auto mapped_bytes = mapped.reinterpret_as<uint8_t>();
 
     if (vertices_data_size != 0) {
@@ -1338,9 +1333,9 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         MemCopy(mapped_bytes.get() + vertices_data_size, Indices.data(), indices_data_size);
     }
 
-    SDL_UnmapGPUTransferBuffer(ctx->Device.get(), transfer_buf.get());
+    SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
-    auto copy_pass = EnsureCopyPass(ctx);
+    auto copy_pass = EnsureCopyPass(_ctx);
 
     // Cycle the GPU buffers: draws already recorded in this command buffer keep the pre-cycle contents
     if (vertices_data_size != 0) {
@@ -1532,7 +1527,8 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto sdl_dbuf = dbuf.cast<SDLGpu_DrawBuffer>();
+    auto sdl_dbuf = dbuf.dyn_cast<SDLGpu_DrawBuffer>();
+    FO_VERIFY_AND_THROW(sdl_dbuf, "SDL_GPU draw buffer is not of the expected backend type");
 
 #if FO_ENABLE_3D
     if (!custom_tex && ModelTex[0]) {
@@ -1545,7 +1541,8 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 
     nptr<const RenderTexture> main_tex_source = custom_tex ? custom_tex : _ctx->DummyTexture;
     FO_VERIFY_AND_THROW(main_tex_source, "SDL_GPU dummy texture is not created");
-    auto main_tex = main_tex_source.cast<const SDLGpu_Texture>();
+    auto main_tex = main_tex_source.dyn_cast<const SDLGpu_Texture>();
+    FO_VERIFY_AND_THROW(main_tex, "SDL_GPU main texture is not of the expected backend type");
 
     auto topology = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
@@ -1567,15 +1564,15 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     // reset at the end of the draw so the next non-model draw re-derives them.
     if (_needProjBuf && !ProjBuf.has_value()) {
         auto& proj_buf = ProjBuf = ProjBuffer();
-        ptr<float32_t> projection_matrix = proj_buf->ProjMatrix;
+        auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
-        ptr<float32_t> main_texture_size = main_tex_buf->MainTexSize;
-        ptr<const float32_t> main_texture_size_data = main_tex->SizeData;
+        auto main_texture_size = main_tex_buf->MainTexSize;
+        auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
@@ -1633,7 +1630,8 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         if (slots.VertIndoorMaskTex != -1 || slots.FragIndoorMaskTex != -1) {
             nptr<const RenderTexture> indoor_tex_source = IndoorMaskTex ? IndoorMaskTex : _ctx->DummyTexture;
             FO_VERIFY_AND_THROW(indoor_tex_source, "SDL_GPU dummy texture is not created");
-            auto indoor_tex = indoor_tex_source.cast<const SDLGpu_Texture>();
+            auto indoor_tex = indoor_tex_source.dyn_cast<const SDLGpu_Texture>();
+            FO_VERIFY_AND_THROW(indoor_tex, "SDL_GPU indoor mask texture is not of the expected backend type");
             bind_sampler(slots.VertIndoorMaskTex, slots.FragIndoorMaskTex, indoor_tex);
         }
 
@@ -1643,7 +1641,8 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 if (slots.VertModelTex[i] != -1 || slots.FragModelTex[i] != -1) {
                     nptr<const RenderTexture> model_tex_source = ModelTex[i] ? ModelTex[i] : _ctx->DummyTexture;
                     FO_VERIFY_AND_THROW(model_tex_source, "SDL_GPU dummy texture is not created");
-                    auto model_tex = model_tex_source.cast<const SDLGpu_Texture>();
+                    auto model_tex = model_tex_source.dyn_cast<const SDLGpu_Texture>();
+                    FO_VERIFY_AND_THROW(model_tex, "SDL_GPU model texture is not of the expected backend type");
                     bind_sampler(slots.VertModelTex[i], slots.FragModelTex[i], model_tex);
                 }
             }

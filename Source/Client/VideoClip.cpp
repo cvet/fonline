@@ -124,9 +124,8 @@ VideoClip::VideoClip(vector<uint8_t> video_data) :
         }
     }
 
-    auto setup_info = _impl->SetupInfo.as_nptr();
-    FO_VERIFY_AND_THROW(setup_info, "Setup info is null");
-    auto decoder_context = make_nptr(th_decode_alloc(&_impl->VideoInfo.Value, setup_info.get()));
+    FO_VERIFY_AND_THROW(_impl->SetupInfo, "Setup info is null");
+    auto decoder_context = make_nptr(th_decode_alloc(&_impl->VideoInfo.Value, _impl->SetupInfo.get()));
     FO_VERIFY_AND_THROW(decoder_context, "Theora decoder context allocation failed");
     _impl->DecoderContext = make_unique_del_ptr(decoder_context, [](th_dec_ctx* raw_decoder_context) noexcept {
         if (raw_decoder_context != nullptr) {
@@ -266,12 +265,11 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
     bool last_frame = false;
 
     _impl->CurFrame = new_frame;
-    auto decoder_context = _impl->DecoderContext.as_nptr();
-    FO_VERIFY_AND_THROW(decoder_context, "Decoder context is null");
+    FO_VERIFY_AND_THROW(_impl->DecoderContext, "Decoder context is null");
 
     for (int32_t i = 0; i < next_frame_diff; i++) {
         // Decode frame
-        int32_t r = th_decode_packetin(decoder_context.get(), &_impl->Packet, nullptr);
+        int32_t r = th_decode_packetin(_impl->DecoderContext.get(), &_impl->Packet, nullptr);
 
         if (r != TH_DUPFRAME) {
             if (r != 0) {
@@ -281,7 +279,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             }
 
             // Decode color
-            r = th_decode_ycbcr_out(decoder_context.get(), _impl->ColorBuffer);
+            r = th_decode_ycbcr_out(_impl->DecoderContext.get(), _impl->ColorBuffer);
 
             if (r != 0) {
                 WriteLog("th_decode_ycbcr_out() failed, error {}", r);
@@ -412,7 +410,7 @@ int32_t VideoClip::DecodePacket()
             }
 
             auto dest_buf = make_ptr(ogg_sync_buffer(&_impl->SyncState.Value, read_bytes));
-            auto source = ptr<const uint8_t> {_impl->RawVideoData.data()}.offset(_impl->ReadPos);
+            auto source = make_ptr(_impl->RawVideoData.data()).offset(_impl->ReadPos);
             MemCopy(dest_buf, source, read_bytes);
             _impl->ReadPos += read_bytes;
             ogg_sync_wrote(&_impl->SyncState.Value, read_bytes);

@@ -873,7 +873,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         const string key_str = span_read_string(data_span, data_pos, key_len);
                         const uint32_t arr_size = span_read_aligned_object<uint32_t>(data_span, data_pos);
                         auto arr = read_array(arr_size);
-                        dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(&key_str).void_cast(), make_ptr(arr.get_pp()).void_cast());
                         continue;
                     }
 
@@ -883,14 +883,14 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                     if (prop->IsDictKeyHash()) {
                         const auto hkey = resolve_hash(key);
-                        dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(&hkey).void_cast(), make_ptr(arr.get_pp()).void_cast());
                     }
                     else if (prop->IsDictKeyEnum()) {
                         const int32_t ekey = resolve_enum(key);
-                        dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(&ekey).void_cast(), make_ptr(arr.get_pp()).void_cast());
                     }
                     else {
-                        dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(arr.get_pp()));
+                        dict->Set(make_nptr(key.data()).void_cast(), make_ptr(arr.get_pp()).void_cast());
                     }
                 }
             }
@@ -952,11 +952,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                         if (prop->IsBaseTypeRefType()) {
                             auto ref_obj = read_ref_obj();
-                            dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(ref_obj.get_pp()));
+                            dict->Set(make_nptr(&key_str).void_cast(), make_ptr(ref_obj.get_pp()).void_cast());
                         }
                         else if (prop->IsBaseTypeProtoReference()) {
                             auto fixed_type = read_fixed_type();
-                            dict->Set(make_nptr(&key_str).void_cast(), static_cast<void*>(fixed_type.get_pp()));
+                            dict->Set(make_nptr(&key_str).void_cast(), make_ptr(fixed_type.get_pp()).void_cast());
                         }
                         else if (prop->IsBaseTypeHash()) {
                             const auto hvalue = read_hash();
@@ -975,11 +975,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->IsBaseTypeRefType()) {
                                 auto ref_obj = read_ref_obj();
-                                dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(ref_obj.get_pp()));
+                                dict->Set(make_nptr(&hkey).void_cast(), make_ptr(ref_obj.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 auto fixed_type = read_fixed_type();
-                                dict->Set(make_nptr(&hkey).void_cast(), static_cast<void*>(fixed_type.get_pp()));
+                                dict->Set(make_nptr(&hkey).void_cast(), make_ptr(fixed_type.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
@@ -995,11 +995,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
                             if (prop->IsBaseTypeRefType()) {
                                 auto ref_obj = read_ref_obj();
-                                dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(ref_obj.get_pp()));
+                                dict->Set(make_nptr(&ekey).void_cast(), make_ptr(ref_obj.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 auto fixed_type = read_fixed_type();
-                                dict->Set(make_nptr(&ekey).void_cast(), static_cast<void*>(fixed_type.get_pp()));
+                                dict->Set(make_nptr(&ekey).void_cast(), make_ptr(fixed_type.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
@@ -1013,11 +1013,11 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
                         else {
                             if (prop->IsBaseTypeRefType()) {
                                 auto ref_obj = read_ref_obj();
-                                dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(ref_obj.get_pp()));
+                                dict->Set(make_nptr(key.data()).void_cast(), make_ptr(ref_obj.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeProtoReference()) {
                                 auto fixed_type = read_fixed_type();
-                                dict->Set(make_nptr(key.data()).void_cast(), static_cast<void*>(fixed_type.get_pp()));
+                                dict->Set(make_nptr(key.data()).void_cast(), make_ptr(fixed_type.get_pp()).void_cast());
                             }
                             else if (prop->IsBaseTypeHash()) {
                                 const auto hvalue = read_hash();
@@ -1602,27 +1602,27 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
     case AngelScript::asTYPEID_VOID:
         return "void";
     case AngelScript::asTYPEID_BOOL:
-        return strex("bool: {}", *cast_from_void<const bool*>(script_obj.get()) ? "true" : "false");
+        return strex("bool: {}", *script_obj.reinterpret_as<bool>() ? "true" : "false");
     case AngelScript::asTYPEID_INT8:
-        return strex("int8: {}", *cast_from_void<const int8_t*>(script_obj.get()));
+        return strex("int8: {}", *script_obj.reinterpret_as<int8_t>());
     case AngelScript::asTYPEID_INT16:
-        return strex("int16: {}", *cast_from_void<const int16_t*>(script_obj.get()));
+        return strex("int16: {}", *script_obj.reinterpret_as<int16_t>());
     case AngelScript::asTYPEID_INT32:
-        return strex("int32: {}", *cast_from_void<const int32_t*>(script_obj.get()));
+        return strex("int32: {}", *script_obj.reinterpret_as<int32_t>());
     case AngelScript::asTYPEID_INT64:
-        return strex("int64: {}", *cast_from_void<const int64_t*>(script_obj.get()));
+        return strex("int64: {}", *script_obj.reinterpret_as<int64_t>());
     case AngelScript::asTYPEID_UINT8:
-        return strex("uint8: {}", *cast_from_void<const uint8_t*>(script_obj.get()));
+        return strex("uint8: {}", *script_obj.reinterpret_as<uint8_t>());
     case AngelScript::asTYPEID_UINT16:
-        return strex("uint16: {}", *cast_from_void<const uint16_t*>(script_obj.get()));
+        return strex("uint16: {}", *script_obj.reinterpret_as<uint16_t>());
     case AngelScript::asTYPEID_UINT32:
-        return strex("uint32: {}", *cast_from_void<const uint32_t*>(script_obj.get()));
+        return strex("uint32: {}", *script_obj.reinterpret_as<uint32_t>());
     case AngelScript::asTYPEID_UINT64:
-        return strex("uint64: {}", *cast_from_void<const uint64_t*>(script_obj.get()));
+        return strex("uint64: {}", *script_obj.reinterpret_as<uint64_t>());
     case AngelScript::asTYPEID_FLOAT:
-        return strex("float32: {}", *cast_from_void<const float32_t*>(script_obj.get()));
+        return strex("float32: {}", *script_obj.reinterpret_as<float32_t>());
     case AngelScript::asTYPEID_DOUBLE:
-        return strex("float64: {}", *cast_from_void<const float64_t*>(script_obj.get()));
+        return strex("float64: {}", *script_obj.reinterpret_as<float64_t>());
     default:
         break;
     }
@@ -1644,19 +1644,19 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
         return strex("hstring: {}", *value);
     }
     if (type_name == "any") {
-        return strex("any: {}", *cast_from_void<const any_t*>(script_obj.get()));
+        return strex("any: {}", *script_obj.reinterpret_as<any_t>());
     }
     if (type_name == "ident") {
-        return strex("ident: {}", *cast_from_void<const ident_t*>(script_obj.get()));
+        return strex("ident: {}", *script_obj.reinterpret_as<ident_t>());
     }
     if (type_name == "timespan") {
-        return strex("timespan: {}", *cast_from_void<const timespan*>(script_obj.get()));
+        return strex("timespan: {}", *script_obj.reinterpret_as<timespan>());
     }
     if (type_name == "nanotime") {
-        return strex("nanotime: {}", *cast_from_void<const nanotime*>(script_obj.get()));
+        return strex("nanotime: {}", *script_obj.reinterpret_as<nanotime>());
     }
     if (type_name == "synctime") {
-        return strex("synctime: {}", *cast_from_void<const synctime*>(script_obj.get()));
+        return strex("synctime: {}", *script_obj.reinterpret_as<synctime>());
     }
 
     if (const auto enum_value_count = as_type_info->GetEnumValueCount(); enum_value_count != 0) {
@@ -1674,7 +1674,7 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
             }
         }
         else {
-            enum_value = *cast_from_void<const int32_t*>(script_obj.get());
+            enum_value = *script_obj.reinterpret_as<int32_t>();
         }
 
         for (AngelScript::asUINT i = 0; i < enum_value_count; i++) {
@@ -1745,11 +1745,11 @@ auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) ->
     if (enum_type.EnumUnderlyingType->IsSignedInt) {
         switch (enum_type.Size) {
         case sizeof(int8_t):
-            return *cast_from_void<const int8_t*>(ptr.get());
+            return *ptr.reinterpret_as<int8_t>();
         case sizeof(int16_t):
-            return *cast_from_void<const int16_t*>(ptr.get());
+            return *ptr.reinterpret_as<int16_t>();
         case sizeof(int32_t):
-            return *cast_from_void<const int32_t*>(ptr.get());
+            return *ptr.reinterpret_as<int32_t>();
         default:
             break;
         }
@@ -1757,11 +1757,11 @@ auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) ->
     else {
         switch (enum_type.Size) {
         case sizeof(uint8_t):
-            return *cast_from_void<const uint8_t*>(ptr.get());
+            return *ptr.reinterpret_as<uint8_t>();
         case sizeof(uint16_t):
-            return *cast_from_void<const uint16_t*>(ptr.get());
+            return *ptr.reinterpret_as<uint16_t>();
         case sizeof(uint32_t): {
-            const uint32_t uint_value = *cast_from_void<const uint32_t*>(ptr.get());
+            const uint32_t uint_value = *ptr.reinterpret_as<uint32_t>();
             return static_cast<int32_t>(uint_value);
         }
         default:
@@ -1783,13 +1783,13 @@ void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32
     if (enum_type.EnumUnderlyingType->IsSignedInt) {
         switch (enum_type.Size) {
         case sizeof(int8_t):
-            *cast_from_void<int8_t*>(ptr.get()) = numeric_cast<int8_t>(value);
+            *ptr.reinterpret_as<int8_t>() = numeric_cast<int8_t>(value);
             return;
         case sizeof(int16_t):
-            *cast_from_void<int16_t*>(ptr.get()) = numeric_cast<int16_t>(value);
+            *ptr.reinterpret_as<int16_t>() = numeric_cast<int16_t>(value);
             return;
         case sizeof(int32_t):
-            *cast_from_void<int32_t*>(ptr.get()) = value;
+            *ptr.reinterpret_as<int32_t>() = value;
             return;
         default:
             break;
@@ -1798,13 +1798,13 @@ void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32
     else {
         switch (enum_type.Size) {
         case sizeof(uint8_t):
-            *cast_from_void<uint8_t*>(ptr.get()) = numeric_cast<uint8_t>(value);
+            *ptr.reinterpret_as<uint8_t>() = numeric_cast<uint8_t>(value);
             return;
         case sizeof(uint16_t):
-            *cast_from_void<uint16_t*>(ptr.get()) = numeric_cast<uint16_t>(value);
+            *ptr.reinterpret_as<uint16_t>() = numeric_cast<uint16_t>(value);
             return;
         case sizeof(uint32_t):
-            *cast_from_void<uint32_t*>(ptr.get()) = static_cast<uint32_t>(value);
+            *ptr.reinterpret_as<uint32_t>() = static_cast<uint32_t>(value);
             return;
         default:
             break;
@@ -1946,7 +1946,7 @@ auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto slot_address = make_ptr(static_cast<void*>(slot->get_pp()));
+    auto slot_address = make_ptr(slot->get_pp()).reinterpret_as<void>();
     return slot_address;
 }
 
