@@ -404,6 +404,8 @@ void Player::Send_LoadMap(nptr<const Map> map)
     out_buf->Write(map_index_in_loc);
 
     if (map) {
+        FO_VERIFY_AND_THROW(loc, "Map has no owning location");
+
         const auto map_data = map->StoreData(false);
         const auto loc_data = loc->StoreData(false);
         out_buf->WritePropsData(*map_data.Data, *map_data.Sizes);

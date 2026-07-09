@@ -752,7 +752,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is
             // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle).
-            backend->AddCleanupCallback([raw = ReleaseScriptOwnership(std::move(enums_arr))]() FO_DEFERRED { raw->Release(); });
+            backend->AddCleanupCallback([raw = enums_arr.release_ownership()]() FO_DEFERRED { raw->Release(); });
         }
     }
 

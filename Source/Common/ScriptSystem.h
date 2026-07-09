@@ -278,15 +278,11 @@ using ScriptFuncName = pair<hstring, uintptr_t>; // Name + Delegate object addre
 
 inline void IgnoreBorrowedScriptFuncDesc(ptr<ScriptFuncDesc> func) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(func);
 }
 
 inline auto MakeBorrowedScriptFuncDesc(ptr<ScriptFuncDesc> func) -> unique_del_ptr<ScriptFuncDesc>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return make_unique_del_ptr(func, IgnoreBorrowedScriptFuncDesc);
 }
 
@@ -404,23 +400,17 @@ namespace NativeDataProvider
 {
     inline auto GetHandleSlot(ptr<void> slot) noexcept -> ptr<void*>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlotPointer(ptr<void> slot_address) noexcept -> ptr<void*>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *slot_address.reinterpret_as<void**>();
     }
 
     template<typename T>
     inline auto ReadTypedHandleSlot(ptr<void> slot) noexcept -> nptr<T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_void_v<T>) {
             return *GetHandleSlot(slot);
         }
@@ -432,8 +422,6 @@ namespace NativeDataProvider
     template<typename T>
     inline auto ReadConstTypedHandleSlot(nptr<const void> slot) noexcept -> nptr<const T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (!slot) {
             return nullptr;
         }
@@ -449,8 +437,6 @@ namespace NativeDataProvider
     template<typename T>
     inline void WriteTypedHandleSlot(ptr<void> slot, nptr<T> value) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_void_v<T>) {
             *GetHandleSlot(slot) = value.get();
         }
@@ -461,29 +447,21 @@ namespace NativeDataProvider
 
     inline auto ReadHandleSlot(ptr<void> slot) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *GetHandleSlot(slot);
     }
 
     inline auto ReadHandleSlot(ptr<const void> slot) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlot(ptr<void> slot_address) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *ReadIndirectHandleSlotPointer(slot_address);
     }
 
     inline void WriteHandleSlot(ptr<void> slot, nptr<void> value) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         *GetHandleSlot(slot) = value.get();
     }
 
@@ -905,8 +883,6 @@ public:
 template<typename T, typename TContainer, typename TResolver>
 [[nodiscard]] auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vector<ptr<T>> result;
     result.reserve(entries.size());
 
@@ -921,32 +897,24 @@ template<typename T, typename TContainer, typename TResolver>
 template<typename T, typename TContainer>
 [[nodiscard]] auto MakeScriptHandleVector(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
 [[nodiscard]] auto MakeMutableScriptHandleVector(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return make_ptr(const_cast<T*>(std::addressof(*entry))); });
 }
 
 template<typename T, typename U, typename TContainer>
 [[nodiscard]] auto MakeScriptHandleVectorAs(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>
 [[nodiscard]] auto MakeScriptRefHandleVectorAs(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vector<ptr<T>> result;
     result.reserve(entries.size());
 
@@ -959,48 +927,9 @@ template<typename T, typename U, typename TContainer>
     return result;
 }
 
-template<typename T>
-[[nodiscard]] auto ReleaseScriptOwnership(refcount_ptr<T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return std::move(value).release_ownership();
-}
-
-template<typename T>
-[[nodiscard]] auto ReleaseNullableScriptOwnership(refcount_nptr<T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!value) {
-        return nullptr;
-    }
-
-    return ReleaseScriptOwnership(std::move(value).take_not_null());
-}
-
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(ptr<const T> value) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return make_ptr(const_cast<T*>(std::addressof(*value)));
-}
-
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(nptr<const T> value) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(value, "Script value pointer is null");
-    return ScriptMutablePtr(value.as_ptr());
-}
-
 template<typename TParent, typename TEntity>
 inline auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto parent = entity->template GetParent<TParent>();
 
     if (!parent) {

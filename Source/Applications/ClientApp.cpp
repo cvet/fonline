@@ -210,7 +210,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     HostClientRuntimeResult runtime_result {};
     runtime_result.Result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.LoadedBuildHash = loaded_build_hash;
-    vector<char*> runtime_args(args.size()); // SmartPointerAudit: raw ABI container
+    vector<char*> runtime_args(args.size());
 
     for (size_t index = 0; index < args.size(); ++index) {
         runtime_args[index] = args[index].get();

@@ -114,7 +114,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMap(ptr<Item> self)
 {
     auto map = ResolveItemMap(self);
 
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires self; may also read holder critter/map parent chain, returned map is not covered for later reads.
@@ -123,7 +123,7 @@ FO_SCRIPT_API nptr<Map> Server_Item_GetMapPosition(ptr<Item> self, mpos& hex)
 {
     auto map = ResolveItemMapPosition(self, hex);
 
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires self; returns holder critter when item is in critter inventory, not a new cover.
@@ -132,7 +132,7 @@ FO_SCRIPT_API nptr<Critter> Server_Item_GetCritter(ptr<Item> self)
 {
     auto cr = ResolveItemCritter(self);
 
-    return ReleaseNullableScriptOwnership(std::move(cr));
+    return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires self + current map when map-owned; refreshes map visibility/blocking caches.

@@ -1121,21 +1121,30 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
         auto& cr_group = cr->GetRawGlobalMapGroup();
         FO_VERIFY_AND_THROW(!cr_group, "Critter group is already set");
 
-        refcount_nptr<Critter> global_cr_ref {};
-        if (global_cr_id && global_cr_id != cr->GetId()) {
-            auto global_cr = _engine->EntityMngr.GetCritter(global_cr_id);
+        refcount_nptr<Critter> global_cr {};
 
-            if (global_cr) {
-                global_cr_ref = std::move(global_cr);
-            }
+        if (global_cr_id && global_cr_id != cr->GetId()) {
+            global_cr = _engine->EntityMngr.GetCritter(global_cr_id);
         }
 
-        ValidateEntityAccess(global_cr_ref);
+        ValidateEntityAccess(global_cr);
 
         cr->SetMapId({});
         cr->SetParent(nullptr);
 
-        if (!global_cr_ref || global_cr_ref->GetMapId()) {
+        if (global_cr && !global_cr->GetMapId()) {
+            auto& global_cr_group = global_cr->GetRawGlobalMapGroup();
+            FO_VERIFY_AND_THROW(global_cr_group, "Missing required global critter group");
+
+            cr->SetGlobalMapTripId(global_cr->GetGlobalMapTripId());
+
+            for (ptr<Critter> group_cr : *global_cr_group) {
+                group_cr->Send_AddCritter(cr);
+            }
+
+            cr_group = global_cr_group;
+        }
+        else {
             // Tight lambda so the property lock is released (even on a throw) exactly when the
             // trip-id read/advance finishes, without widening the locked region over the work below.
             const auto trip_id = [this]() {
@@ -1149,18 +1158,6 @@ void MapManager::AddCritterToMap(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir 
             cr->SetGlobalMapTripId(trip_id);
 
             cr_group = SafeAlloc::MakeShared<vector<ptr<Critter>>>();
-        }
-        else {
-            auto& global_cr_group = global_cr_ref->GetRawGlobalMapGroup();
-            FO_VERIFY_AND_THROW(global_cr_group, "Missing required global critter group");
-
-            cr->SetGlobalMapTripId(global_cr_ref->GetGlobalMapTripId());
-
-            for (ptr<Critter> group_cr : *global_cr_group) {
-                group_cr->Send_AddCritter(cr);
-            }
-
-            cr_group = global_cr_group;
         }
 
         vec_add_unique_value(*cr_group, cr);

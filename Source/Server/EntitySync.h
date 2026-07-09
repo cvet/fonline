@@ -287,7 +287,7 @@ private:
     vector<ptr<EntityLock>> _singletonLocks {};
     // Saved on Activate, restored on Deactivate. Lets contexts stack per-thread so that an
     // event-callback's nested context can pop back to the dispatcher's primary context cleanly.
-    SyncContext* _previousContext {nullptr};
+    nptr<SyncContext> _previousContext {};
 };
 
 class ScopedSyncContext final

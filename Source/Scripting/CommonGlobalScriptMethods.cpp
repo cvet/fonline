@@ -318,7 +318,7 @@ FO_SCRIPT_API ptr<ProtoItem> Common_Game_GetProtoItem(ptr<BaseEngine> engine, hs
         throw ScriptException("Item proto not found (check CheckProtoItem first)", pid);
     }
 
-    return ScriptMutablePtr(proto);
+    return make_ptr(const_cast<ProtoItem*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
@@ -369,7 +369,7 @@ FO_SCRIPT_API ptr<ProtoCritter> Common_Game_GetProtoCritter(ptr<BaseEngine> engi
         throw ScriptException("Critter proto not found (check CheckProtoCritter first)", pid);
     }
 
-    return ScriptMutablePtr(proto);
+    return make_ptr(const_cast<ProtoCritter*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
@@ -420,7 +420,7 @@ FO_SCRIPT_API ptr<ProtoMap> Common_Game_GetProtoMap(ptr<BaseEngine> engine, hstr
         throw ScriptException("Map proto not found (check CheckProtoMap first)", pid);
     }
 
-    return ScriptMutablePtr(proto);
+    return make_ptr(const_cast<ProtoMap*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod
@@ -471,7 +471,7 @@ FO_SCRIPT_API ptr<ProtoLocation> Common_Game_GetProtoLocation(ptr<BaseEngine> en
         throw ScriptException("Location proto not found (check CheckProtoLocation first)", pid);
     }
 
-    return ScriptMutablePtr(proto);
+    return make_ptr(const_cast<ProtoLocation*>(std::addressof(*proto)));
 }
 
 ///@ ExportMethod

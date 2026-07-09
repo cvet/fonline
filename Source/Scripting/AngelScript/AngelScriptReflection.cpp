@@ -53,7 +53,7 @@ static auto TryCastToEnumType(ptr<const AngelScript::asITypeInfo> ti) -> nptr<co
 
     auto type = ti.dyn_cast<const AngelScript::asCTypeInfo>();
     FO_VERIFY_AND_THROW(type, "Missing type descriptor");
-    return CastToEnumType(ScriptMutablePtr(type).get());
+    return CastToEnumType(const_cast<AngelScript::asCTypeInfo*>(std::addressof(*type)));
 }
 
 static auto GetTypeInfoById(ptr<AngelScript::asIScriptEngine> engine, int32_t typeId) -> nptr<AngelScript::asITypeInfo>
@@ -469,7 +469,7 @@ static auto ScriptTypeOfFactory(AngelScript::asITypeInfo* raw_ot) -> ScriptTypeO
     nptr<AngelScript::asITypeInfo> sub_type = ot->GetSubType();
     FO_VERIFY_AND_THROW(sub_type, "Template sub type info is null");
     auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(sub_type);
-    return ReleaseScriptOwnership(std::move(script_type));
+    return script_type.release_ownership();
 }
 
 static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref) -> ScriptTypeOf*
@@ -483,7 +483,7 @@ static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref
 
     if (sub_type->GetTypeId() <= AngelScript::asTYPEID_DOUBLE) {
         auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(nullptr);
-        return ReleaseScriptOwnership(std::move(script_type));
+        return script_type.release_ownership();
     }
 
     FO_VERIFY_AND_THROW(raw_ref != nullptr, "Reference handle pointer is null");
@@ -492,7 +492,7 @@ static auto ScriptTypeOfFactory2(AngelScript::asITypeInfo* raw_ot, void* raw_ref
     FO_VERIFY_AND_THROW(ref_object, "Reference handle object is null");
     auto ref_obj = ref_object.reinterpret_as<const AngelScript::asIScriptObject>();
     auto script_type = SafeAlloc::MakeRefCounted<ScriptTypeOf>(ref_obj->GetObjectType());
-    return ReleaseScriptOwnership(std::move(script_type));
+    return script_type.release_ownership();
 }
 
 ScriptTypeOf::ScriptTypeOf(nptr<AngelScript::asITypeInfo> ti) :
@@ -555,7 +555,7 @@ static auto GetAngelScriptLoadedModules() -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     auto modules = CreateAngelScriptLoadedModules();
-    return ReleaseScriptOwnership(std::move(modules));
+    return modules.release_ownership();
 }
 
 static auto GetAngelScriptModule(nptr<const char> name) -> nptr<AngelScript::asIScriptModule>
@@ -637,7 +637,7 @@ static auto GetGlobalEnums() -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     auto enums = CreateEnumsInternal(true, nullptr);
-    return ReleaseScriptOwnership(std::move(enums));
+    return enums.release_ownership();
 }
 
 static auto GetEnums() -> ScriptArray*
@@ -645,7 +645,7 @@ static auto GetEnums() -> ScriptArray*
     FO_NO_STACK_TRACE_ENTRY();
 
     auto enums = CreateEnumsInternal(false, nullptr);
-    return ReleaseScriptOwnership(std::move(enums));
+    return enums.release_ownership();
 }
 
 static auto GetEnumsModule(string module_name) -> ScriptArray*
@@ -654,7 +654,7 @@ static auto GetEnumsModule(string module_name) -> ScriptArray*
 
     const auto module_name_cstr = make_ptr(module_name.c_str());
     auto enums = CreateEnumsInternal(false, module_name_cstr);
-    return ReleaseScriptOwnership(std::move(enums));
+    return enums.release_ownership();
 }
 
 static auto GetCallstack(ScriptArray*& modules, ScriptArray*& names, ScriptArray*& lines, ScriptArray*& columns, bool include_object_name, bool include_namespace, bool include_param_names) -> int32_t
@@ -695,7 +695,7 @@ static auto ScriptType_GetBaseType(const ScriptType& type) -> ScriptType*
     FO_STACK_TRACE_ENTRY();
 
     auto base_type = type.GetBaseType();
-    return ReleaseNullableScriptOwnership(std::move(base_type));
+    return base_type ? base_type.take_not_null().release_ownership() : nullptr;
 }
 
 static auto ScriptType_GetInterface(const ScriptType& type, int32_t index) -> ScriptType*
@@ -703,7 +703,7 @@ static auto ScriptType_GetInterface(const ScriptType& type, int32_t index) -> Sc
     FO_STACK_TRACE_ENTRY();
 
     auto interface_type = type.GetInterface(index);
-    return ReleaseNullableScriptOwnership(std::move(interface_type));
+    return interface_type ? interface_type.take_not_null().release_ownership() : nullptr;
 }
 
 static auto ScriptType_GetEnumNames(const ScriptType& type) -> ScriptArray*
@@ -711,7 +711,7 @@ static auto ScriptType_GetEnumNames(const ScriptType& type) -> ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     auto enum_names = type.GetEnumNames();
-    return ReleaseScriptOwnership(std::move(enum_names));
+    return enum_names.release_ownership();
 }
 
 static auto ScriptType_GetEnumValues(const ScriptType& type) -> ScriptArray*
@@ -719,7 +719,7 @@ static auto ScriptType_GetEnumValues(const ScriptType& type) -> ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     auto enum_values = type.GetEnumValues();
-    return ReleaseScriptOwnership(std::move(enum_values));
+    return enum_values.release_ownership();
 }
 
 static auto ScriptTypeOf_ConvertToType(ScriptTypeOf& type_of) -> ScriptType*
@@ -727,7 +727,7 @@ static auto ScriptTypeOf_ConvertToType(ScriptTypeOf& type_of) -> ScriptType*
     FO_STACK_TRACE_ENTRY();
 
     refcount_nptr<ScriptType> type = type_of.ConvertToType();
-    return ReleaseNullableScriptOwnership(std::move(type));
+    return type ? type.take_not_null().release_ownership() : nullptr;
 }
 
 static void RegisterTypeMethod(ptr<AngelScript::asIScriptEngine> engine, string_view declaration, const AngelScript::asSFuncPtr& func_pointer)

@@ -1063,8 +1063,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto get_pp() const noexcept -> T* const* { return &_ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _ptr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _ptr[index]; }
-    [[nodiscard]] FO_FORCE_INLINE auto release_ownership() & noexcept -> T* = delete;
-    [[nodiscard]] FO_FORCE_INLINE auto release_ownership() && noexcept -> T* { return std::exchange(_ptr, nullptr); }
+
+    [[nodiscard]] FO_FORCE_INLINE auto release_ownership() noexcept -> T* { return std::exchange(_ptr, nullptr); }
 
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
@@ -1975,7 +1975,7 @@ class unique_del_nptr
 {
 public:
     using element_type = T;
-    static_assert(std::is_class_v<T> || std::is_arithmetic_v<T>);
+    static_assert(std::is_void_v<T> || std::is_class_v<T> || std::is_arithmetic_v<T>);
 
     FO_FORCE_INLINE unique_del_nptr() noexcept = default;
     // ReSharper disable once CppNonExplicitConvertingConstructor

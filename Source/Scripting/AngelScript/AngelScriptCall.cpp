@@ -606,7 +606,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if (arg_type->IsMutable) {
                     mutable_data[i] = arr;
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
-                    (void)ReleaseScriptOwnership(std::move(arr));
+                    (void)arr.release_ownership();
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, arr.get()));
@@ -624,7 +624,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if (arg_type->IsMutable) {
                     mutable_data[i] = dict;
                     FO_AS_VERIFY(ctx->SetArgAddress(i, GetNullableHandleSlotAddress(&mutable_data[i]).get()));
-                    (void)ReleaseScriptOwnership(std::move(dict));
+                    (void)dict.release_ownership();
                 }
                 else {
                     FO_AS_VERIFY(ctx->SetArgObject(i, dict.get()));

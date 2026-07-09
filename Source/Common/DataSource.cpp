@@ -888,21 +888,6 @@ struct EmbeddedZipMemStream
     uint32_t Pos;
 };
 
-static void CleanupEmbeddedZipMemStream(ptr<EmbeddedZipMemStream> mem_stream) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    auto owned_mem_stream = adopt_unique_ptr(mem_stream);
-    ignore_unused(owned_mem_stream);
-}
-
-static auto ReturnEmbeddedZipMemStreamHandle(ptr<EmbeddedZipMemStream> mem_stream) noexcept -> voidpf
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return mem_stream.void_cast();
-}
-
 ZipFile::ZipFile(string_view fname) :
     _fileName {fname},
     _fileStream {SafeAlloc::MakeUnique<std::ifstream>(fs_open_ifstream(_fileName))}
@@ -1125,7 +1110,8 @@ EmbeddedFile::EmbeddedFile()
         MemCopy(embedded_size_target, embedded_size_bytes.data(), embedded_size_bytes.size());
 
         auto mem_stream = SafeAlloc::MakeUnique<EmbeddedZipMemStream>(span<const volatile uint8_t> {EMBEDDED_RESOURCES + sizeof(uint32_t), numeric_cast<size_t>(embedded_size)}, 0);
-        return ReturnEmbeddedZipMemStreamHandle(mem_stream.release());
+
+        return mem_stream.release().void_cast();
     };
     ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
@@ -1170,7 +1156,9 @@ EmbeddedFile::EmbeddedFile()
     ffunc.zclose_file = [](voidpf, voidpf stream) -> int32_t {
         auto mem_stream = cast_from_void<EmbeddedZipMemStream*>(stream);
         FO_VERIFY_AND_THROW(mem_stream, "Embedded zip close callback received a null memory stream");
-        CleanupEmbeddedZipMemStream(mem_stream);
+
+        auto owned_mem_stream = adopt_unique_ptr(mem_stream);
+        ignore_unused(owned_mem_stream);
         return 0;
     };
     ffunc.zerror_file = [](voidpf, voidpf stream) -> int32_t {

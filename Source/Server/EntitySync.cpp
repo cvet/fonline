@@ -69,7 +69,7 @@ static constexpr int32_t MAX_CONTENDED_EXPANSION_ATTEMPTS = 16;
 static constexpr int32_t BACKOFF_YIELD_ONLY_ATTEMPTS = 8;
 static constexpr int32_t BACKOFF_MAX_SHIFT = 6;
 
-static thread_local SyncContext* CurrentContext {};
+static thread_local nptr<SyncContext> CurrentContext {};
 static std::atomic<uint64_t> TicketCounter {};
 
 EntityLock::EntityLock()
@@ -1609,7 +1609,7 @@ auto SyncContext::GetOutermostOnThisThread() noexcept -> nptr<SyncContext>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<SyncContext> ctx = CurrentContext;
+    auto ctx = CurrentContext;
 
     if (!ctx) {
         return nullptr;

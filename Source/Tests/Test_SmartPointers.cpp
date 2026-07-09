@@ -229,6 +229,11 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<PtrBase>&>().release()), ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_del_ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_del_nptr<PtrBase>>);
+        STATIC_REQUIRE(std::is_default_constructible_v<unique_del_nptr<void>>);
+        STATIC_REQUIRE(!std::is_default_constructible_v<unique_del_ptr<void>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<void>&>().release()), ptr<void>>);
+        STATIC_REQUIRE(has_void_cast<unique_del_ptr<void>>);
+        STATIC_REQUIRE(has_void_cast<unique_del_nptr<void>>);
 
         STATIC_REQUIRE(std::is_constructible_v<refcount_nptr<RefCountedValue>, refcount_ptr<RefCountedValue>&&>);
         STATIC_REQUIRE(!std::is_constructible_v<refcount_ptr<RefCountedValue>, refcount_nptr<RefCountedValue>&&>);
@@ -249,7 +254,7 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(!std::is_assignable_v<refcount_ptr<RefCountedValue>&, std::nullptr_t>);
         STATIC_REQUIRE(!explicitly_bool_testable<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(!has_default_reset<refcount_ptr<RefCountedValue>>);
-        STATIC_REQUIRE(!has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
+        STATIC_REQUIRE(has_lvalue_release_ownership<refcount_ptr<RefCountedValue>>);
         STATIC_REQUIRE(has_void_cast<refcount_ptr<RefCountedValue>>);
 
         STATIC_REQUIRE(std::is_default_constructible_v<refcount_nptr<RefCountedValue>>);
@@ -440,6 +445,18 @@ TEST_CASE("SmartPointers")
 
         auto empty_custom_owner = make_unique_del_ptr(nptr<int32_t> {}, [](int32_t* raw_value) noexcept { ignore_unused(raw_value); });
         CHECK(empty_custom_owner.void_cast() == nullptr);
+
+        int32_t deleted_opaque_value = 0;
+        {
+            auto raw_opaque_value = SafeAlloc::MakeRaw<int32_t>(70);
+            auto opaque_owner = make_unique_del_ptr(raw_opaque_value.reinterpret_as<void>(), [&](void* raw_value) noexcept {
+                auto value = cast_from_void<int32_t*>(raw_value);
+                auto owned_value = adopt_unique_ptr(value);
+                deleted_opaque_value = *owned_value;
+            });
+            CHECK(opaque_owner.get() == raw_opaque_value.void_cast());
+        }
+        CHECK(deleted_opaque_value == 70);
     }
 
     SECTION("UniquePtrReleaseTransfersOwnership")
@@ -603,7 +620,7 @@ TEST_CASE("SmartPointers")
 
             CHECK(raw->RefCount == 1);
 
-            RefCountedValue* released = std::move(ptr).release_ownership();
+            RefCountedValue* released = ptr.release_ownership();
             CHECK(ptr.get() == nullptr);
             REQUIRE(released == raw.get());
             CHECK(raw->RefCount == 1);

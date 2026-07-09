@@ -127,20 +127,6 @@ static auto ReadRequiredHandleSlot(ptr<void> slot) noexcept -> ptr<void>
     return obj;
 }
 
-static void ReturnGenericDynamicRefType(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<DynamicRefTypeInstance>&& ref_instance) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) void*(ReleaseScriptOwnership(std::move(ref_instance)));
-}
-
-static void ReturnGenericDynamicRefType(ptr<AngelScript::asIScriptGeneric> gen, ptr<DynamicRefTypeInstance> ref_instance) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(ref_instance.get());
-}
-
 static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -1085,7 +1071,8 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
     auto registrator = GetGenericAuxiliaryAs<const PropertyRegistrator>(gen);
 
     auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrator);
-    ReturnGenericDynamicRefType(gen, std::move(ref_instance));
+
+    new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
 }
 
 static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
@@ -1107,7 +1094,7 @@ static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
 
     auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
 
-    ReturnGenericDynamicRefType(gen, self);
+    new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(self.get());
 }
 
 static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)

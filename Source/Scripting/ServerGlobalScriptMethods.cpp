@@ -299,7 +299,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
     }
 
     auto item = DropDestroyingEntity(server->EntityMngr.GetItem(itemId));
-    return ReleaseNullableScriptOwnership(std::move(item));
+    return item ? item.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires item + current item parent + destination critter.
@@ -845,7 +845,7 @@ FO_SCRIPT_API nptr<Critter> Server_Game_GetCritter(ptr<ServerEngine> server, ide
     }
 
     auto cr = DropDestroyingEntity(server->EntityMngr.GetCritter(crId));
-    return ReleaseNullableScriptOwnership(std::move(cr));
+    return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned entity handle is not covered for later reads/mutations.
@@ -857,7 +857,7 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
     }
 
     auto entity = DropDestroyingEntity(server->EntityMngr.GetEntity(entityId));
-    return ReleaseNullableScriptOwnership(std::move(entity));
+    return entity ? entity.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations.
@@ -940,7 +940,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
     }
 
     auto player = DropDestroyingEntity(server->EntityMngr.GetPlayer(playerId));
-    return ReleaseNullableScriptOwnership(std::move(player));
+    return player ? player.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -948,7 +948,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t mapId)
 {
     auto map = DropDestroyingEntity(server->EntityMngr.GetMap(mapId));
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -956,7 +956,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t map
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, hstring mapPid, int32_t skipCount = 0)
 {
     auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -965,7 +965,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMa
 {
     ptr<const ProtoMap> map_proto = mapProto;
     auto map = server->MapMngr.GetMapByPid(map_proto->GetProtoId(), skipCount);
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
@@ -1032,7 +1032,7 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, npt
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ident_t locId)
 {
     auto loc = DropDestroyingEntity(server->EntityMngr.GetLocation(locId));
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
@@ -1040,7 +1040,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, i
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, hstring locPid, int32_t skipCount = 0)
 {
     auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
@@ -1049,7 +1049,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, p
 {
     ptr<const ProtoLocation> loc_proto = locProto;
     auto loc = server->MapMngr.GetLocationByPid(loc_proto->GetProtoId(), skipCount);
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned location handle is not covered for later reads/mutations.
@@ -1061,7 +1061,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, L
 
     for (size_t i = 0; i != locs.size(); i++) {
         if (!locs[i]->IsDestroying() && locs[i]->GetValueAsInt(prop) == propertyValue) {
-            return ReleaseScriptOwnership(std::move(locs[i]));
+            return locs[i].release_ownership();
         }
     }
 

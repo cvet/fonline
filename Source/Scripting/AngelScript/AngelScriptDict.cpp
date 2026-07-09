@@ -1195,7 +1195,7 @@ static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
     auto dict = ScriptDict::Create(type_info.as_ptr());
-    return ReleaseScriptOwnership(std::move(dict));
+    return dict.release_ownership();
 }
 
 static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
@@ -1207,7 +1207,7 @@ static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list)
     nptr<void> init_list_ptr = init_list;
     FO_VERIFY_AND_THROW(init_list_ptr, "Dictionary init list is null");
     auto dict = ScriptDict::Create(type_info.as_ptr(), init_list_ptr.as_ptr());
-    return ReleaseScriptOwnership(std::move(dict));
+    return dict.release_ownership();
 }
 
 static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* other) -> ScriptDict*
@@ -1224,17 +1224,17 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
 
     auto clone = ScriptDict::Create(type_info.as_ptr());
     *clone = *other_ptr;
-    return ReleaseScriptOwnership(std::move(clone));
+    return clone.release_ownership();
 }
 
 static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<AngelScript::asITypeInfo> type_info = ScriptMutablePtr(dict.GetDictObjectType());
+    auto type_info = make_ptr(const_cast<AngelScript::asITypeInfo*>(std::addressof(*dict.GetDictObjectType())));
     auto clone = ScriptDict::Create(type_info);
     *clone = dict;
-    return ReleaseScriptOwnership(std::move(clone));
+    return clone.release_ownership();
 }
 
 [[nodiscard]] static auto RequireScriptDictValue(nptr<void> value) -> ptr<void>
@@ -1350,7 +1350,7 @@ static auto ScriptDict_GetKeys(const ScriptDict& dict) -> ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     auto keys = dict.GetKeys();
-    return ReleaseScriptOwnership(std::move(keys));
+    return keys.release_ownership();
 }
 
 static auto ScriptDict_GetValues(const ScriptDict& dict) -> ScriptArray*
@@ -1358,7 +1358,7 @@ static auto ScriptDict_GetValues(const ScriptDict& dict) -> ScriptArray*
     FO_STACK_TRACE_ENTRY();
 
     auto values = dict.GetValues();
-    return ReleaseScriptOwnership(std::move(values));
+    return values.release_ownership();
 }
 
 static auto ScriptDict_Exists(const ScriptDict& dict, void* key) -> bool

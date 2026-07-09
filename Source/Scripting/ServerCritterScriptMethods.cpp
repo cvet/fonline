@@ -102,7 +102,7 @@ FO_SCRIPT_API nptr<Map> Server_Critter_GetMap(ptr<Critter> self)
 {
     auto map = self->GetParent<Map>();
 
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires self + current map; transfer keeps self covered and mutates current-map placement.
@@ -852,7 +852,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     function<bool(ptr<const Item>)> gag_callback;
 
     if (gag_callback_func) {
-        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, ScriptMutablePtr(gag)) && gag_cb->GetResult(); };
+        gag_callback = [gag_cb = SafeAlloc::MakeShared<ScriptFunc<bool, ptr<Critter>, ptr<Item>>>(std::move(gag_callback_func)), self](ptr<const Item> gag) mutable { return gag_cb->Call(self, make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
     }
 
     const int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
@@ -904,7 +904,7 @@ FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpo
 {
     auto moving = StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
 
-    return ReleaseScriptOwnership(std::move(moving));
+    return moving.release_ownership();
 }
 
 // SyncScope: requires self + current map; starts movement and returns the new movement context.
@@ -913,7 +913,7 @@ FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpo
 {
     auto moving = StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
 
-    return ReleaseScriptOwnership(std::move(moving));
+    return moving.release_ownership();
 }
 
 // SyncScope: requires self; reads current movement state only.

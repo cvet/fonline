@@ -854,7 +854,7 @@ static auto ScriptString_Split(const string& str, const string& delim) -> Script
     FO_NO_STACK_TRACE_ENTRY();
 
     auto array = CreateScriptStringSplit(str, delim, false);
-    return ReleaseScriptOwnership(std::move(array));
+    return array.release_ownership();
 }
 
 static auto ScriptString_SplitExt(const string& str, const string& delim, bool remove_empty_entries) -> ScriptArray*
@@ -862,7 +862,7 @@ static auto ScriptString_SplitExt(const string& str, const string& delim, bool r
     FO_NO_STACK_TRACE_ENTRY();
 
     auto array = CreateScriptStringSplit(str, delim, remove_empty_entries);
-    return ReleaseScriptOwnership(std::move(array));
+    return array.release_ownership();
 }
 
 static auto ScriptString_Join(const string& str, const ScriptArray* raw_array) -> string

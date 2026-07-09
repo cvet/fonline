@@ -2086,7 +2086,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         exts_list.emplace_back("VK_EXT_debug_utils");
     }
 
-    vector<const char*> raw_exts_list; // SmartPointerAudit: raw ABI container
+    vector<const char*> raw_exts_list;
     raw_exts_list.reserve(exts_list.size());
 
     for (ptr<const char> ext : exts_list) {

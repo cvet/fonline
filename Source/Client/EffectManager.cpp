@@ -67,7 +67,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
     }
 
-    nptr<RenderEffect> effect_ptr = effect;
+    auto effect_ptr = effect.as_nptr();
     _loadedEffects.emplace(path, std::move(effect));
     return effect_ptr;
 }

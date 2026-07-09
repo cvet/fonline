@@ -53,18 +53,16 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<ProtoEntity> proto_borrow = proto;
-
-    if (auto loc = proto_borrow.dyn_cast<ProtoLocation>()) {
+    if (auto loc = proto.dyn_cast<ProtoLocation>()) {
         _locProtos.insert_or_assign(proto->GetProtoId(), loc);
     }
-    else if (auto map = proto_borrow.dyn_cast<ProtoMap>()) {
+    else if (auto map = proto.dyn_cast<ProtoMap>()) {
         _mapProtos.insert_or_assign(proto->GetProtoId(), map);
     }
-    else if (auto cr = proto_borrow.dyn_cast<ProtoCritter>()) {
+    else if (auto cr = proto.dyn_cast<ProtoCritter>()) {
         _crProtos.insert_or_assign(proto->GetProtoId(), cr);
     }
-    else if (auto item = proto_borrow.dyn_cast<ProtoItem>()) {
+    else if (auto item = proto.dyn_cast<ProtoItem>()) {
         _itemProtos.insert_or_assign(proto->GetProtoId(), item);
     }
 
@@ -82,19 +80,19 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator.as_ptr(), props);
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
         }
         else if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator.as_ptr(), props);
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, props);
         }
         else if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator.as_ptr(), props);
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, props);
         }
         else if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator.as_ptr(), props);
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, props);
         }
         else {
-            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator.as_ptr(), props);
+            return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, props);
         }
     };
 

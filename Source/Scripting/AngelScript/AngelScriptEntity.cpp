@@ -121,13 +121,6 @@ static auto Entity_ProtoId(const Entity* self) -> hstring
     return {};
 }
 
-static auto ReturnScriptEntity(ptr<const Entity> entity) noexcept -> const Entity*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return entity.get();
-}
-
 static auto Entity_Proto(const Entity* self) -> const Entity*
 {
     FO_STACK_TRACE_ENTRY();
@@ -138,11 +131,10 @@ static auto Entity_Proto(const Entity* self) -> const Entity*
     ptr<const Entity> self_ref = self;
 
     if (auto self_proto = self_ref.dyn_cast<const ProtoEntity>()) {
-        return ReturnScriptEntity(self_proto.as_ptr());
+        return self_proto.get();
     }
     if (auto self_with_proto = self_ref.dyn_cast<const EntityWithProto>()) {
-        ptr<const Entity> self_proto = self_with_proto->GetProto();
-        return ReturnScriptEntity(self_proto);
+        return self_with_proto->GetProto().get();
     }
 
     return {};
@@ -394,7 +386,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
 
     auto casted_proto = proto.dyn_cast<const ProtoCustomEntity>();
     FO_VERIFY_AND_THROW(casted_proto, "Prototype is not a custom entity prototype");
-    ptr<ProtoCustomEntity> mutable_proto = ScriptMutablePtr(casted_proto);
+    auto mutable_proto = make_ptr(const_cast<ProtoCustomEntity*>(std::addressof(*casted_proto)));
     ReturnGenericEntity(gen, mutable_proto);
 }
 

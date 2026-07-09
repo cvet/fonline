@@ -635,13 +635,13 @@ static void SetFunctionAttributesWithVirtualMirror(nptr<AngelScript::asIScriptFu
     }
 
     for (AngelScript::asUINT i = 0; i < ti->GetMethodCount(); i++) {
-        nptr<AngelScript::asIScriptFunction> method_func = ti->GetMethodByIndex(i, false);
+        auto method_func = make_ptr(ti->GetMethodByIndex(i, false));
 
         if (!IsSameScriptFunction(method_func, func)) {
             continue;
         }
 
-        nptr<AngelScript::asIScriptFunction> virtual_func = ti->GetMethodByIndex(i, true);
+        auto virtual_func = make_nptr(ti->GetMethodByIndex(i, true));
 
         if (virtual_func && !IsSameScriptFunction(virtual_func, func)) {
             SetFunctionAttributes(virtual_func, blocking_only);
@@ -669,7 +669,7 @@ static auto CollectModuleScriptFunctions(ptr<AngelScript::asIScriptModule> mod) 
     vector<ptr<AngelScript::asIScriptFunction>> funcs;
 
     for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-        nptr<AngelScript::asIScriptFunction> func = mod->GetFunctionByIndex(i);
+        auto func = make_ptr(mod->GetFunctionByIndex(i));
 
         if (IsAttributedScriptFunction(func)) {
             funcs.emplace_back(func);
@@ -677,14 +677,10 @@ static auto CollectModuleScriptFunctions(ptr<AngelScript::asIScriptModule> mod) 
     }
 
     for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-        nptr<AngelScript::asITypeInfo> ti = mod->GetObjectTypeByIndex(i);
-
-        if (!ti) {
-            continue;
-        }
+        auto ti = make_ptr(mod->GetObjectTypeByIndex(i));
 
         for (AngelScript::asUINT j = 0; j < ti->GetMethodCount(); j++) {
-            nptr<AngelScript::asIScriptFunction> func = ti->GetMethodByIndex(j, false);
+            auto func = make_ptr(ti->GetMethodByIndex(j, false));
 
             if (IsAttributedScriptFunction(func)) {
                 funcs.emplace_back(func);
@@ -700,11 +696,7 @@ static auto FindModuleObjectType(ptr<AngelScript::asIScriptModule> mod, string_v
     FO_STACK_TRACE_ENTRY();
 
     for (AngelScript::asUINT i = 0; i < mod->GetObjectTypeCount(); i++) {
-        nptr<AngelScript::asITypeInfo> ti = mod->GetObjectTypeByIndex(i);
-
-        if (!ti) {
-            continue;
-        }
+        auto ti = make_ptr(mod->GetObjectTypeByIndex(i));
 
         const nptr<const char> current_name_ptr = ti->GetName();
         const nptr<const char> current_ns_ptr = ti->GetNamespace();
@@ -1177,8 +1169,7 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
             uint32_t ordinal = 0;
 
             for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
-                nptr<AngelScript::asIScriptFunction> func = mod->GetFunctionByIndex(i);
-                FO_VERIFY_AND_THROW(func, "Module function index within count must resolve");
+                auto func = make_ptr(mod->GetFunctionByIndex(i));
 
                 if (!IsAttributedScriptFunction(func)) {
                     continue;
@@ -1208,7 +1199,7 @@ auto BindFunctionAttributeRecords(ptr<AngelScript::asIScriptModule> mod, const v
             uint32_t ordinal = 0;
 
             for (AngelScript::asUINT j = 0; j < ti->GetMethodCount(); j++) {
-                nptr<AngelScript::asIScriptFunction> func = ti->GetMethodByIndex(j, false);
+                auto func = make_ptr(ti->GetMethodByIndex(j, false));
 
                 if (!IsAttributedScriptFunction(func)) {
                     continue;

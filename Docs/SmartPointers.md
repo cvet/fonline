@@ -117,7 +117,7 @@ In strict builds, `unique_ptr<T>::release()` and `unique_del_ptr<T>::release()` 
 
 Helpers that can fail a type cast or lookup while transferring unique ownership must return `unique_nptr<T>`, because a failed cast is normal absence, not a valid `unique_ptr<T>` state.
 
-`unique_del_ptr<T>` / `unique_del_nptr<T>` are custom-deleter owners used at external cleanup boundaries. Use `unique_del_ptr<T>` only after a `ptr<T>` or equivalent assertion proves the custom-owned object is present; it is a strict move-only non-null owner and rejects default/null construction in strict builds. Use the `unique_del_nptr<T>` spelling for stored state that can be empty, lazily initialized, moved-from, or reset.
+`unique_del_ptr<T>` / `unique_del_nptr<T>` are custom-deleter owners used at external cleanup boundaries. Use `unique_del_ptr<T>` only after a `ptr<T>` or equivalent assertion proves the custom-owned object is present; it is a strict move-only non-null owner and rejects default/null construction in strict builds. Use the `unique_del_nptr<T>` spelling for stored state that can be empty, lazily initialized, moved-from, or reset. Opaque C resources declared as `void` may be owned directly as `unique_del_ptr<void>` / `unique_del_nptr<void>` when their cleanup function accepts the corresponding `void*`; do not introduce a C++ holder object merely to carry such a handle.
 
 `refcount_ptr<T>` owns an intrusive reference and is non-null in usable state. Copying increments the reference count; destruction decrements it.
 
@@ -213,7 +213,7 @@ These script-binding shapes intentionally stay raw at the ABI edge:
 - Generic AngelScript plumbing, generated registration strings, handle slots, and `char*` / `char**` buffers and process argv.
 - Third-party/native C callback surfaces that are not script handle contracts. Bind those raw inputs to `ptr<T>` / `nptr<T>` at the first engine-owned line with `make_ptr` / `make_nptr`.
 
-Inside an export body, bind any remaining raw input to a wrapper before ordinary engine work and unwrap (`.get()`) only at the final ABI/handoff line. When a function's declared **return type is itself a raw pointer** (a `void*`/`T*` handed to a C or script API — SDL/ImGui/Spine allocators, script element accessors, generic readers), `return wrapper.get();` is allowed: the audit reads the function's return type (raw pointer, deduced `auto`, or a bare template parameter `-> T`) and treats such a `.get()` return as a genuine raw-pointer boundary rather than a wrapper unwrap. A `.get()` return whose enclosing function returns a **wrapper** (`nptr<T>`/`ptr<T>`) is still flagged — return the wrapper (`return x;`) or bind a named wrapper local. The mutable `get_no_const()` return keeps its stricter rule (only inside a `Return*` / `BorrowScript*`-named boundary). The `GetAddressOfReturnLocation()` placement-new return likewise routes through a `Return*`-named boundary (e.g. `ReturnGenericPointer`).
+Inside an export body, bind any remaining raw input to a wrapper before ordinary engine work and unwrap (`.get()`) only at the final ABI/handoff line. When a function's declared **return type is itself a raw pointer** (a `void*`/`T*` handed to a C or script API — SDL/ImGui/Spine allocators, script element accessors, generic readers), `return wrapper.get();` is allowed: the audit reads the function's return type (raw pointer, deduced `auto`, or a bare template parameter `-> T`) and treats such a `.get()` return as a genuine raw-pointer boundary rather than a wrapper unwrap. A `.get()` return whose enclosing function returns a **wrapper** (`nptr<T>`/`ptr<T>`) is still flagged — return the wrapper (`return x;`) or bind a named wrapper local. Direct `get_no_const()` is likewise allowed at the final mutable script ABI edge; no one-line `ScriptMutablePtr` / `Return*` bridge is required. A direct placement-new pointer write to `GetAddressOfReturnLocation()` is also a final AngelScript ABI handoff.
 
 
 ## Migration rules
@@ -249,12 +249,6 @@ Embedding projects can keep lightweight migration guards in source control. The 
 ```bash
 python3 Tools/SmartPointerAudit/smart_pointer_audit.py \
   --fail-on error \
-  --raw-pointer-baseline Tools/SmartPointerAudit/raw_pointer_baseline.tsv \
-  --raw-pointer-abi-baseline Tools/SmartPointerAudit/raw_pointer_abi_baseline.tsv \
-  --raw-pointer-container-baseline Tools/SmartPointerAudit/raw_pointer_container_baseline.tsv \
-  --raw-pointer-container-abi-baseline Tools/SmartPointerAudit/raw_pointer_container_abi_baseline.tsv \
-  --nonnull-member-allowlist Tools/SmartPointerAudit/nonnull_member_allowlist.tsv \
-  --reference-member-allowlist Tools/SmartPointerAudit/reference_member_allowlist.tsv \
   --raw-pointer-low-level-allowlist Tools/SmartPointerAudit/raw_pointer_low_level_allowlist.tsv \
   --raw-pointer-abi-allowlist Tools/SmartPointerAudit/raw_pointer_abi_allowlist.tsv \
   --raw-pointer-container-abi-allowlist Tools/SmartPointerAudit/raw_pointer_container_abi_allowlist.tsv \
@@ -262,6 +256,6 @@ python3 Tools/SmartPointerAudit/smart_pointer_audit.py \
 python3 Tools/SmartPointerAudit/smart_pointer_clang_query.py --diff-base origin/main --require-tooling
 ```
 
-The first command is the regular textual non-regression audit: raw pointer and reviewed ABI/container counts may shrink freely but must not grow without an intentional baseline update, while line-level allowlists keep reviewed reference-member, raw ABI, and low-level raw rows from drifting. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and carries no baseline — every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
+The first command is the regular textual non-regression audit. Exact line-level allowlists keep reviewed raw ABI and low-level raw rows from drifting; count budgets are not used, and class reference members fail directly without an allowlist. Nullable owners such as `unique_nptr<T>` and `unique_del_nptr<T>` are counted for inventory only, not quarantined. The `NullableLocalDereference` gate (a checked nullable local dereferenced with no preceding null check) is guard-aware, covers all strict engine / `SourceExt` scopes, and every hit is fixed at the source. The second command is the optional AST-backed clang-query gate for newly added raw pointer declarations in checked scopes after a build has produced `compile_commands.json`.
 
 As an embedding-project example, Last Frontier runs the full audit invocation in CI on every push and exposes the same command locally as the `Analyze :: Smart Pointer Audit` VS Code task (bundled into its `Analyze All` and pre-commit validation tasks).

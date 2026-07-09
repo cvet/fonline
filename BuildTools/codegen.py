@@ -2152,8 +2152,9 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
                     (' ignore_unused(call); } },' if is_stub else ''))
             if not is_stub:
                 body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
+
                 body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
-                        '{ return ReleaseScriptOwnership(SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>()); }' + ' };')
+                        '{ return SafeAlloc::MakeRefCounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
                 body_lines.append('        NativeDataCaller::NativeCall<&Wrapped::Call>(call);')
                 body_lines.append('    } },')
 

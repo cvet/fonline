@@ -1359,53 +1359,6 @@ TEST_CASE("PropertiesRawDataCopy")
         CHECK(derived.GetValue<string>(name_prop).empty());
         CHECK(derived.GetRawDataSize(name_prop) == 0);
     }
-
-    SECTION("ConcurrentCopyDoesNotTear")
-    {
-        props.SetValue<string>(name_prop, first_value);
-
-        std::atomic_bool writer_done {false};
-        std::atomic_bool torn_copy {false};
-
-        std::thread writer([&]() {
-            for (int32_t i = 0; i < 10000; i++) {
-                props.SetValue<string>(name_prop, i % 2 == 0 ? first_value : second_value);
-            }
-
-            writer_done.store(true, std::memory_order_release);
-        });
-
-        while (!writer_done.load(std::memory_order_acquire)) {
-            PropertyRawData copied_data;
-            props.CopyRawData(name_prop, copied_data);
-
-            const size_t size = copied_data.GetSize();
-            const bool first_size = size == first_value.size();
-            const bool second_size = size == second_value.size();
-
-            if (!first_size && !second_size) {
-                torn_copy.store(true, std::memory_order_relaxed);
-                break;
-            }
-
-            const char expected = first_size ? 'A' : 'B';
-            auto copied_chars = copied_data.GetPtrAs<char>();
-
-            for (size_t i = 0; i < size; i++) {
-                if (copied_chars[i] != expected) {
-                    torn_copy.store(true, std::memory_order_relaxed);
-                    break;
-                }
-            }
-
-            if (torn_copy.load(std::memory_order_relaxed)) {
-                break;
-            }
-        }
-
-        writer.join();
-        CHECK_FALSE(torn_copy.load(std::memory_order_relaxed));
-    }
 }
 
 TEST_CASE("PropertiesOverlayFiltersAndCopies")

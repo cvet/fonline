@@ -256,7 +256,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
         return nullptr;
     }
 
-    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone.as_ptr());
+    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone);
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
@@ -2311,7 +2311,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
         FO_VERIFY_AND_THROW(area, "Cut file was not found", raw_cut.FileName);
 
         auto cut_holder = SafeAlloc::MakeUnique<ModelCutData>();
-        ptr<ModelCutData> cut = cut_holder;
+        auto cut = cut_holder.as_ptr();
         _cutData.emplace_back(std::move(cut_holder));
 
         link.CutInfo.emplace_back(cut);

@@ -152,7 +152,7 @@ static auto ScriptArray_Create(AngelScript::asITypeInfo* ti) -> ScriptArray*
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
     auto arr = ScriptArray::Create(type_info.as_ptr());
-    return ReleaseScriptOwnership(std::move(arr));
+    return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateWithLength(AngelScript::asITypeInfo* ti, int32_t length) -> ScriptArray*
@@ -162,7 +162,7 @@ static auto ScriptArray_CreateWithLength(AngelScript::asITypeInfo* ti, int32_t l
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
     auto arr = ScriptArray::Create(type_info.as_ptr(), length);
-    return ReleaseScriptOwnership(std::move(arr));
+    return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptArray*
@@ -174,7 +174,7 @@ static auto ScriptArray_CreateList(AngelScript::asITypeInfo* ti, void* init_list
     nptr<void> init_list_ptr = init_list;
     FO_VERIFY_AND_THROW(init_list_ptr, "Array init list is null");
     auto arr = ScriptArray::Create(type_info.as_ptr(), init_list_ptr.as_ptr());
-    return ReleaseScriptOwnership(std::move(arr));
+    return arr.release_ownership();
 }
 
 static auto ScriptArray_CreateWithDefault(AngelScript::asITypeInfo* ti, int32_t length, void* def_val) -> ScriptArray*
@@ -186,11 +186,11 @@ static auto ScriptArray_CreateWithDefault(AngelScript::asITypeInfo* ti, int32_t 
     nptr<void> def_val_ptr = def_val;
     if (length == 0) {
         auto arr = ScriptArray::Create(type_info.as_ptr(), length);
-        return ReleaseScriptOwnership(std::move(arr));
+        return arr.release_ownership();
     }
     FO_VERIFY_AND_THROW(def_val_ptr, "Array default value is null");
     auto arr = ScriptArray::Create(type_info.as_ptr(), length, def_val_ptr.as_ptr());
-    return ReleaseScriptOwnership(std::move(arr));
+    return arr.release_ownership();
 }
 
 [[nodiscard]] static auto RequireScriptArrayValue(nptr<void> value) -> ptr<void>
@@ -1630,17 +1630,17 @@ static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray*
 
     auto clone = ScriptArray::Create(type_info.as_ptr());
     *clone = *other_ptr;
-    return ReleaseScriptOwnership(std::move(clone));
+    return clone.release_ownership();
 }
 
 static auto ScriptArray_Clone(const ScriptArray& arr) -> ScriptArray*
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<AngelScript::asITypeInfo> type_info = ScriptMutablePtr(arr.GetArrayObjectType());
+    auto type_info = make_ptr(const_cast<AngelScript::asITypeInfo*>(std::addressof(*arr.GetArrayObjectType())));
     auto clone = ScriptArray::Create(type_info);
     *clone = arr;
-    return ReleaseScriptOwnership(std::move(clone));
+    return clone.release_ownership();
 }
 
 static void ScriptArray_EnumReferences(ScriptArray& arr, AngelScript::asIScriptEngine* engine)

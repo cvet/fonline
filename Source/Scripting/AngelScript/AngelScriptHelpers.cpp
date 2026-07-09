@@ -603,7 +603,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
             throw ScriptException("Unable to resolve proto", prop->GetName(), pid);
         }
 
-        return ScriptMutablePtr(proto);
+        return make_ptr(const_cast<ProtoEntity*>(std::addressof(*proto)));
     };
 
     const auto resolve_enum = [](const_span<uint8_t> enum_data) -> int32_t {
@@ -653,7 +653,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
     }
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
         auto ref_obj = create_ref_obj(make_const_span(data, data_size));
-        auto released_ref_obj = ReleaseScriptOwnership(std::move(ref_obj));
+        auto released_ref_obj = ref_obj.release_ownership();
         NativeDataProvider::WriteTypedHandleSlot<DynamicRefTypeInstance>(construct_addr, released_ref_obj);
     }
     else if (prop->IsString()) {
@@ -773,7 +773,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
 
         NativeDataProvider::WriteTypedHandleSlot<ScriptArray>(construct_addr, arr);
-        (void)ReleaseScriptOwnership(std::move(arr));
+        (void)arr.release_ownership();
     }
     else if (prop->IsDict()) {
         auto prop_type_info = LookupCachedTypeInfoForProperty(as_engine, prop);
@@ -1034,7 +1034,7 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
         }
 
         NativeDataProvider::WriteTypedHandleSlot<ScriptDict>(construct_addr, dict);
-        (void)ReleaseScriptOwnership(std::move(dict));
+        (void)dict.release_ownership();
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -1923,7 +1923,7 @@ void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_p
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    new (gen->GetAddressOfReturnLocation()) ScriptArray*(ReleaseScriptOwnership(std::move(arr)));
+    new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr.release_ownership());
 }
 
 void SetScriptObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ptr<void> slot)
