@@ -228,7 +228,7 @@ public:
     void DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color);
     auto DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool;
     void DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color);
-    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color);
+    void DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect);
     void DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding);
     void DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiveType prim, nptr<const irect32> draw_area = nullptr, nptr<RenderEffect> custom_effect = nullptr);
     void DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr, nptr<RenderEffect> custom_effect = nullptr);

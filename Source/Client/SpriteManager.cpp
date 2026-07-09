@@ -1087,7 +1087,7 @@ auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggApp
     return false;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1195,11 +1195,13 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             color_l = ApplyColorBrightness(color_l);
         }
 
+        const DrawOrderType draw_order = mspr->GetDrawOrder();
+
         // Choose effect
         auto effect = mspr->GetDrawEffect();
 
         if (!effect) {
-            effect = spr->GetDrawEffectOr(_effectMngr->Effects.Generic.as_ptr());
+            effect = spr->GetDrawEffectOr(default_effect);
         }
 
         // Fill buffer
@@ -1211,7 +1213,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
 
         auto& vbuf = _spritesDrawBuf->Vertices;
-        const DrawOrderType draw_order = mspr->GetDrawOrder();
         const bool standing_sprite = is_standing_sprite(draw_order);
         const vec3 sprite_proj = get_map_sprite_proj(mspr.get());
         const float32_t pos_z = sprite_proj.z;

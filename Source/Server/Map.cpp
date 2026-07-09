@@ -251,7 +251,7 @@ void Map::AddSpectatorPlayer(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    FO_VALIDATE_ENTITY(NOT_DESTROYED, NOT_DESTROYING);
 
     scoped_lock lock {_spectatorLock};
 
@@ -262,7 +262,7 @@ void Map::RemoveSpectatorPlayer(ptr<Player> player)
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+    FO_VALIDATE_ENTITY(NOT_DESTROYED);
 
     scoped_lock lock {_spectatorLock};
 

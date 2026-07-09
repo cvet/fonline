@@ -586,7 +586,6 @@ void MapManager::DestroyLocation(ptr<Location> loc)
 
     auto loc_holder = loc.hold_ref();
     ignore_unused(loc_holder);
-
     EnsureEntitySynced(loc);
 
     if (loc->IsDestroying() || loc->IsDestroyed()) {
@@ -649,16 +648,16 @@ void MapManager::DestroyMap(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(map.as_nptr());
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
+    EnsureEntitySynced(map.as_nptr());
 
     if (map->IsDestroying() || map->IsDestroyed()) {
         return;
     }
 
     map->MarkAsDestroying();
-    ValidateEntityAccess(map);
+
     _engine->OnMapFinish.Fire(map);
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
 
@@ -679,7 +678,7 @@ void MapManager::DestroyMapInternal(ptr<Map> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    ValidateEntityAccess(map);
+    EnsureEntitySynced(map);
 
     // Eject spectators before destroying map content so each spectator gets a clean LoadMap(nullptr) and clears its ViewMap.
     while (map->HasSpectatorPlayers()) {
