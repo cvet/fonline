@@ -248,9 +248,22 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMENT "Run code coverage and generate report")
         else()
-            AddCommandTarget(Run${name}
-                COMMAND_ARGS COMMAND ${target}
-                COMMENT "Run ${name}")
+            if(MSVC)
+                AddCommandTarget(Run${name}
+                    COMMAND_ARGS
+                    COMMAND "${CMAKE_COMMAND}"
+                        "-DFO_RUN_COMMAND=$<TARGET_FILE:${target}>"
+                        "-DFO_RUN_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+                        "-DFO_RUN_LOG=${CMAKE_CURRENT_BINARY_DIR}/${target}.log"
+                        -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/RunAndLog.cmake"
+                    DEPENDS ${target}
+                    COMMENT "Run ${name}")
+            else()
+                AddCommandTarget(Run${name}
+                    COMMAND_ARGS COMMAND ${target}
+                    DEPENDS ${target}
+                    COMMENT "Run ${name}")
+            endif()
         endif()
     endmacro()
 
