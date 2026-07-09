@@ -671,9 +671,17 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
 
-    if (type == NetProperty::Map) {
-        auto map = entity.dyn_cast<Map>();
-        FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
+    if (type == NetProperty::Map || type == NetProperty::Location) {
+        if (type == NetProperty::Map) {
+            auto map = entity.dyn_cast<Map>();
+            FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
+        }
+        else {
+            auto nullable_loc = entity.dyn_cast<Location>();
+            FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
+            auto loc = nullable_loc.as_ptr();
+            FO_VERIFY_AND_THROW(GetLocation() == loc, "Location callback was invoked for a map outside the location");
+        }
 
         // Pure fan-out to every map critter's player plus the spectators (both resolved lock-free, pinned).
         // Send_Property validates the subject (this map) and reads its data live; the map is in sync here.
@@ -683,7 +691,7 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
             }
         }
 
-        for (refcount_ptr<Player> player : GetSpectatorPlayersForSend()) {
+        for (auto player : GetSpectatorPlayersForSend()) {
             player->Send_Property(type, prop, entity);
         }
     }
