@@ -2519,7 +2519,8 @@ void MapView::DrawMap()
 
             // Tiles
             _engine->OnRenderMap_BeforeTiles.Fire(this, draw_area);
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::PreLight, GetMapDayColor());
+            FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Tile, "Tile effect is null");
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::Tile, DrawOrderType::PreLight, GetMapDayColor(), _engine->EffectMngr.Effects.Tile);
             _engine->OnRenderMap_AfterTiles.Fire(this, draw_area);
 
             // Lighting
@@ -2563,7 +2564,8 @@ void MapView::DrawMap()
 
             // Flat sprites
             _engine->OnRenderMap_BeforeFlatSprites.Fire(this, draw_area);
-            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::AfterLight, DrawOrderType::FlatEnd, GetMapDayColor());
+            FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Flat, "Flat effect is null");
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, false, DrawOrderType::AfterLight, DrawOrderType::FlatEnd, GetMapDayColor(), _engine->EffectMngr.Effects.Flat);
             _engine->OnRenderMap_AfterFlatSprites.Fire(this, draw_area);
 
             // Other sprites, with fog layers interleaved by their draw order
@@ -2592,7 +2594,8 @@ void MapView::DrawMap()
                     if (_rtIndoorMask && !_engine->Settings->DisableIndoorMask) {
                         _engine->SprMngr.GetRtMngr().PushRenderTarget(_rtIndoorMask);
                         _engine->SprMngr.GetRtMngr().ClearCurrentRenderTarget(ucolor::clear);
-                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor());
+                        FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Roof, "Roof effect is null");
+                        _engine->SprMngr.DrawSprites(_indoorMaskSprites, draw_area, false, DrawOrderType::Roof, DrawOrderType::Roof4, GetMapDayColor(), _engine->EffectMngr.Effects.Roof);
                         _engine->SprMngr.GetRtMngr().PopRenderTarget();
                         flush_map->IndoorMaskTex = _rtIndoorMask->GetTexture();
                     }
@@ -2653,44 +2656,60 @@ void MapView::DrawSpritesWithFog(const irect32& draw_area)
     FO_STACK_TRACE_ENTRY();
 
     const ucolor day_color = GetMapDayColor();
-    const auto below_roof = static_cast<DrawOrderType>(static_cast<int32_t>(DrawOrderType::Roof) - 1);
+    FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Flat, "Flat effect is null");
+    FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Generic, "Generic effect is null");
+    FO_VERIFY_AND_THROW(_engine->EffectMngr.Effects.Roof, "Roof effect is null");
+
+    struct SpriteDrawSegment
+    {
+        DrawOrderType From {};
+        DrawOrderType To {};
+        ptr<RenderEffect> Effect;
+    };
+
+    const SpriteDrawSegment sprite_draw_segments[] = {
+        {DrawOrderType::AfterLight, DrawOrderType::FlatEnd, _engine->EffectMngr.Effects.Flat},
+        {DrawOrderType::NormalBegin, DrawOrderType::NormalEnd, _engine->EffectMngr.Effects.Generic},
+        {DrawOrderType::Roof, DrawOrderType::Last, _engine->EffectMngr.Effects.Roof},
+    };
 
     if (_engine->Settings->DisableFog || _mapperMode || !HasFogLayers()) {
-        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Light, below_roof, day_color);
-        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, DrawOrderType::Roof, DrawOrderType::Last, day_color);
+        for (const SpriteDrawSegment& segment : sprite_draw_segments) {
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment.From, segment.To, day_color, segment.Effect);
+        }
+
         return;
     }
 
-    // Fog slots below the main sprite pass (draw order < Light) blit first, at ground level
+    const size_t last_sprite_order = static_cast<size_t>(DrawOrderType::Last);
+
+    // Fog slots below the main sprite pass (draw order < Light) blit first, at ground level.
     for (size_t order = 0; order < static_cast<size_t>(DrawOrderType::Light); order++) {
         DrawFogSlot(draw_area, static_cast<DrawOrderType>(order));
     }
 
-    DrawFoggedSpriteRange(draw_area, DrawOrderType::Light, below_roof, day_color);
-    DrawFoggedSpriteRange(draw_area, DrawOrderType::Roof, DrawOrderType::Last, day_color);
-}
+    for (const SpriteDrawSegment& segment : sprite_draw_segments) {
+        const size_t segment_begin = static_cast<size_t>(segment.From);
+        const size_t segment_end = static_cast<size_t>(segment.To);
+        FO_VERIFY_AND_THROW(segment_begin <= segment_end, "Requested fogged draw-order segment has inverted boundaries", segment.From, segment.To);
+        size_t sprite_segment_begin = segment_begin;
 
-void MapView::DrawFoggedSpriteRange(const irect32& draw_area, DrawOrderType from, DrawOrderType to, ucolor day_color)
-{
-    FO_STACK_TRACE_ENTRY();
+        for (size_t order = segment_begin; order <= segment_end && order < last_sprite_order; order++) {
+            if (_fogs[order].empty()) {
+                continue;
+            }
 
-    // Walk the sprite range [from, to], blitting each occupied fog slot at its draw order so a layer is drawn over
-    // the sprites of its own order and below the sprites of higher orders.
-    DrawOrderType segment_from = from;
+            const DrawOrderType boundary = static_cast<DrawOrderType>(order);
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, static_cast<DrawOrderType>(sprite_segment_begin), boundary, day_color, segment.Effect);
+            DrawFogSlot(draw_area, boundary);
 
-    for (size_t order = static_cast<size_t>(from); order < static_cast<size_t>(to); order++) {
-        if (_fogs[order].empty()) {
-            continue;
+            sprite_segment_begin = order + 1;
         }
 
-        const auto boundary = static_cast<DrawOrderType>(order);
-        _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, boundary, day_color);
-        DrawFogSlot(draw_area, boundary);
-
-        segment_from = static_cast<DrawOrderType>(order + 1);
+        if (sprite_segment_begin <= segment_end) {
+            _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, static_cast<DrawOrderType>(sprite_segment_begin), segment.To, day_color, segment.Effect);
+        }
     }
-
-    _engine->SprMngr.DrawSprites(_mapSprites, draw_area, true, segment_from, to, day_color);
 }
 
 void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)

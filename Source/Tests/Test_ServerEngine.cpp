@@ -1681,7 +1681,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 // ============================================================================
 // Concurrency stress - hammer the lock-free cover computation + verify-after-acquire /
 // retry-if-escaped loop. Many reader threads run independent SyncContexts (Sync a random
-// entity pair, validate, release) while reparenter threads flip entity parents lock-free
+// entity pair, validate, release) while reparenter threads flip entity parents under own-lock
 // via SetParent - the exact race the verify loop is built to tolerate (a concurrent
 // SetParent moving a requested entity out of the just-computed cover). Assertions are
 // timing-INDEPENDENT so the test never flakes: every reader iteration is accounted for
@@ -1838,14 +1838,27 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     std::atomic<int64_t> reparents {0};
 
     const auto reparenter_fn = [&](int32_t tid) {
+        SyncContext ctx;
+        ctx.Activate();
+
         uint64_t step = numeric_cast<uint64_t>(tid);
         while (!stop.load(std::memory_order_relaxed)) {
             for (int32_t i = tid; i < CRITTER_COUNT; i += REPARENTER_THREADS) {
-                critters[numeric_cast<size_t>(i)]->SetParent(targets[(step + numeric_cast<uint64_t>(i)) % 4U]);
-                reparents.fetch_add(1, std::memory_order_relaxed);
+                try {
+                    auto& cr = critters[numeric_cast<size_t>(i)];
+                    ctx.SyncEntity(cr);
+                    cr->SetParent(targets[(step + numeric_cast<uint64_t>(i)) % 4U]);
+                    reparents.fetch_add(1, std::memory_order_relaxed);
+                }
+                catch (const EntitySyncException&) {
+                }
+
+                ctx.Release();
             }
             step++;
         }
+
+        ctx.Deactivate();
     };
 
     const auto reader_fn = [&](int32_t tid) {
@@ -1860,8 +1873,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
             try {
                 ctx.SyncEntities(req);
                 syncs_ok.fetch_add(1, std::memory_order_relaxed);
-                // Drive the single-pass access validator under concurrent lock-free reparenting (now an
-                // out-of-contract adversary — production reparents hold the entity's cover) to confirm it
+                // Drive the single-pass access validator under concurrent reparenting to confirm it
                 // never crashes or reads freed memory; the racing SetParent makes the boolean result
                 // nondeterministic, so it is observed to drive the code path, not asserted.
                 (void)IsEntityAccessValid(req[0]);
@@ -1904,7 +1916,15 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     // Detach the critters so the maps' refcounts drop cleanly before Shutdown.
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
-    for (ptr<Critter> cr : critters) {
+    auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
+    REQUIRE(cleanup_ctx);
+    vector<nptr<ServerEntity>> cleanup_req;
+    cleanup_req.reserve(critters.size());
+    for (const auto& cr : critters) {
+        cleanup_req.emplace_back(cr);
+    }
+    cleanup_ctx->SyncEntities(cleanup_req);
+    for (auto& cr : critters) {
         cr->SetParent(nullptr);
     }
 }
@@ -2309,6 +2329,10 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     // Detach so the map refcount drops cleanly before Shutdown.
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
+    auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
+    REQUIRE(cleanup_ctx);
+    vector<nptr<ServerEntity>> cleanup_req {cr_a, cr_b};
+    cleanup_ctx->SyncEntities(cleanup_req);
     cr_a->SetParent(nullptr);
     cr_b->SetParent(nullptr);
 }

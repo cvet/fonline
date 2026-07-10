@@ -64,6 +64,7 @@ struct EffectBaker::SdlStageSlots
 };
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots;
+static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
 
@@ -248,7 +249,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         const char* vertex_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), vertex_pass_text.get()};
         vert.setStrings(vertex_strings, 6);
         if (!vert.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
-            throw EffectBakerException("Failed to parse vertex shader", fname, pass, vert.getInfoLog());
+            throw EffectBakerException("Failed to parse vertex shader", fname, pass, MakeShaderCompilerInfoLogForMessage(vert.getInfoLog()));
         }
 
         glslang::TShader frag(EShLangFragment);
@@ -260,7 +261,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         const char* fragment_strings[] = {shader_version_text.get(), shader_defines_text.get(), shader_defines_ex_text.get(), shader_defines_ex2_text.get(), shader_common_text.get(), fragment_pass_text.get()};
         frag.setStrings(fragment_strings, 6);
         if (!frag.parse(GetDefaultResources(), shader_version, true, EShMessages::EShMsgDefault)) {
-            throw EffectBakerException("Failed to parse fragment shader", fname, pass, frag.getInfoLog());
+            throw EffectBakerException("Failed to parse fragment shader", fname, pass, MakeShaderCompilerInfoLogForMessage(frag.getInfoLog()));
         }
 
         glslang::TProgram program;
@@ -268,11 +269,11 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
         program.addShader(&frag);
 
         if (!program.link(EShMsgDefault)) {
-            throw EffectBakerException("Failed to link shader program", fname, program.getInfoLog());
+            throw EffectBakerException("Failed to link shader program", fname, MakeShaderCompilerInfoLogForMessage(program.getInfoLog()));
         }
 
         if (!program.buildReflection()) {
-            throw EffectBakerException("Failed to build reflection shader program", fname, program.getInfoLog());
+            throw EffectBakerException("Failed to build reflection shader program", fname, MakeShaderCompilerInfoLogForMessage(program.getInfoLog()));
         }
 
         string program_info;
@@ -664,6 +665,24 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
         binding.msl_buffer = numeric_cast<uint32_t>(i);
         compiler.add_msl_resource_binding(binding);
     }
+}
+
+static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string result = strex(" | ").join(strex(info_log).normalize_line_endings().split('\n'));
+    result = strex(result) //
+                 .replace("ERROR :", "compiler diagnostic:") //
+                 .replace("ERROR:", "compiler diagnostic:") //
+                 .replace("error :", "compiler diagnostic:") //
+                 .replace("error:", "compiler diagnostic:");
+
+    if (result.empty()) {
+        return result;
+    }
+
+    return strex("Shader compiler diagnostic: {}", result);
 }
 
 FO_END_NAMESPACE

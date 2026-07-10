@@ -256,6 +256,28 @@ TEST_CASE("EffectBaker")
         }
     }
 
+    SECTION("ShaderCompilerDiagnosticsStayOnOneLogLine")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Effects/BadVertex.fofx", "[Effect]\n\n[VertexShader]\nvoid main(void) { gl_Position = ; }\n\n[FragmentShader]\nlayout(location = 0) out vec4 FragColor;\nvoid main(void) { FragColor = vec4(1.0); }\n");
+
+        vector<string> captured_messages;
+        SetLogCallback("effect-baker-diagnostic-line-test", [&](LogType, string_view message, nptr<const CatchedStackTraceData>) { captured_messages.emplace_back(message); });
+        const auto remove_callback = scope_exit([]() noexcept { SetLogCallback("effect-baker-diagnostic-line-test", {}); });
+
+        EffectBaker baker {local_rig.MakeContext()};
+        CHECK_THROWS_AS(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), EffectBakerException);
+
+        const auto diagnostic_it = std::ranges::find_if(captured_messages, [](const string& message) { return message.find("Failed to parse vertex shader") != string::npos; });
+        REQUIRE(diagnostic_it != captured_messages.end());
+        CHECK(diagnostic_it->find("\n- error") == string::npos);
+        CHECK(diagnostic_it->find("\n- ERROR") == string::npos);
+        CHECK(diagnostic_it->find("error :") == string::npos);
+        CHECK(diagnostic_it->find("ERROR:") == string::npos);
+        CHECK(diagnostic_it->find("Shader compiler diagnostic:") != string::npos);
+        CHECK(diagnostic_it->find("syntax error") != string::npos);
+    }
+
     SECTION("RejectsMismatchedKnownUniformBuffer")
     {
         TestRig local_rig;

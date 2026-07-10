@@ -3448,8 +3448,8 @@ void ServerEngine::Process_Property(ptr<Player> player)
 
     const auto type = in_buf->Read<NetProperty>();
 
-    ident_t cr_id;
-    ident_t item_id;
+    ident_t cr_id {};
+    ident_t item_id {};
 
     switch (type) {
     case NetProperty::CritterItem:
@@ -3584,7 +3584,8 @@ void ServerEngine::Process_Property(ptr<Player> player)
         throw GenericException("Unknown property index", player->GetName(), type, property_index);
     }
     if (!entity) {
-        throw GenericException("Entity not found for property", player->GetName(), type, property_index, cr_id, item_id);
+        WriteLog(LogType::Info, "Process_Property: stale entity update ignored, player '{}', type {}, property '{}' ({}), cr_id {}, item_id {}", player->GetName(), type, prop->GetName(), property_index, cr_id, item_id);
+        return;
     }
 
     if (prop->IsDisabled()) {

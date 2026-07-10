@@ -1860,14 +1860,6 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<np
     ctx->SyncEntities(non_null);
 }
 
-// SyncScope: requires entity to be already covered by the current scope; adds its own lock without replacing cover.
-///@ ExportMethod
-FO_SCRIPT_API void Server_Game_SyncEnsure(ptr<ServerEngine> server, ptr<ServerEntity> entity)
-{
-    auto ctx = server->RequireCurrentSyncContext();
-    ctx->EnsureEntitySynced(entity);
-}
-
 // SyncScope: releases the full held set — the entity cover AND any singleton Game.Lock entries
 // (SyncContext::Release drains both buckets); a Game.Lock taken before this call needs no Unlock after it.
 ///@ ExportMethod

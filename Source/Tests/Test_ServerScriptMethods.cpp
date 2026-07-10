@@ -2757,12 +2757,6 @@ namespace ScriptMethodsTest
         if (!ContainsEntity(held, cr1)) return -4;
         if (!Game.IsEntityLocked(cr1)) return -5;
 
-        Game.SyncEnsure(cr2);
-        if (!Game.IsEntityLocked(cr2)) return -7;
-
-        held = Game.GetHeldSyncEntities();
-        if (!ContainsEntity(held, cr2)) return -8;
-
         Game.SyncRelease();
         held = Game.GetHeldSyncEntities();
         if (!held.isEmpty()) return -9;
