@@ -536,9 +536,25 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
             new (gen->GetAddressOfReturnLocation()) uint64_t(numeric_cast<uint64_t>(strvex(value).to_int64()));
         }
         else if (type.IsSingleFloat) {
-            new (gen->GetAddressOfReturnLocation()) float32_t(strvex(value).to_float32());
+            if (strvex(value).is_non_finite_number()) {
+                throw ScriptException("String cast to float32 received a non-finite value");
+            }
+
+            // The textual check above misses numeric overflow: a value finite in float64 can still
+            // become infinity when narrowed to float32, so the parsed result is validated too.
+            const float32_t float_value = strvex(value).to_float32();
+
+            if (!std::isfinite(float_value)) {
+                throw ScriptException("String cast to float32 received a non-finite value");
+            }
+
+            new (gen->GetAddressOfReturnLocation()) float32_t(float_value);
         }
         else if (type.IsDoubleFloat) {
+            if (strvex(value).is_non_finite_number()) {
+                throw ScriptException("String cast to float64 received a non-finite value");
+            }
+
             new (gen->GetAddressOfReturnLocation()) float64_t(strvex(value).to_float64());
         }
         else {

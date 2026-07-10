@@ -47,10 +47,6 @@ static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept
 static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
 static auto FindModelBone(nptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
 static auto FindModelBone(nptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
-static auto AddModelBoneChild(ptr<ModelBone> bone, unique_ptr<ModelBone> child) -> ptr<ModelBone>;
-static auto GetModelBoneAttachedMesh(ptr<const ModelBone> bone) noexcept -> nptr<const MeshData>;
-static auto GetModelBoneAttachedMesh(ptr<ModelBone> bone) noexcept -> nptr<MeshData>;
-static void RegisterModelBoneAnimationOutput(ptr<ModelAnimationController> anim_controller, ptr<ModelBone> bone);
 
 ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
@@ -190,7 +186,8 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
     model->_allMeshesDisabled.resize(model_info->_hierarchy->_allDrawBones.size());
 
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto mesh = GetModelBoneAttachedMesh(model_info->_hierarchy->_allDrawBones[i]);
+        auto bone = model_info->_hierarchy->_allDrawBones[i];
+        auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
         const string_view tex_name = mesh->DiffuseTexture;
@@ -2328,7 +2325,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if (unskin_shape_name == bone->Name) {
-                    cut->UnskinShape = CreateCutShape(GetModelBoneAttachedMesh(bone));
+                    auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+                    cut->UnskinShape = CreateCutShape(mesh);
                     unskin_shape_found = true;
                     break;
                 }
@@ -2343,7 +2341,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
-                    cut->Shapes.emplace_back(CreateCutShape(GetModelBoneAttachedMesh(bone)));
+                    auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+                    cut->Shapes.emplace_back(CreateCutShape(mesh));
                     shape_found = true;
                 }
             }
@@ -2418,7 +2417,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
                     if (!child) {
                         auto new_child = SafeAlloc::MakeUnique<ModelBone>();
                         new_child->Name = bone_hierarchy[b];
-                        child = AddModelBoneChild(bone, std::move(new_child));
+                        bone->Children.emplace_back(std::move(new_child));
+                        child = bone->Children.back();
                     }
 
                     bone = child;
@@ -2723,7 +2723,7 @@ static void SetupAnimationOutputExt(ptr<ModelAnimationController> anim_controlle
 {
     FO_STACK_TRACE_ENTRY();
 
-    RegisterModelBoneAnimationOutput(anim_controller, bone);
+    anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 
     for (size_t i = 0; i != bone->Children.size(); ++i) {
         SetupAnimationOutputExt(anim_controller, bone->Children[i]);
@@ -2833,35 +2833,6 @@ static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver) -> un
 
     bone->CombinedTransformationMatrix = mat44();
     return bone;
-}
-
-static auto AddModelBoneChild(ptr<ModelBone> bone, unique_ptr<ModelBone> child) -> ptr<ModelBone>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    bone->Children.emplace_back(std::move(child));
-    return bone->Children.back();
-}
-
-static auto GetModelBoneAttachedMesh(ptr<const ModelBone> bone) noexcept -> nptr<const MeshData>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
-}
-
-static auto GetModelBoneAttachedMesh(ptr<ModelBone> bone) noexcept -> nptr<MeshData>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
-}
-
-static void RegisterModelBoneAnimationOutput(ptr<ModelAnimationController> anim_controller, ptr<ModelBone> bone)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 }
 
 // ReSharper disable once CppMemberFunctionMayBeConst

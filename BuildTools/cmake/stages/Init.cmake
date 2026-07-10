@@ -432,7 +432,8 @@ if(WIN32)
 		/volatile:iso
 		/GR
 		/bigobj
-		/fp:fast
+		$<${expr_FullOptimization}:/fp:fast>
+		$<$<NOT:${expr_FullOptimization}>:/fp:precise>
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
 

@@ -560,17 +560,6 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _curLang = TextPack {&Hashes};
     _curLang.LoadFromResources(Resources, Settings->Language);
 
-    // Fonts
-    FontMngr.BindFoFont(FONT_FO, "Fonts/OldDefault.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_NUM, "Fonts/Numbers.fofnt", AtlasType::IfaceSprites, true, true);
-    FontMngr.BindFoFont(FONT_BIG_NUM, "Fonts/BigNumbers.fofnt", AtlasType::IfaceSprites, true, true);
-    FontMngr.BindFoFont(FONT_SAND_NUM, "Fonts/SandNumbers.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_SPECIAL, "Fonts/Special.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_OLD_DEFAULT, "Fonts/Default.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_THIN, "Fonts/Thin.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_FAT, "Fonts/Fat.fofnt", AtlasType::IfaceSprites, false, true);
-    FontMngr.BindFoFont(FONT_BIG, "Fonts/Big.fofnt", AtlasType::IfaceSprites, false, true);
-
     SprMngr.BeginScene();
     SprMngr.EndScene();
 
@@ -2596,8 +2585,6 @@ void MapperEngine::DrawContentWindowImGui()
     else if (ActivePanelMode == INT_MODE_MESS) {
         if (ImGui::Button("Clear")) {
             MessBox.clear();
-            MessBoxCurText.clear();
-            MessBoxScroll = 0;
         }
 
         ImGui::SameLine();
@@ -5977,13 +5964,6 @@ void MapperEngine::DrawHistoryWindowImGui()
     ImGui::End();
 }
 
-void MapperEngine::DrawStr(const irect32& rect, string_view str, ucolor color, TextFormat format)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FontMngr.DrawText(rect, str, color, format);
-}
-
 void MapperEngine::CurDraw()
 {
     FO_STACK_TRACE_ENTRY();
@@ -6979,44 +6959,6 @@ void MapperEngine::AddMess(string_view message_text)
     const string mess_time = strex("{:02}:{:02}:{:02} ", time.hour, time.minute, time.second);
 
     MessBox.emplace_back(MessBoxMessage {.Type = 0, .Mess = str, .Time = mess_time});
-    MessBoxScroll = 0;
-    MessBoxCurText = "";
-
-    const irect32 ir(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height);
-    int32_t max_lines = ir.height / 10;
-
-    if (ir == irect32()) {
-        max_lines = 20;
-    }
-
-    int32_t cur_mess = numeric_cast<int32_t>(MessBox.size()) - 1;
-
-    for (int32_t i = 0, j = 0; cur_mess >= 0; cur_mess--) {
-        MessBoxMessage& m = MessBox[cur_mess];
-
-        // Scroll
-        if (++j <= MessBoxScroll) {
-            continue;
-        }
-
-        // Add to message box
-        MessBoxCurText = m.Mess + MessBoxCurText;
-
-        if (++i >= max_lines) {
-            break;
-        }
-    }
-}
-
-void MapperEngine::MessBoxDraw()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (MessBoxCurText.empty()) {
-        return;
-    }
-
-    DrawStr(irect32(MainPanelContentRect.x + MainPanelPos.x, MainPanelContentRect.y + MainPanelPos.y, MainPanelContentRect.width, MainPanelContentRect.height), MessBoxCurText, Color::TextWhite, TextFormat {.Font = FONT_OLD_DEFAULT, .Flags = CombineEnum(FontFlag::KeepTail, FontFlag::AlignBottom)});
 }
 
 auto MapperEngine::GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector<refcount_ptr<ItemView>>

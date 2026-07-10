@@ -55,6 +55,7 @@
 #include <any>
 #include <array>
 #include <atomic>
+#include <bit>
 #include <cassert>
 #include <cctype>
 #include <cfloat>

@@ -49,23 +49,70 @@ static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) no
         return false;
     }
 
-    // Unaligned reads: compared spans may point into serialized payloads, not only into aligned property storage
     switch (left.size()) {
     case 0:
         return true;
     case 1:
         return left[0] == right[0];
     case 2: {
-        return MemReadUnaligned<uint16_t>(left.data()) == MemReadUnaligned<uint16_t>(right.data());
+        const ptr<const uint8_t> left_ptr = left.data();
+        const ptr<const uint8_t> right_ptr = right.data();
+        return *left_ptr.reinterpret_as<uint16_t>() == *right_ptr.reinterpret_as<uint16_t>();
     }
     case 4: {
-        return MemReadUnaligned<uint32_t>(left.data()) == MemReadUnaligned<uint32_t>(right.data());
+        const ptr<const uint8_t> left_ptr = left.data();
+        const ptr<const uint8_t> right_ptr = right.data();
+        return *left_ptr.reinterpret_as<uint32_t>() == *right_ptr.reinterpret_as<uint32_t>();
     }
     case 8: {
-        return MemReadUnaligned<uint64_t>(left.data()) == MemReadUnaligned<uint64_t>(right.data());
+        const ptr<const uint8_t> left_ptr = left.data();
+        const ptr<const uint8_t> right_ptr = right.data();
+        return *left_ptr.reinterpret_as<uint64_t>() == *right_ptr.reinterpret_as<uint64_t>();
     }
     default:
         return MemCompare(left.data(), right.data(), left.size());
+    }
+}
+
+static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (base_type.IsFloat) {
+        return true;
+    }
+    if (base_type.IsEnum) {
+        return false;
+    }
+    if (base_type.IsStruct) {
+        return std::ranges::any_of(base_type.StructLayout->Fields, [](const FieldDesc& field) noexcept { return BaseTypeContainsFloat(field.Type); });
+    }
+
+    return false;
+}
+
+static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Property raw data size does not match base type", prop_name, base_type.Name, raw_data.size(), base_type.Size);
+
+    if (base_type.IsSingleFloat) {
+        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const float32_t value = *raw_data_ptr.reinterpret_as<float32_t>();
+
+        FO_VERIFY_AND_THROW(std::isfinite(value), "Property float32 value must be finite", prop_name, value);
+    }
+    else if (base_type.IsDoubleFloat) {
+        const ptr<const uint8_t> raw_data_ptr = raw_data.data();
+        const float64_t value = *raw_data_ptr.reinterpret_as<float64_t>();
+
+        FO_VERIFY_AND_THROW(std::isfinite(value), "Property float64 value must be finite", prop_name, value);
+    }
+    else if (base_type.IsStruct) {
+        for (const FieldDesc& field : base_type.StructLayout->Fields) {
+            ValidateFiniteRawBaseTypeValue(prop_name, field.Type, raw_data.subspan(field.Offset, field.Type.Size));
+        }
     }
 }
 
@@ -1679,6 +1726,7 @@ void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& pro
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
+    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
@@ -1693,6 +1741,9 @@ void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& pro
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
+
+            // Setters can rewrite the raw payload, so the mutated data must pass validation again
+            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
@@ -1932,11 +1983,15 @@ void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& v
         SetValue<bool>(prop, strvex(value).to_bool());
     }
     else if (base_type.IsFloat) {
+        const auto str_value = strvex(value);
+
+        FO_VERIFY_AND_THROW(str_value.is_number(), "Invalid float property value", prop->GetName(), value);
+
         if (base_type.IsSingleFloat) {
-            SetValue<float32_t>(prop, strvex(value).to_float32());
+            SetValue<float32_t>(prop, str_value.to_float32());
         }
         else if (base_type.IsDoubleFloat) {
-            SetValue<float64_t>(prop, strvex(value).to_float64());
+            SetValue<float64_t>(prop, str_value.to_float64());
         }
     }
     else if (base_type.IsInt && base_type.IsSignedInt) {
@@ -2170,6 +2225,7 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
+    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual() && prop->_setters.empty()) {
         throw PropertiesException("Setter not set");
@@ -2188,6 +2244,11 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     }
 
     if (!prop->IsVirtual()) {
+        if (!prop->_setters.empty()) {
+            // Setters can rewrite the raw payload, so the mutated data must pass validation again
+            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+        }
+
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
         if (!prop->_postSetters.empty()) {
@@ -2195,6 +2256,36 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
                 setter(_entity, prop);
             }
         }
+    }
+}
+
+void Properties::ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (raw_data.empty()) {
+        return;
+    }
+    if (!prop->_containsFloat) {
+        return;
+    }
+
+    const BaseTypeDesc& base_type = prop->GetBaseType();
+
+    if (prop->IsPlainData()) {
+        ValidateFiniteRawBaseTypeValue(prop->GetName(), base_type, raw_data);
+    }
+    else if (prop->IsArray() && !prop->IsArrayOfString() && !base_type.IsRefType) {
+        FO_VERIFY_AND_THROW(base_type.Size != 0, "Float array property has zero-sized base type", prop->GetName(), base_type.Name);
+        FO_VERIFY_AND_THROW(raw_data.size() % base_type.Size == 0, "Float array property raw data size is not aligned to base type", prop->GetName(), raw_data.size(), base_type.Size);
+
+        for (size_t data_pos = 0; data_pos < raw_data.size(); data_pos += base_type.Size) {
+            ValidateFiniteRawBaseTypeValue(prop->GetName(), base_type, raw_data.subspan(data_pos, base_type.Size));
+        }
+    }
+    else if (prop->IsDict() && !prop->IsVirtual()) {
+        auto registrator = prop->GetRegistrator();
+        (void)PropertiesSerializator::SavePropertyToValue(prop, raw_data, *registrator->GetHashResolver(), *registrator->GetNameResolver());
     }
 }
 
@@ -2335,6 +2426,9 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             prop->_isPlainData = true;
         }
     }
+
+    // Cached once so per-write finite validation does not re-walk the type tree
+    prop->_containsFloat = BaseTypeContainsFloat(prop->_baseType) || (prop->_isDict && BaseTypeContainsFloat(prop->_dictKeyType));
 
     // Raw data alignment (see the layout contract in Properties.h): the strictest alignment used
     // inside the property raw data, so an aligned blob start keeps every interior item aligned

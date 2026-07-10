@@ -349,6 +349,34 @@ static auto ReadCursorValue(RawReadCursor& cursor) -> T
     return ReadRawValue<T>(ReadCursorBytes(cursor, sizeof(T)));
 }
 
+template<typename T>
+static auto ReadFiniteRawFloat(span<const uint8_t> data, string_view type_name) -> T
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const T value = ReadRawValue<T>(data);
+
+    if (!std::isfinite(value)) {
+        throw PropertySerializationException("Numeric value is not finite", type_name, value);
+    }
+
+    return value;
+}
+
+template<typename T>
+static auto ReadFiniteCursorFloat(RawReadCursor& cursor, string_view type_name) -> T
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const T value = ReadCursorValue<T>(cursor);
+
+    if (!std::isfinite(value)) {
+        throw PropertySerializationException("Numeric value is not finite", type_name, value);
+    }
+
+    return value;
+}
+
 static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
@@ -934,10 +962,10 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
         result += strex("{}", ReadCursorValue<uint32_t>(cursor));
     }
     else if (primitive_type.IsSingleFloat) {
-        result += strex("{:f}", ReadCursorValue<float32_t>(cursor)).rtrim("0").rtrim(".");
+        result += strex("{:f}", ReadFiniteCursorFloat<float32_t>(cursor, primitive_type.Name)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsDoubleFloat) {
-        result += strex("{:f}", ReadCursorValue<float64_t>(cursor)).rtrim("0").rtrim(".");
+        result += strex("{:f}", ReadFiniteCursorFloat<float64_t>(cursor, primitive_type.Name)).rtrim("0").rtrim(".");
     }
     else if (primitive_type.IsBool) {
         result += ReadCursorValue<bool>(cursor) ? "True" : "False";
@@ -1043,11 +1071,11 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         else if (primitive_type.IsUInt32) {
             return numeric_cast<int64_t>(ReadCursorValue<uint32_t>(cursor));
         }
-        else if (primitive_type.IsFloat) {
-            return numeric_cast<float64_t>(ReadCursorValue<float32_t>(cursor));
+        else if (primitive_type.IsSingleFloat) {
+            return numeric_cast<float64_t>(ReadFiniteCursorFloat<float32_t>(cursor, primitive_type.Name));
         }
         else if (primitive_type.IsDoubleFloat) {
-            return numeric_cast<float64_t>(ReadCursorValue<float64_t>(cursor));
+            return numeric_cast<float64_t>(ReadFiniteCursorFloat<float64_t>(cursor, primitive_type.Name));
         }
         else if (primitive_type.IsBool) {
             return ReadCursorValue<bool>(cursor);
@@ -1451,10 +1479,10 @@ auto PropertiesSerializator::SavePropertyToValue(ptr<const Property> prop, span<
                     return strex("{}", ReadRawValue<uint32_t>(key_data.first(sizeof(uint32_t))));
                 }
                 else if (dict_key_type->IsSingleFloat) {
-                    return strex("{}", ReadRawValue<float32_t>(key_data.first(sizeof(float32_t))));
+                    return strex("{}", ReadFiniteRawFloat<float32_t>(key_data.first(sizeof(float32_t)), dict_key_type->Name));
                 }
                 else if (dict_key_type->IsDoubleFloat) {
-                    return strex("{}", ReadRawValue<float64_t>(key_data.first(sizeof(float64_t))));
+                    return strex("{}", ReadFiniteRawFloat<float64_t>(key_data.first(sizeof(float64_t)), dict_key_type->Name));
                 }
                 else if (dict_key_type->IsBool) {
                     return ReadRawValue<bool>(key_data.first(sizeof(bool))) ? "True" : "False";
@@ -1575,6 +1603,9 @@ static auto ConvertToString(const AnyData::Value& value, string& buf) -> string_
     case AnyData::ValueType::Int64:
         return buf = strex("{}", value.AsInt64());
     case AnyData::ValueType::Float64:
+        if (!std::isfinite(value.AsDouble())) {
+            throw PropertySerializationException("Numeric value is not finite", value.AsDouble());
+        }
         return buf = strex("{}", value.AsDouble());
     case AnyData::ValueType::Bool:
         return buf = strex("{}", value.AsBool());

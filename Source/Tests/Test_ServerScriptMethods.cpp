@@ -1943,6 +1943,27 @@ namespace ScriptMethodsTest
         Game.DbUpdateRecordString("test_collection".hstr(), intId, "Name", value);
     }
 
+    void TestDatabaseUpdateNonFiniteFloatThrows()
+    {
+        ident intId;
+        intId.value = 1234534;
+
+        Game.DbInsertRecord("test_collection".hstr(), intId, {{"Name", "Alpha"}});
+
+        float value = 1000000.0;
+        value *= value;
+        value *= value;
+        value *= value;
+        Game.DbUpdateRecordFloat64("test_collection".hstr(), intId, "Ratio", value);
+    }
+
+    void TestAnyCastFloat32OverflowThrows()
+    {
+        any value = "1e39";
+        float converted = value;
+        value = converted;
+    }
+
     void TestDatabaseUpdateEmptyStringCollectionThrows()
     {
         hstring collection;
@@ -3524,6 +3545,8 @@ TEST_CASE("ServerMiscScriptOperations")
         run_throwing_func("ScriptMethodsTest::TestDatabaseInsertInvalidStringValueEncodingThrows", "Record value has invalid encoding");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidKeyEncodingThrows", "Record key has invalid encoding");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateInvalidValueEncodingThrows", "Record value has invalid encoding");
+        run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateNonFiniteFloatThrows", "Record float value is not finite");
+        run_throwing_func("ScriptMethodsTest::TestAnyCastFloat32OverflowThrows", "Invalid cast from any (floating point value is not finite)");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateEmptyStringCollectionThrows", "Collection name arg is empty");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateMissingStringRecordThrows", "Record not found");
         run_throwing_func("ScriptMethodsTest::TestDatabaseUpdateEmptyStringKeyThrows", "Record key is empty");

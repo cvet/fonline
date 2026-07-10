@@ -893,7 +893,7 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
             auto parse_begin = make_nptr(parse_sv.data());
             ptr<const char> parse_end = parse_begin.offset(parse_sv.size());
             const auto result = std::from_chars(parse_begin.get(), parse_end.get(), value);
-            return result.ec == std::errc() && parse_end == result.ptr;
+            return result.ec == std::errc() && parse_end == result.ptr && std::isfinite(value);
         }
     }
 }
@@ -911,6 +911,31 @@ auto strvex::is_number() const noexcept -> bool
     ignore_unused(value);
 
     return success;
+}
+
+auto strvex::is_non_finite_number() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    string_view parse_sv = strvex(_sv).trim();
+
+    if (parse_sv.empty()) {
+        return false;
+    }
+    if (parse_sv.front() == '+' || parse_sv.front() == '-') {
+        parse_sv.remove_prefix(1);
+    }
+    if (parse_sv.empty()) {
+        return false;
+    }
+    if (parse_sv.size() > 3 && parse_sv.back() == 'f') {
+        parse_sv.remove_suffix(1);
+    }
+    if (strvex(parse_sv).compare_ignore_case("inf") || strvex(parse_sv).compare_ignore_case("infinity") || strvex(parse_sv).compare_ignore_case("nan")) {
+        return true;
+    }
+
+    return parse_sv.size() > 4 && strvex(parse_sv.substr(0, 4)).compare_ignore_case("nan(") && parse_sv.back() == ')';
 }
 
 auto strvex::is_explicit_bool() const noexcept -> bool

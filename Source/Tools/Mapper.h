@@ -134,15 +134,6 @@ public:
         string Time {};
     };
 
-    static constexpr auto FONT_FO = static_cast<FontType>(0);
-    static constexpr auto FONT_NUM = static_cast<FontType>(1);
-    static constexpr auto FONT_BIG_NUM = static_cast<FontType>(2);
-    static constexpr auto FONT_SAND_NUM = static_cast<FontType>(3);
-    static constexpr auto FONT_SPECIAL = static_cast<FontType>(4);
-    static constexpr auto FONT_OLD_DEFAULT = static_cast<FontType>(5);
-    static constexpr auto FONT_THIN = static_cast<FontType>(6);
-    static constexpr auto FONT_FAT = static_cast<FontType>(7);
-    static constexpr auto FONT_BIG = static_cast<FontType>(8);
     static constexpr auto CUR_MODE_DEFAULT = 0;
     static constexpr auto CUR_MODE_MOVE_SELECTION = 1;
     static constexpr auto CUR_MODE_PLACE_OBJECT = 2;
@@ -200,7 +191,6 @@ public:
     void UpdateArrowScrollKeys(KeyCode dikdw, KeyCode dikup);
     void HandleMapperConsoleKeyDown(KeyCode dikdw, string_view key_text);
     void ChangeZoom(float32_t new_zoom);
-    void DrawStr(const irect32& rect, string_view str, ucolor color, TextFormat format);
 
     void CurDraw();
     void CurRMouseUp();
@@ -309,7 +299,6 @@ public:
     void ResizeMap(ptr<MapView> map, int32_t width, int32_t height);
 
     void AddMess(string_view message_text);
-    void MessBoxDraw();
 
     auto GetEntityInnerItems(ptr<ClientEntity> entity) const -> vector<refcount_ptr<ItemView>>;
     void CaptureEntityBuf(EntityBuf& entity_buf, ptr<ClientEntity> entity) const;
@@ -433,8 +422,6 @@ public:
     vector<string> ConsoleHistory {};
     int32_t ConsoleHistoryCur {};
     vector<MessBoxMessage> MessBox {};
-    string MessBoxCurText {};
-    int32_t MessBoxScroll {};
     nptr<MapView> LastHistoryMap {};
     int32_t LastHistoryUndoCount {-1};
     bool UndoRedoInProgress {};

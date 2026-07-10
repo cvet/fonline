@@ -131,13 +131,41 @@ void FontManager::BuildFont(int32_t index)
 
     auto font = make_ptr(&*_allFonts[index]);
 
-    // Fix texture coordinates
     auto atlas_spr = font->ImageNormal;
     FO_VERIFY_AND_THROW(atlas_spr, "Atlas sprite is null");
     auto tex_w = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().width);
     auto tex_h = numeric_cast<float32_t>(atlas_spr->GetAtlas()->GetSize().height);
     auto image_x = tex_w * atlas_spr->GetAtlasRect().x;
     auto image_y = tex_h * atlas_spr->GetAtlasRect().y;
+
+    const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
+    const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
+    const auto bordered_ox = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width) * font->ImageBordered->GetAtlasRect().x) : 0;
+    const auto bordered_oy = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height) * font->ImageBordered->GetAtlasRect().y) : 0;
+
+    // Read texture data
+    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return make_ptr(&tex_data[y * width + x]); };
+    vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
+    vector<ucolor> data_bordered;
+
+    if (font->ImageBordered) {
+        data_bordered = font->ImageBordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, font->ImageBordered->GetSize());
+    }
+
+    // Bake the bound scale: downscale glyph bitmaps in place and round every metric to integers at
+    // the target size, so the whole text pipeline keeps working in plain unscaled integer coordinates
+    const bool scale_baked = font->BakeScale != 1.0f;
+
+    if (scale_baked) {
+        BakeFontScale(*font, data_normal, atlas_spr->GetSize());
+
+        // The bordered sheet is a second copy of the same image; border pixels are dilated over it below
+        if (font->ImageBordered) {
+            data_bordered = data_normal;
+        }
+    }
+
+    // Fix texture coordinates
     auto max_h = 0;
 
     for (auto& letter : font->Letters | std::views::values) {
@@ -170,20 +198,6 @@ void FontManager::BuildFont(int32_t index)
         font->FontTexBordered = font->ImageBordered->GetAtlas()->GetTexture();
     }
 
-    const auto normal_ox = iround<int32_t>(tex_w * atlas_spr->GetAtlasRect().x);
-    const auto normal_oy = iround<int32_t>(tex_h * atlas_spr->GetAtlasRect().y);
-    const auto bordered_ox = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().width) * font->ImageBordered->GetAtlasRect().x) : 0;
-    const auto bordered_oy = font->ImageBordered ? iround<int32_t>(numeric_cast<float32_t>(font->ImageBordered->GetAtlas()->GetSize().height) * font->ImageBordered->GetAtlasRect().y) : 0;
-
-    // Read texture data
-    const auto pixel_at = [](vector<ucolor>& tex_data, int32_t width, int32_t x, int32_t y) -> ptr<ucolor> { return make_ptr(&tex_data[y * width + x]); };
-    vector<ucolor> data_normal = atlas_spr->GetAtlas()->GetTexture()->GetTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize());
-    vector<ucolor> data_bordered;
-
-    if (font->ImageBordered) {
-        data_bordered = font->ImageBordered->GetAtlas()->GetTexture()->GetTextureRegion({bordered_ox, bordered_oy}, font->ImageBordered->GetSize());
-    }
-
     // Normalize color to gray
     if (font->MakeGray) {
         for (auto y = 0; y < atlas_spr->GetSize().height; y++) {
@@ -206,7 +220,9 @@ void FontManager::BuildFont(int32_t index)
                 }
             }
         }
+    }
 
+    if (font->MakeGray || scale_baked) {
         atlas_spr->GetAtlas()->GetTexture()->UpdateTextureRegion({normal_ox, normal_oy}, atlas_spr->GetSize(), data_normal);
     }
 
@@ -250,7 +266,123 @@ void FontManager::BuildFont(int32_t index)
     }
 }
 
-void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded)
+void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const float32_t scale = font.BakeScale;
+    const auto scale_value = [scale](int32_t value) -> int32_t { return iround<int32_t>(numeric_cast<float32_t>(value) * scale); };
+
+    for (auto& letter : font.Letters | std::views::values) {
+        letter.Offset.x = scale_value(letter.Offset.x);
+        letter.Offset.y = scale_value(letter.Offset.y);
+        letter.XAdvance = scale_value(letter.XAdvance);
+
+        const int32_t src_w = letter.Size.width;
+        const int32_t src_h = letter.Size.height;
+
+        if (src_w <= 0 || src_h <= 0) {
+            continue;
+        }
+
+        FO_VERIFY_AND_THROW(letter.Pos.x >= 0 && letter.Pos.y >= 0 && letter.Pos.x + src_w <= sheet_size.width && letter.Pos.y + src_h <= sheet_size.height, "Font letter rect is out of the font image bounds", letter.Pos.x, letter.Pos.y, src_w, src_h, sheet_size);
+
+        const int32_t dst_w = std::max(scale_value(src_w), 1);
+        const int32_t dst_h = std::max(scale_value(src_h), 1);
+
+        // Area-average resample with alpha-weighted color, so antialiased glyph edges keep their tone.
+        // Sampling stays inside the letter rect, so tightly packed neighbor glyphs never bleed in.
+        vector<ucolor> scaled_pixels(numeric_cast<size_t>(dst_w) * numeric_cast<size_t>(dst_h));
+        const float32_t x_ratio = numeric_cast<float32_t>(src_w) / numeric_cast<float32_t>(dst_w);
+        const float32_t y_ratio = numeric_cast<float32_t>(src_h) / numeric_cast<float32_t>(dst_h);
+
+        for (int32_t dy = 0; dy < dst_h; dy++) {
+            for (int32_t dx = 0; dx < dst_w; dx++) {
+                const float32_t sx_begin = x_ratio * numeric_cast<float32_t>(dx);
+                const float32_t sx_end = x_ratio * numeric_cast<float32_t>(dx + 1);
+                const float32_t sy_begin = y_ratio * numeric_cast<float32_t>(dy);
+                const float32_t sy_end = y_ratio * numeric_cast<float32_t>(dy + 1);
+
+                float32_t weight_sum = 0.0f;
+                float32_t alpha_sum = 0.0f;
+                float32_t red_sum = 0.0f;
+                float32_t green_sum = 0.0f;
+                float32_t blue_sum = 0.0f;
+
+                for (int32_t sy = iround<int32_t>(std::floor(sy_begin)); sy < src_h; sy++) {
+                    const float32_t cover_y = std::min(numeric_cast<float32_t>(sy + 1), sy_end) - std::max(numeric_cast<float32_t>(sy), sy_begin);
+
+                    if (cover_y <= 0.0f) {
+                        break;
+                    }
+
+                    for (int32_t sx = iround<int32_t>(std::floor(sx_begin)); sx < src_w; sx++) {
+                        const float32_t cover_x = std::min(numeric_cast<float32_t>(sx + 1), sx_end) - std::max(numeric_cast<float32_t>(sx), sx_begin);
+
+                        if (cover_x <= 0.0f) {
+                            break;
+                        }
+
+                        const float32_t weight = cover_x * cover_y;
+                        const ucolor src_pixel = sheet_data[numeric_cast<size_t>(letter.Pos.y + sy) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x + sx)];
+                        const float32_t alpha_weight = numeric_cast<float32_t>(src_pixel.comp.a) * weight;
+
+                        weight_sum += weight;
+                        alpha_sum += alpha_weight;
+                        red_sum += numeric_cast<float32_t>(src_pixel.comp.r) * alpha_weight;
+                        green_sum += numeric_cast<float32_t>(src_pixel.comp.g) * alpha_weight;
+                        blue_sum += numeric_cast<float32_t>(src_pixel.comp.b) * alpha_weight;
+                    }
+                }
+
+                ucolor& dst_pixel = scaled_pixels[numeric_cast<size_t>(dy) * numeric_cast<size_t>(dst_w) + numeric_cast<size_t>(dx)];
+
+                if (alpha_sum > 0.0f && weight_sum > 0.0f) {
+                    dst_pixel.comp.r = iround<uint8_t>(std::min(red_sum / alpha_sum, 255.0f));
+                    dst_pixel.comp.g = iround<uint8_t>(std::min(green_sum / alpha_sum, 255.0f));
+                    dst_pixel.comp.b = iround<uint8_t>(std::min(blue_sum / alpha_sum, 255.0f));
+                    dst_pixel.comp.a = iround<uint8_t>(std::min(alpha_sum / weight_sum, 255.0f));
+                }
+                else {
+                    dst_pixel = ucolor::clear;
+                }
+            }
+        }
+
+        // Clear the original rect, then place the scaled glyph at the same top-left corner: the freed
+        // space only widens the transparent gap around every neighbor glyph
+        for (int32_t y = 0; y < src_h; y++) {
+            const size_t row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
+            std::fill_n(sheet_data.begin() + numeric_cast<ptrdiff_t>(row_begin), src_w, ucolor::clear);
+        }
+        for (int32_t y = 0; y < dst_h; y++) {
+            const size_t dst_row_begin = numeric_cast<size_t>(letter.Pos.y + y) * numeric_cast<size_t>(sheet_size.width) + numeric_cast<size_t>(letter.Pos.x);
+            const size_t src_row_begin = numeric_cast<size_t>(y) * numeric_cast<size_t>(dst_w);
+            std::copy_n(scaled_pixels.begin() + numeric_cast<ptrdiff_t>(src_row_begin), dst_w, sheet_data.begin() + numeric_cast<ptrdiff_t>(dst_row_begin));
+        }
+
+        letter.Size = {dst_w, dst_h};
+    }
+
+    if (font.LineHeight != 0) {
+        font.LineHeight = std::max(scale_value(font.LineHeight), 1);
+    }
+    if (font.SpaceWidth != 0) {
+        font.SpaceWidth = std::max(scale_value(font.SpaceWidth), 1);
+    }
+
+    font.YAdvance = scale_value(font.YAdvance);
+}
+
+auto FontManager::ResolveFontScale(float32_t scale) -> float32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(std::isfinite(scale) && scale > 0.0f && scale <= 1.0f, "Font scale must be in range (0..1] - author a bigger font asset for larger text", scale);
+    return scale;
+}
+
+void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -271,6 +403,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
     FontData font_data;
     font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
+    font_data.BakeScale = ResolveFontScale(default_scale);
 
     string image_name;
 
@@ -411,7 +544,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
     StoreFont(index, std::move(font_data));
 }
 
-void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type)
+void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -420,6 +553,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
     FontData font_data;
     font_data.DrawEffect = _sprMngr->_effectMngr->Effects.Font;
+    font_data.BakeScale = ResolveFontScale(default_scale);
 
     const auto file = _sprMngr->_resources->ReadFile(font_path);
 
@@ -1232,7 +1366,9 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
         return size.height / (font->LineHeight + font->YAdvance);
     }
 
-    auto fi = GetOrFormat(TextFormat {}, num_font, irect32 {0, 0, size.width, size.height}, ucolor {}, FormatMode::LineCount, str);
+    TextFormat format;
+    format.Font = num_font;
+    auto fi = GetOrFormat(format, num_font, irect32 {0, 0, size.width, size.height}, ucolor {}, FormatMode::LineCount, str);
     return fi->LinesInRect;
 }
 
@@ -1290,7 +1426,9 @@ auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) 
         return {};
     }
 
-    auto fi = GetOrFormat(TextFormat {}, num_font, rect, ucolor {}, FormatMode::Split, cstr);
+    TextFormat format;
+    format.Font = num_font;
+    auto fi = GetOrFormat(format, num_font, rect, ucolor {}, FormatMode::Split, cstr);
     return fi->Lines;
 }
 

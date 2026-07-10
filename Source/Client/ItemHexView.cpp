@@ -114,7 +114,7 @@ void ItemHexView::Process()
             _isMoving = false;
         }
 
-        const auto proc = iround<int32_t>(dist / _moveWholeDist * 100.0f);
+        const auto proc = _moveWholeDist > 0.0f ? iround<int32_t>(dist / _moveWholeDist * 100.0f) : 100;
         const auto step_hex = _moveSteps[_moveSteps.size() * std::min(proc, 99) / 100];
 
         if (const auto hex = GetHex(); hex != step_hex) {

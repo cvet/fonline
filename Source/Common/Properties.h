@@ -261,6 +261,7 @@ private:
     bool _isHistorical {};
     bool _isNullGetterForProto {};
     bool _isNullable {};
+    bool _containsFloat {};
     uint16_t _regIndex {};
     size_t _dataAlignment {1};
     optional<size_t> _podDataOffset {};
@@ -409,6 +410,7 @@ private:
     void ReleaseOverlayEntryIndex() noexcept;
     auto MakeOverlayPackOrder() const noexcept -> vector<size_t>;
     auto IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool;
+    static void ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data);
 
     ptr<const PropertyRegistrator> _registrator;
     nptr<const Properties> _baseProps {};
@@ -803,6 +805,9 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
     FO_VERIFY_AND_THROW(prop->IsMutable() || prop->IsCoreProperty(), "Property must be mutable or core before raw data update");
 
+    const auto new_value_ptr = make_ptr(&new_value);
+    ValidateFiniteRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
+
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
         FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual property has no setter while assigning a plain value", prop->GetName(), sizeof(T));
@@ -837,10 +842,10 @@ void Properties::SetValue(ptr<const Property> prop, T new_value)
                     setter(_entity, prop, prop_data);
                 }
 
+                ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
                 SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
             }
             else {
-                const auto new_value_ptr = make_ptr(&new_value);
                 SetRawData(prop, {new_value_ptr.template reinterpret_as<uint8_t>().get(), sizeof(T)});
             }
 
@@ -1021,6 +1026,8 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
         }
     }
 
+    ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
+
     if (prop->IsVirtual()) {
         FO_VERIFY_AND_THROW(_entity, "Missing entity instance");
         FO_VERIFY_AND_THROW(!prop->_setters.empty(), "Virtual array property has no setter while assigning an array value", prop->GetName(), new_value.size());
@@ -1036,6 +1043,9 @@ void Properties::SetValue(ptr<const Property> prop, const vector<T>& new_value)
             for (const auto& setter : prop->_setters) {
                 setter(_entity, prop, prop_data);
             }
+
+            // Setters can rewrite the raw payload, so the mutated data must pass validation again
+            ValidateFiniteRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
         }
 
         SetRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});

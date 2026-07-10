@@ -263,7 +263,16 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
             v = numeric_cast<T>(strvex(tokens[index]).to_int64());
         }
         else if constexpr (std::is_floating_point_v<T>) {
+            if (strvex(tokens[index]).is_non_finite_number()) {
+                throw ScriptException("Invalid cast to any (floating point value is not finite)");
+            }
+
+            // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
             v = numeric_cast<T>(strvex(tokens[index]).to_float64());
+
+            if (!std::isfinite(v)) {
+                throw ScriptException("Invalid cast to any (floating point value is not finite)");
+            }
         }
         else if constexpr (std::is_same_v<T, hstring>) {
             v = meta->Hashes.ToHashedString(tokens[index]);
@@ -637,7 +646,18 @@ static auto Any_Conv(const any_t& self) -> T
         return numeric_cast<T>(strvex(self).to_int64());
     }
     else if constexpr (std::floating_point<T>) {
-        return numeric_cast<T>(strvex(self).to_float64());
+        if (strvex(self).is_non_finite_number()) {
+            throw ScriptException("Invalid cast from any (floating point value is not finite)");
+        }
+
+        // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
+        const T converted_value = numeric_cast<T>(strvex(self).to_float64());
+
+        if (!std::isfinite(converted_value)) {
+            throw ScriptException("Invalid cast from any (floating point value is not finite)");
+        }
+
+        return converted_value;
     }
     else if constexpr (std::same_as<T, string>) {
         return self;

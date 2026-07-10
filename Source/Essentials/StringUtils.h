@@ -81,6 +81,7 @@ public:
     [[nodiscard]] auto length_utf8() const noexcept -> size_t;
 
     [[nodiscard]] auto is_number() const noexcept -> bool;
+    [[nodiscard]] auto is_non_finite_number() const noexcept -> bool;
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool;
     [[nodiscard]] auto to_int32() const noexcept -> int32_t;
     [[nodiscard]] auto to_uint32() const noexcept -> uint32_t;
@@ -212,6 +213,7 @@ public:
     [[nodiscard]] auto length_utf8() const noexcept -> size_t { return strvex::length_utf8(); }
 
     [[nodiscard]] auto is_number() const noexcept -> bool { return strvex::is_number(); }
+    [[nodiscard]] auto is_non_finite_number() const noexcept -> bool { return strvex::is_non_finite_number(); }
     [[nodiscard]] auto is_explicit_bool() const noexcept -> bool { return strvex::is_explicit_bool(); }
     [[nodiscard]] auto to_int32() const noexcept -> int32_t { return strvex::to_int32(); }
     [[nodiscard]] auto to_uint32() const noexcept -> uint32_t { return strvex::to_uint32(); }

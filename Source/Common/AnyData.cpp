@@ -48,12 +48,21 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
         if (!value.is_number()) {
             throw AnyDataException("Invalid int64 value", value_str);
         }
+
         return value.to_int64();
-    case AnyData::ValueType::Float64:
+    case AnyData::ValueType::Float64: {
         if (!value.is_number()) {
             throw AnyDataException("Invalid float64 value", value_str);
         }
-        return value.to_float64();
+
+        const float64_t parsed_value = value.to_float64();
+
+        if (!std::isfinite(parsed_value)) {
+            throw AnyDataException("Invalid float64 value", value_str);
+        }
+
+        return parsed_value;
+    }
     case AnyData::ValueType::Bool:
         if (!value.is_explicit_bool() && !value.is_number()) {
             throw AnyDataException("Invalid bool value", value_str);
@@ -172,8 +181,15 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
     switch (value.Type()) {
     case ValueType::Int64:
         return strex("{}", value.AsInt64());
-    case ValueType::Float64:
-        return strex("{:f}", value.AsDouble()).rtrim("0").rtrim(".");
+    case ValueType::Float64: {
+        const float64_t float_value = value.AsDouble();
+
+        if (!std::isfinite(float_value)) {
+            throw AnyDataException("Cannot serialize non-finite float64 value", float_value);
+        }
+
+        return strex("{:f}", float_value).rtrim("0").rtrim(".");
+    }
     case ValueType::Bool:
         return value.AsBool() ? "True" : "False";
     case ValueType::String:

@@ -1439,6 +1439,11 @@ namespace
                 throw ScriptException("Record value has invalid encoding");
             }
         }
+        else if constexpr (std::floating_point<T>) {
+            if (!std::isfinite(value)) {
+                throw ScriptException("Record float value is not finite");
+            }
+        }
 
         if (!server_ptr->DbStorage.Valid(collectionName, id)) {
             throw ScriptException("Record not found");

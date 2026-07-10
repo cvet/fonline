@@ -57,6 +57,8 @@ FO_BEGIN_NAMESPACE
 
 static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
 static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
+static void ValidateFiniteAnyValue(const AnyData::Value& value);
+static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
 static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::Document& patch) -> bool;
 static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool;
@@ -603,6 +605,7 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
         throw DataBaseException("Cannot insert empty document");
     }
 
+    ValidateFiniteAnyDocument(doc);
     ValidateCollectionKey(collection_name, id);
 
     {
@@ -623,6 +626,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
 {
     FO_STACK_TRACE_ENTRY();
 
+    ValidateFiniteAnyValue(value);
     ValidateCollectionKey(collection_name, id);
 
     {
@@ -1399,8 +1403,13 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, value.AsDouble())) {
-            throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
+        const float64_t double_value = value.AsDouble();
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("ValueToBson non-finite double", key, double_value);
+        }
+        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, double_value)) {
+            throw DataBaseException("ValueToBson bson_append_double", key, double_value);
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
@@ -1478,7 +1487,13 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
         return value->value.v_int64;
     }
     else if (value->value_type == BSON_TYPE_DOUBLE) {
-        return value->value.v_double;
+        const float64_t double_value = value->value.v_double;
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter), double_value);
+        }
+
+        return double_value;
     }
     else if (value->value_type == BSON_TYPE_BOOL) {
         return value->value.v_bool;
@@ -1557,8 +1572,15 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
     switch (value.Type()) {
     case AnyData::ValueType::Int64:
         return value.AsInt64();
-    case AnyData::ValueType::Float64:
-        return value.AsDouble();
+    case AnyData::ValueType::Float64: {
+        const float64_t double_value = value.AsDouble();
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("AnyValueToJson non-finite double", double_value);
+        }
+
+        return double_value;
+    }
     case AnyData::ValueType::Bool:
         return value.AsBool();
     case AnyData::ValueType::String:
@@ -1587,6 +1609,44 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
     throw DataBaseException("Invalid AnyData value type for pending database json", static_cast<int>(value.Type()));
 }
 
+static void ValidateFiniteAnyValue(const AnyData::Value& value)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    switch (value.Type()) {
+    case AnyData::ValueType::Float64:
+        if (!std::isfinite(value.AsDouble())) {
+            throw DataBaseException("Database value is not finite", value.AsDouble());
+        }
+        break;
+    case AnyData::ValueType::Array:
+        for (const AnyData::Value& array_value : value.AsArray()) {
+            ValidateFiniteAnyValue(array_value);
+        }
+        break;
+    case AnyData::ValueType::Dict:
+        for (const auto& dict_entry : value.AsDict()) {
+            ValidateFiniteAnyValue(dict_entry.second);
+        }
+        break;
+    case AnyData::ValueType::Int64:
+    case AnyData::ValueType::Bool:
+    case AnyData::ValueType::String:
+        break;
+    default:
+        break;
+    }
+}
+
+static void ValidateFiniteAnyDocument(const AnyData::Document& doc)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& doc_entry : doc) {
+        ValidateFiniteAnyValue(doc_entry.second);
+    }
+}
+
 static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
@@ -1595,7 +1655,13 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
         return numeric_cast<int64_t>(value.get<int64_t>());
     }
     if (value.is_number_float()) {
-        return value.get<float64_t>();
+        const float64_t double_value = value.get<float64_t>();
+
+        if (!std::isfinite(double_value)) {
+            throw DataBaseException("JsonToAnyValue non-finite double", double_value);
+        }
+
+        return double_value;
     }
     if (value.is_boolean()) {
         return value.get<bool>();

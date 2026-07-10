@@ -233,6 +233,7 @@ namespace
                 auto waypoint_layout = make_nptr(&_layouts.at("Waypoint"));
                 type.StructLayout = waypoint_layout;
                 type.Size = type.StructLayout->Size;
+                type.IsStruct = true;
                 type.IsComplexStruct = true;
                 return type;
             };
@@ -2639,6 +2640,53 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
+TEST_CASE("PropertiesRejectNonFiniteFloatValues")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("FiniteFloatEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "FloatValue", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "DoubleValue", "Mutable", "Persistent", "PublicSync"});
+    auto float_arr_prop = registrator.RegisterProperty({"Common", "float32[]", "FloatValues", "Mutable", "Persistent", "PublicSync"});
+    auto waypoint_prop = registrator.RegisterProperty({"Common", "Waypoint", "Position", "Mutable", "Persistent", "PublicSync"});
+    auto float_dict_key_prop = registrator.RegisterProperty({"Common", "float32=>int32", "FloatKeys", "Mutable", "Persistent", "PublicSync"});
+    auto float_dict_value_prop = registrator.RegisterProperty({"Common", "int32=>float32", "FloatValuesById", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(props.SetValue<float32_t>(float32_prop, std::numeric_limits<float32_t>::quiet_NaN()));
+    CHECK_THROWS(props.SetValue<float64_t>(float64_prop, std::numeric_limits<float64_t>::infinity()));
+    CHECK_THROWS(props.SetValue(float_arr_prop, vector<float32_t> {1.0f, std::numeric_limits<float32_t>::infinity()}));
+
+    PropertyRawData raw_float_data;
+    const float32_t raw_float = std::numeric_limits<float32_t>::quiet_NaN();
+    raw_float_data.SetAs<float32_t>(raw_float);
+    CHECK_THROWS(props.SetValue(float32_prop, raw_float_data));
+
+    array<uint8_t, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
+    const float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
+    MemCopy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_waypoint_data;
+    raw_waypoint_data.Set(raw_waypoint.data(), raw_waypoint.size());
+    CHECK_THROWS(props.SetValue(waypoint_prop, raw_waypoint_data));
+
+    array<uint8_t, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
+    MemCopy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_float_key_dict_data;
+    raw_float_key_dict_data.Set(raw_float_key_dict.data(), raw_float_key_dict.size());
+    CHECK_THROWS(props.SetValue(float_dict_key_prop, raw_float_key_dict_data));
+
+    array<uint8_t, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
+    MemCopy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_float_value_dict_data;
+    raw_float_value_dict_data.Set(raw_float_value_dict.data(), raw_float_value_dict.size());
+    CHECK_THROWS(props.SetValue(float_dict_value_prop, raw_float_value_dict_data));
+}
+
 TEST_CASE("PropertiesEnumValueMigration")
 {
     HashStorage hashes {};
@@ -2885,9 +2933,7 @@ TEST_CASE("PropertiesNumericRangeValidation")
 
     const auto float32_overflow = static_cast<float64_t>(std::numeric_limits<float32_t>::max()) * 2.0;
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {float32_overflow}, hashes, resolver));
-    // Build the IEEE-754 +inf bit pattern via bit_cast: numeric_limits::infinity() is flagged as UB under the
-    // engine's /fp:fast (-Wnan-infinity-disabled), but this test must feed a real non-finite float.
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::bit_cast<float64_t>(uint64_t {0x7FF0000000000000})}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::numeric_limits<float64_t>::infinity()}, hashes, resolver));
 
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "128", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "-1", hashes, resolver));
