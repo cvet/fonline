@@ -158,6 +158,9 @@ namespace
     };
 
     template<typename T>
+    concept has_subscript = requires(T value) { value[size_t {}]; };
+
+    template<typename T>
     concept has_refcount_ptr_named_factories = requires(T* raw) {
         { refcount_ptr<T>::from_add_ref(raw) } -> std::same_as<refcount_ptr<T>>;
         { refcount_ptr<T>::try_from_add_ref(raw) } -> std::same_as<refcount_nptr<T>>;
@@ -229,6 +232,14 @@ TEST_CASE("SmartPointers")
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<PtrBase>&>().release()), ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_del_ptr<PtrBase>>);
         STATIC_REQUIRE(has_void_cast<unique_del_nptr<PtrBase>>);
+        STATIC_REQUIRE(has_subscript<unique_del_ptr<int32_t>>);
+        STATIC_REQUIRE(has_subscript<unique_del_nptr<int32_t>>);
+        STATIC_REQUIRE(!has_subscript<unique_del_ptr<void>>);
+        STATIC_REQUIRE(!has_subscript<unique_del_nptr<void>>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<int32_t>&>()[0]), int32_t&>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<const unique_del_ptr<int32_t>&>()[0]), const int32_t&>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_nptr<int32_t>&>()[0]), int32_t&>);
+        STATIC_REQUIRE(std::is_same_v<decltype(std::declval<const unique_del_nptr<int32_t>&>()[0]), const int32_t&>);
         STATIC_REQUIRE(std::is_default_constructible_v<unique_del_nptr<void>>);
         STATIC_REQUIRE(!std::is_default_constructible_v<unique_del_ptr<void>>);
         STATIC_REQUIRE(std::is_same_v<decltype(std::declval<unique_del_ptr<void>&>().release()), ptr<void>>);
@@ -457,6 +468,20 @@ TEST_CASE("SmartPointers")
             CHECK(opaque_owner.get() == raw_opaque_value.void_cast());
         }
         CHECK(deleted_opaque_value == 70);
+    }
+
+    SECTION("CustomDeleterOwnersSupportArrayIndexing")
+    {
+        auto values = make_ptr(new int32_t[3] {11, 22, 33});
+        auto owner = make_unique_del_ptr(values, [](int32_t* raw_values) noexcept { delete[] raw_values; });
+
+        CHECK(owner[0] == 11);
+        owner[1] = 44;
+
+        unique_del_nptr<int32_t> maybe_owner = std::move(owner);
+        const auto& const_owner = maybe_owner;
+        CHECK(maybe_owner[1] == 44);
+        CHECK(const_owner[2] == 33);
     }
 
     SECTION("UniquePtrReleaseTransfersOwnership")
