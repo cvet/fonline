@@ -247,7 +247,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     if (as_dict) {
         Dict dict;
 
-        nptr<const char> s = str.c_str();
+        auto s = make_nptr(str.c_str());
         string dict_key_entry;
         string dict_value_entry;
 
@@ -264,7 +264,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
                 Array dict_arr;
 
                 const auto decoded_dict_value_entry = StringEscaping::DecodeString(dict_value_entry);
-                nptr<const char> s2 = decoded_dict_value_entry.c_str();
+                auto s2 = make_nptr(decoded_dict_value_entry.c_str());
                 string arr_entry;
 
                 while ((s2 = ReadToken(s2, arr_entry))) {
@@ -293,7 +293,7 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
     else if (as_array) {
         Array arr;
 
-        nptr<const char> s = str.c_str();
+        auto s = make_nptr(str.c_str());
         string arr_entry;
 
         while ((s = ReadToken(s, arr_entry))) {
@@ -398,7 +398,7 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
         }
     }
 
-    ptr<const char> next_token = &str[pos + (str[pos] != 0 ? 1 : 0)];
+    auto next_token = make_ptr(&str[pos + (str[pos] != 0 ? 1 : 0)]);
     result.assign(&str[begin], pos - begin);
     return next_token;
 }
@@ -414,7 +414,7 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
     }
 
     for (size_t i = 0; i < str.length();) {
-        auto s = ptr<const char> {str.data()}.offset(i);
+        auto s = make_ptr(str.data()).offset(i);
         size_t length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -470,7 +470,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     string result;
     result.reserve(str.length());
 
-    auto s = ptr<const char> {str.data()};
+    auto s = make_ptr(str.data());
     size_t length = str.length();
     utf8::Decode(s, length);
 
@@ -478,7 +478,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
     bool closing_quote_found = false;
 
     for (size_t i = is_protected ? 1 : 0; i < str.length();) {
-        s = ptr<const char> {str.data()}.offset(i);
+        s = make_ptr(str.data()).offset(i);
         length = str.length() - i;
         utf8::Decode(s, length);
 
@@ -498,7 +498,7 @@ auto StringEscaping::DecodeString(string_view str) -> string
                 throw AnyDataException("Invalid escape sequence in string", string(str));
             }
 
-            s = ptr<const char> {str.data()}.offset(i);
+            s = make_ptr(str.data()).offset(i);
             length = str.length() - i;
             utf8::Decode(s, length);
 

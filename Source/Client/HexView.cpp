@@ -60,7 +60,7 @@ auto HexView::AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex,
     FO_VERIFY_AND_THROW(_mapSpr == mspr, "Hex sprite setup changed the primary map sprite pointer", draw_order, hex);
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
-    return _mapSpr.as_ptr();
+    return _mapSpr;
 }
 
 auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>
@@ -77,7 +77,8 @@ auto HexView::AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos
     const auto hex_offset = ipos32 {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
     entry.first = list.AddSprite(draw_order, hex, hex_offset, phex_offset, nullptr, _spr.get_pp(), &_sprOffset, &_rootOffset, &_curAlpha, _drawEffect.get_pp(), &entry.second);
 
-    auto map_spr = entry.first.as_ptr();
+    auto map_spr = entry.first;
+    FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
     SetupSprite(map_spr);
     return map_spr;
 }
@@ -228,7 +229,7 @@ auto HexView::GetMapSprite() const -> ptr<const MapSprite>
 
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
-    return _mapSpr.as_ptr();
+    return _mapSpr;
 }
 
 auto HexView::GetMapSprite() -> ptr<MapSprite>
@@ -237,7 +238,7 @@ auto HexView::GetMapSprite() -> ptr<MapSprite>
 
     FO_VERIFY_AND_THROW(_mapSprValid, "Map sprite cache is invalid");
 
-    return _mapSpr.as_ptr();
+    return _mapSpr;
 }
 
 void HexView::InvalidateSprite()
@@ -256,7 +257,8 @@ void HexView::InvalidateSprite()
     if (_extraMapSpr) {
         for (auto&& [mspr, valid] : *_extraMapSpr) {
             if (valid) {
-                auto map_spr = mspr.as_ptr();
+                auto map_spr = mspr;
+                FO_VERIFY_AND_THROW(map_spr, "Map sprite is null");
                 map_spr->Invalidate();
             }
         }

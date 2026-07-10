@@ -54,9 +54,9 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _cache(fs_make_writable_path(settings->UserWritablePath, settings->CacheResources)),
     _binaryDir {settings->UserWritablePath.empty() ? GetClientBinaryDir() : string(settings->UserWritablePath)},
     _gameTime(settings),
-    _effectMngr(settings, ptr<FileSystem> {&_resources}, window->GetRender()),
-    _sprMngr(settings, window, ptr<FileSystem> {&_resources}, ptr<GameTimer> {&_gameTime}, ptr<EffectManager> {&_effectMngr}, ptr<HashResolver> {&_hashStorage}),
-    _fontMngr(ptr<SpriteManager> {&_sprMngr})
+    _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
+    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
+    _fontMngr(make_ptr(&_sprMngr))
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -89,8 +89,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     _sprMngr.BeginScene();
     if (_splashPic) {
-        auto splash_pic = _splashPic.as_ptr();
-        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
     _sprMngr.EndScene();
 
@@ -170,8 +169,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        auto splash_pic = _splashPic.as_ptr();
-        _sprMngr.DrawSpriteSize(splash_pic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
@@ -673,7 +671,7 @@ void Updater::Net_OnUpdateFileData()
     const auto write_size = GetUpdateWriteSize(update_file.RemaningSize, _updateFileBuf.size());
 
     if (write_size != 0) {
-        _tempFile.write(ptr<const uint8_t> {_updateFileBuf.data()}.reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
+        _tempFile.write(make_ptr(_updateFileBuf.data()).reinterpret_as<char>().get(), numeric_cast<std::streamsize>(write_size));
     }
 
     if (!_tempFile) {
@@ -723,7 +721,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
         if (data.size() == sizeof(CachedHash)) {
             CachedHash cached {};
-            ptr<uint8_t> target = ptr<CachedHash> {&cached}.reinterpret_as<uint8_t>();
+            auto target = make_ptr(&cached).reinterpret_as<uint8_t>();
             MemCopy(target, data.data(), sizeof(cached));
 
             if (cached.Size == *local_size && cached.Mtime == local_mtime) {
@@ -739,7 +737,7 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     }
 
     const CachedHash entry {*local_size, local_mtime, *local_hash};
-    _cache.SetData(cache_key, const_span<uint8_t> {ptr<const CachedHash> {&entry}.reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
+    _cache.SetData(cache_key, const_span<uint8_t> {make_ptr(&entry).reinterpret_as<uint8_t>().get(), sizeof(CachedHash)});
 
     return *local_hash == expected_hash;
 }
@@ -864,6 +862,7 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
+
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
     return "Windows-win64";
 #elif defined(_M_IX86) || defined(__i386__)
@@ -873,7 +872,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Windows-unknown";
 #endif
+
 #elif FO_LINUX
+
 #if defined(__x86_64__)
     return "Linux-x64";
 #elif defined(__aarch64__)
@@ -885,7 +886,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Linux-unknown";
 #endif
+
 #elif FO_ANDROID
+
 #if defined(__aarch64__)
     return "Android-arm64";
 #elif defined(__i386__)
@@ -895,7 +898,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "Android-unknown";
 #endif
+
 #elif FO_MAC
+
 #if defined(__aarch64__)
     return "macOS-arm64";
 #elif defined(__x86_64__)
@@ -903,7 +908,9 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "macOS-unknown";
 #endif
+
 #elif FO_IOS
+
 #if defined(__aarch64__)
     return "iOS-arm64";
 #elif defined(__x86_64__)
@@ -911,6 +918,7 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 #else
     return "iOS-unknown";
 #endif
+
 #elif FO_WEB
     return "Web-wasm";
 #else

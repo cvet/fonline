@@ -698,7 +698,7 @@ void VisitBaseTypePrimitive(void* p, const BaseTypeDesc& type, const Fn& fn)
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;
@@ -780,7 +780,7 @@ void VisitBaseTypePrimitive(const void* p, const BaseTypeDesc& type, const Fn& f
     }
     else if (type.IsStruct) {
         for (const auto& field : type.StructLayout->Fields) {
-            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p) + field.Offset, field.Type, fn);
+            VisitBaseTypePrimitive(cast_from_void<const uint8_t*>(p).get() + field.Offset, field.Type, fn);
         }
 
         return;

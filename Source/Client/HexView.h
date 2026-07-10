@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetMapSprite() const -> ptr<const MapSprite>;
     [[nodiscard]] auto GetMapSprite() -> ptr<MapSprite>;
     [[nodiscard]] auto HasExtraMapSprites() const noexcept -> bool { return !!_extraMapSpr; }
-    [[nodiscard]] auto GetExtraMapSprites() const noexcept -> nptr<const ExtraMapSpriteList> { return _extraMapSpr ? nptr<const ExtraMapSpriteList> {&*_extraMapSpr} : nullptr; }
+    [[nodiscard]] auto GetExtraMapSprites() const noexcept -> nptr<const ExtraMapSpriteList> { return _extraMapSpr ? make_nptr(&*_extraMapSpr) : nullptr; }
     [[nodiscard]] auto GetSprite() const noexcept -> nptr<const Sprite> { return _spr; }
     [[nodiscard]] auto GetSpriteOffset() const noexcept -> ipos32 { return _sprOffset; }
     [[nodiscard]] auto GetSpriteOffsetPtr() const noexcept -> ptr<const ipos32> { return &_sprOffset; }

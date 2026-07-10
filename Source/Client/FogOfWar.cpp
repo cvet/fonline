@@ -159,7 +159,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
 
             const auto target_hex = input.MapSize.clamp_pos(target_raw_hex);
             const auto target_dist = GeometryHelper::GetDistance(base_hex, target_hex);
-            ptr<const ipos32> edge_offset = target_dist < dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
+            auto edge_offset = target_dist < dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
             if (is_traced_overlay) {
                 const auto max_overlay_dist = std::max(std::min(target_dist, input.Distance), 0) + 1;
@@ -171,7 +171,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
                 const auto color_g = numeric_cast<uint8_t>(overlay_color.comp.g * overlay_strength / 255);
                 const auto color_b = numeric_cast<uint8_t>(overlay_color.comp.b * overlay_strength / 255);
                 const auto color = ucolor {color_r, color_g, color_b, 255};
-                ptr<const ipos32> overlay_offset = result_overlay_dist < max_overlay_dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
+                auto overlay_offset = result_overlay_dist < max_overlay_dist ? ptr<const ipos32> {_baseDrawOffset} : ptr<const ipos32> {_drawOffset};
 
                 fog_points.emplace_back(PrimitivePoint {.PointPos = {block_hex_pos.x + half_hw, block_hex_pos.y + half_hh}, .PointColor = color, .PointOffset = overlay_offset});
             }

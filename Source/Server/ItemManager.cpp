@@ -57,9 +57,8 @@ auto ItemManager::GetItemHolder(ptr<Item> item) -> ptr<Entity>
         throw ItemManagerException("Item does not have a holder", item->GetId(), item->GetProtoId());
     }
 
-    auto nullable_holder = item->GetParent();
-    FO_VERIFY_AND_THROW(nullable_holder, "Missing required holder");
-    auto holder = nullable_holder.as_ptr();
+    auto holder = item->GetParent();
+    FO_VERIFY_AND_THROW(holder, "Missing required holder");
     ValidateEntityAccess(holder);
     return holder;
 }
@@ -73,8 +72,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        if (auto nullable_cr = holder.dyn_cast<Critter>()) {
-            auto cr = nullable_cr.as_ptr();
+        if (auto cr = holder.dyn_cast<Critter>()) {
             _engine->CrMngr.RemoveItemFromCritter(cr, item, true);
         }
         else {
@@ -82,8 +80,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::MapHex: {
-        if (auto nullable_map = holder.dyn_cast<Map>()) {
-            auto map = nullable_map.as_ptr();
+        if (auto map = holder.dyn_cast<Map>()) {
             map->RemoveItem(item->GetId());
         }
         else {
@@ -91,8 +88,7 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
         }
     } break;
     case ItemOwnership::ItemContainer: {
-        if (auto nullable_cont = holder.dyn_cast<Item>()) {
-            auto cont = nullable_cont.as_ptr();
+        if (auto cont = holder.dyn_cast<Item>()) {
             cont->RemoveItemFromContainer(item);
         }
         else {
@@ -223,9 +219,9 @@ void ItemManager::DestroyItem(ptr<Item> item)
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
 
     if (item->GetOwnership() != ItemOwnership::Nowhere) {
-        auto nullable_holder = item->GetParent();
-        FO_VERIFY_AND_THROW(nullable_holder, "Missing required holder");
-        ValidateEntityAccess(nullable_holder.as_ptr());
+        auto holder = item->GetParent();
+        FO_VERIFY_AND_THROW(holder, "Missing required holder");
+        ValidateEntityAccess(holder);
     }
 
     // Tear off from environment
@@ -332,13 +328,12 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
         return _engine->CrMngr.AddItemToCritter(to_cr, item, true);
     }
     else {
-        auto nullable_splitted_item = SplitItem(item, count);
+        auto splitted_item = SplitItem(item, count);
 
-        if (!nullable_splitted_item) {
+        if (!splitted_item) {
             return nullptr;
         }
 
-        auto splitted_item = nullable_splitted_item.as_ptr();
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
@@ -393,13 +388,12 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Map> to_map, mpos 
         return item;
     }
     else {
-        auto nullable_splitted_item = SplitItem(item, count);
+        auto splitted_item = SplitItem(item, count);
 
-        if (!nullable_splitted_item) {
+        if (!splitted_item) {
             return nullptr;
         }
 
-        auto splitted_item = nullable_splitted_item.as_ptr();
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
@@ -451,13 +445,12 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Item> to_cont, con
         return to_cont->AddItemToContainer(item, stack_id);
     }
     else {
-        auto nullable_splitted_item = SplitItem(item, count);
+        auto splitted_item = SplitItem(item, count);
 
-        if (!nullable_splitted_item) {
+        if (!splitted_item) {
             return nullptr;
         }
 
-        auto splitted_item = nullable_splitted_item.as_ptr();
         auto splitted_item_holder = splitted_item.hold_ref();
         ignore_unused(splitted_item_holder);
 
@@ -566,13 +559,11 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
         return;
     }
 
-    auto nullable_item = cr->GetItemByPidInvPriority(pid);
+    auto item = cr->GetItemByPidInvPriority(pid);
 
-    if (!nullable_item) {
+    if (!item) {
         return;
     }
-
-    auto item = nullable_item.as_ptr();
 
     if (item->GetStackable()) {
         if (count >= item->GetCount()) {
@@ -586,13 +577,11 @@ void ItemManager::SubItemCritter(ptr<Critter> cr, hstring pid, int32_t count)
         for (int32_t i = 0; i < count; ++i) {
             DestroyItem(item);
 
-            nullable_item = cr->GetItemByPidInvPriority(pid);
+            item = cr->GetItemByPidInvPriority(pid);
 
-            if (!nullable_item) {
+            if (!item) {
                 break;
             }
-
-            item = nullable_item.as_ptr();
         }
     }
 }

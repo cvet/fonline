@@ -52,15 +52,14 @@ extern "C" void* ufbx_realloc(void* memory, size_t old_size, size_t new_size)
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
     ptr<uint8_t> new_ptr = allocator.allocate(new_size);
-    auto nullable_old_data = nptr<void> {memory}.reinterpret_as<uint8_t>();
+    auto old_data = make_nptr(memory).reinterpret_as<uint8_t>();
 
     if (const size_t copy_size = std::min(old_size, new_size); copy_size != 0) {
-        FO_STRONG_ASSERT(nullable_old_data, "Reallocation requested a copy but the previous block pointer is null");
-        auto old_data = nullable_old_data.as_ptr();
+        FO_STRONG_ASSERT(old_data, "Reallocation requested a copy but the previous block pointer is null");
         MemCopy(new_ptr, old_data, copy_size);
     }
 
-    allocator.deallocate(nullable_old_data.get(), old_size);
+    allocator.deallocate(old_data.get(), old_size);
     return new_ptr.get();
 }
 
@@ -68,7 +67,7 @@ extern "C" void ufbx_free(void* ptr, size_t old_size)
 {
     FO_USING_NAMESPACE();
     constexpr SafeAllocator<uint8_t> allocator;
-    allocator.deallocate(nptr<void> {ptr}.reinterpret_as<uint8_t>().get(), old_size);
+    allocator.deallocate(make_nptr(ptr).reinterpret_as<uint8_t>().get(), old_size);
 }
 
 FO_BEGIN_NAMESPACE
@@ -332,22 +331,20 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
     ufbx_error fbx_error;
     const_span<uint8_t> file_data = file.GetDataSpan();
-    nptr<const uint8_t> nullable_file_data = file_data.data();
-    FO_VERIFY_AND_THROW(file_data.empty() || nullable_file_data, "Non-empty FBX file data has a null buffer pointer");
-    nptr<const uint8_t> file_data_bytes = nullable_file_data;
-    nptr<ufbx_scene> nullable_fbx_scene = ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error);
+    auto file_data_bytes = make_nptr(file_data.data());
+    FO_VERIFY_AND_THROW(file_data.empty() || file_data_bytes, "Non-empty FBX file data has a null buffer pointer");
+    auto fbx_scene = make_nptr(ufbx_load_memory(file_data_bytes.get(), file_data.size(), &opts, &fbx_error));
 
-    if (!nullable_fbx_scene) {
+    if (!fbx_scene) {
         throw ModelMeshBakerException("Unable to load FBX", fname, fbx_error.description.data);
     }
 
-    auto fbx_scene = nullable_fbx_scene.as_ptr();
     auto fbx_scene_holder = make_unique_del_ptr(fbx_scene, [](ufbx_scene* raw_scene) noexcept { ufbx_free_scene(raw_scene); });
 
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
     ConvertFbxMeshes(root_bone, root_bone, fbx_scene->root_node);
-    const auto animations = ConvertFbxAnimations(fbx_scene, fname);
+    const auto animations = ConvertFbxAnimations(fbx_scene.as_ptr(), fname);
 
     // Write data
     vector<uint8_t> data;
@@ -387,14 +384,13 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<const ufbx_mesh> nullable_fbx_mesh = fbx_node->mesh;
+    nptr<const ufbx_mesh> fbx_mesh = fbx_node->mesh;
 
-    if (nullable_fbx_mesh && nullable_fbx_mesh->num_faces != 0) {
-        auto fbx_mesh = nullable_fbx_mesh.as_ptr();
+    if (fbx_mesh && fbx_mesh->num_faces != 0) {
         bone->AttachedMesh.emplace();
-        ptr<BakerMeshData> mesh = &*bone->AttachedMesh;
+        auto mesh = make_ptr(&*bone->AttachedMesh);
         FO_VERIFY_AND_THROW(fbx_mesh->num_faces == fbx_mesh->num_triangles, "FBX mesh contains non-triangle faces", fbx_mesh->num_faces, fbx_mesh->num_triangles);
-        nptr<const ufbx_skin_deformer> nullable_fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
+        nptr<const ufbx_skin_deformer> fbx_skin = fbx_mesh->skin_deformers.count != 0 ? fbx_mesh->skin_deformers[0] : nullptr;
 
         mesh->Vertices.reserve(fbx_mesh->num_indices);
 
@@ -406,7 +402,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
             for (const uint32_t& face_index : fbx_mesh_part.face_indices) {
                 const ufbx_face fbx_face = fbx_mesh->faces[face_index];
                 FO_VERIFY_AND_THROW(!triangle_indices.empty(), "Triangulation buffer is empty");
-                nptr<uint32_t> triangle_indices_data = triangle_indices.data();
+                auto triangle_indices_data = make_nptr(triangle_indices.data());
                 const uint32_t triangles_count = ufbx_triangulate_face(triangle_indices_data.get(), triangle_indices.size(), fbx_mesh.get(), fbx_face);
 
                 mesh_triangles_count += triangles_count;
@@ -440,8 +436,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                         v.TexCoordBase[1] = v.TexCoord[1];
                     }
 
-                    if (nullable_fbx_skin) {
-                        auto fbx_skin = nullable_fbx_skin.as_ptr();
+                    if (fbx_skin) {
                         const uint32_t v_index = fbx_mesh->vertex_indices[index];
                         const ufbx_skin_vertex& fbx_skin_vertex = fbx_skin->vertices[v_index];
                         const size_t weights_count = std::min(numeric_cast<size_t>(fbx_skin_vertex.num_weights), MODEL_BONES_PER_VERTEX);
@@ -484,8 +479,8 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         ufbx_error fbx_generate_indices_error;
         FO_VERIFY_AND_THROW(!mesh->Vertices.empty(), "Baked mesh has no vertices");
         FO_VERIFY_AND_THROW(!indices.empty(), "Baked mesh has no indices");
-        ptr<void> mesh_vertices_raw_data = cast_to_void(mesh->Vertices.data());
-        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_raw_data.get(), mesh->Vertices.size(), sizeof(Vertex3D)}};
+        auto mesh_vertices_data = make_nptr(mesh->Vertices.data());
+        const ufbx_vertex_stream fbx_vertex_stream[1] = {{mesh_vertices_data.void_cast(), mesh->Vertices.size(), sizeof(Vertex3D)}};
         const size_t result_vertices = ufbx_generate_indices(fbx_vertex_stream, 1, indices.data(), indices.size(), nullptr, &fbx_generate_indices_error);
 
         if (fbx_generate_indices_error.type != UFBX_ERROR_NONE) {
@@ -499,9 +494,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
         mesh->Indices.resize(indices.size());
         std::ranges::transform(indices, mesh->Indices.begin(), [](const uint32_t index) { return numeric_cast<vindex_t>(index); });
 
-        if (nullable_fbx_skin) {
-            auto fbx_skin = nullable_fbx_skin.as_ptr();
-
+        if (fbx_skin) {
             if (fbx_skin->clusters.count > MODEL_MAX_BONES) {
                 throw ModelMeshBakerException(strex("Mesh '{}' has {} skin clusters, exceeds MODEL_MAX_BONES limit {}", fbx_node->name.data, fbx_skin->clusters.count, MODEL_MAX_BONES));
             }
@@ -529,6 +522,7 @@ static void ConvertFbxMeshes(ptr<BakerBone> root_bone, ptr<BakerBone> bone, ptr<
                     skin_bone = bone;
                 }
 
+                FO_VERIFY_AND_THROW(skin_bone, "Skin bone must resolve to a found or fallback mesh bone");
                 mesh->SkinBones.emplace_back(skin_bone->Name);
                 mesh->SkinBoneOffsets.emplace_back(ConvertFbxMatrix(fbx_skin_cluster->geometry_to_bone));
             }
@@ -571,9 +565,8 @@ static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fn
         ufbx_bake_opts fbx_bake_opts = {};
         fbx_bake_opts.trim_start_time = true;
         ufbx_error fbx_error;
-        nptr<ufbx_baked_anim> nullable_fbx_baked_anim = ufbx_bake_anim(fbx_scene.get(), fbx_anim.get(), &fbx_bake_opts, &fbx_error);
-        FO_VERIFY_AND_THROW(nullable_fbx_baked_anim, "Missing required fbx baked animation");
-        auto fbx_baked_anim = nullable_fbx_baked_anim.as_ptr();
+        auto fbx_baked_anim = make_nptr(ufbx_bake_anim(fbx_scene.get(), fbx_anim.get(), &fbx_bake_opts, &fbx_error));
+        FO_VERIFY_AND_THROW(fbx_baked_anim, "Missing required fbx baked animation");
         auto fbx_baked_anim_holder = make_unique_del_ptr(fbx_baked_anim, [](ufbx_baked_anim* raw_anim) noexcept { ufbx_free_baked_anim(raw_anim); });
 
         auto anim_set = SafeAlloc::MakeUnique<BakerAnimSet>();
@@ -604,10 +597,9 @@ static auto ConvertFbxAnimations(ptr<const ufbx_scene> fbx_scene, string_view fn
 
             vector<string> hierarchy;
 
-            for (nptr<const ufbx_node> nullable_fbx_node = fbx_scene->nodes[fbx_baked_anim_node.typed_id]; nullable_fbx_node;) {
-                auto fbx_node = nullable_fbx_node.as_ptr();
+            for (auto fbx_node = make_nptr(fbx_scene->nodes[fbx_baked_anim_node.typed_id]); fbx_node;) {
                 hierarchy.insert(hierarchy.begin(), fbx_node->name.data);
-                nullable_fbx_node = fbx_node->parent;
+                fbx_node = fbx_node->parent;
             }
 
             BakerAnimSet::BoneOutput& bone_output = anim_set->BoneOutputs.emplace_back();

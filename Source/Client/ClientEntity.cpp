@@ -87,7 +87,8 @@ void ClientEntity::DestroySelf()
     }
 
     if (HasInnerEntities()) {
-        auto inner_entities = GetInnerEntities().as_ptr();
+        auto inner_entities = GetInnerEntities();
+        FO_VERIFY_AND_THROW(inner_entities, "Inner entities collection is null");
 
         for (auto& entities : *inner_entities | std::views::values) {
             for (auto& entity : entities) {

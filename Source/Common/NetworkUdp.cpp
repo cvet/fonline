@@ -49,7 +49,7 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
     const auto append_scalar = [&data](auto scalar) {
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
-        auto source = ptr<const decltype(scalar)> {&scalar}.template reinterpret_as<const uint8_t>();
+        auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
         MemCopy(scalar_bytes.data(), source, sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
     };
@@ -383,9 +383,9 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
             return false;
         }
 
-        ptr<ScalarType> scalar_ptr = &scalar;
+        auto scalar_ptr = make_ptr(&scalar);
         auto target = scalar_ptr.template reinterpret_as<uint8_t>();
-        ptr<const uint8_t> source = data.data() + pos;
+        auto source = make_ptr(data.data() + pos);
         MemCopy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);
         return true;
@@ -439,7 +439,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
     }
     else {
         FO_STRONG_ASSERT(pos < data.size(), "UDP buffer offset is past the end of the data");
-        ptr<const uint8_t> payload_begin = data.data() + pos;
+        auto payload_begin = make_ptr(data.data() + pos);
         packet.Payload = {payload_begin.get(), payload_size};
     }
 

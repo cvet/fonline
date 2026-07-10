@@ -55,7 +55,7 @@ public:
         auto operator=(const OutBufAccessor&) = delete;
         auto operator=(OutBufAccessor&&) noexcept = delete;
         ~OutBufAccessor() noexcept(false) FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf.as_ptr(); }
+        auto operator->() noexcept -> ptr<NetOutBuffer> { return _outBuf; }
         auto operator*() noexcept -> NetOutBuffer& { return *_outBuf; }
 
     private:
@@ -75,7 +75,7 @@ public:
         auto operator=(const InBufAccessor&) = delete;
         auto operator=(InBufAccessor&&) noexcept = delete;
         ~InBufAccessor() FO_TSA_RELEASE();
-        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf.as_ptr(); }
+        auto operator->() noexcept -> ptr<NetInBuffer> { return _inBuf; }
         auto operator*() noexcept -> NetInBuffer& { return *_inBuf; }
         void Lock() FO_TSA_ACQUIRE();
         void Unlock() noexcept FO_TSA_RELEASE();
@@ -130,9 +130,9 @@ public:
 
     // These factories deliberately return a guard that still holds the buffer lock (released when the caller's
     // accessor leaves scope); TSA cannot express "returns holding a lock", so the trivial bodies are exempt.
-    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(ptr<ServerConnection>(this), msg); }
-    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(ptr<ServerConnection>(this), std::nullopt); }
-    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(ptr<ServerConnection>(this)); }
+    OutBufAccessor WriteMsg(NetMessage msg) FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), msg); }
+    OutBufAccessor WriteBuf() FO_TSA_NO_ANALYSIS { return OutBufAccessor(make_ptr(this), std::nullopt); }
+    InBufAccessor ReadBuf() FO_TSA_NO_ANALYSIS { return InBufAccessor(make_ptr(this)); }
 
     void HardDisconnect();
     void GracefulDisconnect();

@@ -1146,9 +1146,10 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
 
         bool is_error = false;
-        refcount_nptr<Critter> loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
+        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
         CHECK(loaded->GetItemIds().empty());
@@ -1209,9 +1210,8 @@ TEST_CASE("LoadUnloadCritter")
         auto container = server->ItemMngr.CreateItem(get_func("TestItem"), 1, nullptr);
         auto container_holder = container.hold_ref();
 
-        auto nullable_inner = server->ItemMngr.AddItemContainer(container, get_func("TestItem"), 1, {});
-        REQUIRE(nullable_inner);
-        auto inner = nullable_inner.as_ptr();
+        auto inner = server->ItemMngr.AddItemContainer(container, get_func("TestItem"), 1, {});
+        REQUIRE(inner);
         auto inner_holder = inner.hold_ref();
 
         server->EntityMngr.MakePersistent(container, true, true);
@@ -1228,7 +1228,7 @@ TEST_CASE("LoadUnloadCritter")
 
         (void)container->TakeAllInnerItems();
         inner->MarkAsDestroyed();
-        server->EntityMngr.UnregisterItem(inner, false);
+        server->EntityMngr.UnregisterItem(inner.as_ptr(), false);
         container->MarkAsDestroyed();
         server->EntityMngr.UnregisterItem(container, false);
 
@@ -1238,7 +1238,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Item> loaded_holder = server->EntityMngr.LoadItem(container_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
         CHECK(loaded->GetId() == container_id);
@@ -1325,7 +1326,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
         CHECK(loaded->GetId() == map_id);
@@ -1417,7 +1419,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
         CHECK(loaded->GetId() == map_id);
@@ -1497,7 +1500,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Map> loaded_holder = server->EntityMngr.LoadMap(map_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
         CHECK(loaded->GetId() == map_id);
@@ -1559,7 +1563,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK_FALSE(is_error);
         CHECK(loaded->GetId() == loc_id);
@@ -1622,7 +1627,8 @@ TEST_CASE("LoadUnloadCritter")
         bool is_error = false;
         refcount_nptr<Location> loaded_holder = server->EntityMngr.LoadLocation(loc_id, is_error);
         REQUIRE(loaded_holder);
-        auto loaded = loaded_holder.as_ptr();
+        auto loaded = loaded_holder;
+        FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
 
         CHECK(is_error);
         CHECK(loaded->GetId() == loc_id);
@@ -1680,9 +1686,8 @@ TEST_CASE("LocationCppApiTests")
         auto loc = server->MapMngr.CreateLocation(get_func("TestLocation"));
 
         const auto loc_id = loc->GetId();
-        auto nullable_found_loc = server->EntityMngr.GetLocation(loc_id);
-        REQUIRE(nullable_found_loc);
-        auto found_loc = nullable_found_loc.as_ptr();
+        auto found_loc = server->EntityMngr.GetLocation(loc_id);
+        REQUIRE(found_loc);
         CHECK(found_loc == loc);
 
         server->MapMngr.DestroyLocation(loc);
@@ -1748,9 +1753,8 @@ TEST_CASE("CritterCppApiAdvanced")
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
         const auto cr_id = cr->GetId();
-        auto nullable_found_cr = server->EntityMngr.GetCritter(cr_id);
-        REQUIRE(nullable_found_cr);
-        auto found_cr = nullable_found_cr.as_ptr();
+        auto found_cr = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(found_cr);
         CHECK(found_cr == cr);
 
         server->CrMngr.DestroyCritter(cr);
@@ -1783,12 +1787,11 @@ TEST_CASE("ItemCppApiAdvanced")
     {
         auto cr = server->CreateCritter(get_func("TestCritter"), false);
 
-        auto nullable_item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
-        REQUIRE(static_cast<bool>(nullable_item));
+        auto item = server->ItemMngr.AddItemCritter(cr, get_func("TestItem"), 1);
+        REQUIRE(static_cast<bool>(item));
 
-        const auto item_id = nullable_item->GetId();
-        auto item = nullable_item.as_ptr();
-        server->ItemMngr.DestroyItem(item);
+        const auto item_id = item->GetId();
+        server->ItemMngr.DestroyItem(item.as_ptr());
 
         auto gone = server->EntityMngr.GetItem(item_id);
         CHECK_FALSE(static_cast<bool>(gone));

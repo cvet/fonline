@@ -93,35 +93,34 @@ DataBase::DataBase(unique_ptr<DataBaseImpl> impl) :
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_impl, "Missing database backend state");
-    (void)_impl.as_ptr();
 }
 
 auto DataBase::InValidState() const noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    return impl->InValidState();
+    FO_STRONG_ASSERT(_impl, "Database implementation is null");
+    return _impl->InValidState();
 }
 
 auto DataBase::GetDbRequestsPerMinute() const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    return impl->GetDbRequestsPerMinute();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDbRequestsPerMinute();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
-    auto ids = impl->GetAllRecordIds(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
+    auto ids = _impl->GetAllRecordIds(collection_name);
 
     for (auto& id : ids) {
-        id = DecodeBackendDbKey(id, key_type, impl->GetStringKeyEscaping());
+        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
 
         if (GetDbKeyType(id) != key_type) {
             throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
@@ -135,8 +134,8 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::IntId) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::IntId), DbKeyTypeName(key_type));
@@ -155,8 +154,8 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    const auto key_type = impl->GetCollectionKeyType(collection_name);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    const auto key_type = _impl->GetCollectionKeyType(collection_name);
 
     if (key_type != DataBaseKeyType::String) {
         throw DataBaseException("Invalid database collection key type", collection_name, DbKeyTypeName(DataBaseKeyType::String), DbKeyTypeName(key_type));
@@ -175,64 +174,64 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    return impl->GetDocument(collection_name, id);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    return !impl->GetDocument(collection_name, id).Empty();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return !_impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->Insert(collection_name, id, doc);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->Update(collection_name, id, key, value);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->Delete(collection_name, id);
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->Delete(collection_name, id);
 }
 
 void DataBase::StartCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->StartCommitChanges();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->StartCommitChanges();
 }
 
 void DataBase::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->WaitCommitChanges();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->WaitCommitChanges();
 }
 
 void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->ClearChanges();
+    FO_STRONG_ASSERT(_impl, "Database implementation is null");
+    _impl->ClearChanges();
 }
 
 void DataBase::DrawGui()
@@ -244,8 +243,8 @@ void DataBase::DrawGui()
         return;
     }
 
-    auto impl = _impl.as_ptr();
-    impl->DrawGui();
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->DrawGui();
 }
 
 DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :
@@ -756,7 +755,7 @@ void DataBaseImpl::DrawGui()
 
     if (!_collectionKeyTypes.empty()) {
         const string collections_label = strex("Collections ({})", _collectionKeyTypes.size()).str();
-        ptr<const char> collections_label_cstr = collections_label.c_str();
+        auto collections_label_cstr = make_ptr(collections_label.c_str());
 
         if (ImGui::TreeNode(collections_label_cstr.get())) {
             if (ImGui::BeginTable("##DbCollections", 2, TABLE_FLAGS)) {
@@ -1088,7 +1087,7 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Empty recovery log file path");
     }
 
-    ptr<const char> path_cstr = _path.c_str();
+    auto path_cstr = make_ptr(_path.c_str());
 
 #if FO_WINDOWS
     if (_sopen_s(&_fd, path_cstr.get(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
@@ -1167,7 +1166,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 
     while (offset < content.size()) {
         const auto remaining = content.size() - offset;
-        ptr<char> read_pos = content.data() + offset;
+        auto read_pos = make_ptr(content.data() + offset);
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
@@ -1313,7 +1312,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 
     while (offset < normalized_content.size()) {
         const auto remaining = normalized_content.size() - offset;
-        ptr<const char> write_pos = normalized_content.data() + offset;
+        auto write_pos = make_ptr(normalized_content.data() + offset);
 
 #if FO_WINDOWS
         const auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
@@ -1391,35 +1390,35 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     const auto escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
     const string_view key_data = escaped_key;
     const auto key_len = numeric_cast<int32_t>(escaped_key.length());
-    nptr<const char> nullable_key_data = key_data.data();
+    auto key_ptr = make_nptr(key_data.data());
     auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
     if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(aligned_bson, nullable_key_data.get(), key_len, value.AsInt64())) {
+        if (!bson_append_int64(aligned_bson, key_ptr.get(), key_len, value.AsInt64())) {
             throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
         }
     }
     else if (value.Type() == AnyData::ValueType::Float64) {
-        if (!bson_append_double(aligned_bson, nullable_key_data.get(), key_len, value.AsDouble())) {
+        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, value.AsDouble())) {
             throw DataBaseException("ValueToBson bson_append_double", key, value.AsDouble());
         }
     }
     else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(aligned_bson, nullable_key_data.get(), key_len, value.AsBool())) {
+        if (!bson_append_bool(aligned_bson, key_ptr.get(), key_len, value.AsBool())) {
             throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
         }
     }
     else if (value.Type() == AnyData::ValueType::String) {
         const string_view value_str = value.AsString();
 
-        if (!bson_append_utf8(aligned_bson, nullable_key_data.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
+        if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
             throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
         }
     }
     else if (value.Type() == AnyData::ValueType::Array) {
         bson_t bson_arr;
 
-        if (!bson_append_array_unsafe_begin(aligned_bson, nullable_key_data.get(), key_len, &bson_arr)) {
+        if (!bson_append_array_unsafe_begin(aligned_bson, key_ptr.get(), key_len, &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
         }
 
@@ -1438,7 +1437,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
     else if (value.Type() == AnyData::ValueType::Dict) {
         bson_t bson_doc;
 
-        if (!bson_append_document_begin(aligned_bson, nullable_key_data.get(), key_len, &bson_doc)) {
+        if (!bson_append_document_begin(aligned_bson, key_ptr.get(), key_len, &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
@@ -1470,7 +1469,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const bson_value_t> value = bson_iter_value(iter);
+    auto value = make_ptr(bson_iter_value(iter));
 
     if (value->value_type == BSON_TYPE_INT32) {
         return numeric_cast<int64_t>(value->value.v_int32);
@@ -1513,7 +1512,7 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
         AnyData::Dict dict;
 
         while (bson_iter_next(&doc_iter)) {
-            ptr<const char> key = bson_iter_key(&doc_iter);
+            auto key = make_ptr(bson_iter_key(&doc_iter));
             auto unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
             auto dict_value = BsonToValue(&doc_iter, escape_dot);
             dict.Emplace(std::move(unescaped_key), std::move(dict_value));
@@ -1538,7 +1537,7 @@ void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_
     }
 
     while (bson_iter_next(&iter)) {
-        ptr<const char> key = bson_iter_key(&iter);
+        auto key = make_ptr(bson_iter_key(&iter));
         const string_view key_text {key.get()};
 
         if (key_text == "_id") {
@@ -1577,7 +1576,7 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
         auto dict_json = nlohmann::json::object();
 
         for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            ptr<const char> dict_key_cstr = dict_key.c_str();
+            auto dict_key_cstr = make_ptr(dict_key.c_str());
             dict_json[dict_key_cstr.get()] = AnyValueToJson(dict_value);
         }
 
@@ -1633,7 +1632,7 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
     auto doc_json = nlohmann::json::object();
 
     for (auto&& [doc_key, doc_value] : doc) {
-        ptr<const char> doc_key_cstr = doc_key.c_str();
+        auto doc_key_cstr = make_ptr(doc_key.c_str());
         doc_json[doc_key_cstr.get()] = AnyValueToJson(doc_value);
     }
 

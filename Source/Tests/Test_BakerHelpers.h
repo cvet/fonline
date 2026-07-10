@@ -173,7 +173,7 @@ namespace BakerTests
     {
         FO_STACK_TRACE_ENTRY();
 
-        ptr<const uint8_t> released_buf = std::move(buf).release();
+        auto released_buf = make_ptr<const uint8_t*>(buf.release());
         return make_unique_del_ptr(released_buf, CleanupMemoryDataSourceFileBuffer);
     }
 
@@ -475,8 +475,8 @@ namespace BakerTests
                 bake_checker = [](string_view, uint64_t) { return true; };
             }
 
-            nptr<const BakingSettings> settings_ptr = &Settings;
-            nptr<const FileSystem> baked_files_ptr = &BakedFiles;
+            auto settings_ptr = make_nptr(&Settings);
+            auto baked_files_ptr = make_nptr(&BakedFiles);
 
             return SafeAlloc::MakeShared<BakingContext>(BakingContext {
                 .Settings = settings_ptr,

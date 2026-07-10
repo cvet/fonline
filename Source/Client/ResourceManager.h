@@ -69,8 +69,8 @@ private:
     [[nodiscard]] auto GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>;
 #endif
 
-    void FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base);
-    void FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> nullable_stay_frm_base);
+    void FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> stay_frm_base);
+    void FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> stay_frm_base);
 
     ptr<RenderSettings> _settings;
     ptr<FileSystem> _resources;

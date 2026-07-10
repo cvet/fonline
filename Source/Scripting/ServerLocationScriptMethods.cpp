@@ -40,7 +40,7 @@ FO_BEGIN_NAMESPACE
 
 // SyncScope: requires self; init callback runs under the same cover and must widen before touching other entities.
 ///@ ExportMethod
-FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, Location*, bool> initFunc)
+FO_SCRIPT_API void Server_Location_SetupScript(ptr<Location> self, ScriptFunc<void, ptr<Location>, bool> initFunc)
 {
     if (initFunc.IsDelegate()) {
         throw ScriptException("Init function must not be a delegate");
@@ -132,7 +132,8 @@ FO_SCRIPT_API nptr<Map> Server_Location_GetMap(ptr<Location> self, ptr<ProtoMap>
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Map> Server_Location_GetMapByIndex(ptr<Location> self, int32_t index)
 {
-    auto map = self->GetMapByIndex(index).as_ptr();
+    auto map = self->GetMapByIndex(index);
+    FO_VERIFY_AND_THROW(map, "Map is null");
     return map;
 }
 

@@ -439,27 +439,6 @@ namespace details
 template<typename T>
 using remove_all_pointers_t = typename details::remove_all_pointers<T>::type;
 
-template<typename T>
-    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>>)
-inline constexpr auto cast_to_void(const T ptr) -> void*
-{
-    return const_cast<void*>(static_cast<const void*>(ptr));
-}
-
-template<typename T, typename U>
-    requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
-inline constexpr auto cast_from_void(U ptr) -> T
-{
-    return static_cast<T>(ptr);
-}
-
-template<typename T, std::integral U>
-    requires(std::is_pointer_v<T> && std::is_void_v<remove_all_pointers_t<T>>)
-inline constexpr auto void_ptr_offset(T ptr, U offset) -> T
-{
-    return cast_to_void(cast_from_void<uint8_t*>(ptr) + offset);
-}
-
 template<bool Enabled>
 [[nodiscard]] bool build_condition() noexcept
 {

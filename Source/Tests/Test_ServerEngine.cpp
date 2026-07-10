@@ -107,7 +107,7 @@ namespace
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -379,7 +379,7 @@ namespace ServerEngineInitGateTest
         set<hstring> str_hashes;
 
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -493,6 +493,7 @@ namespace ServerEngineInitGateTest
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
+
         return player;
     }
 
@@ -1097,9 +1098,9 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     const auto critter_pid = server->Hashes.ToHashedString("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
 
-    auto critter_id_func = server->FindFunc<int64_t, Critter*>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
+    auto critter_id_func = server->FindFunc<int64_t, ptr<Critter>>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
     REQUIRE(critter_id_func);
-    REQUIRE(critter_id_func.Call(cr.get()));
+    REQUIRE(critter_id_func.Call(cr));
     CHECK(critter_id_func.GetResult() == cr->GetId().underlying_value());
 
     auto matches_hash_func = server->FindFunc<bool, hstring>(get_func_name("ServerEngineTest::UnitTestMatchesHash"));
@@ -1155,9 +1156,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        auto nullable_map = loc->GetMapByIndex(0);
-        REQUIRE(static_cast<bool>(nullable_map));
-        auto map = nullable_map.as_ptr();
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(critter_pid, false);
 
@@ -1201,9 +1201,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        auto nullable_map = loc->GetMapByIndex(0);
-        REQUIRE(static_cast<bool>(nullable_map));
-        auto map = nullable_map.as_ptr();
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(critter_pid, false);
 
@@ -1249,9 +1248,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             });
         });
 
-        auto nullable_map = loc->GetMapByIndex(0);
-        REQUIRE(static_cast<bool>(nullable_map));
-        auto map = nullable_map.as_ptr();
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(critter_pid, false);
 
@@ -1339,9 +1337,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     });
 
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto nullable_map = loc->GetMapByIndex(0);
-    REQUIRE(static_cast<bool>(nullable_map));
-    auto map = nullable_map.as_ptr();
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
     ptr<ServerEntity> map_entity = map;
 
     auto cr_a = server->CreateCritter(critter_pid, false);
@@ -1466,7 +1463,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_FALSE(IsEntityAccessValid(cr_b));
     ctx.Release();
 
-    ctx.LockSingleton(server->GetEntityLock().get());
+    ctx.LockSingleton(server->GetEntityLock());
     ctx.EnsureEntitySynced(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(IsEntityAccessValid(cr_a));
@@ -1536,13 +1533,11 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     });
 
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto nullable_setup_ctx = server->GetCurrentSyncContext();
-    REQUIRE(static_cast<bool>(nullable_setup_ctx));
-    auto setup_ctx = nullable_setup_ctx.as_ptr();
+    auto setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(static_cast<bool>(setup_ctx));
     setup_ctx->EnsureEntitySynced(loc);
-    auto nullable_map = loc->GetMapByIndex(0);
-    REQUIRE(static_cast<bool>(nullable_map));
-    auto map = nullable_map.as_ptr();
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
     setup_ctx->EnsureEntitySynced(map);
 
     auto cr_a = server->CreateCritter(critter_pid, true);
@@ -1552,15 +1547,13 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     auto player_a_holder = CreateStandalonePlayer(server, "SyncWidenPlayerA");
     auto player_b_holder = CreateStandalonePlayer(server, "SyncWidenPlayerB");
-    auto player_a = player_a_holder.as_ptr();
-    auto player_b = player_b_holder.as_ptr();
-    setup_ctx->EnsureEntitySynced(player_a);
-    setup_ctx->EnsureEntitySynced(player_b);
+    setup_ctx->EnsureEntitySynced(player_a_holder);
+    setup_ctx->EnsureEntitySynced(player_b_holder);
 
-    cr_a->AttachPlayer(player_a);
-    player_a->SetControlledCritter(cr_a);
-    cr_b->AttachPlayer(player_b);
-    player_b->SetControlledCritter(cr_b);
+    cr_a->AttachPlayer(player_a_holder);
+    player_a_holder->SetControlledCritter(cr_a);
+    cr_b->AttachPlayer(player_b_holder);
+    player_b_holder->SetControlledCritter(cr_b);
 
     auto detach_players = scope_exit([&]() noexcept {
         safe_call([&] {
@@ -1573,7 +1566,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
                 });
             });
 
-            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a, player_b};
+            vector<nptr<ServerEntity>> attached_players {cr_a, cr_b, player_a_holder, player_b_holder};
             cleanup_ctx.SyncEntities(attached_players);
 
             if (cr_a->GetPlayer()) {
@@ -1591,10 +1584,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     REQUIRE(static_cast<bool>(item_a));
 
     // The widen link must be live in both directions before we test the cover.
-    auto player_entity_lookup = player_a.as_ptr().cast<ServerEntity>();
-    auto cr_entity_lookup = cr_a.as_ptr().cast<ServerEntity>();
-    REQUIRE(cr_a->GetSyncWidenEntity() == player_entity_lookup);
-    REQUIRE(player_a->GetSyncWidenEntity() == cr_entity_lookup);
+    REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
+    REQUIRE(player_a_holder->GetSyncWidenEntity() == cr_a);
 
     server->Unlock();
     locked = false;
@@ -1614,22 +1605,22 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         vector<nptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
         CHECK(ctx.ValidateAccess(cr_a)); // own lock
-        CHECK(ctx.ValidateAccess(player_a)); // widened: player's own lock held
-        CHECK_FALSE(ctx.ValidateAccess(player_b));
+        CHECK(ctx.ValidateAccess(player_a_holder)); // widened: player's own lock held
+        CHECK_FALSE(ctx.ValidateAccess(player_b_holder));
         CHECK_FALSE(ctx.ValidateAccess(cr_b));
         CHECK(IsEntityAccessValid(cr_a));
-        CHECK(IsEntityAccessValid(player_a));
-        CHECK_FALSE(IsEntityAccessValid(player_b));
+        CHECK(IsEntityAccessValid(player_a_holder));
+        CHECK_FALSE(IsEntityAccessValid(player_b_holder));
     }
     ctx.Release();
 
     // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held).
     {
-        vector<nptr<ServerEntity>> one {player_a};
+        vector<nptr<ServerEntity>> one {player_a_holder};
         ctx.SyncEntities(one);
-        CHECK(ctx.ValidateAccess(player_a));
+        CHECK(ctx.ValidateAccess(player_a_holder));
         CHECK(ctx.ValidateAccess(cr_a));
-        CHECK(IsEntityAccessValid(player_a));
+        CHECK(IsEntityAccessValid(player_a_holder));
         CHECK(IsEntityAccessValid(cr_a));
     }
     ctx.Release();
@@ -1643,9 +1634,9 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         CHECK(ctx.ValidateAccess(item_a));
         CHECK(ctx.ValidateAccess(cr_a));
         CHECK(ctx.ValidateAccess(map));
-        CHECK(ctx.ValidateAccess(player_a));
+        CHECK(ctx.ValidateAccess(player_a_holder));
         CHECK(IsEntityAccessValid(item_a));
-        CHECK(IsEntityAccessValid(player_a));
+        CHECK(IsEntityAccessValid(player_a_holder));
     }
     ctx.Release();
 
@@ -1656,8 +1647,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         vector<nptr<ServerEntity>> item_holder_recipient {item_a, cr_a, cr_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
         CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
-        CHECK(ctx.ValidateAccess(player_a)); // widened from the requested holder
-        CHECK(ctx.ValidateAccess(player_b)); // widened from the requested recipient
+        CHECK(ctx.ValidateAccess(player_a_holder)); // widened from the requested holder
+        CHECK(ctx.ValidateAccess(player_b_holder)); // widened from the requested recipient
         CHECK(ctx.ValidateAccess(item_a)); // item's own lock is held
         CHECK(ctx.ValidateAccess(cr_a)); // holder's own lock is held
         CHECK(ctx.ValidateAccess(cr_b)); // recipient's own lock is held
@@ -1672,14 +1663,14 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     // widen verify-after-acquire is satisfied directly. The shared map is only marked, so the map itself
     // is not accessible.
     {
-        vector<nptr<ServerEntity>> players {player_a, player_b};
+        vector<nptr<ServerEntity>> players {player_a_holder, player_b_holder};
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
-        CHECK(ctx.ValidateAccess(player_a)); // players' own locks held
-        CHECK(ctx.ValidateAccess(player_b));
+        CHECK(ctx.ValidateAccess(player_a_holder)); // players' own locks held
+        CHECK(ctx.ValidateAccess(player_b_holder));
         CHECK(ctx.ValidateAccess(cr_a)); // widened critters' own locks held
         CHECK(ctx.ValidateAccess(cr_b));
         CHECK_FALSE(ctx.ValidateAccess(map)); // map is only marked, not held
-        CHECK(IsEntityAccessValid(player_a));
+        CHECK(IsEntityAccessValid(player_a_holder));
         CHECK(IsEntityAccessValid(cr_a));
         CHECK(IsEntityAccessValid(cr_b));
         CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
@@ -1854,7 +1845,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
         while (!stop.load(std::memory_order_relaxed)) {
             for (int32_t i = tid; i < CRITTER_COUNT; i += REPARENTER_THREADS) {
                 try {
-                    ptr<Critter> cr = critters[numeric_cast<size_t>(i)];
+                    auto& cr = critters[numeric_cast<size_t>(i)];
                     ctx.SyncEntity(cr);
                     cr->SetParent(targets[(step + numeric_cast<uint64_t>(i)) % 4U]);
                     reparents.fetch_add(1, std::memory_order_relaxed);
@@ -1926,14 +1917,14 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
-    REQUIRE(static_cast<bool>(cleanup_ctx));
+    REQUIRE(cleanup_ctx);
     vector<nptr<ServerEntity>> cleanup_req;
     cleanup_req.reserve(critters.size());
-    for (ptr<Critter> cr : critters) {
+    for (const auto& cr : critters) {
         cleanup_req.emplace_back(cr);
     }
     cleanup_ctx->SyncEntities(cleanup_req);
-    for (ptr<Critter> cr : critters) {
+    for (auto& cr : critters) {
         cr->SetParent(nullptr);
     }
 }
@@ -2030,7 +2021,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
 
                 auto stack = from_cr->GetInvItemByPid(coin_pid);
                 if (stack != nullptr && stack->GetCount() > 0) {
-                    server->ItemMngr.MoveItem(stack.as_ptr(), 1, to_cr);
+                    server->ItemMngr.MoveItem(stack, 1, to_cr);
                     moves_done.fetch_add(1, std::memory_order_relaxed);
                 }
                 else {
@@ -2228,9 +2219,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     });
 
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto nullable_map = loc->GetMapByIndex(0);
-    REQUIRE(static_cast<bool>(nullable_map));
-    auto map = nullable_map.as_ptr();
+    auto map = loc->GetMapByIndex(0);
+    REQUIRE(static_cast<bool>(map));
 
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
@@ -2340,8 +2330,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
-    REQUIRE(static_cast<bool>(cleanup_ctx));
-    vector<nptr<ServerEntity>> cleanup_req {cr_a.get(), cr_b.get()};
+    REQUIRE(cleanup_ctx);
+    vector<nptr<ServerEntity>> cleanup_req {cr_a, cr_b};
     cleanup_ctx->SyncEntities(cleanup_req);
     cr_a->SetParent(nullptr);
     cr_b->SetParent(nullptr);
@@ -2403,8 +2393,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
-    server->MapMngr.TransferToMap(cr_a, map_a.as_ptr(), mpos {10, 10}, mdir {}, std::nullopt);
-    server->MapMngr.TransferToMap(cr_b, map_b.as_ptr(), mpos {12, 12}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_a, map_a, mpos {10, 10}, mdir {}, std::nullopt);
+    server->MapMngr.TransferToMap(cr_b, map_b, mpos {12, 12}, mdir {}, std::nullopt);
 
     server->Unlock();
     locked = false;

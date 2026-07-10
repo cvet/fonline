@@ -58,7 +58,7 @@ static auto GetMapper() -> ptr<MapperEngine>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(Data->Mapper, "Mapper engine is not created");
-    return Data->Mapper.as_ptr();
+    return Data->Mapper;
 }
 
 static void MapperEntry([[maybe_unused]] void* data)
@@ -74,7 +74,7 @@ static void MapperEntry([[maybe_unused]] void* data)
 
         if (!Data->Mapper) {
             try {
-                ptr<GlobalSettings> settings = &GetApp()->Settings;
+                auto settings = make_ptr(&GetApp()->Settings);
                 Data->Mapper = SafeAlloc::MakeRefCounted<MapperEngine>(settings, GetMapperResources(*settings), &GetApp()->MainWindow);
                 auto mapper = GetMapper();
                 mapper->SetInputLocked(GetApp()->Settings.HeadlessWindow);

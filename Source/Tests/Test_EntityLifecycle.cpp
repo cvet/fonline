@@ -473,8 +473,8 @@ namespace EntityLifecycle
         auto unlogined_player = server->CreateUnloginedPlayer(std::move(net_connection));
         unlogined_player->SetName(name);
         unlogined_player->SetLastControlledCritterId(ident_t {1});
-
         auto player = server->LoginPlayerToNewRecord(unlogined_player);
+
         return player;
     }
 
@@ -739,13 +739,12 @@ TEST_CASE("EntityInitEvents")
 
         auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
 
-        auto nullable_map = loc->GetMapByIndex(0);
-        REQUIRE(static_cast<bool>(nullable_map));
-        auto map = nullable_map.as_ptr();
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
         REQUIRE(cr->GetMapId() == map->GetId());
         REQUIRE(map->GetCritter(cr->GetId()) == cr.get());
 
@@ -858,14 +857,12 @@ TEST_CASE("EntityManagerCppApi")
         auto cr = server->CreateCritter(fn("TestCritter"), false);
 
         const auto cr_id = cr->GetId();
-        auto nullable_found_cr = server->EntityMngr.GetCritter(cr_id);
-        REQUIRE(nullable_found_cr);
-        auto found_cr = nullable_found_cr.as_ptr();
+        auto found_cr = server->EntityMngr.GetCritter(cr_id);
+        REQUIRE(found_cr);
         CHECK(found_cr == cr);
 
-        auto nullable_found_entity = server->EntityMngr.GetEntity(cr_id);
-        REQUIRE(nullable_found_entity);
-        auto found_entity = nullable_found_entity.as_ptr();
+        auto found_entity = server->EntityMngr.GetEntity(cr_id);
+        REQUIRE(found_entity);
         ptr<ServerEntity> cr_entity = cr;
         CHECK(found_entity == cr_entity);
 
@@ -1460,13 +1457,12 @@ TEST_CASE("PlayerRegistrationCppApi")
             });
         });
 
-        auto nullable_map = loc->GetMapByIndex(0);
-        REQUIRE(static_cast<bool>(nullable_map));
-        auto map = nullable_map.as_ptr();
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
         REQUIRE(cr->GetPlayer() == player);
@@ -1481,14 +1477,13 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(4));
 
-        auto test_connection_ptr = test_connection.as_ptr();
-        SendStopCritterMove(test_connection_ptr, server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
+        SendStopCritterMove(test_connection.as_ptr(), server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
 
         int32_t dir_calls = 0;
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
 
         auto ctx = server->RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 3> sync_entities {player.as_nptr(), cr.as_nptr(), map.as_nptr()};
+        const array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
         ctx->SyncEntities(sync_entities);
 
         CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));

@@ -77,8 +77,8 @@ static auto WinApi_GetProcAddress(string_view_nt mod, string_view_nt name) -> T
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const char> module_name = mod.c_str();
-    ptr<const char> proc_name = name.c_str();
+    auto module_name = make_ptr(mod.c_str());
+    auto proc_name = make_ptr(name.c_str());
 
     const auto hmod = ::GetModuleHandleA(module_name.get());
 
@@ -98,7 +98,7 @@ static auto WinApiModuleHandle(nptr<void> module_handle) noexcept -> HMODULE
         return ::GetModuleHandleW(nullptr);
     }
 
-    return module_handle.template cast<std::remove_pointer_t<HMODULE>>().get();
+    return module_handle.reinterpret_as<std::remove_pointer_t<HMODULE>>().get();
 }
 
 static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>
@@ -106,7 +106,7 @@ static auto WinApi_GetProcAddressRaw(nptr<void> module_handle, const string& fun
     FO_STACK_TRACE_ENTRY();
 
     HMODULE hmodule = WinApiModuleHandle(module_handle);
-    ptr<const char> func_name_cstr = func_name.c_str();
+    auto func_name_cstr = make_ptr(func_name.c_str());
     FARPROC proc = ::GetProcAddress(hmodule, func_name_cstr.get());
 
     if (proc == nullptr) {
@@ -123,10 +123,10 @@ void Platform::InfoLog(const string& str) noexcept
 
 #if FO_WINDOWS
     const wstring message = strex(str).to_wide_char();
-    ptr<const wchar_t> message_cstr = message.c_str();
+    auto message_cstr = make_ptr(message.c_str());
     ::OutputDebugStringW(message_cstr.get());
 #elif FO_ANDROID
-    ptr<const char> message_cstr = str.c_str();
+    auto message_cstr = make_ptr(str.c_str());
     __android_log_write(ANDROID_LOG_INFO, "FO", message_cstr.get());
 #endif
 }
@@ -141,7 +141,7 @@ void Platform::SetThreadName(const string& str) noexcept
 
     if (set_thread_description != nullptr) {
         const wstring thread_name = strex(str).to_wide_char();
-        ptr<const wchar_t> thread_name_cstr = thread_name.c_str();
+        auto thread_name_cstr = make_ptr(thread_name.c_str());
         set_thread_description(::GetCurrentThread(), thread_name_cstr.get());
     }
 #endif
@@ -154,7 +154,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 #if FO_WINDOWS
     vector<wchar_t> path;
     path.resize(FILENAME_MAX);
-    nptr<wchar_t> path_data = path.data();
+    auto path_data = make_nptr(path.data());
     auto size = ::GetModuleFileNameW(nullptr, path_data.get(), static_cast<DWORD>(path.size()));
 
     if (size == 0) {
@@ -175,7 +175,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 
 #elif FO_LINUX
     char path[FILENAME_MAX];
-    ptr<char> path_data = path;
+    auto path_data = make_ptr(path);
     const auto size = ::readlink("/proc/self/exe", path_data.get(), sizeof(path) - 1);
 
     if (size == -1) {
@@ -187,7 +187,7 @@ auto Platform::GetExePath() noexcept -> optional<string>
 
 #elif FO_MAC
     char path[PROC_PIDPATHINFO_MAXSIZE];
-    ptr<char> path_data = path;
+    auto path_data = make_ptr(path);
 
     const auto pid = ::getpid();
 
@@ -282,7 +282,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 
 #elif FO_LINUX || FO_ANDROID
     // /proc/self/statm: size resident shared text lib data dt (values in pages)
-    nptr<std::FILE> file = std::fopen("/proc/self/statm", "r");
+    auto file = make_nptr(std::fopen("/proc/self/statm", "r"));
     if (!file) {
         return 0;
     }
@@ -302,7 +302,7 @@ auto Platform::GetProcessMemoryUsage() noexcept -> size_t
 #elif FO_MAC
     mach_task_basic_info_data_t info {};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-    ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
+    auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
     if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) == KERN_SUCCESS) {
         return static_cast<size_t>(info.resident_size);
     }
@@ -319,7 +319,7 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
 
 #if FO_WINDOWS
     PROCESS_MEMORY_COUNTERS_EX pmc {};
-    ptr<PROCESS_MEMORY_COUNTERS> pmc_counters = ptr<decltype(pmc)> {&pmc}.reinterpret_as<PROCESS_MEMORY_COUNTERS>();
+    auto pmc_counters = make_ptr(&pmc).reinterpret_as<PROCESS_MEMORY_COUNTERS>();
 
     if (::GetProcessMemoryInfo(::GetCurrentProcess(), pmc_counters.get(), sizeof(pmc)) != 0) {
         return pmc.PrivateUsage;
@@ -327,7 +327,7 @@ auto Platform::GetProcessPrivateMemoryUsage() noexcept -> size_t
     return 0;
 
 #elif FO_LINUX || FO_ANDROID
-    nptr<std::FILE> file = std::fopen("/proc/self/status", "r");
+    auto file = make_nptr(std::fopen("/proc/self/status", "r"));
     if (!file) {
         return 0;
     }
@@ -400,8 +400,8 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
             return false;
         }
 
-        nptr<const char> text_begin = text.data();
-        ptr<const char> text_end = text_begin.get() + text.size();
+        auto text_begin = make_nptr(text.data());
+        ptr<const char> text_end = text_begin.offset(text.size());
         const auto parse_result = std::from_chars(text_begin.get(), text_end.get(), value);
         return parse_result.ec == std::errc {} && text_end == parse_result.ptr;
     };
@@ -515,9 +515,9 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     mach_msg_type_number_t processor_info_count = 0;
 
     if (::host_processor_info(::mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processor_count, &raw_processor_info, &processor_info_count) == KERN_SUCCESS) {
-        FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "processor_info");
-        ptr<const integer_t> processor_info = raw_processor_info;
-        ptr<const processor_cpu_load_info_data_t> load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
+        FO_VERIFY_AND_THROW(raw_processor_info != nullptr, "Processor info pointer is null");
+        auto processor_info = make_ptr(raw_processor_info);
+        auto load_info_data = processor_info.reinterpret_as<const processor_cpu_load_info_data_t>();
         const auto load_info = make_span(load_info_data, processor_count);
 
         result.Cores.reserve(static_cast<size_t>(processor_count));
@@ -543,7 +543,7 @@ auto Platform::GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot
     result.ProcessTimeNs = []() noexcept -> uint64_t {
         mach_task_basic_info_data_t info {};
         mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
-        ptr<integer_t> task_info_data = ptr<decltype(info)> {&info}.reinterpret_as<integer_t>();
+        auto task_info_data = make_ptr(&info).reinterpret_as<integer_t>();
 
         if (::task_info(::mach_task_self(), MACH_TASK_BASIC_INFO, task_info_data.get(), &count) != KERN_SUCCESS) {
             return 0;
@@ -570,15 +570,15 @@ auto Platform::LoadModule(const string& module_name) noexcept -> nptr<void>
 #if FO_WINDOWS
     const string module_path = add_extension(module_name, ".dll");
     const wstring module_path_wide = strex(module_path).to_wide_char();
-    ptr<const wchar_t> module_path_cstr = module_path_wide.c_str();
+    auto module_path_cstr = make_ptr(module_path_wide.c_str());
     module_handle = ::LoadLibraryW(module_path_cstr.get());
 #elif FO_LINUX
     const string module_path = add_extension(module_name, ".so");
-    ptr<const char> module_path_cstr = module_path.c_str();
+    auto module_path_cstr = make_ptr(module_path.c_str());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #elif FO_MAC
     const string module_path = add_extension(module_name, ".dylib");
-    ptr<const char> module_path_cstr = module_path.c_str();
+    auto module_path_cstr = make_ptr(module_path.c_str());
     module_handle = ::dlopen(module_path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
 #endif
 
@@ -609,7 +609,7 @@ auto Platform::GetFuncAddr(nptr<void> module_handle, const string& func_name) no
 #if FO_WINDOWS
     func = WinApi_GetProcAddressRaw(module_handle, func_name);
 #elif FO_LINUX || FO_MAC
-    ptr<const char> func_name_cstr = func_name.c_str();
+    auto func_name_cstr = make_ptr(func_name.c_str());
     func = ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, func_name_cstr.get());
 #endif
 

@@ -151,8 +151,8 @@ private:
     void CopyBuffer(const ScriptArray& src);
     void Construct(int32_t start, int32_t end);
     void Destruct(int32_t start, int32_t end);
-    auto Equals(ptr<void> a, ptr<void> b, nptr<AngelScript::asIScriptContext> nullable_ctx) const -> bool;
-    auto Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asIScriptContext> nullable_ctx) const -> bool;
+    auto Equals(ptr<void> a, ptr<void> b, nptr<AngelScript::asIScriptContext> ctx) const -> bool;
+    auto Less(ptr<void> a, ptr<void> b, bool asc, nptr<AngelScript::asIScriptContext> ctx) const -> bool;
 
     refcount_ptr<AngelScript::asITypeInfo> _typeInfo;
     int32_t _subTypeId;

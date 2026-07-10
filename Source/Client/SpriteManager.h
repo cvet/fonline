@@ -83,7 +83,7 @@ public:
         FO_NO_STACK_TRACE_ENTRY();
 
         if (_drawEffect) {
-            return _drawEffect.as_ptr();
+            return _drawEffect;
         }
 
         return defaultEffect;

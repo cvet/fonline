@@ -52,7 +52,7 @@ namespace
 
         static void Callback(const AngelScript::asSMessageInfo* msg, void* param)
         {
-            nptr<ScriptMessages> self = static_cast<ScriptMessages*>(param);
+            auto self = cast_from_void<ScriptMessages*>(param);
             FO_VERIFY_AND_THROW(self, "Script message collector is null");
 
             self->Entries.emplace_back(strex("{}({},{}): {}", msg->section != nullptr ? msg->section : "<unknown>", msg->row, msg->col, msg->message != nullptr ? msg->message : "<no message>").str());
@@ -140,7 +140,7 @@ namespace
 
     static auto MakeAngelScriptEngine(ScriptMessages& messages) -> AngelScript::asIScriptEngine*
     {
-        nptr<AngelScript::asIScriptEngine> engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
+        auto engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
         REQUIRE(engine != nullptr);
 
         REQUIRE(engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false) >= 0);
@@ -196,7 +196,7 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        nptr<AngelScript::asIScriptContext> ctx = AngelScript::asGetActiveContext();
+        auto ctx = make_nptr(AngelScript::asGetActiveContext());
         FO_VERIFY_AND_THROW(ctx != nullptr, "Missing active AngelScript context");
 
         nptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
@@ -236,7 +236,7 @@ namespace
 
     static auto BuildAngelScriptModule(AngelScript::asIScriptEngine* engine, string_view module_name, string_view source) -> int32_t
     {
-        nptr<AngelScript::asIScriptModule> module = engine->GetModule(string(module_name).c_str(), AngelScript::asGM_ALWAYS_CREATE);
+        auto module = make_nptr(engine->GetModule(string(module_name).c_str(), AngelScript::asGM_ALWAYS_CREATE));
         REQUIRE(module != nullptr);
         REQUIRE(module->AddScriptSection("InlineArrayTemplateCheck", source.data(), source.size()) >= 0);
         return module->Build();
@@ -251,7 +251,7 @@ namespace
     static void CheckPrimitiveScriptArrayDirectOps(AngelScript::asIScriptEngine* engine, string_view type_decl, T low, T high)
     {
         const string array_type_decl = strex("array<{}>", type_decl).str();
-        nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl(array_type_decl.c_str());
+        auto array_type = make_nptr(engine->GetTypeInfoByDecl(array_type_decl.c_str()));
         REQUIRE(array_type != nullptr);
 
         auto values = ScriptArray::Create(array_type.get(), 2);

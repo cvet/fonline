@@ -146,7 +146,7 @@ namespace NativeDataProvider
             requires(vector_collection<T>)
         explicit ArrayDataProxy(T& cont) :
             _ptrs {vec_transform(cont, [](auto&& e) -> ptr<void> {
-                ptr<void> element = cast_to_void(&e);
+                auto element = make_ptr(&e).void_cast();
                 return element;
             })}
         {
@@ -159,7 +159,7 @@ namespace NativeDataProvider
             requires(vector_collection<T>)
         explicit ArrayDataProxy(const T& cont) :
             _ptrs {vec_transform(cont, [](auto&& e) -> ptr<void> {
-                ptr<void> element = cast_to_void(&e);
+                auto element = make_ptr(&e).void_cast();
                 return element;
             })}
         {
@@ -185,7 +185,7 @@ namespace NativeDataProvider
         template<typename T>
             requires(map_collection<T>)
         explicit DictDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {cast_to_void(&e.first), cast_to_void(&e.second)}; })}
+            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
         {
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
@@ -195,7 +195,7 @@ namespace NativeDataProvider
         template<typename T>
             requires(map_collection<T>)
         explicit DictDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {cast_to_void(&e.first), cast_to_void(&e.second)}; })}
+            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
         {
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
@@ -237,27 +237,26 @@ namespace NativeDataProvider
         using raw_t = std::remove_cvref_t<T>;
 
         if constexpr (vector_collection<raw_t>) {
-            return ptr<void> {cast_to_void(&temp_storage.emplace<ArrayDataProxy>(arg))};
+            return make_ptr(&temp_storage.emplace<ArrayDataProxy>(arg)).void_cast();
         }
         else if constexpr (map_collection<raw_t>) {
-            return ptr<void> {cast_to_void(&temp_storage.emplace<DictDataProxy>(arg))};
-        }
-        else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
-            ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
-            return ptr<void> {cast_to_void(entity->get_pp())};
+            return make_ptr(&temp_storage.emplace<DictDataProxy>(arg)).void_cast();
         }
         else if constexpr (is_borrow_pointer_wrapper_v<raw_t>) {
             using wrapped_t = std::remove_const_t<typename raw_t::element_type>;
             if constexpr (std::is_base_of_v<Entity, wrapped_t>) {
                 ptr<nptr<Entity>> entity = &temp_storage.emplace<nptr<Entity>>(arg);
-                return ptr<void> {cast_to_void(entity->get_pp())};
+                return make_ptr(entity->get_pp()).void_cast();
             }
             else {
-                return ptr<void> {cast_to_void(&arg)};
+                return make_ptr(&arg).void_cast();
             }
         }
+        else if constexpr (std::is_pointer_v<raw_t>) {
+            static_assert(always_false_v<T>, "Raw pointer native script ABI arguments are not supported; use ptr/nptr");
+        }
         else {
-            return ptr<void> {cast_to_void(&arg)};
+            return make_ptr(&arg).void_cast();
         }
     }
 }
@@ -279,15 +278,11 @@ using ScriptFuncName = pair<hstring, uintptr_t>; // Name + Delegate object addre
 
 inline void IgnoreBorrowedScriptFuncDesc(ptr<ScriptFuncDesc> func) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(func);
 }
 
 inline auto MakeBorrowedScriptFuncDesc(ptr<ScriptFuncDesc> func) -> unique_del_ptr<ScriptFuncDesc>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return make_unique_del_ptr(func, IgnoreBorrowedScriptFuncDesc);
 }
 
@@ -319,13 +314,15 @@ public:
             return false;
         }
 
-        auto func = _func.as_ptr();
+        auto func = _func.as_nptr();
+        FO_STRONG_ASSERT(func, "Script function is null");
         return func->DelegateObj != 0;
     }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName
     {
         if (_func) {
-            auto func = _func.as_ptr();
+            auto func = _func.as_nptr();
+            FO_STRONG_ASSERT(func, "Script function is null");
             return ScriptFuncName(func->Name, func->DelegateObj);
         }
 
@@ -337,7 +334,8 @@ public:
             return false;
         }
 
-        auto func = _func.as_ptr();
+        auto func = _func.as_nptr();
+        FO_STRONG_ASSERT(func, "Script function is null");
         return func->AttributeChecker(attribute);
     }
 
@@ -353,13 +351,14 @@ public:
             return false;
         }
 
-        auto func = _func.as_ptr();
+        auto func = _func.as_nptr();
+        FO_STRONG_ASSERT(func, "Script function is null");
 
         if constexpr (std::is_same_v<TRet, void>) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
             size_t storage_index = 0;
             array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
 
@@ -375,7 +374,7 @@ public:
             array<NativeDataProvider::StorageEntryType, sizeof...(Args) + 1> temp_storage {};
             size_t storage_index = 0;
             array<ptr<void>, sizeof...(Args)> args_data {([&] { return NativeDataProvider::NormalizeArg(args, temp_storage[storage_index++]); }())...};
-            ptr<const DataAccessor> accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR;
+            auto accessor = make_ptr(&NativeDataProvider::NATIVE_DATA_ACCESSOR);
             FuncCallData call {.Accessor = accessor};
             call.ArgsData = args_data;
             call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
@@ -401,23 +400,17 @@ namespace NativeDataProvider
 {
     inline auto GetHandleSlot(ptr<void> slot) noexcept -> ptr<void*>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlotPointer(ptr<void> slot_address) noexcept -> ptr<void*>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *slot_address.reinterpret_as<void**>();
     }
 
     template<typename T>
     inline auto ReadTypedHandleSlot(ptr<void> slot) noexcept -> nptr<T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_void_v<T>) {
             return *GetHandleSlot(slot);
         }
@@ -429,8 +422,6 @@ namespace NativeDataProvider
     template<typename T>
     inline auto ReadConstTypedHandleSlot(nptr<const void> slot) noexcept -> nptr<const T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (!slot) {
             return nullptr;
         }
@@ -446,8 +437,6 @@ namespace NativeDataProvider
     template<typename T>
     inline void WriteTypedHandleSlot(ptr<void> slot, nptr<T> value) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_void_v<T>) {
             *GetHandleSlot(slot) = value.get();
         }
@@ -458,29 +447,21 @@ namespace NativeDataProvider
 
     inline auto ReadHandleSlot(ptr<void> slot) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *GetHandleSlot(slot);
     }
 
     inline auto ReadHandleSlot(ptr<const void> slot) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *slot.reinterpret_as<void*>();
     }
 
     inline auto ReadIndirectHandleSlot(ptr<void> slot_address) noexcept -> nptr<void>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return *ReadIndirectHandleSlotPointer(slot_address);
     }
 
     inline void WriteHandleSlot(ptr<void> slot, nptr<void> value) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         *GetHandleSlot(slot) = value.get();
     }
 
@@ -559,18 +540,14 @@ namespace NativeDataCaller
                 nptr<std::remove_const_t<elem_t>> target_entity = base_entity.template dyn_cast<std::remove_const_t<elem_t>>();
                 FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
                 FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
-                return raw_t {target_entity.get()};
+                return raw_t {target_entity};
             }
             else {
                 return raw_t {*cast_from_void<elem_t**>(data.get())};
             }
         }
-        else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
-            nptr<Entity> base_entity = NativeDataProvider::ReadTypedHandleSlot<Entity>(data);
-            nptr<std::remove_pointer_t<raw_t>> target_entity = base_entity.template dyn_cast<std::remove_pointer_t<raw_t>>();
-            FO_VERIFY_AND_THROW(!base_entity || target_entity, "Base entity exists but target entity lookup failed");
-            FO_VERIFY_AND_THROW(!target_entity || !target_entity->IsDestroyed(), "Target entity lookup returned destroyed entity");
-            return temp.emplace(target_entity.get());
+        else if constexpr (std::is_pointer_v<raw_t>) {
+            static_assert(always_false_v<T>, "Raw pointer native script ABI arguments are not supported; use ptr/nptr");
         }
         else if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
             // Mutable slot is the address of the caller's variable, so bind the reference to it directly:
@@ -597,7 +574,7 @@ namespace NativeDataCaller
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {
-                    accessor.AddArrayElement(data, cast_to_void(&e));
+                    accessor.AddArrayElement(data, make_nptr(&e).void_cast());
                 }
             }
             else if constexpr (map_collection<raw_t>) {
@@ -605,24 +582,22 @@ namespace NativeDataCaller
                 accessor.ClearDict(data);
 
                 for (auto& e : v) {
-                    accessor.AddDictElement(data, cast_to_void(&e.first), cast_to_void(&e.second));
+                    accessor.AddDictElement(data, make_nptr(&e.first).void_cast(), make_nptr(&e.second).void_cast());
                 }
             }
             else if constexpr (specialization_of<raw_t, ptr> || specialization_of<raw_t, nptr>) {
                 using elem_t = typename raw_t::element_type;
                 FO_VERIFY_AND_THROW(temp.has_value(), "Optional value is not set");
                 if constexpr (std::is_base_of_v<Entity, std::remove_const_t<elem_t>>) {
-                    const nptr<elem_t> target_entity = temp.value().get();
+                    const nptr<elem_t> target_entity = temp.value();
                     NativeDataProvider::WriteTypedHandleSlot<Entity>(data, target_entity);
                 }
                 else {
                     *cast_from_void<elem_t**>(data.get()) = temp.value().get();
                 }
             }
-            else if constexpr (std::is_base_of_v<Entity, std::remove_pointer_t<raw_t>>) {
-                FO_VERIFY_AND_THROW(temp.has_value(), "Optional value is not set");
-                const nptr<std::remove_pointer_t<raw_t>> target_entity = temp.value();
-                NativeDataProvider::WriteTypedHandleSlot<Entity>(data, target_entity);
+            else if constexpr (std::is_pointer_v<raw_t>) {
+                static_assert(always_false_v<T>, "Raw pointer native script ABI arguments are not supported; use ptr/nptr");
             }
             else {
                 if (temp.has_value()) {
@@ -656,7 +631,7 @@ namespace NativeDataCaller
         using Traits = NativeCallTraits<decltype(Fn)>;
 
         FO_VERIFY_AND_THROW(call.ArgsData.size() == Traits::arity, "Native script call argument storage does not match native function arity", call.ArgsData.size(), Traits::arity);
-        FO_VERIFY_AND_THROW(!!call.RetData == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
+        FO_VERIFY_AND_THROW((call.RetData != nullptr) == !std::is_void_v<typename Traits::return_type>, "Native script call return storage does not match native function return type", call.RetData != nullptr, !std::is_void_v<typename Traits::return_type>);
 
         NativeCallImpl(Fn, call, std::make_index_sequence<Traits::arity> {});
     }
@@ -669,6 +644,14 @@ public:
     // static constexpr int32_t MONO_BACKEND_INDEX = 1;
     virtual ~ScriptSystemBackend() = default;
 };
+
+namespace ScriptTypeIndex
+{
+    template<typename T>
+    struct MutableArg final
+    {
+    };
+}
 
 class ScriptSystem
 {
@@ -799,13 +782,35 @@ public:
     {
         using raw_t = std::remove_cvref_t<T>;
 
-        _engineTypes.emplace(typeid(raw_t).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type});
-        _engineTypes.emplace(typeid(raw_t*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true});
+        const ComplexTypeDesc simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type};
+        const ComplexTypeDesc mutable_simple_type {.Kind = ComplexTypeKind::Simple, .BaseType = type, .IsMutable = true};
+
+        _engineTypes.emplace(typeid(raw_t).hash_code(), simple_type);
+        _engineTypes.emplace(typeid(ptr<raw_t>).hash_code(), simple_type);
+        _engineTypes.emplace(typeid(nptr<raw_t>).hash_code(), simple_type);
+        _engineTypes.emplace(typeid(ptr<const raw_t>).hash_code(), simple_type);
+        _engineTypes.emplace(typeid(nptr<const raw_t>).hash_code(), simple_type);
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<raw_t>).hash_code(), mutable_simple_type);
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<ptr<raw_t>>).hash_code(), mutable_simple_type);
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<nptr<raw_t>>).hash_code(), mutable_simple_type);
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<ptr<const raw_t>>).hash_code(), mutable_simple_type);
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<nptr<const raw_t>>).hash_code(), mutable_simple_type);
 
         // Skip vector of bool due to temporary address of indexed element
         if constexpr (!std::is_same_v<T, bool>) {
-            _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type});
-            _engineTypes.emplace(typeid(vector<raw_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true});
+            const ComplexTypeDesc array_type {.Kind = ComplexTypeKind::Array, .BaseType = type};
+            const ComplexTypeDesc mutable_array_type {.Kind = ComplexTypeKind::Array, .BaseType = type, .IsMutable = true};
+
+            _engineTypes.emplace(typeid(vector<raw_t>).hash_code(), array_type);
+            _engineTypes.emplace(typeid(vector<ptr<raw_t>>).hash_code(), array_type);
+            _engineTypes.emplace(typeid(vector<nptr<raw_t>>).hash_code(), array_type);
+            _engineTypes.emplace(typeid(vector<ptr<const raw_t>>).hash_code(), array_type);
+            _engineTypes.emplace(typeid(vector<nptr<const raw_t>>).hash_code(), array_type);
+            _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<vector<raw_t>>).hash_code(), mutable_array_type);
+            _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<vector<ptr<raw_t>>>).hash_code(), mutable_array_type);
+            _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<vector<nptr<raw_t>>>).hash_code(), mutable_array_type);
+            _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<vector<ptr<const raw_t>>>).hash_code(), mutable_array_type);
+            _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<vector<nptr<const raw_t>>>).hash_code(), mutable_array_type);
         }
     }
 
@@ -817,17 +822,20 @@ public:
         using raw_value_t = std::remove_cvref_t<TValue>;
 
         _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type});
-        _engineTypes.emplace(typeid(map<raw_key_t, raw_value_t>*).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type, .IsMutable = true});
+        _engineTypes.emplace(typeid(ScriptTypeIndex::MutableArg<map<raw_key_t, raw_value_t>>).hash_code(), ComplexTypeDesc {.Kind = ComplexTypeKind::Dict, .BaseType = value_type, .KeyType = key_type, .IsMutable = true});
     }
 
 private:
     template<typename T>
     static constexpr auto ArgMapTypeIndex() -> size_t
     {
-        using raw_t = std::remove_cvref_t<std::remove_pointer_t<T>>;
+        using arg_t = std::remove_reference_t<T>;
+        using raw_t = std::remove_cvref_t<T>;
 
-        if constexpr (std::is_lvalue_reference_v<T>) {
-            return typeid(raw_t*).hash_code();
+        static_assert(!std::is_pointer_v<arg_t>, "Raw pointer script signatures are not supported; use ptr/nptr");
+
+        if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<arg_t>) {
+            return typeid(ScriptTypeIndex::MutableArg<raw_t>).hash_code();
         }
         else {
             return typeid(raw_t).hash_code();
@@ -858,8 +866,8 @@ public:
     static auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            if (auto init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
-                if (!init_func.Call(entity.get(), first_time)) {
+            if (auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script)) {
+                if (!init_func.Call(entity, first_time)) {
                     return false;
                 }
             }
@@ -875,14 +883,12 @@ public:
 template<typename T, typename TContainer, typename TResolver>
 [[nodiscard]] auto MakeScriptHandleVectorWith(const TContainer& entries, TResolver&& resolver)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<T*> result; // SmartPointerAudit: script ABI raw container.
+    vector<ptr<T>> result;
     result.reserve(entries.size());
 
     for (auto&& entry : entries) {
         auto entry_ptr = resolver(entry);
-        result.emplace_back(entry_ptr.get());
+        result.emplace_back(entry_ptr);
     }
 
     return result;
@@ -891,86 +897,39 @@ template<typename T, typename TContainer, typename TResolver>
 template<typename T, typename TContainer>
 [[nodiscard]] auto MakeScriptHandleVector(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return entry.get_no_const(); });
 }
 
 template<typename T, typename TContainer>
 [[nodiscard]] auto MakeMutableScriptHandleVector(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return const_cast<T*>(entry.get()); });
+    return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<T> { return make_ptr(const_cast<T*>(std::addressof(*entry))); });
 }
 
 template<typename T, typename U, typename TContainer>
 [[nodiscard]] auto MakeScriptHandleVectorAs(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeScriptHandleVectorWith<T>(entries, [](const auto& entry) noexcept -> ptr<U> { return entry.get_no_const(); });
 }
 
 template<typename T, typename U, typename TContainer>
 [[nodiscard]] auto MakeScriptRefHandleVectorAs(const TContainer& entries)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
-    vector<T*> result; // SmartPointerAudit: script ABI raw container.
+    vector<ptr<T>> result;
     result.reserve(entries.size());
 
     for (size_t i = 0; i < entries.size(); i++) {
         auto entry_ptr = entries[i].as_ptr();
-        U* mutable_entry = const_cast<U*>(std::addressof(*entry_ptr));
+        auto mutable_entry = make_ptr(const_cast<U*>(std::addressof(*entry_ptr)));
         result.emplace_back(mutable_entry);
     }
 
     return result;
 }
 
-template<typename T>
-[[nodiscard]] auto ReleaseScriptOwnership(refcount_ptr<T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return std::move(value).release_ownership();
-}
-
-template<typename T>
-[[nodiscard]] auto ReleaseNullableScriptOwnership(refcount_nptr<T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    if (!value) {
-        return nullptr;
-    }
-
-    return ReleaseScriptOwnership(std::move(value).take_not_null());
-}
-
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(ptr<const T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    return const_cast<T*>(std::addressof(*value));
-}
-
-template<typename T>
-[[nodiscard]] auto ScriptMutablePtr(nptr<const T> value) noexcept -> T*
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(value, "Script value pointer is null");
-    return ScriptMutablePtr(value.as_ptr());
-}
-
 template<typename TParent, typename TEntity>
 inline auto RequireParent(ptr<TEntity> entity, string_view error_message) -> refcount_ptr<TParent>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto parent = entity->template GetParent<TParent>();
 
     if (!parent) {

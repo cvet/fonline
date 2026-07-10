@@ -1237,7 +1237,7 @@ TEST_CASE("SyncContextSingletonLock")
         SyncContext ctx;
         ctx.Activate();
 
-        ctx.LockSingleton(&singleton);
+        ctx.LockSingleton(make_ptr(&singleton));
         CHECK(singleton.IsLockedByCurrentThread());
         CHECK_FALSE(ctx.IsEmpty());
 
@@ -1247,7 +1247,7 @@ TEST_CASE("SyncContextSingletonLock")
         CHECK_THROWS_AS(ctx.SyncEntities(empty), EntitySyncException);
 
         // Drain (destructor asserts both buckets are empty).
-        ctx.UnlockSingleton(&singleton);
+        ctx.UnlockSingleton(make_ptr(&singleton));
         CHECK(ctx.IsEmpty());
         CHECK_FALSE(singleton.IsLockedByCurrentThread());
         ctx.Deactivate();
@@ -1259,15 +1259,15 @@ TEST_CASE("SyncContextSingletonLock")
         SyncContext ctx;
         ctx.Activate();
 
-        ctx.LockSingleton(&singleton);
-        ctx.LockSingleton(&singleton); // recursive Game.Lock()
+        ctx.LockSingleton(make_ptr(&singleton));
+        ctx.LockSingleton(make_ptr(&singleton)); // recursive Game.Lock()
         CHECK(singleton.IsLockedByCurrentThread());
         CHECK_FALSE(ctx.IsEmpty());
 
-        ctx.UnlockSingleton(&singleton);
+        ctx.UnlockSingleton(make_ptr(&singleton));
         CHECK(singleton.IsLockedByCurrentThread()); // still held at recursion depth 1
         CHECK_FALSE(ctx.IsEmpty());
-        ctx.UnlockSingleton(&singleton);
+        ctx.UnlockSingleton(make_ptr(&singleton));
         CHECK_FALSE(singleton.IsLockedByCurrentThread());
         CHECK(ctx.IsEmpty());
         ctx.Deactivate();
@@ -1284,7 +1284,7 @@ TEST_CASE("SyncContextSingletonLock")
         SyncContext ctx;
         ctx.Activate();
 
-        ctx.LockSingleton(&singleton);
+        ctx.LockSingleton(make_ptr(&singleton));
         CHECK(singleton.IsLockedByCurrentThread());
         CHECK_FALSE(ctx.IsEmpty());
 
@@ -1304,14 +1304,14 @@ TEST_CASE("SyncContextSingletonLock")
         SyncContext ctx;
         ctx.Activate();
 
-        ctx.LockSingleton(&singleton);
-        ctx.UnlockSingleton(&singleton); // balanced — fully releases
+        ctx.LockSingleton(make_ptr(&singleton));
+        ctx.UnlockSingleton(make_ptr(&singleton)); // balanced — fully releases
 
         CHECK_FALSE(singleton.IsLockedByCurrentThread());
         CHECK(ctx.IsEmpty());
 
         // Second unlock has nothing to match.
-        CHECK_THROWS_AS(ctx.UnlockSingleton(&singleton), VerificationException);
+        CHECK_THROWS_AS(ctx.UnlockSingleton(make_ptr(&singleton)), VerificationException);
 
         CHECK(ctx.IsEmpty());
         ctx.Deactivate();

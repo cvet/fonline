@@ -675,7 +675,7 @@ public:
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
 
     auto CreateChildWindow(isize32 size, string_view title = {}) -> ptr<AppWindow>;
-    void DestroyChildWindow(nptr<AppWindow> nullable_window);
+    void DestroyChildWindow(nptr<AppWindow> window);
     void SetActiveWindow(nptr<AppWindow> window);
     void BeginWindowRender(ptr<AppWindow> window);
     void EndWindowRender();

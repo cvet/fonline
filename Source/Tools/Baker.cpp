@@ -92,8 +92,7 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
     vector<unique_ptr<BaseBaker>> bakers;
 
-    ptr<const BakingSettings> settings_ptr = &settings;
-    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = settings_ptr, .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
+    auto ctx = SafeAlloc::MakeShared<BakingContext>(BakingContext {.Settings = make_ptr(&settings), .PackName = pack_name, .BakeChecker = bake_checker, .WriteData = write_data, .BakedFiles = baked_files});
 
     if (vec_exists(request_bakers, MetadataBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<MetadataBaker>(ctx));
@@ -228,24 +227,24 @@ void MasterBaker::BakeAllInternal()
             &baking_output_ = std::as_const(baking_output),
             &force_baking // clang-format on
     ](const ResourcePackInfo& res_pack, const string& output_dir) -> unique_ptr<PackBakeContext> {
-        auto nullable_pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
-        auto pack_bake_context = nullable_pack_bake_context.as_ptr();
+        auto pack_bake_context = SafeAlloc::MakeUnique<PackBakeContext>();
+        auto pack_bake_context_ptr = pack_bake_context.as_ptr();
 
-        nullable_pack_bake_context->PackName = res_pack.Name;
-        nullable_pack_bake_context->OutputDir = output_dir;
+        pack_bake_context->PackName = res_pack.Name;
+        pack_bake_context->OutputDir = output_dir;
 
         for (const auto& input_dir : res_pack.InputDirs) {
-            nullable_pack_bake_context->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
+            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
         }
         for (const auto& input_file : res_pack.InputFiles) {
             const auto dir = strex(input_file).extract_dir().str();
             const auto pack = strex(input_file).extract_file_name().erase_file_extension().str();
-            nullable_pack_bake_context->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
+            pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
-        nullable_pack_bake_context->FilteredFiles = nullable_pack_bake_context->InputFiles.GetAllFiles();
+        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
 
-        const auto bake_checker = [context = pack_bake_context, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
+        const auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
             // to be guarded; without it concurrent emplace() races on the bucket array.
             {
@@ -263,7 +262,7 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        const auto write_data = [context = pack_bake_context](string_view path, span<const uint8_t> baked_data) mutable {
+        const auto write_data = [context = pack_bake_context_ptr](string_view path, span<const uint8_t> baked_data) mutable {
             const auto res_path = strex(context->OutputDir).combine_path(path).str();
 
             if (!fs_compare_file_content(res_path, baked_data)) {
@@ -277,10 +276,10 @@ void MasterBaker::BakeAllInternal()
             }
         };
 
-        nullable_pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_);
+        pack_bake_context->Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, settings, bake_checker, write_data, &baking_output_);
 
-        nullable_pack_bake_context->BakingTime.Pause();
-        return nullable_pack_bake_context;
+        pack_bake_context->BakingTime.Pause();
+        return pack_bake_context;
     };
 
     const auto bake_pack = [](ptr<PackBakeContext> bake_context, int32_t bake_order) {
@@ -329,7 +328,7 @@ void MasterBaker::BakeAllInternal()
         vector<std::future<unique_ptr<PackBakeContext>>> prepare_res_bakings;
 
         for (const auto& res_pack : res_packs) {
-            ptr<const ResourcePackInfo> res_pack_ptr = &res_pack;
+            auto res_pack_ptr = make_ptr(&res_pack);
             const string output_path = make_output_path(res_pack.Name);
             prepare_res_bakings.emplace_back(run_async(async_mode, strex("PreparePack-{}", res_pack_ptr->Name), [&, res_pack_ptr, output_path]() FO_DEFERRED { return prepare_bake_pack(*res_pack_ptr, output_path); }));
         }
@@ -428,7 +427,7 @@ void MasterBaker::BakeAllInternal()
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
 }
 
-auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> nullable_script_sys) const -> size_t
+auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -442,31 +441,31 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
     static const unordered_map<string, ScriptFuncValidationRule> script_func_verify = {
         {"ItemInit",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Item*, bool>(func_name); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Item>, bool>(func_name); },
             }},
         {"ItemStatic",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name); },
-                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, BakerStub::Critter*, BakerStub::StaticItem*, BakerStub::Item*, any_t>(func_name, "ItemStatic"); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, ptr<BakerStub::Item>, any_t>(func_name); },
+                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, ptr<BakerStub::Item>, any_t>(func_name, "ItemStatic"); },
                 .RequiredAttribute = "ItemStatic",
             }},
         {"ItemTrigger",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, mdir>(func_name); },
-                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, BakerStub::StaticItem*, bool, mdir>(func_name, "ItemTrigger"); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, bool, mdir>(func_name); },
+                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, bool, mdir>(func_name, "ItemTrigger"); },
                 .RequiredAttribute = "ItemTrigger",
             }},
         {"CritterInit",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Critter*, bool>(func_name); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Critter>, bool>(func_name); },
             }},
         {"MapInit",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Map*, bool>(func_name); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Map>, bool>(func_name); },
             }},
         {"LocationInit",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, BakerStub::Location*, bool>(func_name); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<void, ptr<BakerStub::Location>, bool>(func_name); },
             }},
     };
 
@@ -508,10 +507,9 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             }
         }
 
-        if (nullable_script_sys && !prop->GetBaseScriptFuncType().empty()) {
+        if (script_sys && !prop->GetBaseScriptFuncType().empty()) {
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
-                auto script_sys = nullable_script_sys.as_ptr();
 
                 const auto rule_it = script_func_verify.find(prop->GetBaseScriptFuncType());
 
@@ -743,7 +741,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
         MemCopy(buf, output_data->data(), size);
     }
 
-    ptr<const uint8_t> released_buf = std::move(buf).release();
+    auto released_buf = make_ptr<const uint8_t*>(buf.release());
     return make_unique_del_ptr(released_buf, [](ptr<const uint8_t> p) FO_DEFERRED {
         unique_arr_ptr<const uint8_t> owned_buf {p.get()};
         ignore_unused(owned_buf);

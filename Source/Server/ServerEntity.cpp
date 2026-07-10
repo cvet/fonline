@@ -55,8 +55,7 @@ ServerEntity::~ServerEntity()
     // Release any leftover parent ref. Destroy sites are expected to call SetParent(nullptr)
     // explicitly before MarkAsDestroyed (so the containment cycle breaks before refcount drop),
     // but if something slipped through, this destructor still releases cleanly.
-    if (nptr<ServerEntity> nullable_parent = _parent.load(std::memory_order_relaxed); nullable_parent) {
-        auto parent = nullable_parent.as_ptr();
+    if (auto parent = _parent.load(std::memory_order_relaxed); parent) {
         parent->Release();
     }
 }
@@ -216,8 +215,8 @@ void ServerEntity::SetParent(nptr<ServerEntity> parent) noexcept
     FO_VALIDATE_ENTITY(NONE);
 
     if (_parent.load(std::memory_order_relaxed) != nullptr) {
-        nptr<const SyncContext> ctx = SyncContext::GetCurrentOnThisThread();
-        nptr<const EntityLock> lock = GetEntityLock();
+        auto ctx = SyncContext::GetCurrentOnThisThread();
+        auto lock = GetEntityLock();
         // Strict access model: reparenting a live entity requires its OWN lock held directly (ancestor
         // coverage is a read-path right only; there is no empty-context free pass). The only exemption
         // is a thread with no sync context at all (non-server threads). Stop-the-world owners

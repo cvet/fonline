@@ -96,7 +96,7 @@ public:
     ~ModelSpriteFactory() override = default;
 
     [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fo3d", "fbx", "dae", "obj"}; }
-    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr.as_ptr(); }
+    [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager> { return _modelMngr; }
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
 
@@ -106,7 +106,7 @@ private:
 
     ptr<SpriteManager> _sprMngr;
     ptr<RenderSettings> _settings;
-    unique_nptr<ModelManager> _modelMngr {};
+    unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};
 };

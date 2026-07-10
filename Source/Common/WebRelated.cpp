@@ -413,7 +413,7 @@ namespace WebRelated
     {
 #if FO_WEB
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_ASYNCIFY, "0");
-        ptr<const char> canvas_selector = CanvasSelector.c_str();
+        auto canvas_selector = make_ptr(CanvasSelector.c_str());
         SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, canvas_selector.get());
 #endif
     }
@@ -463,7 +463,7 @@ namespace WebRelated
         FO_STACK_TRACE_ENTRY();
 
 #if FO_WEB
-        ptr<const char> canvas_selector = CanvasSelector.c_str();
+        auto canvas_selector = make_ptr(CanvasSelector.c_str());
         WebSetupClipboardImpl(canvas_selector.get());
 #endif
     }
@@ -474,7 +474,7 @@ namespace WebRelated
 
 #if FO_WEB
         const string clipboard_text = string(text);
-        ptr<const char> text_ptr = clipboard_text.c_str();
+        auto text_ptr = make_ptr(clipboard_text.c_str());
         WebSyncClipboardToSystemImpl(text_ptr.get());
 #else
         ignore_unused(text);
@@ -523,8 +523,8 @@ namespace WebRelated
 #if FO_WEB
         const auto title_str = string(title);
         const auto text_str = string(text);
-        ptr<const char> title_ptr = title_str.c_str();
-        ptr<const char> text_ptr = text_str.c_str();
+        auto title_ptr = make_ptr(title_str.c_str());
+        auto text_ptr = make_ptr(text_str.c_str());
         WebShowErrorImpl(title_ptr.get(), text_ptr.get());
 #else
         ignore_unused(title);

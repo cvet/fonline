@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef()),
     _protoMap {proto},
@@ -432,7 +432,7 @@ void Map::AddCritterToField(ptr<Critter> cr)
     const auto hex = cr->GetHex();
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot add critter to a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     vec_add_unique_value(field->Critters, cr);
     RecacheHexFlags(field);
@@ -447,7 +447,7 @@ void Map::RemoveCritterFromField(ptr<Critter> cr)
     const auto hex = cr->GetHex();
     FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex), "Server map cannot remove critter from a field outside map bounds", GetId(), cr->GetId(), hex, _mapSize);
 
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     vec_remove_unique_value(field->Critters, cr);
     RecacheHexFlags(field);
@@ -467,7 +467,7 @@ void Map::SetMultihexCritter(ptr<Critter> cr, bool set)
 
         for (int32_t i = 1; i < hexes_around; i++) {
             if (auto hex_around = hex; GeometryHelper::MoveHexAroundAway(hex_around, i, _mapSize)) {
-                ptr<Field> field = _hexField->GetCellForWriting(hex_around);
+                auto field = _hexField->GetCellForWriting(hex_around);
 
                 if (set) {
                     vec_add_unique_value(field->Critters, cr);
@@ -553,7 +553,7 @@ void Map::SetItem(ptr<Item> item)
     item->SetParent(this);
 
     const auto hex = item->GetHex();
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     vec_add_unique_value(field->Items, item);
 
@@ -566,7 +566,7 @@ void Map::SetItem(ptr<Item> item)
         multihex_entries.reserve(multihex_lines.size() + multihex_mesh.size());
 
         GeometryHelper::ForEachMultihexLines(multihex_lines, hex, _mapSize, [&](mpos multihex) {
-            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
+            auto multihex_field = _hexField->GetCellForWriting(multihex);
 
             if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                 RecacheHexFlags(multihex_field);
@@ -576,7 +576,7 @@ void Map::SetItem(ptr<Item> item)
 
         for (const auto multihex : multihex_mesh) {
             if (multihex != hex && _mapSize.is_valid_pos(multihex)) {
-                ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
+                auto multihex_field = _hexField->GetCellForWriting(multihex);
 
                 if (vec_safe_add_unique_value(multihex_field->Items, item)) {
                     RecacheHexFlags(multihex_field);
@@ -599,7 +599,7 @@ void Map::RemoveItem(ident_t item_id)
     FO_VERIFY_AND_THROW(item_id, "Missing required item id");
     const auto it = _itemsMap.find(item_id);
     FO_VERIFY_AND_THROW(it != _itemsMap.end(), "Lookup failed in items map");
-    ptr<Item> item = it->second;
+    auto item = it->second;
     EnsureEntitySynced(item);
     auto map_holder = refcount_ptr<Map>::from_add_ref(this);
     auto item_holder = item.hold_ref();
@@ -610,7 +610,7 @@ void Map::RemoveItem(ident_t item_id)
     vec_remove_unique_value(_items, item);
 
     const auto hex = item->GetHex();
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     vec_remove_unique_value(field->Items, item);
 
@@ -630,10 +630,11 @@ void Map::RemoveItem(ident_t item_id)
     RecacheHexFlags(field);
 
     if (item->HasMultihexEntries()) {
-        auto multihex_entries = item->GetMultihexEntries().as_ptr();
+        auto multihex_entries = item->GetMultihexEntries();
+        FO_VERIFY_AND_THROW(multihex_entries, "Multihex entries collection is null");
 
         for (const auto multihex : *multihex_entries) {
-            ptr<Field> multihex_field = _hexField->GetCellForWriting(multihex);
+            auto multihex_field = _hexField->GetCellForWriting(multihex);
             vec_remove_unique_value(multihex_field->Items, item);
             RecacheHexFlags(multihex_field);
         }
@@ -677,9 +678,8 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
             FO_VERIFY_AND_THROW(map == this, "Map callback was invoked for a different map instance");
         }
         else {
-            auto nullable_loc = entity.dyn_cast<Location>();
-            FO_VERIFY_AND_THROW(nullable_loc, "Missing location instance");
-            auto loc = nullable_loc.as_ptr();
+            auto loc = entity.dyn_cast<Location>();
+            FO_VERIFY_AND_THROW(loc, "Missing location instance");
             FO_VERIFY_AND_THROW(GetLocation() == loc, "Location callback was invoked for a map outside the location");
         }
 
@@ -696,10 +696,9 @@ void Map::SendProperty(NetProperty type, ptr<const Property> prop, ptr<ServerEnt
         }
     }
     else if (type == NetProperty::MapItem) {
-        auto nullable_item = entity.dyn_cast<Item>();
-        FO_VERIFY_AND_THROW(nullable_item, "Missing item instance");
+        auto item = entity.dyn_cast<Item>();
+        FO_VERIFY_AND_THROW(item, "Missing item instance");
 
-        auto item = nullable_item.as_ptr();
         FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::MapHex, "Item is not placed on map hex");
         FO_VERIFY_AND_THROW(item->GetMapId() == GetId(), "Item belongs to a different map");
         FO_VERIFY_AND_THROW(GetItem(item->GetId()) == item, "Map item index returned a different item instance");
@@ -898,7 +897,7 @@ auto Map::GetItem(ident_t item_id) noexcept -> nptr<Item>
     const auto it = _itemsMap.find(item_id);
 
     if (it != _itemsMap.end()) {
-        return it->second.as_nptr();
+        return it->second;
     }
 
     return nullptr;
@@ -915,11 +914,11 @@ auto Map::GetItemOnHex(mpos hex, hstring item_pid, nptr<const Critter> picker) -
         return nullptr;
     }
 
-    ptr<Field> field2 = _hexField->GetCellForWriting(hex);
+    auto field2 = _hexField->GetCellForWriting(hex);
 
     for (auto item : field2->Items) {
         if ((!item_pid || item->GetProtoId() == item_pid) && (!picker || picker->CanSeeItemOnMap(item))) {
-            return item.as_nptr();
+            return item;
         }
     }
 
@@ -938,7 +937,7 @@ auto Map::GetItemsOnHex(mpos hex) noexcept -> vector<ptr<Item>>
         return {};
     }
 
-    ptr<Field> field2 = _hexField->GetCellForWriting(hex);
+    auto field2 = _hexField->GetCellForWriting(hex);
     return field2->Items;
 }
 
@@ -959,7 +958,7 @@ auto Map::GetItemsInRadius(mpos hex, int32_t radius) -> vector<ptr<Item>>
             const auto& field = _hexField->GetCellForReading(hex_around);
 
             if (!field.Items.empty()) {
-                ptr<Field> field2 = _hexField->GetCellForWriting(hex_around);
+                auto field2 = _hexField->GetCellForWriting(hex_around);
 
                 for (auto item : field2->Items) {
                     if (seen.insert(item->GetId()).second) {
@@ -985,7 +984,7 @@ auto Map::GetTriggerItemsOnHex(mpos hex) noexcept -> vector<ptr<Item>>
         return {};
     }
 
-    ptr<Field> field2 = _hexField->GetCellForWriting(hex);
+    auto field2 = _hexField->GetCellForWriting(hex);
     vector<ptr<Item>> triggers;
 
     for (auto item : field2->Items) {
@@ -1017,7 +1016,7 @@ void Map::RecacheHexFlags(mpos hex)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     RecacheHexFlags(field);
 }
@@ -1061,7 +1060,7 @@ void Map::SetHexManualBlock(mpos hex, bool enable, bool full)
     FO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    ptr<Field> field = _hexField->GetCellForWriting(hex);
+    auto field = _hexField->GetCellForWriting(hex);
 
     field->ManualBlock = enable;
     field->ManualBlockFull = full;
@@ -1117,7 +1116,7 @@ auto Map::GetCritter(ident_t cr_id) noexcept -> nptr<Critter>
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (const auto it = _crittersMap.find(cr_id); it != _crittersMap.end()) {
-        return it->second.as_nptr();
+        return it->second;
     }
 
     return nullptr;
@@ -1132,11 +1131,11 @@ auto Map::GetCritterOnHex(mpos hex, CritterFindType find_type) noexcept -> nptr<
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        ptr<Field> field2 = _hexField->GetCellForWriting(hex);
+        auto field2 = _hexField->GetCellForWriting(hex);
 
         for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
-                return cr.as_nptr();
+                return cr;
             }
         }
     }
@@ -1153,7 +1152,7 @@ auto Map::GetCrittersOnHex(mpos hex, CritterFindType find_type) -> vector<ptr<Cr
     const auto& field = _hexField->GetCellForReading(hex);
 
     if (field.HasCritter) {
-        ptr<Field> field2 = _hexField->GetCellForWriting(hex);
+        auto field2 = _hexField->GetCellForWriting(hex);
 
         for (auto cr : field2->Critters) {
             if (cr->CheckFind(find_type)) {
@@ -1203,7 +1202,7 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
                 continue;
             }
 
-            ptr<Field> field2 = _hexField->GetCellForWriting(cur_hex);
+            auto field2 = _hexField->GetCellForWriting(cur_hex);
 
             for (auto cr : field2->Critters) {
                 if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
@@ -1390,7 +1389,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     if (IsTriggerStaticItemOnHex(from_hex)) {
         for (auto static_item : GetTriggerStaticItemsOnHex(from_hex)) {
             if (static_item->TriggerScriptFunc) {
-                static_item->TriggerScriptFunc.Call(cr.get(), static_item.get(), false, dir);
+                static_item->TriggerScriptFunc.Call(cr, static_item, false, dir);
 
                 if (is_trigger_context_changed()) {
                     return;
@@ -1410,7 +1409,7 @@ void Map::VerifyTrigger(ptr<Critter> cr, mpos from_hex, mpos to_hex, mdir dir)
     if (IsTriggerStaticItemOnHex(to_hex)) {
         for (auto static_item : GetTriggerStaticItemsOnHex(to_hex)) {
             if (static_item->TriggerScriptFunc) {
-                static_item->TriggerScriptFunc.Call(cr.get(), static_item.get(), true, dir);
+                static_item->TriggerScriptFunc.Call(cr, static_item, true, dir);
 
                 if (is_trigger_context_changed()) {
                     return;

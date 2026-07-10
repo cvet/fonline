@@ -83,6 +83,14 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
     }
 }
 
+auto ItemHexView::GetAnim() const -> ptr<const Sprite>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
+    return _anim;
+}
+
 void ItemHexView::Process()
 {
     FO_STACK_TRACE_ENTRY();
@@ -243,7 +251,7 @@ void ItemHexView::RefreshAnim()
         _anim = _engine->ResMngr.GetItemDefaultSpr();
     }
 
-    _spr = _anim.as_nptr();
+    _spr = _anim;
     RefreshOffs();
 }
 

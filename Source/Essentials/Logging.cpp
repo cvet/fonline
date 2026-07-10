@@ -188,7 +188,7 @@ static void EmitLogMessage(LogType type, string_view message, nptr<const Catched
     }
 
 #if FO_TRACY
-    ptr<const char> tracy_message = result.c_str();
+    auto tracy_message = make_ptr(result.c_str());
     TracyMessage(tracy_message.get(), result.length());
 #endif
 }

@@ -301,9 +301,8 @@ namespace AlignTest
         }
 
         if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
-            nptr<AngelScript::asITypeInfo> nullable_type_info = as_engine->GetTypeInfoById(type_id);
-            FO_VERIFY_AND_THROW(nullable_type_info, "Member type info must resolve", type_id);
-            auto type_info = nullable_type_info.as_ptr();
+            nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoById(type_id);
+            FO_VERIFY_AND_THROW(type_info, "Member type info must resolve", type_id);
 
             if ((type_info->GetFlags() & AngelScript::asOBJ_REF) != 0) {
                 return sizeof(void*); // Script classes / arrays / funcdefs held as implicit handles
@@ -374,28 +373,26 @@ TEST_CASE("AngelScriptValueAlignment")
     // the base class, both inheritance levels and the mixin-including class.
     {
         auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
-        auto nullable_context_mngr = backend->GetContextMngr();
-        REQUIRE(nullable_context_mngr);
-        auto context_mngr = nullable_context_mngr.as_ptr();
+        auto context_mngr = backend->GetContextMngr();
+        REQUIRE(context_mngr);
 
         auto ctx = context_mngr->RequestContext();
         const uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
-        nptr<AngelScript::asIScriptEngine> nullable_as_engine = ctx->GetEngine();
-        REQUIRE(nullable_as_engine != nullptr);
-        auto as_engine = nullable_as_engine.as_ptr();
+        nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+        REQUIRE(as_engine != nullptr);
 
         // Script classes live in the script module, not in the engine's registered-type scope.
         REQUIRE(as_engine->GetModuleCount() >= 1);
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
         REQUIRE(script_module != nullptr);
 
-        for (const auto* class_decl : {"AlignTest::MixedMembers", "AlignTest::DerivedMembers", "AlignTest::DerivedTwice", "AlignTest::WithMixin"}) {
+        for (const string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
-            nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl);
+            nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
             REQUIRE(class_type != nullptr);
-            CheckClassMemberAlignment(as_engine, class_type.as_ptr());
+            CheckClassMemberAlignment(as_engine, class_type);
         }
     }
 

@@ -95,8 +95,8 @@ namespace
                 return -1;
             }
 
-            ptr<void> target = raw_data;
-            ptr<const asBYTE> source = &_buf->at(_readPos);
+            auto target = make_ptr(raw_data);
+            auto source = make_ptr(&_buf->at(_readPos));
             MemCopy(target, source, size);
             _readPos += size;
             return 0;
@@ -113,8 +113,8 @@ namespace
             }
 
             _buf->resize(_writePos + size);
-            ptr<asBYTE> target = &_buf->at(_writePos);
-            ptr<const void> source = raw_data;
+            auto target = make_ptr(&_buf->at(_writePos));
+            auto source = make_ptr(raw_data);
             MemCopy(target, source, size);
             _writePos += size;
             return 0;
@@ -135,18 +135,18 @@ namespace
 
     static auto GetTrackerState(ptr<asIScriptEngine> engine) -> ptr<ResourceTrackerState>
     {
-        nptr<ResourceTrackerState> nullable_tracker_state = cast_from_void<ResourceTrackerState*>(engine->GetUserData());
-        FO_VERIFY_AND_THROW(nullable_tracker_state, "Script engine has no resource tracker state attached");
-        return nullable_tracker_state.as_ptr();
+        auto tracker_state = cast_from_void<ResourceTrackerState*>(engine->GetUserData());
+        FO_VERIFY_AND_THROW(tracker_state, "Script engine has no resource tracker state attached");
+        return tracker_state;
     }
 
     static auto GetActiveEngine() -> ptr<asIScriptEngine>
     {
-        nptr<asIScriptContext> ctx = asGetActiveContext();
+        auto ctx = make_nptr(asGetActiveContext());
         FO_VERIFY_AND_THROW(ctx, "Missing required context");
-        nptr<asIScriptEngine> nullable_active_engine = ctx->GetEngine();
-        FO_VERIFY_AND_THROW(nullable_active_engine, "Active script context has no engine");
-        return nullable_active_engine.as_ptr();
+        nptr<asIScriptEngine> active_engine = ctx->GetEngine();
+        FO_VERIFY_AND_THROW(active_engine, "Active script context has no engine");
+        return active_engine;
     }
 
     static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
@@ -160,9 +160,11 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        nptr<asIScriptEngine> nullable_engine = asCreateScriptEngine();
-        REQUIRE(nullable_engine);
-        return make_unique_del_ptr(nullable_engine.as_ptr(), ReleaseScriptEngine);
+        auto engine = make_nptr(asCreateScriptEngine());
+        REQUIRE(engine);
+        auto engine_owner = make_unique_del_ptr(engine, ReleaseScriptEngine);
+        REQUIRE(engine_owner);
+        return take_not_null(engine_owner);
     }
 
     static auto AcquireResource() -> int
@@ -209,6 +211,7 @@ namespace
     static void NativeResourceAddRef(void* obj)
     {
         auto self = cast_from_void<NativeResource*>(obj);
+        FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount++;
         self->State->ActiveRefs[self->Id]++;
     }
@@ -216,6 +219,7 @@ namespace
     static void NativeResourceRelease(void* obj)
     {
         auto self = cast_from_void<NativeResource*>(obj);
+        FO_VERIFY_AND_THROW(self, "Native resource is null");
         self->RefCount--;
 
         auto& active_refs = self->State->ActiveRefs;
@@ -231,7 +235,8 @@ namespace
         }
 
         if (self->RefCount == 0) {
-            delete self;
+            auto owned_self = adopt_unique_ptr<NativeResource>(self);
+            ignore_unused(owned_self);
         }
     }
 
@@ -280,13 +285,12 @@ namespace
         ignore_unused(param);
 
         ptr<const asSMessageInfo> message = msg;
-        nptr<const char> nullable_section = message->section;
+        nptr<const char> section = message->section;
 
-        if (!nullable_section) {
+        if (!section) {
             return;
         }
 
-        auto section = nullable_section.as_ptr();
         const string_view section_name {section.get()};
 
         if (section_name.empty()) {
@@ -314,9 +318,8 @@ namespace
     static void CaptureMessageCallback(const asSMessageInfo* msg, void* param)
     {
         ptr<const asSMessageInfo> message = msg;
-        nptr<MsgCapture> nullable_self = cast_from_void<MsgCapture*>(param);
-        FO_VERIFY_AND_THROW(nullable_self, "Message callback param must carry capture state");
-        auto self = nullable_self.as_ptr();
+        auto self = cast_from_void<MsgCapture*>(param);
+        FO_VERIFY_AND_THROW(self, "Message callback param must carry capture state");
         const nptr<const char> text = message->message;
         const string message_text = text ? string {text.get()} : string {"<no message>"};
 
@@ -366,13 +369,12 @@ namespace
         nptr<asIScriptEngine> engine = module->GetEngine();
         engine->SetUserData(&state);
 
-        nptr<asIScriptFunction> nullable_func = module->GetFunctionByDecl("void RunScenario()");
-        REQUIRE(nullable_func);
+        nptr<asIScriptFunction> func = module->GetFunctionByDecl("void RunScenario()");
+        REQUIRE(func);
 
         nptr<asIScriptContext> ctx = engine->CreateContext();
         REQUIRE(ctx);
 
-        auto func = nullable_func.as_ptr();
         CHECK(ctx->Prepare(func.get()) >= 0);
         const auto exec_result = ctx->Execute();
         if (exec_result != asEXECUTION_FINISHED) {
@@ -601,20 +603,20 @@ void RunScenario()
 
     static auto BuildModule(ptr<asIScriptEngine> engine, const string& module_name) -> ptr<asIScriptModule>
     {
-        nptr<asIScriptModule> nullable_built_module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(nullable_built_module);
-        CHECK(nullable_built_module->AddScriptSection("bytecode_test", TestScript.data(), numeric_cast<unsigned>(TestScript.size())) >= 0);
-        CHECK(nullable_built_module->Build() >= 0);
-        return nullable_built_module.as_ptr();
+        auto built_module = make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE));
+        REQUIRE(built_module);
+        CHECK(built_module->AddScriptSection("bytecode_test", TestScript.data(), numeric_cast<unsigned>(TestScript.size())) >= 0);
+        CHECK(built_module->Build() >= 0);
+        return built_module;
     }
 
     static auto BuildModuleFromScript(ptr<asIScriptEngine> engine, const string& module_name, string_view script) -> ptr<asIScriptModule>
     {
-        nptr<asIScriptModule> nullable_built_module = engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE);
-        REQUIRE(nullable_built_module);
-        CHECK(nullable_built_module->AddScriptSection("bytecode_test", script.data(), numeric_cast<unsigned>(script.size())) >= 0);
-        CHECK(nullable_built_module->Build() >= 0);
-        return nullable_built_module.as_ptr();
+        auto built_module = make_nptr(engine->GetModule(module_name.c_str(), asGM_ALWAYS_CREATE));
+        REQUIRE(built_module);
+        CHECK(built_module->AddScriptSection("bytecode_test", script.data(), numeric_cast<unsigned>(script.size())) >= 0);
+        CHECK(built_module->Build() >= 0);
+        return built_module;
     }
 }
 
@@ -764,7 +766,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
 
         nptr<asIScriptModule> module = engine->GetModule("NullableModule", asGM_ALWAYS_CREATE);
         REQUIRE(module);
-        CHECK(module->AddScriptSection("nullable_test", NullableScript.data(), numeric_cast<unsigned>(NullableScript.size())) >= 0);
+        CHECK(module->AddScriptSection("nullability_test", NullableScript.data(), numeric_cast<unsigned>(NullableScript.size())) >= 0);
         CHECK(module->Build() >= 0);
 
         ResourceTrackerState state {};
@@ -1132,7 +1134,7 @@ void NativeOwnedNullableLocalReleasedOnScopeExit()
             engine->SetMessageCallback(asFUNCTION(CaptureMessageCallback), &capture, asCALL_CDECL);
             nptr<asIScriptModule> module = engine->GetModule("RuntimeNullableShapesMod", asGM_ALWAYS_CREATE);
             REQUIRE(module);
-            module->AddScriptSection("runtime_nullable_shapes", source, std::strlen(source));
+            module->AddScriptSection("runtime_nullability_shapes", source, std::strlen(source));
             return module->Build();
         };
 
@@ -1987,8 +1989,8 @@ void GuardedReadAfterEarlyReturn()
         engine->SetUserData(&state);
 
         // Run guarded reads; neither should throw.
-        for (const char* decl : {"void GuardedReadInThenBranch()", "void GuardedReadAfterEarlyReturn()"}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+        for (const string_view decl : {string_view {"void GuardedReadInThenBranch()"}, string_view {"void GuardedReadAfterEarlyReturn()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2067,8 +2069,8 @@ void NarrowsCompoundOrAfterReturn()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const char* decl : {"void NarrowsCompoundAnd()", "void NarrowsCompoundOrAfterReturn()"}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+        for (const string_view decl : {string_view {"void NarrowsCompoundAnd()"}, string_view {"void NarrowsCompoundOrAfterReturn()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2227,9 +2229,9 @@ void NullAssignToNarrowedRefParam()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const char* decl : {"void NullAssignToNarrowedLocal()", "void NullAssignToCompoundNarrowedLocal()", "void NullAssignToNarrowedRefParam()"}) {
+        for (const string_view decl : {string_view {"void NullAssignToNarrowedLocal()"}, string_view {"void NullAssignToCompoundNarrowedLocal()"}, string_view {"void NullAssignToNarrowedRefParam()"}}) {
             state.LastObservedId = 0;
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2339,8 +2341,8 @@ void DistinctHandles()
         engine->SetUserData(&state);
 
         // Sequence of ObserveResource calls produces 1,2 from SameHandle and 3,4 from DistinctHandles.
-        for (const char* decl : {"void SameHandle()", "void DistinctHandles()"}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+        for (const string_view decl : {string_view {"void SameHandle()"}, string_view {"void DistinctHandles()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2407,8 +2409,8 @@ void TagsDiffer()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const char* decl : {"void TagsEqual()", "void TagsDiffer()"}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+        for (const string_view decl : {string_view {"void TagsEqual()"}, string_view {"void TagsDiffer()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);
@@ -2463,7 +2465,7 @@ void NullableParameter()
 
         nptr<asIScriptModule> module = engine->GetModule("NullableShapes", asGM_ALWAYS_CREATE);
         REQUIRE(module);
-        CHECK(module->AddScriptSection("nullable_shapes", NullableShapesScript.data(), numeric_cast<unsigned>(NullableShapesScript.size())) >= 0);
+        CHECK(module->AddScriptSection("nullability_shapes", NullableShapesScript.data(), numeric_cast<unsigned>(NullableShapesScript.size())) >= 0);
         const auto build_result = module->Build();
         if (build_result < 0) {
             FAIL("Nullable return / parameter parse test failed to build.");
@@ -2473,8 +2475,8 @@ void NullableParameter()
         ResourceTrackerState state {};
         engine->SetUserData(&state);
 
-        for (const char* decl : {"void NullableReturn()", "void NullableParameter()"}) {
-            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl);
+        for (const string_view decl : {string_view {"void NullableReturn()"}, string_view {"void NullableParameter()"}}) {
+            nptr<asIScriptFunction> func = module->GetFunctionByDecl(decl.data());
             REQUIRE(func);
             nptr<asIScriptContext> ctx = engine->CreateContext();
             REQUIRE(ctx);

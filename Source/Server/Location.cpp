@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 Location::Location(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoLocation> proto, nptr<const Properties> props) noexcept :
-    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME).as_ptr(), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
+    ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     LocationProperties(*GetInitRef())
 {
@@ -81,7 +81,7 @@ auto Location::GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VALIDATE_ENTITY(NONE);
-    return _proto.dyn_cast<ProtoLocation>().as_ptr();
+    return _proto.dyn_cast<ProtoLocation>();
 }
 
 auto Location::GetMaps() const -> vector<ptr<const Map>>

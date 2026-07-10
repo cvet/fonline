@@ -2856,7 +2856,7 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name).as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -2882,7 +2882,7 @@ namespace ScriptMethodsTest
         vector<uint8_t> props_data;
         set<hstring> str_hashes;
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name).as_ptr()};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), proto_engine.GetPropertyRegistrator(type_name)};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -3628,7 +3628,7 @@ TEST_CASE("ServerMiscScriptOperations")
             return unlogined_player;
         };
 
-        auto methods_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
+        auto methods_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerConnectionAndCritterMethods"));
         REQUIRE(methods_func);
 
         ptr<Player> methods_player = create_unlogined_player("ScriptPlayerMethodsStart");
@@ -3641,13 +3641,13 @@ TEST_CASE("ServerMiscScriptOperations")
             });
         });
 
-        REQUIRE(methods_func.Call(methods_player.get()));
+        REQUIRE(methods_func.Call(methods_player));
         CHECK(methods_func.GetResult() == 0);
         CHECK(methods_player->GetName() == "ScriptPlayerMethods");
         CHECK(methods_player->GetConnection()->IsGracefulDisconnected());
         CHECK_FALSE(static_cast<bool>(methods_player->GetControlledCritter()));
 
-        auto name_validation_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
+        auto name_validation_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerSetNameValidation"));
         REQUIRE(name_validation_func);
 
         ptr<Player> name_player = create_unlogined_player("ScriptPlayerNameStart");
@@ -3660,11 +3660,11 @@ TEST_CASE("ServerMiscScriptOperations")
             });
         });
 
-        REQUIRE(name_validation_func.Call(name_player.get()));
+        REQUIRE(name_validation_func.Call(name_player));
         CHECK(name_validation_func.GetResult() == 0);
         CHECK(name_player->GetName() == "ScriptPlayerNameOk");
 
-        auto map_view_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
+        auto map_view_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestPlayerMapViewMethods"));
         REQUIRE(map_view_func);
 
         ptr<Player> map_view_player = create_unlogined_player("ScriptPlayerMapView");
@@ -3677,7 +3677,7 @@ TEST_CASE("ServerMiscScriptOperations")
             });
         });
 
-        REQUIRE(map_view_func.Call(map_view_player.get()));
+        REQUIRE(map_view_func.Call(map_view_player));
         CHECK(map_view_func.GetResult() == 0);
         CHECK_FALSE(static_cast<bool>(map_view_player->GetControlledCritter()));
     }
@@ -3698,7 +3698,7 @@ TEST_CASE("ServerMiscScriptOperations")
         REQUIRE(create_func.Call());
         REQUIRE(create_func.GetResult() == 0);
 
-        auto login_new_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
+        auto login_new_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToNewRecordFromPreparedPlayer"));
         REQUIRE(login_new_func);
 
         ptr<Player> new_unlogined = create_unlogined_player("ScriptLoginNew");
@@ -3711,29 +3711,29 @@ TEST_CASE("ServerMiscScriptOperations")
             });
         });
 
-        REQUIRE(login_new_func.Call(new_unlogined.get()));
+        REQUIRE(login_new_func.Call(new_unlogined));
         REQUIRE(login_new_func.GetResult() == 0);
 
         const auto player_id = new_unlogined->GetId();
         REQUIRE(player_id);
 
-        auto reconnect_func = server->FindFunc<int32_t, Player*, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
+        auto reconnect_func = server->FindFunc<int32_t, ptr<Player>, ident_t>(get_func("ScriptMethodsTest::TestLoginPlayerToExistentRecordFromPreparedPlayer"));
         REQUIRE(reconnect_func);
 
         ptr<Player> reconnect_unlogined = create_unlogined_player("ScriptLoginReconnect");
 
-        REQUIRE(reconnect_func.Call(reconnect_unlogined.get(), player_id));
+        REQUIRE(reconnect_func.Call(reconnect_unlogined, player_id));
         CHECK(reconnect_func.GetResult() == 0);
 
-        auto temp_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
+        auto temp_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginPlayerToTempSessionFromPreparedPlayer"));
         REQUIRE(temp_func);
 
         ptr<Player> temp_unlogined = create_unlogined_player("ScriptLoginTemp");
 
-        REQUIRE(temp_func.Call(temp_unlogined.get()));
+        REQUIRE(temp_func.Call(temp_unlogined));
         CHECK(temp_func.GetResult() == 0);
 
-        auto already_logined_func = server->FindFunc<int32_t, Player*>(get_func("ScriptMethodsTest::TestLoginAlreadyLoginedPlayerThrows"));
+        auto already_logined_func = server->FindFunc<int32_t, ptr<Player>>(get_func("ScriptMethodsTest::TestLoginAlreadyLoginedPlayerThrows"));
         REQUIRE(already_logined_func);
 
         ptr<Player> already_logined_unlogined = create_unlogined_player("ScriptLoginAlready");
@@ -3746,7 +3746,7 @@ TEST_CASE("ServerMiscScriptOperations")
             });
         });
 
-        REQUIRE(already_logined_func.Call(already_logined_unlogined.get()));
+        REQUIRE(already_logined_func.Call(already_logined_unlogined));
         CHECK(already_logined_func.GetResult() == 0);
     }
 

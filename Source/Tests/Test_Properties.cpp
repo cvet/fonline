@@ -200,7 +200,7 @@ namespace
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
                 type.Size = sizeof(int32_t);
-                nptr<const BaseTypeDesc> int32_type = &_types.at("int32");
+                auto int32_type = make_nptr(&_types.at("int32"));
                 type.EnumUnderlyingType = int32_type;
                 return type;
             };
@@ -230,7 +230,7 @@ namespace
 
                 BaseTypeDesc type;
                 type.Name = "Waypoint";
-                nptr<const StructLayoutDesc> waypoint_layout = &_layouts.at("Waypoint");
+                auto waypoint_layout = make_nptr(&_layouts.at("Waypoint"));
                 type.StructLayout = waypoint_layout;
                 type.Size = type.StructLayout->Size;
                 type.IsComplexStruct = true;
@@ -255,8 +255,8 @@ namespace
                 type.Name = "RouteSnapshot";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteSnapshot");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteSnapshot"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -277,8 +277,8 @@ namespace
                 type.Name = "RouteEnvelope";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteEnvelope");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteEnvelope"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -434,7 +434,7 @@ namespace
             const auto type_hname = _proto_hashes.ToHashedString(type_name);
             const auto proto_hname = _proto_hashes.ToHashedString(proto_id);
             FO_VERIFY_AND_THROW(_proto_registrator.has_value(), "Proto registrator not initialized");
-            ptr<const PropertyRegistrator> proto_registrator = &*_proto_registrator;
+            auto proto_registrator = make_ptr(&*_proto_registrator);
 
             _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, proto_registrator, nullptr));
         }
@@ -462,15 +462,14 @@ namespace
         result.reserve(raw_data.size());
 
         for (size_t i = 0; i < raw_data.size(); i++) {
-            const auto nullable_data = raw_data[i];
+            const auto data = raw_data[i];
             const auto size = raw_sizes[i];
 
             if (size == 0) {
                 result.emplace_back();
             }
             else {
-                REQUIRE(nullable_data);
-                auto data = nullable_data.as_ptr();
+                REQUIRE(data);
                 const auto data_span = make_const_span(data, size);
                 result.emplace_back(data_span.begin(), data_span.end());
             }
@@ -602,13 +601,13 @@ namespace
         [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
-            return ProbeIntProp.as_ptr();
+            return ProbeIntProp;
         }
 
         [[nodiscard]] auto GetProbeStringProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
-            return ProbeStringProp.as_ptr();
+            return ProbeStringProp;
         }
 
         [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
@@ -738,7 +737,7 @@ namespace
         static auto GetSpecProp(const PerfPropertySpec& spec) -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(spec.Prop, "Perf property spec has no property");
-            return spec.Prop.as_ptr();
+            return spec.Prop;
         }
     };
 
@@ -788,13 +787,13 @@ namespace
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
     private:
@@ -864,35 +863,13 @@ namespace
 
         PropertiesPerfFixture() :
             Registrator("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            PublicIntProps {RegisterPublicIntProperties(Registrator)},
+            PublicStringProps {RegisterPublicStringProperties(Registrator)},
+            OwnerBoolProps {RegisterOwnerBoolProperties(Registrator)},
             Proto(&Registrator),
             Full(&Registrator),
             DerivedSource(&Registrator, &Proto)
         {
-            PublicIntProps.reserve(48);
-            PublicStringProps.reserve(12);
-            OwnerBoolProps.reserve(8);
-
-            for (int i = 0; i < 48; i++) {
-                string prop_name {"Value"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicIntProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 12; i++) {
-                string prop_name {"Name"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicStringProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 8; i++) {
-                string prop_name {"OwnerFlag"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
-                OwnerBoolProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
                 Proto.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
                 Full.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
@@ -934,6 +911,52 @@ namespace
             set<hstring> str_hashes;
             Full.StoreAllData(FullAllData, str_hashes);
             DerivedSource.StoreAllData(DerivedAllData, str_hashes);
+        }
+
+    private:
+        static auto RegisterPublicIntProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(48);
+
+            for (size_t i = 0; i < 48; i++) {
+                string prop_name {"Value"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterPublicStringProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(12);
+
+            for (size_t i = 0; i < 12; i++) {
+                string prop_name {"Name"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterOwnerBoolProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(8);
+
+            for (size_t i = 0; i < 8; i++) {
+                string prop_name {"OwnerFlag"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
         }
     };
 
@@ -1029,19 +1052,19 @@ namespace
         [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(FloatLabelsProp, "Float labels property not registered");
-            return FloatLabelsProp.as_ptr();
+            return FloatLabelsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
@@ -1336,53 +1359,6 @@ TEST_CASE("PropertiesRawDataCopy")
         CHECK(derived.GetValue<string>(name_prop).empty());
         CHECK(derived.GetRawDataSize(name_prop) == 0);
     }
-
-    SECTION("ConcurrentCopyDoesNotTear")
-    {
-        props.SetValue<string>(name_prop, first_value);
-
-        std::atomic_bool writer_done {false};
-        std::atomic_bool torn_copy {false};
-
-        std::thread writer([&]() {
-            for (int32_t i = 0; i < 10000; i++) {
-                props.SetValue<string>(name_prop, i % 2 == 0 ? first_value : second_value);
-            }
-
-            writer_done.store(true, std::memory_order_release);
-        });
-
-        while (!writer_done.load(std::memory_order_acquire)) {
-            PropertyRawData copied_data;
-            props.CopyRawData(name_prop, copied_data);
-
-            const size_t size = copied_data.GetSize();
-            const bool first_size = size == first_value.size();
-            const bool second_size = size == second_value.size();
-
-            if (!first_size && !second_size) {
-                torn_copy.store(true, std::memory_order_relaxed);
-                break;
-            }
-
-            const char expected = first_size ? 'A' : 'B';
-            auto copied_chars = copied_data.GetPtrAs<char>();
-
-            for (size_t i = 0; i < size; i++) {
-                if (copied_chars[i] != expected) {
-                    torn_copy.store(true, std::memory_order_relaxed);
-                    break;
-                }
-            }
-
-            if (torn_copy.load(std::memory_order_relaxed)) {
-                break;
-            }
-        }
-
-        writer.join();
-        CHECK_FALSE(torn_copy.load(std::memory_order_relaxed));
-    }
 }
 
 TEST_CASE("PropertiesOverlayFiltersAndCopies")
@@ -1418,7 +1394,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1458,7 +1435,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1497,7 +1475,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 

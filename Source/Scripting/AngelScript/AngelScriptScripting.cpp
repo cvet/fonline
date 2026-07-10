@@ -58,7 +58,7 @@ struct AngelScriptAllocator
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        nptr<void> address = raw_address;
+        auto address = make_nptr(raw_address);
 
         if (!address) {
             return;
@@ -89,12 +89,11 @@ void InitAngelScriptScripting(ptr<EngineMetadata> meta, const ScriptSettings& se
 
     PrepareAngelScriptRuntime();
 
-    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
-    auto as_backend = nullable_as_backend.as_ptr();
+    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend = as_backend_holder.as_ptr();
 
-    if (nptr<ScriptSystem> nullable_script_sys = meta.dyn_cast<ScriptSystem>()) {
-        auto script_sys = nullable_script_sys.as_ptr();
-        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(nullable_as_backend));
+    if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {
+        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend_holder));
     }
 
     as_backend->RegisterMetadata(meta);
@@ -108,12 +107,11 @@ auto CompileAngelScript(ptr<EngineMetadata> meta, const ScriptSettings& settings
 
     PrepareAngelScriptRuntime();
 
-    auto nullable_as_backend = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
-    auto as_backend = nullable_as_backend.as_ptr();
+    auto as_backend_holder = SafeAlloc::MakeUnique<AngelScriptBackend>(&settings);
+    auto as_backend = as_backend_holder.as_ptr();
 
-    if (nptr<ScriptSystem> nullable_script_sys = meta.dyn_cast<ScriptSystem>()) {
-        auto script_sys = nullable_script_sys.as_ptr();
-        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(nullable_as_backend));
+    if (auto script_sys = meta.dyn_cast<ScriptSystem>()) {
+        script_sys->RegisterBackend(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX, std::move(as_backend_holder));
     }
 
     as_backend->SetMessageCallback(std::move(message_callback));
