@@ -67,13 +67,14 @@ public:
 
     [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     nptr<SDL_GPUTexture> TexHandle {};
     nptr<SDL_GPUTexture> DepthTexHandle {};
 
 private:
-    ptr<SDLGpu_Renderer::Context> _ctx;
+    mutable ptr<SDLGpu_Renderer::Context> _ctx;
 };
 
 class SDLGpu_DrawBuffer final : public RenderDrawBuffer
