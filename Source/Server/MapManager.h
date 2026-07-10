@@ -108,7 +108,6 @@ private:
 
     ptr<ServerEngine> _engine;
     unordered_map<ptr<const ProtoMap>, unique_ptr<StaticMap>> _staticMaps {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE

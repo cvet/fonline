@@ -108,7 +108,6 @@ private:
     FlushCallback _flush;
     vector<unique_ptr<RenderTarget>> _rtAll {};
     vector<ptr<RenderTarget>> _rtStack {};
-    bool _nonConstHelper {};
 };
 
 FO_END_NAMESPACE
