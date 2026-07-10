@@ -223,6 +223,15 @@ static auto MakeComObjectHolder(ptr<T> object) noexcept -> unique_del_ptr<T>
     return make_unique_del_ptr(object, ReleaseOwnedComObject<T>);
 }
 
+template<typename T>
+static auto MakeComObjectHolder(nptr<T> object) noexcept -> unique_del_ptr<T>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ptr<T> checked_object = object;
+    return MakeComObjectHolder(checked_object);
+}
+
 Direct3D_Renderer::Direct3D_Renderer() = default;
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
@@ -1143,17 +1152,17 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     src_box.front = 0;
     src_box.back = 1;
 
-    d3d_device_context->CopySubresourceRegion(_ctx->OnePixStagingTex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(_ctx->OnePixStagingTex.get_no_const(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    const auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
+    const auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get_no_const(), 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for the one-pixel staging texture", d3d_map_staging_texture, pos, Size);
 
     auto mapped_data = make_nptr(tex_resource.pData);
     FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
     const ucolor result = *mapped_data.reinterpret_as<ucolor>();
 
-    d3d_device_context->Unmap(_ctx->OnePixStagingTex.get(), 0);
+    d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0);
 
     return result;
 }

@@ -267,7 +267,7 @@ namespace aswrap
                     return object.get();
                 }
                 else {
-                    return cast_from_void<T>(object.get());
+                    return cast_from_void<T>(object.get()).get();
                 }
             }
             else {
