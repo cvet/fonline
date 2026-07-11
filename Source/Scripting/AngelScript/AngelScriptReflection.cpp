@@ -801,6 +801,7 @@ void RegisterAngelScriptReflection(ptr<AngelScript::asIScriptEngine> as_engine)
 
     int32_t as_result = 0;
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("reflection"));
+    auto restore_ns = scope_fail([&as_engine]() noexcept { (void)as_engine->SetDefaultNamespace(""); });
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("type", sizeof(ScriptType), AngelScript::asOBJ_REF));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptType, AddRef), FO_SCRIPT_METHOD_CONV));

@@ -1667,6 +1667,9 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
         indices = result_indices;
         combined_mesh->MeshVertices = result_mesh_vertices;
         combined_mesh->MeshIndices = result_mesh_indices;
+
+        combined_mesh->MeshBuf->VertCount = combined_mesh->MeshBuf->Vertices3D.size();
+        combined_mesh->MeshBuf->IndCount = combined_mesh->MeshBuf->Indices.size();
     }
 
     // Unskin

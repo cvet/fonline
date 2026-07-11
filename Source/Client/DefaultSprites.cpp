@@ -535,6 +535,9 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
     auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
 
+    // Release the reserved atlas node if we throw before the owning AtlasSprite adopts it
+    auto atlas_node_guard = scope_fail([&]() noexcept { atlas_node->Free(); });
+
     vector<bool> hit_test_data;
 
     if (pixels) {

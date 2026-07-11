@@ -50,12 +50,28 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
 
     _workers.reserve(numeric_cast<size_t>(thread_count));
 
-    for (int32_t i = 0; i < thread_count; i++) {
-        _workers.emplace_back(run_thread(strex("{}-{}", _name, i), [this, i] { WorkerEntry(i); }));
+    try {
+        for (int32_t i = 0; i < thread_count; i++) {
+            _workers.emplace_back(run_thread(strex("{}-{}", _name, i), [this, i] { WorkerEntry(i); }));
+        }
+    }
+    catch (...) {
+        // Thread spawning can throw (e.g. OS thread exhaustion). Any workers already started are
+        // referencing *this via their captured lambda; the constructor is unwinding and ~WorkerPool
+        // will not run, so stop and join them here before the storage is torn down, then rethrow.
+        StopWorkers();
+        throw;
     }
 }
 
 WorkerPool::~WorkerPool()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    StopWorkers();
+}
+
+void WorkerPool::StopWorkers() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

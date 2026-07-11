@@ -299,6 +299,7 @@ void ParticleEditor::OnDraw()
 
     auto prev_rt = GetApp()->Render.GetRenderTarget();
     GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
+    auto _rt_guard = scope_fail([&]() noexcept { GetApp()->Render.SetRenderTarget(prev_rt); });
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
     _impl->Particle.Draw();
     GetApp()->Render.SetRenderTarget(prev_rt);

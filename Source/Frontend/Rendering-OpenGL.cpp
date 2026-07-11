@@ -670,6 +670,7 @@ auto OpenGL_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
 
     GL(glGenFramebuffers(1, &opengl_tex->FramebufObj));
     GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FramebufObj));
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
     GL(glGenTextures(1, &opengl_tex->TexId));
 
     GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
@@ -922,6 +923,8 @@ void OpenGL_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     if (_ctx->CurrentRenderTargetValid && tex == _ctx->CurrentRenderTarget) {
         return;
     }
+
+    auto invalidate_target_cache = scope_fail([this]() noexcept { _ctx->CurrentRenderTargetValid = false; });
 
     int32_t vp_ox;
     int32_t vp_oy;
@@ -1251,8 +1254,6 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    StaticDataChanged = false;
-
     const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
     // Fill vertex buffer
@@ -1304,6 +1305,8 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
+
+    StaticDataChanged = false;
 }
 
 static auto ConvertBlendFunc(BlendFuncType name) -> GLenum

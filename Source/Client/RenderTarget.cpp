@@ -131,6 +131,7 @@ auto RenderTargetManager::CreateRenderTargetTexture(isize32 size, bool linear_fi
     texture->FlippedHeight = _render->IsRenderTargetFlipped();
 
     auto prev_tex = _render->GetRenderTarget();
+    auto restore_target = scope_fail([&]() noexcept { safe_call([&] { _render->SetRenderTarget(prev_tex); }); });
     _render->SetRenderTarget(texture);
     _render->ClearRenderTarget(ucolor::clear, with_depth);
     _render->SetRenderTarget(prev_tex);
@@ -146,14 +147,11 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
 
     if (!redundant) {
         _flush();
-    }
-
-    _rtStack.emplace_back(rt);
-
-    if (!redundant) {
         _render->SetRenderTarget(rt->_texture);
         rt->_lastPixelPicks.clear();
     }
+
+    _rtStack.emplace_back(rt);
 }
 
 void RenderTargetManager::PopRenderTarget()
@@ -164,18 +162,18 @@ void RenderTargetManager::PopRenderTarget()
 
     if (!redundant) {
         _flush();
-    }
 
-    _rtStack.pop_back();
-
-    if (!redundant) {
-        if (!_rtStack.empty()) {
-            _render->SetRenderTarget(_rtStack.back()->_texture);
+        // Bind the target that will become the new stack top (the entry under the current top) before
+        // the pop, so a SetRenderTarget throw leaves both _rtStack and the backend unchanged.
+        if (_rtStack.size() >= 2) {
+            _render->SetRenderTarget(_rtStack[_rtStack.size() - 2]->_texture);
         }
         else {
             _render->SetRenderTarget(nullptr);
         }
     }
+
+    _rtStack.pop_back();
 }
 
 auto RenderTargetManager::GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor

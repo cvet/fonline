@@ -3397,15 +3397,19 @@ auto MapView::AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>
             cr->InheritAlphaFrom(prev_cr);
             DestroyCritter(prev_cr);
         }
-
-        _crittersMap.emplace(cr->GetId(), cr);
     }
 
     cr->SetMapId(GetId());
     cr->Init();
 
-    vec_add_unique_value(_critters, cr.hold_ref());
     AddCritterToField(cr);
+
+    vec_add_unique_value(_critters, cr.hold_ref());
+
+    if (cr->GetId()) {
+        _crittersMap.emplace(cr->GetId(), cr);
+    }
+
     return cr;
 }
 

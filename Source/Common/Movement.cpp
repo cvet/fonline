@@ -173,10 +173,12 @@ void MovingContext::ChangeSpeed(uint16_t speed, nanotime current_time)
     const auto diff = numeric_cast<float32_t>(speed) / numeric_cast<float32_t>(_speed);
     const auto elapsed_time = _elapsedTime;
 
-    _wholeTime /= diff;
-    _wholeTime = std::max(_wholeTime, 0.0001f);
+    const timespan new_offset_time = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
+    const float32_t new_whole_time = std::max(_wholeTime / diff, 0.0001f);
+
+    _wholeTime = new_whole_time;
     _startTime = current_time;
-    _offsetTime = std::chrono::milliseconds {iround<int32_t>(elapsed_time / diff)};
+    _offsetTime = new_offset_time;
     _elapsedTime = std::max(_offsetTime.to_ms<float32_t>(), 0.0f);
     _speed = speed;
 }

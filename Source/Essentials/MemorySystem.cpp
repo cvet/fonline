@@ -403,16 +403,13 @@ extern void InitBackupMemoryChunks()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto make_backup_array = []<typename T>(size_t count) -> unique_arr_ptr<T> { //
-        return unique_arr_ptr<T> {new T[count]()};
-    };
-
-    BackupMemoryChunks = make_backup_array.operator()<unique_arr_ptr<uint8_t>>(BACKUP_MEMORY_CHUNKS);
+    unique_arr_ptr<unique_arr_ptr<uint8_t>> new_chunks {new unique_arr_ptr<uint8_t>[BACKUP_MEMORY_CHUNKS]()};
 
     for (size_t i = 0; i < BACKUP_MEMORY_CHUNKS; i++) {
-        BackupMemoryChunks[i] = make_backup_array.operator()<uint8_t>(BACKUP_MEMORY_CHUNK_SIZE);
+        new_chunks[i] = unique_arr_ptr<uint8_t> {new uint8_t[BACKUP_MEMORY_CHUNK_SIZE]()};
     }
 
+    BackupMemoryChunks = std::move(new_chunks);
     BackupMemoryChunksCount.store(BACKUP_MEMORY_CHUNKS);
 }
 

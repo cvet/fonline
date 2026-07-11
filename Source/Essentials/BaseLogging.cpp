@@ -211,10 +211,10 @@ static void StartAsyncWorker()
         std::scoped_lock queue_lock {BaseLogging->AsyncQueueMutex};
 
         BaseLogging->AsyncFinish = false;
-        BaseLogging->AsyncEnabled.store(true, std::memory_order_release);
     }
 
     BaseLogging->AsyncWorker = std::thread([] { AsyncWorkerLoop(); });
+    BaseLogging->AsyncEnabled.store(true, std::memory_order_release);
 }
 
 static void StopAsyncWorker() noexcept

@@ -53,22 +53,27 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (auto loc = proto.dyn_cast<ProtoLocation>()) {
-        _locProtos.insert_or_assign(proto->GetProtoId(), loc);
-    }
-    else if (auto map = proto.dyn_cast<ProtoMap>()) {
-        _mapProtos.insert_or_assign(proto->GetProtoId(), map);
-    }
-    else if (auto cr = proto.dyn_cast<ProtoCritter>()) {
-        _crProtos.insert_or_assign(proto->GetProtoId(), cr);
-    }
-    else if (auto item = proto.dyn_cast<ProtoItem>()) {
-        _itemProtos.insert_or_assign(proto->GetProtoId(), item);
-    }
-
     const hstring proto_id = proto->GetProtoId();
+    auto loc = proto.dyn_cast<ProtoLocation>();
+    auto map = proto.dyn_cast<ProtoMap>();
+    auto cr = proto.dyn_cast<ProtoCritter>();
+    auto item = proto.dyn_cast<ProtoItem>();
+
     const auto it = _protos[type_name].emplace(proto_id, std::move(proto));
     FO_VERIFY_AND_THROW(it.second, "Duplicate prototype id", type_name, proto_id);
+
+    if (loc) {
+        _locProtos.insert_or_assign(proto_id, loc);
+    }
+    else if (map) {
+        _mapProtos.insert_or_assign(proto_id, map);
+    }
+    else if (cr) {
+        _crProtos.insert_or_assign(proto_id, cr);
+    }
+    else if (item) {
+        _itemProtos.insert_or_assign(proto_id, item);
+    }
 }
 
 auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Properties> props) -> ptr<ProtoEntity>

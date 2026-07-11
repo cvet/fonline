@@ -1213,6 +1213,12 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
         std::this_thread::yield();
     }
 
+    // Re-entrancy guard hoisted above any counter mutation: a re-entrant Lock on the same thread must
+    // throw before touching `_syncRequest`, so the misuse path leaves the counter balanced instead of
+    // deadlocking the main worker on a SyncPoint. Safe to check here because ExternalLockSyncCtx is
+    // thread_local and only this call's emplace below writes it.
+    FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
+
     if (std::this_thread::get_id() != _mainWorker.GetThreadId()) {
         unique_lock locker {_syncLocker};
 
@@ -1234,7 +1240,6 @@ auto ServerEngine::Lock(optional<timespan> max_wait_time) -> bool
     // Now this thread is allowed to touch engine state: stand up an active SyncContext for explicit
     // Sync/Ensure calls made by the external lock holder. The external lock owns only the engine sync
     // point; it does not pre-lock the world.
-    FO_VERIFY_AND_THROW(!ExternalLockSyncCtx, "External lock sync ctx is already set");
     ExternalLockSyncCtx.emplace();
     ExternalLockSyncCtx->Activate();
 

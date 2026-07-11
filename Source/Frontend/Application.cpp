@@ -2930,6 +2930,7 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         _lastMousePos = pos;
 
         SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, false);
+        auto restore_mouse_motion = scope_exit([]() noexcept { SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true); });
 
         // When the active window is virtual, `pos` is in that window's local screen coords —
         // remap it back into host (ImGui display) coords before handing it to SDL.
@@ -2948,8 +2949,6 @@ void AppInput::SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to)
         else {
             SDL_WarpMouseGlobal(numeric_cast<float32_t>(host_pos.x), numeric_cast<float32_t>(host_pos.y));
         }
-
-        SDL_SetEventEnabled(SDL_EVENT_MOUSE_MOTION, true);
     }
 }
 

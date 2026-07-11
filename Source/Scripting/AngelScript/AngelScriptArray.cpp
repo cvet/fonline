@@ -1206,6 +1206,8 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
 
         int32_t j = i - 1;
 
+        auto restore_hole = scope_fail([&]() noexcept { safe_call([&] { Copy(GetArrayItemPointer(j + 1), tmp); }); });
+
         while (j >= start && Less(GetDataPointer(tmp), At(j), asc, ctx)) {
             Copy(GetArrayItemPointer(j + 1), GetArrayItemPointer(j));
             j--;

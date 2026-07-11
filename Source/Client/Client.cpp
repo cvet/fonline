@@ -2522,8 +2522,9 @@ auto ClientEngine::GetLangPack(string_view lang_name) -> const TextPack&
         }
     }
 
-    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, TextPack {&Hashes});
-    cached_pack.LoadFromResources(Resources, lang_name);
+    TextPack lang_pack {&Hashes};
+    lang_pack.LoadFromResources(Resources, lang_name);
+    auto& [cached_lang_name, cached_pack] = _langPackCache.emplace_back(string {lang_name}, std::move(lang_pack));
     return cached_pack;
 }
 

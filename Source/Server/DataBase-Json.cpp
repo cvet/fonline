@@ -160,8 +160,16 @@ protected:
             throw DataBaseException("DbJson Can't open file", path);
         }
 
-        if (!fs_write_file(path, pretty_json_dump)) {
+        const string tmp_path = strex("{}.tmp", path).str();
+
+        if (!fs_write_file(tmp_path, pretty_json_dump)) {
+            fs_remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
+        }
+
+        if (!fs_rename(tmp_path, path)) {
+            fs_remove_file(tmp_path);
+            throw DataBaseException("DbJson Can't commit file", path);
         }
     }
 
@@ -209,8 +217,16 @@ protected:
             throw DataBaseException("DbJson Can't open file for writing", path);
         }
 
-        if (!fs_write_file(path, pretty_json_dump)) {
+        const string tmp_path = strex("{}.tmp", path).str();
+
+        if (!fs_write_file(tmp_path, pretty_json_dump)) {
+            fs_remove_file(tmp_path);
             throw DataBaseException("DbJson Can't write file", path);
+        }
+
+        if (!fs_rename(tmp_path, path)) {
+            fs_remove_file(tmp_path);
+            throw DataBaseException("DbJson Can't commit file", path);
         }
     }
 

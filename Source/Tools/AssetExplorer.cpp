@@ -56,9 +56,12 @@ void AssetExplorer::OnDraw()
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx("Opened", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
+        auto opened_pop = scope_fail([]() noexcept { ImGui::TreePop(); });
+
         for (const auto& asset_view : _editor->GetAssetViews()) {
             ImGui::SetNextItemOpen(false);
             if (ImGui::TreeNodeEx(asset_view->GetAssetPath().c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                auto item_pop = scope_fail([]() noexcept { ImGui::TreePop(); });
                 _editor->OpenAsset(asset_view->GetAssetPath());
                 ImGui::TreePop();
             }
@@ -87,6 +90,8 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
     FO_STACK_TRACE_ENTRY();
 
     if (ImGui::TreeNodeEx(section_name.c_str(), ImGuiTreeNodeFlags_Framed)) {
+        auto section_pop = scope_fail([]() noexcept { ImGui::TreePop(); });
+
         auto files = _editor->RawResources.FilterFiles(file_ext);
 
         for (const auto& file_header : files) {
@@ -94,6 +99,7 @@ void AssetExplorer::DrawSection(const string& section_name, string_view file_ext
             const string file_path = string(file_header.GetPath());
 
             if (ImGui::TreeNodeEx(file_path.c_str(), ImGuiTreeNodeFlags_Bullet | ImGuiTreeNodeFlags_SpanAvailWidth)) {
+                auto item_pop = scope_fail([]() noexcept { ImGui::TreePop(); });
                 _editor->OpenAsset(file_path);
                 ImGui::TreePop();
             }

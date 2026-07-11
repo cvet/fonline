@@ -365,13 +365,13 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
 {
     FO_STACK_TRACE_ENTRY();
 
+    for (const auto& kv : other._data) {
+        Set(kv.first, kv.second);
+    }
+
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
         ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
         engine->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
-    }
-
-    for (const auto& kv : other._data) {
-        Set(kv.first, kv.second);
     }
 }
 
@@ -547,9 +547,10 @@ void ScriptDict::Set(ptr<void> key, ptr<void> value)
         _data.emplace(key_copy.get(), value_copy.get());
     }
     else {
-        DestroyObject(_typeInfo, 1, it->second);
         auto value_copy = CopyObject(_typeInfo, 1, value);
+        ptr<void> old_value = it->second;
         it->second = value_copy.get();
+        DestroyObject(_typeInfo, 1, old_value);
     }
 }
 
@@ -573,9 +574,11 @@ auto ScriptDict::Remove(ptr<void> key) -> bool
     const auto it = _data.find(key.get());
 
     if (it != _data.end()) {
-        DestroyObject(_typeInfo, 0, it->first);
-        DestroyObject(_typeInfo, 1, it->second);
+        ptr<void> key_obj = it->first;
+        ptr<void> value_obj = it->second;
         _data.erase(it);
+        DestroyObject(_typeInfo, 0, key_obj);
+        DestroyObject(_typeInfo, 1, value_obj);
         return true;
     }
 
@@ -590,9 +593,11 @@ auto ScriptDict::RemoveValues(ptr<void> value) -> int32_t
 
     for (auto it = _data.begin(); it != _data.end();) {
         if (Equals(_valueTypeId, _valueTypeData, _typeInfo->GetEngine(), it->second, value)) {
-            DestroyObject(_typeInfo, 0, it->first);
-            DestroyObject(_typeInfo, 1, it->second);
+            ptr<void> key_obj = it->first;
+            ptr<void> value_obj = it->second;
             it = _data.erase(it);
+            DestroyObject(_typeInfo, 0, key_obj);
+            DestroyObject(_typeInfo, 1, value_obj);
             result++;
         }
         else {
@@ -607,12 +612,14 @@ void ScriptDict::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& kv : _data) {
-        DestroyObject(_typeInfo, 0, kv.first);
-        DestroyObject(_typeInfo, 1, kv.second);
+    while (!_data.empty()) {
+        auto node = _data.begin();
+        ptr<void> key = node->first;
+        ptr<void> value = node->second;
+        _data.erase(node);
+        DestroyObject(_typeInfo, 0, key);
+        DestroyObject(_typeInfo, 1, value);
     }
-
-    _data.clear();
 }
 
 auto ScriptDict::Get(ptr<void> key) const -> ptr<void>

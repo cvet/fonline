@@ -956,10 +956,12 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
     int32_t screen_width;
     int32_t screen_height;
 
+    nptr<SDLGpu_Texture> new_render_target {};
+
     if (tex) {
         auto sdl_tex = tex.dyn_cast<SDLGpu_Texture>();
         FO_VERIFY_AND_THROW(sdl_tex, "SDL_GPU render target texture is not of the expected backend type");
-        _ctx->CurRenderTarget = sdl_tex;
+        new_render_target = sdl_tex;
 
         vp_ox = 0;
         vp_oy = 0;
@@ -969,8 +971,6 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         screen_height = vp_height;
     }
     else {
-        _ctx->CurRenderTarget = nullptr;
-
         const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
         const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
         const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
@@ -983,6 +983,8 @@ void SDLGpu_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         screen_width = _ctx->Settings->ScreenWidth;
         screen_height = _ctx->Settings->ScreenHeight;
     }
+
+    _ctx->CurRenderTarget = new_render_target;
 
     _ctx->ViewPortRect = irect32 {vp_ox, vp_oy, vp_width, vp_height};
 
@@ -1248,8 +1250,6 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    StaticDataChanged = false;
-
     size_t upload_vertices;
     size_t vert_size;
 
@@ -1275,6 +1275,7 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
     const size_t indices_data_size = upload_indices * sizeof(vindex_t);
 
     if (vertices_data_size == 0 && indices_data_size == 0) {
+        StaticDataChanged = false;
         return;
     }
 
@@ -1364,6 +1365,8 @@ void SDLGpu_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
         SDL_UploadToGPUBuffer(copy_pass.get(), &ind_src, &ind_dest, true);
     }
+
+    StaticDataChanged = false;
 }
 
 SDLGpu_Effect::~SDLGpu_Effect()
@@ -1576,6 +1579,13 @@ void SDLGpu_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto main_texture_size_data = main_tex->SizeData;
         MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
+
+    // Derived buffers are per-draw: if the draw throws before the end-of-function reset, clear them here so
+    // a caught exception does not leave a stale projection / main-texture-size uniform for the next draw.
+    const auto reset_derived_on_fail = scope_fail([this]() noexcept {
+        ProjBuf.reset();
+        MainTexBuf.reset();
+    });
 
     const bool with_depth = IsTargetWithDepth(_ctx);
 
