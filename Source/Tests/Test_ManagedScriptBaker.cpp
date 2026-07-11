@@ -488,6 +488,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("private readonly IntPtr _entityPtr;") != string::npos);
     CHECK(server_events.find("private GameOnManagedTestEventHandler? _handlers;") == string::npos);
     CHECK(server_events.find("private readonly Dictionary<(Delegate Handler, IntPtr Backend), IntPtr> _nativeSubscriptions") != string::npos);
+    CHECK(server_events.find("public delegate global::System.Threading.Tasks.Task GameOnManagedTestEventHandlerAsync") != string::npos);
+    CHECK(server_events.find("public void Subscribe(\n            GameOnManagedTestEventHandlerAsync handler") != string::npos);
     CHECK(server_events.find("{ if (handler == null)") == string::npos);
     CHECK(server_events.find("global::FOnline.Native.RequireEventAttribute(handler);\n            IntPtr backend = global::FOnline.Native.GetBackend();\n            (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n            if (_nativeSubscriptions.ContainsKey(key))") != string::npos);
     CHECK(server_events.find("_nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n                \"Game\",\n                \"OnManagedTest\",") != string::npos);
@@ -520,6 +522,8 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("object __result = global::FOnline.Native.CallMethod(\n                \"MovingContext\",\n                \"GetSpeed\",") != string::npos);
     CHECK(server_types.find("return (ushort)__result;") != string::npos);
     CHECK(server_entities.find("public partial class Entity") != string::npos);
+    CHECK(server_entities.find("private readonly bool[]? _backendAlive;") != string::npos);
+    CHECK(server_entities.find("Entity wrapper belongs to a different managed backend") != string::npos);
     CHECK(server_entities.find("public ident Id\n        {\n            get\n            {\n                return new ident(global::FOnline.Native.GetEntityId(_entityPtr));") != string::npos);
 
     std::error_code ec;

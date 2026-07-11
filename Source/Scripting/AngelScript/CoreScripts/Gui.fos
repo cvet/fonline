@@ -519,6 +519,9 @@ class Object
     void OnRefreshText()
     {
     }
+    void OnCleanup()
+    {
+    }
 
     Object()
     {
@@ -1452,6 +1455,18 @@ class Panel : Object
     {
         Object::_FixClone();
         _ResetScrollTweens();
+    }
+
+    void _Remove() override
+    {
+        Object::_Remove();
+
+        Sprite::Sprite? backgroundImage = _BackgroundImage;
+        if (backgroundImage != null) {
+            backgroundImage.Unload();
+        }
+
+        _BackgroundImage = null;
     }
 
     void _ResetScrollTweens()
@@ -2388,6 +2403,30 @@ class Button : Panel
         _IsNotCatchable = true;
     }
 
+    void _Remove() override
+    {
+        Panel::_Remove();
+
+        Sprite::Sprite? pressedImage = _PressedImage;
+        if (pressedImage != null) {
+            pressedImage.Unload();
+        }
+
+        Sprite::Sprite? hoverImage = _HoverImage;
+        if (hoverImage != null) {
+            hoverImage.Unload();
+        }
+
+        Sprite::Sprite? disabledImage = _DisabledImage;
+        if (disabledImage != null) {
+            disabledImage.Unload();
+        }
+
+        _PressedImage = null;
+        _HoverImage = null;
+        _DisabledImage = null;
+    }
+
     void _Draw(bool callCallback) override
     {
         if (!_ActiveSelf || !_NeedDraw) {
@@ -3149,6 +3188,9 @@ class MessageBox : Text
         }
 
         Text::_Remove();
+
+        _ScrollUp.Unload();
+        _ScrollDown.Unload();
     }
 
     void _Hover() override
@@ -3825,6 +3867,7 @@ void RegisterScreen(GuiScreen screenNum, CreateScreenFunc screenFunc)
 
     if (screen.IsMultiinstance) {
         screen._Remove();
+        CleanupObjectGraph(screen);
         Screens.removeAt(Screens.findByRef(screen));
     }
 }
@@ -4266,9 +4309,16 @@ void CleanupObjectGraph(Object obj)
         CleanupObjectGraph(obj._Children[i]);
     }
 
+    obj.OnCleanup();
+
     Grid? grid = cast<Grid>(obj);
     if (grid != null) {
         grid._Cells.clear();
+    }
+
+    ItemView? itemView = cast<ItemView>(obj);
+    if (itemView != null) {
+        itemView._Items.clear();
     }
 
     Screen? screen = cast<Screen>(obj);
@@ -4291,11 +4341,17 @@ void EngineCallback_Finish()
 {
     EngineCallback_InputLost();
 
-    HideAllScreens();
-
     DropMenu = null;
     CurConsole = null;
     DragAndDropHandlers.clear();
+    FocusedObjects.clear();
+    PressedObject = null;
+    LastPressedObject = null;
+    HoveredObject = null;
+    FindNextTextInputSkipObj = null;
+
+    HideAllScreens();
+
     ScreenCreators = {};
 
     Screen? cursorScreen = CursorScreen;
@@ -4703,6 +4759,16 @@ Screen CreateScreen(GuiScreen screenNum)
 
 void UnregisterScreen(GuiScreen screenNum)
 {
+    if (screenNum == GuiScreen::Cursor) {
+        Screen? cursorScreen = CursorScreen;
+
+        if (cursorScreen != null) {
+            cursorScreen._Remove();
+            CleanupObjectGraph(cursorScreen);
+            CursorScreen = null;
+        }
+    }
+
     for (int i = Screens.length() - 1; i >= 0; i--) {
         Screen screen = Screens[i];
 
@@ -4713,6 +4779,7 @@ void UnregisterScreen(GuiScreen screenNum)
 
             if (!screen.IsMultiinstance) {
                 screen._Remove();
+                CleanupObjectGraph(screen);
                 Screens.removeAt(i);
             }
 
@@ -4790,6 +4857,7 @@ void ShowHideScreen(Screen screen, dict<string, any> params, bool show)
         // Remove multiinstance
         if (screen.IsMultiinstance) {
             screen._Remove();
+            CleanupObjectGraph(screen);
             Screens.removeAt(Screens.findByRef(screen));
         }
 

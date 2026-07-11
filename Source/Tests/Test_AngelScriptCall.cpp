@@ -60,6 +60,11 @@ FO_BEGIN_NAMESPACE
 // Test_AngelScriptAlignment.cpp.
 namespace
 {
+    struct ManagedCallDataAccessor final : DataAccessor
+    {
+        [[nodiscard]] auto GetBackendIndex() const noexcept -> int32_t override { return ScriptSystemBackend::MANAGED_BACKEND_INDEX; }
+    };
+
     struct CallTestRig
     {
         static auto MakeSettings() -> GlobalSettings
@@ -85,6 +90,13 @@ namespace
 namespace CallTest
 {
     funcdef int64 UnaryOp(int8);
+
+    CallReturnProbe? MakeManagedReturnProbe()
+    {
+        CallReturnProbe probe = CallReturnProbe();
+        probe.Value = 42;
+        return probe;
+    }
 
     // Deep call chain with varying argument-block parity at every level, 8-byte locals at each.
     int64 Chain3(int8 a, int16 b, int8 c)
@@ -268,7 +280,9 @@ namespace CallTest
 
         static auto MakeResources() -> FileSystem
         {
-            const auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            const auto metadata_blob = BakerTests::MakeMetadataBlob({
+                {"RefType", {{"CallReturnProbe", "Value", "int32", "0"}}},
+            });
 
             auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("CallTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
@@ -347,6 +361,30 @@ TEST_CASE("AngelScriptCallShapes")
     call_and_check("CallTest::UseRefParams", 76);
     call_and_check("CallTest::UseConstRefs", 24);
     call_and_check("CallTest::UseMixedParams", 22);
+
+    {
+        const auto candidates = server->FindFuncCandidates(fn("CallTest::MakeManagedReturnProbe"));
+        REQUIRE(candidates.size() == 1);
+        ptr<ScriptFuncDesc> func_desc = candidates.front();
+        REQUIRE(func_desc->Call);
+
+        const ManagedCallDataAccessor accessor;
+        DynamicRefTypeInstance* return_handle = nullptr;
+        refcount_nptr<DynamicRefTypeInstance> retained;
+
+        {
+            FuncCallData call {.Accessor = &accessor, .RetData = make_nptr(&return_handle).void_cast()};
+            func_desc->Call(call);
+
+            nptr<DynamicRefTypeInstance> returned = return_handle;
+            REQUIRE(returned);
+            retained = refcount_nptr<DynamicRefTypeInstance>::from_add_ref(returned.get_no_const());
+            CHECK(returned->GetRefCount() == 2);
+        }
+
+        REQUIRE(retained);
+        CHECK(retained->GetRefCount() == 1);
+    }
 
     // The vector<ptr<T>>-returning call is about the generated cast, not the value: with the
     // test-side server lock held the sync context may legitimately hold entities.

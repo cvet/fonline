@@ -207,6 +207,51 @@ TEST_CASE("HashedString")
         // Empty string is the zero hash, never a registered entry
         CHECK_FALSE(storage.CheckHashedString(""));
     }
+
+    SECTION("ConcurrentInterningKeepsStableEntries")
+    {
+        HashStorage storage {};
+        std::atomic_bool start {false};
+        std::atomic_int failures {0};
+        vector<std::thread> threads;
+        constexpr int32_t thread_count = 8;
+        constexpr int32_t iterations = 512;
+
+        threads.reserve(thread_count);
+        for (int32_t thread_index = 0; thread_index < thread_count; thread_index++) {
+            threads.emplace_back([&storage, &start, &failures, thread_index]() {
+                while (!start.load(std::memory_order_acquire)) {
+                    std::this_thread::yield();
+                }
+
+                try {
+                    for (int32_t i = 0; i < iterations; i++) {
+                        const string value = i % 3 == 0 ? string {"shared_concurrent_value"} : strex("concurrent_{}_{}", thread_index, i % 97).str();
+                        const hstring hs = storage.ToHashedString(value);
+                        const hstring resolved = storage.ResolveHash(hs.as_hash());
+
+                        if (!hs || resolved != hs || hs.as_str() != value || !storage.CheckHashedString(value)) {
+                            failures.fetch_add(1, std::memory_order_relaxed);
+                        }
+                    }
+                }
+                catch (...) {
+                    failures.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
+        }
+
+        start.store(true, std::memory_order_release);
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        CHECK(failures.load(std::memory_order_relaxed) == 0);
+
+        const auto shared = storage.ToHashedString("shared_concurrent_value");
+        CHECK(shared.as_str() == "shared_concurrent_value");
+    }
 }
 
 FO_END_NAMESPACE

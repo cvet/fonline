@@ -33,8 +33,9 @@ namespace FOnline
 
         // Register all static methods in the script assembly tagged with `attributeType` as global script functions
         // carrying `attributeName`. Finds nothing on a side where the tagged methods are not compiled (harmless).
-        // Normal attribute-bound funcs skip coexisting AngelScript modules to avoid duplicate live owners; transition
-        // bridges may opt in when their exported method names are explicitly kept unique.
+        // Normal attribute-bound funcs skip coexisting AngelScript modules to avoid duplicate live owners. Transition
+        // bridges may opt in: an exact function already registered by the coexisting backend remains the owner, while
+        // managed-only functions from the same module are still registered.
         public static void RegisterAttributedScriptFuncs(Type attributeType, string attributeName, bool includeCoexistingAngelScriptModules = false)
         {
             Assembly assembly = typeof(ScriptFuncRegistration).Assembly;
@@ -51,13 +52,13 @@ namespace FOnline
                             continue;
                         }
 
-                        RegisterFunc(type, method, attributeName);
+                        RegisterFunc(type, method, attributeName, includeCoexistingAngelScriptModules);
                     }
                 }
             }
         }
 
-        private static void RegisterFunc(Type type, MethodInfo method, string attributeName)
+        private static void RegisterFunc(Type type, MethodInfo method, string attributeName, bool skipExistingScriptFunc)
         {
             ParameterInfo[] parameters = method.GetParameters();
             string[] paramTypeNames = new string[parameters.Length];
@@ -80,7 +81,13 @@ namespace FOnline
             Delegate handler = Delegate.CreateDelegate(delegateType, method);
             string fullName = type.Name + "::" + method.Name;
 
-            Native.RegisterGlobalScriptFunc(fullName, attributeName, paramTypeNames, returnTypeName, handler);
+            Native.RegisterGlobalScriptFunc(
+                fullName,
+                attributeName,
+                paramTypeNames,
+                returnTypeName,
+                handler,
+                skipExistingScriptFunc);
         }
 
         private static Type GetRegisteredReturnType(Type returnType)

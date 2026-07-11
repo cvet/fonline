@@ -654,6 +654,10 @@ namespace FOnline
             {
             }
 
+            public virtual void OnCleanup()
+            {
+            }
+
             public Object()
             {
                 _Children = new List<Object>();
@@ -4551,9 +4555,16 @@ namespace FOnline
                 CleanupObjectGraph(obj._Children[i]);
             }
 
+            obj.OnCleanup();
+
             Grid? grid = (obj as Grid);
             if (grid != null) {
                 grid._Cells.Clear();
+            }
+
+            ItemView? itemView = (obj as ItemView);
+            if (itemView != null) {
+                itemView._Items.Clear();
             }
 
             Screen? screen = (obj as Screen);
@@ -5074,6 +5085,7 @@ namespace FOnline
                 // Remove multiinstance
                 if (screen.IsMultiinstance) {
                     screen._Remove();
+                    CleanupObjectGraph(screen);
                     Screens.RemoveAt(Screens.IndexOf(screen));
                 }
 

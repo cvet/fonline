@@ -643,10 +643,38 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
                     nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
                     FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
-                    const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
                     nptr<void> ret_obj = ctx->GetReturnObject();
+                    ptr<void> ret_data = call.RetData.as_ptr();
 
-                    if (is_ref_type) {
+                    if (func_desc->Ret.Kind == ComplexTypeKind::Array) {
+                        call.Accessor->ClearArray(ret_data);
+
+                        if (ret_obj) {
+                            nptr<ScriptArray> nullable_arr = cast_from_void<ScriptArray*>(ret_obj.get_no_const());
+                            auto arr = nullable_arr.as_ptr();
+                            const int32_t arr_size = arr->GetSize();
+
+                            for (int32_t j = 0; j < arr_size; j++) {
+                                call.Accessor->AddArrayElement(ret_data, arr->At(j));
+                            }
+                        }
+                    }
+                    else if (func_desc->Ret.Kind == ComplexTypeKind::Dict) {
+                        FO_VERIFY_AND_THROW(func_desc->Ret.KeyType, "Dictionary return type has no key type");
+
+                        call.Accessor->ClearDict(ret_data);
+
+                        if (ret_obj) {
+                            nptr<ScriptDict> nullable_dict = cast_from_void<ScriptDict*>(ret_obj.get_no_const());
+                            auto dict = nullable_dict.as_ptr();
+                            ptr<const map<void*, void*, ScriptDict::ScriptDictComparator>> dict_map = dict->GetMap();
+
+                            for (const auto& kv : *dict_map) {
+                                call.Accessor->AddDictElement(ret_data, kv.first, kv.second);
+                            }
+                        }
+                    }
+                    else if ((as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0) {
                         auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
                         const nptr<void> cur_obj = *cur_obj_slot;
 
@@ -655,7 +683,16 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         }
 
                         *cur_obj_slot = ret_obj.get();
-                        as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                        if (ret_obj) {
+                            as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                            if (call.Accessor->GetBackendIndex() == ScriptSystemBackend::MANAGED_BACKEND_INDEX) {
+                                call.RetValueOwner.Reset([as_engine, as_ret_type, ret_obj]() mutable noexcept {
+                                    as_engine->ReleaseScriptObject(ret_obj.get_no_const(), as_ret_type.get());
+                                });
+                            }
+                        }
                     }
                     else {
                         FO_VERIFY_AND_THROW(ret_obj, "Missing AngelScript return object");

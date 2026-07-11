@@ -65,8 +65,8 @@ struct RemoteCallWireHooks
 class RemoteCallReadStorage final
 {
 public:
-    auto StoreString(string&& value) -> ptr<void> { return cast_to_void(&std::get<string>(_items.emplace_back(std::move(value)))); }
-    auto StoreHashed(hstring value) -> ptr<void> { return cast_to_void(&std::get<hstring>(_items.emplace_back(value))); }
+    auto StoreString(string&& value) -> ptr<void> { return make_ptr(&std::get<string>(_items.emplace_back(std::move(value)))).reinterpret_as<void>(); }
+    auto StoreHashed(hstring value) -> ptr<void> { return make_ptr(&std::get<hstring>(_items.emplace_back(value))).reinterpret_as<void>(); }
     auto StoreStructBytes(size_t size) -> ptr<uint8_t> { return std::get<vector<uint8_t>>(_items.emplace_back(vector<uint8_t>(size, 0))).data(); }
     auto StorePlainBytes() -> ptr<uint8_t> { return std::get<PlainData>(_items.emplace_back(PlainData {})).Bytes; }
 

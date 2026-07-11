@@ -129,11 +129,56 @@ struct DataAccessor
     virtual ~DataAccessor() = default;
 };
 
+class ScriptCallReturnValueOwner final
+{
+public:
+    ScriptCallReturnValueOwner() noexcept = default;
+    explicit ScriptCallReturnValueOwner(function<void()>&& cleanup) noexcept :
+        _cleanup {std::move(cleanup)}
+    {
+    }
+
+    ScriptCallReturnValueOwner(const ScriptCallReturnValueOwner&) = delete;
+    auto operator=(const ScriptCallReturnValueOwner&) -> ScriptCallReturnValueOwner& = delete;
+
+    ScriptCallReturnValueOwner(ScriptCallReturnValueOwner&& other) noexcept :
+        _cleanup {std::move(other._cleanup)}
+    {
+        other._cleanup = {};
+    }
+
+    auto operator=(ScriptCallReturnValueOwner&& other) noexcept -> ScriptCallReturnValueOwner&
+    {
+        if (this != &other) {
+            Reset(std::move(other._cleanup));
+            other._cleanup = {};
+        }
+
+        return *this;
+    }
+
+    ~ScriptCallReturnValueOwner() noexcept { Reset(); }
+
+    void Reset(function<void()>&& cleanup = {}) noexcept
+    {
+        function<void()> previous = std::move(_cleanup);
+        _cleanup = std::move(cleanup);
+
+        if (previous) {
+            previous();
+        }
+    }
+
+private:
+    function<void()> _cleanup {};
+};
+
 struct FuncCallData
 {
     ptr<const DataAccessor> Accessor;
     const_span<ptr<void>> ArgsData {};
     nptr<void> RetData {};
+    ScriptCallReturnValueOwner RetValueOwner {};
 };
 
 namespace NativeDataProvider

@@ -934,7 +934,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     FO_VERIFY_AND_THROW(method->Call, "Method call binding is null");
 
     ScriptGenericCall(gen, false, method->Args, [&](FuncCallData& base_call) {
-        FuncCallData call = base_call;
+        FuncCallData call {.Accessor = base_call.Accessor, .ArgsData = base_call.ArgsData, .RetData = base_call.RetData};
         nptr<Entity> engine_arg = engine;
         vector<ptr<void>> args_data;
         args_data.reserve(base_call.ArgsData.size() + 1);

@@ -111,9 +111,6 @@ auto PropertiesSerializator::LoadFromDocument(ptr<Properties> props, const AnyDa
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
                 LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
             }
-            else {
-                // WriteLog(LogType::Warning, "Skip unknown property {}", key);
-            }
         }
         catch (const std::exception& ex) {
             WriteLog(LogType::Warning, "Unable to load property {}: {}", doc_key, ex.what());

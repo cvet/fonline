@@ -60,6 +60,27 @@ namespace FOnline
             try
             {
                 object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
+                Task? task = result as Task;
+
+                if (task != null)
+                {
+                    if (hasExplicitResult)
+                    {
+                        throw new InvalidOperationException("Task event handlers cannot return an explicit EventResult");
+                    }
+
+                    if (task.IsCompleted)
+                    {
+                        task.GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        Game.ObserveInvokeTask(task);
+                    }
+
+                    return EventResult.ContinueChain;
+                }
+
                 if (hasExplicitResult)
                 {
                     return (EventResult)result!;
@@ -538,7 +559,8 @@ namespace FOnline
             string attributeName,
             string[] paramTypeNames,
             string returnTypeName,
-            Delegate handler);
+            Delegate handler,
+            bool skipExistingScriptFunc);
 
         // Registers a managed inbound remote-call handler (a [ServerRemoteCall]/[ClientRemoteCall]/[AdminRemoteCall]
         // method) with the engine. The engine matches `name` to the inbound remote-call metadata (subsystem "cs")

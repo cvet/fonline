@@ -619,11 +619,13 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 const string event_type_name = strex("{}{}Event", type_name, event.Name).str();
                 const auto event_arg_declarations = MakeCsEventArgumentDeclarations(type_name, desc->IsGlobal, event.Args);
                 const string delegate_name = strex("{}{}EventHandler", type_name, event.Name).str();
+                const string async_delegate_name = strex("{}{}EventHandlerAsync", type_name, event.Name).str();
                 const string result_delegate_name = strex("{}{}EventHandlerResult", type_name, event.Name).str();
                 const string owner_literal = EscapeCsStringLiteral(type_name);
                 const string event_literal = EscapeCsStringLiteral(event.Name);
 
                 AppendCsCallableDeclaration(out, "    ", "public delegate void ", EscapeCsIdentifier(delegate_name), event_arg_declarations, ";");
+                AppendCsCallableDeclaration(out, "    ", "public delegate global::System.Threading.Tasks.Task ", EscapeCsIdentifier(async_delegate_name), event_arg_declarations, ";");
                 AppendCsCallableDeclaration(out, "    ", "public delegate EventResult ", EscapeCsIdentifier(result_delegate_name), event_arg_declarations, ";");
                 out << "\n";
                 out << "    public sealed class " << EscapeCsIdentifier(event_type_name) << "\n";
@@ -637,6 +639,27 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "    _entityPtr = entityPtr;\n";
                 out << CS_INDENT << "}\n\n";
                 AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
+                out << CS_INDENT << "{\n";
+                out << CS_INDENT << "    if (handler == null)\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    global::FOnline.Native.RequireEventAttribute(handler);\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
+                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
+                out << CS_INDENT << "    if (_nativeSubscriptions.ContainsKey(key))\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    _nativeSubscriptions[key] = global::FOnline.Native.SubscribeEvent(\n";
+                out << CS_INDENT << "        \"" << owner_literal << "\",\n";
+                out << CS_INDENT << "        \"" << event_literal << "\",\n";
+                out << CS_INDENT << "        _entityPtr,\n";
+                out << CS_INDENT << "        handler,\n";
+                out << CS_INDENT << "        false,\n";
+                out << CS_INDENT << "        (int)priority);\n";
+                out << CS_INDENT << "}\n\n";
+                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Subscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_delegate_name)).str(), "EventPriority priority = EventPriority.Normal"}, "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
                 out << CS_INDENT << "    {\n";
@@ -679,6 +702,23 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 out << CS_INDENT << "        (int)priority);\n";
                 out << CS_INDENT << "}\n\n";
                 AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(delegate_name)).str()}, "");
+                out << CS_INDENT << "{\n";
+                out << CS_INDENT << "    if (handler == null)\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        return;\n";
+                out << CS_INDENT << "    }\n\n";
+                out << CS_INDENT << "    IntPtr backend = global::FOnline.Native.GetBackend();\n";
+                out << CS_INDENT << "    (Delegate Handler, IntPtr Backend) key = ((Delegate)handler, backend);\n";
+                out << CS_INDENT << "    if (_nativeSubscriptions.TryGetValue(key, out IntPtr subscription))\n";
+                out << CS_INDENT << "    {\n";
+                out << CS_INDENT << "        global::FOnline.Native.UnsubscribeEvent(\n";
+                out << CS_INDENT << "            \"" << event_literal << "\",\n";
+                out << CS_INDENT << "            _entityPtr,\n";
+                out << CS_INDENT << "            subscription);\n";
+                out << CS_INDENT << "        _nativeSubscriptions.Remove(key);\n";
+                out << CS_INDENT << "    }\n";
+                out << CS_INDENT << "}\n\n";
+                AppendCsCallableDeclaration(out, CS_INDENT, "public void ", "Unsubscribe", vector<string> {strex("{} handler", EscapeCsIdentifier(async_delegate_name)).str()}, "");
                 out << CS_INDENT << "{\n";
                 out << CS_INDENT << "    if (handler == null)\n";
                 out << CS_INDENT << "    {\n";
@@ -2249,7 +2289,7 @@ static void AppendPropertyInfoAccessors(std::ostringstream& out, const EngineMet
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetEntityTypes())) {
         const auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
 
-        if (desc->PropRegistrator == nullptr || enum_it == enum_values_by_index.end()) {
+        if (!desc->PropRegistrator.as_nptr() || enum_it == enum_values_by_index.end()) {
             continue;
         }
 
@@ -2259,7 +2299,7 @@ static void AppendPropertyInfoAccessors(std::ostringstream& out, const EngineMet
     for (const auto& [type_name, desc] : MakeSortedEntityTypes(meta.GetFixedTypes())) {
         const auto enum_it = enum_values_by_index.find(strex("{}Property", type_name).str());
 
-        if (desc->PropRegistrator == nullptr || enum_it == enum_values_by_index.end()) {
+        if (!desc->PropRegistrator.as_nptr() || enum_it == enum_values_by_index.end()) {
             continue;
         }
 
@@ -2382,16 +2422,39 @@ static void AppendEntityBaseClass(std::ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, System.Convert.ToInt32(prop), value ?? string.Empty);\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "protected IntPtr _entityPtr;\n\n";
+    out << CS_INDENT << "private IntPtr _entityPtrValue;\n";
+    out << CS_INDENT << "private readonly bool[]? _backendAlive;\n";
+    out << CS_INDENT << "private readonly IntPtr _backend;\n\n";
+    out << CS_INDENT << "protected IntPtr _entityPtr\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    get\n";
+    out << CS_INDENT << "    {\n";
+    out << CS_INDENT << "        if (_entityPtrValue == IntPtr.Zero)\n";
+    out << CS_INDENT << "        {\n";
+    out << CS_INDENT << "            return IntPtr.Zero;\n";
+    out << CS_INDENT << "        }\n\n";
+    out << CS_INDENT << "        if (_backendAlive == null || !_backendAlive[0])\n";
+    out << CS_INDENT << "        {\n";
+    out << CS_INDENT << "            throw new ObjectDisposedException(GetType().Name, \"The entity's managed backend is no longer alive\");\n";
+    out << CS_INDENT << "        }\n\n";
+    out << CS_INDENT << "        if (global::FOnline.Native.GetBackend() != _backend)\n";
+    out << CS_INDENT << "        {\n";
+    out << CS_INDENT << "            throw new InvalidOperationException(\"Entity wrapper belongs to a different managed backend\");\n";
+    out << CS_INDENT << "        }\n\n";
+    out << CS_INDENT << "        return _entityPtrValue;\n";
+    out << CS_INDENT << "    }\n";
+    out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "protected Entity()\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    _entityPtr = IntPtr.Zero;\n";
+    out << CS_INDENT << "    _entityPtrValue = IntPtr.Zero;\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "internal Entity(IntPtr entityPtr)\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    _entityPtr = entityPtr;\n";
+    out << CS_INDENT << "    _entityPtrValue = entityPtr;\n";
     out << CS_INDENT << "    if (entityPtr != IntPtr.Zero)\n";
     out << CS_INDENT << "    {\n";
+    out << CS_INDENT << "        _backendAlive = global::FOnline.Native.GetBackendAliveFlag();\n";
+    out << CS_INDENT << "        _backend = global::FOnline.Native.GetBackend();\n";
     out << CS_INDENT << "        global::FOnline.Native.AddRefEntity(entityPtr);\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
@@ -2400,10 +2463,10 @@ static void AppendEntityBaseClass(std::ostringstream& out)
     out << CS_INDENT << "// dangling. Released on GC finalization (the native refcount is atomic / finalizer-safe).\n";
     out << CS_INDENT << "~Entity()\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    if (_entityPtr != IntPtr.Zero)\n";
+    out << CS_INDENT << "    if (_entityPtrValue != IntPtr.Zero)\n";
     out << CS_INDENT << "    {\n";
-    out << CS_INDENT << "        global::FOnline.Native.ReleaseEntity(_entityPtr);\n";
-    out << CS_INDENT << "        _entityPtr = IntPtr.Zero;\n";
+    out << CS_INDENT << "        global::FOnline.Native.ReleaseEntity(_entityPtrValue);\n";
+    out << CS_INDENT << "        _entityPtrValue = IntPtr.Zero;\n";
     out << CS_INDENT << "    }\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "internal IntPtr EntityPtr\n";
@@ -3138,7 +3201,7 @@ static void AppendComponentAccessors(std::ostringstream& out, string_view owner_
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(desc.PropRegistrator, "Entity type has no property registrator");
+    FO_VERIFY_AND_THROW(desc.PropRegistrator.as_nptr(), "Entity type has no property registrator");
 
     for (const auto& [component_name, prop] : desc.PropRegistrator->GetComponents()) {
         const string component_type = strex("{}{}Component", owner_type_name, component_name).str();
@@ -3329,7 +3392,7 @@ static void AppendComponentClasses(std::ostringstream& out, string_view owner_ty
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(desc.PropRegistrator, "Entity type has no property registrator");
+    FO_VERIFY_AND_THROW(desc.PropRegistrator.as_nptr(), "Entity type has no property registrator");
 
     for (const auto& [component_name, prop] : desc.PropRegistrator->GetComponents()) {
         unordered_set<string> member_names;

@@ -174,9 +174,18 @@ AngelScriptBackend::~AngelScriptBackend()
         cb();
     }
 
+    _cleanupCallbacks.clear();
+
     _contextMngr.reset();
 
-    ReleaseScriptGlobalsAndReportGC();
+    if (_meta && _meta->GetSide() == EngineSideKind::ClientSide && _asEngine) {
+        for (int32_t pass = 0; pass < 8; pass++) {
+            _asEngine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
+        }
+    }
+    else {
+        ReleaseScriptGlobalsAndReportGC();
+    }
 
     _meta.reset();
     _scriptSys.reset();
@@ -822,6 +831,24 @@ void AngelScriptBackend::BindRequiredStuff()
         _contextMngr->SetDelayedScheduler([engine](timespan delay, function<void()> body) mutable { //
             engine->ScheduleDelayedCallback(delay, std::move(body));
         });
+
+        if (_meta->GetSide() == EngineSideKind::ClientSide) {
+            nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ONLY_IF_EXISTS);
+            FO_VERIFY_AND_THROW(!!nullable_mod, "Missing AngelScript root module for client GUI cleanup callback");
+            auto mod = nullable_mod.as_ptr();
+            nptr<AngelScript::asIScriptFunction> nullable_finish_func = mod->GetFunctionByDecl("void Gui::EngineCallback_Finish()");
+
+            if (nullable_finish_func) {
+                auto finish_func = nullable_finish_func.as_ptr();
+                auto finish_func_desc = IndexScriptFunc(finish_func);
+                FO_VERIFY_AND_THROW(finish_func_desc->Call, "Client GUI cleanup function has no native call handler");
+
+                AddCleanupCallback([func = refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(finish_func.get())]() mutable {
+                    FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
+                    ScriptFuncCall(func, call);
+                });
+            }
+        }
     }
 }
 

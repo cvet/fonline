@@ -51,25 +51,6 @@ AtlasSprite::~AtlasSprite()
 {
     FO_STACK_TRACE_ENTRY();
 
-#if 0 // For debug purposes
-    if constexpr (FO_DEBUG) {
-        try {
-            const auto rnd_color = ucolor {numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255))};
-
-            vector<ucolor> color_data;
-            color_data.resize(_atlasNode->Size.square());
-
-            for (size_t i = 0; i < color_data.size(); i++) {
-                color_data[i] = rnd_color;
-            }
-
-            _atlas->_mainTex->UpdateTextureRegion(_atlasNode->Pos, _atlasNode->Size, color_data);
-        }
-        catch (...) {
-        }
-    }
-#endif
-
     if (_atlasNode) {
         _atlasNode->Free();
     }

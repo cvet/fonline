@@ -27,7 +27,7 @@ namespace FOnline
         // same way the AngelScript bake restores it from bytecode.
         private static void RunScriptFuncRegistrars()
         {
-            Assembly assembly = Assembly.GetExecutingAssembly();
+            Assembly assembly = typeof(Initializator).Assembly;
 
             foreach (Type type in assembly.GetTypes())
             {
@@ -57,7 +57,7 @@ namespace FOnline
         {
             List<Tuple<int, MethodInfo>> moduleInits = new List<Tuple<int, MethodInfo>>();
 
-            Assembly assembly = Assembly.GetExecutingAssembly();
+            Assembly assembly = typeof(Initializator).Assembly;
 
             foreach (Type type in assembly.GetTypes())
             {

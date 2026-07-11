@@ -491,7 +491,7 @@ namespace FOnline
             result = args[index] == null ? default! : (TResult)args[index]!;
         }
 
-        private static void ObserveInvokeTask(object? result)
+        internal static void ObserveInvokeTask(object? result)
         {
             if (result is not Task task)
             {
