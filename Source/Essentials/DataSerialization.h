@@ -126,7 +126,8 @@ template<typename T>
     }
 
     const_span<uint8_t> bytes = span_read_bytes(buffer, pos, size);
-    ptr<const char> chars = ptr<const uint8_t> {bytes.data()}.reinterpret_as<const char>();
+    auto bytes_data = make_ptr(bytes.data());
+    auto chars = bytes_data.reinterpret_as<const char>();
     return {chars.get(), bytes.size()};
 }
 
@@ -177,7 +178,7 @@ template<typename T>
     requires(std::is_standard_layout_v<T>)
 void span_write_object(span<uint8_t> buffer, size_t& pos, const T& data)
 {
-    span_write_bytes(buffer, pos, cast_to_void(&data), sizeof(T));
+    span_write_bytes(buffer, pos, make_nptr(&data).void_cast(), sizeof(T));
 }
 
 template<typename T>
@@ -187,7 +188,7 @@ void span_write_object_bytes(span<uint8_t> buffer, size_t& pos, const T& data, s
     static_assert(std::is_trivially_copyable_v<T>);
     FO_VERIFY_AND_THROW(size <= sizeof(T), "Write size exceeds value type size");
 
-    span_write_bytes(buffer, pos, cast_to_void(&data), size);
+    span_write_bytes(buffer, pos, make_nptr(&data).void_cast(), size);
 }
 
 template<typename T>
@@ -228,7 +229,7 @@ void span_write_aligned_object_bytes(span<uint8_t> buffer, size_t& pos, const T&
 
 inline void span_write_string(span<uint8_t> buffer, size_t& pos, string_view value)
 {
-    span_write_bytes(buffer, pos, nptr<const void> {value.data()}, value.length());
+    span_write_bytes(buffer, pos, make_nptr(value.data()), value.length());
 }
 
 class DataReader
@@ -259,7 +260,7 @@ public:
     void ReadStringBytes(string& out)
     {
         if (!out.empty()) {
-            ReadBytes({ptr<char>(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
+            ReadBytes({make_ptr(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
         }
     }
 
@@ -272,7 +273,8 @@ public:
             return {};
         }
 
-        ptr<const char> chars = ptr<const uint8_t> {bytes.data()}.reinterpret_as<const char>();
+        auto bytes_data = make_ptr(bytes.data());
+        auto chars = bytes_data.reinterpret_as<const char>();
         return {chars.get(), bytes.size()};
     }
 
@@ -337,17 +339,17 @@ public:
             return nullptr;
         }
 
-        return ptr<const uint8_t> {bytes.data()}.reinterpret_as<const T>();
+        return make_ptr(bytes.data()).reinterpret_as<const T>();
     }
 
-    void ReadPtr(nptr<void> nullable_out, size_t size)
+    void ReadPtr(nptr<void> out, size_t size)
     {
         const_span<uint8_t> bytes = ReadBytes(size);
 
         if (!bytes.empty()) {
-            FO_VERIFY_AND_THROW(nullable_out, "Output pointer is null");
-            auto target = nullable_out.as_ptr();
-            ptr<uint8_t> target_bytes = cast_from_void<uint8_t*>(target.get());
+            FO_VERIFY_AND_THROW(out, "Output pointer is null");
+            auto target = ptr<void> {out};
+            auto target_bytes = target.reinterpret_as<uint8_t>();
             CopyBytesTo({target_bytes.get(), bytes.size()}, bytes);
         }
     }
@@ -410,7 +412,7 @@ public:
     void ReadStringBytes(string& out)
     {
         if (!out.empty()) {
-            ReadBytes({ptr<char>(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
+            ReadBytes({make_ptr(out.data()).reinterpret_as<uint8_t>().get(), out.size()});
         }
     }
 
@@ -436,17 +438,17 @@ public:
             return nullptr;
         }
 
-        return ptr<uint8_t> {bytes.data()}.reinterpret_as<T>();
+        return make_ptr(bytes.data()).reinterpret_as<T>();
     }
 
-    void ReadPtr(nptr<void> nullable_out, size_t size)
+    void ReadPtr(nptr<void> out, size_t size)
     {
         span<uint8_t> bytes = ReadBytes(size);
 
         if (!bytes.empty()) {
-            FO_VERIFY_AND_THROW(nullable_out, "Output pointer is null");
-            auto target = nullable_out.as_ptr();
-            ptr<uint8_t> target_bytes = cast_from_void<uint8_t*>(target.get());
+            FO_VERIFY_AND_THROW(out, "Output pointer is null");
+            auto target = ptr<void> {out};
+            auto target_bytes = target.reinterpret_as<uint8_t>();
             CopyBytesTo({target_bytes.get(), bytes.size()}, bytes);
         }
     }
@@ -518,7 +520,7 @@ public:
     void WriteStringBytes(string_view data)
     {
         if (!data.empty()) {
-            WriteBytes({ptr<const char>(data.data()).reinterpret_as<uint8_t>().get(), data.size()});
+            WriteBytes({make_ptr(data.data()).reinterpret_as<uint8_t>().get(), data.size()});
         }
     }
 
@@ -542,12 +544,12 @@ public:
         }
     }
 
-    void WritePtr(nptr<const void> nullable_data, size_t size)
+    void WritePtr(nptr<const void> data, size_t size)
     {
         if (size != 0) {
-            FO_VERIFY_AND_THROW(nullable_data, "Source pointer is null");
-            auto source = nullable_data.as_ptr();
-            ptr<const uint8_t> source_bytes = cast_from_void<const uint8_t*>(source.get());
+            FO_VERIFY_AND_THROW(data, "Source pointer is null");
+            auto source = ptr<const void> {data};
+            auto source_bytes = source.reinterpret_as<uint8_t>();
             WriteBytes({source_bytes.get(), size});
         }
     }
@@ -595,7 +597,7 @@ private:
         GrowBuf(size);
 
         ptr<uint8_t> data = _dataBuf->data();
-        ptr<uint8_t> bytes = data.get() + offset;
+        ptr<uint8_t> bytes = data.offset(offset);
         return {bytes.get(), size};
     }
 

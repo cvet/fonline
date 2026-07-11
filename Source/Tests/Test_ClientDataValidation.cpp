@@ -227,9 +227,7 @@ TEST_CASE("ClientDataValidation")
 
         writer.Write<int32_t>(2);
         writer.Write<float32_t>(1.0f);
-        // Build the IEEE-754 +inf bit pattern via bit_cast: numeric_limits::infinity() is flagged as UB under
-        // the engine's /fp:fast (-Wnan-infinity-disabled), but this test must feed a real non-finite float.
-        writer.Write<float32_t>(std::bit_cast<float32_t>(uint32_t {0x7F800000}));
+        writer.Write<float32_t>(std::numeric_limits<float32_t>::infinity());
 
         CHECK_THROWS_AS(ValidateInboundRemoteCallData(call, data, meta), ClientDataValidationException);
     }

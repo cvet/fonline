@@ -73,7 +73,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    auto fields_registrator = base_type.RefType->FieldsRegistrator.as_ptr();
+    auto fields_registrator = base_type.RefType->FieldsRegistrator;
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type raw data belongs to a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
 
     _props.emplace(_registrator);
@@ -82,7 +82,8 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     size_t data_pos = 0;
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i)).as_ptr();
+        auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        FO_VERIFY_AND_THROW(field_prop, "Field property is null");
         span<const uint8_t> field_raw_data {};
 
         if (data_pos < raw_data.size()) {
@@ -151,7 +152,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
-    auto fields_registrator = base_type.RefType->FieldsRegistrator.as_ptr();
+    auto fields_registrator = base_type.RefType->FieldsRegistrator;
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type serialization requested a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
@@ -161,13 +162,12 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
         size_t last_non_default_field = 0;
 
         for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
-            auto nullable_field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            auto field_prop = nullable_field_prop.as_ptr();
-            const auto field_raw_data = GetProps()->GetRawData(field_prop);
+            auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+            const auto field_raw_data = GetProps()->GetRawData(field_prop.as_ptr());
 
             bool is_default = field_raw_data.empty();
 
-            if (!is_default && nullable_field_prop->IsPlainData()) {
+            if (!is_default && field_prop->IsPlainData()) {
                 is_default = true;
 
                 for (const auto byte : field_raw_data) {
@@ -362,7 +362,7 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
     const auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
-        ptr<ScriptFuncDesc> func = it->second;
+        auto func = it->second;
 
         if (!func->Call || func->Ret.Kind != ComplexTypeKind::None || func->Args.size() != arg_types.size()) {
             continue;
@@ -477,13 +477,11 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine
 
     auto prop_reg = engine->GetPropertyRegistrator(type_name);
     FO_VERIFY_AND_THROW(prop_reg, "Missing required property registrator");
-    auto nullable_prop = prop_reg->GetPropertyByIndex(prop_index);
+    auto prop = prop_reg->GetPropertyByIndex(prop_index);
 
-    if (!nullable_prop) {
+    if (!prop) {
         throw ScriptException("Invalid property index", type_name, prop_index);
     }
-
-    auto prop = nullable_prop.as_ptr();
 
     if (prop->IsDisabled()) {
         throw ScriptException("Property is disabled", type_name, prop_index);

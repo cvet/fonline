@@ -90,7 +90,7 @@ private:
 
     [[nodiscard]] auto GetTime() const -> nanotime;
 
-    unique_nptr<Impl> _impl {};
+    unique_ptr<Impl> _impl;
     ptr<ParticleManager> _particleMngr;
     mat44 _projMatrix {};
     vec3 _viewOffset {};

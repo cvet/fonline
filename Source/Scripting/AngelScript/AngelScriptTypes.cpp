@@ -114,31 +114,17 @@ static auto GetMutableStructFieldStorage(ptr<void> obj, size_t offset) noexcept 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    ptr<uint8_t> bytes = cast_from_void<uint8_t*>(obj.get());
-    return bytes.get() + offset;
+    auto bytes = obj.reinterpret_as<uint8_t>();
+    return bytes.offset(offset);
 }
 
 static auto ReadRequiredHandleSlot(ptr<void> slot) noexcept -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto nullable_obj = NativeDataProvider::ReadHandleSlot(slot);
-    FO_STRONG_ASSERT(nullable_obj, "Required handle slot holds a null object");
-    return nullable_obj.as_ptr();
-}
-
-static void ReturnGenericDynamicRefType(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<DynamicRefTypeInstance>&& ref_instance) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) void*(ReleaseScriptOwnership(std::move(ref_instance)));
-}
-
-static void ReturnGenericDynamicRefType(ptr<AngelScript::asIScriptGeneric> gen, ptr<DynamicRefTypeInstance> ref_instance) noexcept
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(ref_instance.get());
+    auto obj = NativeDataProvider::ReadHandleSlot(slot);
+    FO_STRONG_ASSERT(obj, "Required handle slot holds a null object");
+    return obj;
 }
 
 static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
@@ -277,7 +263,16 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
             v = numeric_cast<T>(strvex(tokens[index]).to_int64());
         }
         else if constexpr (std::is_floating_point_v<T>) {
+            if (strvex(tokens[index]).is_non_finite_number()) {
+                throw ScriptException("Invalid cast to any (floating point value is not finite)");
+            }
+
+            // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
             v = numeric_cast<T>(strvex(tokens[index]).to_float64());
+
+            if (!std::isfinite(v)) {
+                throw ScriptException("Invalid cast to any (floating point value is not finite)");
+            }
         }
         else if constexpr (std::is_same_v<T, hstring>) {
             v = meta->Hashes.ToHashedString(tokens[index]);
@@ -651,7 +646,18 @@ static auto Any_Conv(const any_t& self) -> T
         return numeric_cast<T>(strvex(self).to_int64());
     }
     else if constexpr (std::floating_point<T>) {
-        return numeric_cast<T>(strvex(self).to_float64());
+        if (strvex(self).is_non_finite_number()) {
+            throw ScriptException("Invalid cast from any (floating point value is not finite)");
+        }
+
+        // The textual check misses numeric overflow: narrowing a finite float64 to float32 can produce infinity.
+        const T converted_value = numeric_cast<T>(strvex(self).to_float64());
+
+        if (!std::isfinite(converted_value)) {
+            throw ScriptException("Invalid cast from any (floating point value is not finite)");
+        }
+
+        return converted_value;
     }
     else if constexpr (std::same_as<T, string>) {
         return self;
@@ -1085,7 +1091,8 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
     auto registrator = GetGenericAuxiliaryAs<const PropertyRegistrator>(gen);
 
     auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(registrator);
-    ReturnGenericDynamicRefType(gen, std::move(ref_instance));
+
+    new (gen->GetAddressOfReturnLocation()) void*(ref_instance.release_ownership());
 }
 
 static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
@@ -1107,7 +1114,7 @@ static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
 
     auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
 
-    ReturnGenericDynamicRefType(gen, self);
+    new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(self.get());
 }
 
 static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
@@ -1134,9 +1141,8 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
     }
 
     for (size_t i = 1; i < ref_type.FieldsRegistrator->GetPropertiesCount(); i++) {
-        nptr<const Property> nullable_prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-        FO_VERIFY_AND_THROW(nullable_prop, "Missing ref type property by index");
-        auto prop = nullable_prop.as_ptr();
+        auto prop = ref_type.FieldsRegistrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
+        FO_VERIFY_AND_THROW(prop, "Missing ref type property by index");
 
         if (prop->IsComponentItself()) {
             continue;
@@ -1144,13 +1150,13 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
 
         const string_view handle_str = prop->IsArray() || prop->IsDict() || prop->IsBaseTypeRefType() ? string_view {"@"} : (prop->IsBaseTypeProtoReference() ? string_view {"@+"} : string_view {});
         const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? string_view {"@?+"} : string_view {"@+"}) : handle_str;
-        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
-        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
+        const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop.as_ptr()), handle_str, prop->GetNameWithoutComponent()).str();
+        const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop.as_ptr()), set_handle_str).str();
 
         const auto host_type = prop->IsInComponent() ? strex("{}{}Component", name, prop->GetComponentName()).str() : string(name);
 
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, cast_to_void(prop.get())));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetProperty), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(host_type.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(DynamicRefType_SetProperty), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
     }
 }
 
@@ -1170,6 +1176,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     int32_t as_result = 0;
     auto backend = GetScriptBackend(as_engine);
     nptr<const EngineMetadata> meta = backend->GetMetadata();
+    FO_VERIFY_AND_THROW(meta, "Missing engine metadata");
 
     // Register hstring
     FO_AS_VERIFY(as_engine->RegisterObjectType("hstring", sizeof(hstring), AngelScript::asOBJ_VALUE | AngelScript::asOBJ_APP_CLASS_ALLINTS | AngelScript::asGetTypeTraits<hstring>()));
@@ -1186,7 +1193,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "int64 get_hash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetHash), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "uint64 get_uhash() const", FO_SCRIPT_FUNC_THIS(HashedString_GetUHash), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr hstring empty_hstring;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetConstant<hstring>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&empty_hstring)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hstring get_EMPTY_HSTRING()", FO_SCRIPT_GENERIC(Global_GetConstant<hstring>), FO_SCRIPT_GENERIC_CONV, make_nptr(&empty_hstring).void_cast()));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("string", "hstring hstr() const", FO_SCRIPT_GENERIC(String_ToHashedString), FO_SCRIPT_GENERIC_CONV));
 
     // Register any
@@ -1224,8 +1231,8 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hstring", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_ConvFrom<hstring>), FO_SCRIPT_FUNC_THIS_CONV));
 
     for (const auto& enum_name : meta->GetAllEnums() | std::views::keys) {
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, strex("void f({} value)", enum_name).c_str(), FO_SCRIPT_GENERIC(Any_ConstructFromEnum), FO_SCRIPT_GENERIC_CONV, cast_to_void(&enum_name)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", enum_name).c_str(), FO_SCRIPT_GENERIC(Any_ConvEnum), FO_SCRIPT_GENERIC_CONV, cast_to_void(&enum_name)));
+        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("any", AngelScript::asBEHAVE_CONSTRUCT, strex("void f({} value)", enum_name).c_str(), FO_SCRIPT_GENERIC(Any_ConstructFromEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", enum_name).c_str(), FO_SCRIPT_GENERIC(Any_ConvEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
     }
 
     RegisterAngelScriptStringAnyExtensions(as_engine);
@@ -1242,14 +1249,14 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name_str.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f(const {}&in other)", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_ConstructCopy<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name_str.c_str(), strex("int opCmp(const {}&in other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_Cmp<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name_str.c_str(), strex("bool opEquals(const {}&in other) const", name).c_str(), FO_SCRIPT_FUNC_THIS(Type_Equals<T>), FO_SCRIPT_FUNC_THIS_CONV));
-        nptr<AngelScript::asITypeInfo> type_info = as_engine->GetTypeInfoByName(name_str.c_str());
-        FO_VERIFY_AND_THROW(!!type_info, "Missing type info for just-registered value type");
-        SetScriptTypeFastCompare(type_info.as_ptr(), &Type_FastCompare<T>);
+        auto type_info = make_nptr(as_engine->GetTypeInfoByName(name_str.c_str()));
+        FO_VERIFY_AND_THROW(type_info, "Missing type info for just-registered value type");
+        SetScriptTypeFastCompare(type_info, &Type_FastCompare<T>);
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name_str.c_str(), "string get_str() const", FO_SCRIPT_FUNC_THIS(Type_GetStr<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(name_str.c_str(), "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<T>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", name).c_str(), FO_SCRIPT_FUNC_THIS(Any_Conv<T>), FO_SCRIPT_FUNC_THIS_CONV));
         static constexpr T ZERO_VALUE;
-        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(Global_GetConstant<T>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ZERO_VALUE)));
+        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(Global_GetConstant<T>), FO_SCRIPT_GENERIC_CONV, make_nptr(&ZERO_VALUE).void_cast()));
     };
 
     register_engine_type.operator()<ident_t>("ident");
@@ -1364,24 +1371,24 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(Type_AnyConv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "hdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<hdir>), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr hdir HDIR_ZERO_VALUE;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_ZERO_HDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_ZERO_VALUE)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_ZERO_HDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_ZERO_VALUE).void_cast()));
     static constexpr auto HDIR_NE = hdir::NorthEast;
     static constexpr auto HDIR_E = hdir::East;
     static constexpr auto HDIR_SE = hdir::SouthEast;
     static constexpr auto HDIR_SW = hdir::SouthWest;
     static constexpr auto HDIR_W = hdir::West;
     static constexpr auto HDIR_NW = hdir::NorthWest;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_NE)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_East()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_E)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_SE)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_SW)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_West()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_W)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_NW)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_NE).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_East()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_E).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthEast()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_SE).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_SouthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_SW).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_West()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_W).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_NorthWest()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_NW).void_cast()));
 #if FO_GEOMETRY == 2
     static constexpr auto HDIR_S = hdir::South;
     static constexpr auto HDIR_N = hdir::North;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_South()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_S)));
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_North()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&HDIR_N)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_South()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_S).void_cast()));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_North()", FO_SCRIPT_GENERIC(Global_GetConstant<hdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&HDIR_N).void_cast()));
 #endif
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("hdir get_HDIR_Random()", FO_SCRIPT_GENERIC(Global_GetRandomHdir), FO_SCRIPT_GENERIC_CONV));
 
@@ -1399,7 +1406,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "mdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Any_Conv<mdir>), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("hdir", "mdir opImplConv() const", FO_SCRIPT_FUNC_THIS(Hdir_ToMdir), FO_SCRIPT_FUNC_THIS_CONV));
     static constexpr mdir MDIR_ZERO_VALUE;
-    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("mdir get_ZERO_MDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<mdir>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&MDIR_ZERO_VALUE)));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("mdir get_ZERO_MDIR()", FO_SCRIPT_GENERIC(Global_GetConstant<mdir>), FO_SCRIPT_GENERIC_CONV, make_nptr(&MDIR_ZERO_VALUE).void_cast()));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "hdir get_hex() const", FO_SCRIPT_FUNC_THIS(Mdir_GetHex), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir incHex() const", FO_SCRIPT_FUNC_THIS(Mdir_IncHex), FO_SCRIPT_FUNC_THIS_CONV));
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("mdir", "mdir decHex() const", FO_SCRIPT_FUNC_THIS(Mdir_DecHex), FO_SCRIPT_FUNC_THIS_CONV));
@@ -1418,22 +1425,23 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
 
     const auto register_metadata_type_common = [&](const BaseTypeDesc& type) {
         const string_view name = type.Name;
-        auto layout = type.StructLayout.as_ptr();
+        auto layout = type.StructLayout;
+        FO_VERIFY_AND_THROW(layout, "Layout is null");
 
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_GENERIC(GenericType_Construct), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f(const {}&in other)", name).c_str(), FO_SCRIPT_GENERIC(GenericType_ConstructCopy), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, "void f()", FO_SCRIPT_GENERIC(GenericType_Construct), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f(const {}&in other)", name).c_str(), FO_SCRIPT_GENERIC(GenericType_ConstructCopy), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
 
         string ctor_decl;
 
         for (size_t i = 0; i < layout->Fields.size(); i++) {
-            ptr<const FieldDesc> field = &layout->Fields[i];
+            auto field = make_ptr(&layout->Fields[i]);
             ctor_decl += strex("{}{} {}", i > 0 ? ", " : "", MakeScriptTypeName(field->Type), field->Name);
             FO_AS_VERIFY(as_engine->RegisterObjectProperty(type.Name.c_str(), strex("{} {}", MakeScriptTypeName(field->Type), field->Name).c_str(), numeric_cast<int32_t>(field->Offset)));
         }
 
-        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f({})", ctor_decl).c_str(), FO_SCRIPT_GENERIC(GenericType_ConstructArgs), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("bool opEquals(const {}&in other) const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_Equals), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(GenericType_GetZero), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_CONSTRUCT, strex("void f({})", ctor_decl).c_str(), FO_SCRIPT_GENERIC(GenericType_ConstructArgs), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("bool opEquals(const {}&in other) const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_Equals), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterGlobalFunction(strex("{} get_ZERO_{}()", name, strex(name).upper()).c_str(), FO_SCRIPT_GENERIC(GenericType_GetZero), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     };
 
     const auto register_generic_type_body = [&](const BaseTypeDesc& type) {
@@ -1441,12 +1449,12 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         register_metadata_type_common(type);
 
         if (type.IsSimpleStruct) {
-            FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("int opCmp(const {}&in other) const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_Cmp), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+            FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("int opCmp(const {}&in other) const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_Cmp), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
         }
 
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), "string get_str() const", FO_SCRIPT_GENERIC(GenericType_GetStr), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), "any opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConv), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_AnyConvRev), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), "string get_str() const", FO_SCRIPT_GENERIC(GenericType_GetStr), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), "any opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConv), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", strex("{} opImplConv() const", name).c_str(), FO_SCRIPT_GENERIC(GenericType_AnyConvRev), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     };
 
     for (const auto& type : meta->GetBaseTypes() | std::views::values) {
@@ -1468,7 +1476,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackName", "hstring opImplCast() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_HstringCast<TextPackName>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackName", "hstring opImplConv() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_HstringCast<TextPackName>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackName", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_AnyConv<TextPackName>), FO_SCRIPT_FUNC_THIS_CONV));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "TextPackName opImplConv() const", FO_SCRIPT_GENERIC(HstringWrapper_AnyConvRev<TextPackName>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "TextPackName opImplConv() const", FO_SCRIPT_GENERIC(HstringWrapper_AnyConvRev<TextPackName>), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     }
 
     // LanguageName
@@ -1483,7 +1491,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("LanguageName", "hstring opImplCast() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_HstringCast<LanguageName>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("LanguageName", "hstring opImplConv() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_HstringCast<LanguageName>), FO_SCRIPT_FUNC_THIS_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("LanguageName", "any opImplConv() const", FO_SCRIPT_FUNC_THIS(HstringWrapper_AnyConv<LanguageName>), FO_SCRIPT_FUNC_THIS_CONV));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "LanguageName opImplConv() const", FO_SCRIPT_GENERIC(HstringWrapper_AnyConvRev<LanguageName>), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "LanguageName opImplConv() const", FO_SCRIPT_GENERIC(HstringWrapper_AnyConvRev<LanguageName>), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     }
 
     // TextPackKey
@@ -1498,9 +1506,9 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("TextPackKey", AngelScript::asBEHAVE_CONSTRUCT, "void f(const TextPackName &in collection, const string &in key1, const string &in key2, const string &in key3)", FO_SCRIPT_GENERIC(TextPackKey_Construct3), FO_SCRIPT_GENERIC_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("TextPackKey", AngelScript::asBEHAVE_CONSTRUCT, "void f(const TextPackName &in collection, const hstring &in key1, const string &in key2, const string &in key3)", FO_SCRIPT_GENERIC(TextPackKey_ConstructH3), FO_SCRIPT_GENERIC_CONV));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackKey", "int opCmp(const TextPackKey&in other) const", FO_SCRIPT_FUNC_THIS(Type_Cmp<TextPackKey>), FO_SCRIPT_FUNC_THIS_CONV));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackKey", "string get_str() const", FO_SCRIPT_GENERIC(GenericType_GetStr), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackKey", "any opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConv), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
-        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "TextPackKey opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConvRev), FO_SCRIPT_GENERIC_CONV, cast_to_void(&type)));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackKey", "string get_str() const", FO_SCRIPT_GENERIC(GenericType_GetStr), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("TextPackKey", "any opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConv), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("any", "TextPackKey opImplConv() const", FO_SCRIPT_GENERIC(GenericType_AnyConvRev), FO_SCRIPT_GENERIC_CONV, make_nptr(&type).void_cast()));
     }
 
     for (const auto& type : meta->GetBaseTypes() | std::views::values) {
@@ -1514,36 +1522,37 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
 
     const auto register_ref_type_body = [&](const BaseTypeDesc& type) {
         const string name = type.Name;
-        auto ref_type = type.RefType.as_ptr();
+        auto ref_type = type.RefType;
+        FO_VERIFY_AND_THROW(ref_type, "Reference type is null");
 
         FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("bool opEquals(const {}@+ other) const", name).c_str(), FO_SCRIPT_GENERIC(RefType_Equals), FO_SCRIPT_GENERIC_CONV));
 
         if (ref_type->FieldsRegistrator) {
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_AddRef), FO_SCRIPT_FUNC_THIS_CONV));
             FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_FUNC_THIS(DynamicRefType_Release), FO_SCRIPT_FUNC_THIS_CONV));
-            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(ref_type->FieldsRegistrator.get())));
+            FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(type.Name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(ref_type->FieldsRegistrator.get()).void_cast()));
 
             for (const auto& [component_name, component_prop] : ref_type->FieldsRegistrator->GetComponents()) {
                 const auto component_type = strex("{}{}Component", name, component_name).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectType(component_type.c_str(), 0, AngelScript::asOBJ_REF | AngelScript::asOBJ_NOCOUNT));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, cast_to_void(component_prop.get())));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(type.Name.c_str(), strex("{}@ get_{}() const", component_type, component_name).c_str(), FO_SCRIPT_GENERIC(DynamicRefType_GetComponent), FO_SCRIPT_GENERIC_CONV, make_nptr(component_prop.get()).void_cast()));
             }
         }
 
         for (const auto& method : ref_type->Methods) {
             if (method.Name == "__AddRef") {
-                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast()));
             }
             else if (method.Name == "__Release") {
-                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_RELEASE, "void f()", FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast()));
             }
             else if (method.Name == "__Factory") {
-                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(RefType_Factory), FO_SCRIPT_GENERIC_CONV, cast_to_void(&ref_type->Methods[2])));
+                FO_AS_VERIFY(as_engine->RegisterObjectBehaviour(name.c_str(), AngelScript::asBEHAVE_FACTORY, strex("{}@ f()", name).c_str(), FO_SCRIPT_GENERIC(RefType_Factory), FO_SCRIPT_GENERIC_CONV, make_nptr(&ref_type->Methods[2]).void_cast()));
             }
             else if (!strvex(method.Name).starts_with("__")) {
                 const string getset = strex("{}", method.Getter ? "get_" : (method.Setter ? "set_" : ""));
                 const string decl = strex("{} {}{}({})", MakeScriptReturnName(method.Ret, method.PassOwnership, method.ReturnNullable), getset, method.Name, MakeScriptArgsName(method.Args));
-                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name.c_str(), decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, cast_to_void(&method)));
+                FO_AS_VERIFY(as_engine->RegisterObjectMethod(name.c_str(), decl.c_str(), FO_SCRIPT_GENERIC(RefType_MethodCall), FO_SCRIPT_GENERIC_CONV, make_nptr(&method).void_cast()));
             }
         }
     };

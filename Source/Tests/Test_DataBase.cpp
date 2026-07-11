@@ -531,6 +531,48 @@ TEST_CASE("DataBaseCommitOperationsPreserveOrder")
     CHECK(committed_doc["b"].AsInt64() == 2);
 }
 
+TEST_CASE("DataBaseRejectsNonFiniteFloatUpdates")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    const auto collection = hashes.ToHashedString("test_collection");
+    const auto record_id = ident_t {1001};
+
+    db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
+
+    CHECK_THROWS_AS(db.Update(collection, record_id, "value", std::numeric_limits<float64_t>::quiet_NaN()), DataBaseException);
+    CHECK_THROWS_AS(db.Update(collection, record_id, "value", std::numeric_limits<float64_t>::infinity()), DataBaseException);
+
+    const auto doc = db.SnapshotRecord(collection, record_id);
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 1);
+}
+
+TEST_CASE("DataBaseRejectsNonFiniteFloatDocuments")
+{
+    GlobalSettings settings {false};
+    HashStorage hashes;
+    TestDataBase db {settings};
+    const auto collection = hashes.ToHashedString("test_collection");
+
+    AnyData::Document plain_doc;
+    plain_doc.Assign("value", std::numeric_limits<float64_t>::infinity());
+    CHECK_THROWS_AS(db.Insert(collection, ident_t {1001}, plain_doc), DataBaseException);
+
+    AnyData::Array values;
+    values.EmplaceBack(numeric_cast<int64_t>(1));
+    values.EmplaceBack(std::numeric_limits<float64_t>::quiet_NaN());
+
+    AnyData::Document array_doc;
+    array_doc.Assign("values", AnyData::Value {std::move(values)});
+    CHECK_THROWS_AS(db.Insert(collection, ident_t {1002}, array_doc), DataBaseException);
+
+    AnyData::Dict nested;
+    nested.Emplace("value", std::numeric_limits<float64_t>::infinity());
+    CHECK_THROWS_AS(db.Update(collection, ident_t {1003}, "nested", AnyData::Value {std::move(nested)}), DataBaseException);
+}
+
 TEST_CASE("DataBaseGetDocumentAppliesConcurrentPendingChange")
 {
     GlobalSettings settings {false};

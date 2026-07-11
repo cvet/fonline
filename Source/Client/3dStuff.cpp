@@ -41,134 +41,12 @@
 
 FO_BEGIN_NAMESPACE
 
-void MeshData::Load(DataReader& reader, HashResolver& hash_resolver)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    uint32_t len = 0;
-    len = reader.Read<uint32_t>();
-    Vertices.resize(len);
-    reader.ReadObjectArray(span {Vertices});
-
-    len = reader.Read<uint32_t>();
-    Indices.resize(len);
-    reader.ReadObjectArray(span {Indices});
-
-    len = reader.Read<uint32_t>();
-    DiffuseTexture.resize(len);
-    reader.ReadStringBytes(DiffuseTexture);
-
-    len = reader.Read<uint32_t>();
-    SkinBones.resize(len);
-    SkinBoneNames.resize(len);
-
-    string tmp;
-
-    for (uint32_t i = 0, j = len; i < j; i++) {
-        len = reader.Read<uint32_t>();
-        tmp.resize(len);
-        reader.ReadStringBytes(tmp);
-        SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
-    }
-
-    len = reader.Read<uint32_t>();
-    SkinBoneOffsets.resize(len);
-    reader.ReadObjectArray(span {SkinBoneOffsets});
-}
-
-void ModelBone::Load(DataReader& reader, HashResolver& hash_resolver)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    uint32_t len = 0;
-    len = reader.Read<uint32_t>();
-    string tmp;
-    tmp.resize(len);
-    reader.ReadStringBytes(tmp);
-    Name = hash_resolver.ToHashedString(tmp);
-
-    TransformationMatrix = reader.Read<mat44>();
-    GlobalTransformationMatrix = reader.Read<mat44>();
-
-    if (reader.Read<uint8_t>() != 0) {
-        AttachedMesh.emplace(this);
-        AttachedMesh->Load(reader, hash_resolver);
-    }
-    else {
-        AttachedMesh.reset();
-    }
-
-    len = reader.Read<uint32_t>();
-
-    for (uint32_t i = 0; i < len; i++) {
-        auto child = SafeAlloc::MakeUnique<ModelBone>();
-        child->Load(reader, hash_resolver);
-        Children.emplace_back(std::move(child));
-    }
-
-    CombinedTransformationMatrix = mat44();
-}
-
-// ReSharper disable once CppMemberFunctionMayBeConst
-void ModelBone::FixAfterLoad(ptr<ModelBone> root_bone)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (AttachedMesh) {
-        for (size_t i = 0; i < AttachedMesh->SkinBoneNames.size(); i++) {
-            if (AttachedMesh->SkinBoneNames[i]) {
-                auto skin_bone = root_bone->Find(AttachedMesh->SkinBoneNames[i]);
-                FO_VERIFY_AND_THROW(skin_bone, "Skin bone was not found in a model", AttachedMesh->SkinBoneNames[i], Name);
-                AttachedMesh->SkinBones[i] = skin_bone.as_ptr();
-            }
-            else {
-                AttachedMesh->SkinBones[i] = AttachedMesh->Owner;
-            }
-        }
-    }
-
-    for (size_t i = 0; i != Children.size(); ++i) {
-        Children[i]->FixAfterLoad(root_bone);
-    }
-}
-
-auto ModelBone::Find(hstring bone_name) const noexcept -> nptr<const ModelBone>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (Name == bone_name) {
-        return this;
-    }
-
-    for (size_t i = 0; i < Children.size(); i++) {
-        const auto bone = Children[i]->Find(bone_name);
-
-        if (bone) {
-            return bone;
-        }
-    }
-
-    return nullptr;
-}
-
-auto ModelBone::Find(hstring bone_name) noexcept -> nptr<ModelBone>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (Name == bone_name) {
-        return this;
-    }
-
-    for (size_t i = 0; i != Children.size(); ++i) {
-        auto bone = Children[i]->Find(bone_name);
-
-        if (bone) {
-            return bone;
-        }
-    }
-
-    return nullptr;
-}
+static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver) -> unique_ptr<ModelBone>;
+static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone);
+static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
+static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
+static auto FindModelBone(nptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
+static auto FindModelBone(nptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
 
 ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
@@ -237,11 +115,10 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    auto root_bone = SafeAlloc::MakeUnique<ModelBone>();
     auto reader = DataReader(file.GetDataSpan());
+    auto root_bone = LoadModelBone(reader, *_hashResolver);
 
-    root_bone->Load(reader, *_hashResolver);
-    root_bone->FixAfterLoad(root_bone);
+    FixModelBoneAfterLoad(root_bone, root_bone);
 
     // Load animations
     const auto anim_count = reader.Read<uint32_t>();
@@ -292,28 +169,6 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> nptr<MeshTexture>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    // Skip empty
-    if (texture_name.empty()) {
-        return nullptr;
-    }
-
-    // Create new
-    const string tex_path = strex(model_path).extract_dir().combine_path(texture_name);
-    auto&& [tex, tex_data] = _textureLoader(tex_path);
-
-    if (!tex) {
-        return nullptr;
-    }
-
-    ptr<MeshTexture> mesh_tex = SafeAlloc::MakeRaw<MeshTexture>(_hashResolver->ToHashedString(texture_name), tex.as_ptr(), tex_data);
-
-    return mesh_tex;
-}
-
 auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
@@ -331,7 +186,9 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
     model->_allMeshesDisabled.resize(model_info->_hierarchy->_allDrawBones.size());
 
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto mesh = model_info->_hierarchy->_allDrawBones[i]->GetAttachedMesh().as_ptr();
+        auto bone = model_info->_hierarchy->_allDrawBones[i];
+        auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+        FO_VERIFY_AND_THROW(mesh, "Mesh is null");
         auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
         const string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
@@ -396,7 +253,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
         return nullptr;
     }
 
-    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone.as_ptr());
+    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone);
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
@@ -679,7 +536,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
-                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone.as_ptr(), vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                            _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                         }
 
                         keep_alive_particles.insert(link.Id);
@@ -699,17 +556,17 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                         if (!available) {
                             const auto create_child_model = [this, &link]() -> unique_ptr<ModelInstance> {
-                                unique_nptr<ModelInstance> model = _modelMngr->CreateModel(link.ChildName);
+                                auto model = _modelMngr->CreateModel(link.ChildName);
                                 FO_VERIFY_AND_THROW(model, "Child model was not found for a model link", link.ChildName);
                                 return model.take_not_null();
                             };
 
                             // Link to main bone
                             if (link.LinkBone) {
-                                auto to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
+                                auto to_bone = FindModelBone(_modelInfo->_hierarchy->_rootBone, link.LinkBone);
                                 FO_VERIFY_AND_THROW(to_bone, "Model link target bone not found");
 
-                                unique_ptr<ModelInstance> model = create_child_model();
+                                auto model = create_child_model();
 
                                 mesh_changed = true;
                                 model->_parent = this;
@@ -724,13 +581,13 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
                             }
                             // Link all bones
                             else {
-                                unique_ptr<ModelInstance> model = create_child_model();
+                                auto model = create_child_model();
 
                                 for (auto& child_bone : model->_modelInfo->_hierarchy->_allBones) {
-                                    auto root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
+                                    auto root_bone = FindModelBone(_modelInfo->_hierarchy->_rootBone, child_bone->Name);
 
                                     if (root_bone) {
-                                        model->_linkBones.emplace_back(root_bone.as_ptr());
+                                        model->_linkBones.emplace_back(root_bone);
                                         model->_linkBones.emplace_back(child_bone);
                                     }
                                 }
@@ -1235,6 +1092,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             else {
                 texture = _modelInfo->_hierarchy->GetTexture(tex_name);
             }
+
             FO_VERIFY_AND_THROW(texture, "Texture was not loaded", tex_name);
 
             // Assign it
@@ -1567,7 +1425,8 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
 
     // Fix texture coords
     if (mesh_instance->CurTexures[0]) {
-        auto mesh_tex = mesh_instance->CurTexures[0].as_ptr();
+        auto mesh_tex = mesh_instance->CurTexures[0];
+        FO_VERIFY_AND_THROW(mesh_tex, "Mesh texture is null");
 
         for (auto i = vertices_old_size, j = vertices.size(); i < j; i++) {
             vertices[i].TexCoord[0] = (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData.width) + mesh_tex->AtlasOffsetData.x;
@@ -1886,7 +1745,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                         }
 
                         // Skip equal influence side
-                        bool influence_side = !!unskin_bone1->Find(combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
+                        bool influence_side = !!FindModelBone(unskin_bone1, combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
 
                         if (v_side == influence_side) {
                             continue;
@@ -2101,8 +1960,8 @@ void ModelInstance::UpdateBoneMatrices(ptr<ModelBone> bone, ptr<const mat44> par
     }
 
     // Update child
-    for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it) {
-        UpdateBoneMatrices(*it, &bone->CombinedTransformationMatrix);
+    for (size_t i = 0; i != bone->Children.size(); ++i) {
+        UpdateBoneMatrices(bone->Children[i], &bone->CombinedTransformationMatrix);
     }
 }
 
@@ -2110,16 +1969,20 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<RenderEffect> nullable_effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect : _modelMngr->_effectMngr->Effects.SkinnedModel;
-    FO_VERIFY_AND_THROW(nullable_effect, "Combined mesh has no draw effect");
-    auto effect = nullable_effect.as_ptr();
+    auto effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect : _modelMngr->_effectMngr->Effects.SkinnedModel;
+    FO_VERIFY_AND_THROW(effect, "Combined mesh has no draw effect");
 
     auto& proj_buf = effect->ProjBuf = RenderEffect::ProjBuffer();
     ptr<float32_t> proj_matrix = proj_buf->ProjMatrix;
-    ptr<const float32_t> draw_projection_values = glm::value_ptr(_drawProj);
+    auto draw_projection_values = make_ptr(glm::value_ptr(_drawProj));
     MemCopy(proj_matrix, draw_projection_values, 16 * sizeof(float32_t));
 
-    effect->MainTex = combined_mesh->Textures[0] ? combined_mesh->Textures[0]->MainTex.as_nptr() : nullptr;
+    if (combined_mesh->Textures[0]) {
+        effect->MainTex = combined_mesh->Textures[0]->MainTex;
+    }
+    else {
+        effect->MainTex = nullptr;
+    }
 
     auto& model_buf = effect->ModelBuf = RenderEffect::ModelBuffer();
     constexpr size_t MATRIX_VALUE_COUNT = 16;
@@ -2131,7 +1994,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
         const auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
         const size_t matrix_offset = i * MATRIX_VALUE_COUNT;
         span<float32_t> world_matrix = world_matrices.subspan(matrix_offset, MATRIX_VALUE_COUNT);
-        ptr<const float32_t> source_matrix_values = glm::value_ptr(m);
+        auto source_matrix_values = make_ptr(glm::value_ptr(m));
         const_span<float32_t> source_matrix = make_span(source_matrix_values, MATRIX_VALUE_COUNT);
         std::ranges::copy(source_matrix, world_matrix.begin());
     }
@@ -2139,12 +2002,12 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
     effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
     ptr<float32_t> ground_position = model_buf->GroundPosition;
-    ptr<const float32_t> ground_position_values = glm::value_ptr(_groundPos);
+    auto ground_position_values = make_ptr(glm::value_ptr(_groundPos));
     MemCopy(ground_position, ground_position_values, 3 * sizeof(float32_t));
     model_buf->GroundPosition[3] = 0.0f;
 
     ptr<float32_t> light_color = model_buf->LightColor;
-    ptr<const float32_t> light_color_values = glm::value_ptr(_modelMngr->_lightColor);
+    auto light_color_values = make_ptr(glm::value_ptr(_modelMngr->_lightColor));
     MemCopy(light_color, light_color_values, 4 * sizeof(float32_t));
 
     if (effect->IsNeedModelTexBuf()) {
@@ -2156,7 +2019,7 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
                 const size_t texture_uniform_offset = i * 4 * sizeof(float32_t);
                 MemCopy(&custom_tex_buf->TexAtlasOffset[texture_uniform_offset], &combined_mesh->Textures[i]->AtlasOffsetData, 4 * sizeof(float32_t));
 
-                ptr<float32_t> texture_size = &custom_tex_buf->TexSize[texture_uniform_offset];
+                auto texture_size = make_ptr(&custom_tex_buf->TexSize[texture_uniform_offset]);
                 ptr<const float32_t> texture_size_data = combined_mesh->Textures[i]->MainTex->SizeData;
                 MemCopy(texture_size, texture_size_data, 4 * sizeof(float32_t));
             }
@@ -2197,11 +2060,11 @@ auto ModelInstance::FindBone(hstring bone_name) const noexcept -> nptr<const Mod
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
+    auto bone = FindModelBone(_modelInfo->_hierarchy->_rootBone, bone_name);
 
     if (!bone) {
         for (size_t i = 0; i < _children.size(); i++) {
-            bone = _children[i]->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
+            bone = FindModelBone(_children[i]->_modelInfo->_hierarchy->_rootBone, bone_name);
 
             if (bone) {
                 break;
@@ -2273,7 +2136,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 
     if (auto to_bone = FindBone(bone_name)) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
-            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone.as_ptr(), move, _lookDirAngle});
+            _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone, move, _lookDirAngle});
         }
     }
 }
@@ -2428,25 +2291,26 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     FO_VERIFY_AND_THROW(!model.empty(), "Baked model description has no Model section", name);
 
-    auto nullable_hierarchy = _modelMngr->GetHierarchy(model);
-    FO_VERIFY_AND_THROW(nullable_hierarchy, "Model hierarchy was not found for a baked model description", model, name);
-    auto hierarchy = nullable_hierarchy.as_ptr();
+    auto hierarchy = _modelMngr->GetHierarchy(model);
+    FO_VERIFY_AND_THROW(hierarchy, "Model hierarchy was not found for a baked model description", model, name);
     FO_VERIFY_AND_THROW(!hierarchy->_allDrawBones.empty(), "Model hierarchy has no drawable meshes for a baked model description", model, name);
 
     _fileName = name;
     _hierarchy = hierarchy;
-    FO_VERIFY_AND_THROW(!_rotationBone || _hierarchy->_rootBone->Find(_rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
+    FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
-        FO_VERIFY_AND_THROW(_hierarchy->_rootBone->Find(bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
+        FO_VERIFY_AND_THROW(FindModelBone(_hierarchy->_rootBone, bone_name) != nullptr, "Fast transition bone was not found in a baked model description", bone_name, name);
     }
 
     const auto append_cut_info = [this](ModelAnimationData& link, const BakedModelDescriptionCutInfo& raw_cut) {
-        auto nullable_area = _modelMngr->GetHierarchy(raw_cut.FileName);
-        FO_VERIFY_AND_THROW(nullable_area, "Cut file was not found", raw_cut.FileName);
-        auto area = nullable_area.as_ptr();
+        auto area = _modelMngr->GetHierarchy(raw_cut.FileName);
+        FO_VERIFY_AND_THROW(area, "Cut file was not found", raw_cut.FileName);
 
-        ptr<ModelCutData> cut = SafeAlloc::MakeRaw<ModelCutData>();
+        auto cut_holder = SafeAlloc::MakeUnique<ModelCutData>();
+        auto cut = cut_holder.as_ptr();
+        _cutData.emplace_back(std::move(cut_holder));
+
         link.CutInfo.emplace_back(cut);
         cut->Layers = raw_cut.Layers;
         cut->UnskinBone1 = !raw_cut.UnskinBone1.empty() ? _modelMngr->GetBoneHashedString(raw_cut.UnskinBone1) : hstring {};
@@ -2461,7 +2325,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if (unskin_shape_name == bone->Name) {
-                    cut->UnskinShape = CreateCutShape(bone->GetAttachedMesh().as_ptr());
+                    auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+                    cut->UnskinShape = CreateCutShape(mesh);
                     unskin_shape_found = true;
                     break;
                 }
@@ -2476,7 +2341,8 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             for (ptr<ModelBone> bone : area->_allDrawBones) {
                 if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
-                    cut->Shapes.emplace_back(CreateCutShape(bone->GetAttachedMesh().as_ptr()));
+                    auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
+                    cut->Shapes.emplace_back(CreateCutShape(mesh));
                     shape_found = true;
                 }
             }
@@ -2531,7 +2397,7 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
             auto anim = _modelMngr->LoadAnimation(anim_path, anim_name);
             FO_VERIFY_AND_THROW(anim, "Animation was not found for a baked model description", anim_entry.Name, anim_path, name);
 
-            const int32_t anim_index = _animController->RegisterAnimation(anim.as_ptr(), reversed);
+            const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
             _animIndexes.emplace(anim_pair, anim_index);
         }
 
@@ -2543,19 +2409,19 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             for (const vector<hstring>& bone_hierarchy : bones_hierarchy) {
                 FO_VERIFY_AND_THROW(!bone_hierarchy.empty(), "Baked model animation contains an empty bone hierarchy", name, i, bones_hierarchy.size());
-                ptr<ModelBone> bone = _hierarchy->_rootBone;
+                auto bone = _hierarchy->_rootBone;
 
                 for (size_t b = 1; b < bone_hierarchy.size(); b++) {
-                    auto child = bone->Find(bone_hierarchy[b]);
+                    auto child = FindModelBone(bone, bone_hierarchy[b]);
 
                     if (!child) {
                         auto new_child = SafeAlloc::MakeUnique<ModelBone>();
-                        child = new_child;
                         new_child->Name = bone_hierarchy[b];
                         bone->Children.emplace_back(std::move(new_child));
+                        child = bone->Children.back();
                     }
 
-                    bone = child.as_ptr();
+                    bone = child;
                 }
             }
         }
@@ -2876,10 +2742,15 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
-    auto nullable_texture = _modelMngr->LoadTexture(tex_name, _fileName);
-    FO_VERIFY_AND_THROW(nullable_texture, "Model texture could not be loaded", tex_name, _fileName);
 
-    return nullable_texture.as_ptr();
+    const string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
+    auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
+    FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
+
+    auto texture = SafeAlloc::MakeUnique<MeshTexture>(_modelMngr->_hashResolver->ToHashedString(tex_name), tex, tex_data);
+    _textures.emplace_back(std::move(texture));
+
+    return _textures.back();
 }
 
 auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
@@ -2887,10 +2758,166 @@ auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!name.empty(), "Model effect request has an empty effect name", _fileName);
-    auto nullable_effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
-    FO_VERIFY_AND_THROW(nullable_effect, "Model effect could not be loaded", name, _fileName);
+    auto effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
+    FO_VERIFY_AND_THROW(effect, "Model effect could not be loaded", name, _fileName);
 
-    return nullable_effect.as_ptr();
+    return effect;
+}
+
+static auto ReadModelBoneAttachedMesh(DataReader& reader, HashResolver& hash_resolver, ptr<ModelBone> owner) -> MeshData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto mesh = MeshData {
+        .Owner = owner,
+    };
+
+    uint32_t len = 0;
+    len = reader.Read<uint32_t>();
+    mesh.Vertices.resize(len);
+    reader.ReadObjectArray(span {mesh.Vertices});
+
+    len = reader.Read<uint32_t>();
+    mesh.Indices.resize(len);
+    reader.ReadObjectArray(span {mesh.Indices});
+
+    len = reader.Read<uint32_t>();
+    mesh.DiffuseTexture.resize(len);
+    reader.ReadStringBytes(mesh.DiffuseTexture);
+
+    len = reader.Read<uint32_t>();
+    mesh.SkinBones.resize(len);
+    mesh.SkinBoneNames.resize(len);
+
+    string tmp;
+
+    for (uint32_t i = 0, j = len; i < j; i++) {
+        len = reader.Read<uint32_t>();
+        tmp.resize(len);
+        reader.ReadStringBytes(tmp);
+        mesh.SkinBoneNames[i] = hash_resolver.ToHashedString(tmp);
+    }
+
+    len = reader.Read<uint32_t>();
+    mesh.SkinBoneOffsets.resize(len);
+    reader.ReadObjectArray(span {mesh.SkinBoneOffsets});
+
+    return mesh;
+}
+
+static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver) -> unique_ptr<ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto bone = SafeAlloc::MakeUnique<ModelBone>();
+
+    uint32_t len = 0;
+    len = reader.Read<uint32_t>();
+    string tmp;
+    tmp.resize(len);
+    reader.ReadStringBytes(tmp);
+    bone->Name = hash_resolver.ToHashedString(tmp);
+
+    bone->TransformationMatrix = reader.Read<mat44>();
+    bone->GlobalTransformationMatrix = reader.Read<mat44>();
+
+    if (reader.Read<uint8_t>() != 0) {
+        bone->AttachedMesh.emplace(ReadModelBoneAttachedMesh(reader, hash_resolver, bone));
+    }
+
+    len = reader.Read<uint32_t>();
+
+    for (uint32_t i = 0; i < len; i++) {
+        bone->Children.emplace_back(LoadModelBone(reader, hash_resolver));
+    }
+
+    bone->CombinedTransformationMatrix = mat44();
+    return bone;
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst
+static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (bone->AttachedMesh) {
+        for (size_t i = 0; i < bone->AttachedMesh->SkinBoneNames.size(); i++) {
+            if (bone->AttachedMesh->SkinBoneNames[i]) {
+                auto skin_bone = FindModelBone(root_bone, bone->AttachedMesh->SkinBoneNames[i]);
+                FO_VERIFY_AND_THROW(skin_bone, "Skin bone was not found in a model", bone->AttachedMesh->SkinBoneNames[i], bone->Name);
+                bone->AttachedMesh->SkinBones[i] = skin_bone;
+            }
+            else {
+                bone->AttachedMesh->SkinBones[i] = bone->AttachedMesh->Owner;
+            }
+        }
+    }
+
+    for (size_t i = 0; i != bone->Children.size(); ++i) {
+        FixModelBoneAfterLoad(bone->Children[i], root_bone);
+    }
+}
+
+static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (bone->Name == bone_name) {
+        return bone;
+    }
+
+    for (size_t i = 0; i < bone->Children.size(); i++) {
+        auto child = bone->Children[i].as_ptr();
+        const auto child_bone = FindModelBone(child, bone_name);
+
+        if (child_bone) {
+            return child_bone;
+        }
+    }
+
+    return nullptr;
+}
+
+static auto FindModelBone(nptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!bone) {
+        return nullptr;
+    }
+
+    return FindModelBone(bone, bone_name);
+}
+
+static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (bone->Name == bone_name) {
+        return bone;
+    }
+
+    for (size_t i = 0; i != bone->Children.size(); ++i) {
+        auto child = bone->Children[i].as_ptr();
+        auto child_bone = FindModelBone(child, bone_name);
+
+        if (child_bone) {
+            return child_bone;
+        }
+    }
+
+    return nullptr;
+}
+
+static auto FindModelBone(nptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!bone) {
+        return nullptr;
+    }
+
+    return FindModelBone(bone, bone_name);
 }
 
 FO_END_NAMESPACE

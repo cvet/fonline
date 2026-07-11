@@ -78,7 +78,7 @@ ConfigFile::ConfigFile(string_view name_hint, string str, ConfigFileOption optio
         string_view line;
 
         if (view_end != line_begin) {
-            ptr<const char> line_begin_ptr = _data->Input.data() + line_begin;
+            auto line_begin_ptr = make_ptr(_data->Input.data() + line_begin);
             line = {line_begin_ptr.get(), view_end - line_begin};
         }
 

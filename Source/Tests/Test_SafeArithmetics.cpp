@@ -123,6 +123,17 @@ TEST_CASE("SafeArithmetics")
         CHECK(iround<int32_t>(1.4f) == 1);
         CHECK(iround<int32_t>(1.6f) == 2);
         CHECK(iround<int32_t>(-1.6f) == -2);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float32_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(-std::numeric_limits<float32_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float32_t>::quiet_NaN())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float64_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(-std::numeric_limits<float64_t>::infinity())), OverflowException);
+        CHECK_THROWS_AS((iround<int32_t>(std::numeric_limits<float64_t>::quiet_NaN())), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(1e30f)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(-1e30f)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(1e300)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(-1e300)), OverflowException);
+        CHECK_THROWS_AS((iround<int64_t>(std::numeric_limits<float64_t>::max())), OverflowException);
 
         constexpr int32_t casted = const_numeric_cast<int32_t>(uint16_t {42});
         STATIC_REQUIRE(casted == 42);

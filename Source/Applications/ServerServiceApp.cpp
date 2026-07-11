@@ -71,7 +71,7 @@ static auto GetServiceServer() -> ptr<ServerEngine>
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(Data->Server, "Server engine is not created");
-    return Data->Server.as_ptr();
+    return Data->Server;
 }
 
 static void ServerEntry()
@@ -79,7 +79,7 @@ static void ServerEntry()
     FO_STACK_TRACE_ENTRY();
 
     try {
-        ptr<GlobalSettings> settings = &GetApp()->Settings;
+        auto settings = make_ptr(&GetApp()->Settings);
         Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
         auto server = GetServiceServer();
         GetApp()->WaitForRequestedQuit();
@@ -101,7 +101,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 
     try {
         const size_t arg_count = numeric_cast<size_t>(argc);
-        const nptr<LPTSTR> service_argv = argv;
+        const auto service_argv = make_nptr(argv);
         FO_VERIFY_AND_THROW(arg_count == 0 || service_argv, "Service argument vector is null with a non-zero argument count");
 
         static std::vector<std::string> args_holder;
@@ -226,17 +226,16 @@ int main(int argc, char** argv)
             wchar_t buf[buf_len];
             ::GetModuleFileNameW(nullptr, buf, buf_len);
             const auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
-            ptr<const wchar_t> path_cstr = path.c_str();
+            auto path_cstr = make_ptr(path.c_str());
 
             // Change executable path, if changed
             if (service != nullptr) {
                 // ReSharper disable once CppLocalVariableMayBeConst
                 alignas(QUERY_SERVICE_CONFIGW) uint8_t service_cfg_buf[8192] = {};
-                ptr<uint8_t> service_cfg_storage = service_cfg_buf;
-                ptr<QUERY_SERVICE_CONFIGW> service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();
+                auto service_cfg_storage = make_ptr(service_cfg_buf);
+                auto service_cfg = service_cfg_storage.reinterpret_as<QUERY_SERVICE_CONFIGW>();
 
-                DWORD dw = 0;
-                if (::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
+                if (DWORD dw = 0; ::QueryServiceConfigW(service, service_cfg.get(), 8192, &dw) == 0) {
                     error = true;
                 }
                 else if (path != service_cfg->lpBinaryPathName) {

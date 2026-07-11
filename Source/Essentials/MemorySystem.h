@@ -81,21 +81,22 @@ public:
             ReportAndExit("Alloc size overflow");
         }
 
-        nptr<void> ptr = ::operator new(sizeof(T) * count, std::nothrow);
+        nptr<void> mem = ::operator new(sizeof(T) * count, std::nothrow);
 
-        if (!ptr) {
+        if (!mem) {
             ReportBadAlloc("Safe allocator failed", typeid(T).name(), count, count * sizeof(T));
 
-            while (!ptr && FreeBackupMemoryChunk()) {
-                ptr = ::operator new(sizeof(T) * count, std::nothrow);
+            while (!mem && FreeBackupMemoryChunk()) {
+                mem = ::operator new(sizeof(T) * count, std::nothrow);
             }
 
-            if (!ptr) {
+            if (!mem) {
                 ReportAndExit("Failed to allocate from backup pool");
             }
         }
 
-        return cast_from_void<T*>(ptr.get());
+        auto typed_mem = mem.reinterpret_as<T>();
+        return typed_mem.get();
     }
 
     // ReSharper disable once CppInconsistentNaming
@@ -115,18 +116,19 @@ public:
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
-    static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> T*
+    static auto MakeRaw(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> ptr<T>
     {
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
-        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
-        return ptr.get();
+        return AllocWithBackupRetry<T>(alloc, "Make raw failed", "Failed to allocate raw from backup pool", 1, sizeof(T));
     }
 
     template<typename T, typename... Args>
         requires(!refcountable<T>)
     static auto MakeUnique(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>) -> unique_ptr<T>
     {
-        return unique_ptr<T>(MakeRaw<T>(std::forward<Args>(args)...));
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T(std::forward<Args>(args)...)); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make unique failed", "Failed to allocate unique from backup pool", 1, sizeof(T));
+        return adopt_unique_ptr(ptr);
     }
 
     template<typename T, typename... Args>
@@ -157,11 +159,11 @@ public:
     {
         if (count > static_cast<size_t>(-1) / sizeof(T)) {
             ReportBadAlloc("Make raw array bad size", typeid(T).name(), count, count * sizeof(T));
-            ReportAndExit("Alloc size overflow");
+            ReportAndExit("Alloc raw size overflow");
         }
 
         auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
-        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw array failed", "Failed to allocate from backup pool", count, count * sizeof(T));
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make raw array failed", "Failed to allocate raw from backup pool", count, count * sizeof(T));
         return ptr.get();
     }
 
@@ -169,12 +171,19 @@ public:
         requires(!refcountable<T>)
     static auto MakeUniqueArr(size_t count) noexcept(std::is_nothrow_default_constructible_v<T>) -> unique_arr_ptr<T>
     {
-        return unique_arr_ptr<T>(MakeRawArr<T>(count));
+        if (count > static_cast<size_t>(-1) / sizeof(T)) {
+            ReportBadAlloc("Make unique array bad size", typeid(T).name(), count, count * sizeof(T));
+            ReportAndExit("Alloc unique size overflow");
+        }
+
+        auto alloc = [&]() { return nptr<T>(new (std::nothrow) T[count]()); };
+        auto ptr = AllocWithBackupRetry<T>(alloc, "Make unique array failed", "Failed to allocate unique from backup pool", count, count * sizeof(T));
+        return unique_arr_ptr<T>(ptr.get());
     }
 
 private:
     template<typename T, typename AllocFunc>
-    static auto AllocWithBackupRetry(AllocFunc&& alloc, const char* alloc_desc, const char* exhausted_desc, size_t count, size_t size) -> ptr<T>
+    static auto AllocWithBackupRetry(AllocFunc&& alloc, string_view alloc_desc, string_view exhausted_desc, size_t count, size_t size) -> ptr<T>
     {
         nptr<T> ptr = alloc();
 
@@ -190,7 +199,7 @@ private:
             }
         }
 
-        return ptr.as_ptr();
+        return ptr;
     }
 };
 

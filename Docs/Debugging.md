@@ -46,7 +46,9 @@ Pre-resolved script frames live behind a `shared_ptr<const vector<StackTraceFram
 
 The provider handles the multi-context case naturally: if a script function called a native function that re-entered scripting on a fresh context, the active (child) context's frames are emitted first, then the parent context's frames are appended. The two sub-stacks read continuously in the formatted output, with native bridging frames showing up after all script frames once symbols are resolved.
 
-`AngelScriptBackend` suppresses AngelScript's GC-only external-reference diagnostics while `ShutDownAndRelease()` is tearing the script engine down. Runtime and compilation messages still go through the normal callback; only shutdown-time "external reference" / "GC cannot destroy" noise is filtered after script cleanup has already run.
+`AngelScriptBackend` mutes the AngelScript message callback during final script-engine teardown. Runtime and compilation messages still go through the normal callback before teardown begins, but shutdown-only GC survivor messages are kept out of normal logs.
+
+When `ServerEntity::ValidateAccess()` reports `Entity access without sync`, the server log now includes the entity parent/widen chain, the script/native stack, and the current `SyncContext`'s recent cover-transition ring buffer. The transition trace records `SyncEntities` requests/acquisitions and `Release()` calls with the previous/requested/held entity cover so a post-`Yield`, cover-replacement, or missing-widen failure can be matched against the last lock transition rather than inferred from stack frames alone.
 
 The Essentials module never depends on AngelScript directly; the bridge is one-way through the function pointer registered at runtime. This keeps the `Essentials` layer reusable and avoids forcing the whole engine to compile against AngelScript headers.
 

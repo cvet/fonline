@@ -60,7 +60,7 @@ auto HashStorage::CheckHashedString(string_view s) const noexcept -> bool
         return false;
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
+    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
 
     shared_lock locker {_hashStorageLocker};
 
@@ -77,7 +77,7 @@ auto HashStorage::ToHashedString(string_view s) -> hstring
         return {};
     }
 
-    const auto hash_value = _hashFunc(const_span<uint8_t> {ptr<const char> {s.data()}.reinterpret_as<uint8_t>().get(), s.length()});
+    const auto hash_value = _hashFunc(const_span<uint8_t> {make_ptr(s.data()).reinterpret_as<uint8_t>().get(), s.length()});
     FO_VERIFY_AND_THROW(hash_value != 0, "Hashed string value is zero");
 
     {

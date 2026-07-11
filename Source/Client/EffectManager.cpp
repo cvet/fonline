@@ -77,13 +77,13 @@ auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view e
     FO_STACK_TRACE_ENTRY();
 
     if (!effectPath.empty()) {
-        auto nullable_resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
+        auto resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
 
-        if (!nullable_resolved_effect) {
+        if (!resolved_effect) {
             throw EffectManagerException("Effect not found or have some errors, see log file");
         }
 
-        return nullable_resolved_effect.as_ptr();
+        return resolved_effect;
     }
 
     return defaultEffect;

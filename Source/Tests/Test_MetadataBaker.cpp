@@ -474,13 +474,14 @@ namespace TestOffTargetMetadataStubs
 
     SECTION("aggregates async metadata errors when sync mode is disabled")
     {
-        rig.AddSourceFile("Scripts/BrokenAsync.fos", "///@ Unknown Tag");
+        TestRig local_rig;
+        local_rig.AddSourceFile("Scripts/BrokenAsync.fos", "///@ Unknown Tag");
 
-        auto context = rig.MakeContext();
+        auto context = local_rig.MakeContext();
         context->ForceSyncMode = false;
 
         MetadataBaker baker(context);
-        REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
+        REQUIRE_THROWS_WITH(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("Errors during preparing of metadata"));
     }
 
     SECTION("resolves optional setting groups")

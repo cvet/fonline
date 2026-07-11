@@ -62,7 +62,7 @@ int main(int argc, char** argv)
         InitApp(args, AppInitFlags::PrebakeResources);
 
         {
-            ptr<GlobalSettings> server_settings = &GetApp()->Settings;
+            auto server_settings = make_ptr(&GetApp()->Settings);
             auto server = SafeAlloc::MakeRefCounted<ServerEngine>(server_settings, GetServerResources(*server_settings));
             vector<unique_ptr<GlobalSettings>> client_settings;
             vector<refcount_ptr<ClientEngine>> clients;

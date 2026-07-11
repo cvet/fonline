@@ -126,7 +126,7 @@ public:
     auto LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>;
     void UnloadCritter(ptr<Critter> cr);
     void UnloadCritterInnerEntities(ptr<Critter> cr);
-    void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> nullable_cr);
+    void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
     void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator);
@@ -298,7 +298,7 @@ private:
     auto ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
     auto MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
     auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
-    void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> nullable_prev_cr);
+    void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);
 
     auto InitHealthFileJob() -> std::optional<timespan>;
     auto HealthFileJob() -> std::optional<timespan>;
@@ -353,7 +353,7 @@ private:
     std::atomic<size_t> _rejectedByRate {};
     ServerStats _stats {};
     optional<UpdaterBackend> _updaterBackend {};
-    TextPack _defaultLang {ptr<HashResolver> {&Hashes}};
+    TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _unloginedPlayersLocker {};
     vector<refcount_ptr<Player>> _unloginedPlayers FO_TSA_GUARDED_BY(_unloginedPlayersLocker) {};

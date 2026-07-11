@@ -232,6 +232,15 @@ TEST_CASE("AnyData")
         CHECK_THROWS_AS((AnyData::ParseValue("abc", false, false, AnyData::ValueType::Float64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ParseValue("1 two 3", false, true, AnyData::ValueType::Int64)), AnyDataException);
         CHECK_THROWS_AS((AnyData::ParseValue("key NaNish", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("nan", false, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("1 inf 3", false, true, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ParseValue("key -inf", true, false, AnyData::ValueType::Float64)), AnyDataException);
+        CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::numeric_limits<float64_t>::quiet_NaN()})), AnyDataException);
+
+        AnyData::Array non_finite_values;
+        non_finite_values.EmplaceBack(numeric_cast<int64_t>(1));
+        non_finite_values.EmplaceBack(std::numeric_limits<float64_t>::infinity());
+        CHECK_THROWS_AS((AnyData::ValueToString(AnyData::Value {std::move(non_finite_values)})), AnyDataException);
     }
 
     SECTION("BoolAcceptsNumbersAndExplicitLiterals")

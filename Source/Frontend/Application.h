@@ -528,7 +528,6 @@ private:
     unique_nptr<RenderTexture> _virtualRenderTex {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {&OnWindowSizeChanged};
     EventDispatcher<> _onScreenSizeChangedDispatcher {&OnScreenSizeChanged};
-    int32_t _nonConstHelper {};
 };
 
 class AppRender final : public IAppRender
@@ -563,7 +562,6 @@ private:
     }
 
     ptr<Application> _app;
-    int32_t _nonConstHelper {};
 };
 
 class AppInput final : public IAppInput
@@ -627,7 +625,6 @@ private:
     }
 
     ptr<Application> _app;
-    int32_t _nonConstHelper {};
 };
 
 enum class AppInitFlags : uint8_t
@@ -678,7 +675,7 @@ public:
     [[nodiscard]] auto ScaleHostDeltaToActiveWindow(ipos32 delta) const -> ipos32;
 
     auto CreateChildWindow(isize32 size, string_view title = {}) -> ptr<AppWindow>;
-    void DestroyChildWindow(nptr<AppWindow> nullable_window);
+    void DestroyChildWindow(nptr<AppWindow> window);
     void SetActiveWindow(nptr<AppWindow> window);
     void BeginWindowRender(ptr<AppWindow> window);
     void EndWindowRender();
@@ -809,7 +806,6 @@ private:
     EventDispatcher<> _onResumeDispatcher {&OnResume};
     EventDispatcher<> _onLowMemoryDispatcher {&OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {&OnQuit};
-    int32_t _nonConstHelper {};
 };
 
 inline auto AppWindow::GetRender() noexcept -> ptr<IAppRender>

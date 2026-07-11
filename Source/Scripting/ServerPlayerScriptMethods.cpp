@@ -111,12 +111,10 @@ FO_SCRIPT_API void Server_Player_RefreshCritterMoving(ptr<Player> self, ptr<Crit
 
     ident_t player_map_id {};
 
-    if (auto nullable_controlled_cr = self->GetControlledCritter()) {
-        auto controlled_cr = nullable_controlled_cr.as_ptr();
+    if (auto controlled_cr = self->GetControlledCritter()) {
         player_map_id = controlled_cr->GetMapId();
     }
-    else if (nptr<const ViewMapContext> nullable_view_map = self->GetViewMap(); nullable_view_map) {
-        auto view_map = nullable_view_map.as_ptr();
+    else if (auto view_map = self->GetViewMap(); view_map) {
         player_map_id = view_map->MapId;
     }
 

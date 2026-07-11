@@ -55,13 +55,7 @@ public:
 
     [[nodiscard]] auto GetEggType() const noexcept -> EggAppearenceType;
     [[nodiscard]] auto IsNeedProcess() const -> bool { return _isMoving || IsFading(); }
-    [[nodiscard]] auto GetAnim() const -> ptr<const Sprite>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
-        return _anim.as_ptr();
-    }
+    [[nodiscard]] auto GetAnim() const -> ptr<const Sprite>;
     [[nodiscard]] auto IsMoving() const noexcept -> bool { return _isMoving; }
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool { return !!_multihexEntries; }
     [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>> { return _multihexEntries ? nptr<const vector<mpos>> {&*_multihexEntries} : nullptr; }

@@ -2107,7 +2107,7 @@ FO_SCRIPT_API void Common_ImGui_EndDisabled([[maybe_unused]] ptr<ScriptImGui> se
 ///@ ExportMethod
 FO_SCRIPT_API string Common_ImGui_GetClipboardText([[maybe_unused]] ptr<ScriptImGui> self)
 {
-    nptr<const char> text = ImGui::GetClipboardText();
+    auto text = make_nptr(ImGui::GetClipboardText());
     return text ? string(text.get()) : string {};
 }
 
@@ -2147,7 +2147,7 @@ FO_SCRIPT_API void Common_ImGui_LoadIniSettingsFromMemory([[maybe_unused]] ptr<S
 FO_SCRIPT_API string Common_ImGui_SaveIniSettingsToMemory([[maybe_unused]] ptr<ScriptImGui> self)
 {
     size_t ini_size {};
-    nptr<const char> data = ImGui::SaveIniSettingsToMemory(&ini_size);
+    auto data = make_nptr(ImGui::SaveIniSettingsToMemory(&ini_size));
     return data ? string(data.get(), ini_size) : string {};
 }
 

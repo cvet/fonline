@@ -114,15 +114,15 @@ int main(int argc, char** argv) // Handled by SDL
             FO_STACK_TRACE_ENTRY();
 
             FO_VERIFY_AND_THROW(server, "Server engine is not created");
-            return server.as_ptr();
+            return server;
         };
 
         const auto start_server = [&server] {
-            ptr<GlobalSettings> settings = &GetApp()->Settings;
+            auto settings = make_ptr(&GetApp()->Settings);
             server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
         };
         const auto stop_server = [&server, &get_server] {
-            ptr<ServerEngine> running_server = get_server();
+            auto running_server = get_server();
             running_server->Shutdown();
             server.reset();
         };
@@ -201,7 +201,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             const auto child_count = GetApp()->GetChildWindowsCount();
             const bool has_virtual_windows = (child_count > 0);
-            ptr<AppWindow> main_window = &GetApp()->MainWindow;
+            auto main_window = make_ptr(&GetApp()->MainWindow);
             const bool main_active = (GetApp()->GetActiveWindow() == main_window);
             const bool show_server = [&] {
                 if (layout_mode == WindowLayoutMode::SingleTab) {
@@ -230,8 +230,7 @@ int main(int argc, char** argv) // Handled by SDL
                 const auto half_w = iround<int32_t>(host_w * 0.5f);
                 main_rect = {0, iround<int32_t>(content_top), half_w, iround<int32_t>(content_h)};
 
-                if (auto nullable_child = GetApp()->GetChildWindow(0)) {
-                    auto child = nullable_child.as_ptr();
+                if (auto child = GetApp()->GetChildWindow(0)) {
                     child->SetDisplayRect({half_w, iround<int32_t>(content_top), iround<int32_t>(host_w) - half_w, iround<int32_t>(content_h)});
                 }
             }
@@ -251,8 +250,7 @@ int main(int argc, char** argv) // Handled by SDL
                     const int32_t row = idx / cols;
                     const int32_t col = idx % cols;
 
-                    if (auto nullable_child = GetApp()->GetChildWindow(i)) {
-                        auto child = nullable_child.as_ptr();
+                    if (auto child = GetApp()->GetChildWindow(i)) {
                         child->SetDisplayRect({
                             iround<int32_t>(numeric_cast<float32_t>(col) * cell_w),
                             iround<int32_t>(content_top + numeric_cast<float32_t>(row) * cell_h),
@@ -271,9 +269,8 @@ int main(int argc, char** argv) // Handled by SDL
                 auto shown = GetApp()->GetActiveWindow();
 
                 for (size_t i = 0; i < child_count; i++) {
-                    if (auto nullable_child = GetApp()->GetChildWindow(i)) {
-                        auto child = nullable_child.as_ptr();
-                        child->SetDisplayRect(nullable_child == shown ? area : irect32 {});
+                    if (auto child = GetApp()->GetChildWindow(i)) {
+                        child->SetDisplayRect(child == shown ? area : irect32 {});
                     }
                 }
             }
@@ -299,13 +296,12 @@ int main(int argc, char** argv) // Handled by SDL
                 auto pop_styles = scope_exit([]() noexcept { safe_call([] { ImGui::PopStyleVar(2); }); });
 
                 const auto draw_texture = [](ptr<AppWindow> window, ImVec2 region) {
-                    auto nullable_tex = window->GetRenderTexture();
+                    auto tex = window->GetRenderTexture();
 
-                    if (!nullable_tex || region.x <= 0.0f || region.y <= 0.0f) {
+                    if (!tex || region.x <= 0.0f || region.y <= 0.0f) {
                         return;
                     }
 
-                    auto tex = nullable_tex.as_ptr();
                     if (tex->Size.width <= 0 || tex->Size.height <= 0) {
                         return;
                     }
@@ -333,10 +329,9 @@ int main(int argc, char** argv) // Handled by SDL
                 };
 
                 if (layout_mode == WindowLayoutMode::SingleTab) {
-                    auto nullable_shown = GetApp()->GetActiveWindow();
+                    auto shown = GetApp()->GetActiveWindow();
 
-                    if (nullable_shown && nullable_shown != &GetApp()->MainWindow) {
-                        auto shown = nullable_shown.as_ptr();
+                    if (shown && shown != &GetApp()->MainWindow) {
                         const auto r = shown->GetDisplayRect();
                         ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(r.x), numeric_cast<float32_t>(r.y)), ImGuiCond_Always);
                         ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(r.width), numeric_cast<float32_t>(r.height)), ImGuiCond_Always);
@@ -350,13 +345,12 @@ int main(int argc, char** argv) // Handled by SDL
                 }
                 else if (layout_mode == WindowLayoutMode::Tile) {
                     for (size_t i = 0; i < child_count; i++) {
-                        auto nullable_child = GetApp()->GetChildWindow(i);
+                        auto child = GetApp()->GetChildWindow(i);
 
-                        if (!nullable_child) {
+                        if (!child) {
                             continue;
                         }
 
-                        auto child = nullable_child.as_ptr();
                         const auto r = child->GetDisplayRect();
                         ImGui::SetNextWindowPos(ImVec2(numeric_cast<float32_t>(r.x), numeric_cast<float32_t>(r.y)), ImGuiCond_Always);
                         ImGui::SetNextWindowSize(ImVec2(numeric_cast<float32_t>(r.width), numeric_cast<float32_t>(r.height)), ImGuiCond_Always);
@@ -375,13 +369,12 @@ int main(int argc, char** argv) // Handled by SDL
                         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar;
 
                     for (size_t i = 0; i < child_count; i++) {
-                        auto nullable_child = GetApp()->GetChildWindow(i);
+                        auto child = GetApp()->GetChildWindow(i);
 
-                        if (!nullable_child) {
+                        if (!child) {
                             continue;
                         }
 
-                        auto child = nullable_child.as_ptr();
                         const auto title = child->GetTitle().empty() ? strex("Window {}", i + 1).str() : child->GetTitle();
                         const auto label = strex("{}###ImageHostCascade_{}", title, i).str();
 
@@ -516,7 +509,7 @@ int main(int argc, char** argv) // Handled by SDL
 
                         if (server) {
                             try {
-                                ptr<ServerEngine> running_server = get_server();
+                                auto running_server = get_server();
                                 running_server->DrawGui();
                             }
                             catch (const std::exception& ex) {
@@ -596,8 +589,7 @@ int main(int argc, char** argv) // Handled by SDL
                     draw_tab(&GetApp()->MainWindow, string {"Server"});
 
                     for (size_t i = 0; i < child_count; i++) {
-                        if (auto nullable_child = GetApp()->GetChildWindow(i)) {
-                            auto child = nullable_child.as_ptr();
+                        if (auto child = GetApp()->GetChildWindow(i)) {
                             const string label = child->GetTitle().empty() ? strex("Client {}", i + 1).str() : string {child->GetTitle()};
                             draw_tab(child, label);
                         }
@@ -680,7 +672,7 @@ int main(int argc, char** argv) // Handled by SDL
 
             for (size_t i = 0; i < clients.size(); i++) {
                 auto& client = clients[i];
-                ptr<AppWindow> window = client_windows[i];
+                auto window = client_windows[i];
 
                 try {
                     GetApp()->BeginWindowRender(window);

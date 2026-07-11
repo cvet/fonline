@@ -87,9 +87,9 @@ void strex::own_storage() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    nptr<const char> view_begin = _sv.data();
-    nptr<const char> storage_begin = _s.data();
-    nptr<const char> storage_end = storage_begin.get() + _s.size();
+    auto view_begin = make_nptr(_sv.data());
+    auto storage_begin = make_nptr(_s.data());
+    nptr<const char> storage_end = storage_begin.offset(_s.size());
 
     if (view_begin < storage_begin || !(view_begin < storage_end)) {
         _s = _sv;
@@ -152,10 +152,10 @@ auto strvex::compare_ignore_case_utf8(string_view other) const noexcept -> bool
 
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
-        ptr<const char> text_pos = _sv.data() + i;
+        auto text_pos = make_ptr(_sv.data() + i);
         const auto ucs = utf8::Decode(text_pos, length);
         size_t other_length = other.length() - i;
-        ptr<const char> other_pos = other.data() + i;
+        auto other_pos = make_ptr(other.data() + i);
         const auto other_ucs = utf8::Decode(other_pos, other_length);
 
         if (!utf8::IsValid(ucs) || !utf8::IsValid(other_ucs)) {
@@ -212,7 +212,7 @@ auto strvex::is_valid_utf8() const noexcept -> bool
 
     for (size_t i = 0; i < _sv.length();) {
         size_t length = _sv.length() - i;
-        ptr<const char> text_pos = _sv.data() + i;
+        auto text_pos = make_ptr(_sv.data() + i);
         const auto ucs = utf8::Decode(text_pos, length);
 
         if (!utf8::IsValid(ucs)) {
@@ -465,9 +465,9 @@ auto strex::replace(char from, char to) -> strex&
     if (pos != string::npos) {
         own_storage();
 
-        nptr<char> text_begin = _s.data();
-        ptr<char> range_begin = text_begin.get() + pos;
-        ptr<char> range_end = text_begin.get() + _s.length();
+        auto text_begin = make_nptr(_s.data());
+        ptr<char> range_begin = text_begin.offset(pos);
+        ptr<char> range_end = text_begin.offset(_s.length());
         auto range = std::ranges::subrange(range_begin.get(), range_end.get());
         std::ranges::replace(range, from, to);
     }
@@ -538,8 +538,8 @@ auto strex::lower_utf8() -> strex&
 
     for (size_t i = 0; i < _s.length();) {
         size_t length = _s.length() - i;
-        ptr<const char> text_begin = _s.c_str();
-        ptr<const char> text_pos = text_begin.get() + i;
+        auto text_begin = make_ptr(_s.c_str());
+        ptr<const char> text_pos = text_begin.offset(i);
         auto ucs = utf8::Decode(text_pos, length);
 
         ucs = utf8::Lower(ucs);
@@ -565,8 +565,8 @@ auto strex::upper_utf8() -> strex&
 
     for (size_t i = 0; i < _s.length();) {
         size_t length = _s.length() - i;
-        ptr<const char> text_begin = _s.c_str();
-        ptr<const char> text_pos = text_begin.get() + i;
+        auto text_begin = make_ptr(_s.c_str());
+        ptr<const char> text_pos = text_begin.offset(i);
         auto ucs = utf8::Decode(text_pos, length);
 
         ucs = utf8::Upper(ucs);
@@ -821,8 +821,8 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
         }
 
         std::make_unsigned_t<T> uvalue;
-        nptr<const char> parse_begin = parse_sv.data();
-        ptr<const char> parse_end = parse_begin.get() + parse_sv.size();
+        auto parse_begin = make_nptr(parse_sv.data());
+        ptr<const char> parse_end = parse_begin.offset(parse_sv.size());
         const auto result = std::from_chars(parse_begin.get(), parse_end.get(), uvalue, base);
         const bool success = result.ec == std::errc() && result.ptr == parse_end.get();
         const bool out_of_range = result.ec == std::errc::result_out_of_range;
@@ -890,10 +890,10 @@ static auto ConvertToNumber(string_view sv, T& value) noexcept -> bool
                 return false;
             }
 
-            nptr<const char> parse_begin = parse_sv.data();
-            ptr<const char> parse_end = parse_begin.get() + parse_sv.size();
+            auto parse_begin = make_nptr(parse_sv.data());
+            ptr<const char> parse_end = parse_begin.offset(parse_sv.size());
             const auto result = std::from_chars(parse_begin.get(), parse_end.get(), value);
-            return result.ec == std::errc() && parse_end == result.ptr;
+            return result.ec == std::errc() && parse_end == result.ptr && std::isfinite(value);
         }
     }
 }
@@ -911,6 +911,31 @@ auto strvex::is_number() const noexcept -> bool
     ignore_unused(value);
 
     return success;
+}
+
+auto strvex::is_non_finite_number() const noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    string_view parse_sv = strvex(_sv).trim();
+
+    if (parse_sv.empty()) {
+        return false;
+    }
+    if (parse_sv.front() == '+' || parse_sv.front() == '-') {
+        parse_sv.remove_prefix(1);
+    }
+    if (parse_sv.empty()) {
+        return false;
+    }
+    if (parse_sv.size() > 3 && parse_sv.back() == 'f') {
+        parse_sv.remove_suffix(1);
+    }
+    if (strvex(parse_sv).compare_ignore_case("inf") || strvex(parse_sv).compare_ignore_case("infinity") || strvex(parse_sv).compare_ignore_case("nan")) {
+        return true;
+    }
+
+    return parse_sv.size() > 4 && strvex(parse_sv.substr(0, 4)).compare_ignore_case("nan(") && parse_sv.back() == ')';
 }
 
 auto strvex::is_explicit_bool() const noexcept -> bool
@@ -1237,11 +1262,10 @@ auto strex::parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&
         const int32_t output_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, nullptr, 0, nullptr, nullptr);
 
         if (output_size > 0) {
-            nptr<void> mem = _malloca(static_cast<size_t>(output_size));
-            nptr<char> nullable_buf = mem ? cast_from_void<char*>(mem.get()) : nullptr;
+            auto mem = make_nptr(_malloca(static_cast<size_t>(output_size)));
+            auto buf = mem.reinterpret_as<char>();
 
-            if (nullable_buf) {
-                auto buf = nullable_buf.as_ptr();
+            if (buf) {
                 const int32_t written_size = ::WideCharToMultiByte(CP_UTF8, 0, str.get(), len, buf.get(), output_size, nullptr, nullptr);
 
                 if (written_size > 0) {
@@ -1249,7 +1273,7 @@ auto strex::parse_wide_char(ptr<const wchar_t> str) noexcept -> strex&
                 }
             }
 
-            _freea(nullable_buf.get());
+            _freea(buf.get());
         }
     }
 
@@ -1269,7 +1293,7 @@ auto strex::to_wide_char() const noexcept -> wstring
         return {};
     }
 
-    nptr<const char> source = _sv.data();
+    auto source = make_nptr(_sv.data());
     const int32_t input_len = static_cast<int32_t>(_sv.length());
     const int32_t wide_len = ::MultiByteToWideChar(CP_UTF8, 0, source.get(), input_len, nullptr, 0);
 
@@ -1348,7 +1372,7 @@ auto utf8::Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t
         return UNICODE_BAD_CHAR;
     };
 
-    ptr<const uint8_t> bytes = str.reinterpret_as<const uint8_t>();
+    auto bytes = str.reinterpret_as<const uint8_t>();
     const uint8_t c = bytes[0];
 
     if (c < 0x80) {

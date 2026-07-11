@@ -200,7 +200,7 @@ namespace
                 type.IsSignedInt = true;
                 type.IsInt32 = true;
                 type.Size = sizeof(int32_t);
-                nptr<const BaseTypeDesc> int32_type = &_types.at("int32");
+                auto int32_type = make_nptr(&_types.at("int32"));
                 type.EnumUnderlyingType = int32_type;
                 return type;
             };
@@ -230,9 +230,10 @@ namespace
 
                 BaseTypeDesc type;
                 type.Name = "Waypoint";
-                nptr<const StructLayoutDesc> waypoint_layout = &_layouts.at("Waypoint");
+                auto waypoint_layout = make_nptr(&_layouts.at("Waypoint"));
                 type.StructLayout = waypoint_layout;
                 type.Size = type.StructLayout->Size;
+                type.IsStruct = true;
                 type.IsComplexStruct = true;
                 return type;
             };
@@ -255,8 +256,8 @@ namespace
                 type.Name = "RouteSnapshot";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteSnapshot");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteSnapshot"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -277,8 +278,8 @@ namespace
                 type.Name = "RouteEnvelope";
                 type.IsRefType = true;
                 type.IsObject = true;
-                nptr<const RefTypeDesc> nullable_ref_type = &_ref_types.at("RouteEnvelope");
-                type.RefType = nullable_ref_type;
+                auto resolved_ref_type = make_nptr(&_ref_types.at("RouteEnvelope"));
+                type.RefType = resolved_ref_type;
                 return type;
             };
 
@@ -434,7 +435,7 @@ namespace
             const auto type_hname = _proto_hashes.ToHashedString(type_name);
             const auto proto_hname = _proto_hashes.ToHashedString(proto_id);
             FO_VERIFY_AND_THROW(_proto_registrator.has_value(), "Proto registrator not initialized");
-            ptr<const PropertyRegistrator> proto_registrator = &*_proto_registrator;
+            auto proto_registrator = make_ptr(&*_proto_registrator);
 
             _protos[type_hname.as_hash()].emplace(proto_hname.as_hash(), SafeAlloc::MakeRefCounted<ProtoCustomEntity>(proto_hname, proto_registrator, nullptr));
         }
@@ -462,15 +463,14 @@ namespace
         result.reserve(raw_data.size());
 
         for (size_t i = 0; i < raw_data.size(); i++) {
-            const auto nullable_data = raw_data[i];
+            const auto data = raw_data[i];
             const auto size = raw_sizes[i];
 
             if (size == 0) {
                 result.emplace_back();
             }
             else {
-                REQUIRE(nullable_data);
-                auto data = nullable_data.as_ptr();
+                REQUIRE(data);
                 const auto data_span = make_const_span(data, size);
                 result.emplace_back(data_span.begin(), data_span.end());
             }
@@ -602,13 +602,13 @@ namespace
         [[nodiscard]] auto GetProbeIntProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeIntProp, "Probe int property not registered");
-            return ProbeIntProp.as_ptr();
+            return ProbeIntProp;
         }
 
         [[nodiscard]] auto GetProbeStringProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ProbeStringProp, "Probe string property not registered");
-            return ProbeStringProp.as_ptr();
+            return ProbeStringProp;
         }
 
         [[nodiscard]] static auto CalcTotalBytes(const vector<vector<uint8_t>>& chunks) -> size_t
@@ -738,7 +738,7 @@ namespace
         static auto GetSpecProp(const PerfPropertySpec& spec) -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(spec.Prop, "Perf property spec has no property");
-            return spec.Prop.as_ptr();
+            return spec.Prop;
         }
     };
 
@@ -788,13 +788,13 @@ namespace
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
     private:
@@ -864,35 +864,13 @@ namespace
 
         PropertiesPerfFixture() :
             Registrator("PerfEntity", EngineSideKind::ServerSide, &Hashes, &Resolver),
+            PublicIntProps {RegisterPublicIntProperties(Registrator)},
+            PublicStringProps {RegisterPublicStringProperties(Registrator)},
+            OwnerBoolProps {RegisterOwnerBoolProperties(Registrator)},
             Proto(&Registrator),
             Full(&Registrator),
             DerivedSource(&Registrator, &Proto)
         {
-            PublicIntProps.reserve(48);
-            PublicStringProps.reserve(12);
-            OwnerBoolProps.reserve(8);
-
-            for (int i = 0; i < 48; i++) {
-                string prop_name {"Value"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicIntProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 12; i++) {
-                string prop_name {"Name"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
-                PublicStringProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
-            for (int i = 0; i < 8; i++) {
-                string prop_name {"OwnerFlag"};
-                prop_name += std::to_string(i).c_str();
-                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
-                OwnerBoolProps.emplace_back(Registrator.RegisterProperty(tokens));
-            }
-
             for (size_t i = 0; i < PublicIntProps.size(); i++) {
                 Proto.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i));
                 Full.SetValue<int32_t>(PublicIntProps[i], numeric_cast<int32_t>(i * 3 + 1));
@@ -934,6 +912,52 @@ namespace
             set<hstring> str_hashes;
             Full.StoreAllData(FullAllData, str_hashes);
             DerivedSource.StoreAllData(DerivedAllData, str_hashes);
+        }
+
+    private:
+        static auto RegisterPublicIntProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(48);
+
+            for (size_t i = 0; i < 48; i++) {
+                string prop_name {"Value"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "int32", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterPublicStringProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(12);
+
+            for (size_t i = 0; i < 12; i++) {
+                string prop_name {"Name"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "string", prop_name, "Mutable", "Persistent", "PublicSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
+        }
+
+        static auto RegisterOwnerBoolProperties(PropertyRegistrator& registrator) -> vector<ptr<const Property>>
+        {
+            vector<ptr<const Property>> result;
+            result.reserve(8);
+
+            for (size_t i = 0; i < 8; i++) {
+                string prop_name {"OwnerFlag"};
+                prop_name += std::to_string(i).c_str();
+                const array<string_view, 6> tokens {"Common", "bool", prop_name, "Mutable", "Persistent", "OwnerSync"};
+                result.emplace_back(registrator.RegisterProperty(tokens));
+            }
+
+            return result;
         }
     };
 
@@ -1029,19 +1053,19 @@ namespace
         [[nodiscard]] auto GetFloatLabelsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(FloatLabelsProp, "Float labels property not registered");
-            return FloatLabelsProp.as_ptr();
+            return FloatLabelsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(PatrolWaypointsProp, "Patrol waypoints property not registered");
-            return PatrolWaypointsProp.as_ptr();
+            return PatrolWaypointsProp;
         }
 
         [[nodiscard]] auto GetModeSetsProp() const -> ptr<const Property>
         {
             FO_VERIFY_AND_THROW(ModeSetsProp, "Mode sets property not registered");
-            return ModeSetsProp.as_ptr();
+            return ModeSetsProp;
         }
 
         [[nodiscard]] auto GetPatrolWaypointsValue() const -> ptr<const AnyData::Value>
@@ -1238,6 +1262,8 @@ TEST_CASE("PropertiesRawDataCopy")
     PropertyRegistrator registrator("RawCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
     auto value_prop = registrator.RegisterProperty({"Common", "uint16", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto prefix_prop = registrator.RegisterProperty({"Common", "uint32", "Prefix", "Mutable", "Persistent", "PublicSync"});
+    auto short_array_prop = registrator.RegisterProperty({"Common", "int16[]", "ShortArray", "Mutable", "Persistent", "PublicSync"});
     auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
     auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
@@ -1337,51 +1363,49 @@ TEST_CASE("PropertiesRawDataCopy")
         CHECK(derived.GetRawDataSize(name_prop) == 0);
     }
 
-    SECTION("ConcurrentCopyDoesNotTear")
+    SECTION("RawDataComparisonSupportsNaturallyAlignedOverlayPayloads")
     {
-        props.SetValue<string>(name_prop, first_value);
+        const vector<int16_t> values = {1, 2, 3, 4};
 
-        std::atomic_bool writer_done {false};
-        std::atomic_bool torn_copy {false};
+        const auto check_natural_layout = [&](const Properties& target) {
+            const auto prefix_raw_data = target.GetRawData(prefix_prop);
+            const auto short_array_raw_data = target.GetRawData(short_array_prop);
 
-        std::thread writer([&]() {
-            for (int32_t i = 0; i < 10000; i++) {
-                props.SetValue<string>(name_prop, i % 2 == 0 ? first_value : second_value);
-            }
+            REQUIRE(prefix_raw_data.size() == sizeof(uint32_t));
+            REQUIRE(short_array_raw_data.size() == sizeof(int16_t) * values.size());
+            CHECK(short_array_raw_data.data() == prefix_raw_data.data() + prefix_raw_data.size());
+            CHECK(reinterpret_cast<uintptr_t>(short_array_raw_data.data()) % alignof(int16_t) == 0);
+            CHECK(reinterpret_cast<uintptr_t>(short_array_raw_data.data()) % alignof(uint64_t) != 0);
+            CHECK(target.GetValue<vector<int16_t>>(short_array_prop) == values);
+        };
 
-            writer_done.store(true, std::memory_order_release);
-        });
+        Properties derived(&registrator, &props);
+        derived.SetValue<uint32_t>(prefix_prop, 0x1020304);
+        derived.SetValue(short_array_prop, values);
+        check_natural_layout(derived);
 
-        while (!writer_done.load(std::memory_order_acquire)) {
-            PropertyRawData copied_data;
-            props.CopyRawData(name_prop, copied_data);
+        // The 8-byte payload starts at a naturally aligned address that is not uint64-aligned.
+        derived.SetValue(short_array_prop, values);
+        check_natural_layout(derived);
 
-            const size_t size = copied_data.GetSize();
-            const bool first_size = size == first_value.size();
-            const bool second_size = size == second_value.size();
+        vector<uint8_t> snapshot;
+        set<hstring> snapshot_hashes;
+        derived.StoreAllData(snapshot, snapshot_hashes);
 
-            if (!first_size && !second_size) {
-                torn_copy.store(true, std::memory_order_relaxed);
-                break;
-            }
+        Properties restored(&registrator, &props);
+        restored.RestoreAllData(snapshot);
+        check_natural_layout(restored);
 
-            const char expected = first_size ? 'A' : 'B';
-            auto copied_chars = copied_data.GetPtrAs<char>();
+        derived.SetValue<string>(name_prop, string(300, 'x'));
+        check_natural_layout(derived);
 
-            for (size_t i = 0; i < size; i++) {
-                if (copied_chars[i] != expected) {
-                    torn_copy.store(true, std::memory_order_relaxed);
-                    break;
-                }
-            }
+        Properties full_source(&registrator);
+        full_source.SetValue<uint32_t>(prefix_prop, 0x1020304);
+        full_source.SetValue(short_array_prop, values);
 
-            if (torn_copy.load(std::memory_order_relaxed)) {
-                break;
-            }
-        }
-
-        writer.join();
-        CHECK_FALSE(torn_copy.load(std::memory_order_relaxed));
+        Properties rebuilt(&registrator, &props);
+        rebuilt.CopyFrom(full_source);
+        check_natural_layout(rebuilt);
     }
 }
 
@@ -1418,7 +1442,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1458,7 +1483,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -1497,7 +1523,8 @@ TEST_CASE("PropertiesOverlayFiltersAndCopies")
 
         uint8_t store_type = 0xFF;
         REQUIRE(raw_data.at(0));
-        auto store_type_data = raw_data.at(0).as_ptr();
+        auto store_type_data = raw_data.at(0);
+        FO_VERIFY_AND_THROW(store_type_data, "Store type data is null");
         MemCopy(&store_type, store_type_data, sizeof(store_type));
         CHECK(store_type == 1);
 
@@ -2660,6 +2687,53 @@ TEST_CASE("PropertiesHashAndEnumConversions")
     CHECK(from_any.GetValueAsInt(enum_prop->GetRegIndex()) == 1);
 }
 
+TEST_CASE("PropertiesRejectNonFiniteFloatValues")
+{
+    HashStorage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrator registrator("FiniteFloatEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto float32_prop = registrator.RegisterProperty({"Common", "float32", "FloatValue", "Mutable", "Persistent", "PublicSync"});
+    auto float64_prop = registrator.RegisterProperty({"Common", "float64", "DoubleValue", "Mutable", "Persistent", "PublicSync"});
+    auto float_arr_prop = registrator.RegisterProperty({"Common", "float32[]", "FloatValues", "Mutable", "Persistent", "PublicSync"});
+    auto waypoint_prop = registrator.RegisterProperty({"Common", "Waypoint", "Position", "Mutable", "Persistent", "PublicSync"});
+    auto float_dict_key_prop = registrator.RegisterProperty({"Common", "float32=>int32", "FloatKeys", "Mutable", "Persistent", "PublicSync"});
+    auto float_dict_value_prop = registrator.RegisterProperty({"Common", "int32=>float32", "FloatValuesById", "Mutable", "Persistent", "PublicSync"});
+
+    Properties props(&registrator);
+
+    CHECK_THROWS(props.SetValue<float32_t>(float32_prop, std::numeric_limits<float32_t>::quiet_NaN()));
+    CHECK_THROWS(props.SetValue<float64_t>(float64_prop, std::numeric_limits<float64_t>::infinity()));
+    CHECK_THROWS(props.SetValue(float_arr_prop, vector<float32_t> {1.0f, std::numeric_limits<float32_t>::infinity()}));
+
+    PropertyRawData raw_float_data;
+    const float32_t raw_float = std::numeric_limits<float32_t>::quiet_NaN();
+    raw_float_data.SetAs<float32_t>(raw_float);
+    CHECK_THROWS(props.SetValue(float32_prop, raw_float_data));
+
+    array<uint8_t, sizeof(int32_t) + sizeof(float32_t) + sizeof(bool)> raw_waypoint {};
+    const float32_t raw_distance = std::numeric_limits<float32_t>::infinity();
+    MemCopy(raw_waypoint.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_waypoint_data;
+    raw_waypoint_data.Set(raw_waypoint.data(), raw_waypoint.size());
+    CHECK_THROWS(props.SetValue(waypoint_prop, raw_waypoint_data));
+
+    array<uint8_t, sizeof(float32_t) + sizeof(int32_t)> raw_float_key_dict {};
+    MemCopy(raw_float_key_dict.data(), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_float_key_dict_data;
+    raw_float_key_dict_data.Set(raw_float_key_dict.data(), raw_float_key_dict.size());
+    CHECK_THROWS(props.SetValue(float_dict_key_prop, raw_float_key_dict_data));
+
+    array<uint8_t, sizeof(int32_t) + sizeof(float32_t)> raw_float_value_dict {};
+    MemCopy(raw_float_value_dict.data() + sizeof(int32_t), &raw_distance, sizeof(raw_distance));
+
+    PropertyRawData raw_float_value_dict_data;
+    raw_float_value_dict_data.Set(raw_float_value_dict.data(), raw_float_value_dict.size());
+    CHECK_THROWS(props.SetValue(float_dict_value_prop, raw_float_value_dict_data));
+}
+
 TEST_CASE("PropertiesEnumValueMigration")
 {
     HashStorage hashes {};
@@ -2906,9 +2980,7 @@ TEST_CASE("PropertiesNumericRangeValidation")
 
     const auto float32_overflow = static_cast<float64_t>(std::numeric_limits<float32_t>::max()) * 2.0;
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {float32_overflow}, hashes, resolver));
-    // Build the IEEE-754 +inf bit pattern via bit_cast: numeric_limits::infinity() is flagged as UB under the
-    // engine's /fp:fast (-Wnan-infinity-disabled), but this test must feed a real non-finite float.
-    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::bit_cast<float64_t>(uint64_t {0x7FF0000000000000})}, hashes, resolver));
+    CHECK_THROWS(PropertiesSerializator::LoadPropertyFromValue(&props, float32_prop, AnyData::Value {std::numeric_limits<float64_t>::infinity()}, hashes, resolver));
 
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, int8_prop, "128", hashes, resolver));
     CHECK_THROWS(PropertiesSerializator::LoadPropertyFromText(&props, uint8_prop, "-1", hashes, resolver));

@@ -87,20 +87,19 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, p
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, hstring protoId, bool forPlayer, readonly_map<CritterProperty, any_t> props)
 {
-    auto nullable_proto = server->GetProtoCritter(protoId);
+    auto proto = server->GetProtoCritter(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid critter proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    nptr<const Properties> props_ptr = &props_;
+    auto props_ptr = make_nptr(&props_);
     auto cr = server->CreateCritter(protoId, forPlayer, props_ptr);
     return cr;
 }
@@ -115,7 +114,7 @@ FO_SCRIPT_API ptr<Critter> Server_Game_CreateCritter(ptr<ServerEngine> server, p
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    nptr<const Properties> props_ptr = &props_;
+    auto props_ptr = make_nptr(&props_);
     auto cr = server->CreateCritter(proto->GetProtoId(), forPlayer, props_ptr);
     return cr;
 }
@@ -300,7 +299,7 @@ FO_SCRIPT_API nptr<Item> Server_Game_GetItem(ptr<ServerEngine> server, ident_t i
     }
 
     auto item = DropDestroyingEntity(server->EntityMngr.GetItem(itemId));
-    return ReleaseNullableScriptOwnership(std::move(item));
+    return item ? item.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: requires item + current item parent + destination critter.
@@ -399,21 +398,18 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 {
     ValidateEntityAccess(toCr);
 
-    for (nptr<Item> nullable_item : items) {
-        ValidateEntityAccess(nullable_item);
+    for (nptr<Item> item : items) {
+        ValidateEntityAccess(item);
 
-        if (nullable_item) {
-            auto item = nullable_item.as_ptr();
+        if (item) {
             ValidateEntityAccess(item->GetParentRaw());
         }
     }
 
-    for (nptr<Item> nullable_item : items) {
-        if (!nullable_item) {
+    for (nptr<Item> item : items) {
+        if (!item) {
             continue;
         }
-
-        auto item = nullable_item.as_ptr();
 
         if (item->IsDestroyed()) {
             continue;
@@ -429,11 +425,10 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 {
     ValidateEntityAccess(toMap);
 
-    for (auto nullable_item : items) {
-        ValidateEntityAccess(nullable_item);
+    for (auto item : items) {
+        ValidateEntityAccess(item);
 
-        if (nullable_item) {
-            ptr<Item> item = nullable_item.as_ptr();
+        if (item) {
             ValidateEntityAccess(item->GetParentRaw());
         }
     }
@@ -442,12 +437,10 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
         throw ScriptException("Invalid hexex args");
     }
 
-    for (auto nullable_item : items) {
-        if (!nullable_item) {
+    for (auto item : items) {
+        if (!item) {
             continue;
         }
-
-        auto item = nullable_item.as_ptr();
 
         if (item->IsDestroyed()) {
             continue;
@@ -463,21 +456,18 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 {
     ValidateEntityAccess(toCont);
 
-    for (auto nullable_item : items) {
-        ValidateEntityAccess(nullable_item);
+    for (auto item : items) {
+        ValidateEntityAccess(item);
 
-        if (nullable_item) {
-            auto item = nullable_item.as_ptr();
+        if (item) {
             ValidateEntityAccess(item->GetParentRaw());
         }
     }
 
-    for (auto nullable_item : items) {
-        if (!nullable_item) {
+    for (auto item : items) {
+        if (!item) {
             continue;
         }
-
-        auto item = nullable_item.as_ptr();
 
         if (item->IsDestroyed()) {
             continue;
@@ -491,14 +481,13 @@ FO_SCRIPT_API void Server_Game_MoveItems(ptr<ServerEngine> server, readonly_vect
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t id)
 {
-    auto nullable_entity = server->EntityMngr.GetEntity(id);
+    auto entity = server->EntityMngr.GetEntity(id);
 
-    if (nullable_entity) {
-        auto entity = nullable_entity.as_ptr();
+    if (entity) {
         ValidateEntityAccess(entity);
         ValidateEntityAccess(entity->GetParentRaw());
 
-        server->EntityMngr.DestroyEntity(entity);
+        server->EntityMngr.DestroyEntity(entity.as_ptr());
     }
 }
 
@@ -510,7 +499,7 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<Serv
         ValidateEntityAccess(entity);
         ValidateEntityAccess(entity->GetParentRaw());
 
-        server->EntityMngr.DestroyEntity(entity.as_ptr());
+        server->EntityMngr.DestroyEntity(entity);
     }
 }
 
@@ -519,14 +508,13 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, nptr<Serv
 FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<ident_t> ids)
 {
     for (const ident_t id : ids) {
-        auto nullable_entity = server->EntityMngr.GetEntity(id);
+        auto entity = server->EntityMngr.GetEntity(id);
 
-        if (nullable_entity) {
-            auto entity = nullable_entity.as_ptr();
+        if (entity) {
             ValidateEntityAccess(entity);
             ValidateEntityAccess(entity->GetParentRaw());
 
-            server->EntityMngr.DestroyEntity(entity);
+            server->EntityMngr.DestroyEntity(entity.as_ptr());
         }
     }
 }
@@ -535,9 +523,8 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonly_vector<nptr<ServerEntity>> entities)
 {
-    for (auto nullable_entity : entities) {
-        if (nullable_entity) {
-            auto entity = nullable_entity.as_ptr();
+    for (auto entity : entities) {
+        if (entity) {
             ValidateEntityAccess(entity);
             ValidateEntityAccess(entity->GetParentRaw());
 
@@ -554,7 +541,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
-        server->ItemMngr.DestroyItem(item.as_ptr());
+        server->ItemMngr.DestroyItem(item);
     }
 }
 
@@ -566,14 +553,13 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
-        auto item_ref = item.as_ptr();
-        const auto cur_count = item_ref->GetCount();
+        const auto cur_count = item->GetCount();
 
         if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item_ref);
+            server->ItemMngr.DestroyItem(item);
         }
         else {
-            item_ref->SetCount(cur_count - count);
+            item->SetCount(cur_count - count);
         }
     }
 }
@@ -582,14 +568,13 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, nptr<Item> 
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId)
 {
-    auto nullable_item = server->EntityMngr.GetItem(itemId);
+    auto item = server->EntityMngr.GetItem(itemId);
 
-    if (nullable_item) {
-        auto item = nullable_item.as_ptr();
+    if (item) {
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
-        server->ItemMngr.DestroyItem(item);
+        server->ItemMngr.DestroyItem(item.as_ptr());
     }
 }
 
@@ -597,17 +582,16 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t itemId, int32_t count)
 {
-    auto nullable_item = server->EntityMngr.GetItem(itemId);
+    auto item = server->EntityMngr.GetItem(itemId);
 
-    if (nullable_item && count > 0) {
-        auto item = nullable_item.as_ptr();
+    if (item && count > 0) {
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
         const int32_t cur_count = item->GetCount();
 
         if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item);
+            server->ItemMngr.DestroyItem(item.as_ptr());
         }
         else {
             item->SetCount(cur_count - count);
@@ -624,7 +608,7 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
             ValidateEntityAccess(item);
             ValidateEntityAccess(item->GetParentRaw());
 
-            server->ItemMngr.DestroyItem(item.as_ptr());
+            server->ItemMngr.DestroyItem(item);
         }
     }
 }
@@ -635,14 +619,13 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
 {
     for (const ident_t item_id : itemIds) {
         if (item_id) {
-            auto nullable_item = server->EntityMngr.GetItem(item_id);
+            auto item = server->EntityMngr.GetItem(item_id);
 
-            if (nullable_item) {
-                auto item = nullable_item.as_ptr();
+            if (item) {
                 ValidateEntityAccess(item);
                 ValidateEntityAccess(item->GetParentRaw());
 
-                server->ItemMngr.DestroyItem(item);
+                server->ItemMngr.DestroyItem(item.as_ptr());
             }
         }
     }
@@ -658,7 +641,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Cri
         if (!cr->GetControlledByPlayer()) {
             ValidateEntityAccess(cr->GetParentRaw());
 
-            server->CrMngr.DestroyCritter(cr.as_ptr());
+            server->CrMngr.DestroyCritter(cr);
         }
     }
 }
@@ -668,15 +651,15 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, nptr<Cri
 FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t crId)
 {
     if (crId) {
-        auto nullable_cr = server->EntityMngr.GetCritter(crId);
+        auto cr = server->EntityMngr.GetCritter(crId);
 
-        if (nullable_cr) {
-            ValidateEntityAccess(nullable_cr);
+        if (cr) {
+            ValidateEntityAccess(cr);
 
-            if (!nullable_cr->GetControlledByPlayer()) {
-                ValidateEntityAccess(nullable_cr->GetParentRaw());
+            if (!cr->GetControlledByPlayer()) {
+                ValidateEntityAccess(cr->GetParentRaw());
 
-                server->CrMngr.DestroyCritter(nullable_cr.as_ptr());
+                server->CrMngr.DestroyCritter(cr.as_ptr());
             }
         }
     }
@@ -693,7 +676,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
             if (!cr->GetControlledByPlayer()) {
                 ValidateEntityAccess(cr->GetParentRaw());
 
-                server->CrMngr.DestroyCritter(cr.as_ptr());
+                server->CrMngr.DestroyCritter(cr);
             }
         }
     }
@@ -705,16 +688,15 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
 {
     for (const ident_t id : critterIds) {
         if (id) {
-            auto nullable_cr = server->EntityMngr.GetCritter(id);
+            auto cr = server->EntityMngr.GetCritter(id);
 
-            if (nullable_cr) {
-                auto cr = nullable_cr.as_ptr();
+            if (cr) {
                 ValidateEntityAccess(cr);
 
                 if (!cr->GetControlledByPlayer()) {
                     ValidateEntityAccess(cr->GetParentRaw());
 
-                    server->CrMngr.DestroyCritter(cr);
+                    server->CrMngr.DestroyCritter(cr.as_ptr());
                 }
             }
         }
@@ -749,20 +731,19 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_map<LocationProperty, any_t> props)
 {
-    auto nullable_proto = server->GetProtoLocation(protoId);
+    auto proto = server->GetProtoLocation(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid location proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    nptr<const Properties> props_ptr = &props_;
+    auto props_ptr = make_nptr(&props_);
     auto loc = server->MapMngr.CreateLocation(protoId, {}, props_ptr);
     return loc;
 }
@@ -777,7 +758,7 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    nptr<const Properties> props_ptr = &props_;
+    auto props_ptr = make_nptr(&props_);
     auto loc = server->MapMngr.CreateLocation(proto->GetProtoId(), {}, props_ptr);
     return loc;
 }
@@ -786,20 +767,19 @@ FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server,
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Location> Server_Game_CreateLocation(ptr<ServerEngine> server, hstring protoId, readonly_vector<hstring> map_pids, readonly_map<LocationProperty, any_t> props)
 {
-    auto nullable_proto = server->GetProtoLocation(protoId);
+    auto proto = server->GetProtoLocation(protoId);
 
-    if (!nullable_proto) {
+    if (!proto) {
         throw ScriptException("Invalid location proto id arg", protoId);
     }
 
-    auto proto = nullable_proto.as_ptr();
     Properties props_ = proto->GetProperties()->Copy();
 
     for (const auto& [key, value] : props) {
         props_.SetValueAsAnyProps(static_cast<int32_t>(key), value);
     }
 
-    nptr<const Properties> props_ptr = &props_;
+    auto props_ptr = make_nptr(&props_);
     auto loc = server->MapMngr.CreateLocation(protoId, map_pids, props_ptr);
     return loc;
 }
@@ -812,7 +792,7 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, nptr<Lo
         ValidateEntityAccess(loc);
         ValidateEntityAccess(loc->GetParentRaw());
 
-        server->MapMngr.DestroyLocation(loc.as_ptr());
+        server->MapMngr.DestroyLocation(loc);
     }
 }
 
@@ -820,14 +800,13 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, nptr<Lo
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t locId)
 {
-    auto nullable_loc = server->EntityMngr.GetLocation(locId);
+    auto loc = server->EntityMngr.GetLocation(locId);
 
-    if (nullable_loc) {
-        auto loc = nullable_loc.as_ptr();
+    if (loc) {
         ValidateEntityAccess(loc);
         ValidateEntityAccess(loc->GetParentRaw());
 
-        server->MapMngr.DestroyLocation(loc);
+        server->MapMngr.DestroyLocation(loc.as_ptr());
     }
 }
 
@@ -839,7 +818,7 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, nptr<Map> ma
         ValidateEntityAccess(map);
         ValidateEntityAccess(map->GetParentRaw());
 
-        server->MapMngr.DestroyMap(map.as_ptr());
+        server->MapMngr.DestroyMap(map);
     }
 }
 
@@ -847,14 +826,13 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, nptr<Map> ma
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, ident_t mapId)
 {
-    auto nullable_map = server->EntityMngr.GetMap(mapId);
+    auto map = server->EntityMngr.GetMap(mapId);
 
-    if (nullable_map) {
-        auto map = nullable_map.as_ptr();
+    if (map) {
         ValidateEntityAccess(map);
         ValidateEntityAccess(map->GetParentRaw());
 
-        server->MapMngr.DestroyMap(map);
+        server->MapMngr.DestroyMap(map.as_ptr());
     }
 }
 
@@ -867,7 +845,7 @@ FO_SCRIPT_API nptr<Critter> Server_Game_GetCritter(ptr<ServerEngine> server, ide
     }
 
     auto cr = DropDestroyingEntity(server->EntityMngr.GetCritter(crId));
-    return ReleaseNullableScriptOwnership(std::move(cr));
+    return cr ? cr.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned entity handle is not covered for later reads/mutations.
@@ -879,12 +857,12 @@ FO_SCRIPT_API nptr<ServerEntity> Server_Game_GetEntity(ptr<ServerEngine> server,
     }
 
     auto entity = DropDestroyingEntity(server->EntityMngr.GetEntity(entityId));
-    return ReleaseNullableScriptOwnership(std::move(entity));
+    return entity ? entity.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned critter handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetCritters(ptr<ServerEngine> server, CritterFindType findType)
 {
     vector<refcount_ptr<Critter>> critters = server->EntityMngr.GetCritters();
     vector<refcount_ptr<Critter>> result;
@@ -903,7 +881,7 @@ FO_SCRIPT_API vector<Critter*> Server_Game_GetCritters(ptr<ServerEngine> server,
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_CreateUnloginedPlayer(ptr<ServerEngine> server)
 {
-    shared_ptr<NetworkServerConnection> dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
+    auto dummy_net_conn = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
     auto player = server->CreateUnloginedPlayer(std::move(dummy_net_conn));
     return player;
 }
@@ -962,7 +940,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
     }
 
     auto player = DropDestroyingEntity(server->EntityMngr.GetPlayer(playerId));
-    return ReleaseNullableScriptOwnership(std::move(player));
+    return player ? player.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -970,7 +948,7 @@ FO_SCRIPT_API nptr<Player> Server_Game_GetPlayer(ptr<ServerEngine> server, ident
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t mapId)
 {
     auto map = DropDestroyingEntity(server->EntityMngr.GetMap(mapId));
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -978,7 +956,7 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ident_t map
 FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, hstring mapPid, int32_t skipCount = 0)
 {
     auto map = server->MapMngr.GetMapByPid(mapPid, skipCount);
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned map handle is not covered for later reads/mutations.
@@ -987,12 +965,12 @@ FO_SCRIPT_API nptr<Map> Server_Game_GetMap(ptr<ServerEngine> server, ptr<ProtoMa
 {
     ptr<const ProtoMap> map_proto = mapProto;
     auto map = server->MapMngr.GetMapByPid(map_proto->GetProtoId(), skipCount);
-    return ReleaseNullableScriptOwnership(std::move(map));
+    return map ? map.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned map handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Map*> Server_Game_GetMaps(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Map>> maps = server->EntityMngr.GetMaps();
     return MakeScriptRefHandleVectorAs<Map, Map>(maps);
@@ -1038,12 +1016,10 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, npt
         return result;
     }
 
-    auto proto_ptr = proto_lookup.as_ptr();
-
     for (size_t i = 0; i != maps.size(); i++) {
         auto map = maps[i].as_ptr();
 
-        if (proto_ptr->GetProtoId() == map->GetProtoId()) {
+        if (proto_lookup->GetProtoId() == map->GetProtoId()) {
             result.emplace_back(map);
         }
     }
@@ -1056,7 +1032,7 @@ FO_SCRIPT_API vector<ptr<Map>> Server_Game_GetMaps(ptr<ServerEngine> server, npt
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, ident_t locId)
 {
     auto loc = DropDestroyingEntity(server->EntityMngr.GetLocation(locId));
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
@@ -1064,7 +1040,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, i
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, hstring locPid, int32_t skipCount = 0)
 {
     auto loc = server->MapMngr.GetLocationByPid(locPid, skipCount);
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry lookup only; returned location handle is not covered for later reads/mutations.
@@ -1073,19 +1049,19 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, p
 {
     ptr<const ProtoLocation> loc_proto = locProto;
     auto loc = server->MapMngr.GetLocationByPid(loc_proto->GetProtoId(), skipCount);
-    return ReleaseNullableScriptOwnership(std::move(loc));
+    return loc ? loc.take_not_null().release_ownership() : nullptr;
 }
 
 // SyncScope: registry scan only; returned location handle is not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
 {
-    ptr<const Property> prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
 
     for (size_t i = 0; i != locs.size(); i++) {
         if (!locs[i]->IsDestroying() && locs[i]->GetValueAsInt(prop) == propertyValue) {
-            return ReleaseScriptOwnership(std::move(locs[i]));
+            return locs[i].release_ownership();
         }
     }
 
@@ -1094,7 +1070,7 @@ FO_SCRIPT_API nptr<Location> Server_Game_GetLocation(ptr<ServerEngine> server, L
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
     vector<refcount_ptr<Location>> result;
@@ -1109,7 +1085,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
     vector<refcount_ptr<Location>> result;
@@ -1129,7 +1105,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, nptr<ProtoLocation> proto)
+FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, nptr<ProtoLocation> proto)
 {
     nptr<const ProtoLocation> proto_lookup = proto;
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
@@ -1145,10 +1121,8 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
         return MakeScriptHandleVector<Location>(result);
     }
 
-    auto proto_ptr = proto_lookup.as_ptr();
-
     for (size_t i = 0; i != locs.size(); i++) {
-        if (proto_ptr->GetProtoId() == locs[i]->GetProtoId()) {
+        if (proto_lookup->GetProtoId() == locs[i]->GetProtoId()) {
             result.emplace_back(std::move(locs[i]));
         }
     }
@@ -1158,9 +1132,9 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
 
 // SyncScope: registry scan only; returned location handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
+FO_SCRIPT_API vector<ptr<Location>> Server_Game_GetLocations(ptr<ServerEngine> server, LocationProperty property, int32_t propertyValue)
 {
-    ptr<const Property> prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
+    auto prop = ScriptHelpers::GetIntConvertibleEntityProperty<Location>(server, property);
     vector<refcount_ptr<Location>> locs = server->EntityMngr.GetLocations();
     vector<refcount_ptr<Location>> result;
     result.reserve(locs.size());
@@ -1176,7 +1150,7 @@ FO_SCRIPT_API vector<Location*> Server_Game_GetLocations(ptr<ServerEngine> serve
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, hstring pid)
+FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, hstring pid)
 {
     vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
     vector<refcount_ptr<Item>> result;
@@ -1196,7 +1170,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, hs
 
 // SyncScope: registry scan only; returned item handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, nptr<ProtoItem> proto)
+FO_SCRIPT_API vector<ptr<Item>> Server_Game_GetAllItems(ptr<ServerEngine> server, nptr<ProtoItem> proto)
 {
     nptr<const ProtoItem> proto_lookup = proto;
     vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
@@ -1212,10 +1186,8 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, np
         return MakeScriptHandleVector<Item>(result);
     }
 
-    auto proto_ptr = proto_lookup.as_ptr();
-
     for (size_t i = 0; i != items.size(); i++) {
-        if (proto_ptr->GetProtoId() == items[i]->GetProtoId()) {
+        if (proto_lookup->GetProtoId() == items[i]->GetProtoId()) {
             result.emplace_back(std::move(items[i]));
         }
     }
@@ -1225,7 +1197,7 @@ FO_SCRIPT_API vector<Item*> Server_Game_GetAllItems(ptr<ServerEngine> server, np
 
 // SyncScope: registry scan only; returned player handles are not covered for later reads/mutations.
 ///@ ExportMethod PassOwnership
-FO_SCRIPT_API vector<Player*> Server_Game_GetOnlinePlayers(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<ptr<Player>> Server_Game_GetOnlinePlayers(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Player>> players = server->EntityMngr.GetPlayers();
     vector<refcount_ptr<Player>> result;
@@ -1467,6 +1439,11 @@ namespace
                 throw ScriptException("Record value has invalid encoding");
             }
         }
+        else if constexpr (std::floating_point<T>) {
+            if (!std::isfinite(value)) {
+                throw ScriptException("Record float value is not finite");
+            }
+        }
 
         if (!server_ptr->DbStorage.Valid(collectionName, id)) {
             throw ScriptException("Record not found");
@@ -1571,7 +1548,7 @@ FO_SCRIPT_API void Server_Game_DbRemoveRecord(ptr<ServerEngine> server, hstring 
 
 // SyncScope: registry scan only; returned NPC critter handles are not covered for later reads/mutations.
 ///@ ExportMethod
-FO_SCRIPT_API vector<Critter*> Server_Game_GetAllNpc(ptr<ServerEngine> server)
+FO_SCRIPT_API vector<ptr<Critter>> Server_Game_GetAllNpc(ptr<ServerEngine> server)
 {
     vector<refcount_ptr<Critter>> npcs = server->CrMngr.GetNonPlayerCritters();
     return MakeScriptRefHandleVectorAs<Critter, Critter>(npcs);
@@ -1632,13 +1609,13 @@ FO_SCRIPT_API bool Server_Game_CallStaticItemFunction(ptr<ServerEngine> server, 
     ValidateEntityAccess(cr);
     ValidateEntityAccess(usedItem);
 
-    nptr<Item> used_item = usedItem;
+    auto used_item = usedItem;
 
     if (!staticItem->StaticScriptFunc) {
         return false;
     }
 
-    return staticItem->StaticScriptFunc.Call(cr.get(), staticItem.get(), used_item.get(), param) && staticItem->StaticScriptFunc.GetResult();
+    return staticItem->StaticScriptFunc.Call(cr, staticItem, used_item, param) && staticItem->StaticScriptFunc.GetResult();
 }
 
 // SyncScope: static proto-map read only; no live entity cover is required.
@@ -1652,7 +1629,7 @@ FO_SCRIPT_API vector<ptr<StaticItem>> Server_Game_GetStaticItemsForProtoMap(ptr<
 
 // SyncScope: static proto-map read only; no live entity cover is required.
 ///@ ExportMethod
-FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
+FO_SCRIPT_API vector<ptr<ProtoCritter>> Server_Game_GetProtoCrittersForProtoMap(ptr<ServerEngine> server, ptr<ProtoMap> proto)
 {
     auto static_map = server->MapMngr.GetStaticMap(proto);
     vector<ptr<const ProtoCritter>> proto_critters;
@@ -1661,7 +1638,7 @@ FO_SCRIPT_API vector<ProtoCritter*> Server_Game_GetProtoCrittersForProtoMap(ptr<
     for (const pair<ident_t, refcount_ptr<Critter>>& billet : static_map->CritterBillets) {
         auto proto_cr = billet.second->GetProto().dyn_cast<const ProtoCritter>();
         FO_VERIFY_AND_THROW(proto_cr, "Missing required prototype critter");
-        proto_critters.emplace_back(proto_cr.as_ptr());
+        proto_critters.emplace_back(proto_cr);
     }
 
     return MakeMutableScriptHandleVector<ProtoCritter>(proto_critters);
@@ -1792,8 +1769,8 @@ static auto SystemCall(string_view command, const function<void(string_view)>& l
 
 #elif !FO_WINDOWS && !FO_WEB
     const string command_str = string(command);
-    ptr<const char> command_cstr = command_str.c_str();
-    nptr<FILE> in = popen(command_cstr.get(), "r");
+    auto command_cstr = make_ptr(command_str.c_str());
+    auto in = make_nptr(popen(command_cstr.get(), "r"));
 
     if (!in) {
         return -1;
@@ -1876,12 +1853,11 @@ FO_SCRIPT_API void Server_Game_Sync(ptr<ServerEngine> server, readonly_vector<np
     vector<nptr<ServerEntity>> non_null;
     non_null.reserve(entities.size());
 
-    for (auto nullable_entity : entities) {
-        if (!nullable_entity) {
+    for (auto entity : entities) {
+        if (!entity) {
             throw ScriptException("Entity in array arg is null");
         }
 
-        auto entity = nullable_entity.as_ptr();
         non_null.emplace_back(entity);
     }
 
@@ -1921,7 +1897,7 @@ FO_SCRIPT_API bool Server_Game_IsEntityLocked(ptr<ServerEngine> server, nptr<Ser
 FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->LockSingleton(server->GetEntityLock().get());
+    ctx->LockSingleton(server->GetEntityLock());
 }
 
 // SyncScope: unlocks the Game singleton bucket; entity cover is unchanged.
@@ -1929,7 +1905,7 @@ FO_SCRIPT_API void Server_Game_Lock(ptr<ServerEngine> server)
 FO_SCRIPT_API void Server_Game_Unlock(ptr<ServerEngine> server)
 {
     auto ctx = server->RequireCurrentSyncContext();
-    ctx->UnlockSingleton(server->GetEntityLock().get());
+    ctx->UnlockSingleton(server->GetEntityLock());
 }
 
 // SyncScope: process metric read only; no entity cover is required.

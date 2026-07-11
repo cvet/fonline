@@ -70,14 +70,14 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
         FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
 
         auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        nptr<const uint8_t> data_ptr = data.data();
+        auto data_ptr = make_nptr(data.data());
         const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
-        auto nullable_tex = tex.as_nptr();
+        auto tex_ptr = tex.as_nptr();
         loaded_textures_ptr->emplace_back(std::move(tex));
 
-        return {nullable_tex, {0.0f, 0.0f, 1.0f, 1.0f}};
+        return {tex_ptr, {0.0f, 0.0f, 1.0f, 1.0f}};
     };
 }
 
@@ -251,15 +251,13 @@ void ParticleEditor::OnDraw()
                 const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
                 FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
 
-                nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
-                FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
-                auto saver = nullable_saver.as_ptr();
+                auto saver = make_nptr(SPK::IO::IOManager::get().getSaver("xml"));
+                FO_VERIFY_AND_THROW(saver, "Missing required saver");
 
                 const auto path = std::string(file.GetDiskPath());
 
-                auto nullable_base_system = _impl->Particle.GetBaseSystem();
-                FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
-                auto base_system = nullable_base_system.as_ptr();
+                auto base_system = _impl->Particle.GetBaseSystem();
+                FO_VERIFY_AND_THROW(base_system, "Particle has no base system to save");
 
                 if (saver->save(path, base_system.get(), path)) {
                     _changed = _impl->Changed = false;
@@ -305,7 +303,7 @@ void ParticleEditor::OnDraw()
     _impl->Particle.Draw();
     GetApp()->Render.SetRenderTarget(prev_rt);
 
-    ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
+    auto draw_list = make_ptr(ImGui::GetWindowDrawList());
 
     auto pos = ImGui::GetWindowPos();
     pos.x += 120.0f;
@@ -772,10 +770,10 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
+            auto entry = make_ptr(const_cast<Entry*>(std::addressof(*it)));
             string name = strex("{}: {} => {}", entry->x, entry->y0, entry->y1);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", make_nptr(entry.get()).void_cast()).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 ImGui::InputFloat("Start", &entry->y0);
                 ImGui::InputFloat("End", &entry->y1);
 
@@ -830,10 +828,10 @@ void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpo
 
         for (auto it = graph.begin(); it != graph.end(); ++it) {
             using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
+            auto entry = make_ptr(const_cast<Entry*>(std::addressof(*it)));
             string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a);
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", make_nptr(entry.get()).void_cast()).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
                 int32_t c1[] = {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
                 ImGui::InputInt4("Start", c1);
                 entry->y0.r = numeric_cast<unsigned char>(c1[0]);
@@ -1522,7 +1520,7 @@ void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const 
 
             const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
 
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(obj.get())).c_str(), 0, "%s", name.c_str())) {
+            if (ImGui::TreeNodeEx(strex("{}", make_nptr(obj.get()).void_cast()).c_str(), 0, "%s", name.c_str())) {
                 DrawGenericSparkObject(obj);
                 ImGui::TreePop();
             }

@@ -105,8 +105,8 @@ public:
     [[nodiscard]] auto GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool;
     [[nodiscard]] auto HaveLetter(FontType num_font, uint32_t letter) const -> bool;
 
-    void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded);
-    void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type);
+    void BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale = 1.0f);
+    void BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale = 1.0f);
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
     auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
@@ -140,6 +140,7 @@ private:
         int32_t SpaceWidth {};
         int32_t LineHeight {};
         int32_t YAdvance {};
+        float32_t BakeScale {1.0f};
         shared_ptr<AtlasSprite> ImageNormal {};
         shared_ptr<AtlasSprite> ImageBordered {};
         bool MakeGray {};
@@ -170,7 +171,9 @@ private:
 
     void StoreFont(int32_t index, FontData&& font_data);
     void BuildFont(int32_t index);
+    static void BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size);
     void FormatText(FontFormatInfo& fi, FormatMode mode) const;
+    [[nodiscard]] static auto ResolveFontScale(float32_t scale) -> float32_t;
     [[nodiscard]] static auto IsInlineColorHex(string_view value) -> bool;
     [[nodiscard]] static auto ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool;
     auto GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>;

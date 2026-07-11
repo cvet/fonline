@@ -250,6 +250,19 @@ template<typename T, typename U>
     requires(std::floating_point<U> && std::integral<T>)
 [[nodiscard]] constexpr auto iround(U value) -> T
 {
+    if (!std::isfinite(value)) {
+        throw OverflowException("Floating point rounding received non-finite value", typeid(U).name(), typeid(T).name(), value);
+    }
+
+    // std::llround is undefined for values outside the int64 range, so reject them before rounding.
+    // The upper bound is exclusive: casting int64 max to floating point rounds it up to 2^63, which is already unrepresentable.
+    constexpr U min_bound = static_cast<U>(std::numeric_limits<int64_t>::min());
+    constexpr U max_bound = static_cast<U>(std::numeric_limits<int64_t>::max());
+
+    if (value < min_bound || value >= max_bound) {
+        throw OverflowException("Floating point rounding received value out of integer range", typeid(U).name(), typeid(T).name(), value);
+    }
+
     return numeric_cast<T>(std::llround(value));
 }
 

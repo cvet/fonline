@@ -343,7 +343,7 @@ void ModelAnimationController::AdvanceTime(float32_t time)
 
     for (auto& track : _tracks) {
         for (auto it = track.Events.begin(); it != track.Events.end();) {
-            ptr<Track::Event> event = &*it;
+            auto event = make_ptr(&*it);
 
             if (_eventsTime >= event->StartTime) {
                 bool erase = false;

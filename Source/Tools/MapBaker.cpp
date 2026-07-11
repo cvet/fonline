@@ -203,7 +203,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
                 map_cr_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-                ptr<DataWriter> map_cr_writer = &map_cr_data_writer;
+                auto map_cr_writer = make_ptr(&map_cr_data_writer);
                 map_cr_writer->WriteByteVector(props_data);
             },
             [&](ident_t id, ptr<const ProtoItem> proto, ptr<const map<string_view, string_view>> kv) {
@@ -217,7 +217,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                 map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
                 props.StoreAllData(props_data, str_hashes);
                 map_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-                ptr<DataWriter> map_item_writer = &map_item_data_writer;
+                auto map_item_writer = make_ptr(&map_item_data_writer);
                 map_item_writer->WriteByteVector(props_data);
 
                 const auto is_static = proto->GetStatic();
@@ -238,7 +238,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
                         map_client_item_data_writer.Write<ident_t::underlying_type>(id.underlying_value());
                         map_client_item_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
                         map_client_item_data_writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-                        ptr<DataWriter> map_client_item_writer = &map_client_item_data_writer;
+                        auto map_client_item_writer = make_ptr(&map_client_item_data_writer);
                         map_client_item_writer->WriteByteVector(props_data);
                     }
                 }
@@ -262,7 +262,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             }
 
             final_writer.Write<uint32_t>(map_cr_count);
-            ptr<DataWriter> final_writer_ptr = &final_writer;
+            auto final_writer_ptr = make_ptr(&final_writer);
             final_writer_ptr->WriteByteVector(map_cr_data);
             final_writer.Write<uint32_t>(map_item_count);
             final_writer_ptr->WriteByteVector(map_item_data);
@@ -284,7 +284,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
             }
 
             final_writer.Write<uint32_t>(map_client_item_count);
-            ptr<DataWriter> final_writer_ptr = &final_writer;
+            auto final_writer_ptr = make_ptr(&final_writer);
             final_writer_ptr->WriteByteVector(map_client_item_data);
 
             _context->WriteData(strex("{}.fomap-bin-client", map_name), map_data);
@@ -295,7 +295,7 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
     vector<std::future<void>> file_bakings;
 
     for (const auto& entry : filtered_files) {
-        ptr<const MapBakeEntry> entry_ptr = &entry;
+        auto entry_ptr = make_ptr(&entry);
         file_bakings.emplace_back(run_async(GetAsyncMode(), strex("BakeMap-{}", entry_ptr->MapName), [&, entry_ptr]() FO_DEFERRED { bake_map(*entry_ptr); }));
     }
 

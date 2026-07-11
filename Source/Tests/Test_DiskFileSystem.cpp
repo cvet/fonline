@@ -115,7 +115,7 @@ TEST_CASE("DiskFileSystem")
         CHECK(stream_get_read_pos(stream) == 0);
 
         array<char, 3> buf {};
-        nptr<char> buf_data = buf.data();
+        auto buf_data = make_nptr(buf.data());
         REQUIRE(stream_read_exact(stream, make_span(buf_data, buf.size())));
         CHECK(string_view {buf.data(), buf.size()} == "abc");
         CHECK(stream_get_read_pos(stream) == 3);

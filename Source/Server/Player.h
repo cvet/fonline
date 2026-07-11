@@ -93,7 +93,7 @@ public:
     void Send_AddCritter(ptr<const Critter> cr);
     void Send_RemoveCritter(ptr<const Critter> cr);
     void Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibilityMode mode);
-    void Send_LoadMap(nptr<const Map> nullable_map);
+    void Send_LoadMap(nptr<const Map> map);
     void Send_Property(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
     void Send_AddItemOnMap(ptr<const Item> item);
     void Send_RemoveItemFromMap(ptr<const Item> item);
@@ -108,8 +108,8 @@ public:
     void Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, uint32_t out_encrypt_key);
     void Send_InitData(const_span<uint8_t> update_desc);
     void Send_UpdateFileData(const_span<uint8_t> update_data);
-    void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> nullable_context_item);
-    void Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> nullable_moved_item, CritterAction action, CritterItemSlot prev_slot);
+    void Send_Action(ptr<const Critter> from_cr, CritterAction action, int32_t action_data, nptr<const Item> context_item);
+    void Send_MoveItem(ptr<const Critter> from_cr, nptr<const Item> moved_item, CritterAction action, CritterItemSlot prev_slot);
     void Send_ViewMap();
     void Send_PlaceToGameComplete();
     void Send_SomeItems(const_span<ptr<const Item>> items, bool owned, bool with_inner_entities, const any_t& context_param);

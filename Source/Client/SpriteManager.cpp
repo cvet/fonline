@@ -62,7 +62,7 @@ void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _sprMngr->_updateSprites.emplace(ptr<const Sprite>(this), weak_from_this());
+    _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
 SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<HashResolver> hash_resolver) :
@@ -110,8 +110,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
         const isize32 new_screen_size = _window->GetScreenSize();
 
         if (_rtMain) {
-            auto rt_main = _rtMain.as_ptr();
-            _rtMngr.ResizeRenderTarget(rt_main, new_screen_size);
+            _rtMngr.ResizeRenderTarget(_rtMain, new_screen_size);
         }
     };
 }
@@ -288,8 +287,7 @@ void SpriteManager::BeginScene()
     _scissorStack.clear();
 
     if (_rtMain) {
-        auto rt_main = _rtMain.as_ptr();
-        _rtMngr.PushRenderTarget(rt_main);
+        _rtMngr.PushRenderTarget(_rtMain);
         _rtMngr.ClearCurrentRenderTarget(ucolor::clear);
     }
 
@@ -315,15 +313,14 @@ void SpriteManager::EndScene()
 
     if (_rtMain) {
         FO_VERIFY_AND_THROW(_rtMain == _rtMngr.GetCurrentRenderTarget(), "Sprite manager render target was changed unexpectedly");
-        auto rt_main = _rtMain.as_ptr();
         _rtMngr.PopRenderTarget();
 
         if (_window->IsVirtual()) {
-            const irect32 region_to = MakeAspectFitRect(rt_main->GetTexture()->Size, _window->GetSize());
-            DrawRenderTarget(rt_main, false, nullptr, &region_to);
+            const irect32 region_to = MakeAspectFitRect(_rtMain->GetTexture()->Size, _window->GetSize());
+            DrawRenderTarget(_rtMain, false, nullptr, &region_to);
         }
         else {
-            DrawRenderTarget(rt_main, false);
+            DrawRenderTarget(_rtMain, false);
         }
     }
 
@@ -446,7 +443,8 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
         vbuf[vpos].EggFlags[1] = 0.0f;
     }
 
-    auto effect = custom_effect ? custom_effect.as_ptr() : _effectMngr->Effects.FlushRenderTarget.as_ptr();
+    auto effect = custom_effect ? custom_effect : _effectMngr->Effects.FlushRenderTarget;
+    FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     effect->MainTex = tex;
     effect->DisableBlending = !alpha_blend;
@@ -572,7 +570,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
         return nullptr;
     }
 
-    shared_ptr<Sprite> spr = it->second->LoadSprite(path, atlas_type);
+    auto spr = it->second->LoadSprite(path, atlas_type);
 
     if (!spr) {
         if (!no_warn_if_not_exists) {
@@ -747,10 +745,9 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<const Sprite> source_spr = spr;
+    auto source_spr = spr;
 
-    if (nptr<const SpriteSheet> nullable_sheet = spr.dyn_cast<const SpriteSheet>()) {
-        auto sheet = nullable_sheet.as_ptr();
+    if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
         source_spr = sheet->GetCurSpr();
     }
 
@@ -1094,7 +1091,7 @@ auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggApp
     return false;
 }
 
-void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color)
+void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1126,9 +1123,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             continue;
         }
 
-        auto nullable_spr = mspr->GetSprite();
-        FO_VERIFY_AND_THROW(nullable_spr, "Missing required sprite");
-        auto spr = nullable_spr.as_ptr();
+        auto spr = mspr->GetSprite();
+        FO_VERIFY_AND_THROW(spr, "Missing required sprite");
 
         irect32 mspr_rect = mspr->GetDrawRect();
         mspr_rect.x -= draw_area.x;
@@ -1168,14 +1164,14 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Light
-        auto nullable_light = mspr->GetLight();
+        auto light = mspr->GetLight();
 
-        if (nullable_light) {
-            const auto mix_light = [](ucolor& c, ptr<const ucolor> l, nptr<const ucolor> nullable_l2) {
-                ptr<const ucolor> l2 = l;
+        if (light) {
+            const auto mix_light = [](ucolor& c, ptr<const ucolor> l, nptr<const ucolor> l2_opt) {
+                auto l2 = l;
 
-                if (nullable_l2) {
-                    l2 = nullable_l2.as_ptr();
+                if (l2_opt) {
+                    l2 = l2_opt;
                 }
 
                 c.comp.r = numeric_cast<uint8_t>(std::min(c.comp.r + (l->comp.r + l2->comp.r) / 2, 255));
@@ -1183,7 +1179,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
                 c.comp.b = numeric_cast<uint8_t>(std::min(c.comp.b + (l->comp.b + l2->comp.b) / 2, 255));
             };
 
-            auto light = nullable_light.as_ptr();
             mix_light(color_r, light, mspr->GetLightRight());
             mix_light(color_l, light, mspr->GetLightLeft());
         }
@@ -1202,11 +1197,13 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
             color_l = ApplyColorBrightness(color_l);
         }
 
+        const DrawOrderType draw_order = mspr->GetDrawOrder();
+
         // Choose effect
         auto effect = mspr->GetDrawEffect();
 
         if (!effect) {
-            effect = spr->GetDrawEffectOr(_effectMngr->Effects.Generic.as_ptr());
+            effect = spr->GetDrawEffectOr(default_effect);
         }
 
         // Fill buffer
@@ -1218,7 +1215,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         const size_t ind_count = spr->FillData(_spritesDrawBuf, {xf, yf, wf, hf}, {color_l, color_r});
 
         auto& vbuf = _spritesDrawBuf->Vertices;
-        const DrawOrderType draw_order = mspr->GetDrawOrder();
         const bool standing_sprite = is_standing_sprite(draw_order);
         const vec3 sprite_proj = get_map_sprite_proj(mspr.get());
         const float32_t pos_z = sprite_proj.z;
@@ -1347,7 +1343,8 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
 
     Flush();
 
-    auto effect = custom_effect ? custom_effect.as_ptr() : _effectMngr->Effects.Primitive.as_ptr();
+    auto effect = custom_effect ? custom_effect : _effectMngr->Effects.Primitive;
+    FO_VERIFY_AND_THROW(effect, "Effect is null");
 
     // Check primitives
     const auto count = points.size();
@@ -1429,10 +1426,9 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
     FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
     FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::QuadSprite, "Effect usage is not quad sprite");
 
-    ptr<const Sprite> source_spr = spr;
+    auto source_spr = spr;
 
-    if (nptr<const SpriteSheet> nullable_sheet = spr.dyn_cast<const SpriteSheet>()) {
-        auto sheet = nullable_sheet.as_ptr();
+    if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
         source_spr = sheet->GetCurSpr();
     }
 

@@ -98,7 +98,7 @@ static void RenderImageButtonFrame(ucolor bg_color)
     ImGui::RenderFrame(item_min, item_max, frame_color, true, style.FrameRounding);
 
     if (bg_color != ucolor::clear) {
-        ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
+        auto draw_list = make_ptr(ImGui::GetWindowDrawList());
         draw_list->AddRectFilled(item_min, item_max, ToImU32(bg_color), style.FrameRounding);
     }
 }
@@ -107,13 +107,11 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto nullable_sprite = client_ptr->AnimGetSpr(spr_id);
+    auto sprite = client_ptr->AnimGetSpr(spr_id);
 
-    if (!nullable_sprite) {
+    if (!sprite) {
         return;
     }
-
-    auto sprite = nullable_sprite.as_ptr();
 
     const auto min_pos = ImGui::GetItemRectMin();
     const auto max_pos = ImGui::GetItemRectMax();
@@ -133,19 +131,18 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
         return;
     }
 
-    auto nullable_sprite = client_ptr->AnimGetSpr(spr_id);
+    auto sprite = client_ptr->AnimGetSpr(spr_id);
 
-    if (!nullable_sprite) {
+    if (!sprite) {
         return;
     }
-    auto sprite = nullable_sprite.as_ptr();
 
     const auto min_pos = ImGui::GetItemRectMin();
     const auto max_pos = ImGui::GetItemRectMax();
     const auto item_rect = MakeItemRect(min_pos, max_pos);
 
     client_ptr->SprMngr.PushScissor(item_rect);
-    const auto drawn = client_ptr->SprMngr.DrawSpriteRegion(sprite, uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
+    const auto drawn = client_ptr->SprMngr.DrawSpriteRegion(sprite.as_ptr(), uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
     client_ptr->SprMngr.PopScissor();
 
     if (!drawn) {
@@ -159,9 +156,8 @@ FO_SCRIPT_API void Client_ImGui_Image([[maybe_unused]] ptr<ScriptImGui> self, ui
     CheckImageSize(imageSize);
     CheckUvRange(uv0, uv1);
 
-    auto nullable_client = self->GetEngine().dyn_cast<ClientEngine>();
-    FO_VERIFY_AND_THROW(nullable_client, "Missing client instance");
-    auto client = nullable_client.as_ptr();
+    auto client = self->GetEngine().dyn_cast<ClientEngine>();
+    FO_VERIFY_AND_THROW(client, "Missing client instance");
 
     ImGui::Dummy({imageSize.width, imageSize.height});
     DrawItemSprite(client, sprId, imageSize, uv0, uv1, ucolor::clear);
@@ -177,9 +173,8 @@ FO_SCRIPT_API bool Client_ImGui_ImageButton([[maybe_unused]] ptr<ScriptImGui> se
         throw ScriptException("Image button id arg is empty");
     }
 
-    auto nullable_client = self->GetEngine().dyn_cast<ClientEngine>();
-    FO_VERIFY_AND_THROW(nullable_client, "Missing client instance");
-    auto client = nullable_client.as_ptr();
+    auto client = self->GetEngine().dyn_cast<ClientEngine>();
+    FO_VERIFY_AND_THROW(client, "Missing client instance");
 
     const auto button_id = string(strId);
     const auto pressed = ImGui::InvisibleButton(button_id.c_str(), {imageSize.width, imageSize.height});

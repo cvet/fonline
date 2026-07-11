@@ -142,13 +142,13 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t length = 0;
-        nptr<char> json_lookup = bson_as_canonical_extended_json(&bson, &length);
+        auto json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &length));
 
         if (!json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
-        auto json = make_unique_del_ptr(json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
+        auto json = make_unique_del_ptr(json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
         const auto pretty_json = nlohmann::json::parse(json.get());
@@ -191,13 +191,13 @@ protected:
         DocumentToBson(doc, &bson);
 
         size_t new_length = 0;
-        nptr<char> new_json_lookup = bson_as_canonical_extended_json(&bson, &new_length);
+        auto new_json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &new_length));
 
         if (!new_json_lookup) {
             throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
         }
 
-        auto new_json = make_unique_del_ptr(new_json_lookup.as_ptr(), [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
+        auto new_json = make_unique_del_ptr(new_json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
         bson_destroy(&bson);
 
         const auto pretty_json = nlohmann::json::parse(new_json.get());

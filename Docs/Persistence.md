@@ -27,6 +27,8 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 The database layer stores `AnyData::Document` values in named collections.
 
+`DataBaseImpl` validates documents recursively before queuing inserts or updates and rejects non-finite `Float64` values in nested documents and arrays. JSON and BSON conversion applies the same rule in both directions, so invalid floating-point data fails at the persistence boundary instead of entering storage or runtime state.
+
 Core types:
 
 - `DataBaseKeyType` — `IntId` or `String`.

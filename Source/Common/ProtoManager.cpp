@@ -53,22 +53,16 @@ void ProtoManager::AddProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto proto_borrow = proto.as_nptr();
-
-    if (auto nullable_loc = proto_borrow.dyn_cast<ProtoLocation>()) {
-        auto loc = nullable_loc.as_ptr();
+    if (auto loc = proto.dyn_cast<ProtoLocation>()) {
         _locProtos.insert_or_assign(proto->GetProtoId(), loc);
     }
-    else if (nptr<ProtoMap> nullable_map = proto_borrow.dyn_cast<ProtoMap>(); nullable_map) {
-        auto map = nullable_map.as_ptr();
+    else if (auto map = proto.dyn_cast<ProtoMap>()) {
         _mapProtos.insert_or_assign(proto->GetProtoId(), map);
     }
-    else if (nptr<ProtoCritter> nullable_cr = proto_borrow.dyn_cast<ProtoCritter>(); nullable_cr) {
-        auto cr = nullable_cr.as_ptr();
+    else if (auto cr = proto.dyn_cast<ProtoCritter>()) {
         _crProtos.insert_or_assign(proto->GetProtoId(), cr);
     }
-    else if (nptr<ProtoItem> nullable_item = proto_borrow.dyn_cast<ProtoItem>(); nullable_item) {
-        auto item = nullable_item.as_ptr();
+    else if (auto item = proto.dyn_cast<ProtoItem>()) {
         _itemProtos.insert_or_assign(proto->GetProtoId(), item);
     }
 
@@ -82,9 +76,8 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
     FO_STACK_TRACE_ENTRY();
 
     const auto create_proto = [&]() -> refcount_ptr<ProtoEntity> {
-        auto nullable_registrator = _meta->GetPropertyRegistrator(type_name);
-        FO_VERIFY_AND_THROW(nullable_registrator, "Missing property registrator");
-        auto registrator = nullable_registrator.as_ptr();
+        auto registrator = _meta->GetPropertyRegistrator(type_name);
+        FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
             return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, props);
@@ -103,7 +96,7 @@ auto ProtoManager::CreateProto(hstring type_name, hstring pid, nptr<const Proper
         }
     };
 
-    refcount_ptr<ProtoEntity> proto = create_proto();
+    auto proto = create_proto();
     AddProto(type_name, proto);
     return proto;
 }

@@ -133,7 +133,7 @@ protected:
         scoped_lock locker {_storageLocker};
 
         const string memory_docs_label = strex("Memory documents ({} collections)###MemoryDocs", _collections.size()).str();
-        ptr<const char> memory_docs_label_cstr = memory_docs_label.c_str();
+        auto memory_docs_label_cstr = make_ptr(memory_docs_label.c_str());
 
         if (ImGui::TreeNode(memory_docs_label_cstr.get())) {
             if (_collections.empty()) {
@@ -144,14 +144,14 @@ protected:
                 ImGui::PushID(static_cast<const void*>(&collection));
 
                 const string collection_label = strex("{} ({})", collection_name.as_str(), collection.size()).str();
-                ptr<const char> collection_label_cstr = collection_label.c_str();
+                auto collection_label_cstr = make_ptr(collection_label.c_str());
 
                 if (ImGui::TreeNode(collection_label_cstr.get())) {
                     for (auto&& [id, doc] : collection) {
                         ImGui::PushID(static_cast<const void*>(&doc));
 
                         const string doc_label = strex("{} ({} keys)", id, doc.Size()).str();
-                        ptr<const char> doc_label_cstr = doc_label.c_str();
+                        auto doc_label_cstr = make_ptr(doc_label.c_str());
 
                         if (ImGui::TreeNode(doc_label_cstr.get())) {
                             if (ImGui::BeginTable("##DocFields", 2, TABLE_FLAGS)) {

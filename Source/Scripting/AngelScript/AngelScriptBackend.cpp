@@ -69,17 +69,17 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     FO_STACK_TRACE_ENTRY();
 
     nptr<const AngelScript::asSMessageInfo> message = msg;
-    FO_VERIFY_AND_THROW(!!message, "AngelScript message info is null");
+    FO_VERIFY_AND_THROW(message, "AngelScript message info is null");
     const string_view type = message->type == AngelScript::asMSGTYPE_WARNING ? "warning" : (message->type == AngelScript::asMSGTYPE_INFORMATION ? "info" : "error");
-    nptr<AngelScript::asIScriptEngine> as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
-    FO_VERIFY_AND_THROW(!!as_engine, "AngelScript engine callback parameter is null");
+    auto as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
+    FO_VERIFY_AND_THROW(as_engine, "AngelScript engine callback parameter is null");
     auto backend = GetScriptBackend(as_engine.as_ptr());
-    nptr<const Preprocessor::LineNumberTranslator> lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     const string_view orig_file = Preprocessor::ResolveOriginalFile(message->row, lnt.get());
     const uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
     const string orig_file_name = strex(string_view {orig_file.data(), orig_file.size()}).extract_file_name().str();
-    const nptr<const char> nullable_message_text = message->message;
-    const string_view message_text = nullable_message_text ? string_view {nullable_message_text.get()} : string_view {"<no message>"};
+    const nptr<const char> message_chars = message->message;
+    const string_view message_text = message_chars ? string_view {message_chars.get()} : string_view {"<no message>"};
     const string formatted_message = strex("{}({},{}): {} : {}", orig_file_name, orig_line, message->col, type, message_text).str();
 
     backend->SendMessage(formatted_message);
@@ -98,11 +98,11 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* raw_func)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(raw_func != nullptr, "Script function to clean up is null");
-    ptr<AngelScript::asIScriptFunction> func = raw_func;
-    nptr<ScriptFuncDesc> func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
+    auto func = make_ptr(raw_func);
+    auto func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
 
     if (func_desc) {
-        CleanupScriptFuncDesc(func_desc.as_ptr());
+        CleanupScriptFuncDesc(func_desc);
     }
 }
 
@@ -150,8 +150,8 @@ static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) no
 {
     FO_STACK_TRACE_ENTRY();
 
-    Preprocessor::LineNumberTranslator* lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
-    Preprocessor::DeleteLineNumberTranslator(lnt);
+    auto lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
+    Preprocessor::DeleteLineNumberTranslator(lnt.get());
     engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
 }
 
@@ -166,8 +166,7 @@ AngelScriptBackend::~AngelScriptBackend()
     FO_STACK_TRACE_ENTRY();
 
     if (_debuggerEndpointServer) {
-        auto endpoint_server = _debuggerEndpointServer.as_ptr();
-        endpoint_server->Stop();
+        _debuggerEndpointServer->Stop();
         _debuggerEndpointServer.reset();
     }
 
@@ -199,7 +198,7 @@ auto AngelScriptBackend::GetGameEngine() -> ptr<BaseEngine>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
-    return _engine.as_ptr();
+    return _engine;
 }
 
 auto AngelScriptBackend::GetGameEngine() const -> ptr<const BaseEngine>
@@ -207,7 +206,7 @@ auto AngelScriptBackend::GetGameEngine() const -> ptr<const BaseEngine>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
-    return _engine.as_ptr();
+    return _engine;
 }
 
 auto AngelScriptBackend::GetEntityMngr() -> ptr<EntityManagerApi>
@@ -215,18 +214,17 @@ auto AngelScriptBackend::GetEntityMngr() -> ptr<EntityManagerApi>
     FO_NO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_entityMngr, "Missing entity manager");
-    return _entityMngr.as_ptr();
+    return _entityMngr;
 }
 
 void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 {
     FO_STACK_TRACE_ENTRY();
 
-    nptr<AngelScript::asIScriptEngine> nullable_as_engine = AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION);
-    FO_VERIFY_AND_THROW(nullable_as_engine, "Missing AngelScript engine");
-    auto as_engine = nullable_as_engine.as_ptr();
+    auto as_engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
+    FO_VERIFY_AND_THROW(as_engine, "Missing AngelScript engine");
 
-    as_engine->SetUserData(cast_to_void(this));
+    as_engine->SetUserData(make_nptr(this).void_cast());
 
     _meta = meta;
     _engine = meta.dyn_cast<BaseEngine>();
@@ -235,7 +233,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     _asEngine = as_engine;
 
     int32_t as_result;
-    FO_AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(AngelScriptMessage), cast_to_void(as_engine.get()), AngelScript::asCALL_CDECL));
+    FO_AS_VERIFY(as_engine->SetMessageCallback(asFUNCTION(AngelScriptMessage), make_nptr(as_engine.get()).void_cast(), AngelScript::asCALL_CDECL));
 
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true));
     FO_AS_VERIFY(as_engine->SetEngineProperty(AngelScript::asEP_USE_CHARACTER_LITERALS, true));
@@ -272,7 +270,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     if (_engine && _settings->DebuggerEnabled) {
         if (!_debuggerEndpointServer) {
             try {
-                _debuggerEndpointServer = SafeAlloc::MakeUnique<DebuggerEndpointServer>(this);
+                _debuggerEndpointServer.emplace(make_ptr(this));
             }
             catch (...) {
                 WriteLog("Can't start AngelScript debugger endpoint server");
@@ -313,7 +311,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        nptr<const void> source = raw_source;
+        auto source = make_nptr(raw_source);
 
         if (!source || size == 0) {
             return 0;
@@ -331,7 +329,7 @@ public:
     {
         FO_NO_STACK_TRACE_ENTRY();
 
-        nptr<void> target = raw_target;
+        auto target = make_nptr(raw_target);
 
         if (!target || size == 0) {
             return 0;
@@ -404,18 +402,16 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     FO_VERIFY_AND_THROW(!lnt_data.empty(), "AngelScript bytecode container has an empty line-number table payload", script_bin_file.GetPath(), script_bin.size(), buf.size());
     reader.ReadBytes({lnt_data.data(), lnt_data.size()});
 
-    nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
+    nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
-    if (!nullable_mod) {
+    if (!mod) {
         throw ScriptException("Create root module fail");
     }
 
-    auto mod = nullable_mod.as_ptr();
-    nptr<Preprocessor::LineNumberTranslator> nullable_lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
-    FO_VERIFY_AND_THROW(!!nullable_lnt, "Failed to restore line-number translator");
-    auto lnt = nullable_lnt.as_ptr();
+    nptr<Preprocessor::LineNumberTranslator> lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+    FO_VERIFY_AND_THROW(lnt, "Failed to restore line-number translator");
     CleanupLineNumberTranslator(_asEngine.get());
-    _asEngine->SetUserData(cast_to_void(lnt.get()), AS_PREPROCESSOR_LNT_USER_DATA);
+    _asEngine->SetUserData(make_nptr(lnt.get()).void_cast(), AS_PREPROCESSOR_LNT_USER_DATA);
 
     BinaryStream binary {&buf};
     int32_t as_result = mod->LoadByteCode(&binary);
@@ -465,16 +461,16 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     if (const auto bind_error = BindFunctionAttributeRecords(mod, records, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptException(bind_error);
     }
-    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, nullable_lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptException(usage_error);
     }
-    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, nullable_lnt); !admin_remote_call_error.empty()) {
+    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
         throw ScriptException(admin_remote_call_error);
     }
-    if (const auto event_error = ValidateEventSubscriptions(mod, nullable_lnt); !event_error.empty()) {
+    if (const auto event_error = ValidateEventSubscriptions(mod, lnt); !event_error.empty()) {
         throw ScriptException(event_error);
     }
-    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, nullable_lnt); !remote_call_error.empty()) {
+    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, lnt); !remote_call_error.empty()) {
         throw ScriptException(remote_call_error);
     }
 }
@@ -591,7 +587,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         root_script.append("\"\n");
     }
 
-    auto preprocessor_context = make_unique_del_ptr(ptr<Preprocessor::Context>(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
+    auto preprocessor_context = make_unique_del_ptr(make_ptr(Preprocessor::CreateContext()), [](ptr<Preprocessor::Context> ctx) FO_DEFERRED { Preprocessor::DeleteContext(ctx.get()); });
 
     Preprocessor::UndefAll(preprocessor_context.get());
 
@@ -644,19 +640,17 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     Preprocessor::StringOutStream result;
     Preprocessor::PrintLexemList(preprocessor_context.get(), lexems, result);
 
-    nptr<Preprocessor::LineNumberTranslator> nullable_lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context.get());
-    FO_VERIFY_AND_THROW(!!nullable_lnt, "Missing line-number translator");
-    auto lnt = nullable_lnt.as_ptr();
+    nptr<Preprocessor::LineNumberTranslator> lnt = Preprocessor::GetLineNumberTranslator(preprocessor_context.get());
+    FO_VERIFY_AND_THROW(lnt, "Missing line-number translator");
     CleanupLineNumberTranslator(_asEngine.get());
-    _asEngine->SetUserData(cast_to_void(lnt.get()), AS_PREPROCESSOR_LNT_USER_DATA);
+    _asEngine->SetUserData(make_nptr(lnt.get()).void_cast(), AS_PREPROCESSOR_LNT_USER_DATA);
 
-    nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
+    nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModule("Root", AngelScript::asGM_ALWAYS_CREATE);
 
-    if (!nullable_mod) {
+    if (!mod) {
         throw ScriptCompilerException("Create root module failed");
     }
 
-    auto mod = nullable_mod.as_ptr();
     int32_t as_result = mod->AddScriptSection("Root", result.String.c_str());
 
     if (as_result < 0) {
@@ -672,19 +666,19 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     if (const auto bind_error = BindFunctionAttributeRecords(mod, parsed_attributes, &_settings->ExtraDirectCallBlockingAttributes); !bind_error.empty()) {
         throw ScriptCompilerException("Unable to bind function attributes", bind_error);
     }
-    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, nullable_lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
+    if (const auto usage_error = ValidateAttributedFunctionUsage(mod, lnt, &_settings->AttributedFunctionDirectCallAllowedNamespaces, &_settings->ExtraDirectCallBlockingAttributes); !usage_error.empty()) {
         throw ScriptCompilerException("Attributed function usage validation failed", usage_error);
     }
-    if (const auto special_attr_error = ValidateSpecialFunctionAttributes(mod, nullable_lnt); !special_attr_error.empty()) {
+    if (const auto special_attr_error = ValidateSpecialFunctionAttributes(mod, lnt); !special_attr_error.empty()) {
         throw ScriptCompilerException("Special function attribute validation failed", special_attr_error);
     }
-    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, nullable_lnt); !admin_remote_call_error.empty()) {
+    if (const auto admin_remote_call_error = ValidateAdminRemoteCallAttributes(mod, lnt); !admin_remote_call_error.empty()) {
         throw ScriptCompilerException("Admin remote call attribute validation failed", admin_remote_call_error);
     }
-    if (const auto event_error = ValidateEventSubscriptions(mod, nullable_lnt); !event_error.empty()) {
+    if (const auto event_error = ValidateEventSubscriptions(mod, lnt); !event_error.empty()) {
         throw ScriptCompilerException("Callback attribute validation failed", event_error);
     }
-    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, nullable_lnt); !remote_call_error.empty()) {
+    if (const auto remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, lnt); !remote_call_error.empty()) {
         throw ScriptCompilerException("Remote call attribute validation failed", remote_call_error);
     }
 
@@ -697,7 +691,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
     }
 
     std::vector<uint8_t> lnt_data;
-    Preprocessor::StoreLineNumberTranslator(nullable_lnt.get(), lnt_data);
+    Preprocessor::StoreLineNumberTranslator(lnt.get(), lnt_data);
 
     vector<uint8_t> data;
     auto writer = DataWriter(data);
@@ -720,12 +714,11 @@ void AngelScriptBackend::BindRequiredStuff()
 {
     FO_STACK_TRACE_ENTRY();
 
-    BindAngelScriptRemoteCalls(_asEngine.as_ptr());
+    BindAngelScriptRemoteCalls(_asEngine);
 
     if (HasEntityMngr() && _asEngine->GetModuleCount() == 1) {
-        nptr<const AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModuleByIndex(0);
-        FO_VERIFY_AND_THROW(!!nullable_mod, "Missing compiled AngelScript module");
-        auto mod = nullable_mod.as_ptr();
+        nptr<const AngelScript::asIScriptModule> mod = _asEngine->GetModuleByIndex(0);
+        FO_VERIFY_AND_THROW(mod, "Missing compiled AngelScript module");
         const auto global_count = mod->GetGlobalVarCount();
 
         vector<string> violations;
@@ -769,13 +762,12 @@ void AngelScriptBackend::BindRequiredStuff()
     // Index all functions
     if (_scriptSys) {
         FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 1, "AngelScript engine must contain one compiled module before indexing functions", _asEngine->GetModuleCount());
-        nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModuleByIndex(0);
-        FO_VERIFY_AND_THROW(!!nullable_mod, "Missing compiled AngelScript module");
-        auto mod = nullable_mod.as_ptr();
+        nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModuleByIndex(0);
+        FO_VERIFY_AND_THROW(mod, "Missing compiled AngelScript module");
 
         for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
             nptr<AngelScript::asIScriptFunction> func = mod->GetFunctionByIndex(i);
-            FO_VERIFY_AND_THROW(!!func, "Module function lookup returned null");
+            FO_VERIFY_AND_THROW(func, "Module function lookup returned null");
             auto func_desc = IndexScriptFunc(func.as_ptr());
 
             _scriptSys->AddGlobalScriptFunc(func_desc);
@@ -799,9 +791,8 @@ void AngelScriptBackend::BindRequiredStuff()
 
         const auto overrun_report_time = std::chrono::milliseconds(_settings->OverrunReportTime);
 
-        _contextMngr.emplace(_asEngine.as_ptr(), engine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
+        _contextMngr.emplace(_asEngine, engine, overrun_report_time, [this](string_view reason, string_view text, string_view source_path, std::optional<uint32_t> line, string_view function_name) {
             if (_debuggerEndpointServer) {
-                auto endpoint_server = _debuggerEndpointServer.as_ptr();
                 nlohmann::json body;
                 body["reason"] = reason;
 
@@ -818,14 +809,13 @@ void AngelScriptBackend::BindRequiredStuff()
                     body["function"] = function_name;
                 }
 
-                endpoint_server->EmitEvent("stopped", body.dump());
+                _debuggerEndpointServer->EmitEvent("stopped", body.dump());
             }
         });
 
         _contextMngr->SetContextSetupCallback([this](ptr<AngelScript::asIScriptContext> ctx, AngelScriptContextSetupReason reason) {
             if (_debuggerEndpointServer) {
-                auto endpoint_server = _debuggerEndpointServer.as_ptr();
-                endpoint_server->SetupContext(ctx, reason);
+                _debuggerEndpointServer->SetupContext(ctx, reason);
             }
         });
 
@@ -879,13 +869,11 @@ void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
     size_t released_globals = 0;
 
     for (AngelScript::asUINT module_index = 0; module_index < _asEngine->GetModuleCount(); module_index++) {
-        nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModuleByIndex(module_index);
+        nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModuleByIndex(module_index);
 
-        if (!nullable_mod) {
+        if (!mod) {
             continue;
         }
-
-        auto mod = nullable_mod.as_ptr();
 
         for (AngelScript::asUINT var_index = 0; var_index < mod->GetGlobalVarCount(); var_index++) {
             int32_t type_id = 0;
@@ -916,20 +904,18 @@ void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
                 continue;
             }
 
-            auto nullable_slot = GetGlobalHandleSlot(mod, var_index);
+            auto slot = GetGlobalHandleSlot(mod.as_ptr(), var_index);
 
-            if (!nullable_slot || !*nullable_slot) {
+            if (!slot || !*slot) {
                 continue;
             }
-
-            auto slot = nullable_slot.as_ptr();
 
             // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
             // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
             // standard module teardown skips it. Value-type object globals store the instance inline and are
             // destructed by the module teardown, so they are left untouched here.
             if (is_funcdef) {
-                auto func = ReadGlobalFunctionHandle(slot);
+                auto func = ReadGlobalFunctionHandle(slot.as_ptr());
                 func->Release();
                 WriteGlobalHandleSlot(slot, nullptr);
                 released_globals++;

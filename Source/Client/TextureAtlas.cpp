@@ -227,8 +227,9 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
     // Create new
     if (!atlas) {
-        atlas = CreateAtlas(atlas_type, size_with_padding);
-        atlas_node = atlas->GetLayout()->FindPosition(size_with_padding);
+        auto new_atlas = CreateAtlas(atlas_type, size_with_padding);
+        atlas = new_atlas;
+        atlas_node = new_atlas->GetLayout()->FindPosition(size_with_padding);
         FO_VERIFY_AND_THROW(atlas_node, "Missing required atlas node");
     }
 

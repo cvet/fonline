@@ -93,8 +93,8 @@ auto GetScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<AngelS
 auto GetEngineMetadata(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<const EngineMetadata>;
 auto GetGameEngine(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<BaseEngine>;
 void CheckScriptEntityNonNull(nptr<const Entity> entity);
-void CheckScriptEntityNonDestroyed(nptr<const Entity> nullable_entity);
-void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> nullable_entity);
+void CheckScriptEntityNonDestroyed(nptr<const Entity> entity);
+void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> entity);
 
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string;
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string;
@@ -115,7 +115,7 @@ void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32
 auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, HashResolver& hash_resolver) -> hstring;
 auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool;
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
-auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> nullable_as_obj) -> vector<uint8_t>;
+auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>;
 auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>;
 auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> as_obj) -> PropertyRawData;
 void SetScriptTypeFastCompare(ptr<AngelScript::asITypeInfo> type, ScriptFastCompareFunc func);
@@ -267,7 +267,7 @@ namespace aswrap
                     return object.get();
                 }
                 else {
-                    return cast_from_void<T>(object.get());
+                    return cast_from_void<T>(object.get()).get();
                 }
             }
             else {
@@ -290,8 +290,7 @@ namespace aswrap
             return const_cast<void*>(static_cast<const void*>(value));
         }
         else {
-            nptr<void> return_address = cast_to_void(value);
-            return return_address.get();
+            return make_nptr(value).void_cast();
         }
     }
 
@@ -305,7 +304,7 @@ namespace aswrap
             return std::bit_cast<void*>(std::addressof(value));
         }
         else {
-            return cast_to_void(std::addressof(value));
+            return make_nptr(std::addressof(value)).void_cast();
         }
     }
 

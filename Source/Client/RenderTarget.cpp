@@ -218,15 +218,14 @@ void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth
     _render->ClearRenderTarget(color, with_depth);
 }
 
-void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> nullable_rt)
+void RenderTargetManager::DeleteRenderTarget(nptr<RenderTarget> rt)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!nullable_rt) {
+    if (!rt) {
         return;
     }
 
-    auto rt = nullable_rt.as_ptr();
     const auto it = std::ranges::find_if(_rtAll, [&rt](auto&& check_rt) {
         auto check_rt_ptr = check_rt.as_ptr();
         return check_rt_ptr == rt;

@@ -159,8 +159,7 @@ auto FOEditor::GetAssetViews() -> vector<ptr<EditorAssetView>>
     vector<ptr<EditorAssetView>> result;
 
     for (size_t i = 0; i != _views.size(); ++i) {
-        if (nptr<EditorAssetView> nullable_asset_view = _views[i].as_ptr().dyn_cast<EditorAssetView>()) {
-            auto asset_view = nullable_asset_view.as_ptr();
+        if (auto asset_view = _views[i].dyn_cast<EditorAssetView>()) {
             result.emplace_back(asset_view);
         }
     }
@@ -173,9 +172,7 @@ void FOEditor::OpenAsset(string_view path)
     FO_STACK_TRACE_ENTRY();
 
     for (size_t i = 0; i != _views.size(); ++i) {
-        if (nptr<EditorAssetView> nullable_asset_view = _views[i].as_ptr().dyn_cast<EditorAssetView>()) {
-            auto asset_view = nullable_asset_view.as_ptr();
-
+        if (auto asset_view = _views[i].dyn_cast<EditorAssetView>()) {
             if (asset_view->GetAssetPath() != path) {
                 continue;
             }
@@ -202,9 +199,7 @@ void FOEditor::MainLoop()
     _newViews.clear();
 
     for (auto it = _views.begin(); it != _views.end();) {
-        if (nptr<EditorAssetView> nullable_asset_view = (ptr<EditorView> {*it}).dyn_cast<EditorAssetView>()) {
-            auto asset_view = nullable_asset_view.as_ptr();
-
+        if (auto asset_view = (*it).dyn_cast<EditorAssetView>()) {
             if (asset_view->IsChanged()) {
                 (*it)->_requestClose = false;
             }
