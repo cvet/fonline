@@ -308,17 +308,30 @@ static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx);
 static void EndCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx);
 static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx);
 static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx, ptr<Vulkan_Texture> vk_tex);
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer);
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory);
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image);
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view);
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer);
+static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer);
+static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory);
+static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image);
+static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view);
+static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer);
 static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanDeferredDestroyQueue& queue);
 static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx);
 static void BeginCommandBufferRecording(VkCommandBuffer cmd_buf);
 static void EndCommandBufferRecording(VkCommandBuffer cmd_buf);
 static void SubmitCommandBufferAndWait(ptr<Vulkan_Renderer::Context> ctx, VkCommandBuffer cmd_buf);
 static void ResetCommandBufferRecording(VkCommandBuffer cmd_buf);
+
+static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* data, void* user_data) noexcept -> VkBool32
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(type, user_data);
+
+    const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
+    const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
+    const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
+    WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
+    return VK_FALSE;
+}
 
 static void VerifyVkResult(VkResult vk_result)
 {
@@ -652,8 +665,8 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
     }
 
     // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
-    DestroyResourceSafe(ctx, pooled.Buffer);
-    DestroyResourceSafe(ctx, pooled.Memory);
+    DestroyBufferSafe(ctx, pooled.Buffer);
+    DestroyMemorySafe(ctx, pooled.Memory);
     pooled.Mapped = nullptr;
 
     constexpr VkDeviceSize min_capacity = 4096;
@@ -695,8 +708,8 @@ static void DestroyPooledBuffers(ptr<Vulkan_Renderer::Context> ctx, VulkanBuffer
     FO_STACK_TRACE_ENTRY();
 
     for (auto& pooled : ring.Buffers) {
-        DestroyResourceSafe(ctx, pooled.Buffer);
-        DestroyResourceSafe(ctx, pooled.Memory);
+        DestroyBufferSafe(ctx, pooled.Buffer);
+        DestroyMemorySafe(ctx, pooled.Memory);
         pooled.Mapped = nullptr;
         pooled.Capacity = 0;
     }
@@ -815,13 +828,13 @@ Vulkan_Texture::~Vulkan_Texture()
 {
     FO_STACK_TRACE_ENTRY();
 
-    DestroyResourceSafe(_ctx, TextureFramebuffer);
-    DestroyResourceSafe(_ctx, TextureImageView);
-    DestroyResourceSafe(_ctx, TextureImage);
-    DestroyResourceSafe(_ctx, TextureImageMemory);
-    DestroyResourceSafe(_ctx, DepthImageView);
-    DestroyResourceSafe(_ctx, DepthImage);
-    DestroyResourceSafe(_ctx, DepthImageMemory);
+    DestroyFramebufferSafe(_ctx, TextureFramebuffer);
+    DestroyImageViewSafe(_ctx, TextureImageView);
+    DestroyImageSafe(_ctx, TextureImage);
+    DestroyMemorySafe(_ctx, TextureImageMemory);
+    DestroyImageViewSafe(_ctx, DepthImageView);
+    DestroyImageSafe(_ctx, DepthImage);
+    DestroyMemorySafe(_ctx, DepthImageMemory);
 }
 
 auto Vulkan_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
@@ -953,7 +966,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     VkResult vk_result = VK_SUCCESS;
 
     // Create GPU texture image if needed
-    if (TextureImage == nullptr) {
+    if (TextureImage == VK_NULL_HANDLE) {
         AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
 
         // Create image view
@@ -1066,10 +1079,10 @@ Vulkan_DrawBuffer::~Vulkan_DrawBuffer()
         DestroyPooledBuffers(_ctx, ring);
     }
 
-    DestroyResourceSafe(_ctx, StaticVertexBuffer);
-    DestroyResourceSafe(_ctx, StaticVertexBufferMemory);
-    DestroyResourceSafe(_ctx, StaticIndexBuffer);
-    DestroyResourceSafe(_ctx, StaticIndexBufferMemory);
+    DestroyBufferSafe(_ctx, StaticVertexBuffer);
+    DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
+    DestroyBufferSafe(_ctx, StaticIndexBuffer);
+    DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
 }
 
 void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
@@ -1114,8 +1127,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         }
         else {
             // Static buffers: use staging copy to GPU-local memory
-            DestroyResourceSafe(_ctx, StaticVertexBuffer);
-            DestroyResourceSafe(_ctx, StaticVertexBufferMemory);
+            DestroyBufferSafe(_ctx, StaticVertexBuffer);
+            DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
 
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
@@ -1161,8 +1174,8 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         }
         else {
             // Static buffers: use staging copy to GPU-local memory
-            DestroyResourceSafe(_ctx, StaticIndexBuffer);
-            DestroyResourceSafe(_ctx, StaticIndexBufferMemory);
+            DestroyBufferSafe(_ctx, StaticIndexBuffer);
+            DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
 
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
@@ -1203,17 +1216,17 @@ Vulkan_Effect::~Vulkan_Effect()
     FO_STACK_TRACE_ENTRY();
 
     for (size_t pass = 0; pass < EFFECT_MAX_PASSES; pass++) {
-        if (VertexShaderModule[pass] != nullptr) {
+        if (VertexShaderModule[pass] != VK_NULL_HANDLE) {
             vkDestroyShaderModule(_ctx->Device, VertexShaderModule[pass], nullptr);
             VertexShaderModule[pass] = VK_NULL_HANDLE;
         }
-        if (FragmentShaderModule[pass] != nullptr) {
+        if (FragmentShaderModule[pass] != VK_NULL_HANDLE) {
             vkDestroyShaderModule(_ctx->Device, FragmentShaderModule[pass], nullptr);
             FragmentShaderModule[pass] = VK_NULL_HANDLE;
         }
         for (size_t prim = 0; prim < 5; prim++) {
             for (size_t blend_disabled = 0; blend_disabled < 2; blend_disabled++) {
-                if (Pipeline[pass][prim][blend_disabled] != nullptr) {
+                if (Pipeline[pass][prim][blend_disabled] != VK_NULL_HANDLE) {
                     vkDestroyPipeline(_ctx->Device, Pipeline[pass][prim][blend_disabled], nullptr);
                     Pipeline[pass][prim][blend_disabled] = VK_NULL_HANDLE;
                 }
@@ -1221,7 +1234,7 @@ Vulkan_Effect::~Vulkan_Effect()
         }
     }
 
-    if (PipelineLayout != nullptr) {
+    if (PipelineLayout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(_ctx->Device, PipelineLayout, nullptr);
         PipelineLayout = VK_NULL_HANDLE;
     }
@@ -1231,7 +1244,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_ctx->Device == nullptr) {
+    if (_ctx->Device == VK_NULL_HANDLE) {
         return;
     }
 
@@ -1300,7 +1313,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
 #endif
 
     // Skip until geometry is uploaded
-    if (vk_dbuf->CurrentVertexBuffer == nullptr) {
+    if (vk_dbuf->CurrentVertexBuffer == VK_NULL_HANDLE) {
         return;
     }
 
@@ -1322,7 +1335,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         // Bind pipeline for current pass — pick the variant that matches the current
         // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
         const size_t blend_variant = DisableBlending ? 1 : 0;
-        if (Pipeline[pass][prim_index][blend_variant] != nullptr) {
+        if (Pipeline[pass][prim_index][blend_variant] != VK_NULL_HANDLE) {
             vkCmdBindPipeline(_ctx->CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, Pipeline[pass][prim_index][blend_variant]);
         }
 
@@ -1335,26 +1348,26 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         alloc_info.descriptorPool = _ctx->FrameDescriptorPool;
         alloc_info.descriptorSetCount = 1;
 
-        if (_ctx->TextureDescriptorSetLayout != nullptr) {
+        if (_ctx->TextureDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->TextureDescriptorSetLayout;
             const auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &texture_set);
             VerifyVkResult(vk_result);
         }
 
-        if (_ctx->UniformDescriptorSetLayout != nullptr) {
+        if (_ctx->UniformDescriptorSetLayout != VK_NULL_HANDLE) {
             alloc_info.pSetLayouts = &_ctx->UniformDescriptorSetLayout;
             const auto vk_result = vkAllocateDescriptorSets(_ctx->Device, &alloc_info, &uniform_set);
             VerifyVkResult(vk_result);
         }
 
         // Update and bind per-pass texture descriptor set (set = 1)
-        if (texture_set != VK_NULL_HANDLE && this->PipelineLayout != nullptr) {
+        if (texture_set != VK_NULL_HANDLE && this->PipelineLayout != VK_NULL_HANDLE) {
             VkDescriptorImageInfo image_infos[16];
             VkWriteDescriptorSet writes[16];
             size_t write_count = 0;
 
             const auto append_sampler = [&](int32_t binding, ptr<const Vulkan_Texture> tex) {
-                if (binding < 0 || tex->TextureImageView == nullptr) {
+                if (binding < 0 || tex->TextureImageView == VK_NULL_HANDLE) {
                     return;
                 }
 
@@ -1408,7 +1421,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         // Update and bind per-pass uniform descriptor set (set = 0)
-        if (uniform_set != VK_NULL_HANDLE && this->PipelineLayout != nullptr) {
+        if (uniform_set != VK_NULL_HANDLE && this->PipelineLayout != VK_NULL_HANDLE) {
             VkDescriptorBufferInfo buffer_infos[16];
             VkWriteDescriptorSet writes[16];
             size_t write_count = 0;
@@ -1497,7 +1510,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         }
 
         // Draw indexed or non-indexed
-        if (vk_dbuf->IndCount != 0 && vk_dbuf->CurrentIndexBuffer != nullptr) {
+        if (vk_dbuf->IndCount != 0 && vk_dbuf->CurrentIndexBuffer != VK_NULL_HANDLE) {
             // Bind index buffer and draw indexed
             // ReSharper disable once CppUnreachableCode
             constexpr auto index_type = sizeof(vindex_t) == sizeof(uint32_t) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16;
@@ -1541,7 +1554,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         return;
     }
 
-    if (_ctx->Device != nullptr) {
+    if (_ctx->Device != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(_ctx->Device);
         FlushAllDeferredDestroyQueues(_ctx);
 
@@ -1569,60 +1582,60 @@ Vulkan_Renderer::~Vulkan_Renderer()
 
     _ctx->SwapchainImageViews.clear();
 
-    if (_ctx->SwapchainDepthImageView != nullptr) {
+    if (_ctx->SwapchainDepthImageView != VK_NULL_HANDLE) {
         vkDestroyImageView(_ctx->Device, _ctx->SwapchainDepthImageView, nullptr);
         _ctx->SwapchainDepthImageView = VK_NULL_HANDLE;
     }
-    if (_ctx->SwapchainDepthImage != nullptr) {
+    if (_ctx->SwapchainDepthImage != VK_NULL_HANDLE) {
         vkDestroyImage(_ctx->Device, _ctx->SwapchainDepthImage, nullptr);
         _ctx->SwapchainDepthImage = VK_NULL_HANDLE;
     }
-    if (_ctx->SwapchainDepthImageMemory != nullptr) {
+    if (_ctx->SwapchainDepthImageMemory != VK_NULL_HANDLE) {
         vkFreeMemory(_ctx->Device, _ctx->SwapchainDepthImageMemory, nullptr);
         _ctx->SwapchainDepthImageMemory = VK_NULL_HANDLE;
     }
 
-    if (_ctx->RenderPass != nullptr) {
+    if (_ctx->RenderPass != VK_NULL_HANDLE) {
         vkDestroyRenderPass(_ctx->Device, _ctx->RenderPass, nullptr);
         _ctx->RenderPass = VK_NULL_HANDLE;
     }
 
-    if (_ctx->SwapchainDepthImageView != nullptr) {
+    if (_ctx->SwapchainDepthImageView != VK_NULL_HANDLE) {
         vkDestroyImageView(_ctx->Device, _ctx->SwapchainDepthImageView, nullptr);
         _ctx->SwapchainDepthImageView = VK_NULL_HANDLE;
     }
-    if (_ctx->SwapchainDepthImage != nullptr) {
+    if (_ctx->SwapchainDepthImage != VK_NULL_HANDLE) {
         vkDestroyImage(_ctx->Device, _ctx->SwapchainDepthImage, nullptr);
         _ctx->SwapchainDepthImage = VK_NULL_HANDLE;
     }
-    if (_ctx->SwapchainDepthImageMemory != nullptr) {
+    if (_ctx->SwapchainDepthImageMemory != VK_NULL_HANDLE) {
         vkFreeMemory(_ctx->Device, _ctx->SwapchainDepthImageMemory, nullptr);
         _ctx->SwapchainDepthImageMemory = VK_NULL_HANDLE;
     }
 
-    if (_ctx->CommandPool != nullptr) {
+    if (_ctx->CommandPool != VK_NULL_HANDLE) {
         vkDestroyCommandPool(_ctx->Device, _ctx->CommandPool, nullptr);
         _ctx->CommandPool = VK_NULL_HANDLE;
     }
 
     for (auto& slot : _ctx->FrameSlots) {
-        if (slot.ImageAvailableSemaphore != nullptr) {
+        if (slot.ImageAvailableSemaphore != VK_NULL_HANDLE) {
             vkDestroySemaphore(_ctx->Device, slot.ImageAvailableSemaphore, nullptr);
             slot.ImageAvailableSemaphore = VK_NULL_HANDLE;
         }
-        if (slot.InFlightFence != nullptr) {
+        if (slot.InFlightFence != VK_NULL_HANDLE) {
             vkDestroyFence(_ctx->Device, slot.InFlightFence, nullptr);
             slot.InFlightFence = VK_NULL_HANDLE;
         }
-        if (slot.DescriptorPool != nullptr) {
+        if (slot.DescriptorPool != VK_NULL_HANDLE) {
             vkDestroyDescriptorPool(_ctx->Device, slot.DescriptorPool, nullptr);
             slot.DescriptorPool = VK_NULL_HANDLE;
         }
-        if (slot.UniformBuffer != nullptr) {
+        if (slot.UniformBuffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(_ctx->Device, slot.UniformBuffer, nullptr);
             slot.UniformBuffer = VK_NULL_HANDLE;
         }
-        if (slot.UniformBufferMemory != nullptr) {
+        if (slot.UniformBufferMemory != VK_NULL_HANDLE) {
             vkUnmapMemory(_ctx->Device, slot.UniformBufferMemory);
             vkFreeMemory(_ctx->Device, slot.UniformBufferMemory, nullptr);
             slot.UniformBufferMemory = VK_NULL_HANDLE;
@@ -1637,47 +1650,47 @@ Vulkan_Renderer::~Vulkan_Renderer()
     _ctx->FrameUniformBufferMapped = nullptr;
 
     for (auto& semaphore : _ctx->RenderCompleteSemaphores) {
-        if (semaphore != nullptr) {
+        if (semaphore != VK_NULL_HANDLE) {
             vkDestroySemaphore(_ctx->Device, semaphore, nullptr);
         }
     }
     _ctx->RenderCompleteSemaphores.clear();
 
-    if (_ctx->Swapchain != nullptr) {
+    if (_ctx->Swapchain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(_ctx->Device, _ctx->Swapchain, nullptr);
         _ctx->Swapchain = VK_NULL_HANDLE;
     }
-    if (_ctx->TextureDescriptorSetLayout != nullptr) {
+    if (_ctx->TextureDescriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(_ctx->Device, _ctx->TextureDescriptorSetLayout, nullptr);
         _ctx->TextureDescriptorSetLayout = VK_NULL_HANDLE;
     }
-    if (_ctx->UniformDescriptorSetLayout != nullptr) {
+    if (_ctx->UniformDescriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(_ctx->Device, _ctx->UniformDescriptorSetLayout, nullptr);
         _ctx->UniformDescriptorSetLayout = VK_NULL_HANDLE;
     }
-    if (_ctx->LinearSampler != nullptr) {
+    if (_ctx->LinearSampler != VK_NULL_HANDLE) {
         vkDestroySampler(_ctx->Device, _ctx->LinearSampler, nullptr);
         _ctx->LinearSampler = VK_NULL_HANDLE;
     }
-    if (_ctx->PointSampler != nullptr) {
+    if (_ctx->PointSampler != VK_NULL_HANDLE) {
         vkDestroySampler(_ctx->Device, _ctx->PointSampler, nullptr);
         _ctx->PointSampler = VK_NULL_HANDLE;
     }
-    if (_ctx->Device != nullptr) {
+    if (_ctx->Device != VK_NULL_HANDLE) {
         vkDestroyDevice(_ctx->Device, nullptr);
         _ctx->Device = VK_NULL_HANDLE;
     }
-    if (_ctx->Surface != nullptr && _ctx->Instance != nullptr) {
+    if (_ctx->Surface != VK_NULL_HANDLE && _ctx->Instance != VK_NULL_HANDLE) {
         vkDestroySurfaceKHR(_ctx->Instance, _ctx->Surface, nullptr);
         _ctx->Surface = VK_NULL_HANDLE;
     }
-    if (_ctx->DebugMessenger != nullptr && _ctx->Instance != nullptr) {
+    if (_ctx->DebugMessenger != VK_NULL_HANDLE && _ctx->Instance != VK_NULL_HANDLE) {
         if (auto vkDestroyDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkDestroyDebugUtilsMessengerEXT")); vkDestroyDebugUtilsMessengerEXT_fn != nullptr) {
             vkDestroyDebugUtilsMessengerEXT_fn(_ctx->Instance, _ctx->DebugMessenger, nullptr);
         }
         _ctx->DebugMessenger = VK_NULL_HANDLE;
     }
-    if (_ctx->Instance != nullptr) {
+    if (_ctx->Instance != VK_NULL_HANDLE) {
         vkDestroyInstance(_ctx->Instance, nullptr);
         _ctx->Instance = VK_NULL_HANDLE;
     }
@@ -1978,7 +1991,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
                 pipeline_ci.renderPass = _ctx->RenderPass;
                 pipeline_ci.subpass = 0;
 
-                if (vkCreateGraphicsPipelines(_ctx->Device, nullptr, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant]) != VK_SUCCESS) {
+                if (vkCreateGraphicsPipelines(_ctx->Device, VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &vk_effect->Pipeline[pass][prim][blend_variant]) != VK_SUCCESS) {
                     throw EffectLoadException("Failed to create graphics pipeline", name);
                 }
             }
@@ -2148,20 +2161,11 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     if (want_validation) {
         // Route layer warnings/errors into the log under [VkLayer]
         if (auto vkCreateDebugUtilsMessengerEXT_fn = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_ctx->Instance, "vkCreateDebugUtilsMessengerEXT")); vkCreateDebugUtilsMessengerEXT_fn != nullptr) {
-            static constexpr auto vulkan_debug_callback = [](VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* data, void* user_data) -> VkBool32 {
-                ignore_unused(type, user_data);
-                const string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
-                auto callback_data = make_nptr(data);
-                FO_VERIFY_AND_THROW(callback_data, "Vulkan debug callback data is null");
-                WriteLog("[VkLayer/{}] {}: {}", sev, callback_data->pMessageIdName != nullptr ? callback_data->pMessageIdName : "?", callback_data->pMessage != nullptr ? callback_data->pMessage : "?");
-                return VK_FALSE;
-            };
-
             VkDebugUtilsMessengerCreateInfoEXT msg_ci {};
             msg_ci.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             msg_ci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
             msg_ci.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            msg_ci.pfnUserCallback = vulkan_debug_callback;
+            msg_ci.pfnUserCallback = VulkanDebugCallback;
             vk_result = vkCreateDebugUtilsMessengerEXT_fn(_ctx->Instance, &msg_ci, nullptr, &_ctx->DebugMessenger);
 
             if (vk_result == VK_SUCCESS) {
@@ -2238,7 +2242,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
     }
 
-    if (_ctx->PhysicalDevice == nullptr) {
+    if (_ctx->PhysicalDevice == VK_NULL_HANDLE) {
         throw RenderingException("No suitable Vulkan physical device (needs graphics+present queue and swapchain support)");
     }
 
@@ -2480,18 +2484,18 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     // Destroy old framebuffers and image views
     for (VkFramebuffer fb : ctx->Framebuffers) {
-        DestroyResourceSafe(ctx, fb);
+        DestroyFramebufferSafe(ctx, fb);
     }
 
     ctx->Framebuffers.clear();
 
     for (VkImageView iv : ctx->SwapchainImageViews) {
-        DestroyResourceSafe(ctx, iv);
+        DestroyImageViewSafe(ctx, iv);
     }
 
     ctx->SwapchainImageViews.clear();
 
-    if (ctx->Swapchain != nullptr) {
+    if (ctx->Swapchain != VK_NULL_HANDLE) {
         vkDeviceWaitIdle(ctx->Device);
         vkDestroySwapchainKHR(ctx->Device, ctx->Swapchain, nullptr);
         ctx->Swapchain = VK_NULL_HANDLE;
@@ -2499,9 +2503,9 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         ctx->SwapchainImageLayouts.clear();
     }
 
-    DestroyResourceSafe(ctx, ctx->SwapchainDepthImageView);
-    DestroyResourceSafe(ctx, ctx->SwapchainDepthImage);
-    DestroyResourceSafe(ctx, ctx->SwapchainDepthImageMemory);
+    DestroyImageViewSafe(ctx, ctx->SwapchainDepthImageView);
+    DestroyImageSafe(ctx, ctx->SwapchainDepthImage);
+    DestroyMemorySafe(ctx, ctx->SwapchainDepthImageMemory);
 
     // Create swapchain
     VkSurfaceCapabilitiesKHR caps {};
@@ -2610,7 +2614,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         sem_ci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
         for (auto& semaphore : ctx->RenderCompleteSemaphores) {
-            if (semaphore != nullptr) {
+            if (semaphore != VK_NULL_HANDLE) {
                 vkDestroySemaphore(ctx->Device, semaphore, nullptr);
             }
         }
@@ -2625,7 +2629,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
     ctx->SwapchainFormat = sci.imageFormat;
 
-    if (ctx->RenderPass == nullptr) {
+    if (ctx->RenderPass == VK_NULL_HANDLE) {
         VkAttachmentDescription color_attachment {};
         color_attachment.format = ctx->SwapchainFormat;
         color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -2763,11 +2767,11 @@ static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
     fence_ci.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
     for (auto& slot : ctx->FrameSlots) {
-        if (slot.ImageAvailableSemaphore != nullptr) {
+        if (slot.ImageAvailableSemaphore != VK_NULL_HANDLE) {
             vkDestroySemaphore(ctx->Device, slot.ImageAvailableSemaphore, nullptr);
             slot.ImageAvailableSemaphore = VK_NULL_HANDLE;
         }
-        if (slot.InFlightFence != nullptr) {
+        if (slot.InFlightFence != VK_NULL_HANDLE) {
             vkDestroyFence(ctx->Device, slot.InFlightFence, nullptr);
             slot.InFlightFence = VK_NULL_HANDLE;
         }
@@ -2779,7 +2783,7 @@ static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
     }
 
     for (auto& semaphore : ctx->RenderCompleteSemaphores) {
-        if (semaphore != nullptr) {
+        if (semaphore != VK_NULL_HANDLE) {
             vkDestroySemaphore(ctx->Device, semaphore, nullptr);
         }
 
@@ -3082,8 +3086,8 @@ static void BeginCurrentRenderPass(ptr<Vulkan_Renderer::Context> ctx)
         auto vk_tex = ctx->CurrentRenderTarget.dyn_cast<Vulkan_Texture>();
         FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
         EnsureTextureRenderTargetResources(ctx, vk_tex);
-        FO_VERIFY_AND_THROW(vk_tex->TextureFramebuffer != nullptr, "Render target framebuffer is not created");
-        FO_VERIFY_AND_THROW(vk_tex->TextureImage != nullptr, "Render target image is not created");
+        FO_VERIFY_AND_THROW(vk_tex->TextureFramebuffer != VK_NULL_HANDLE, "Render target framebuffer is not created");
+        FO_VERIFY_AND_THROW(vk_tex->TextureImage != VK_NULL_HANDLE, "Render target image is not created");
 
         TransitionColorImage(ctx->CommandBuffer, vk_tex->TextureImage, vk_tex->TextureImageLayout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         vk_tex->TextureImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -3189,12 +3193,12 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(vk_tex->TextureImage != nullptr, "Render target image is not created");
-    FO_VERIFY_AND_THROW(vk_tex->TextureImageView != nullptr, "Render target image view is not created");
+    FO_VERIFY_AND_THROW(vk_tex->TextureImage != VK_NULL_HANDLE, "Render target image is not created");
+    FO_VERIFY_AND_THROW(vk_tex->TextureImageView != VK_NULL_HANDLE, "Render target image view is not created");
 
     VkResult vk_result = VK_SUCCESS;
 
-    if (vk_tex->DepthImage == nullptr) {
+    if (vk_tex->DepthImage == VK_NULL_HANDLE) {
         AllocateImage(ctx, numeric_cast<uint32_t>(vk_tex->Size.width), numeric_cast<uint32_t>(vk_tex->Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_tex->DepthImage, vk_tex->DepthImageMemory);
 
         VkImageViewCreateInfo depth_view_ci {};
@@ -3212,7 +3216,7 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
         VerifyVkResult(vk_result);
     }
 
-    if (vk_tex->TextureFramebuffer == nullptr) {
+    if (vk_tex->TextureFramebuffer == VK_NULL_HANDLE) {
         const VkImageView framebuffer_attachments[] = {vk_tex->TextureImageView, vk_tex->DepthImageView};
 
         VkFramebufferCreateInfo fci {};
@@ -3393,7 +3397,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
 }
 
 // Destroys enqueue into the current slot's queue; its fence wait covers both in-flight frames.
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
+static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3403,7 +3407,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buf
     }
 }
 
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory)
+static void DestroyMemorySafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemory& memory)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3413,7 +3417,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkDeviceMemor
     }
 }
 
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image)
+static void DestroyImageSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& image)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3423,7 +3427,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImage& imag
     }
 }
 
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view)
+static void DestroyImageViewSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& image_view)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3433,7 +3437,7 @@ static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkImageView& 
     }
 }
 
-static void DestroyResourceSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer)
+static void DestroyFramebufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkFramebuffer& framebuffer)
 {
     FO_STACK_TRACE_ENTRY();
 
