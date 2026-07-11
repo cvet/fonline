@@ -45,33 +45,7 @@ static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) no
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    if (left.size() != right.size()) {
-        return false;
-    }
-
-    switch (left.size()) {
-    case 0:
-        return true;
-    case 1:
-        return left[0] == right[0];
-    case 2: {
-        const ptr<const uint8_t> left_ptr = left.data();
-        const ptr<const uint8_t> right_ptr = right.data();
-        return *left_ptr.reinterpret_as<uint16_t>() == *right_ptr.reinterpret_as<uint16_t>();
-    }
-    case 4: {
-        const ptr<const uint8_t> left_ptr = left.data();
-        const ptr<const uint8_t> right_ptr = right.data();
-        return *left_ptr.reinterpret_as<uint32_t>() == *right_ptr.reinterpret_as<uint32_t>();
-    }
-    case 8: {
-        const ptr<const uint8_t> left_ptr = left.data();
-        const ptr<const uint8_t> right_ptr = right.data();
-        return *left_ptr.reinterpret_as<uint64_t>() == *right_ptr.reinterpret_as<uint64_t>();
-    }
-    default:
-        return MemCompare(left.data(), right.data(), left.size());
-    }
+    return left.size() == right.size() && MemCompare(left.data(), right.data(), left.size());
 }
 
 static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> bool
@@ -736,7 +710,8 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
             const auto& entry = _overlayEntries[entry_index];
 
             if (entry.DataSize != 0) {
-                packed_size = align_up(packed_size, _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex)->GetDataAlignment());
+                const auto prop = _registrator->GetPropertyByIndexUnsafe(entry.PropRegIndex);
+                packed_size = align_up(packed_size, prop->GetDataAlignment());
                 packed_size += entry.DataSize;
             }
         }

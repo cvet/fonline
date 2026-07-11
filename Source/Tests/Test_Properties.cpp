@@ -1262,6 +1262,8 @@ TEST_CASE("PropertiesRawDataCopy")
     PropertyRegistrator registrator("RawCopyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
 
     auto value_prop = registrator.RegisterProperty({"Common", "uint16", "Value", "Mutable", "Persistent", "PublicSync"});
+    auto prefix_prop = registrator.RegisterProperty({"Common", "uint32", "Prefix", "Mutable", "Persistent", "PublicSync"});
+    auto short_array_prop = registrator.RegisterProperty({"Common", "int16[]", "ShortArray", "Mutable", "Persistent", "PublicSync"});
     auto flag_prop = registrator.RegisterProperty({"Common", "bool", "Flag", "Mutable", "Persistent", "PublicSync"});
     auto name_prop = registrator.RegisterProperty({"Common", "string", "Name", "Mutable", "Persistent", "PublicSync"});
 
@@ -1359,6 +1361,51 @@ TEST_CASE("PropertiesRawDataCopy")
         derived.SetRawData(name_prop, {});
         CHECK(derived.GetValue<string>(name_prop).empty());
         CHECK(derived.GetRawDataSize(name_prop) == 0);
+    }
+
+    SECTION("RawDataComparisonSupportsNaturallyAlignedOverlayPayloads")
+    {
+        const vector<int16_t> values = {1, 2, 3, 4};
+
+        const auto check_natural_layout = [&](const Properties& target) {
+            const auto prefix_raw_data = target.GetRawData(prefix_prop);
+            const auto short_array_raw_data = target.GetRawData(short_array_prop);
+
+            REQUIRE(prefix_raw_data.size() == sizeof(uint32_t));
+            REQUIRE(short_array_raw_data.size() == sizeof(int16_t) * values.size());
+            CHECK(short_array_raw_data.data() == prefix_raw_data.data() + prefix_raw_data.size());
+            CHECK(reinterpret_cast<uintptr_t>(short_array_raw_data.data()) % alignof(int16_t) == 0);
+            CHECK(reinterpret_cast<uintptr_t>(short_array_raw_data.data()) % alignof(uint64_t) != 0);
+            CHECK(target.GetValue<vector<int16_t>>(short_array_prop) == values);
+        };
+
+        Properties derived(&registrator, &props);
+        derived.SetValue<uint32_t>(prefix_prop, 0x1020304);
+        derived.SetValue(short_array_prop, values);
+        check_natural_layout(derived);
+
+        // The 8-byte payload starts at a naturally aligned address that is not uint64-aligned.
+        derived.SetValue(short_array_prop, values);
+        check_natural_layout(derived);
+
+        vector<uint8_t> snapshot;
+        set<hstring> snapshot_hashes;
+        derived.StoreAllData(snapshot, snapshot_hashes);
+
+        Properties restored(&registrator, &props);
+        restored.RestoreAllData(snapshot);
+        check_natural_layout(restored);
+
+        derived.SetValue<string>(name_prop, string(300, 'x'));
+        check_natural_layout(derived);
+
+        Properties full_source(&registrator);
+        full_source.SetValue<uint32_t>(prefix_prop, 0x1020304);
+        full_source.SetValue(short_array_prop, values);
+
+        Properties rebuilt(&registrator, &props);
+        rebuilt.CopyFrom(full_source);
+        check_natural_layout(rebuilt);
     }
 }
 
