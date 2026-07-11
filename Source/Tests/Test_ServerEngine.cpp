@@ -314,6 +314,11 @@ namespace ServerEngineTest
         return cr !is null ? cr.Id.value : 0;
     }
 
+    bool UnitTestIsItemNull(Item? item)
+    {
+        return item is null;
+    }
+
     bool UnitTestMatchesHash(hstring value)
     {
         return value == "UnitTestHash".hstr();
@@ -1102,6 +1107,11 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     REQUIRE(critter_id_func);
     REQUIRE(critter_id_func.Call(cr));
     CHECK(critter_id_func.GetResult() == cr->GetId().underlying_value());
+
+    auto nullable_item_func = server->FindFunc<bool, nptr<Item>>(get_func_name("ServerEngineTest::UnitTestIsItemNull"));
+    REQUIRE(nullable_item_func);
+    REQUIRE(nullable_item_func.Call(nptr<Item> {}));
+    CHECK(nullable_item_func.GetResult());
 
     auto matches_hash_func = server->FindFunc<bool, hstring>(get_func_name("ServerEngineTest::UnitTestMatchesHash"));
     REQUIRE(matches_hash_func);

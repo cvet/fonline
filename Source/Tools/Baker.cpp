@@ -445,8 +445,8 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
             }},
         {"ItemStatic",
             ScriptFuncValidationRule {
-                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, ptr<BakerStub::Item>, any_t>(func_name); },
-                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, ptr<BakerStub::Item>, any_t>(func_name, "ItemStatic"); },
+                .VerifySignature = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, nptr<BakerStub::Item>, any_t>(func_name); },
+                .VerifyAttribute = [](hstring func_name, ptr<const ScriptSystem> script_sys_) { return script_sys_->CheckFunc<bool, ptr<BakerStub::Critter>, ptr<BakerStub::StaticItem>, nptr<BakerStub::Item>, any_t>(func_name, "ItemStatic"); },
                 .RequiredAttribute = "ItemStatic",
             }},
         {"ItemTrigger",

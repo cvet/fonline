@@ -280,7 +280,7 @@ InitScript = TestItemCallbacks::OnLocationInit
     static constexpr string_view ValidScript = R"(namespace TestItemCallbacks
 {
 [[ItemStatic]]
-bool OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
+bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
 {
     return true;
 }
@@ -313,7 +313,7 @@ void OnLocationInit(Location loc, bool firstTime)
     static constexpr string_view LegacyAttributeScript = R"(namespace TestItemCallbacks
 {
 [[StaticItemCallback]]
-bool OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
+bool OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
 {
     return true;
 }
@@ -327,7 +327,7 @@ void OnTrigger(Critter cr, StaticItem trigger, bool entered, mdir dir)
     static constexpr string_view WrongSignatureScript = R"(namespace TestItemCallbacks
 {
 [[ItemStatic]]
-void OnStatic(Critter cr, StaticItem staticItem, Item usedItem, any param)
+void OnStatic(Critter cr, StaticItem staticItem, Item? usedItem, any param)
 {
 }
 

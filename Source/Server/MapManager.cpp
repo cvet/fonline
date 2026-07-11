@@ -177,7 +177,7 @@ void MapManager::LoadFromResources()
 
                         // Bind scripts
                         if (const auto static_script = item->GetStaticScript()) {
-                            item->StaticScriptFunc = _engine->FindFunc<bool, ptr<Critter>, ptr<StaticItem>, ptr<Item>, any_t>(static_script);
+                            item->StaticScriptFunc = _engine->FindFunc<bool, ptr<Critter>, ptr<StaticItem>, nptr<Item>, any_t>(static_script);
 
                             if (!item->StaticScriptFunc) {
                                 throw MapManagerException("Can't bind static item function", map_proto->GetName(), static_script);
