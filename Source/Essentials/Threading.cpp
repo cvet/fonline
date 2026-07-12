@@ -49,7 +49,7 @@ static thread_local std::string ThreadName;
 
 struct ThreadingData
 {
-    ThreadingData() noexcept { set_this_thread_name("Main"); }
+    ThreadingData() { set_this_thread_name("Main"); }
 };
 FO_GLOBAL_DATA(ThreadingData, ThreadingState);
 
@@ -97,7 +97,7 @@ FO_GLOBAL_DATA(GlobalPools, Pools);
 
 // Caller must hold `pool.Locker`. Initialises the pool's `MaxWorkers` / `NamePrefix` on first
 // use; idempotent for subsequent calls.
-static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_view name_prefix) noexcept
+static void ensure_initialized_locked(Pool& pool, size_t max_workers, string_view name_prefix)
 {
     if (pool.Initialized) {
         return;

@@ -174,8 +174,8 @@ public:
     void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
     void Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value);
     void Delete(hstring collection_name, const DataBaseKey& id);
-    void StartCommitChanges() noexcept;
-    void WaitCommitChanges() noexcept;
+    void StartCommitChanges();
+    void WaitCommitChanges();
     void ClearChanges() noexcept;
     virtual void DrawGui();
 
@@ -215,7 +215,7 @@ private:
         AnyData::Document Doc {};
     };
 
-    void ScheduleCommit() noexcept;
+    void ScheduleCommit();
     void CommitNextChange() noexcept;
     void CommitThreadEntry() noexcept;
     void RegisterDbRequests(size_t request_count) const;

@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
 
-FontManager::FontManager(ptr<SpriteManager> spr_mngr) noexcept :
+FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
 {
     FO_STACK_TRACE_ENTRY();
@@ -79,7 +79,7 @@ auto FontManager::GetFont(FontType font) const -> ptr<const FontData>
     return &*_allFonts[static_cast<size_t>(font)];
 }
 
-void FontManager::ClearFonts() noexcept
+void FontManager::ClearFonts()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -109,7 +109,7 @@ void FontManager::StoreFont(int32_t index, FontData&& font_data)
     _formatCache.clear();
 }
 
-void FontManager::FrameUpdate() noexcept
+void FontManager::FrameUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 

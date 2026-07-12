@@ -662,7 +662,7 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     _commitThreadSignal.notify_one();
 }
 
-void DataBaseImpl::StartCommitChanges() noexcept
+void DataBaseImpl::StartCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -675,7 +675,7 @@ void DataBaseImpl::StartCommitChanges() noexcept
     _commitThreadSignal.notify_one();
 }
 
-void DataBaseImpl::WaitCommitChanges() noexcept
+void DataBaseImpl::WaitCommitChanges()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -779,7 +779,7 @@ void DataBaseImpl::DrawGui()
     }
 }
 
-void DataBaseImpl::ScheduleCommit() noexcept
+void DataBaseImpl::ScheduleCommit()
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -59,7 +59,7 @@ class ServerEntity;
 class EntityLock final
 {
 public:
-    EntityLock() noexcept;
+    EntityLock();
     EntityLock(const EntityLock&) = delete;
     EntityLock(EntityLock&&) noexcept = delete;
     auto operator=(const EntityLock&) = delete;
@@ -215,7 +215,7 @@ private:
 class SyncContext final
 {
 public:
-    SyncContext() noexcept;
+    SyncContext();
     SyncContext(const SyncContext&) = delete;
     SyncContext(SyncContext&&) noexcept = delete;
     auto operator=(const SyncContext&) = delete;

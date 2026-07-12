@@ -90,7 +90,7 @@ public:
     [[nodiscard]] auto GetCritter(ident_t cr_id, CritterSeeType see_type) -> nptr<Critter>;
     [[nodiscard]] auto GetCritters(CritterSeeType see_type, CritterFindType find_type) -> vector<ptr<Critter>>;
     [[nodiscard]] auto GetGlobalMapGroup() -> span<ptr<Critter>>;
-    [[nodiscard]] auto GetRawGlobalMapGroup() noexcept -> shared_ptr<vector<ptr<Critter>>>&;
+    [[nodiscard]] auto GetRawGlobalMapGroup() -> shared_ptr<vector<ptr<Critter>>>&;
     [[nodiscard]] auto IsMoving() const noexcept -> bool;
     [[nodiscard]] auto GetMovingUid() const noexcept -> uint32_t;
     [[nodiscard]] auto GetMoving() const noexcept -> nptr<const MovingContext>;
@@ -121,18 +121,18 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
-    void StopMoving(MovingState reason = MovingState::Stopped) noexcept;
+    void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
     void AttachToCritter(ptr<Critter> cr);
     void DetachFromCritter();
     void MoveAttachedCritters();
     void AddAttachedCritter(ptr<Critter> cr);
-    void RemoveAttachedCritter(ptr<Critter> cr) noexcept;
+    void RemoveAttachedCritter(ptr<Critter> cr);
     void ClearVisibleEnitites();
     void SetItem(ptr<Item> item);
     void RemoveItem(ptr<Item> item);
-    void ChangeDir(mdir dir) noexcept;
+    void ChangeDir(mdir dir);
     void LockMapTransfers() noexcept;
     void UnlockMapTransfers() noexcept;
 

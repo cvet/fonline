@@ -42,7 +42,7 @@ static constexpr float32_t MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET = 0.5f;
 static constexpr size_t MAP_LAYER_DEPTH_BIAS_STEPS = static_cast<size_t>(DrawOrderType::Last) + 1;
 static constexpr float32_t MAP_LAYER_DEPTH_BIAS = MAP_LAYER_DEPTH_BIAS_PIXEL_BUDGET / numeric_cast<float32_t>(MAP_LAYER_DEPTH_BIAS_STEPS);
 
-Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) noexcept :
+Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _sprMngr {spr_mngr},
     _size {size},
     _offset {offset}
@@ -58,7 +58,7 @@ auto Sprite::IsHitTest(ipos32 pos) const -> bool
     return false;
 }
 
-void Sprite::StartUpdate() noexcept
+void Sprite::StartUpdate()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -131,7 +131,7 @@ auto SpriteManager::GetWindowSize() const -> isize32
     return _window->GetSize();
 }
 
-void SpriteManager::SetWindowSize(isize32 size) noexcept
+void SpriteManager::SetWindowSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -151,7 +151,7 @@ auto SpriteManager::GetScreenSize() const -> isize32
     return _window->GetScreenSize();
 }
 
-void SpriteManager::SetScreenSize(isize32 size) noexcept
+void SpriteManager::SetScreenSize(isize32 size)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -179,7 +179,7 @@ void SpriteManager::SetScreenSize(isize32 size) noexcept
     _window->SetScreenSize(size);
 }
 
-void SpriteManager::ToggleFullscreen() noexcept
+void SpriteManager::ToggleFullscreen()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -203,7 +203,7 @@ void SpriteManager::ToggleFullscreen() noexcept
     }
 }
 
-void SpriteManager::SetMousePosition(ipos32 pos) noexcept
+void SpriteManager::SetMousePosition(ipos32 pos)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -224,28 +224,28 @@ auto SpriteManager::IsWindowFocused() const -> bool
     return _window->IsFocused();
 }
 
-void SpriteManager::MinimizeWindow() noexcept
+void SpriteManager::MinimizeWindow()
 {
     FO_STACK_TRACE_ENTRY();
 
     _window->Minimize();
 }
 
-void SpriteManager::BlinkWindow() noexcept
+void SpriteManager::BlinkWindow()
 {
     FO_STACK_TRACE_ENTRY();
 
     _window->Blink();
 }
 
-void SpriteManager::SetAlwaysOnTop(bool enable) noexcept
+void SpriteManager::SetAlwaysOnTop(bool enable)
 {
     FO_STACK_TRACE_ENTRY();
 
     _window->AlwaysOnTop(enable);
 }
 
-void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory) noexcept
+void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -476,7 +476,7 @@ void SpriteManager::PopScissor()
     }
 }
 
-void SpriteManager::RefreshScissor() noexcept
+void SpriteManager::RefreshScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -500,7 +500,7 @@ void SpriteManager::RefreshScissor() noexcept
     }
 }
 
-void SpriteManager::EnableScissor() noexcept
+void SpriteManager::EnableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -511,7 +511,7 @@ void SpriteManager::EnableScissor() noexcept
     }
 }
 
-void SpriteManager::DisableScissor() noexcept
+void SpriteManager::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -944,7 +944,7 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
     }
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const noexcept
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -956,7 +956,7 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, uco
     points.emplace_back(PrimitivePoint {.PointPos = {r.x + r.width, r.y + r.height}, .PointColor = color});
 }
 
-void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const noexcept
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -968,14 +968,14 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpo
     points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(rb.x), iround<int32_t>(rb.y)}, .PointColor = color});
 }
 
-void SpriteManager::InvalidateEgg(TransparentEggSlot slot) noexcept
+void SpriteManager::InvalidateEgg(TransparentEggSlot slot)
 {
     FO_STACK_TRACE_ENTRY();
 
     _eggSlots[static_cast<size_t>(slot)] = {};
 }
 
-void SpriteManager::InvalidateEgg() noexcept
+void SpriteManager::InvalidateEgg()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -983,7 +983,7 @@ void SpriteManager::InvalidateEgg() noexcept
     InvalidateEgg(TransparentEggSlot::Secondary);
 }
 
-void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr) noexcept
+void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1016,7 +1016,7 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSpri
     egg.Valid = true;
 }
 
-void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius) noexcept
+void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius)
 {
     FO_STACK_TRACE_ENTRY();
 

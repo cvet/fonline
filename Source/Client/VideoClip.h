@@ -56,11 +56,11 @@ public:
     [[nodiscard]] auto GetTime() const -> timespan;
     [[nodiscard]] auto GetSize() const -> isize32;
 
-    void Stop() noexcept;
-    void Pause() noexcept;
-    void Resume() noexcept;
-    void SetLooped(bool enabled) noexcept;
-    void SetTime(timespan time) noexcept;
+    void Stop();
+    void Pause();
+    void Resume();
+    void SetLooped(bool enabled);
+    void SetTime(timespan time);
     auto RenderFrame() -> const vector<ucolor>&;
 
 private:

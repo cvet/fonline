@@ -92,7 +92,7 @@ class FontManager final
 {
 public:
     FontManager() = delete;
-    explicit FontManager(ptr<SpriteManager> spr_mngr) noexcept;
+    explicit FontManager(ptr<SpriteManager> spr_mngr);
     FontManager(const FontManager&) = delete;
     FontManager(FontManager&&) noexcept = delete;
     auto operator=(const FontManager&) = delete;
@@ -110,8 +110,8 @@ public:
     void SetFontEffect(FontType font, nptr<RenderEffect> effect);
     void DrawText(irect32 rect, string_view str, ucolor color, TextFormat format);
     auto SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>;
-    void ClearFonts() noexcept;
-    void FrameUpdate() noexcept;
+    void ClearFonts();
+    void FrameUpdate();
 
 private:
     enum class FormatMode : int32_t

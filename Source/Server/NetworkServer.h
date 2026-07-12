@@ -64,7 +64,7 @@ public:
     void Disconnect();
 
 protected:
-    explicit NetworkServerConnection(ptr<ServerNetworkSettings> settings) noexcept;
+    explicit NetworkServerConnection(ptr<ServerNetworkSettings> settings);
 
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;

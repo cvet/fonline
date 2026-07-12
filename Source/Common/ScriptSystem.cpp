@@ -289,7 +289,7 @@ void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend>
     FO_VERIFY_AND_THROW(inserted, "Backends[index] is already set");
 }
 
-void ScriptSystem::ShutdownBackends() noexcept
+void ScriptSystem::ShutdownBackends()
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -671,7 +671,7 @@ public:
     void UnfreezeGlobalVars() noexcept { _globalVarsFrozen.store(false, std::memory_order_release); }
 
     void RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend);
-    void ShutdownBackends() noexcept;
+    void ShutdownBackends();
 
     template<typename T>
         requires(std::is_base_of_v<ScriptSystemBackend, T>)

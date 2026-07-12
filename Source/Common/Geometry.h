@@ -228,7 +228,7 @@ public:
     static auto MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool;
     static void MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept;
     static auto MoveHexAroundAway(mpos& hex, int32_t index, msize map_size) -> bool;
-    static void MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index) noexcept;
+    static void MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index);
     static void ForEachMultihexLines(const_span<uint8_t> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback);
 };
 

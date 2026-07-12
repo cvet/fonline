@@ -43,7 +43,7 @@ ScriptImGui::ScriptImGui(ptr<BaseEngine> engine) :
     FO_STACK_TRACE_ENTRY();
 }
 
-static auto ImGuiAlloc(size_t sz, void* user_data) noexcept -> void*
+static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -54,7 +54,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) noexcept -> void*
     return bytes.get();
 }
 
-static void ImGuiFree(void* raw_mem, void* user_data) noexcept
+static void ImGuiFree(void* raw_mem, void* user_data)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -70,7 +70,7 @@ static void ImGuiFree(void* raw_mem, void* user_data) noexcept
     allocator.deallocate(bytes.get(), 0);
 }
 
-void ImGuiExt::Init() noexcept
+void ImGuiExt::Init()
 {
     FO_STACK_TRACE_ENTRY();
 

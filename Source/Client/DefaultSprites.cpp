@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) noexcept :
+AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
     _atlasNode {atlas_node},
@@ -366,7 +366,7 @@ auto SpriteSheet::Update() -> bool
     return false;
 }
 
-void SpriteSheet::RefreshParams() noexcept
+void SpriteSheet::RefreshParams()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -414,7 +414,7 @@ auto SpriteSheet::GetDir(mdir dir) -> nptr<SpriteSheet>
     return _dirs[dir_value - 1];
 }
 
-DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) noexcept :
+DefaultSpriteFactory::DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
 {
     FO_STACK_TRACE_ENTRY();

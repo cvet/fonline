@@ -357,28 +357,28 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
     }
 }
 
-void TextPack::AddStr(TextPackKey key, string_view str) noexcept
+void TextPack::AddStr(TextPackKey key, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 
     _strData.emplace(key, string(str));
 }
 
-void TextPack::AddStr(TextPackKey key, string&& str) noexcept
+void TextPack::AddStr(TextPackKey key, string&& str)
 {
     FO_STACK_TRACE_ENTRY();
 
     _strData.emplace(key, std::move(str));
 }
 
-void TextPack::EraseStr(TextPackKey key) noexcept
+void TextPack::EraseStr(TextPackKey key)
 {
     FO_STACK_TRACE_ENTRY();
 
     _strData.erase(key);
 }
 
-void TextPack::Merge(const TextPack& other) noexcept
+void TextPack::Merge(const TextPack& other)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -387,7 +387,7 @@ void TextPack::Merge(const TextPack& other) noexcept
     }
 }
 
-void TextPack::FixStr(const TextPack& base_pack) noexcept
+void TextPack::FixStr(const TextPack& base_pack)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -411,7 +411,7 @@ void TextPack::FixStr(const TextPack& base_pack) noexcept
     }
 }
 
-void TextPack::Clear() noexcept
+void TextPack::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -74,7 +74,7 @@ static auto ReadPackagedBuildName() -> string
     return raw;
 }
 
-FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) noexcept :
+FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _enabled {enabled && (sleep >= 0 || fixed_fps > 0)},
     _sleep {sleep},
     _fixedFps {fixed_fps}
@@ -82,7 +82,7 @@ FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) noe
     FO_STACK_TRACE_ENTRY();
 }
 
-void FrameBalancer::StartLoop() noexcept
+void FrameBalancer::StartLoop()
 {
     FO_STACK_TRACE_ENTRY();
 

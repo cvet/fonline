@@ -68,7 +68,7 @@ class MapManager final
 {
 public:
     MapManager() = delete;
-    explicit MapManager(ptr<ServerEngine> engine) noexcept;
+    explicit MapManager(ptr<ServerEngine> engine);
     MapManager(const MapManager&) = delete;
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;

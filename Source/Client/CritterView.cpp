@@ -81,7 +81,7 @@ void CritterView::OnDestroySelf()
     _invItems.clear();
 }
 
-void CritterView::SetName(string_view name) noexcept
+void CritterView::SetName(string_view name)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -95,7 +95,7 @@ auto CritterView::IsAttachedCritter(ident_t cr_id) const noexcept -> bool
     return std::ranges::find(_attachedCritters, cr_id) != _attachedCritters.end();
 }
 
-void CritterView::SetAttachedCritters(vector<ident_t> attached_critters) noexcept
+void CritterView::SetAttachedCritters(vector<ident_t> attached_critters)
 {
     FO_STACK_TRACE_ENTRY();
 

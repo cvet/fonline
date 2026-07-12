@@ -884,7 +884,7 @@ auto ServerEngine::PlayerJob(ptr<Player> player) -> std::optional<timespan>
     return std::chrono::milliseconds {Settings->ConnectionProcessPeriodMs};
 }
 
-void ServerEngine::UpdateJobStats(nanotime cur_time) noexcept
+void ServerEngine::UpdateJobStats(nanotime cur_time)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1289,7 +1289,7 @@ void ServerEngine::Unlock()
     }
 }
 
-void ServerEngine::SyncPoint() noexcept
+void ServerEngine::SyncPoint()
 {
     FO_STACK_TRACE_ENTRY();
 

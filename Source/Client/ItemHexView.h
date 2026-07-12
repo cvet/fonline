@@ -62,15 +62,15 @@ public:
 
     void Init();
     void Process();
-    void RefreshAlpha() noexcept;
+    void RefreshAlpha();
     void PlayAnim(hstring anim_name, bool looped, bool reversed);
-    void StopAnim() noexcept;
+    void StopAnim();
     void SetAnimTime(float32_t normalized_time);
     void SetAnimDir(mdir dir);
     void RefreshAnim();
     void MoveToHex(mpos hex, float32_t speed);
     void RefreshOffs();
-    void SetMultihexEntries(vector<mpos> entries) noexcept;
+    void SetMultihexEntries(vector<mpos> entries);
 
 private:
     void SetupSprite(ptr<MapSprite> mspr) override;

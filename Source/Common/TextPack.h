@@ -130,12 +130,12 @@ public:
     auto LoadFromString(const string& str, string_view collection = {}) -> bool;
     void LoadFromMap(const map<string, string>& kv, string_view collection = {});
     void LoadFromResources(FileSystem& resources, string_view language = {});
-    void AddStr(TextPackKey key, string_view str) noexcept;
-    void AddStr(TextPackKey key, string&& str) noexcept;
-    void EraseStr(TextPackKey key) noexcept;
-    void Merge(const TextPack& other) noexcept;
-    void FixStr(const TextPack& base_pack) noexcept;
-    void Clear() noexcept;
+    void AddStr(TextPackKey key, string_view str);
+    void AddStr(TextPackKey key, string&& str);
+    void EraseStr(TextPackKey key);
+    void Merge(const TextPack& other);
+    void FixStr(const TextPack& base_pack);
+    void Clear();
 
     static void FixPacks(const_span<string> bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs);
 

@@ -119,7 +119,7 @@ public:
     [[nodiscard]] auto EvaluateProgress() const -> MovingProgress;
     [[nodiscard]] auto EvaluateProgress(mpos current_hex) const -> MovingProgress;
 
-    void UpdateCurrentTime(nanotime current_time) noexcept;
+    void UpdateCurrentTime(nanotime current_time);
     void UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex);
     void ChangeSpeed(uint16_t speed, nanotime current_time);
     void Complete(MovingState reason) noexcept;

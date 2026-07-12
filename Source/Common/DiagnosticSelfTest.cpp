@@ -36,13 +36,13 @@
 FO_BEGIN_NAMESPACE
 
 static void RunSelfTestCrash(string_view mode);
-[[noreturn]] static void CrashByBadPointerAccess(uintptr_t address, bool write) noexcept;
-[[noreturn]] static void CrashByStackOverflow() noexcept;
-[[noreturn]] static void CrashByIntegerDivideByZero() noexcept;
-[[noreturn]] static void CrashByAbort() noexcept;
+[[noreturn]] static void CrashByBadPointerAccess(uintptr_t address, bool write);
+[[noreturn]] static void CrashByStackOverflow();
+[[noreturn]] static void CrashByIntegerDivideByZero();
+[[noreturn]] static void CrashByAbort();
 [[noreturn]] static void CrashByNoexceptThrow() noexcept;
 [[noreturn]] static void CrashByThrow();
-[[noreturn]] static void CrashByStrongAssert() noexcept;
+[[noreturn]] static void CrashByStrongAssert();
 static void ThrowSelfTestException();
 FO_NO_INLINE static auto RecurseUntilStackOverflow(int depth) -> int;
 using StackOverflowRecursor = int (*)(int);
@@ -116,7 +116,7 @@ static void RunSelfTestCrash(string_view mode)
     }
 }
 
-static void CrashByBadPointerAccess(uintptr_t address, bool write) noexcept
+static void CrashByBadPointerAccess(uintptr_t address, bool write)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write) noexcept
     std::abort();
 }
 
-static void CrashByStackOverflow() noexcept
+static void CrashByStackOverflow()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -178,7 +178,7 @@ static auto GetStackOverflowRecursor() -> StackOverflowRecursor
     return recursor;
 }
 
-static void CrashByIntegerDivideByZero() noexcept
+static void CrashByIntegerDivideByZero()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -190,7 +190,7 @@ static void CrashByIntegerDivideByZero() noexcept
     std::abort();
 }
 
-static void CrashByAbort() noexcept
+static void CrashByAbort()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -225,7 +225,7 @@ static void CrashByThrow()
     throw GenericException("Self-test crash: unhandled exception");
 }
 
-static void CrashByStrongAssert() noexcept
+static void CrashByStrongAssert()
 {
     FO_STACK_TRACE_ENTRY();
 

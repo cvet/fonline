@@ -79,7 +79,7 @@ Critter::~Critter()
     }
 }
 
-auto Critter::GetRawGlobalMapGroup() noexcept -> shared_ptr<vector<ptr<Critter>>>&
+auto Critter::GetRawGlobalMapGroup() -> shared_ptr<vector<ptr<Critter>>>&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -432,7 +432,7 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
-void Critter::StopMoving(MovingState reason) noexcept
+void Critter::StopMoving(MovingState reason)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -462,7 +462,7 @@ void Critter::AddAttachedCritter(ptr<Critter> cr)
     vec_add_unique_value(_attachedCritters, cr);
 }
 
-void Critter::RemoveAttachedCritter(ptr<Critter> cr) noexcept
+void Critter::RemoveAttachedCritter(ptr<Critter> cr)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -936,7 +936,7 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
     return CheckItemVisibilityHook(_engine, map.as_ptr(), this, item);
 }
 
-void Critter::ChangeDir(mdir dir) noexcept
+void Critter::ChangeDir(mdir dir)
 {
     FO_STACK_TRACE_ENTRY();
 

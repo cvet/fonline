@@ -80,7 +80,7 @@ private:
 class SDLGpu_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    SDLGpu_DrawBuffer(bool is_static, ptr<SDLGpu_Renderer::Context> ctx) noexcept :
+    SDLGpu_DrawBuffer(bool is_static, ptr<SDLGpu_Renderer::Context> ctx) :
         RenderDrawBuffer(is_static),
         _ctx {ctx}
     {

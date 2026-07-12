@@ -242,7 +242,7 @@ auto WorkerPool::Cancel(JobKey key) -> bool
     return removed;
 }
 
-void WorkerPool::Clear() noexcept
+void WorkerPool::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -260,7 +260,7 @@ void WorkerPool::Clear() noexcept
     }
 }
 
-void WorkerPool::WaitIdle() const noexcept
+void WorkerPool::WaitIdle() const
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -288,7 +288,7 @@ auto WorkerPool::WaitIdle(timespan timeout) const -> bool
     return true;
 }
 
-void WorkerPool::Resume() noexcept
+void WorkerPool::Resume()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -305,7 +305,7 @@ void WorkerPool::Resume() noexcept
     _workSignal.notify_all();
 }
 
-void WorkerPool::Pause() noexcept
+void WorkerPool::Pause()
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -419,7 +419,7 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
     return next_token;
 }
 
-void StringEscaping::AppendCodeString(string& result, string_view str) noexcept
+void StringEscaping::AppendCodeString(string& result, string_view str)
 {
     FO_STACK_TRACE_ENTRY();
 

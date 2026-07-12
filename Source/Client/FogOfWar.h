@@ -86,13 +86,13 @@ public:
     void SetDrawOffset(ipos32 offset) noexcept { *_drawOffset = offset; }
     void SetBaseDrawOffset(ipos32 offset) noexcept { *_baseDrawOffset = offset; }
     void Prepare(const Input& input);
-    void Clear() noexcept;
+    void Clear();
 
 private:
     void BuildPoints(const Input& input, vector<PrimitivePoint>& fog_points) const;
-    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration) noexcept;
+    void StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration);
     void UpdateTransition(nanotime frame_time);
-    void FinishTransition() noexcept;
+    void FinishTransition();
     void InterpolatePoints(const vector<PrimitivePoint>& from_points, const vector<PrimitivePoint>& to_points, float32_t t, vector<PrimitivePoint>& result_points);
     auto MakeCollapsed(const vector<PrimitivePoint>& points) const -> vector<PrimitivePoint>;
 

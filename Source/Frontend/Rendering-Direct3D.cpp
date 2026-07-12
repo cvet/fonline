@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 class Direct3D_Texture final : public RenderTexture
 {
 public:
-    Direct3D_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<Direct3D_Renderer::Context> ctx) noexcept :
+    Direct3D_Texture(isize32 size, bool linear_filtered, bool with_depth, ptr<Direct3D_Renderer::Context> ctx) :
         RenderTexture(size, linear_filtered, with_depth),
         _ctx {ctx}
     {
@@ -76,7 +76,7 @@ private:
 class Direct3D_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    Direct3D_DrawBuffer(bool is_static, ptr<Direct3D_Renderer::Context> ctx) noexcept :
+    Direct3D_DrawBuffer(bool is_static, ptr<Direct3D_Renderer::Context> ctx) :
         RenderDrawBuffer(is_static),
         _ctx {ctx}
     {

@@ -91,16 +91,16 @@ public:
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
 
-    void Resume() noexcept;
-    void Pause() noexcept;
+    void Resume();
+    void Pause();
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);
     void Submit(JobKey key, timespan delay, Job job);
     auto Wake(JobKey key) -> bool;
     auto Cancel(JobKey key) -> bool;
-    void Clear() noexcept;
-    void WaitIdle() const noexcept;
+    void Clear();
+    void WaitIdle() const;
     auto WaitIdle(timespan timeout) const -> bool;
 
 private:

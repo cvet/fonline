@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-NetBuffer::NetBuffer(size_t buf_len) noexcept
+NetBuffer::NetBuffer(size_t buf_len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -55,7 +55,7 @@ auto NetBuffer::GetData() noexcept -> const_span<uint8_t>
     return {data.get(), _bufEndPos};
 }
 
-void NetBuffer::SetEncryptKey(uint32_t seed) noexcept
+void NetBuffer::SetEncryptKey(uint32_t seed)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -108,7 +108,7 @@ void NetBuffer::ResetBuf() noexcept
     }
 }
 
-void NetBuffer::GrowBuf(size_t len) noexcept
+void NetBuffer::GrowBuf(size_t len)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -254,7 +254,7 @@ void NetOutBuffer::EndMsg()
     EncryptKey(numeric_cast<int32_t>(msg_len - sizeof(msg_signature)));
 }
 
-void NetOutBuffer::WriteHashedString(hstring value) noexcept
+void NetOutBuffer::WriteHashedString(hstring value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -272,7 +272,7 @@ void NetInBuffer::ResetBuf() noexcept
     _bufReadPos = 0;
 }
 
-void NetInBuffer::AddData(const_span<uint8_t> buf) noexcept
+void NetInBuffer::AddData(const_span<uint8_t> buf)
 {
     FO_STACK_TRACE_ENTRY();
 

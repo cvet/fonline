@@ -72,8 +72,8 @@ public:
     auto AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>;
     void DeleteInvItem(ptr<ItemView> item);
     void DeleteAllInvItems();
-    void SetName(string_view name) noexcept;
-    void SetAttachedCritters(vector<ident_t> attached_critters) noexcept;
+    void SetName(string_view name);
+    void SetAttachedCritters(vector<ident_t> attached_critters);
 
 protected:
     void OnDestroySelf() override;

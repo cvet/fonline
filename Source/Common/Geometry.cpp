@@ -486,7 +486,7 @@ auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32_t index, msize map_size)
     }
 }
 
-void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index) noexcept
+void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 {
     FO_NO_STACK_TRACE_ENTRY();
 

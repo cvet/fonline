@@ -280,7 +280,7 @@ auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, str
     return true;
 }
 
-void ConfigFile::TrimConfigRange(string_view line, size_t& begin, size_t& end) noexcept
+void ConfigFile::TrimConfigRange(string_view line, size_t& begin, size_t& end)
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -50,7 +50,7 @@ static void FlushLogAtExit();
 
 struct LoggingData
 {
-    LoggingData() noexcept
+    LoggingData()
     {
         FO_STACK_TRACE_ENTRY();
 

@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-CritterManager::CritterManager(ptr<ServerEngine> engine) noexcept :
+CritterManager::CritterManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();

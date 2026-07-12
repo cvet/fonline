@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 struct EngineBaseData
 {
-    EngineBaseData() noexcept
+    EngineBaseData()
     {
         BuiltinTypes = {//
             {"int8",

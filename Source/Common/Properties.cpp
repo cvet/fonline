@@ -137,7 +137,7 @@ void PropertyRawData::Pass(nptr<const void> value, size_t size)
     _useDynamic = false;
 }
 
-void PropertyRawData::StoreIfPassed() noexcept
+void PropertyRawData::StoreIfPassed()
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -148,27 +148,27 @@ void PropertyRawData::StoreIfPassed() noexcept
     }
 }
 
-Property::Property(ptr<const PropertyRegistrator> registrator) noexcept :
+Property::Property(ptr<const PropertyRegistrator> registrator) :
     _registrator {registrator}
 {
     FO_NO_STACK_TRACE_ENTRY();
 }
 
-void Property::SetGetter(PropertyGetCallback getter) const noexcept
+void Property::SetGetter(PropertyGetCallback getter) const
 {
     FO_STACK_TRACE_ENTRY();
 
     _getter = std::move(getter);
 }
 
-void Property::AddSetter(PropertySetCallback setter) const noexcept
+void Property::AddSetter(PropertySetCallback setter) const
 {
     FO_STACK_TRACE_ENTRY();
 
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 
-void Property::AddPostSetter(PropertyPostSetCallback setter) const noexcept
+void Property::AddPostSetter(PropertyPostSetCallback setter) const
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -44,15 +44,15 @@ namespace WebRelated
     inline constexpr string_view_nt CanvasSelector = "#canvas";
 
     extern void ApplyApplicationHints() noexcept;
-    extern void ApplyWindowSettings(WebSettings& settings) noexcept;
+    extern void ApplyWindowSettings(WebSettings& settings);
     extern void ApplyCanvasLayout(WebSettings& settings) noexcept;
-    extern void SetupClipboard() noexcept;
-    extern void SyncClipboardToSystem(string_view text) noexcept;
-    extern void InitializePersistentData() noexcept;
+    extern void SetupClipboard();
+    extern void SyncClipboardToSystem(string_view text);
+    extern void InitializePersistentData();
     extern auto IsPersistentDataReady() noexcept -> bool;
     extern void StartMainLoop(void (*entry)(void*), void* data) noexcept;
     extern void SetWebSocketScheme(bool secure) noexcept;
-    extern void ShowError(string_view title, string_view text) noexcept;
+    extern void ShowError(string_view title, string_view text);
 }
 
 FO_END_NAMESPACE

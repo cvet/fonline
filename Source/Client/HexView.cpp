@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-HexView::HexView(ptr<MapView> map) noexcept :
+HexView::HexView(ptr<MapView> map) :
     _map {map}
 {
     FO_STACK_TRACE_ENTRY();
@@ -90,7 +90,7 @@ void HexView::SetupSprite(ptr<MapSprite> mspr)
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
-void HexView::Finish() noexcept
+void HexView::Finish()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -108,21 +108,21 @@ auto HexView::IsFinished() const noexcept -> bool
     return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
-void HexView::ProcessFading() noexcept
+void HexView::ProcessFading()
 {
     FO_STACK_TRACE_ENTRY();
 
     EvaluateCurAlpha();
 }
 
-void HexView::FadeUp() noexcept
+void HexView::FadeUp()
 {
     FO_STACK_TRACE_ENTRY();
 
     StartFade(0);
 }
 
-void HexView::InheritAlphaFrom(ptr<const HexView> prev) noexcept
+void HexView::InheritAlphaFrom(ptr<const HexView> prev)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ void HexView::InheritAlphaFrom(ptr<const HexView> prev) noexcept
     }
 }
 
-void HexView::StartFade(uint8_t from_alpha) noexcept
+void HexView::StartFade(uint8_t from_alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -150,7 +150,7 @@ void HexView::StartFade(uint8_t from_alpha) noexcept
     EvaluateCurAlpha();
 }
 
-void HexView::EvaluateCurAlpha() noexcept
+void HexView::EvaluateCurAlpha()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -173,7 +173,7 @@ void HexView::EvaluateCurAlpha() noexcept
     }
 }
 
-void HexView::SetTargetAlpha(uint8_t alpha) noexcept
+void HexView::SetTargetAlpha(uint8_t alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -186,7 +186,7 @@ void HexView::SetTargetAlpha(uint8_t alpha) noexcept
     StartFade(from_alpha);
 }
 
-void HexView::SetDefaultAlpha(uint8_t alpha) noexcept
+void HexView::SetDefaultAlpha(uint8_t alpha)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -199,7 +199,7 @@ void HexView::SetDefaultAlpha(uint8_t alpha) noexcept
     }
 }
 
-void HexView::RestoreAlpha() noexcept
+void HexView::RestoreAlpha()
 {
     FO_STACK_TRACE_ENTRY();
 
