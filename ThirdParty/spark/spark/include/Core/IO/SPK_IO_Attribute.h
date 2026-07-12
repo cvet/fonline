@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <stdexcept> // (FOnline Patch) Reject reference type confusion during descriptor import.
 
 namespace SPK
 {
@@ -327,7 +328,16 @@ namespace IO
         std::vector<std::string> strList = descriptor->buffer[offset];
         size_t refIndex = FromString<size_t>(strList[0]);
         SPK_LOG_DEBUG("Get value for attribute \"" << name << "\" : " << descriptor->refBuffer[refIndex]);
-        return staticCast<T>(descriptor->refBuffer[refIndex]);
+        // (FOnline Patch) Serialized references are untrusted. A static cast here allowed a
+        // valid object of the wrong class to become type confusion during Graph::finalize().
+        const Ref<SPKObject>& source = descriptor->refBuffer[refIndex];
+        Ref<T> value = dynamicCast<T>(source);
+        if (source && !value)
+        {
+            SPK_LOG_ERROR("Attribute::getValueRef<T>() - Reference type mismatch for attribute \"" << name << "\"");
+            throw std::runtime_error("SPARK reference type mismatch");
+        }
+        return value;
 	}
 
 	template<typename T>
@@ -370,7 +380,15 @@ namespace IO
         for (size_t i = 0; i < strList.size(); ++i)
         {
             size_t refIndex = FromString<size_t>(strList[i]);
-            tmpBuffer.push_back( staticCast<T>(descriptor->refBuffer[refIndex]) );
+            // (FOnline Patch) Reject wrong-class references before import code can dereference them.
+            const Ref<SPKObject>& source = descriptor->refBuffer[refIndex];
+            Ref<T> value = dynamicCast<T>(source);
+            if (source && !value)
+            {
+                SPK_LOG_ERROR("Attribute::getValuesRef<T>() - Reference type mismatch for attribute \"" << name << "\"");
+                throw std::runtime_error("SPARK reference type mismatch");
+            }
+            tmpBuffer.push_back(value);
         }
 
 #if !defined(SPK_NO_LOG) && defined(SPK_DEBUG)

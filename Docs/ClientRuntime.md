@@ -165,6 +165,19 @@ For 3D critter views, idle refresh plays alive-state animations from the beginni
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
 
+Particle resources are normally baked SPARK binary while keeping their authored
+resource extension. `ParticleManager` therefore asks the SPARK binary loader to
+read the memory-backed resource first and retains XML fallback for developer or
+legacy unpackaged inputs. SPARK's binary `loadFromBuffer` path must remain
+behaviorally equivalent to its stream loader; truncated/oversized payloads,
+unknown object types, descriptor-signature mismatches, zero/out-of-range object
+references, and references to an incompatible object class invalidate the graph.
+Custom FOnline SPARK object registration is shared by the baker, editor, and
+client through the thread-safe `EnsureSparkParticleObjectsRegistered()` path.
+`SparkQuadRenderer::Setup()` resolves the effect and texture before a particle
+is returned; missing render dependencies produce a normal load failure instead
+of a later exception on the first draw.
+
 ### Fonts and Inline Color Tags
 
 `FontManager::FormatText()` strips `@color:0xBBGGRR@` / `@color:0xAABBGGRR@` tags and records the parsed `ucolor` value in the formatted text's per-glyph color buffer during draw formatting. The reset tag is `@color@`; it restores the previous inline color, or the base draw color when no inline color is active. `FontFlag::NoColorize` still strips these tags, but keeps rendering with the caller-provided base color.

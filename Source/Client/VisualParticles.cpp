@@ -62,8 +62,7 @@ ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager
 {
     FO_STACK_TRACE_ENTRY();
 
-    static std::once_flag once;
-    std::call_once(once, [] { SPK::IO::IOManager::get().registerObject<SPK::FO::SparkQuadRenderer>(); });
+    SPK::FO::EnsureSparkParticleObjectsRegistered();
 
     if (_settings->Animation3dFPS != 0) {
         _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
@@ -93,16 +92,27 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
         if (const auto file = _resources->ReadFile(name)) {
             const_span<uint8_t> file_data = file.GetDataSpan();
-            base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+            base_system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+
+            if (!base_system) {
+                base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+            }
         }
 
         if (base_system) {
+            bool render_dependencies_loaded = true;
+
             for (size_t i = 0; i < base_system->getNbGroups(); i++) {
                 auto&& group = base_system->getGroup(i);
 
                 if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
-                    renderer->Setup(name, this);
+                    render_dependencies_loaded &= renderer->Setup(name, this);
                 }
+            }
+
+            if (!render_dependencies_loaded) {
+                WriteLog("Particle '{}' has a missing render effect or texture", name);
+                base_system = SPK::Ref<SPK::System>();
             }
         }
 

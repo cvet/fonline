@@ -37,6 +37,14 @@
 
 namespace SPK::FO
 {
+    void EnsureSparkParticleObjectsRegistered()
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        auto& io_mngr = IO::IOManager::get();
+        io_mngr.ensureObjectRegistered<SparkQuadRenderer>();
+    }
+
     SparkRenderBuffer::SparkRenderBuffer(size_t vertices, ptr<FO_NAMESPACE IAppRender> render) :
         _renderBuf {render->CreateDrawBuffer(false)},
         _render {render}
@@ -128,7 +136,7 @@ namespace SPK::FO
         return SPK_NEW(SparkQuadRenderer);
     }
 
-    void SparkQuadRenderer::Setup(string_view path, ptr<ParticleManager> particle_mngr)
+    auto SparkQuadRenderer::Setup(string_view path, ptr<ParticleManager> particle_mngr) -> bool
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -143,6 +151,8 @@ namespace SPK::FO
         if (!_textureName.empty()) {
             SetTextureName(_textureName);
         }
+
+        return _effect && _texture;
     }
 
     void SparkQuadRenderer::AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const
@@ -245,6 +255,7 @@ namespace SPK::FO
 
         FO_VERIFY_AND_THROW(_effect, "Missing required effect");
         FO_VERIFY_AND_THROW(_texture, "Missing required texture");
+
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
         ptr<const float32_t> projection_matrix_values = glm::value_ptr(_particleMngr->_viewProjMatrix);
@@ -608,4 +619,5 @@ namespace SPK::FO
 
         descriptor.getAttribute("locked up vector")->setValue(upVector);
     }
+
 }

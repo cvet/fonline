@@ -48,7 +48,10 @@ namespace IO
 
 	void IOManager::unregisterAll() // TODO Unregister at IOManager destruction ?
 	{
-		registeredObjects.clear();
+		{
+			const std::lock_guard<std::mutex> lock(registeredObjectsMutex); // (FOnline Patch) Pair with thread-safe custom registration.
+			registeredObjects.clear();
+		}
 		std::map<std::string,Loader*>::const_iterator it = registeredLoaders.begin();
 		for (std::map<std::string,Loader*>::const_iterator it = registeredLoaders.begin(); it != registeredLoaders.end(); ++it)
 			SPK_DELETE(it->second);
@@ -150,6 +153,7 @@ namespace IO
 
 	Ref<SPKObject> IOManager::createObject(const std::string& id) const
 	{
+		const std::lock_guard<std::mutex> lock(registeredObjectsMutex); // (FOnline Patch) Loading can overlap application registration.
 		std::map<std::string,createSerializableFn>::const_iterator it = registeredObjects.find(id);
 		if (it != registeredObjects.end())
 			return (*it->second)();

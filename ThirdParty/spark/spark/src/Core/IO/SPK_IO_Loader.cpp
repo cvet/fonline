@@ -24,6 +24,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <exception> // (FOnline Patch) Convert descriptor import failures into clean load failures.
 
 #include <SPARK_Core.h>
 
@@ -36,11 +37,16 @@ namespace IO
 		clock_t startTime = std::clock();
 
 		Graph graph;
-        if (innerLoad(is,graph,path))
+		if (innerLoad(is,graph,path))
 		{
 			const Ref<System>& system = graph.finalize();
-			unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
-			SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+			if (system)
+			{
+				unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
+				SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+			}
+			else
+				SPK_LOG_INFO("An error occurred while loading the System");
 			return system;
 		}
 		else
@@ -74,8 +80,13 @@ namespace IO
         if (innerLoadFromBuffer(graph,data,datasize))
         {
             const Ref<System>& system = graph.finalize();
-            unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
-            SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+            if (system)
+            {
+                unsigned int loadTime = static_cast<unsigned int>(((std::clock() - startTime) * 1000) / CLOCKS_PER_SEC);
+                SPK_LOG_INFO("The system has been successfully loaded in " << loadTime << "ms");
+            }
+            else
+                SPK_LOG_INFO("An error occurred while loading the System");
             return system;
         }
         else
@@ -149,9 +160,18 @@ namespace IO
 	{
 		SPK_ASSERT(nodesValidated,"Loader::Graph::finalize() - Graph has not been validated before finalization");
 
-		// Imports all descriptors to set up the objects
-		for (std::list<Node*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
-			(*it)->object->importAttributes((*it)->descriptor);
+		// Imports all descriptors to set up the objects. (FOnline Patch) Typed
+		// reference validation can reject a structurally valid but unsafe graph.
+		try
+		{
+			for (std::list<Node*>::const_iterator it = nodes.begin(); it != nodes.end(); ++it)
+				(*it)->object->importAttributes((*it)->descriptor);
+		}
+		catch (const std::exception& exception)
+		{
+			SPK_LOG_ERROR("Loader::Graph::finalize() - Descriptor import failed: " << exception.what());
+			system = SPK_NULL_REF;
+		}
 
 		return system;
 	}

@@ -91,6 +91,8 @@ Built-in baker implementations:
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.
 - `Source/Tools/EffectBaker.*` — bakes shader/effect sources and shader stages.
+- `Source/Tools/ParticleBaker.*` — converts native SPARK `.fopts` XML to its
+  memory-loadable binary form.
 - `Source/Tools/ProtoBaker.*` — bakes prototype files with metadata/script-aware validation.
 - `Source/Tools/MapBaker.*` — bakes map files and validates map/proto relationships.
 - `Source/Tools/TextBaker.*` — bakes text packs.
@@ -129,7 +131,7 @@ Treat this as an engine developer tool surface. If a project wants a custom cont
 
 ### Particle editor
 
-`Source/Tools/ParticleEditor.h` / `.cpp` define `ParticleEditor` and its internal implementation. It belongs to the interactive tool group and should be documented from source/tests before promising detailed user workflows.
+`Source/Tools/ParticleEditor.h` / `.cpp` define `ParticleEditor` and its internal implementation. It previews memory-backed SPARK resources, exposes native object parameters (including FOnline's `SparkQuadRenderer`), and presents a non-crashing load-error state when a graph or render dependency is unavailable.
 
 ## Ownership boundaries
 
@@ -159,6 +161,7 @@ Baker/tool behavior is covered by focused tests in `Source/Tests/`:
 - `Test_RawCopyBaker.cpp`
 - `Test_ImageBaker.cpp`
 - `Test_EffectBaker.cpp`
+- `Test_ParticleBaker.cpp`
 - `Test_ProtoBaker.cpp`
 - `Test_ProtoTextBaker.cpp`
 - `Test_MapBaker.cpp`
