@@ -46,7 +46,8 @@ struct ResourcePackInfo
     string Name {};
     vector<string> InputDirs {};
     vector<string> InputFiles {};
-    bool RecursiveInput {};
+    vector<string> IncludePatterns {};
+    vector<string> ExcludePatterns {};
     bool ServerOnly {};
     bool ClientOnly {};
     bool MapperOnly {};

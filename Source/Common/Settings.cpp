@@ -566,8 +566,11 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
                 pack_info.InputFiles.emplace_back(std::move(path));
             }
         }
-        if (auto recursive_input = get_map_value("RecursiveInput"); !recursive_input.empty()) {
-            pack_info.RecursiveInput = strvex(recursive_input).to_bool();
+        if (auto include_patterns = get_map_value("IncludePatterns"); !include_patterns.empty()) {
+            pack_info.IncludePatterns = strex(include_patterns).split(' ');
+        }
+        if (auto exclude_patterns = get_map_value("ExcludePatterns"); !exclude_patterns.empty()) {
+            pack_info.ExcludePatterns = strex(exclude_patterns).split(' ');
         }
 
         if (pack_info.ServerOnly) {

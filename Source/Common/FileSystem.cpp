@@ -623,6 +623,104 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool recursive) c
     return FileCollection(std::move(files));
 }
 
+static auto MatchResourcePathGlob(string_view path, string_view pattern) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const size_t path_length = path.length();
+    const size_t pattern_length = pattern.length();
+    vector<int8_t> memo((path_length + 1) * (pattern_length + 1), -1);
+
+    const auto match = [&](auto&& self, size_t pattern_pos, size_t path_pos) -> bool {
+        int8_t& cached = memo[pattern_pos * (path_length + 1) + path_pos];
+
+        if (cached != -1) {
+            return cached != 0;
+        }
+
+        bool result = false;
+
+        if (pattern_pos == pattern_length) {
+            result = path_pos == path_length;
+        }
+        else if (pattern[pattern_pos] == '*') {
+            size_t next_pattern_pos = pattern_pos;
+
+            while (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '*') {
+                ++next_pattern_pos;
+            }
+
+            const bool is_globstar = next_pattern_pos - pattern_pos >= 2;
+
+            if (is_globstar) {
+                if (next_pattern_pos < pattern_length && pattern[next_pattern_pos] == '/') {
+                    result = self(self, next_pattern_pos + 1, path_pos);
+
+                    for (size_t next_path_pos = path_pos; !result && next_path_pos < path_length; ++next_path_pos) {
+                        if (path[next_path_pos] == '/') {
+                            result = self(self, pattern_pos, next_path_pos + 1);
+                        }
+                    }
+                }
+                else {
+                    result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && self(self, pattern_pos, path_pos + 1));
+                }
+            }
+            else {
+                result = self(self, next_pattern_pos, path_pos) || (path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos, path_pos + 1));
+            }
+        }
+        else if (pattern[pattern_pos] == '?') {
+            result = path_pos < path_length && path[path_pos] != '/' && self(self, pattern_pos + 1, path_pos + 1);
+        }
+        else {
+            result = path_pos < path_length && pattern[pattern_pos] == path[path_pos] && self(self, pattern_pos + 1, path_pos + 1);
+        }
+
+        cached = result ? 1 : 0;
+        return result;
+    };
+
+    return match(match, 0, 0);
+}
+
+auto FileSystem::FilterFiles(const_span<string> include_patterns, const_span<string> exclude_patterns) const -> FileCollection
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> normalized_include_patterns;
+    normalized_include_patterns.reserve(include_patterns.size());
+
+    for (const string& pattern : include_patterns) {
+        normalized_include_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    vector<string> normalized_exclude_patterns;
+    normalized_exclude_patterns.reserve(exclude_patterns.size());
+
+    for (const string& pattern : exclude_patterns) {
+        normalized_exclude_patterns.emplace_back(strex(pattern).normalize_path_slashes());
+    }
+
+    const auto matches_any = [](string_view path, const vector<string>& patterns) -> bool { return std::ranges::any_of(patterns, [path](const string& pattern) { return MatchResourcePathGlob(path, pattern); }); };
+
+    const FileCollection all_files = GetAllFiles();
+    vector<FileHeader> filtered_files;
+    filtered_files.reserve(all_files.GetFilesCount());
+
+    for (const FileHeader& file : all_files) {
+        const string_view path = file.GetPath();
+        const bool included = normalized_include_patterns.empty() || matches_any(path, normalized_include_patterns);
+        const bool excluded = matches_any(path, normalized_exclude_patterns);
+
+        if (included && !excluded) {
+            filtered_files.emplace_back(file.Copy());
+        }
+    }
+
+    return FileCollection {std::move(filtered_files)};
+}
+
 auto FileSystem::IsFileExists(string_view path) const -> bool
 {
     FO_STACK_TRACE_ENTRY();

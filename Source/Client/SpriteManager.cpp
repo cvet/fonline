@@ -504,9 +504,7 @@ void SpriteManager::EnableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->EnableScissor(_scissorRect);
     }
 }
@@ -515,9 +513,7 @@ void SpriteManager::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->DisableScissor();
     }
 }
