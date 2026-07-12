@@ -43,10 +43,6 @@ FO_BEGIN_NAMESPACE
 
 static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver) -> unique_ptr<ModelBone>;
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone);
-static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
-static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
-static auto FindModelBone(nptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
-static auto FindModelBone(nptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
 
 ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
@@ -1748,7 +1744,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                         }
 
                         // Skip equal influence side
-                        bool influence_side = !!FindModelBone(unskin_bone1, combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
+                        bool influence_side = !!FindModelBone(unskin_bone1.as_ptr(), combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
 
                         if (v_side == influence_side) {
                             continue;
@@ -2861,7 +2857,7 @@ static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
     }
 }
 
-static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
+auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2870,8 +2866,7 @@ static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept
     }
 
     for (size_t i = 0; i < bone->Children.size(); i++) {
-        auto child = bone->Children[i].as_ptr();
-        const auto child_bone = FindModelBone(child, bone_name);
+        auto child_bone = FindModelBone(bone->Children[i].as_ptr(), bone_name);
 
         if (child_bone) {
             return child_bone;
@@ -2881,18 +2876,7 @@ static auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept
     return nullptr;
 }
 
-static auto FindModelBone(nptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!bone) {
-        return nullptr;
-    }
-
-    return FindModelBone(bone, bone_name);
-}
-
-static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
+auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2900,9 +2884,8 @@ static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> np
         return bone;
     }
 
-    for (size_t i = 0; i != bone->Children.size(); ++i) {
-        auto child = bone->Children[i].as_ptr();
-        auto child_bone = FindModelBone(child, bone_name);
+    for (size_t i = 0; i < bone->Children.size(); i++) {
+        const auto child_bone = FindModelBone(ptr<const ModelBone>(bone->Children[i]), bone_name);
 
         if (child_bone) {
             return child_bone;
@@ -2910,17 +2893,6 @@ static auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> np
     }
 
     return nullptr;
-}
-
-static auto FindModelBone(nptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!bone) {
-        return nullptr;
-    }
-
-    return FindModelBone(bone, bone_name);
 }
 
 FO_END_NAMESPACE

@@ -10,6 +10,7 @@
 #include "Common.h"
 
 #if FO_ENABLE_3D
+#include "3dStuff.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
 #include "Rendering.h"
@@ -423,6 +424,30 @@ TEST_CASE("ModelBakers")
 
     ModelInfoBaker invalid_info_baker(invalid_rig.MakeContext());
     CHECK_THROWS_AS(invalid_info_baker.BakeFiles(invalid_rig.GetAllSourceFiles(), ""), ModelInfoBakerException);
+#endif
+}
+
+TEST_CASE("ModelBoneLookup")
+{
+#if FO_ENABLE_3D
+    HashStorage hash_storage;
+    const hstring root_name = hash_storage.ToHashedString("Root");
+    const hstring child_name = hash_storage.ToHashedString("Child");
+    const hstring missing_name = hash_storage.ToHashedString("Missing");
+
+    ModelBone root;
+    root.Name = root_name;
+    root.Children.emplace_back(SafeAlloc::MakeUnique<ModelBone>());
+    root.Children.back()->Name = child_name;
+
+    ptr<ModelBone> root_ptr = &root;
+    CHECK(FindModelBone(root_ptr, root_name) == &root);
+    CHECK(FindModelBone(root_ptr, child_name) == root.Children.back());
+    CHECK(FindModelBone(root_ptr, missing_name) == nullptr);
+
+    const ModelBone& const_root = root;
+    ptr<const ModelBone> const_root_ptr = &const_root;
+    CHECK(FindModelBone(const_root_ptr, child_name) == root.Children.back());
 #endif
 }
 

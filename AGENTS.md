@@ -69,6 +69,7 @@ The full maintained index is [Docs/README.md](Docs/README.md); use it when a top
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
+- Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface.
 - Reuse the existing MIT source-file header and `#pragma once`; match the surrounding module-level layout.
 - Module layout: put class definitions and static-function forward declarations near the top of the translation unit, then implementations ordered from high-level entry points down to low-level helpers, so a reader meets the public/orchestrating code first.
 - Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
