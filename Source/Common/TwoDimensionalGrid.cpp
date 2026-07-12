@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-[[maybe_unused]] static void TestSpecializations()
+[[maybe_unused]] static void TestSpecializations() noexcept
 {
     if constexpr (FO_DEBUG) {
         [[maybe_unused]] auto grid1 = StaticTwoDimensionalGrid<int32_t, ipos32, isize32>({100, 100});

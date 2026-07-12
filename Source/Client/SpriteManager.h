@@ -69,7 +69,7 @@ enum class TransparentEggSlot : uint8_t
 class Sprite : public enable_shared_from_this<Sprite>
 {
 public:
-    explicit Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset);
+    explicit Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) noexcept;
     Sprite(const Sprite&) = delete;
     Sprite(Sprite&&) noexcept = default;
     auto operator=(const Sprite&) = delete;
@@ -110,7 +110,7 @@ public:
     virtual void DrawInScene(fpos32 scene_pos, float32_t depth) const { ignore_unused(scene_pos, depth); }
 
 protected:
-    void StartUpdate();
+    void StartUpdate() noexcept;
 
     ptr<SpriteManager> _sprMngr;
     isize32 _size;
@@ -202,23 +202,23 @@ public:
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
 
-    void SetWindowSize(isize32 size);
-    void SetScreenSize(isize32 size);
-    void ToggleFullscreen();
-    void SetMousePosition(ipos32 pos);
-    void MinimizeWindow();
-    void BlinkWindow();
-    void SetAlwaysOnTop(bool enable);
+    void SetWindowSize(isize32 size) noexcept;
+    void SetScreenSize(isize32 size) noexcept;
+    void ToggleFullscreen() noexcept;
+    void SetMousePosition(ipos32 pos) noexcept;
+    void MinimizeWindow() noexcept;
+    void BlinkWindow() noexcept;
+    void SetAlwaysOnTop(bool enable) noexcept;
 
-    void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory);
+    void RegisterSpriteFactory(unique_ptr<SpriteFactory> factory) noexcept;
     auto GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>;
     void CleanupSpriteCache();
 
     void PushScissor(irect32 rect);
     void PopScissor();
 
-    void PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const;
-    void PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const;
+    void PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const noexcept;
+    void PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const noexcept;
 
     void BeginScene();
     void EndScene();
@@ -235,10 +235,10 @@ public:
     void DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr);
     void Flush();
 
-    void SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr);
-    void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius);
-    void InvalidateEgg(TransparentEggSlot slot);
-    void InvalidateEgg();
+    void SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr) noexcept;
+    void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius) noexcept;
+    void InvalidateEgg(TransparentEggSlot slot) noexcept;
+    void InvalidateEgg() noexcept;
 
 private:
     struct EggSlot
@@ -254,9 +254,9 @@ private:
     [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
-    void RefreshScissor();
-    void EnableScissor();
-    void DisableScissor();
+    void RefreshScissor() noexcept;
+    void EnableScissor() noexcept;
+    void DisableScissor() noexcept;
 
     ptr<RenderSettings> _settings;
     ptr<IAppWindow> _window;

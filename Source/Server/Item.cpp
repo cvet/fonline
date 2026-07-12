@@ -338,7 +338,7 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
     return true;
 }
 
-void Item::SetMultihexEntries(vector<mpos> entries)
+void Item::SetMultihexEntries(vector<mpos> entries) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

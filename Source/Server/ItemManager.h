@@ -54,7 +54,7 @@ class ItemManager final
 {
 public:
     ItemManager() = delete;
-    explicit ItemManager(ptr<ServerEngine> engine);
+    explicit ItemManager(ptr<ServerEngine> engine) noexcept;
     ItemManager(const ItemManager&) = delete;
     ItemManager(ItemManager&&) noexcept = delete;
     auto operator=(const ItemManager&) = delete;

@@ -400,7 +400,7 @@ auto MovingContext::BuildProgress(const MovingRawProgress& raw_progress, mpos cu
     return progress;
 }
 
-void MovingContext::UpdateCurrentTime(nanotime current_time)
+void MovingContext::UpdateCurrentTime(nanotime current_time) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

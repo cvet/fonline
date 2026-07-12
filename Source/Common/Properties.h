@@ -95,7 +95,7 @@ public:
 
     void Pass(span<const uint8_t> value);
     void Pass(nptr<const void> value, size_t size);
-    void StoreIfPassed();
+    void StoreIfPassed() noexcept;
 
 private:
     // Keep the over-aligned local buffer as the first member: placed at offset 0 the alignas is
@@ -204,12 +204,12 @@ public:
     [[nodiscard]] auto GetSetters() const noexcept -> ptr<const vector<PropertySetCallback>> { return &_setters; }
     [[nodiscard]] auto GetPostSetters() const noexcept -> ptr<const vector<PropertyPostSetCallback>> { return &_postSetters; }
 
-    void SetGetter(PropertyGetCallback getter) const;
-    void AddSetter(PropertySetCallback setter) const;
-    void AddPostSetter(PropertyPostSetCallback setter) const;
+    void SetGetter(PropertyGetCallback getter) const noexcept;
+    void AddSetter(PropertySetCallback setter) const noexcept;
+    void AddPostSetter(PropertyPostSetCallback setter) const noexcept;
 
 private:
-    explicit Property(ptr<const PropertyRegistrator> registrator);
+    explicit Property(ptr<const PropertyRegistrator> registrator) noexcept;
 
     ptr<const PropertyRegistrator> _registrator;
 

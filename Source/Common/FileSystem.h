@@ -72,7 +72,7 @@ protected:
 class FileReader final
 {
 public:
-    explicit FileReader(const_span<uint8_t> buf);
+    explicit FileReader(const_span<uint8_t> buf) noexcept;
     FileReader(const FileReader&) = delete;
     FileReader(FileReader&&) noexcept = default;
     auto operator=(const FileReader&) = delete;
@@ -195,8 +195,8 @@ public:
     void AddDirSource(string_view dir, bool recursive = false, bool non_cached = false, bool maybe_not_available = false);
     void AddPackSource(string_view dir, string_view pack, bool maybe_not_available = false);
     void AddPacksSource(string_view dir, const vector<string>& packs);
-    void AddCustomSource(unique_ptr<DataSource> data_source);
-    void CleanDataSources();
+    void AddCustomSource(unique_ptr<DataSource> data_source) noexcept;
+    void CleanDataSources() noexcept;
 
 private:
     vector<unique_ptr<DataSource>> _dataSources {};

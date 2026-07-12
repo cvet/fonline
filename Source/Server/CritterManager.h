@@ -56,7 +56,7 @@ class CritterManager final
 {
 public:
     CritterManager() = delete;
-    explicit CritterManager(ptr<ServerEngine> engine);
+    explicit CritterManager(ptr<ServerEngine> engine) noexcept;
     CritterManager(const CritterManager&) = delete;
     CritterManager(CritterManager&&) noexcept = delete;
     auto operator=(const CritterManager&) = delete;

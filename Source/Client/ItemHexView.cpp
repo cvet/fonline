@@ -161,7 +161,7 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
     _moveUpdateLastTime = _engine->GameTime.GetFrameTime();
 }
 
-void ItemHexView::RefreshAlpha()
+void ItemHexView::RefreshAlpha() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -183,7 +183,7 @@ void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
     }
 }
 
-void ItemHexView::StopAnim()
+void ItemHexView::StopAnim() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -293,7 +293,7 @@ void ItemHexView::RefreshOffs()
     }
 }
 
-void ItemHexView::SetMultihexEntries(vector<mpos> entries)
+void ItemHexView::SetMultihexEntries(vector<mpos> entries) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

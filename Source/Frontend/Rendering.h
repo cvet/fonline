@@ -223,7 +223,7 @@ public:
 #endif
 
 protected:
-    explicit RenderDrawBuffer(bool is_static);
+    explicit RenderDrawBuffer(bool is_static) noexcept;
 };
 
 class RenderEffect

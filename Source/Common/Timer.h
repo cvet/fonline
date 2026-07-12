@@ -44,7 +44,7 @@ FO_DECLARE_EXCEPTION(TimeNotSyncException);
 class GameTimer final
 {
 public:
-    explicit GameTimer(ptr<TimerSettings> settings);
+    explicit GameTimer(ptr<TimerSettings> settings) noexcept;
     GameTimer(const GameTimer&) = delete;
     GameTimer(GameTimer&&) noexcept = delete;
     auto operator=(const GameTimer&) = delete;
@@ -57,9 +57,9 @@ public:
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps.load(std::memory_order_relaxed); }
 
-    void SetSynchronizedTime(synctime time);
-    void SetSynchronizedTimeMonotonic(synctime time);
-    void FrameAdvance(bool clamp_to_cap);
+    void SetSynchronizedTime(synctime time) noexcept;
+    void SetSynchronizedTimeMonotonic(synctime time) noexcept;
+    void FrameAdvance(bool clamp_to_cap) noexcept;
 
 private:
     ptr<TimerSettings> _settings;

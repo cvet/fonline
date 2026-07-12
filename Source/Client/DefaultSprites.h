@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) noexcept;
     AtlasSprite(const AtlasSprite&) = delete;
     AtlasSprite(AtlasSprite&&) noexcept = default;
     auto operator=(const AtlasSprite&) = delete;
@@ -108,7 +108,7 @@ public:
     auto Update() -> bool override;
 
 private:
-    void RefreshParams();
+    void RefreshParams() noexcept;
 
     vector<shared_ptr<Sprite>> _spr {};
     vector<ipos32> _sprOffset {};
@@ -130,7 +130,7 @@ private:
 class DefaultSpriteFactory : public SpriteFactory
 {
 public:
-    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr);
+    explicit DefaultSpriteFactory(ptr<SpriteManager> spr_mngr) noexcept;
     DefaultSpriteFactory(const DefaultSpriteFactory&) = delete;
     DefaultSpriteFactory(DefaultSpriteFactory&&) noexcept = default;
     auto operator=(const DefaultSpriteFactory&) = delete;

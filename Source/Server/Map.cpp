@@ -1021,7 +1021,7 @@ void Map::RecacheHexFlags(mpos hex)
     RecacheHexFlags(field);
 }
 
-void Map::RecacheHexFlags(ptr<Field> field)
+void Map::RecacheHexFlags(ptr<Field> field) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

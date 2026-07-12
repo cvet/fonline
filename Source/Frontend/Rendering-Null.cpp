@@ -138,7 +138,7 @@ public:
         }
     }
 
-    void Clear(ucolor color)
+    void Clear(ucolor color) noexcept
     {
         FO_STACK_TRACE_ENTRY();
 

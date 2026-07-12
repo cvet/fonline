@@ -52,7 +52,7 @@ static void FlushLogAtExit();
 
 struct BaseLoggingData
 {
-    BaseLoggingData()
+    BaseLoggingData() noexcept
     {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         const auto result = std::at_quick_exit(FlushLogAtExit);

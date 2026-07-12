@@ -110,8 +110,8 @@ public:
     void Shutdown() override;
 
 private:
-    void Run();
-    void OnOpen(const websocketpp::connection_hdl& hdl);
+    void Run() noexcept;
+    void OnOpen(const websocketpp::connection_hdl& hdl) noexcept;
     void OnFail(const websocketpp::connection_hdl& hdl);
 
     [[nodiscard]] auto OnValidate(const websocketpp::connection_hdl& hdl) -> bool;
@@ -381,7 +381,7 @@ void NetworkServer_WebSockets<Secured>::Shutdown()
 }
 
 template<bool Secured>
-void NetworkServer_WebSockets<Secured>::Run()
+void NetworkServer_WebSockets<Secured>::Run() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -397,7 +397,7 @@ void NetworkServer_WebSockets<Secured>::Run()
 }
 
 template<bool Secured>
-void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl& hdl)
+void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl& hdl) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

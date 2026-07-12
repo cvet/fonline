@@ -57,7 +57,7 @@ FO_BEGIN_NAMESPACE
 constexpr socket_t INVALID_SOCKET_VALUE = static_cast<socket_t>(-1);
 constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
 
-static void CloseSocket(socket_t sock)
+static void CloseSocket(socket_t sock) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

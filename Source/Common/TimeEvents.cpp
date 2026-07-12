@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 const timespan TimeEventManager::MIN_REPEAT_TIME = timespan(std::chrono::milliseconds {1});
 
-TimeEventContext::TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data) :
+TimeEventContext::TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data) noexcept :
     _id {id},
     _repeat {repeat},
     _data {std::move(data)}
@@ -62,7 +62,7 @@ void TimeEventContext::Repeat(timespan repeat) noexcept
     _repeatChanged = true;
 }
 
-void TimeEventContext::SetData(any_t data)
+void TimeEventContext::SetData(any_t data) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -70,7 +70,7 @@ void TimeEventContext::SetData(any_t data)
     _dataChanged = true;
 }
 
-void TimeEventContext::SetDataArray(readonly_vector<any_t> data)
+void TimeEventContext::SetDataArray(readonly_vector<any_t> data) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -78,7 +78,7 @@ void TimeEventContext::SetDataArray(readonly_vector<any_t> data)
     _dataChanged = true;
 }
 
-TimeEventManager::TimeEventManager(ptr<BaseEngine> engine) :
+TimeEventManager::TimeEventManager(ptr<BaseEngine> engine) noexcept :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();
@@ -259,7 +259,7 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
     }
 }
 
-void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity)
+void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -268,7 +268,7 @@ void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity)
     _timeEventEntities.emplace(entity.hold_ref());
 }
 
-void TimeEventManager::RemoveEntityTimeEventPolling(ptr<Entity> entity)
+void TimeEventManager::RemoveEntityTimeEventPolling(ptr<Entity> entity) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -571,7 +571,7 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
     return FiredTimeEvent {.CallResult = call_result, .Context = std::move(context)};
 }
 
-void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks)
+void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -579,7 +579,7 @@ void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks)
     _dispatcherPaused.store(false, std::memory_order_release);
 }
 
-void TimeEventManager::PauseDispatcherHooks()
+void TimeEventManager::PauseDispatcherHooks() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -589,7 +589,7 @@ void TimeEventManager::PauseDispatcherHooks()
     _dispatcherPaused.store(true, std::memory_order_release);
 }
 
-void TimeEventManager::ClearDispatcherHooks()
+void TimeEventManager::ClearDispatcherHooks() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

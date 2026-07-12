@@ -41,7 +41,7 @@
 
 FO_BEGIN_NAMESPACE
 
-ItemManager::ItemManager(ptr<ServerEngine> engine) :
+ItemManager::ItemManager(ptr<ServerEngine> engine) noexcept :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();

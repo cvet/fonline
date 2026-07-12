@@ -47,7 +47,7 @@ class BaseEngine;
 class TimeEventContext final : public RefCounted<TimeEventContext>
 {
 public:
-    explicit TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data);
+    explicit TimeEventContext(uint32_t id, timespan repeat, vector<any_t> data) noexcept;
     TimeEventContext(const TimeEventContext&) = delete;
     TimeEventContext(TimeEventContext&&) noexcept = delete;
     auto operator=(const TimeEventContext&) = delete;
@@ -66,8 +66,8 @@ public:
 
     void Stop() noexcept;
     void Repeat(timespan repeat) noexcept;
-    void SetData(any_t data);
-    void SetDataArray(readonly_vector<any_t> data);
+    void SetData(any_t data) noexcept;
+    void SetDataArray(readonly_vector<any_t> data) noexcept;
 
 private:
     uint32_t _id;
@@ -101,7 +101,7 @@ public:
         function<void(uint32_t event_id)> Cancel {};
     };
 
-    explicit TimeEventManager(ptr<BaseEngine> engine);
+    explicit TimeEventManager(ptr<BaseEngine> engine) noexcept;
     TimeEventManager(const TimeEventManager&) = delete;
     TimeEventManager(TimeEventManager&&) noexcept = delete;
     auto operator=(const TimeEventManager&) = delete;
@@ -110,9 +110,9 @@ public:
 
     [[nodiscard]] auto CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t;
 
-    void SetDispatcherHooks(DispatcherHooks hooks);
-    void PauseDispatcherHooks();
-    void ClearDispatcherHooks();
+    void SetDispatcherHooks(DispatcherHooks hooks) noexcept;
+    void PauseDispatcherHooks() noexcept;
+    void ClearDispatcherHooks() noexcept;
 
     auto StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t;
     void ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data);
@@ -126,8 +126,8 @@ public:
     auto FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>;
 
 private:
-    void AddEntityTimeEventPolling(ptr<Entity> entity);
-    void RemoveEntityTimeEventPolling(ptr<Entity> entity);
+    void AddEntityTimeEventPolling(ptr<Entity> entity) noexcept;
+    void RemoveEntityTimeEventPolling(ptr<Entity> entity) noexcept;
     void ProcessEntityTimeEvents(ptr<Entity> entity);
     void NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay);
     void NotifyCancel(uint32_t event_id);

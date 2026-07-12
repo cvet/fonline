@@ -316,18 +316,18 @@ EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {
 
 extern "C"
 {
-    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet()
+    EMSCRIPTEN_KEEPALIVE const char* Emscripten_ClipboardGet() noexcept
     {
         return FO_NAMESPACE GetApp() -> Input.GetClipboardText().c_str();
     }
 
-    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text)
+    EMSCRIPTEN_KEEPALIVE void Emscripten_ClipboardSet(const char* text) noexcept
     {
         const FO_NAMESPACE nptr<const char> text_ptr = text;
         FO_NAMESPACE GetApp() -> Input.SetClipboardText(text_ptr ? std::string_view {text_ptr.get()} : std::string_view {});
     }
 
-    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text)
+    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteText(const char* text) noexcept
     {
         using FO_NAMESPACE InputEvent;
         using FO_NAMESPACE KeyCode;
@@ -340,7 +340,7 @@ extern "C"
         FO_NAMESPACE GetApp() -> Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::Text})}, false);
     }
 
-    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text)
+    EMSCRIPTEN_KEEPALIVE void Emscripten_InjectPasteTextOwned(char* text) noexcept
     {
         FO_NAMESPACE unique_del_ptr<char> owned_text {text, [](FO_NAMESPACE nptr<char> owned) {
                                                           if (owned) {
@@ -418,7 +418,7 @@ namespace WebRelated
 #endif
     }
 
-    void ApplyWindowSettings(WebSettings& settings)
+    void ApplyWindowSettings(WebSettings& settings) noexcept
     {
 #if FO_WEB
         WebInstallResizeHandlerImpl();
@@ -458,7 +458,7 @@ namespace WebRelated
 #endif
     }
 
-    void SetupClipboard()
+    void SetupClipboard() noexcept
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -468,7 +468,7 @@ namespace WebRelated
 #endif
     }
 
-    void SyncClipboardToSystem(string_view text)
+    void SyncClipboardToSystem(string_view text) noexcept
     {
         FO_STACK_TRACE_ENTRY();
 
@@ -481,7 +481,7 @@ namespace WebRelated
 #endif
     }
 
-    void InitializePersistentData()
+    void InitializePersistentData() noexcept
     {
 #if FO_WEB
         WebInitializePersistentDataImpl();
@@ -516,7 +516,7 @@ namespace WebRelated
 #endif
     }
 
-    void ShowError(string_view title, string_view text)
+    void ShowError(string_view title, string_view text) noexcept
     {
         FO_STACK_TRACE_ENTRY();
 

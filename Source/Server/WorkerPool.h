@@ -91,16 +91,16 @@ public:
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsKeyActive(JobKey key) const -> bool;
 
-    void Resume();
-    void Pause();
+    void Resume() noexcept;
+    void Pause() noexcept;
     void Submit(Job job);
     void Submit(timespan delay, Job job);
     void Submit(JobKey key, Job job);
     void Submit(JobKey key, timespan delay, Job job);
     auto Wake(JobKey key) -> bool;
     auto Cancel(JobKey key) -> bool;
-    void Clear();
-    void WaitIdle() const;
+    void Clear() noexcept;
+    void WaitIdle() const noexcept;
     auto WaitIdle(timespan timeout) const -> bool;
 
 private:
@@ -114,7 +114,7 @@ private:
     [[nodiscard]] bool IsAnyJobReadyNow() const noexcept FO_TSA_REQUIRES(_mutex);
     [[nodiscard]] bool IsBarrierIdle() const noexcept FO_TSA_REQUIRES(_mutex);
 
-    void EnqueueJob(nanotime fire_time, JobKey key, Job job) FO_TSA_REQUIRES(_mutex);
+    void EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept FO_TSA_REQUIRES(_mutex);
     void WorkerEntry(int32_t worker_index) noexcept;
     void StopWorkers() noexcept;
 

@@ -94,18 +94,18 @@ public:
     [[nodiscard]] auto GetTrackSpeed(int32_t track) const -> float32_t;
     [[nodiscard]] auto GetAnimationsCount() const -> int32_t;
 
-    void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
+    void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix) noexcept;
     auto RegisterAnimation(ptr<ModelAnimation> animation, bool reversed) -> int32_t;
     void SetTrackAnimation(int32_t track, int32_t anim_index, nptr<const unordered_set<hstring>> allowed_bones);
     void ResetBonesTransition(int32_t skip_track, const vector<hstring>& bone_names);
-    void ResetEvents();
+    void ResetEvents() noexcept;
     void AddEventEnable(int32_t track, bool enable, float32_t start_time);
     void AddEventSpeed(int32_t track, float32_t speed, float32_t start_time, float32_t smooth_time);
     void AddEventWeight(int32_t track, float32_t weight, float32_t start_time, float32_t smooth_time);
     void SetTrackEnable(int32_t track, bool enable);
     void SetTrackPosition(int32_t track, float32_t position);
     void SetTrackSpeed(int32_t track, float32_t speed);
-    void SetInterpolation(bool enabled);
+    void SetInterpolation(bool enabled) noexcept;
     void AdvanceTime(float32_t time);
 
 private:
@@ -148,8 +148,8 @@ private:
         vector<Event> Events {};
     };
 
-    void Interpolate(quaternion& q1, const quaternion& q2, float32_t factor) const;
-    void Interpolate(vec3& v1, const vec3& v2, float32_t factor) const;
+    void Interpolate(quaternion& q1, const quaternion& q2, float32_t factor) const noexcept;
+    void Interpolate(vec3& v1, const vec3& v2, float32_t factor) const noexcept;
 
     template<typename T>
     void FindSrtValue(float32_t time, float32_t duration, bool reserved, const vector<float32_t>& times, const vector<T>& values, T& result);

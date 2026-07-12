@@ -43,7 +43,7 @@
 
 namespace ImGuiExt
 {
-    void Init();
+    void Init() noexcept;
 }
 
 FO_BEGIN_NAMESPACE

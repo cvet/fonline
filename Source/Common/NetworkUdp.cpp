@@ -70,7 +70,7 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
     return data;
 }
 
-UdpOrderedChannel::UdpOrderedChannel(UdpTransportOptions options) :
+UdpOrderedChannel::UdpOrderedChannel(UdpTransportOptions options) noexcept :
     _options {options}
 {
     FO_STACK_TRACE_ENTRY();
@@ -285,7 +285,7 @@ void UdpOrderedChannel::EmitPendingPacket(const PendingPacket& packet, vector<ve
     packets.emplace_back(MakePacket(UdpPacketType::Payload, packet.Sequence, packet.Payload));
 }
 
-void UdpOrderedChannel::EmitAckPacket(vector<vector<uint8_t>>& packets) const
+void UdpOrderedChannel::EmitAckPacket(vector<vector<uint8_t>>& packets) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

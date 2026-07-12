@@ -200,7 +200,7 @@ private:
     static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
     void SetMultihexCritter(ptr<Critter> cr, bool set);
-    void RecacheHexFlags(ptr<Field> field);
+    void RecacheHexFlags(ptr<Field> field) noexcept;
     auto IsMapItemContextChanged(ptr<const Item> item, ident_t map_id, mpos hex) const -> bool;
 
     ptr<const ProtoMap> _protoMap;

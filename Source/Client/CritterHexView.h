@@ -77,7 +77,7 @@ public:
     void ChangeLookDir(mdir dir);
     void ChangeMoveDir(mdir dir);
     void AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<Entity> context_item = nullptr);
-    void StopAnim();
+    void StopAnim() noexcept;
     void RefreshView(bool no_smooth = false);
     void Action(CritterAction action, int32_t action_data, nptr<Entity> context_item, bool local_call);
     void Process();
@@ -86,7 +86,7 @@ public:
     void AddExtraOffs(ipos32 offset);
     void RefreshOffs();
     auto GetNameTextPos(ipos32& pos) const -> bool;
-    void SetMoving(refcount_ptr<MovingContext> moving);
+    void SetMoving(refcount_ptr<MovingContext> moving) noexcept;
     void StopMoving();
     void MoveAttachedCritters();
 #if FO_ENABLE_3D

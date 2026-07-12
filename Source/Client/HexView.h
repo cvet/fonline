@@ -48,7 +48,7 @@ public:
     using ExtraMapSpriteList = list<pair<nptr<MapSprite>, bool>>;
 
     HexView() = delete;
-    explicit HexView(ptr<MapView> map);
+    explicit HexView(ptr<MapView> map) noexcept;
     HexView(const HexView&) = delete;
     HexView(HexView&&) noexcept = delete;
     auto operator=(const HexView&) = delete;
@@ -76,12 +76,12 @@ public:
 
     auto AddSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>;
     auto AddExtraSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, nptr<const ipos32> phex_offset) -> ptr<MapSprite>;
-    void Finish();
-    void InheritAlphaFrom(ptr<const HexView> prev);
-    void FadeUp();
-    void SetTargetAlpha(uint8_t alpha);
-    void SetDefaultAlpha(uint8_t alpha);
-    void RestoreAlpha();
+    void Finish() noexcept;
+    void InheritAlphaFrom(ptr<const HexView> prev) noexcept;
+    void FadeUp() noexcept;
+    void SetTargetAlpha(uint8_t alpha) noexcept;
+    void SetDefaultAlpha(uint8_t alpha) noexcept;
+    void RestoreAlpha() noexcept;
     void RefreshSprite();
     void InvalidateSprite();
     void SetSpriteVisiblity(bool enabled);
@@ -94,11 +94,11 @@ protected:
     ipos32 _rootOffset {};
 
     virtual void SetupSprite(ptr<MapSprite> mspr);
-    void ProcessFading();
+    void ProcessFading() noexcept;
 
 private:
-    void StartFade(uint8_t from_alpha);
-    void EvaluateCurAlpha();
+    void StartFade(uint8_t from_alpha) noexcept;
+    void EvaluateCurAlpha() noexcept;
 
     nptr<MapSprite> _mapSpr {};
     bool _mapSprValid {};

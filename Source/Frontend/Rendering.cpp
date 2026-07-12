@@ -48,7 +48,7 @@ RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth
     FO_VERIFY_AND_THROW(Size.height > 0, "Size height must be positive", Size.height);
 }
 
-RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
+RenderDrawBuffer::RenderDrawBuffer(bool is_static) noexcept :
     IsStatic {is_static}
 {
     FO_STACK_TRACE_ENTRY();

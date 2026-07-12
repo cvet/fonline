@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-GameTimer::GameTimer(ptr<TimerSettings> settings) :
+GameTimer::GameTimer(ptr<TimerSettings> settings) noexcept :
     _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
@@ -54,7 +54,7 @@ auto GameTimer::IsTimeSynchronized() const -> bool
     return !!_syncTimeBase;
 }
 
-void GameTimer::SetSynchronizedTime(synctime time)
+void GameTimer::SetSynchronizedTime(synctime time) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -65,7 +65,7 @@ void GameTimer::SetSynchronizedTime(synctime time)
     _syncTimeSet = _frameTime.load(std::memory_order_relaxed);
 }
 
-void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
+void GameTimer::SetSynchronizedTimeMonotonic(synctime time) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -89,7 +89,7 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
     _syncTimeSet = frame_time;
 }
 
-void GameTimer::FrameAdvance(bool clamp_to_cap)
+void GameTimer::FrameAdvance(bool clamp_to_cap) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

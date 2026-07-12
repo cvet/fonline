@@ -251,7 +251,7 @@ private:
         vector<float32_t> CpuCoreLoads {};
     };
 
-    void SyncPoint();
+    void SyncPoint() noexcept;
     void SyncWholeWorld(SyncContext& ctx);
 
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
@@ -315,7 +315,7 @@ private:
     auto InitDoneJob() -> std::optional<timespan>;
     auto SyncPointJob() -> std::optional<timespan>;
     auto FrameTimeJob() -> std::optional<timespan>;
-    void UpdateJobStats(nanotime cur_time);
+    void UpdateJobStats(nanotime cur_time) noexcept;
     void UpdateCpuStats(nanotime cur_time);
     auto CalculateBusyCpuLoad(uint64_t previous_idle, uint64_t current_idle, uint64_t previous_total, uint64_t current_total) noexcept -> float32_t;
 

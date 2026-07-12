@@ -39,7 +39,7 @@
 
 FO_BEGIN_NAMESPACE
 
-HexView::HexView(ptr<MapView> map) :
+HexView::HexView(ptr<MapView> map) noexcept :
     _map {map}
 {
     FO_STACK_TRACE_ENTRY();
@@ -90,7 +90,7 @@ void HexView::SetupSprite(ptr<MapSprite> mspr)
     mspr->SetHidden(_mapSprHidden || IsFullyTransparent());
 }
 
-void HexView::Finish()
+void HexView::Finish() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -108,21 +108,21 @@ auto HexView::IsFinished() const noexcept -> bool
     return _finishing && _map->GetEngine()->GameTime.GetFrameTime() >= _finishingTime;
 }
 
-void HexView::ProcessFading()
+void HexView::ProcessFading() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     EvaluateCurAlpha();
 }
 
-void HexView::FadeUp()
+void HexView::FadeUp() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     StartFade(0);
 }
 
-void HexView::InheritAlphaFrom(ptr<const HexView> prev)
+void HexView::InheritAlphaFrom(ptr<const HexView> prev) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ void HexView::InheritAlphaFrom(ptr<const HexView> prev)
     }
 }
 
-void HexView::StartFade(uint8_t from_alpha)
+void HexView::StartFade(uint8_t from_alpha) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -150,7 +150,7 @@ void HexView::StartFade(uint8_t from_alpha)
     EvaluateCurAlpha();
 }
 
-void HexView::EvaluateCurAlpha()
+void HexView::EvaluateCurAlpha() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -173,7 +173,7 @@ void HexView::EvaluateCurAlpha()
     }
 }
 
-void HexView::SetTargetAlpha(uint8_t alpha)
+void HexView::SetTargetAlpha(uint8_t alpha) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -186,7 +186,7 @@ void HexView::SetTargetAlpha(uint8_t alpha)
     StartFade(from_alpha);
 }
 
-void HexView::SetDefaultAlpha(uint8_t alpha)
+void HexView::SetDefaultAlpha(uint8_t alpha) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -199,7 +199,7 @@ void HexView::SetDefaultAlpha(uint8_t alpha)
     }
 }
 
-void HexView::RestoreAlpha()
+void HexView::RestoreAlpha() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

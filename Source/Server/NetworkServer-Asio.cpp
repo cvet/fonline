@@ -82,7 +82,7 @@ public:
     void Shutdown() override;
 
 private:
-    void Run();
+    void Run() noexcept;
     void AcceptNext();
     void AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket);
 
@@ -277,7 +277,7 @@ void NetworkServer_Asio::Shutdown()
     _runThread.join();
 }
 
-void NetworkServer_Asio::Run()
+void NetworkServer_Asio::Run() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -77,7 +77,7 @@ public:
     auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
     void RemoveItemFromContainer(ptr<Item> item);
     void SetItemToContainer(ptr<Item> item);
-    void SetMultihexEntries(vector<mpos> entries);
+    void SetMultihexEntries(vector<mpos> entries) noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

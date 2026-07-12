@@ -875,9 +875,9 @@ class FrameBalancer
 {
 public:
     FrameBalancer() = default;
-    FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps);
+    FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) noexcept;
 
-    void StartLoop();
+    void StartLoop() noexcept;
     void EndLoop();
 
 private:

@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 class NetworkServerConnection_Interthread : public NetworkServerConnection
 {
 public:
-    explicit NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send);
+    explicit NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) noexcept;
     NetworkServerConnection_Interthread(const NetworkServerConnection_Interthread&) = delete;
     NetworkServerConnection_Interthread(NetworkServerConnection_Interthread&&) noexcept = delete;
     auto operator=(const NetworkServerConnection_Interthread&) = delete;
@@ -79,7 +79,7 @@ auto NetworkServer::StartInterthreadServer(ptr<ServerNetworkSettings> settings, 
     return SafeAlloc::MakeUnique<InterthreadServer>(settings, std::move(callback));
 }
 
-NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) :
+NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<ServerNetworkSettings> settings, InterthreadDataCallback send) noexcept :
     NetworkServerConnection(settings),
     _send {std::move(send)}
 {

@@ -80,7 +80,7 @@ private:
 class SDLGpu_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    SDLGpu_DrawBuffer(bool is_static, ptr<SDLGpu_Renderer::Context> ctx) :
+    SDLGpu_DrawBuffer(bool is_static, ptr<SDLGpu_Renderer::Context> ctx) noexcept :
         RenderDrawBuffer(is_static),
         _ctx {ctx}
     {
@@ -361,7 +361,7 @@ static void EnsureCmdBuf(ptr<SDLGpu_Renderer::Context> ctx)
     FO_VERIFY_AND_THROW(ctx->CmdBuf, "SDL_AcquireGPUCommandBuffer failed", SDL_GetError());
 }
 
-static void EndAnyPass(ptr<SDLGpu_Renderer::Context> ctx)
+static void EndAnyPass(ptr<SDLGpu_Renderer::Context> ctx) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

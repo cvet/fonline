@@ -43,7 +43,7 @@ const synctime synctime::zero;
 
 struct LocalTimeData
 {
-    LocalTimeData()
+    LocalTimeData() noexcept
     {
         const auto now = std::chrono::system_clock::now();
         const auto t = std::chrono::system_clock::to_time_t(now);

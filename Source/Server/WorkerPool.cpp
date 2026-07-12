@@ -242,7 +242,7 @@ auto WorkerPool::Cancel(JobKey key) -> bool
     return removed;
 }
 
-void WorkerPool::Clear()
+void WorkerPool::Clear() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -260,7 +260,7 @@ void WorkerPool::Clear()
     }
 }
 
-void WorkerPool::WaitIdle() const
+void WorkerPool::WaitIdle() const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -288,7 +288,7 @@ auto WorkerPool::WaitIdle(timespan timeout) const -> bool
     return true;
 }
 
-void WorkerPool::Resume()
+void WorkerPool::Resume() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -305,7 +305,7 @@ void WorkerPool::Resume()
     _workSignal.notify_all();
 }
 
-void WorkerPool::Pause()
+void WorkerPool::Pause() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -358,7 +358,7 @@ auto WorkerPool::IsKeyActive(JobKey key) const -> bool
     return _queuedKeys.contains(key) || _runningKeys.contains(key) || _pendingRerun.contains(key);
 }
 
-void WorkerPool::EnqueueJob(nanotime fire_time, JobKey key, Job job)
+void WorkerPool::EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept
 {
     ScheduledJob entry {fire_time, key, std::move(job)};
 

@@ -35,7 +35,7 @@
 
 FO_BEGIN_NAMESPACE
 
-NetworkServerConnection::NetworkServerConnection(ptr<ServerNetworkSettings> settings) :
+NetworkServerConnection::NetworkServerConnection(ptr<ServerNetworkSettings> settings) noexcept :
     _settings {settings}
 {
     FO_STACK_TRACE_ENTRY();
@@ -129,7 +129,7 @@ void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
 class DummyNetConnection : public NetworkServerConnection
 {
 public:
-    explicit DummyNetConnection(ptr<ServerNetworkSettings> settings, NetworkServer::DummyConnectionState state) :
+    explicit DummyNetConnection(ptr<ServerNetworkSettings> settings, NetworkServer::DummyConnectionState state) noexcept :
         NetworkServerConnection(settings)
     {
         FO_STACK_TRACE_ENTRY();

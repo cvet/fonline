@@ -96,14 +96,14 @@ protected:
 struct GlobalSettings : virtual ClientSettings, virtual ServerSettings, virtual BakingSettings, virtual BaseSettings
 {
 public:
-    explicit GlobalSettings(bool baking_mode);
+    explicit GlobalSettings(bool baking_mode) noexcept;
     GlobalSettings(const GlobalSettings&) = delete;
     GlobalSettings(GlobalSettings&&) noexcept = default;
     auto operator=(const GlobalSettings&) -> GlobalSettings& = delete;
     auto operator=(GlobalSettings&&) noexcept -> GlobalSettings& = delete;
     ~GlobalSettings() = default;
 
-    [[nodiscard]] auto GetCustomSetting(string_view name) const -> const any_t&;
+    [[nodiscard]] auto GetCustomSetting(string_view name) const noexcept -> const any_t&;
     [[nodiscard]] auto FindCustomSetting(string_view name) const -> nptr<const any_t>;
     [[nodiscard]] auto Save() const -> map<string, string>;
 
@@ -112,10 +112,10 @@ public:
     void ApplyCommandLine(::fo::CommandLineArgs args);
     void ApplyInternalConfig();
     void ApplySubConfigSection(string_view name);
-    void ApplyDefaultSettings();
-    void ApplyAutoSettings();
-    void CopyFrom(const GlobalSettings& other);
-    void SetCustomSetting(string_view name, any_t value);
+    void ApplyDefaultSettings() noexcept;
+    void ApplyAutoSettings() noexcept;
+    void CopyFrom(const GlobalSettings& other) noexcept;
+    void SetCustomSetting(string_view name, any_t value) noexcept;
     void Draw(bool editable);
 
 private:

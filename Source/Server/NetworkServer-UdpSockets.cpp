@@ -61,7 +61,7 @@ protected:
 
 private:
     [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
-    void SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets);
+    void SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets) noexcept;
 
     UdpOrderedChannel _channel;
     std::atomic_bool _disconnectRequested {};
@@ -83,9 +83,9 @@ public:
     void Shutdown() override;
 
 private:
-    [[nodiscard]] uint32_t GenerateSessionId() FO_TSA_REQUIRES(_connectionsLocker);
+    [[nodiscard]] uint32_t GenerateSessionId() noexcept FO_TSA_REQUIRES(_connectionsLocker);
     [[nodiscard]] auto MakeEndpointKey(string_view host, uint16_t port) const -> string;
-    void Run();
+    void Run() noexcept;
     void ProcessIncomingPackets();
     void HandleConnectPacket(string host, uint16_t port, const UdpPacketInfo& packet);
     void TickConnections(nanotime now);
@@ -226,7 +226,7 @@ auto NetworkServerConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
     return options;
 }
 
-void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets)
+void NetworkServerConnection_UdpSockets::SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -274,7 +274,7 @@ void NetworkServer_UdpSockets::Shutdown()
     }
 }
 
-uint32_t NetworkServer_UdpSockets::GenerateSessionId()
+uint32_t NetworkServer_UdpSockets::GenerateSessionId() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -292,7 +292,7 @@ auto NetworkServer_UdpSockets::MakeEndpointKey(string_view host, uint16_t port) 
     return strex("{}:{}", host, port);
 }
 
-void NetworkServer_UdpSockets::Run()
+void NetworkServer_UdpSockets::Run() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

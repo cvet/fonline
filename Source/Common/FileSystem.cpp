@@ -203,7 +203,7 @@ auto File::GetReader() const -> FileReader
     return FileReader(file_span);
 }
 
-FileReader::FileReader(const_span<uint8_t> buf) :
+FileReader::FileReader(const_span<uint8_t> buf) noexcept :
     _buf {buf}
 {
     FO_STACK_TRACE_ENTRY();
@@ -575,14 +575,14 @@ void FileSystem::AddPacksSource(string_view dir, const vector<string>& packs)
     }
 }
 
-void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
+void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
-void FileSystem::CleanDataSources()
+void FileSystem::CleanDataSources() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -192,14 +192,14 @@ auto VideoClip::GetSize() const -> isize32
     return {numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_width), numeric_cast<int32_t>(_impl->VideoInfo.Value.pic_height)};
 }
 
-void VideoClip::Stop()
+void VideoClip::Stop() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl.as_ptr()->Stopped = true;
 }
 
-void VideoClip::Pause()
+void VideoClip::Pause() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -207,7 +207,7 @@ void VideoClip::Pause()
     _impl->PauseTime = nanotime::now();
 }
 
-void VideoClip::Resume()
+void VideoClip::Resume() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -222,14 +222,14 @@ void VideoClip::Resume()
     _impl->Paused = false;
 }
 
-void VideoClip::SetLooped(bool enabled)
+void VideoClip::SetLooped(bool enabled) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
     _impl.as_ptr()->Looped = enabled;
 }
 
-void VideoClip::SetTime(timespan time)
+void VideoClip::SetTime(timespan time) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

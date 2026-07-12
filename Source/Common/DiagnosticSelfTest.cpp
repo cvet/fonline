@@ -36,13 +36,13 @@
 FO_BEGIN_NAMESPACE
 
 static void RunSelfTestCrash(string_view mode);
-[[noreturn]] static void CrashByBadPointerAccess(uintptr_t address, bool write);
-[[noreturn]] static void CrashByStackOverflow();
-[[noreturn]] static void CrashByIntegerDivideByZero();
-[[noreturn]] static void CrashByAbort();
+[[noreturn]] static void CrashByBadPointerAccess(uintptr_t address, bool write) noexcept;
+[[noreturn]] static void CrashByStackOverflow() noexcept;
+[[noreturn]] static void CrashByIntegerDivideByZero() noexcept;
+[[noreturn]] static void CrashByAbort() noexcept;
 [[noreturn]] static void CrashByNoexceptThrow() noexcept;
 [[noreturn]] static void CrashByThrow();
-[[noreturn]] static void CrashByStrongAssert();
+[[noreturn]] static void CrashByStrongAssert() noexcept;
 static void ThrowSelfTestException();
 FO_NO_INLINE static auto RecurseUntilStackOverflow(int depth) -> int;
 using StackOverflowRecursor = int (*)(int);
@@ -116,7 +116,7 @@ static void RunSelfTestCrash(string_view mode)
     }
 }
 
-static void CrashByBadPointerAccess(uintptr_t address, bool write)
+static void CrashByBadPointerAccess(uintptr_t address, bool write) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -137,7 +137,7 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
     std::abort();
 }
 
-static void CrashByStackOverflow()
+static void CrashByStackOverflow() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -178,7 +178,7 @@ static auto GetStackOverflowRecursor() -> StackOverflowRecursor
     return recursor;
 }
 
-static void CrashByIntegerDivideByZero()
+static void CrashByIntegerDivideByZero() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -190,7 +190,7 @@ static void CrashByIntegerDivideByZero()
     std::abort();
 }
 
-static void CrashByAbort()
+static void CrashByAbort() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -225,7 +225,7 @@ static void CrashByThrow()
     throw GenericException("Self-test crash: unhandled exception");
 }
 
-static void CrashByStrongAssert()
+static void CrashByStrongAssert() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

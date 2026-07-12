@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-void FogShape::Clear()
+void FogShape::Clear() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -188,7 +188,7 @@ void FogShape::BuildPoints(const Input& input, vector<PrimitivePoint>& fog_point
     }
 }
 
-void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration)
+void FogShape::StartTransition(vector<PrimitivePoint>&& points, nanotime frame_time, int32_t duration) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -265,7 +265,7 @@ void FogShape::UpdateTransition(nanotime frame_time)
     }
 }
 
-void FogShape::FinishTransition()
+void FogShape::FinishTransition() noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

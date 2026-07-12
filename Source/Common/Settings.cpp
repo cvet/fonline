@@ -157,7 +157,7 @@ static void DrawEditableEntry(string_view name, T& entry)
     DrawEntry(name, entry);
 }
 
-GlobalSettings::GlobalSettings(bool baking_mode) :
+GlobalSettings::GlobalSettings(bool baking_mode) noexcept :
     _bakingMode {baking_mode}
 {
     FO_STACK_TRACE_ENTRY();
@@ -284,7 +284,7 @@ void GlobalSettings::ApplyInternalConfig()
     ApplyConfigFile(config, "");
 }
 
-void GlobalSettings::ApplyDefaultSettings()
+void GlobalSettings::ApplyDefaultSettings() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -297,7 +297,7 @@ void GlobalSettings::ApplyDefaultSettings()
     FO_DISABLE_WARNINGS_POP()
 }
 
-void GlobalSettings::ApplyAutoSettings()
+void GlobalSettings::ApplyAutoSettings() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -354,7 +354,7 @@ void GlobalSettings::ApplyAutoSettings()
     *FixedSettingForEdit(CompatibilityVersion) = !ForceCompatibilityVersion.empty() ? ForceCompatibilityVersion : string_view(FO_COMPATIBILITY_VERSION);
 }
 
-void GlobalSettings::CopyFrom(const GlobalSettings& other)
+void GlobalSettings::CopyFrom(const GlobalSettings& other) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -389,7 +389,7 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
     }
 }
 
-auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
+auto GlobalSettings::GetCustomSetting(string_view name) const noexcept -> const any_t&
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -415,7 +415,7 @@ auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any
     return &it->second;
 }
 
-void GlobalSettings::SetCustomSetting(string_view name, any_t value)
+void GlobalSettings::SetCustomSetting(string_view name, any_t value) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

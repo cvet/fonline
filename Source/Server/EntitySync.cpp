@@ -72,7 +72,7 @@ static constexpr int32_t BACKOFF_MAX_SHIFT = 6;
 static thread_local nptr<SyncContext> CurrentContext {};
 static std::atomic<uint64_t> TicketCounter {};
 
-EntityLock::EntityLock()
+EntityLock::EntityLock() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -608,7 +608,7 @@ auto IsEntityAccessValid(nptr<const ServerEntity> entity, bool diagnose) noexcep
     return false;
 }
 
-SyncContext::SyncContext()
+SyncContext::SyncContext() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -1246,7 +1246,7 @@ auto SyncContext::ValidateAccess(nptr<const ServerEntity> entity) const noexcept
 
 // Dedup a lock list while keeping its parallel owner list aligned. A simple sort-unique on `locks`
 // alone would lose the lock↔owner correspondence, so pair them, sort+unique by lock, and rebuild both.
-static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>& owners)
+static void DedupLockOwners(vector<ptr<EntityLock>>& locks, vector<refcount_ptr<ServerEntity>>& owners) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 

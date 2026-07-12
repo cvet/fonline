@@ -441,7 +441,7 @@ static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void
     data_pos += size;
 }
 
-static void WriteRawUInt32(ptr<uint8_t> target, size_t& data_pos, uint32_t value)
+static void WriteRawUInt32(ptr<uint8_t> target, size_t& data_pos, uint32_t value) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -451,7 +451,7 @@ static void WriteRawUInt32(ptr<uint8_t> target, size_t& data_pos, uint32_t value
     WriteRawBytes(target, data_pos, value_bytes, sizeof(value));
 }
 
-static void WriteRawSpan(ptr<uint8_t> target, size_t& data_pos, span<const uint8_t> source)
+static void WriteRawSpan(ptr<uint8_t> target, size_t& data_pos, span<const uint8_t> source) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -502,7 +502,7 @@ static void WriteCursorEnumValue(RawWriteCursor& cursor, int32_t enum_value, siz
     }
 }
 
-static void WriteRawString(ptr<uint8_t> target, size_t& data_pos, string_view value)
+static void WriteRawString(ptr<uint8_t> target, size_t& data_pos, string_view value) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -532,7 +532,7 @@ static void AppendRawBytes(vector<uint8_t>& data, nptr<const void> value, size_t
     FO_VERIFY_AND_THROW(data_pos == data.size(), "Appended bytes did not fill the grown buffer exactly");
 }
 
-static void AppendRawBytes(vector<uint8_t>& data, span<const uint8_t> value)
+static void AppendRawBytes(vector<uint8_t>& data, span<const uint8_t> value) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -544,7 +544,7 @@ static void AppendRawBytes(vector<uint8_t>& data, span<const uint8_t> value)
     AppendRawBytes(data, value_ptr, value.size());
 }
 
-static void AlignRawBuffer(vector<uint8_t>& data, size_t alignment)
+static void AlignRawBuffer(vector<uint8_t>& data, size_t alignment) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2066,7 +2066,7 @@ static void ConvertFixedValueAt(ptr<const Property> prop, const BaseTypeDesc& ba
     data_pos = cursor.Pos;
 }
 
-static void SetDataFromBuffer(const function<void(span<const uint8_t>)>& set_data, ptr<const uint8_t> data, size_t size)
+static void SetDataFromBuffer(const function<void(span<const uint8_t>)>& set_data, ptr<const uint8_t> data, size_t size) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2078,7 +2078,7 @@ static void SetDataFromBuffer(const function<void(span<const uint8_t>)>& set_dat
     set_data({data.get(), size});
 }
 
-static void SetDataFromString(const function<void(span<const uint8_t>)>& set_data, string_view str)
+static void SetDataFromString(const function<void(span<const uint8_t>)>& set_data, string_view str) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

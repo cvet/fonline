@@ -72,7 +72,7 @@ struct UdpPacketInfo
 class UdpOrderedChannel final
 {
 public:
-    explicit UdpOrderedChannel(UdpTransportOptions options);
+    explicit UdpOrderedChannel(UdpTransportOptions options) noexcept;
     UdpOrderedChannel(const UdpOrderedChannel&) = delete;
     UdpOrderedChannel(UdpOrderedChannel&&) noexcept = delete;
     auto operator=(const UdpOrderedChannel&) = delete;
@@ -106,7 +106,7 @@ private:
 
     void ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits);
     void EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const;
-    void EmitAckPacket(vector<vector<uint8_t>>& packets) const;
+    void EmitAckPacket(vector<vector<uint8_t>>& packets) const noexcept;
     void RebuildAckBits() noexcept;
     void QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const;
 

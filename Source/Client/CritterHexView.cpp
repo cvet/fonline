@@ -96,7 +96,7 @@ void CritterHexView::SetupSprite(ptr<MapSprite> mspr)
     }
 }
 
-void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
+void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -297,7 +297,7 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
     }
 }
 
-void CritterHexView::StopAnim()
+void CritterHexView::StopAnim() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

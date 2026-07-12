@@ -45,7 +45,7 @@ FO_BEGIN_NAMESPACE
 
 extern CritterVisibilityMode CheckCritterVisibilityHook(ptr<const ServerEngine>, ptr<const Map>, ptr<const Critter>, ptr<const Critter>);
 
-MapManager::MapManager(ptr<ServerEngine> engine) :
+MapManager::MapManager(ptr<ServerEngine> engine) noexcept :
     _engine {engine}
 {
     FO_STACK_TRACE_ENTRY();

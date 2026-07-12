@@ -120,7 +120,7 @@ auto ModelAnimationController::Copy() const -> ModelAnimationController
     return clone;
 }
 
-void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix)
+void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -257,7 +257,7 @@ void ModelAnimationController::ResetBonesTransition(int32_t skip_track, const ve
     }
 }
 
-void ModelAnimationController::ResetEvents()
+void ModelAnimationController::ResetEvents() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -328,7 +328,7 @@ void ModelAnimationController::SetTrackSpeed(int32_t track, float32_t speed)
     _tracks[track].Speed = speed;
 }
 
-void ModelAnimationController::SetInterpolation(bool enabled)
+void ModelAnimationController::SetInterpolation(bool enabled) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -458,7 +458,7 @@ void ModelAnimationController::AdvanceTime(float32_t time)
     }
 }
 
-void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float32_t factor) const
+void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2, float32_t factor) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -470,7 +470,7 @@ void ModelAnimationController::Interpolate(quaternion& q1, const quaternion& q2,
     }
 }
 
-void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32_t factor) const
+void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float32_t factor) const noexcept
 {
     FO_STACK_TRACE_ENTRY();
 

@@ -46,7 +46,7 @@ public:
     static constexpr size_t CRYPT_KEYS_COUNT = 50;
     static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
 
-    explicit NetBuffer(size_t buf_len);
+    explicit NetBuffer(size_t buf_len) noexcept;
     NetBuffer(const NetBuffer&) = delete;
     NetBuffer(NetBuffer&&) noexcept = default;
     auto operator=(const NetBuffer&) = delete;
@@ -56,9 +56,9 @@ public:
     [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
-    void SetEncryptKey(uint32_t seed);
+    void SetEncryptKey(uint32_t seed) noexcept;
     virtual void ResetBuf() noexcept;
-    void GrowBuf(size_t len);
+    void GrowBuf(size_t len) noexcept;
 
 protected:
     auto EncryptKey(int32_t move) noexcept -> uint8_t;
@@ -122,7 +122,7 @@ public:
     void EndMsg();
 
 private:
-    void WriteHashedString(hstring value);
+    void WriteHashedString(hstring value) noexcept;
 
     bool _msgStarted {};
     size_t _startedBufPos {};
@@ -146,7 +146,7 @@ public:
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
-    void AddData(const_span<uint8_t> buf);
+    void AddData(const_span<uint8_t> buf) noexcept;
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
     void Pop(nptr<void> buf, size_t len);
