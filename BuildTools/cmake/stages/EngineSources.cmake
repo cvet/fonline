@@ -273,26 +273,11 @@ AppendList(FO_CLIENT_SOURCE
     ${FO_CLIENT_BASE_SOURCE}
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Client.gen.cpp")
 
-AppendList(FO_EDITOR_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Tools/Editor.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/Editor.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/AssetExplorer.cpp"
-
-    # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/InterfaceEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ProtoEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ProtoEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ModelEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/ModelEditor.cpp"
-    # "${FO_ENGINE_ROOT}/Source/Tools/EffectEditor.h"
-    # "${FO_ENGINE_ROOT}/Source/Tools/EffectEditor.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.cpp")
-
 AppendList(FO_MAPPER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/ParticleEditor.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/MapperGlobalScriptMethods.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-Mapper.gen.cpp")
 

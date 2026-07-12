@@ -6,10 +6,10 @@
 
 Use this page when you need to find which tool owns a workflow, where an application enters the tool layer, or which deeper document owns the implementation details.
 
-The tool layer is not one monolithic editor. It contains:
+The tool layer centers interactive editing in Mapper. It contains:
 
 - command-line resource/script/metadata bakers;
-- interactive developer tools such as the mapper, editor, asset explorer, and particle editor;
+- Mapper and its integrated particle editor;
 - asset-type-specific processors for images, effects, models, maps, protos, text, configs, and raw copies;
 - application wrappers under `Source/Applications/` that initialize the engine platform layer and run a tool.
 
@@ -21,16 +21,11 @@ The tool layer is not one monolithic editor. It contains:
 - `Source/Tools/*Baker.cpp`
 - `Source/Tools/Mapper.h`
 - `Source/Tools/Mapper.cpp`
-- `Source/Tools/Editor.h`
-- `Source/Tools/Editor.cpp`
-- `Source/Tools/AssetExplorer.h`
-- `Source/Tools/AssetExplorer.cpp`
 - `Source/Tools/ParticleEditor.h`
 - `Source/Tools/ParticleEditor.cpp`
 - `Source/Applications/BakerApp.cpp`
 - `Source/Applications/ASCompilerApp.cpp`
 - `Source/Applications/MapperApp.cpp`
-- `Source/Applications/EditorApp.cpp`
 - `Source/Applications/TestingApp.cpp`
 - relevant tool/baker tests under `Source/Tests/`
 
@@ -39,8 +34,8 @@ The tool layer is not one monolithic editor. It contains:
 The tool layer has three main shapes:
 
 1. **Batch command tools** — `BakerApp.cpp` and `ASCompilerApp.cpp` run deterministic file transformations from project settings and resource packs.
-2. **Interactive runtime tools** — `MapperApp.cpp` and `EditorApp.cpp` create windows through the frontend/application layer and drive a per-frame main loop.
-3. **Reusable processors** — `Source/Tools/*Baker.*`, `Mapper.*`, `Editor.*`, `AssetExplorer.*`, and `ParticleEditor.*` implement the reusable work behind the apps.
+2. **Interactive runtime tool** — `MapperApp.cpp` creates the frontend window and drives Mapper's per-frame map/content editing loop.
+3. **Reusable processors** — `Source/Tools/*Baker.*`, `Mapper.*`, and Mapper-owned `ParticleEditor.*` implement the reusable work behind the apps.
 
 For CMake target creation and package wiring, see [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md). For resource bake internals, see [BakingPipeline.md](BakingPipeline.md).
 
@@ -63,12 +58,6 @@ Use it for the `CompileAngelScript` build path. The broader script runtime is do
 `Source/Applications/MapperApp.cpp` initializes the frontend/application layer, waits for persistent data readiness on Web builds, constructs `MapperEngine`, locks input when running headless, calls `MapperMainLoop()` every frame, and shuts the mapper down on exit.
 
 Use it for map editing, mapper-side automation, and headless mapper-based workflows. See [MapperTools.md](MapperTools.md) for lifecycle and mapper-specific helper details.
-
-### Editor app
-
-`Source/Applications/EditorApp.cpp` creates `FOEditor` and calls `FOEditor::MainLoop()` every frame until the app requests quit.
-
-The current editor source is an engine developer tool shell around editor views and asset views; avoid documenting unsupported product workflows until the code and tests make them explicit.
 
 ### Testing app
 
@@ -113,25 +102,17 @@ Main areas inside `Mapper.cpp` include:
 
 - `MapperMainLoop()` / `DrawMapperFrame()` frame lifecycle;
 - input handling and cursor/hex helpers;
-- ImGui panels for workspace, content, map list, map window, inspector, history, settings, console, and script calls;
+- ImGui panels for workspace, content, map list, map window, inspector, history, settings, console, script calls, and particle browsing/editing;
 - map loading/showing/saving through `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()`;
 - mapper script system integration through mapper metadata and `MapperGlobalScriptMethods.cpp`.
 
 See [MapperTools.md](MapperTools.md) for the mapper lifecycle, extension points, and known headless-render workflow.
 
-### Editor
-
-`Source/Tools/Editor.h` / `.cpp` define `FOEditor`, `EditorView`, and `EditorAssetView`. The app-facing loop calls `FOEditor::MainLoop()`, while views own their draw/update behavior.
-
-Treat this as an engine developer tool surface. If a project wants a custom content workflow, document project-specific editor usage in the project docs and link back here only for engine-level entry points.
-
-### Asset explorer
-
-`Source/Tools/AssetExplorer.h` / `.cpp` define `AssetExplorer`, including section drawing by file extension. It is a reusable developer-facing inspection helper, not the owner of resource baking semantics.
-
 ### Particle editor
 
-`Source/Tools/ParticleEditor.h` / `.cpp` define `ParticleEditor` and its internal implementation. It previews memory-backed SPARK resources, exposes native object parameters (including FOnline's `SparkQuadRenderer`), and presents a non-crashing load-error state when a graph or render dependency is unavailable.
+`Source/Tools/ParticleEditor.h` / `.cpp` define Mapper's SPARK asset editor. Mapper's **Windows -> Particle editor** browser enumerates raw `.fopts` sources and opens one editor window per selected asset. Each window previews the memory-backed resource, exposes native object parameters (including FOnline's `SparkQuadRenderer`), saves XML back through Mapper's raw resource filesystem, and confirms Save / Discard / Cancel when closing with changes.
+
+There is no separate generic Editor application or `EditorLib`; Mapper is the engine's central interactive editing tool.
 
 ## Ownership boundaries
 
@@ -139,7 +120,7 @@ Use engine docs for:
 
 - app/tool entry points and their reusable lifecycle;
 - baker types and their engine-owned transformations;
-- mapper/editor/asset explorer/particle editor extension points;
+- Mapper and particle-editor extension points;
 - validation checklists and tests;
 - links to CMake/app wiring.
 
@@ -169,7 +150,7 @@ Baker/tool behavior is covered by focused tests in `Source/Tests/`:
 - `Test_ModelBaker.cpp`
 - `Test_AngelScriptBaker.cpp`
 
-Mapper/editor UI behavior is less directly covered by focused unit tests. Validate those paths through the app/runtime that owns the affected behavior.
+Mapper UI behavior is less directly covered by focused unit tests. Validate those paths through Mapper itself.
 
 ## Change routing
 
@@ -177,9 +158,7 @@ Mapper/editor UI behavior is less directly covered by focused unit tests. Valida
 - Script bytecode compilation: `Source/Tools/AngelScriptBaker.*`, `Source/Applications/ASCompilerApp.cpp`, [Scripting.md](Scripting.md).
 - Metadata tags and generated metadata resources: `Source/Tools/MetadataBaker.*`, [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - Map editing and headless mapper automation: `Source/Tools/Mapper.*`, `Source/Applications/MapperApp.cpp`, [MapperTools.md](MapperTools.md).
-- Editor shell/views: `Source/Tools/Editor.*`, `Source/Applications/EditorApp.cpp`.
-- Asset explorer: `Source/Tools/AssetExplorer.*`.
-- Particle editor: `Source/Tools/ParticleEditor.*`.
+- Particle editor: `Source/Tools/ParticleEditor.*`, owned and opened by `Source/Tools/Mapper.*`.
 - Application target wiring: [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ## Validation checklist
@@ -187,6 +166,6 @@ Mapper/editor UI behavior is less directly covered by focused unit tests. Valida
 1. For baker changes, run the smallest affected baker test and then the project bake target when behavior crosses resource-pack boundaries.
 2. For script compile changes, run AngelScript baker/compiler tests and the project `CompileAngelScript` path.
 3. For mapper changes, launch the mapper path that owns the change; for headless flows, verify the generated output rather than only process exit.
-4. For editor/asset/particle UI changes, validate the interactive app path on the affected platform/backend.
+4. For particle UI changes, validate the interactive Mapper path on the affected platform/backend.
 5. If tool target wiring changes, inspect [Applications.md](Applications.md), [BuildToolsPipeline.md](BuildToolsPipeline.md), and the generated CMake targets from an embedding project.
 6. Keep game-specific tool pipelines in the embedding project's docs and link to engine docs for reusable mechanics.

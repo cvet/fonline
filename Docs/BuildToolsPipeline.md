@@ -49,7 +49,7 @@ Establishes baseline configuration. It declares and checks core project options 
 - `FO_GEOMETRY`
 - `FO_APP_ICON`
 - `FO_OUTPUT_PATH`
-- build feature toggles such as `FO_BUILD_CLIENT`, `FO_BUILD_SERVER`, `FO_BUILD_MAPPER`, `FO_BUILD_EDITOR`, `FO_BUILD_ASCOMPILER`, `FO_BUILD_BAKER`, `FO_UNIT_TESTS`, and scripting toggles.
+- build feature toggles such as `FO_BUILD_CLIENT`, `FO_BUILD_SERVER`, `FO_BUILD_MAPPER`, `FO_BUILD_ASCOMPILER`, `FO_BUILD_BAKER`, `FO_UNIT_TESTS`, and scripting toggles.
 
 It also establishes build hash and common generation context. Start here when a build option is missing or validated too early/late.
 

@@ -58,6 +58,18 @@ Do not document one game's mapper binary name or content pipeline as universal e
 
 ## Existing project workflows
 
+### SPARK particle editor
+
+Open **Windows -> Particle editor** to browse raw `.fopts` sources and open one
+SPARK graph/preview window per asset. The editor uses Mapper's raw resource
+filesystem for source discovery and saving, and Mapper's baked resources for
+effects and textures. Closing a modified window opens a Save / Discard / Cancel
+confirmation.
+
+Mapper is the engine's central interactive editing application. The former
+generic Editor executable, `EditorLib`, and asset-explorer shell were removed;
+new interactive content tooling belongs in Mapper.
+
 ## Headless Map Render
 
 ### Pipeline goal

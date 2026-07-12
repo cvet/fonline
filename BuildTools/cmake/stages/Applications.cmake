@@ -116,18 +116,6 @@ if(FO_BUILD_SERVER)
     endif()
 endif()
 
-if(FO_BUILD_EDITOR)
-    AddExecutableApplication(${FO_DEV_NAME}_Editor "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp"
-        WIN32
-        OUTPUT_DIR ${FO_EDITOR_OUTPUT}
-        WORKING_DIRECTORY ${FO_OUTPUT_PATH}
-        OUTPUT_NAME ${FO_DEV_NAME}_Editor
-        TESTING_APP 0
-        LINK_LIBS AppFrontend EditorLib MapperLib BakerLib ClientLib ServerLib
-        EXTRA_SOURCES ${FO_RC_FILE}
-        WRITE_BUILD_HASH)
-endif()
-
 if(FO_BUILD_MAPPER)
     AddExecutableApplication(${FO_DEV_NAME}_Mapper "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp"
         WIN32
@@ -193,7 +181,6 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
         SetValue(target ${FO_DEV_NAME}_${name})
         SetValue(testBuildSources
             ${FO_TESTS_SOURCE}
-            "${FO_ENGINE_ROOT}/Source/Applications/EditorApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/MapperApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/BakerApp.cpp"
             "${FO_ENGINE_ROOT}/Source/Applications/ServerApp.cpp"
@@ -209,7 +196,7 @@ if(FO_UNIT_TESTS OR FO_CODE_COVERAGE)
             WORKING_DIRECTORY ${FO_TESTS_OUTPUT}
             OUTPUT_NAME ${target}
             TESTING_APP 1
-            LINK_LIBS BakerLib EditorLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
+            LINK_LIBS BakerLib MapperLib ${FO_TESTING_LIBS} ClientLib ServerLib AppHeadless
             DEPENDS ${FO_GEN_DEPENDENCIES}
             EXTRA_SOURCES ${testBuildSources})
 

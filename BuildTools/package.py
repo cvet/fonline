@@ -23,7 +23,7 @@ import buildtools
 import foconfig
 
 
-TARGET_CHOICES = ['Server', 'Client', 'Editor', 'Mapper', 'Baker']
+TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker']
 PLATFORM_CHOICES = ['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web']
 PNG_FILE_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 ANDROID_ICON_DENSITY_DIRS = ('mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi')

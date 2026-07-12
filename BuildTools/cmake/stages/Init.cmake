@@ -52,7 +52,6 @@ DeclareBoolOptions(
 	FO_BUILD_CLIENT "Build Client binaries" OFF
 	FO_BUILD_SERVER "Build Server binaries" OFF
 	FO_BUILD_MAPPER "Build Mapper binaries" OFF
-	FO_BUILD_EDITOR "Build Editor binaries" OFF
 	FO_BUILD_ASCOMPILER "Build AngelScript compiler" OFF
 	FO_BUILD_BAKER "Build Baker binaries" OFF
 	FO_UNIT_TESTS "Build only binaries for Unit Testing" OFF
@@ -346,7 +345,7 @@ AddIncludeDirectories(
 	"${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
 
 # Headless configuration (without video/audio/input)
-if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER OR FO_BUILD_EDITOR)
+if(FO_BUILD_CLIENT OR FO_BUILD_SERVER OR FO_BUILD_MAPPER)
 	SetValue(FO_HEADLESS_ONLY OFF)
 else()
 	SetValue(FO_HEADLESS_ONLY ON)
@@ -358,7 +357,6 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_SERVER
 	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
@@ -368,37 +366,27 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_MAPPER
 	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
 EnableCoreLibraryIfAny(
 	FO_BUILD_SERVER_LIB
 	FO_BUILD_SERVER
-	FO_BUILD_EDITOR
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
 EnableCoreLibraryIfAny(
 	FO_BUILD_MAPPER_LIB
 	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
 EnableCoreLibraryIfAny(
 	FO_BUILD_BAKER_LIB
 	FO_BUILD_SERVER
 	FO_BUILD_MAPPER
-	FO_BUILD_EDITOR
 	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)
-EnableCoreLibraryIfAny(
-	FO_BUILD_EDITOR_LIB
-	FO_BUILD_EDITOR
-	FO_UNIT_TESTS
-	FO_CODE_COVERAGE)
-
 # Per OS configurations
 if(WIN32)
 	SetValue(FO_WINDOWS 1)
@@ -695,7 +683,6 @@ endif()
 
 SetBinaryOutputPath(FO_CLIENT_OUTPUT Client)
 SetBinaryOutputPath(FO_SERVER_OUTPUT Server)
-SetBinaryOutputPath(FO_EDITOR_OUTPUT Editor)
 SetBinaryOutputPath(FO_MAPPER_OUTPUT Mapper)
 SetBinaryOutputPath(FO_ASCOMPILER_OUTPUT ASCompiler)
 SetBinaryOutputPath(FO_BAKER_OUTPUT Baker)

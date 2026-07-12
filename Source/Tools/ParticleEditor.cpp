@@ -41,14 +41,14 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleManager::TextureLoader
+static auto CreateParticleEditorTextureLoader(ptr<FileSystem> baked_resources, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleManager::TextureLoader
 {
     FO_STACK_TRACE_ENTRY();
 
     ptr<vector<unique_ptr<RenderTexture>>> loaded_textures_ptr {&loaded_textures};
 
-    return [editor, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
-        const auto file = editor->BakedResources.ReadFile(path);
+    return [baked_resources, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
+        const auto file = baked_resources->ReadFile(path);
 
         if (!file) {
             WriteLog("Particle editor could not read sprite resource '{}'", path);
@@ -88,7 +88,7 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
 
 struct ParticleEditor::Impl
 {
-    Impl(string_view asset_path, ptr<FOEditor> editor);
+    Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources);
 
     [[nodiscard]] auto GetEditedSparkSystem() -> SPK::Ref<SPK::System>;
     [[nodiscard]] auto GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>;
@@ -158,6 +158,8 @@ struct ParticleEditor::Impl
 
     unique_ptr<RenderTexture> RenderTarget;
     vector<unique_ptr<RenderTexture>> LoadedTextures {};
+    ptr<GlobalSettings> Settings;
+    ptr<FileSystem> RawResources;
     EffectManager EffectMngr;
     GameTimer GameTime;
     ParticleManager ParticleMngr;
@@ -172,11 +174,13 @@ struct ParticleEditor::Impl
     bool Changed {};
 };
 
-ParticleEditor::Impl::Impl(string_view asset_path, ptr<FOEditor> editor) :
+ParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources) :
     RenderTarget {GetApp()->Render.CreateTexture({200, 200}, true, true)},
-    EffectMngr {editor->Settings, &editor->BakedResources, &GetApp()->Render},
-    GameTime {editor->Settings},
-    ParticleMngr {editor->Settings, &EffectMngr, &GetApp()->Render, &editor->BakedResources, &GameTime, CreateParticleEditorTextureLoader(editor, LoadedTextures)},
+    Settings {settings},
+    RawResources {raw_resources},
+    EffectMngr {settings, baked_resources, &GetApp()->Render},
+    GameTime {settings},
+    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateParticleEditorTextureLoader(baked_resources, LoadedTextures)},
     Particle {ParticleMngr.CreateParticle(asset_path)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -192,19 +196,22 @@ ParticleEditor::Impl::Impl(string_view asset_path, ptr<FOEditor> editor) :
 
 ParticleEditor::ParticleEditor(ParticleEditor&&) noexcept = default;
 
-ParticleEditor::ParticleEditor(string_view asset_path, ptr<FOEditor> editor) :
-    EditorAssetView("Particle Editor", editor, asset_path),
-    _impl {SafeAlloc::MakeUnique<Impl>(asset_path, editor)}
+ParticleEditor::ParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved) :
+    _impl {SafeAlloc::MakeUnique<Impl>(asset_path, settings, raw_resources, baked_resources)},
+    _assetPath {asset_path},
+    _windowTitle {strex("Particle Editor - {}###ParticleEditor_{}", asset_path, asset_path)},
+    _closePopupTitle {strex("Unsaved particle changes###ParticleEditorClose_{}", asset_path)},
+    _onSaved {std::move(on_saved)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto fofx_files = _editor->RawResources.FilterFiles("fofx");
+    auto fofx_files = raw_resources->FilterFiles("fofx");
 
     for (const auto& file_header : fofx_files) {
         _impl->AllEffects.emplace_back(string(file_header.GetPath()));
     }
 
-    auto tex_files = _editor->RawResources.FilterFiles("tga", strex(asset_path).extract_dir());
+    auto tex_files = raw_resources->FilterFiles("tga", strex(asset_path).extract_dir());
 
     for (const auto& file_header : tex_files) {
         _impl->AllTextures.emplace_back(string(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1)));
@@ -213,11 +220,67 @@ ParticleEditor::ParticleEditor(string_view asset_path, ptr<FOEditor> editor) :
 
 ParticleEditor::~ParticleEditor() = default;
 
-void ParticleEditor::OnDraw()
+auto ParticleEditor::Draw() -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    EditorAssetView::OnDraw();
+    ImGui::SetNextWindowPos({128.0f, 64.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({760.0f, 760.0f}, ImGuiCond_FirstUseEver);
+
+    if (_bringToFront) {
+        ImGui::SetNextWindowFocus();
+        _bringToFront = false;
+    }
+
+    bool opened = true;
+    if (ImGui::Begin(_windowTitle.c_str(), &opened, ImGuiWindowFlags_NoCollapse)) {
+        DrawContent();
+    }
+
+    bool keep_open = true;
+
+    if (!opened && !_changed) {
+        keep_open = false;
+    }
+    else if (!opened) {
+        ImGui::OpenPopup(_closePopupTitle.c_str());
+    }
+
+    if (ImGui::BeginPopupModal(_closePopupTitle.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("Save changes to %s before closing?", _assetPath.c_str());
+
+        if (!_saveError.empty()) {
+            ImGui::TextWrapped("%s", _saveError.c_str());
+        }
+
+        if (ImGui::Button("Save and close")) {
+            if (SaveChanges()) {
+                keep_open = false;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Discard and close")) {
+            DiscardChanges();
+            keep_open = false;
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            _saveError.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::End();
+    return keep_open;
+}
+
+void ParticleEditor::DrawContent()
+{
+    FO_STACK_TRACE_ENTRY();
 
     _impl->GameTime.FrameAdvance(true);
 
@@ -249,37 +312,22 @@ void ParticleEditor::OnDraw()
         if (_changed) {
             ImGui::SameLine();
             if (ImGui::Button("Discard")) {
-                _changed = _impl->Changed = false;
-                _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
-                _impl->Particle->Respawn();
+                DiscardChanges();
             }
 
             if (can_save_source) {
                 ImGui::SameLine();
                 if (ImGui::Button("Save")) {
-                    const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
-                    FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
-
-                    nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
-                    FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
-                    auto saver = nullable_saver.as_ptr();
-
-                    const auto path = std::string(file.GetDiskPath());
-
-                    auto nullable_base_system = _impl->Particle->GetBaseSystem();
-                    FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
-                    auto base_system = nullable_base_system.as_ptr();
-
-                    if (saver->save(path, base_system.get(), path)) {
-                        _changed = _impl->Changed = false;
-                        _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
-                        _impl->Particle->Respawn();
-                    }
+                    (void)SaveChanges();
                 }
             }
             else {
                 ImGui::SameLine();
                 ImGui::TextDisabled("Save is unavailable for this source format");
+            }
+
+            if (!_saveError.empty()) {
+                ImGui::TextWrapped("%s", _saveError.c_str());
             }
         }
     }
@@ -299,7 +347,7 @@ void ParticleEditor::OnDraw()
     const auto frame_width = numeric_cast<float32_t>(draw_width);
     const auto frame_height = numeric_cast<float32_t>(draw_height);
     const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height * (1.0f / _editor->Settings->ModelProjFactor);
+    const auto proj_height = frame_height * (1.0f / _impl->Settings->ModelProjFactor);
     const auto proj_width = proj_height * frame_ratio;
 
     const mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
@@ -340,6 +388,55 @@ void ParticleEditor::OnDraw()
     if (!_impl->Particle->IsActive() && _autoReplay) {
         _impl->Particle->Respawn();
     }
+}
+
+void ParticleEditor::DiscardChanges()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "Particle editor has no particle to discard", _assetPath);
+
+    _changed = _impl->Changed = false;
+    _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
+    _impl->Particle->Respawn();
+    _saveError.clear();
+}
+
+auto ParticleEditor::SaveChanges() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strex(_assetPath).get_file_extension() != "fopts") {
+        _saveError = "Save is unavailable for this source format";
+        return false;
+    }
+
+    const auto file = _impl->RawResources->ReadFileHeader(_assetPath);
+    FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
+
+    nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
+    FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
+    auto saver = nullable_saver.as_ptr();
+
+    const std::string path {file.GetDiskPath()};
+
+    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "Particle editor has no particle to save", _assetPath);
+    auto nullable_base_system = _impl->Particle->GetBaseSystem();
+    FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
+    auto base_system = nullable_base_system.as_ptr();
+
+    if (!saver->save(path, base_system.get(), path)) {
+        _saveError = strex("Failed to save particle source '{}'", _assetPath);
+        WriteLog(LogType::Error, "Particle editor failed to save '{}'", _assetPath);
+        return false;
+    }
+
+    _changed = _impl->Changed = false;
+    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
+    _impl->Particle->Respawn();
+    _saveError.clear();
+    _onSaved(_assetPath);
+    return true;
 }
 
 #define DRAW_SPK_FLOAT(label, get, set) \

@@ -668,6 +668,8 @@ void MapperEngine::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
+    ParticleEditors.clear();
+
     while (!LoadedMaps.empty()) {
         UnloadMap(LoadedMaps.back().get(), false);
     }
@@ -1942,6 +1944,7 @@ void MapperEngine::DrawMainPanelImGui()
             ImGui::MenuItem("Map browser", nullptr, &MapListWindowVisible);
             ImGui::MenuItem("Controls", nullptr, &MapWindowVisible, static_cast<bool>(_curMap));
             ImGui::MenuItem("History", nullptr, &HistoryWindowVisible, static_cast<bool>(_curMap));
+            ImGui::MenuItem("Particle editor", nullptr, &ParticleEditorBrowserWindowVisible);
             ImGui::MenuItem("Settings", nullptr, &SettingsWindowVisible);
             ImGui::EndMenu();
         }
@@ -2075,6 +2078,8 @@ void MapperEngine::DrawMainPanelImGui()
     DrawMapListWindowImGui();
     DrawMapWindowImGui();
     DrawHistoryWindowImGui();
+    DrawParticleEditorBrowserWindowImGui();
+    DrawParticleEditorsImGui();
     DrawSettingsWindowImGui();
 }
 
@@ -6192,6 +6197,107 @@ void MapperEngine::DrawSettingsWindowImGui()
 
     ImGui::EndChild();
     ImGui::End();
+}
+
+void MapperEngine::DrawParticleEditorBrowserWindowImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!ParticleEditorBrowserWindowVisible) {
+        return;
+    }
+
+    ImGui::SetNextWindowPos({112.0f, 80.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({560.0f, 620.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Particle Editor", &ParticleEditorBrowserWindowVisible, 0)) {
+        ImGui::End();
+        return;
+    }
+
+    if (!ParticleEditorResourcesIndexed || ImGui::IsWindowAppearing()) {
+        RefreshParticleEditorResources();
+    }
+
+    auto& particle_filter_buf = ParticleEditorFilterBuf;
+    ImGui::InputTextWithHint("##ParticleEditorFilter", "Search .fopts sources...", particle_filter_buf.data(), particle_filter_buf.size());
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh")) {
+        RefreshParticleEditorResources();
+    }
+
+    const string_view particle_filter = InputBufferView(particle_filter_buf);
+    const size_t visible_resource_count = std::ranges::count_if(ParticleEditorResourcePaths, [&](const string& particle_path) { return ContainsCaseInsensitive(particle_path, particle_filter); });
+    ImGui::Text("Sources: %d, open editors: %d", numeric_cast<int32_t>(visible_resource_count), numeric_cast<int32_t>(ParticleEditors.size()));
+
+    if (ImGui::BeginChild("##ParticleEditorResources", {0.0f, 0.0f}, true)) {
+        for (const string& particle_path : ParticleEditorResourcePaths) {
+            if (!ContainsCaseInsensitive(particle_path, particle_filter)) {
+                continue;
+            }
+
+            if (ImGui::Selectable(particle_path.c_str(), false)) {
+                OpenParticleEditor(particle_path);
+            }
+        }
+    }
+    ImGui::EndChild();
+    ImGui::End();
+}
+
+void MapperEngine::DrawParticleEditorsImGui()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto it = ParticleEditors.begin(); it != ParticleEditors.end();) {
+        try {
+            if (!(*it)->Draw()) {
+                it = ParticleEditors.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            ++it;
+        }
+    }
+}
+
+void MapperEngine::OpenParticleEditor(string_view asset_path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto existing_editor = std::ranges::find_if(ParticleEditors, [asset_path](const unique_ptr<ParticleEditor>& editor) { return editor->GetAssetPath() == asset_path; });
+
+    if (existing_editor != ParticleEditors.end()) {
+        (*existing_editor)->BringToFront();
+        return;
+    }
+
+    ParticleEditors.emplace_back(SafeAlloc::MakeUnique<ParticleEditor>(asset_path, Settings, &MapsFileSys, &Resources, [this](string_view saved_path) {
+        AddMess(strex("Particle source saved: {}", saved_path));
+    }));
+}
+
+void MapperEngine::RefreshParticleEditorResources()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> resource_paths;
+    const FileCollection particle_files = MapsFileSys.FilterFiles("fopts");
+    resource_paths.reserve(particle_files.GetFilesCount());
+
+    for (const auto& particle_file : particle_files) {
+        resource_paths.emplace_back(particle_file.GetPath());
+    }
+
+    std::ranges::sort(resource_paths);
+    resource_paths.erase(std::ranges::unique(resource_paths).begin(), resource_paths.end());
+
+    ParticleEditorResourcePaths = std::move(resource_paths);
+    ParticleEditorResourcesIndexed = true;
 }
 
 void MapperEngine::CurRMouseUp()

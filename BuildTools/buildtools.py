@@ -82,7 +82,6 @@ def make_validation_target_set(
 FLAG_NAMES = [
 	'FO_BUILD_CLIENT',
 	'FO_BUILD_SERVER',
-	'FO_BUILD_EDITOR',
 	'FO_BUILD_MAPPER',
 	'FO_BUILD_ASCOMPILER',
 	'FO_BUILD_BAKER',
@@ -90,13 +89,12 @@ FLAG_NAMES = [
 	'FO_CODE_COVERAGE',
 ]
 
-COMMON_VALIDATION_TARGET_NAMES = ('client', 'server', 'editor', 'mapper', 'ascompiler', 'baker')
+COMMON_VALIDATION_TARGET_NAMES = ('client', 'server', 'mapper', 'ascompiler', 'baker')
 WIN64_CLANG_VALIDATION_TARGET_NAMES = ('client', 'server', 'ascompiler', 'baker')
 
 SINGLE_FLAG_BUILD_TARGETS = {
 	'client': 'FO_BUILD_CLIENT',
 	'server': 'FO_BUILD_SERVER',
-	'editor': 'FO_BUILD_EDITOR',
 	'mapper': 'FO_BUILD_MAPPER',
 	'ascompiler': 'FO_BUILD_ASCOMPILER',
 	'baker': 'FO_BUILD_BAKER',
@@ -120,7 +118,6 @@ BUILD_TARGETS: dict[str, FlagMap] = {
 	'full': make_flag_map(
 		'FO_BUILD_CLIENT',
 		'FO_BUILD_SERVER',
-		'FO_BUILD_EDITOR',
 		'FO_BUILD_MAPPER',
 		'FO_BUILD_ASCOMPILER',
 		'FO_BUILD_BAKER',
@@ -1608,7 +1605,7 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 		build_env['CXX'] = '/usr/bin/clang++-20'
 	# Debug builds of the engine peak at ~3-4 GB resident per cc1plus/clang++ instance plus a
 	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
-	# value trips the cgroup OOM killer for the heavier targets (linux-editor, all linux-gcc-*
+	# value trips the cgroup OOM killer for the heavier targets (all linux-gcc-*
 	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
 	# plenty of headroom and benefit from full parallelism.
 	if build_env.get('GITHUB_ACTIONS') == 'true':

@@ -35,27 +35,42 @@
 
 #include "Common.h"
 
-#include "Editor.h"
+#include "FileSystem.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
-class ParticleEditor final : public EditorAssetView
+class ParticleEditor final
 {
 public:
-    ParticleEditor(string_view asset_path, ptr<FOEditor> editor);
+    ParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved);
     ParticleEditor(const ParticleEditor&) = delete;
     ParticleEditor(ParticleEditor&&) noexcept;
     auto operator=(const ParticleEditor&) = delete;
     auto operator=(ParticleEditor&&) noexcept = delete;
-    ~ParticleEditor() override;
+    ~ParticleEditor();
+
+    [[nodiscard]] auto GetAssetPath() const noexcept -> string_view { return _assetPath; }
+    [[nodiscard]] auto IsChanged() const noexcept -> bool { return _changed; }
+    void BringToFront() noexcept { _bringToFront = true; }
+    [[nodiscard]] auto Draw() -> bool;
 
 private:
-    void OnDraw() override;
+    void DrawContent();
+    void DiscardChanges();
+    [[nodiscard]] auto SaveChanges() -> bool;
 
     struct Impl;
     unique_ptr<Impl> _impl;
+    string _assetPath {};
+    string _windowTitle {};
+    string _closePopupTitle {};
+    string _saveError {};
+    function<void(string_view)> _onSaved {};
     float32_t _dirAngle {};
     bool _autoReplay {};
+    bool _changed {};
+    bool _bringToFront {};
 };
 
 FO_END_NAMESPACE

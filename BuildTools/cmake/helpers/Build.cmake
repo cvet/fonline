@@ -702,7 +702,7 @@ endfunction()
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
 # (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to the editor, ...). Silently does nothing if either target is missing.
+# to a tool host, ...). Silently does nothing if either target is missing.
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()
