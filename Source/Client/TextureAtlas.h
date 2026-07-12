@@ -104,7 +104,7 @@ public:
     ~TextureAtlasManager() = default;
 
     auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;
-    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, ptr<TextureAtlas::SpaceNode>, ipos32>;
+    auto FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, unique_del_ptr<TextureAtlas::SpaceNode>, ipos32>;
     void DumpAtlases() const;
 
 private:

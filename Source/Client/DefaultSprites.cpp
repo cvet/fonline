@@ -37,10 +37,10 @@
 
 FO_BEGIN_NAMESPACE
 
-AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
+AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
-    _atlasNode {atlas_node},
+    _atlasNode {std::move(atlas_node)},
     _atlasRect {atlas_rect},
     _hitTestData {std::move(hit_data)}
 {
@@ -69,10 +69,6 @@ AtlasSprite::~AtlasSprite()
         }
     }
 #endif
-
-    if (_atlasNode) {
-        _atlasNode->Free();
-    }
 }
 
 auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
@@ -535,9 +531,6 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
 
     auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
 
-    // Release the reserved atlas node if we throw before the owning AtlasSprite adopts it
-    auto atlas_node_guard = scope_fail([&]() noexcept { atlas_node->Free(); });
-
     vector<bool> hit_test_data;
 
     if (pixels) {
@@ -588,7 +581,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
-    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, atlas_node, atlas_rect, std::move(hit_test_data));
+    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_node), atlas_rect, std::move(hit_test_data));
 }
 
 FO_END_NAMESPACE

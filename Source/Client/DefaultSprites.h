@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data);
     AtlasSprite(const AtlasSprite&) = delete;
     AtlasSprite(AtlasSprite&&) noexcept = default;
     auto operator=(const AtlasSprite&) = delete;
@@ -62,7 +62,7 @@ public:
 
 protected:
     nptr<TextureAtlas> _atlas {};
-    nptr<TextureAtlas::SpaceNode> _atlasNode {};
+    unique_del_nptr<TextureAtlas::SpaceNode> _atlasNode {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
 };

@@ -45,7 +45,7 @@ class ParticleSpriteFactory;
 class ParticleSprite final : public AtlasSprite
 {
 public:
-    explicit ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, ptr<TextureAtlas> atlas, ptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, ptr<ParticleSpriteFactory> factory, unique_ptr<ParticleSystem>&& particle, bool draw_in_scene);
+    explicit ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, ptr<TextureAtlas> atlas, unique_del_ptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, ptr<ParticleSpriteFactory> factory, unique_ptr<ParticleSystem>&& particle, bool draw_in_scene);
     ParticleSprite(const ParticleSprite&) = delete;
     ParticleSprite(ParticleSprite&&) noexcept = default;
     auto operator=(const ParticleSprite&) = delete;

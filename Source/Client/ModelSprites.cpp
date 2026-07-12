@@ -136,8 +136,7 @@ void ModelSprite::SetSize(isize32 size)
     const int16_t new_offset_y = numeric_cast<int16_t>(size.height / 4);
 
     if (_atlasNode) {
-        _atlasNode->Free();
-        _atlasNode.reset();
+        _atlasNode.reset(); // Frees the previous atlas slot via the owning handle's deleter
         _atlas = nullptr;
         _atlasRect = {};
     }
@@ -153,7 +152,7 @@ void ModelSprite::SetSize(isize32 size)
     _size = size;
     _offset.y = new_offset_y;
     _atlas = atlas;
-    _atlasNode = atlas_node;
+    _atlasNode = std::move(atlas_node);
     _atlasRect = new_rect;
 }
 
