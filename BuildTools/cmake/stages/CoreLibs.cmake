@@ -114,7 +114,7 @@ endif()
 if(FO_BUILD_BAKER_LIB)
     AddCoreStaticLibrary(BakerLib FO_BAKER_SOURCE
         APPEND_TO_GROUP FO_CORE_LIBS_GROUP
-        LINK_LIBS CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
+        LINK_LIBS ClientLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} $<$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>:AngelScriptScripting>)
 endif()
 
 if(FO_BUILD_EDITOR_LIB)

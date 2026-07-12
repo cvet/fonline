@@ -33,7 +33,10 @@ namespace IO
 	IOBuffer::IOBuffer(size_t capacity) :
 		capacity(capacity),
 		size(0),
-		position(0)
+		position(0),
+		readOnly(false), // (FOnline Patch)
+		error(false), // (FOnline Patch)
+		fallback {} // (FOnline Patch)
 	{
 		buf = SPK_NEW_ARRAY(char,capacity);
 	}
@@ -41,11 +44,15 @@ namespace IO
 	IOBuffer::IOBuffer(size_t capacity,std::istream& is) :
 		capacity(capacity),
 		size(0),
-		position(0)
+		position(0),
+		readOnly(true), // (FOnline Patch)
+		error(false), // (FOnline Patch)
+		fallback {} // (FOnline Patch)
 	{
 		buf = SPK_NEW_ARRAY(char,capacity);
 		is.read(buf,capacity);
-		size = capacity;
+		size = static_cast<size_t>(is.gcount()); // (FOnline Patch) Never expose uninitialized bytes after a short read.
+		error = size != capacity; // (FOnline Patch)
 	}
 
 	IOBuffer::~IOBuffer()
@@ -55,16 +62,57 @@ namespace IO
 
 	const char* IOBuffer::get(size_t length) const
 	{
+		// (FOnline Patch) Reject integer overflow and reads past initialized data.
+		if (length > getRemaining())
+		{
+			error = true;
+			position = size;
+			return fallback;
+		}
+
+		const char* result = buf + position;
 		position += length;
-		if (position >= size) position = size;
-		return buf + position - length;
+		return result;
+	}
+
+	void IOBuffer::skip(size_t nb) const
+	{
+		// (FOnline Patch) Saver buffers reserve future bytes, while loader buffers are strictly bounded.
+		if (nb > static_cast<size_t>(-1) - position || (readOnly && nb > getRemaining()))
+		{
+			error = true;
+			position = readOnly ? size : position;
+			return;
+		}
+
+		position += nb;
+	}
+
+	void IOBuffer::setPosition(size_t pos) const
+	{
+		// (FOnline Patch) Both saver rewrites and loader seeks must target already initialized bytes.
+		if (pos > size)
+		{
+			error = true;
+			position = size;
+			return;
+		}
+
+		position = pos;
 	}
 
 	template<> std::string IOBuffer::get<std::string>() const	
 	{ 
-		char c; 
 		std::string str;
-		while ((c = get<char>()) != '\0' && position < size) { str += c; }
+		while (position < size)
+		{
+			const char c = get<char>();
+			if (c == '\0')
+				return str;
+			str += c;
+		}
+
+		error = true; // (FOnline Patch) Serialized strings must be null terminated inside the object data.
 		return str;
 	}
 

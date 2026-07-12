@@ -38,6 +38,9 @@ namespace IO
 
 		static const size_t DATA_LENGTH_OFFSET;
 		static const size_t HEADER_LENGTH;
+		static const size_t MAX_DATA_LENGTH; // (FOnline Patch) Bound allocations from untrusted binary resources.
+		static const size_t MAX_OBJECTS; // (FOnline Patch)
+		static const size_t MAX_ATTRIBUTE_VALUES; // (FOnline Patch)
 
         virtual bool innerLoad(std::istream& is,Graph& graph,const std::string& path) const override;
         virtual bool innerLoadFromBuffer(Graph& graph, const char * data, unsigned int datasize) override;
@@ -47,18 +50,32 @@ namespace IO
 		Ref<SPKObject> readReference(const Graph& graph,const IOBuffer& data) const;
 
 		template<class T>
-		void setAttributeValues(Attribute& attrib,const IOBuffer& data) const;
+		bool setAttributeValues(Attribute& attrib,const IOBuffer& data) const; // (FOnline Patch) Propagate truncated/oversized arrays.
 	};
 
 	template<class T>
-	void SPKLoader::setAttributeValues(Attribute& attrib,const IOBuffer& data) const
+	bool SPKLoader::setAttributeValues(Attribute& attrib,const IOBuffer& data) const
 	{
+		if (data.getRemaining() < sizeof(uint32))
+			return false;
+
 		size_t nbValues = data.get<uint32>();
+		if (data.hasError() || nbValues > MAX_ATTRIBUTE_VALUES || nbValues > data.getRemaining())
+			return false;
+
 		T* buffer = SPK_NEW_ARRAY(T,nbValues);
 		for (size_t i = 0; i < nbValues; ++i)
+		{
 			buffer[i] = data.get<T>();
+			if (data.hasError())
+			{
+				SPK_DELETE_ARRAY(buffer);
+				return false;
+			}
+		}
 		attrib.setValues(buffer,nbValues);
 		SPK_DELETE_ARRAY(buffer);
+		return true;
 	}
 }}
 

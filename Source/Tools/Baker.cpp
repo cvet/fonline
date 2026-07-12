@@ -46,6 +46,7 @@
 #include "MetadataRegistration.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "ParticleBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -109,6 +110,9 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
     }
     if (vec_exists(request_bakers, EffectBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<EffectBaker>(ctx));
+    }
+    if (vec_exists(request_bakers, ParticleBaker::NAME)) {
+        bakers.emplace_back(SafeAlloc::MakeUnique<ParticleBaker>(ctx));
     }
     if (vec_exists(request_bakers, ProtoBaker::NAME)) {
         bakers.emplace_back(SafeAlloc::MakeUnique<ProtoBaker>(ctx));

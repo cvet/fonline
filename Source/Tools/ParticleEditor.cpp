@@ -49,7 +49,12 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
 
     return [editor, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
         const auto file = editor->BakedResources.ReadFile(path);
-        FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
+
+        if (!file) {
+            WriteLog("Particle editor could not read sprite resource '{}'", path);
+            return {nullptr, {}};
+        }
+
         auto reader = file.GetReader();
 
         const auto check_number = reader.GetUInt8();
@@ -79,16 +84,6 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
 
         return {nullable_tex, {0.0f, 0.0f, 1.0f, 1.0f}};
     };
-}
-
-static auto CreateParticleEditorParticle(ptr<ParticleManager> particle_mngr, string_view asset_path) -> ParticleSystem
-{
-    FO_STACK_TRACE_ENTRY();
-
-    optional<ParticleSystem> particle = particle_mngr->CreateParticle(asset_path);
-    FO_VERIFY_AND_THROW(particle, "Failed to create particle system from asset");
-
-    return std::move(*particle);
 }
 
 struct ParticleEditor::Impl
@@ -166,13 +161,14 @@ struct ParticleEditor::Impl
     EffectManager EffectMngr;
     GameTimer GameTime;
     ParticleManager ParticleMngr;
-    ParticleSystem Particle;
+    optional<ParticleSystem> Particle;
     SPK::Ref<SPK::System> SystemBackup {};
     bool AddingMode {true};
     bool RemovingMode {true};
     bool NamingMode {};
     vector<string> AllEffects {};
     vector<string> AllTextures {};
+    string LoadError {};
     bool Changed {};
 };
 
@@ -181,11 +177,17 @@ ParticleEditor::Impl::Impl(string_view asset_path, ptr<FOEditor> editor) :
     EffectMngr {editor->Settings, &editor->BakedResources, &GetApp()->Render},
     GameTime {editor->Settings},
     ParticleMngr {editor->Settings, &EffectMngr, &GetApp()->Render, &editor->BakedResources, &GameTime, CreateParticleEditorTextureLoader(editor, LoadedTextures)},
-    Particle {CreateParticleEditorParticle(&ParticleMngr, asset_path)}
+    Particle {ParticleMngr.CreateParticle(asset_path)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(Particle.GetBaseSystem().get()));
+    if (Particle.has_value() && Particle->GetBaseSystem()) {
+        SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(Particle->GetBaseSystem().get()));
+    }
+    else {
+        LoadError = strex("Failed to load particle preview for '{}'", asset_path);
+        WriteLog("Particle editor: failed to load preview for '{}'", asset_path);
+    }
 }
 
 ParticleEditor::ParticleEditor(ParticleEditor&&) noexcept = default;
@@ -221,7 +223,13 @@ void ParticleEditor::OnDraw()
 
     _impl->Changed = false;
 
-    auto&& [draw_width, draw_height] = _impl->Particle.GetDrawSize();
+    if (!_impl->Particle.has_value() || !_impl->Particle->GetBaseSystem()) {
+        ImGui::TextWrapped("%s", !_impl->LoadError.empty() ? _impl->LoadError.c_str() : "Particle preview is unavailable");
+        return;
+    }
+
+    auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
+    const bool can_save_source = strex(_assetPath).get_file_extension() == "fopts";
 
     if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
         ImGui::Checkbox("Adding mode", &_impl->AddingMode);
@@ -230,56 +238,62 @@ void ParticleEditor::OnDraw()
         ImGui::SameLine();
         ImGui::Checkbox("Naming mode", &_impl->NamingMode);
         ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle.GetElapsedTime()));
+        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle->GetElapsedTime()));
         ImGui::SameLine();
         ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
 
         if (ImGui::Button("Respawn")) {
-            _impl->Particle.Respawn();
+            _impl->Particle->Respawn();
         }
 
         if (_changed) {
             ImGui::SameLine();
             if (ImGui::Button("Discard")) {
                 _changed = _impl->Changed = false;
-                _impl->Particle.SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
-                _impl->Particle.Respawn();
+                _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
+                _impl->Particle->Respawn();
             }
 
-            ImGui::SameLine();
-            if (ImGui::Button("Save")) {
-                const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
-                FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
+            if (can_save_source) {
+                ImGui::SameLine();
+                if (ImGui::Button("Save")) {
+                    const auto file = _editor->RawResources.ReadFileHeader(_assetPath);
+                    FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
 
-                nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
-                FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
-                auto saver = nullable_saver.as_ptr();
+                    nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
+                    FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
+                    auto saver = nullable_saver.as_ptr();
 
-                const auto path = std::string(file.GetDiskPath());
+                    const auto path = std::string(file.GetDiskPath());
 
-                auto nullable_base_system = _impl->Particle.GetBaseSystem();
-                FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
-                auto base_system = nullable_base_system.as_ptr();
+                    auto nullable_base_system = _impl->Particle->GetBaseSystem();
+                    FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
+                    auto base_system = nullable_base_system.as_ptr();
 
-                if (saver->save(path, base_system.get(), path)) {
-                    _changed = _impl->Changed = false;
-                    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
-                    _impl->Particle.Respawn();
+                    if (saver->save(path, base_system.get(), path)) {
+                        _changed = _impl->Changed = false;
+                        _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
+                        _impl->Particle->Respawn();
+                    }
                 }
+            }
+            else {
+                ImGui::SameLine();
+                ImGui::TextDisabled("Save is unavailable for this source format");
             }
         }
     }
     ImGui::EndChild();
 
     if (ImGui::BeginChild("Hierarchy")) {
-        _impl->DrawGenericSparkObject(_impl->Particle.GetBaseSystem().get());
+        _impl->DrawGenericSparkObject(_impl->Particle->GetBaseSystem().get());
     }
     ImGui::EndChild();
 
     _changed |= _impl->Changed;
 
     if (_impl->Changed) {
-        _impl->Particle.Respawn();
+        _impl->Particle->Respawn();
     }
 
     const auto frame_width = numeric_cast<float32_t>(draw_width);
@@ -297,12 +311,12 @@ void ParticleEditor::OnDraw()
     vec3 view_offset;
     view_offset = vec3();
 
-    _impl->Particle.Setup(proj, world, pos_offest, _dirAngle, view_offset);
+    _impl->Particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
 
     auto prev_rt = GetApp()->Render.GetRenderTarget();
     GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
     GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
-    _impl->Particle.Draw();
+    _impl->Particle->Draw();
     GetApp()->Render.SetRenderTarget(prev_rt);
 
     ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
@@ -323,8 +337,8 @@ void ParticleEditor::OnDraw()
     }
     draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
 
-    if (!_impl->Particle.IsActive() && _autoReplay) {
-        _impl->Particle.Respawn();
+    if (!_impl->Particle->IsActive() && _autoReplay) {
+        _impl->Particle->Respawn();
     }
 }
 
@@ -1448,7 +1462,11 @@ auto ParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto base_system = Particle.GetBaseSystem();
+    if (!Particle.has_value()) {
+        return {};
+    }
+
+    auto base_system = Particle->GetBaseSystem();
 
     return base_system ? SPK::Ref<SPK::System>(base_system.get()) : SPK::Ref<SPK::System>();
 }

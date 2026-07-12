@@ -34,7 +34,6 @@
 #pragma once
 
 #include "Common.h"
-
 #include "Rendering.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -43,6 +42,9 @@ FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
 class IAppRender;
+class RenderEffect;
+class RenderTexture;
+class RenderDrawBuffer;
 class ParticleManager;
 FO_END_NAMESPACE
 
@@ -66,6 +68,8 @@ namespace SPK::FO
         size_t _curVertexIndex {};
         size_t _curTexCoordIndex {};
     };
+
+    void EnsureSparkParticleObjectsRegistered();
 
     class SparkQuadRenderer final : public Renderer, public QuadRenderBehavior, public Oriented3DRenderBehavior
     {
@@ -91,7 +95,7 @@ namespace SPK::FO
         static auto Create() -> Ref<SparkQuadRenderer>;
         ~SparkQuadRenderer() override = default;
 
-        void Setup(string_view path, ptr<ParticleManager> particle_mngr);
+        [[nodiscard]] auto Setup(string_view path, ptr<ParticleManager> particle_mngr) -> bool;
 
         auto GetDrawWidth() const -> int32_t;
         auto GetDrawHeight() const -> int32_t;
@@ -114,6 +118,16 @@ namespace SPK::FO
         explicit SparkQuadRenderer(bool needs_dataset);
         SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
 
+        string _path {};
+        nptr<ParticleManager> _particleMngr {};
+
+        int32_t _drawWidth {};
+        int32_t _drawHeight {};
+        bool _drawInScene {};
+
+        string _effectName {};
+        string _textureName {};
+
         void AddPosAndColor(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
         void AddTexture2D(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
         void AddTexture2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const;
@@ -123,18 +137,9 @@ namespace SPK::FO
         void Render2DAtlas(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas
         void Render2DAtlasRot(const Particle& particle, ptr<SparkRenderBuffer> render_buffer) const; // Rendering for particles with texture 2D atlas and rotation
 
-        string _path {};
-        nptr<ParticleManager> _particleMngr {};
         mutable nptr<RenderEffect> _effect {};
         nptr<RenderTexture> _texture {};
         frect32 _textureAtlasOffset {};
-
-        int32_t _drawWidth {};
-        int32_t _drawHeight {};
-        bool _drawInScene {};
-
-        string _effectName {};
-        string _textureName {};
 
         mutable mat44 _modelView {};
         mutable mat44 _invModelView {};
