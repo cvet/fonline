@@ -63,6 +63,7 @@ namespace
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterFinish.Fire(cr);", 1, "pre-teardown critter finish"},
         {"Source/Server/EntityManager.cpp", "_engine->OnLocationInit.Fire(loc, first_time);", 1, "init guarded"},
         {"Source/Server/EntityManager.cpp", "_engine->OnMapInit.Fire(map, first_time);", 1, "init guarded"},
+        {"Source/Server/EntityManager.cpp", "if (_engine->OnCritterPreLoad.Fire(cr) == Entity::EventResult::StopChain) {", 1, "post-restore pre-attach migration gate"},
         {"Source/Server/EntityManager.cpp", "_engine->OnCritterInit.Fire(cr, first_time);", 1, "init guarded"},
         {"Source/Server/EntityManager.cpp", "_engine->OnItemInit.Fire(item, first_time);", 1, "init guarded"},
         {"Source/Server/ItemManager.cpp", "_engine->OnItemFinish.Fire(item);", 1, "pre-teardown item finish"},

@@ -99,9 +99,13 @@ namespace EntityLifecycle
     int ItemFinishCalls = 0;
     int CritterFinishCalls = 0;
     int LocationFinishCalls = 0;
+    int CritterPreLoadCalls = 0;
     int CritterLoadCalls = 0;
     int CritterUnloadCalls = 0;
     int CritterUnloadSawOnMapCalls = 0;
+    int CritterLoadOrder = 0;
+    bool CritterPreLoadTransferBlocked = false;
+    bool CritterPreLoadSawControllable = false;
     int DestroyOnInitMode = 0;
     int DestroyOnFinishMode = 0;
     int CritterLifecycleEventMode = 0;
@@ -118,6 +122,7 @@ namespace EntityLifecycle
     {
         Game.OnInit.Subscribe(OnInit);
         Game.OnItemInit.Subscribe(OnItemInit);
+        Game.OnCritterPreLoad.Subscribe(OnCritterPreLoad);
         Game.OnCritterInit.Subscribe(OnCritterInit);
         Game.OnLocationInit.Subscribe(OnLocationInit);
         Game.OnItemFinish.Subscribe(OnItemFinish);
@@ -125,6 +130,7 @@ namespace EntityLifecycle
         Game.OnLocationFinish.Subscribe(OnLocationFinish);
         Game.OnCritterLoad.Subscribe(OnCritterLoad);
         Game.OnCritterUnload.Subscribe(OnCritterUnload);
+        Game.OnGlobalMapCritterIn.Subscribe(OnGlobalMapCritterIn);
         Game.OnPlayerLogin.Subscribe(OnPlayerLogin);
         Game.OnPlayerLogout.Subscribe(OnPlayerLogout);
         Game.OnPlayerDirCritter.Subscribe(OnPlayerDirCritter);
@@ -148,9 +154,38 @@ namespace EntityLifecycle
     }
 
     [[Event]]
+    void OnCritterPreLoad(Critter cr)
+    {
+        CritterPreLoadCalls++;
+        CritterPreLoadSawControllable = cr.ControlledByPlayer;
+
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = cr.MapId == ZERO_IDENT && CritterLoadOrder == 0 ? 1 : -1;
+
+            try {
+                cr.TransferToGlobal();
+            }
+            catch {
+                CritterPreLoadTransferBlocked = true;
+            }
+        }
+        else if (CritterLifecycleEventMode == 4) {
+            cr.MakeControllable(false);
+            Game.DestroyCritter(cr);
+        }
+        else if (CritterLifecycleEventMode == 5) {
+            cr.TransferToGlobal();
+        }
+    }
+
+    [[Event]]
     void OnCritterInit(Critter cr, bool firstTime)
     {
         CritterInitCalls++;
+
+        if (CritterLifecycleEventMode == 3 && !firstTime) {
+            CritterLoadOrder = CritterLoadOrder == 2 ? 3 : -3;
+        }
 
         if (DestroyOnInitMode == 2) {
             Game.DestroyCritter(cr);
@@ -173,9 +208,13 @@ namespace EntityLifecycle
     int GetItemFinishCalls() { return ItemFinishCalls; }
     int GetCritterFinishCalls() { return CritterFinishCalls; }
     int GetLocationFinishCalls() { return LocationFinishCalls; }
+    int GetCritterPreLoadCalls() { return CritterPreLoadCalls; }
     int GetCritterLoadCalls() { return CritterLoadCalls; }
     int GetCritterUnloadCalls() { return CritterUnloadCalls; }
     int GetCritterUnloadSawOnMapCalls() { return CritterUnloadSawOnMapCalls; }
+    int GetCritterLoadOrder() { return CritterLoadOrder; }
+    bool GetCritterPreLoadTransferBlocked() { return CritterPreLoadTransferBlocked; }
+    bool GetCritterPreLoadSawControllable() { return CritterPreLoadSawControllable; }
     int GetPlayerLoginCalls() { return PlayerLoginCalls; }
     int GetPlayerLogoutCalls() { return PlayerLogoutCalls; }
     int GetPlayerDestroyedAfterLoginDisconnectCalls() { return PlayerDestroyedAfterLoginDisconnectCalls; }
@@ -211,9 +250,13 @@ namespace EntityLifecycle
         ItemFinishCalls = 0;
         CritterFinishCalls = 0;
         LocationFinishCalls = 0;
+        CritterPreLoadCalls = 0;
         CritterLoadCalls = 0;
         CritterUnloadCalls = 0;
         CritterUnloadSawOnMapCalls = 0;
+        CritterLoadOrder = 0;
+        CritterPreLoadTransferBlocked = false;
+        CritterPreLoadSawControllable = false;
         DestroyOnInitMode = 0;
         DestroyOnFinishMode = 0;
         CritterLifecycleEventMode = 0;
@@ -261,6 +304,10 @@ namespace EntityLifecycle
     {
         CritterLoadCalls++;
 
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = CritterLoadOrder == 3 ? 4 : -4;
+        }
+
         if (CritterLifecycleEventMode == 2) {
             cr.MakeControllable(false);
             Game.DestroyCritter(cr);
@@ -277,6 +324,14 @@ namespace EntityLifecycle
                 CritterUnloadSawOnMapCalls++;
                 cr.TransferToGlobal();
             }
+        }
+    }
+
+    [[Event]]
+    void OnGlobalMapCritterIn(Critter cr)
+    {
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = CritterLoadOrder == 1 ? 2 : -2;
         }
     }
 
@@ -796,6 +851,116 @@ TEST_CASE("EntityInitEvents")
         int32_t load_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterLoadCalls"), load_calls));
         CHECK(load_calls == 1);
+    }
+
+    SECTION("CritterPreLoadRunsBeforeWorldEntryInitializationAndLoad")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(3));
+
+        auto loaded_cr = server->LoadCritter(cr_id, true);
+
+        int32_t pre_load_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadCalls"), pre_load_calls));
+        CHECK(pre_load_calls == 1);
+
+        int32_t load_order = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterLoadOrder"), load_order));
+        CHECK(load_order == 4);
+
+        bool transfer_blocked = false;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadTransferBlocked"), transfer_blocked));
+        CHECK(transfer_blocked);
+
+        bool saw_controllable = false;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadSawControllable"), saw_controllable));
+        CHECK(saw_controllable);
+
+        server->UnloadCritter(loaded_cr);
+        server->DestroyUnloadedCritter(cr_id);
+    }
+
+    SECTION("CritterPreLoadMayDropPersistedCritterWithoutLoadError")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->DbStorage.WaitCommitChanges();
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(4));
+
+        bool is_error = false;
+        auto dropped_cr = server->EntityMngr.LoadCritter(cr_id, true, is_error);
+
+        CHECK_FALSE(is_error);
+        CHECK_FALSE(static_cast<bool>(dropped_cr));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        server->DbStorage.WaitCommitChanges();
+        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        CHECK(std::ranges::find(persisted_cr_ids, cr_id) == persisted_cr_ids.end());
+    }
+
+    SECTION("CritterPreLoadExceptionFailsLoadWithoutDeletingPersistedRecord")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->DbStorage.WaitCommitChanges();
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(5));
+
+        REQUIRE_THROWS_AS(server->LoadCritter(cr_id, true), GenericException);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        int32_t init_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterInitCalls"), init_calls));
+        CHECK(init_calls == 0);
+
+        server->DbStorage.WaitCommitChanges();
+        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        CHECK(std::ranges::find(persisted_cr_ids, cr_id) != persisted_cr_ids.end());
+
+        server->DestroyUnloadedCritter(cr_id);
     }
 }
 

@@ -555,7 +555,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
-            auto cr = LoadCritter(cr_id, is_error);
+            auto cr = LoadCritter(cr_id, false, is_error);
 
             if (cr) {
                 cr->SetMapId(map->GetId());
@@ -617,7 +617,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
     return std::move(map);
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refcount_nptr<Critter>
+auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -682,11 +682,38 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
         // Inner entities
         auto holder = cr;
         LoadInnerEntities(holder, is_error);
+
+        // Give scripts a fully restored critter before it is attached to a map or exposed through
+        // world-entry and regular initialization events. This is the persistence-migration boundary.
+        // Player-bound critters are marked before the event so handlers observe the real controllable state.
+        if (!is_error) {
+            ValidateEntityAccess(cr);
+
+            if (for_player) {
+                cr->MarkIsForPlayer();
+            }
+
+            cr->LockMapTransfers();
+            auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
+
+            if (_engine->OnCritterPreLoad.Fire(cr) == Entity::EventResult::StopChain) {
+                WriteLog(LogType::Warning, "Critter {} {} pre-load failed", cr_pid, cr_id);
+                is_error = true;
+            }
+        }
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed during restore critter content {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
+    }
+
+    if (cr->IsDestroyed()) {
+        if (!is_error) {
+            WriteLog(LogType::Info, "Critter {} {} dropped during pre-load", cr_pid, cr_id);
+        }
+
+        return nullptr;
     }
 
     return std::move(cr);

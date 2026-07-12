@@ -2212,8 +2212,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
     }
 
     bool is_error = false;
-    refcount_nptr<Critter> cr_holder = EntityMngr.LoadCritter(cr_id, is_error);
-    nptr<Critter> cr = cr_holder;
+    auto cr = EntityMngr.LoadCritter(cr_id, for_player, is_error);
 
     if (is_error) {
         if (cr) {
@@ -2227,11 +2226,7 @@ auto ServerEngine::LoadCritter(ident_t cr_id, bool for_player) -> ptr<Critter>
     }
 
     if (!cr) {
-        throw GenericException("Critter proto removed by migration rule", cr_id);
-    }
-
-    if (for_player) {
-        cr->MarkIsForPlayer();
+        throw GenericException("Critter removed during loading", cr_id);
     }
 
     EntityMngr.MakePersistent(cr, true, true);
