@@ -194,7 +194,7 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
         // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
         // re-packed into a local handle cell so the callee sees a plain handle slot.
-        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
+        const bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsFixedType || arg_type->BaseType.IsEntityProto || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
             indirect_args[index] = MemReadUnaligned<void*>(arg_data);

@@ -2577,7 +2577,7 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
     else if (base_type.IsHashedString) {
         *static_cast<hstring*>(ret_data) = *static_cast<hstring*>(native_value);
     }
-    else if (base_type.IsEntity) {
+    else if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         auto* entity = *static_cast<Entity**>(native_value);
 
         if (accessor != nullptr && accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX && entity != nullptr) {
@@ -3568,7 +3568,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
         storage.Hash = backend->GetMetadata()->Hashes.ResolveHash(ExtractHashValue(value));
         return &storage.Hash;
     }
-    if (base_type.IsEntity) {
+    if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         storage.EntityPtr = ExtractEntityPtr(value);
         return &storage.EntityPtr;
     }
@@ -3684,7 +3684,7 @@ static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend
     if (base_type.IsHashedString) {
         return value == nullptr || ManagedObjectClassMatches(value, FindFOnlineClass(backend, "hstring"));
     }
-    if (base_type.IsEntity) {
+    if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         return value == nullptr || ManagedObjectClassMatchesOrDerives(value, FindFOnlineClass(backend, base_type.Name));
     }
     if (base_type.IsRefType) {
@@ -3739,7 +3739,7 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
         const hstring& value = *static_cast<hstring*>(data);
         return CreateHashObject(backend, MakeManagedHashValue(backend, value));
     }
-    if (base_type.IsEntity) {
+    if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         auto* entity = *static_cast<Entity**>(data);
         return CreateEntityObject(backend, base_type.Name, entity);
     }
@@ -4095,7 +4095,7 @@ static auto IsManagedBridgeSimpleType(const BaseTypeDesc& type) -> bool
 
     // A fixed type is a proto-reference value (stored as a proto-id hash, resolved to its proto entity on
     // both sides), so it crosses the bridge like an entity proto even though it is not flagged IsEntity.
-    return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsRefType;
+    return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsEntityProto || type.IsRefType;
 }
 
 static auto IsManagedBridgeType(const ComplexTypeDesc& type) -> bool
