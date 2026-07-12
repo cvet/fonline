@@ -504,6 +504,53 @@ TEST_CASE("ClientAndServerHandshakeOverInterthreadTransport")
     CHECK(disconnected_calls >= 1);
 }
 
+TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
+{
+    using namespace TestClientServerIntegration;
+
+    const auto port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    const auto previous_exception_callback = GetExceptionCallback();
+    std::atomic_int exception_reports {};
+    SetExceptionCallback([&exception_reports](string_view, const CatchedStackTraceData&, bool) { exception_reports.fetch_add(1); });
+    const auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { SetExceptionCallback(std::move(previous)); });
+
+    std::atomic_bool disconnected {};
+    auto send_to_server = InterthreadListeners[port]([&disconnected](const_span<uint8_t> data) {
+        if (data.empty()) {
+            disconnected.store(true);
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    auto malformed_handshake = NetOutBuffer(64);
+    malformed_handshake.StartMsg(NetMessage::Handshake);
+    malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+    malformed_handshake.Write<uint16_t>(uint16_t {0});
+    malformed_handshake.EndMsg();
+    send_to_server(malformed_handshake.GetData());
+
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+    CHECK(disconnected.load());
+    CHECK(exception_reports.load() == 0);
+}
+
 TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;

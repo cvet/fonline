@@ -809,7 +809,13 @@ auto ServerEngine::UnloginedPlayerJob(ptr<Player> unlogined_player) -> std::opti
         connection->HardDisconnect();
     }
     catch (const NetBufferException& ex) {
-        ReportExceptionAndContinue(ex);
+        if (!connection->IsHandshakeComplete()) {
+            WriteLog(LogType::Warning, "Invalid handshake data from host {}:{}", connection->GetHost(), connection->GetPort());
+        }
+        else {
+            ReportExceptionAndContinue(ex);
+        }
+
         connection->HardDisconnect();
     }
     catch (const std::exception& ex) {
