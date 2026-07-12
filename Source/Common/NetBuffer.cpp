@@ -243,7 +243,7 @@ void NetOutBuffer::EndMsg()
     auto msg_signature_source = make_ptr(_bufData.data()).offset(_startedBufPos);
     auto msg_signature_target = make_ptr(&msg_signature).reinterpret_as<uint8_t>();
     CopyBuf(msg_signature_source, msg_signature_target, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
-    FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
+    FO_STRONG_ASSERT(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
 
     // Write actual message length
     auto msg_len_source = make_ptr(&msg_len).reinterpret_as<uint8_t>();

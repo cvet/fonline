@@ -1198,6 +1198,12 @@ FO_SCRIPT_API void Client_Game_DrawCritter3d(ptr<ClientEngine> client, uint32_t 
         client->SprMngr.PushScissor({iround<int32_t>(stl), iround<int32_t>(stt), iround<int32_t>(str) - iround<int32_t>(stl), iround<int32_t>(stb) - iround<int32_t>(stt)});
     }
 
+    const auto scissor_guard = scope_fail([&]() noexcept {
+        if (count > 13) {
+            client->SprMngr.PopScissor();
+        }
+    });
+
     MemFill(client->DrawCritterModelLayers, 0, sizeof(client->DrawCritterModelLayers));
 
     for (size_t i = 0, j = layers.size(); i < j && i < MODEL_LAYERS_COUNT; i++) {
@@ -1267,10 +1273,11 @@ static auto TakeActiveOffscreenSurface(ptr<ClientEngine> client) -> ptr<RenderTa
     }
 
     auto rt = client->ActiveOffscreenSurfaces.back();
-    client->ActiveOffscreenSurfaces.pop_back();
-    client->OffscreenSurfaces.emplace_back(rt);
 
     client->SprMngr.GetRtMngr().PopRenderTarget();
+
+    client->ActiveOffscreenSurfaces.pop_back();
+    client->OffscreenSurfaces.emplace_back(rt);
 
     return rt;
 }
@@ -1291,8 +1298,6 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client
     }
 
     auto rt = client->OffscreenSurfaces.back();
-    client->OffscreenSurfaces.pop_back();
-    client->ActiveOffscreenSurfaces.emplace_back(rt);
 
     if (rt->GetSize() != surface_size) {
         client->SprMngr.GetRtMngr().ResizeRenderTarget(rt, surface_size);
@@ -1300,6 +1305,9 @@ FO_SCRIPT_API void Client_Game_ActivateOffscreenSurface(ptr<ClientEngine> client
     }
 
     client->SprMngr.GetRtMngr().PushRenderTarget(rt);
+
+    client->OffscreenSurfaces.pop_back();
+    client->ActiveOffscreenSurfaces.emplace_back(rt);
 
     const auto it = std::ranges::find(client->DirtyOffscreenSurfaces, rt);
 

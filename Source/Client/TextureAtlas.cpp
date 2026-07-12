@@ -200,13 +200,14 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
     return _allAtlases.back();
 }
 
-auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, ptr<TextureAtlas::SpaceNode>, ipos32>
+auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> tuple<ptr<TextureAtlas>, unique_del_ptr<TextureAtlas::SpaceNode>, ipos32>
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Find place in already created atlas
+    function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
+
     nptr<TextureAtlas> atlas {};
-    nptr<TextureAtlas::SpaceNode> atlas_node {};
+    unique_del_nptr<TextureAtlas::SpaceNode> atlas_node {};
     const isize32 size_with_padding = {size.width + ATLAS_SPRITES_PADDING * 2, size.height + ATLAS_SPRITES_PADDING * 2};
 
     if (atlas_type != AtlasType::OneImage) {
@@ -219,7 +220,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
             if (node) {
                 atlas = check_atlas;
-                atlas_node = node;
+                atlas_node = unique_del_nptr<TextureAtlas::SpaceNode> {node.get(), std::move(free_node)};
                 break;
             }
         }
@@ -229,8 +230,9 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     if (!atlas) {
         auto new_atlas = CreateAtlas(atlas_type, size_with_padding);
         atlas = new_atlas;
-        atlas_node = new_atlas->GetLayout()->FindPosition(size_with_padding);
-        FO_VERIFY_AND_THROW(atlas_node, "Missing required atlas node");
+        auto node = new_atlas->GetLayout()->FindPosition(size_with_padding);
+        FO_VERIFY_AND_THROW(node, "Missing required atlas node");
+        atlas_node = unique_del_nptr<TextureAtlas::SpaceNode> {node.get(), std::move(free_node)};
     }
 
     FO_VERIFY_AND_THROW(atlas, "Atlas placement is missing its atlas");
@@ -238,7 +240,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
     const ipos32 pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
 
-    return {atlas.as_ptr(), atlas_node.as_ptr(), pos};
+    return {atlas.as_ptr(), take_not_null(atlas_node), pos};
 }
 
 void TextureAtlasManager::DumpAtlases() const

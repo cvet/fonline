@@ -35,6 +35,7 @@ public:
         }
 
         mongoc_init();
+        auto mongoc_cleanup_guard = scope_fail([]() noexcept { mongoc_cleanup(); });
 
         bson_error_t error;
         const string uri_text = string(uri);
@@ -52,6 +53,8 @@ public:
             throw DataBaseException("DbMongo Can't create client");
         }
 
+        auto client_guard = scope_fail([&]() noexcept { mongoc_client_destroy(client.get()); });
+
         mongoc_uri_destroy(mongo_uri.get());
         auto app_name = make_ptr(FO_DEV_NAME.c_str());
         mongoc_client_set_appname(client.get(), app_name.get());
@@ -64,11 +67,20 @@ public:
             throw DataBaseException("DbMongo Can't get database", db_name);
         }
 
+        auto database_guard = scope_fail([&]() noexcept { mongoc_database_destroy(database.get()); });
+        auto collections_guard = scope_fail([&]() noexcept {
+            scoped_lock locker {_storageLocker};
+            for (auto& value : _collections | std::views::values) {
+                mongoc_collection_destroy(value.get());
+            }
+        });
+
         {
             scoped_lock locker {_storageLocker};
 
             auto collections_cursor = make_nptr(mongoc_database_find_collections_with_opts(database.get(), nullptr));
             FO_VERIFY_AND_THROW(collections_cursor, "Failed to obtain collections cursor");
+            auto cursor_guard = scope_fail([&]() noexcept { mongoc_cursor_destroy(collections_cursor.get()); });
             nptr<const bson_t> collection_doc;
 
             while (mongoc_cursor_next(collections_cursor.get(), collection_doc.get_pp())) {

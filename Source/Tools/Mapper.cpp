@@ -1578,6 +1578,7 @@ auto MapperEngine::ExecuteUndo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
+    auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
     const auto ok = op.Undo(this, &active_map);
     UndoRedoInProgress = false;
 
@@ -1619,6 +1620,7 @@ auto MapperEngine::ExecuteRedo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
+    auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
     const auto ok = op.Redo(this, &active_map);
     UndoRedoInProgress = false;
 
@@ -1803,13 +1805,13 @@ auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_nam
     FO_STACK_TRACE_ENTRY();
 
     auto old_map = *map;
-    UnloadMap(old_map, false);
 
     auto restored_map = LoadMapFromText(map_name, map_text);
     if (!restored_map) {
         return false;
     }
 
+    UnloadMap(old_map, false);
     RemapUndoContext(old_map, restored_map);
     ShowMap(restored_map);
     *map = restored_map;
@@ -4775,6 +4777,7 @@ void MapperEngine::SelectDelete()
         }
 
         UndoRedoInProgress = true;
+        auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
         for (ptr<ClientEntity> entity : copy_hold_ref(SelectedEntities)) {
             DeleteEntity(entity);
         }

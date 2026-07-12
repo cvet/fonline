@@ -466,7 +466,7 @@ void MapSpriteHolder::StopDraw()
     if (Valid) [[likely]] {
         FO_VERIFY_AND_THROW(MSpr, "Map sprite holder has no sprite");
         MSpr->Invalidate();
-        FO_VERIFY_AND_THROW(!Valid, "Map sprite holder must be invalidated after stopping draw");
+        FO_STRONG_ASSERT(!Valid, "Map sprite holder must be invalidated after stopping draw");
     }
 
     MSpr.reset();

@@ -72,7 +72,7 @@ static auto MakeBuiltInDummyAtlasSprite(ptr<SpriteManager> spr_mngr, AtlasType a
     atlas_rect.height = 1.0f / numeric_cast<float32_t>(atlas->GetSize().height);
 
     vector<bool> hit_test_data(1, spr_mngr->CheckHitTest(numeric_cast<int32_t>(DUMMY_SPRITE_COLOR.comp.a)));
-    return SafeAlloc::MakeShared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, atlas_node, atlas_rect, std::move(hit_test_data));
+    return SafeAlloc::MakeShared<AtlasSprite>(spr_mngr, DUMMY_SPRITE_SIZE, ipos32 {}, atlas, std::move(atlas_node), atlas_rect, std::move(hit_test_data));
 }
 
 ResourceManager::ResourceManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<SpriteManager> spr_mngr, ptr<AnimationResolver> anim_name_resolver) :

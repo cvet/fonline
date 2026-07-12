@@ -44,6 +44,14 @@ CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCr
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto unregister_on_fail = scope_fail([this]() noexcept {
+        safe_call([this]() {
+            if (GetId()) {
+                _engine->UnregisterEntity(this);
+            }
+        });
+    });
+
     _name = strex("{}_{}", proto->GetName(), id);
 
 #if FO_ENABLE_3D

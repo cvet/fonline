@@ -66,10 +66,10 @@ void MapManager::LoadFromResources()
             throw MapManagerException("Map proto not found for static map", map_pid);
         }
 
-        static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, &map_file_header]() FO_DEFERRED {
+        static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, map_file_header_copy = map_file_header.Copy()]() FO_DEFERRED {
             ScopedSyncContext sync_ctx;
 
-            auto map_file = File::Load(map_file_header);
+            auto map_file = File::Load(map_file_header_copy);
             auto reader = DataReader(map_file.GetDataSpan());
 
             const auto map_size = map_proto->GetSize();

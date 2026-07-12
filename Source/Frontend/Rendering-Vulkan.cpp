@@ -582,6 +582,10 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
         return;
     }
 
+    // The frame recording is torn down below; on any throw the flag honestly reads false so a later
+    // UpdateTextureRegion takes the safe standalone-staging path instead of recording into a dead buffer.
+    ctx->FrameCbRecording = false;
+
     VkResult vk_result = VK_SUCCESS;
 
     EndCurrentRenderPass(ctx);
@@ -611,6 +615,8 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
     VerifyVkResult(vk_result);
     BeginCommandBufferRecording(ctx->CommandBuffer);
     BeginCurrentRenderPass(ctx);
+
+    ctx->FrameCbRecording = true;
 }
 
 static void AllocateBuffer(ptr<Vulkan_Renderer::Context> ctx, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& memory)
@@ -664,21 +670,25 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
         return;
     }
 
+    // Growth math still uses the old capacity, so compute it before invalidating the slot.
+    constexpr VkDeviceSize min_capacity = 4096;
+    const VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
+
     // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
     DestroyBufferSafe(ctx, pooled.Buffer);
     DestroyMemorySafe(ctx, pooled.Memory);
     pooled.Mapped = nullptr;
-
-    constexpr VkDeviceSize min_capacity = 4096;
-    const VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
+    // Invalidate capacity before the first throwing op: on throw the slot stays a consistent empty buffer.
+    pooled.Capacity = 0;
 
     AllocateBuffer(ctx, new_capacity, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pooled.Buffer, pooled.Memory);
-    pooled.Capacity = new_capacity;
 
     // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy.
     void* mapped_raw {};
     const auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
     VerifyVkResult(vk_result);
+    // No-throw commit tail.
+    pooled.Capacity = new_capacity;
     pooled.Mapped = mapped_raw;
 }
 
@@ -967,12 +977,16 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
     // Create GPU texture image if needed
     if (TextureImage == VK_NULL_HANDLE) {
-        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, TextureImage, TextureImageMemory);
+        // Build every image/view into locals first; on any throw the members stay null so the whole
+        // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind.
+        VkImage tex_image {};
+        VkDeviceMemory tex_image_memory {};
+        AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
 
         // Create image view
         VkImageViewCreateInfo image_view_ci {};
         image_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        image_view_ci.image = TextureImage;
+        image_view_ci.image = tex_image;
         image_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         image_view_ci.format = VK_FORMAT_B8G8R8A8_UNORM;
         image_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -981,17 +995,22 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
         image_view_ci.subresourceRange.baseArrayLayer = 0;
         image_view_ci.subresourceRange.layerCount = 1;
 
-        vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &TextureImageView);
+        VkImageView tex_image_view {};
+        vk_result = vkCreateImageView(_ctx->Device, &image_view_ci, nullptr, &tex_image_view);
         VerifyVkResult(vk_result);
+
+        VkImage depth_image {};
+        VkDeviceMemory depth_image_memory {};
+        VkImageView depth_image_view {};
 
         // Create depth buffer if requested
         if (WithDepth) {
-            AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DepthImage, DepthImageMemory);
+            AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
 
             // Create depth image view
             VkImageViewCreateInfo depth_view_ci {};
             depth_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-            depth_view_ci.image = DepthImage;
+            depth_view_ci.image = depth_image;
             depth_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
             depth_view_ci.format = VK_FORMAT_D32_SFLOAT;
             depth_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -1000,9 +1019,17 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             depth_view_ci.subresourceRange.baseArrayLayer = 0;
             depth_view_ci.subresourceRange.layerCount = 1;
 
-            vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &DepthImageView);
+            vk_result = vkCreateImageView(_ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
             VerifyVkResult(vk_result);
         }
+
+        // No-throw commit tail.
+        TextureImage = tex_image;
+        TextureImageMemory = tex_image_memory;
+        TextureImageView = tex_image_view;
+        DepthImage = depth_image;
+        DepthImageMemory = depth_image_memory;
+        DepthImageView = depth_image_view;
     }
 
     // Copy staging buffer to image region with position offset
@@ -1096,8 +1123,6 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         return;
     }
 
-    StaticDataChanged = false;
-
     VkResult vk_result = VK_SUCCESS;
     size_t vert_size = custom_vertices_size.value_or(VertCount) * sizeof(Vertex2D);
     const size_t idx_size = custom_indices_size.value_or(IndCount) * sizeof(vindex_t);
@@ -1126,10 +1151,9 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             CurrentVertexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory
-            DestroyBufferSafe(_ctx, StaticVertexBuffer);
-            DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
-
+            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
+            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
+            // static vertex buffer valid and StaticDataChanged still true for a clean retry.
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
 
@@ -1143,14 +1167,16 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             MemCopy(mapped_data, vert_data.get(), vert_size);
             vkUnmapMemory(_ctx->Device, staging_vert_mem);
 
-            AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StaticVertexBuffer, StaticVertexBufferMemory);
+            VkBuffer new_static_buf {};
+            VkDeviceMemory new_static_mem {};
+            AllocateBuffer(_ctx, vert_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, new_static_buf, new_static_mem);
 
             VkBufferCopy copy_region {};
             copy_region.size = vert_size;
 
             BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_vert_buf, StaticVertexBuffer, 1, &copy_region);
+            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_vert_buf, new_static_buf, 1, &copy_region);
 
             EndCommandBufferRecording(_ctx->StagingCommandBuffer);
             SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
@@ -1160,6 +1186,11 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
+            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            DestroyBufferSafe(_ctx, StaticVertexBuffer);
+            DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
+            StaticVertexBuffer = new_static_buf;
+            StaticVertexBufferMemory = new_static_mem;
             CurrentVertexBuffer = StaticVertexBuffer;
         }
     }
@@ -1173,10 +1204,9 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             CurrentIndexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory
-            DestroyBufferSafe(_ctx, StaticIndexBuffer);
-            DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
-
+            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
+            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
+            // static index buffer valid and StaticDataChanged still true for a clean retry.
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
             AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
@@ -1189,14 +1219,16 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             MemCopy(mapped_data, Indices.data(), idx_size);
             vkUnmapMemory(_ctx->Device, staging_idx_mem);
 
-            AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, StaticIndexBuffer, StaticIndexBufferMemory);
+            VkBuffer new_static_buf {};
+            VkDeviceMemory new_static_mem {};
+            AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, new_static_buf, new_static_mem);
 
             VkBufferCopy copy_region {};
             copy_region.size = idx_size;
 
             BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_idx_buf, StaticIndexBuffer, 1, &copy_region);
+            vkCmdCopyBuffer(_ctx->StagingCommandBuffer, staging_idx_buf, new_static_buf, 1, &copy_region);
 
             EndCommandBufferRecording(_ctx->StagingCommandBuffer);
             SubmitCommandBufferAndWait(_ctx, _ctx->StagingCommandBuffer);
@@ -1206,9 +1238,17 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
+            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            DestroyBufferSafe(_ctx, StaticIndexBuffer);
+            DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
+            StaticIndexBuffer = new_static_buf;
+            StaticIndexBufferMemory = new_static_mem;
             CurrentIndexBuffer = StaticIndexBuffer;
         }
     }
+
+    // All static builds succeeded: mark the static data uploaded (no-throw commit).
+    StaticDataChanged = false;
 }
 
 Vulkan_Effect::~Vulkan_Effect()
@@ -3199,11 +3239,15 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
     VkResult vk_result = VK_SUCCESS;
 
     if (vk_tex->DepthImage == VK_NULL_HANDLE) {
-        AllocateImage(ctx, numeric_cast<uint32_t>(vk_tex->Size.width), numeric_cast<uint32_t>(vk_tex->Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_tex->DepthImage, vk_tex->DepthImageMemory);
+        // Build depth image + view into locals; on throw all three members stay null so the whole
+        // block re-runs cleanly instead of leaving DepthImage set with a null DepthImageView behind.
+        VkImage depth_image {};
+        VkDeviceMemory depth_image_memory {};
+        AllocateImage(ctx, numeric_cast<uint32_t>(vk_tex->Size.width), numeric_cast<uint32_t>(vk_tex->Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
 
         VkImageViewCreateInfo depth_view_ci {};
         depth_view_ci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        depth_view_ci.image = vk_tex->DepthImage;
+        depth_view_ci.image = depth_image;
         depth_view_ci.viewType = VK_IMAGE_VIEW_TYPE_2D;
         depth_view_ci.format = VK_FORMAT_D32_SFLOAT;
         depth_view_ci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -3212,8 +3256,14 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
         depth_view_ci.subresourceRange.baseArrayLayer = 0;
         depth_view_ci.subresourceRange.layerCount = 1;
 
-        vk_result = vkCreateImageView(ctx->Device, &depth_view_ci, nullptr, &vk_tex->DepthImageView);
+        VkImageView depth_image_view {};
+        vk_result = vkCreateImageView(ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
         VerifyVkResult(vk_result);
+
+        // No-throw commit tail.
+        vk_tex->DepthImage = depth_image;
+        vk_tex->DepthImageMemory = depth_image_memory;
+        vk_tex->DepthImageView = depth_image_view;
     }
 
     if (vk_tex->TextureFramebuffer == VK_NULL_HANDLE) {
@@ -3270,6 +3320,35 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         return;
     }
 
+    // Resolve every fallible value (new-target validation + new viewport/target-size/projection) into
+    // locals BEFORE closing the render pass, so a throw here leaves the current pass open and the frame
+    // consistent. Only the no-throw member commit and the pass close/reopen touch pass state below.
+    irect32 new_viewport {};
+    isize32 new_target_size {};
+
+    if (!tex) {
+        // Back-buffer target: letterbox the configured screen size into the swapchain. Mirror of
+        // ApplySwapchainTargetMetrics, computed into locals (its own ProjMatrix write is redundant here
+        // because the projection is rebuilt below from the resolved target size).
+        const isize32 back_buf_size = _ctx->SwapchainSize;
+        const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
+        const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
+        const auto fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
+        const auto vp_ox = (back_buf_size.width - fit_width) / 2;
+        const auto vp_oy = (back_buf_size.height - fit_height) / 2;
+        new_viewport = irect32 {vp_ox, vp_oy, fit_width, fit_height};
+        new_target_size = {_ctx->Settings->ScreenWidth, _ctx->Settings->ScreenHeight};
+    }
+    else {
+        auto vk_tex = tex.dyn_cast<const Vulkan_Texture>();
+        FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
+        new_viewport = irect32 {0, 0, vk_tex->Size.width, vk_tex->Size.height};
+        new_target_size = vk_tex->Size;
+    }
+
+    const auto new_proj_matrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(new_target_size.width), numeric_cast<float32_t>(new_target_size.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
+
     EndCurrentRenderPass(_ctx);
 
     if (_ctx->CurrentRenderTarget) {
@@ -3279,19 +3358,11 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         prev_tex->TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
+    // No-throw commit tail: switch the target and metrics, then reopen the pass.
     _ctx->CurrentRenderTarget = tex;
-
-    if (!_ctx->CurrentRenderTarget) {
-        ApplySwapchainTargetMetrics(_ctx, _ctx->SwapchainSize);
-    }
-    else {
-        auto vk_tex = _ctx->CurrentRenderTarget.dyn_cast<const Vulkan_Texture>();
-        FO_VERIFY_AND_THROW(vk_tex, "Vulkan render target texture is not of the expected backend type");
-        _ctx->ViewPort = irect32 {0, 0, vk_tex->Size.width, vk_tex->Size.height};
-        _ctx->TargetSize = vk_tex->Size;
-    }
-
-    _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, _ctx->OrthoNear, _ctx->OrthoFar);
+    _ctx->ViewPort = new_viewport;
+    _ctx->TargetSize = new_target_size;
+    _ctx->ProjMatrix = new_proj_matrix;
 
     BeginCurrentRenderPass(_ctx);
 }

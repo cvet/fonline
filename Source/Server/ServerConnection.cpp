@@ -46,7 +46,13 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, op
     _owner->_outBufLocker.lock();
 
     if (_msg) {
-        _outBuf->StartMsg(_msg.value());
+        try {
+            _outBuf->StartMsg(_msg.value());
+        }
+        catch (...) {
+            _owner->_outBufLocker.unlock();
+            throw;
+        }
     }
 }
 
@@ -126,13 +132,13 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
         AsyncReceiveData({});
     };
 
-    _netConnection->SetAsyncCallbacks(send, receive, disconnect);
-
     if (_settings->MaxMessageSize != 0) {
         _inBuf.SetMaxMsgLen(numeric_cast<size_t>(_settings->MaxMessageSize));
     }
 
     WriteLog("New connection from {}:{}", _netConnection->GetHost(), _netConnection->GetPort());
+
+    _netConnection->SetAsyncCallbacks(send, receive, disconnect);
 }
 
 ServerConnection::~ServerConnection()

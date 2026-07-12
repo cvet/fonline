@@ -221,6 +221,8 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
+
     const auto buf = SendCallback();
 
     if (!buf.empty()) {

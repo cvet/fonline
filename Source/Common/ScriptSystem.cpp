@@ -76,6 +76,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     auto fields_registrator = base_type.RefType->FieldsRegistrator;
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type raw data belongs to a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
 
+    _cachedRawDataDirty = true;
     _props.emplace(_registrator);
     auto props = GetProps();
 

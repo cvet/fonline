@@ -37,8 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
-ParticleSprite::ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, ptr<TextureAtlas> atlas, ptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, ptr<ParticleSpriteFactory> factory, unique_ptr<ParticleSystem>&& particle, bool draw_in_scene) :
-    AtlasSprite(spr_mngr, size, offset, atlas, atlas_node, atlas_rect, {}),
+ParticleSprite::ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, ptr<TextureAtlas> atlas, unique_del_ptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, ptr<ParticleSpriteFactory> factory, unique_ptr<ParticleSystem>&& particle, bool draw_in_scene) :
+    AtlasSprite(spr_mngr, size, offset, atlas, std::move(atlas_node), atlas_rect, {}),
     _factory {factory},
     _drawInScene {draw_in_scene},
     _particle {std::move(particle)}
@@ -168,7 +168,7 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
     const ipos32 offset = ipos32(0, draw_size.height / 4);
     const bool draw_in_scene = particle->GetDrawInScene();
     auto particle_value = SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle));
-    return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, draw_size, offset, atlas, atlas_node, atlas_rect, this, std::move(particle_value), draw_in_scene);
+    return SafeAlloc::MakeShared<ParticleSprite>(_sprMngr, draw_size, offset, atlas, std::move(atlas_node), atlas_rect, this, std::move(particle_value), draw_in_scene);
 }
 
 auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>

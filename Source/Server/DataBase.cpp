@@ -498,11 +498,11 @@ void DataBaseImpl::RestorePendingChanges()
     FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
     WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
-    if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
-    }
     if (!_committedChangesLog->Truncate()) {
         throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
+    }
+    if (!_pendingChangesLog->Truncate()) {
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
     }
 
     _backendFailed = false;
@@ -1111,6 +1111,15 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
     }
 #endif
 
+    auto fd_guard = scope_fail([this]() noexcept {
+#if FO_WINDOWS
+        _close(_fd);
+#else
+        flock(_fd, LOCK_UN);
+        close(_fd);
+#endif
+    });
+
     const auto read_content = Read();
 
     if (!read_content.has_value()) {
@@ -1125,6 +1134,8 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
 
     _content = strex(normalized_content).split('\n');
     _textSize = normalized_content.size();
+
+    fd_guard.release();
 }
 
 DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
