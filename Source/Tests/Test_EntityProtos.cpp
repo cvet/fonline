@@ -48,6 +48,19 @@ namespace
         }
     };
 
+    class TestLifecycleEntity final : public Entity
+    {
+    public:
+        explicit TestLifecycleEntity(ptr<const PropertyRegistrator> registrator) noexcept :
+            Entity(registrator, nullptr, nullptr)
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+        }
+        ~TestLifecycleEntity() override = default;
+
+        [[nodiscard]] auto GetName() const noexcept -> string_view override { return "TestLifecycleEntity"; }
+    };
+
     static void InitEntityProtoTestMetadata(EngineMetadata& meta)
     {
         meta.RegisterSide(EngineSideKind::ServerSide);
@@ -122,6 +135,46 @@ TEST_CASE("EntityProtos")
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
         CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+    }
+
+    SECTION("LifecycleLatchesAreVisibleAcrossThreads")
+    {
+        EngineMetadata meta {[] { }};
+        InitEntityProtoTestMetadata(meta);
+
+        auto registrator = meta.GetPropertyRegistrator("TestEntity");
+        REQUIRE(static_cast<bool>(registrator));
+
+        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrator.as_ptr());
+        std::atomic_bool reader_started {false};
+        std::atomic_bool saw_destroying {false};
+        std::atomic_bool saw_destroyed {false};
+
+        std::thread reader {[&] {
+            reader_started.store(true, std::memory_order_release);
+
+            const nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {5}};
+            while (!entity->IsDestroying() && nanotime::now() < deadline) {
+                std::this_thread::yield();
+            }
+            saw_destroying.store(entity->IsDestroying(), std::memory_order_release);
+
+            while (!entity->IsDestroyed() && nanotime::now() < deadline) {
+                std::this_thread::yield();
+            }
+            saw_destroyed.store(entity->IsDestroyed(), std::memory_order_release);
+        }};
+
+        while (!reader_started.load(std::memory_order_acquire)) {
+            std::this_thread::yield();
+        }
+
+        entity->MarkAsDestroying();
+        entity->MarkAsDestroyed();
+        reader.join();
+
+        CHECK(saw_destroying.load(std::memory_order_acquire));
+        CHECK(saw_destroyed.load(std::memory_order_acquire));
     }
 }
 

@@ -404,7 +404,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
         swap_chain_desc.BufferDesc.Width = 0;
         swap_chain_desc.BufferDesc.Height = 0;
         swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        swap_chain_desc.BufferDesc.RefreshRate.Numerator = 144;
+        swap_chain_desc.BufferDesc.RefreshRate.Numerator = 0;
         swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
         swap_chain_desc.Flags = 0;
         swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;

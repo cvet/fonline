@@ -195,6 +195,7 @@ OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer chan
 Important behaviors:
 
 - creates D3D device/swap-chain/render-target resources;
+- leaves the refresh rate unspecified for the windowed swap chain so DXGI follows the desktop compositor instead of requiring one hard-coded display mode;
 - creates textures, staging textures, draw buffers, constant buffers, and effects;
 - loads vertex/pixel shader content through the effect loader;
 - handles resize by recreating backbuffer/depth resources;

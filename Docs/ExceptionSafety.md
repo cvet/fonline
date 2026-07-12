@@ -41,6 +41,7 @@ Entity lifecycle is deliberately **not** "transactional rollback". The contract,
 
 **Destroy (`DestroyCritter`/`DestroyItem`/`DestroyLocation`/`DestroyMap`/`DestroyCustomEntity`):**
 - `MarkAsDestroying()` latches first; a redundant call early-returns.
+- `IsDestroying()` / `IsDestroyed()` are cross-worker lifecycle latches backed by acquire/release atomics. This lets a deferred script context observe teardown without racing the player/entity job that publishes it; the entity lock still protects the mutable entity contents.
 - The finish event fires, then the environment tear-off runs inside a `for (size_t prev_deps = std::numeric_limits<size_t>::max(); …) { try { … } catch (ReportExceptionAndContinue); /* progress guard */ }` loop so a misbehaving teardown step is retried until the entity is fully detached (or the inline progress guard, §3.1, terminates on non-convergence), and a finish-event handler **cannot take over or block** the destruction (`ItemFinishEventCannotTakeOverItemDestruction`, and the critter/location variants).
 - Snapshot iteration sets with `copy_hold_ref(...)` and re-check `IsDestroyed()` after each event before continuing to use a retained reference.
 
