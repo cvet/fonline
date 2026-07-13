@@ -117,7 +117,7 @@ static void RunClientRuntime(CommandLineArgs args, nptr<ClientRuntimeResult> run
         WriteLog("Client runtime DLL: starting, build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
         InitApp(args, CombineEnum(AppInitFlags::ClientMode, AppInitFlags::ShowMessageOnException, AppInitFlags::PrebakeResources, AppInitFlags::AppendLogFile));
-        WriteLog("Client runtime DLL: ompatibility version: {}", GetApp()->Settings.CompatibilityVersion);
+        WriteLog("Client runtime DLL: compatibility version: {}", GetApp()->Settings.CompatibilityVersion);
 
         auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
 
@@ -228,6 +228,9 @@ static void MainEntry([[maybe_unused]] void* data)
                     }
 
                     const auto result = Data->ResourceUpdater->GetResult();
+                    // The updater stages the new runtime under its own binary dir (the writable root
+                    // for an installed client, the exe dir for a portable one); request that exact path.
+                    const auto staged_runtime_path = Data->ResourceUpdater->GetRuntimeLivePath();
                     Data->ResourceUpdater.reset();
 
                     switch (result) {
@@ -236,7 +239,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         Data->ResourcesSynced = true;
                         break;
                     case UpdaterResult::BinariesStaged:
-                        Data->StagedRuntimePath = GetClientRuntimeLivePath();
+                        Data->StagedRuntimePath = staged_runtime_path;
                         Data->ReloadRequested = true;
                         WriteLog("Client runtime DLL: updater staged binaries at {}", Data->StagedRuntimePath);
                         GetApp()->RequestQuit();

@@ -755,7 +755,14 @@ static pthread_key_t _memory_thread_heap;
 #      define TLS_MODEL
 #    endif
 #  else
-#    ifndef __HAIKU__
+#    if defined(__linux__)
+       /* (FOnline Patch) Do not force initial-exec TLS on Linux: engine runtime modules
+          (client/baker shared libraries) are dlopen'ed, and an IE-model TLS relocation makes
+          glibc place the module's whole TLS segment into the limited static TLS surplus,
+          failing dlopen with "cannot allocate memory in static TLS block". Executable links
+          still relax the default global-dynamic accesses to initial/local-exec. */
+#      define TLS_MODEL
+#    elif !defined(__HAIKU__)
 #      define TLS_MODEL __attribute__((tls_model("initial-exec")))
 #    else
 #      define TLS_MODEL

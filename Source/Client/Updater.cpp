@@ -47,6 +47,9 @@ static constexpr string_view StrUpdaterOutdated = "Client updater outdated, plea
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
+
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
@@ -970,6 +973,74 @@ auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
     return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
 }
 
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+
+    if (!target.has_value()) {
+        return string(fallback_runtime_path);
+    }
+
+    const string staging_path = MakeClientRuntimeStagingPath(target.value());
+    const bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
+    const bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
+    return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
+}
+
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return std::nullopt;
+    }
+
+    const optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
+
+    if (!file_size.has_value() || file_size.value() == 0 || file_size.value() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    const optional<string> content = fs_read_file(bootstrap_file_path);
+
+    if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    return NormalizeClientRuntimeBootstrapTarget(content.value(), expected_runtime_file_name);
+}
+
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return false;
+    }
+
+    const optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+
+    if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
+        return false;
+    }
+
+    // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
+    const string temp_path = strex("{}.tmp", bootstrap_file_path).str();
+
+    if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
+        return false;
+    }
+
+    if (!fs_rename(temp_path, bootstrap_file_path)) {
+        fs_remove_file(temp_path);
+        return false;
+    }
+
+    return true;
+}
+
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -1066,6 +1137,23 @@ auto GetClientRuntimeLibraryExtension() noexcept -> string_view
 #else
     return {};
 #endif
+}
+
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string trimmed_path = strex(runtime_path).trim().str();
+
+    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
+        return std::nullopt;
+    }
+
+    if (strex(trimmed_path).extract_file_name().str() != expected_runtime_file_name) {
+        return std::nullopt;
+    }
+
+    return fs_resolve_path(trimmed_path);
 }
 
 FO_END_NAMESPACE
