@@ -254,6 +254,20 @@ namespace CallTest
 
         return int64(held.length());
     }
+
+    int[] ReturnIntArray()
+    {
+        int[] values = {4, 5, 6};
+        return values;
+    }
+
+    dict<int, int> ReturnIntDict()
+    {
+        dict<int, int> values = {};
+        values[2] = 7;
+        values[3] = 9;
+        return values;
+    }
 }
 )"},
                 },
@@ -348,6 +362,20 @@ TEST_CASE("AngelScriptCallShapes")
     call_and_check("CallTest::UseConstRefs", 24);
     call_and_check("CallTest::UseMixedParams", 22);
 
+    {
+        auto func = server->FindFunc<vector<int32_t>>(fn("CallTest::ReturnIntArray"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == vector<int32_t> {4, 5, 6});
+    }
+
+    {
+        auto func = server->FindFunc<map<int32_t, int32_t>>(fn("CallTest::ReturnIntDict"));
+        REQUIRE(func);
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == map<int32_t, int32_t> {{2, 7}, {3, 9}});
+    }
+
     // The vector<ptr<T>>-returning call is about the generated cast, not the value: with the
     // test-side server lock held the sync context may legitimately hold entities.
     {
@@ -356,6 +384,49 @@ TEST_CASE("AngelScriptCallShapes")
         REQUIRE(func.Call());
         CHECK(func.GetResult() >= 0);
     }
+}
+
+TEST_CASE("ScriptFuncCleansStoredReturnHandle")
+{
+    ScriptFunc<nptr<void>> empty_func {unique_del_nptr<ScriptFuncDesc> {}};
+    CHECK_FALSE(empty_func);
+
+    int32_t release_count = 0;
+    nptr<void> returned_obj = std::addressof(release_count);
+
+    ScriptFunc<nptr<void>> moved;
+
+    {
+        ScriptFunc<nptr<void>> func;
+        ScriptFuncDesc func_desc;
+        func_desc.Call = [returned_obj](FuncCallData& call) {
+            FO_VERIFY_AND_THROW(call.RetData, "Missing return storage");
+            NativeDataProvider::WriteHandleSlot(call.RetData.as_ptr(), returned_obj);
+        };
+        func_desc.ReturnValueCleaner = [&release_count, returned_obj](ptr<void> ret_data) {
+            const nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);
+
+            if (stored_obj == returned_obj) {
+                release_count++;
+                NativeDataProvider::WriteHandleSlot(ret_data, nullptr);
+            }
+        };
+
+        func = ScriptFunc<nptr<void>> {&func_desc};
+        REQUIRE(func.Call());
+        CHECK(func.GetResult() == returned_obj);
+        CHECK(release_count == 0);
+
+        moved = std::move(func);
+    }
+
+    CHECK(release_count == 0);
+
+    ScriptFunc<nptr<void>> moved_again {std::move(moved)};
+    CHECK(release_count == 0);
+
+    moved_again = ScriptFunc<nptr<void>> {};
+    CHECK(release_count == 1);
 }
 
 #endif

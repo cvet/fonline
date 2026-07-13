@@ -168,9 +168,18 @@ if(FO_BUILD_BAKER)
             OUTPUT_NAME ${FO_DEV_NAME}_BakerLib
             TESTING_APP 0
             LINK_LIBS PRIVATE BakerLib
-            EXTRA_PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
+            EXTRA_PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT}
+                CXX_VISIBILITY_PRESET hidden
+                VISIBILITY_INLINES_HIDDEN YES
             NO_PREFIX
             WRITE_BUILD_HASH)
+
+        if(FO_LINUX)
+            # Keep engine symbols pulled from static archives private to the plugin. Otherwise ELF
+            # symbol interposition lets dlclose destroy host-owned CommonLib globals.
+            TargetLinkOptions(${FO_DEV_NAME}_BakerLib PRIVATE -Wl,--exclude-libs,ALL)
+        endif()
     endif()
 endif()
 

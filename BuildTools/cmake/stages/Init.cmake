@@ -481,8 +481,13 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	endif()
 
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-		AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
-		AddLinkOptionsList($<${expr_MemorySanitizerConfigs}:-pie>)
+		# PIC objects link into both shared libraries and PIE executables. Do not append -fPIE
+		# after the global -fPIC above: Clang uses the last relocation model and would make
+		# static Baker dependencies unsuitable for LF_BakerLib.so.
+		if(NOT FO_BUILD_BAKER AND NOT (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY))
+			AddCompileOptionsList($<${expr_MemorySanitizerConfigs}:-fPIE>)
+		endif()
+		AddLinkOptionsList($<$<AND:${expr_MemorySanitizerConfigs},$<STREQUAL:$<TARGET_PROPERTY:TYPE>,EXECUTABLE>>:-pie>)
 
 		# Todo: using of libc++ leads to crash on any exception when trying to call free() with invalid pointer
 		# Bug somehow connected with rpmalloc new operators overloading

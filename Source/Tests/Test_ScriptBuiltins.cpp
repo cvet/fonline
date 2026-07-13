@@ -33,6 +33,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "AngelScriptArray.h"
+#include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
 #include "Baker.h"
@@ -245,6 +246,83 @@ namespace
     static auto HasScriptMessage(const ScriptMessages& messages, string_view text) -> bool
     {
         return std::ranges::any_of(messages.Entries, [text](const string& entry) { return entry.find(text) != string::npos; });
+    }
+
+    static void ReportScriptMessages(const ScriptMessages& messages)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        for (const string& entry : messages.Entries) {
+            UNSCOPED_INFO(entry);
+        }
+    }
+
+    static auto RequireScriptModule(AngelScript::asIScriptEngine* engine, ScriptMessages& messages, string_view module_name, string_view source) -> ptr<AngelScript::asIScriptModule>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        const int32_t build_result = BuildAngelScriptModule(engine, module_name, source);
+        ReportScriptMessages(messages);
+        REQUIRE(build_result >= 0);
+
+        nptr<AngelScript::asIScriptModule> module = engine->GetModule(string {module_name}.c_str(), AngelScript::asGM_ONLY_IF_EXISTS);
+        REQUIRE(module != nullptr);
+        return module.as_ptr();
+    }
+
+    static void RunScriptFunction(ptr<AngelScript::asIScriptEngine> engine, ptr<AngelScript::asIScriptModule> module, string_view declaration)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<AngelScript::asIScriptFunction> func = module->GetFunctionByDecl(string {declaration}.c_str());
+        REQUIRE(func != nullptr);
+
+        nptr<AngelScript::asIScriptContext> ctx = engine->CreateContext();
+        REQUIRE(ctx != nullptr);
+        REQUIRE(ctx->Prepare(func.get()) >= 0);
+        const int32_t exec_result = ctx->Execute();
+        UNSCOPED_INFO(strex("Script execution result: {}, exception: {}", exec_result, ctx->GetExceptionString()).str());
+        REQUIRE(exec_result == AngelScript::asEXECUTION_FINISHED);
+        REQUIRE(ctx->Unprepare() >= 0);
+        ctx->Release();
+    }
+
+    static void RequireFullGarbageCollection(ptr<AngelScript::asIScriptEngine> engine)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        REQUIRE(engine->GarbageCollect(AngelScript::asGC_FULL_CYCLE) >= 0);
+
+        AngelScript::asUINT current_size = 0;
+        engine->GetGCStatistics(&current_size, nullptr, nullptr, nullptr, nullptr);
+        CHECK(current_size == 0);
+    }
+
+    static void ShutdownAndCheckGcDiagnostics(nptr<AngelScript::asIScriptEngine> engine, const ScriptMessages& messages)
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        REQUIRE(engine != nullptr);
+        CHECK(engine->ShutDownAndRelease() >= 0);
+        ReportScriptMessages(messages);
+        CHECK_FALSE(HasScriptMessage(messages, "GC cannot destroy an object"));
+        CHECK_FALSE(HasScriptMessage(messages, "There is an external reference to an object in module"));
+    }
+
+    struct GcShutdownTracker
+    {
+        int32_t DestructedObjects {};
+    };
+
+    static void NotifyGcShutdownDestruction()
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        nptr<AngelScript::asIScriptContext> context = AngelScript::asGetActiveContext();
+        FO_VERIFY_AND_THROW(context, "Missing active AngelScript context");
+        nptr<GcShutdownTracker> tracker = cast_from_void<GcShutdownTracker*>(context->GetEngine()->GetUserData());
+        FO_VERIFY_AND_THROW(tracker, "Missing GC shutdown tracker");
+        tracker->DestructedObjects++;
     }
 
     template<typename T>
@@ -1781,6 +1859,203 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         REQUIRE(func.Call());
         CHECK(func.GetResult() == 0);
     }
+}
+
+TEST_CASE("ScriptBuiltinsContainerReferencesAreCollectable")
+{
+    ScriptMessages messages;
+    nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
+    auto release_engine = scope_exit([&engine]() noexcept {
+        safe_call([&engine] {
+            if (engine) {
+                engine->ShutDownAndRelease();
+            }
+        });
+    });
+
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true) >= 0);
+    RegisterAngelScriptArray(engine.get());
+    RegisterAngelScriptDict(engine.get());
+
+    auto module = RequireScriptModule(engine.get(), messages, "ContainerReferenceModule",
+        R"(
+funcdef void Callback();
+
+class Node
+{
+    Node? Peer;
+    Node[] Children = {};
+    dict<int, Node> Links = {};
+    dict<int, Callback> DictCallbacks = {};
+    Callback[] ArrayCallbacks = {};
+
+    void OnCallback()
+    {
+    }
+
+    void Link(Node other)
+    {
+        Peer = other;
+        Children.insertLast(other);
+        Links[1] = other;
+        Callback callback = Callback(this.OnCallback);
+        DictCallbacks[1] = callback;
+        ArrayCallbacks.insertLast(callback);
+    }
+}
+
+class DerivedNode : Node
+{
+}
+
+class LeafNode : DerivedNode
+{
+}
+
+void BuildCycle()
+{
+    Node first = LeafNode();
+    Node second = LeafNode();
+    first.Link(second);
+    second.Link(first);
+    LeafNode firstLeaf = cast<LeafNode>(first);
+    LeafNode secondLeaf = cast<LeafNode>(second);
+}
+)");
+
+    RunScriptFunction(engine.as_ptr(), module, "void BuildCycle()");
+    RequireFullGarbageCollection(engine.as_ptr());
+    ShutdownAndCheckGcDiagnostics(engine, messages);
+    engine = nullptr;
+}
+
+TEST_CASE("ScriptBuiltinsDeferredReceiverTemporaryIsReleased")
+{
+    ScriptMessages messages;
+    nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
+    auto release_engine = scope_exit([&engine]() noexcept {
+        safe_call([&engine] {
+            if (engine) {
+                engine->ShutDownAndRelease();
+            }
+        });
+    });
+
+    GcShutdownTracker tracker;
+    engine->SetUserData(&tracker);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_ALLOW_UNSAFE_REFERENCES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_PROPERTY_ACCESSOR_MODE, 2) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_BUILD_WITHOUT_LINE_CUES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, true) >= 0);
+    REQUIRE(engine->RegisterGlobalFunction("void NotifyGcShutdownDestruction()", FO_SCRIPT_FUNC(NotifyGcShutdownDestruction), FO_SCRIPT_FUNC_CONV) >= 0);
+    RegisterAngelScriptArray(engine.get());
+
+    auto module = RequireScriptModule(engine.get(), messages, "DeferredReceiverLifetimeModule",
+        R"(
+class GuiScreen
+{
+    ~GuiScreen()
+    {
+        NotifyGcShutdownDestruction();
+    }
+
+    bool get_Active() final
+    {
+        return true;
+    }
+
+    GuiScreen? FindHit()
+    {
+        return this;
+    }
+}
+
+GuiScreen[] Screens = {};
+
+bool CheckHit()
+{
+    for (int i = 0; i < Screens.length(); i++) {
+        if (Screens[i].Active && Screens[i].FindHit() != null) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ExerciseDeferredReceiverLifetime()
+{
+    GuiScreen screen = GuiScreen();
+    Screens.insertLast(screen);
+
+    CheckHit();
+
+    Screens.clear();
+}
+)");
+
+    RunScriptFunction(engine.as_ptr(), module, "void ExerciseDeferredReceiverLifetime()");
+    CHECK(tracker.DestructedObjects == 1);
+    ShutdownAndCheckGcDiagnostics(engine, messages);
+    engine = nullptr;
+}
+
+TEST_CASE("ScriptBuiltinsShutdownCollectsDestructorCascade")
+{
+    ScriptMessages messages;
+    nptr<AngelScript::asIScriptEngine> engine = MakeAngelScriptEngine(messages);
+    auto release_engine = scope_exit([&engine]() noexcept {
+        safe_call([&engine] {
+            if (engine) {
+                engine->ShutDownAndRelease();
+            }
+        });
+    });
+
+    GcShutdownTracker tracker;
+    engine->SetUserData(&tracker);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true) >= 0);
+    REQUIRE(engine->SetEngineProperty(AngelScript::asEP_DISALLOW_NULLABLE_TO_NON_NULLABLE, true) >= 0);
+    REQUIRE(engine->RegisterGlobalFunction("void NotifyGcShutdownDestruction()", FO_SCRIPT_FUNC(NotifyGcShutdownDestruction), FO_SCRIPT_FUNC_CONV) >= 0);
+
+    auto module = RequireScriptModule(engine.get(), messages, "GcShutdownCascadeModule",
+        R"(
+class CascadeNode
+{
+    CascadeNode? Self;
+    int Remaining;
+
+    CascadeNode(int remaining)
+    {
+        Remaining = remaining;
+        Self = this;
+    }
+
+    ~CascadeNode()
+    {
+        NotifyGcShutdownDestruction();
+
+        if (Remaining > 0) {
+            CascadeNode next = CascadeNode(Remaining - 1);
+        }
+    }
+}
+
+CascadeNode? Root;
+
+void BuildCascade()
+{
+    Root = CascadeNode(96);
+}
+)");
+
+    RunScriptFunction(engine.as_ptr(), module, "void BuildCascade()");
+    ShutdownAndCheckGcDiagnostics(engine, messages);
+    engine = nullptr;
+    CHECK(tracker.DestructedObjects == 97);
 }
 
 TEST_CASE("ScriptBuiltinsArrayOperations")

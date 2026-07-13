@@ -18515,6 +18515,10 @@ void asCCompiler::CompileBooleanOperator(asCScriptNode *node, asCExprContext *lc
 			// if and-operator and first value is 0 the second value shouldn't be calculated
 			ConvertToVariable(lctx);
 			ReleaseTemporaryVariable(lctx->type, &lctx->bc);
+
+			// (FOnline Patch) Release deferred receivers before the right operand can reuse their temporary slots.
+			ProcessDeferredParams(lctx);
+
 			MergeExprBytecode(ctx, lctx);
 
 			int offset = AllocateVariable(asCDataType::CreatePrimitive(ttBool, false), true);

@@ -265,12 +265,14 @@ struct ScriptFuncDesc
 {
     using CallType = function<void(FuncCallData&)>;
     using AttributeCheckerType = function<bool(string_view)>;
+    using ReturnValueCleanerType = function<void(ptr<void>)>;
 
     hstring Name {};
     vector<ArgDesc> Args {};
     ComplexTypeDesc Ret {};
     CallType Call {};
     AttributeCheckerType AttributeChecker {};
+    ReturnValueCleanerType ReturnValueCleaner {};
     uintptr_t DelegateObj {};
 };
 
@@ -293,19 +295,39 @@ public:
     ScriptFunc() noexcept = default;
 
     explicit ScriptFunc(ptr<ScriptFuncDesc> func) noexcept :
-        _func {MakeBorrowedScriptFuncDesc(func)}
+        _func {MakeBorrowedScriptFuncDesc(func)},
+        _returnValueCleaner {func->ReturnValueCleaner}
     {
     }
 
     explicit ScriptFunc(unique_del_nptr<ScriptFuncDesc> func) noexcept :
-        _func {std::move(func)}
+        _func {std::move(func)},
+        _returnValueCleaner {_func ? _func->ReturnValueCleaner : ScriptFuncDesc::ReturnValueCleanerType {}}
     {
     }
 
     ScriptFunc(const ScriptFunc&) = delete;
-    ScriptFunc(ScriptFunc&& other) noexcept = default;
+    ScriptFunc(ScriptFunc&& other) noexcept :
+        _func {std::move(other._func)},
+        _returnValueCleaner {std::move(other._returnValueCleaner)},
+        _ret {std::move(other._ret)}
+    {
+        other._returnValueCleaner = {};
+    }
     auto operator=(const ScriptFunc&) = delete;
-    auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc& = default;
+    auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc&
+    {
+        if (this != std::addressof(other)) {
+            ClearStoredReturn();
+            _func = std::move(other._func);
+            _returnValueCleaner = std::move(other._returnValueCleaner);
+            _ret = std::move(other._ret);
+            other._returnValueCleaner = {};
+        }
+
+        return *this;
+    }
+    ~ScriptFunc() noexcept { ClearStoredReturn(); }
 
     [[nodiscard]] explicit operator bool() const noexcept { return !!_func; }
     [[nodiscard]] auto IsDelegate() const noexcept -> bool
@@ -392,7 +414,17 @@ public:
     }
 
 private:
+    void ClearStoredReturn() noexcept
+    {
+        if constexpr (!std::is_same_v<TRet, void>) {
+            if (_returnValueCleaner) {
+                safe_call([this] { _returnValueCleaner(make_ptr(&_ret).void_cast()); });
+            }
+        }
+    }
+
     unique_del_nptr<ScriptFuncDesc> _func {};
+    ScriptFuncDesc::ReturnValueCleanerType _returnValueCleaner {};
     std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
 };
 

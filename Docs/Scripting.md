@@ -30,6 +30,7 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
 - `Source/Scripting/AngelScript/CoreScripts/*.fos`
+- `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
 - `Source/Scripting/Mono/*.cs`
 - `Source/Scripting/Native/.keepalive`
@@ -99,15 +100,18 @@ function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regre
 `Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
 `Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
 
+When `asEP_ALLOW_UNSAFE_REFERENCES` is enabled, AngelScript may defer releasing method receivers and
+arguments until an expression reaches a safe point. Short-circuit boolean compilation processes the
+left operand's deferred parameters after materializing its primitive `bool` result and before merging
+the branch bytecode. Otherwise the right operand can reuse a temporary object slot and overwrite the
+retained receiver without releasing it. `ScriptBuiltinsDeferredReceiverTemporaryIsReleased` covers
+the property-accessor plus method-call form that exposed this during GUI shutdown.
+
 ### AngelScript backend shutdown
 
-`~AngelScriptBackend()` tears the runtime down in a fixed order: stop the debugger endpoint, run the registered cleanup callbacks, reset the context manager, then reset the backend-owned `_engine` / `_meta` / `_scriptSys` / `_entityMngr` holders. It then calls `ReleaseScriptGlobalsAndReportGC()` **before** `asIScriptEngine::ShutDownAndRelease()` (which asserts the returned engine ref count is `0`), and finally runs the post-cleanup callbacks.
+`~AngelScriptBackend()` tears the runtime down in a fixed order: stop the debugger endpoint, run the registered cleanup callbacks, reset the context manager, then call `asIScriptEngine::ShutDownAndRelease()` while script modules, object types, behaviours, and backend links are still intact. The AngelScript shutdown path calls every module's `CallExit()`, uninitializes global variables, runs repeated full GC passes until the live set is empty or no longer makes progress, discards modules, and reports any object that still cannot be destroyed. There is no fixed pass limit: script destructors may create another finite collectable graph that needs a subsequent pass. After the engine is released, the backend resets `_meta` / `_scriptSys` / `_engine` / `_entityMngr` and runs post-cleanup callbacks.
 
-`ReleaseScriptGlobalsAndReportGC()` makes the runtime clean up after itself so embedding games do not need per-system reference cleanup at shutdown:
-
-- It walks every module's global variables and drops the script-side reference each one holds: funcdef-typed globals (function handles / delegates) are `Release()`d, and `asOBJ_REF` object globals (handles, arrays, dictionaries, script classes) go through `ReleaseScriptObject()`; the slot is nulled so the standard module teardown skips it. Value-type object globals store their instance inline and are left to module discard (resetting them early would risk a double-free). AngelScript already releases globals during module discard inside `ShutDownAndRelease()`, but doing it explicitly here — while the engine is fully alive — lets the garbage collector collapse the now-unrooted object graphs in a normal multi-iteration cycle.
-- It then runs `GarbageCollect(asGC_FULL_CYCLE)` repeatedly (up to 8 passes) until `GetGCStatistics()` reports a steady live count, because object destructors can release the last reference to further objects.
-- Any GC objects still alive after that are kept by references the collector cannot reclaim (e.g. a cyclic graph). The method logs a concise `AngelScript shutdown: released N global var(s), M GC object(s) still alive:` line plus a per-type histogram so the surviving types point at the owning system. The subsequent `ShutDownAndRelease()` force-releases them; its AngelScript SDK-only "external reference" / "GC cannot destroy" diagnostics are filtered during this final shutdown phase because they duplicate the survivor summary. Runtime and compilation diagnostics are not filtered. A known residual is *shown* GUI screen graphs from the core scripts, whose cyclic refcount the collector cannot resolve — a separate, GUI-internal issue.
+Global variables, delegates, script object handles, arrays, dictionaries, and GUI object graphs must be cleaned by module shutdown, destructors, `ReleaseAllHandles`, and the AngelScript GC. Embedding-project scripts should not add `Game.OnFinish` / `EngineCallback_Finish` cleanup just to silence shutdown diagnostics; if a graph survives shutdown, fix the owning native release/GC enumeration bug.
 
 Entity deletion/unload clears the entity's own event callbacks and time events from `Entity::MarkAsDestroyed()`, so embedding-project scripts should not keep central per-entity unsubscribe / `StopTimeEvent` registries for ordinary entity lifetime. Entity mutators and event/time-event entry points assert or verify when called after `MarkAsDestroyed()`, making accidental attempts to repopulate a destroyed entity show their stack trace at the offending call. During `ServerEngine::Shutdown` / `ClientEngine::Shutdown`, the engine also runs `UnsubscribeAllEvents()` + `ClearAllTimeEvents()` on the global engine entity and all live entities before `DestroyAllEntities()`. Embedding-project scripts should not hand-maintain unsubscribe / global-clear / `StopTimeEvent` cleanup in their `Game.OnFinish` handler purely to keep the GC quiet — only genuinely functional teardown belongs there.
 

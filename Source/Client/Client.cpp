@@ -276,6 +276,7 @@ void ClientEngine::Shutdown()
     }
 
     _globalMapCritters.clear();
+    _scheduledCallbacks.clear();
 
     DestroyInnerEntities();
 
