@@ -181,6 +181,13 @@ if(FO_BUILD_BAKER_LIB)
     DisableLibWarnings(png_static)
 endif()
 
+# earcut.hpp
+if(FO_BUILD_BAKER_LIB)
+    StatusMessage("+ earcut.hpp")
+    SetValue(FO_EARCUT_DIR "${FO_ENGINE_ROOT}/ThirdParty/earcut")
+    AddIncludeDirectories("${FO_EARCUT_DIR}/include")
+endif()
+
 # Ogg
 SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
 SetValue(FO_OGG_CONFIG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ThirdParty/ogg/include")

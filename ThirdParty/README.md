@@ -7,6 +7,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * Asio - [asio-1.36.0](https://github.com/chriskohlhoff/asio)
 * Catch2 - [Catch2-3.15.0](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.6](https://github.com/bombela/backward-cpp)
+* earcut.hpp - [earcut.hpp-3.2.3](https://github.com/mapbox/earcut.hpp)
 * GLM - [glm-1.0.3](https://github.com/g-truc/glm)
 * glslang - [glslang-1.4.321.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.12.0](https://github.com/azadkuh/nlohmann_json_release)
