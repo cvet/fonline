@@ -477,11 +477,6 @@ namespace NativeDataProvider
         }
     }
 
-    inline auto ReadHandleSlot(ptr<void> slot) noexcept -> nptr<void>
-    {
-        return *GetHandleSlot(slot);
-    }
-
     inline auto ReadHandleSlot(ptr<const void> slot) noexcept -> nptr<void>
     {
         return *slot.reinterpret_as<void*>();
