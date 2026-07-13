@@ -188,6 +188,19 @@ if(FO_BUILD_BAKER_LIB)
     AddIncludeDirectories("${FO_EARCUT_DIR}/include")
 endif()
 
+# Clipper2
+if(FO_BUILD_BAKER_LIB)
+    SetValue(FO_CLIPPER2_DIR "${FO_ENGINE_ROOT}/ThirdParty/clipper2")
+    SetValue(FO_CLIPPER2_SOURCE
+        "${FO_CLIPPER2_DIR}/src/clipper.engine.cpp"
+        "${FO_CLIPPER2_DIR}/src/clipper.offset.cpp")
+    AddStaticThirdPartyLibrary(Clipper2
+        SOURCE_LIST FO_CLIPPER2_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_CLIPPER2_DIR}/include")
+    DisableLibWarnings(Clipper2)
+endif()
+
 # Ogg
 SetValue(FO_OGG_DIR "${FO_ENGINE_ROOT}/ThirdParty/ogg")
 SetValue(FO_OGG_CONFIG_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/ThirdParty/ogg/include")
