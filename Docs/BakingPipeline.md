@@ -105,7 +105,7 @@ The abstract base for individual baker implementations. Each baker provides:
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans.
 
 ## Built-in baker types
 

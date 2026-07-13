@@ -549,12 +549,21 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 
     _outputResources.AddCustomSource(SafeAlloc::MakeUnique<DataSourceRef>(this));
 
+    (void)Reindex();
+}
+
+auto BakerDataSource::Reindex() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
     // Prepare input resources
     const auto res_packs = _settings->GetResourcePacks();
-    _inputResources.reserve(res_packs.size());
+    vector<ResourcesInputEntry> input_resources;
+    unordered_map<string, pair<size_t, uint64_t>> input_file_index;
+    input_resources.reserve(res_packs.size());
 
     for (const auto& res_pack : res_packs) {
-        auto& res_entry = _inputResources.emplace_back();
+        auto& res_entry = input_resources.emplace_back();
         res_entry.Name = res_pack.Name;
         const auto bake_checker = [this, res_pack_name = res_pack.Name](string_view path, uint64_t write_time) -> bool { return CheckData(res_pack_name, path, write_time); };
         const auto write_data = [this, res_pack_name = res_pack.Name](string_view path, span<const uint8_t> data) { WriteData(res_pack_name, path, data); };
@@ -570,13 +579,18 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         }
 
         res_entry.InputFiles = res_entry.InputDir.GetAllFiles();
+
+        for (const auto& input_file : res_entry.InputFiles) {
+            const string index_key = strex("{}\n{}", res_entry.Name, input_file.GetPath()).str();
+            input_file_index.insert_or_assign(index_key, pair {input_file.GetSize(), input_file.GetWriteTime()});
+        }
     }
 
     // Evaluate output files
-    const auto check_file = [&](string_view path, uint64_t write_time) {
-        scoped_lock locker {_outputFilesLocker};
+    unordered_map<string, uint64_t> output_files;
 
-        _outputFiles.emplace(path, write_time);
+    const auto check_file = [&](string_view path, uint64_t write_time) {
+        output_files.emplace(path, write_time);
         return false;
     };
 
@@ -585,15 +599,31 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         FO_UNREACHABLE_PLACE();
     };
 
-    for (size_t i = 0; i < _inputResources.size(); i++) {
+    for (size_t i = 0; i < input_resources.size(); i++) {
         const auto& res_pack = res_packs[res_packs.size() - 1 - i];
-        const auto& res_entry = _inputResources[_inputResources.size() - 1 - i];
+        const auto& res_entry = input_resources[input_resources.size() - 1 - i];
         auto bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, check_file, write_file, &_outputResources);
 
         for (size_t j = 0; j != bakers.size(); ++j) {
             bakers[j]->BakeFiles(res_entry.InputFiles);
         }
     }
+
+    _inputResources = std::move(input_resources);
+
+    const bool input_files_changed = _inputFileIndex != input_file_index;
+    _inputFileIndex = std::move(input_file_index);
+
+    bool changed = input_files_changed;
+
+    {
+        scoped_lock locker {_outputFilesLocker};
+
+        changed |= _outputFiles != output_files;
+        _outputFiles = std::move(output_files);
+    }
+
+    return changed;
 }
 
 auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path) const -> string

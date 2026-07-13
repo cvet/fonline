@@ -457,6 +457,8 @@ TEST_CASE("ParticleBaker", "[particle][baker]")
         const string output_dir = strex(temp_dir).combine_path("output").str();
         const string source_path = strex(input_dir).combine_path("Particles/Runtime.fopts").str();
         const string output_path = strex(output_dir).combine_path("Visual/Particles/Runtime.fopts").str();
+        const string late_source_path = strex(input_dir).combine_path("Particles/LateRuntime.fopts").str();
+        const string late_output_path = strex(output_dir).combine_path("Visual/Particles/LateRuntime.fopts").str();
 
         ignore_unused(fs_remove_dir_tree(temp_dir));
         REQUIRE(fs_write_file(source_path, ValidParticle));
@@ -498,6 +500,18 @@ Bakers = Particle
         const auto second_data = data_source.OpenFile("Particles/Runtime.fopts", size, write_time);
         REQUIRE(second_data);
         CHECK(second_data.as_ptr()[0] == uint8_t {'S'});
+
+        CHECK_FALSE(data_source.Reindex());
+        REQUIRE(fs_write_file(late_source_path, ValidParticle));
+        CHECK_FALSE(data_source.IsFileExists("Particles/LateRuntime.fopts"));
+        CHECK(data_source.Reindex());
+        CHECK(data_source.IsFileExists("Particles/LateRuntime.fopts"));
+        CHECK_FALSE(data_source.Reindex());
+
+        const auto late_data = data_source.OpenFile("Particles/LateRuntime.fopts", size, write_time);
+        REQUIRE(late_data);
+        CHECK(late_data.as_ptr()[0] == uint8_t {'S'});
+        CHECK(fs_exists(late_output_path));
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }

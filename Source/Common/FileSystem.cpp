@@ -588,6 +588,19 @@ void FileSystem::AddCustomSource(unique_ptr<DataSource> data_source)
     _dataSources.emplace(_dataSources.begin(), std::move(data_source));
 }
 
+auto FileSystem::ReindexDataSources() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool changed = false;
+
+    for (auto& data_source : _dataSources) {
+        changed |= data_source->Reindex();
+    }
+
+    return changed;
+}
+
 void FileSystem::CleanDataSources()
 {
     FO_STACK_TRACE_ENTRY();

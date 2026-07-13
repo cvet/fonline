@@ -148,6 +148,39 @@ TEST_CASE("FileSystem")
 
         CHECK(fs_remove_dir_tree(temp_dir));
     }
+
+    SECTION("CachedDirectoryCanRefreshItsFileIndex")
+    {
+        const string temp_dir = MakeTempMountedDir("filesystem_refresh");
+        const bool removed_before = fs_remove_dir_tree(temp_dir);
+        ignore_unused(removed_before);
+
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first"}));
+
+        FileSystem fs;
+        fs.AddDirSource(temp_dir, true);
+
+        REQUIRE(fs.IsFileExists("first.txt"));
+        REQUIRE_FALSE(fs.IsFileExists("second.txt"));
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("second.txt").str(), string_view {"second"}));
+        REQUIRE_FALSE(fs.IsFileExists("second.txt"));
+
+        CHECK(fs.ReindexDataSources());
+
+        CHECK(fs.IsFileExists("second.txt"));
+        CHECK(fs.ReadFileText("second.txt") == "second");
+
+        CHECK_FALSE(fs.ReindexDataSources());
+        REQUIRE(fs_write_file(strex(temp_dir).combine_path("first.txt").str(), string_view {"first updated"}));
+        CHECK(fs.ReindexDataSources());
+        CHECK(fs.ReadFileText("first.txt") == "first updated");
+
+        REQUIRE(fs_remove_file(strex(temp_dir).combine_path("second.txt").str()));
+        CHECK(fs.ReindexDataSources());
+        CHECK_FALSE(fs.IsFileExists("second.txt"));
+        CHECK_FALSE(fs.ReindexDataSources());
+        CHECK(fs_remove_dir_tree(temp_dir));
+    }
 }
 
 FO_END_NAMESPACE

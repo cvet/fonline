@@ -135,6 +135,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto Reindex() -> bool override;
 
 private:
     struct FileEntry
@@ -147,6 +148,7 @@ private:
     unordered_map<string, FileEntry> _filesTree {};
     vector<string> _filesTreeNames {};
     string _baseDir {};
+    bool _recursive {};
 };
 
 class FalloutDat final : public DataSource
@@ -443,9 +445,15 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
         return {};
     }
 
+    const string full_dir = strex(_baseDir).combine_path(dir).str();
+
+    if (!dir.empty() && !fs_is_dir(full_dir)) {
+        return {};
+    }
+
     vector<string> fnames;
 
-    fs_iterate_dir(strex(_baseDir).combine_path(dir), recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
+    fs_iterate_dir(full_dir, recursive && _recursive, [&fnames](string_view path2, size_t size, uint64_t write_time) {
         ignore_unused(size, write_time);
         fnames.emplace_back(path2);
     });
@@ -453,7 +461,8 @@ auto NonCachedDir::GetFileNames(string_view dir, bool recursive, string_view ext
     return GetFileNamesGeneric(fnames, dir, recursive, ext);
 }
 
-CachedDir::CachedDir(string_view fname, bool recursive)
+CachedDir::CachedDir(string_view fname, bool recursive) :
+    _recursive {recursive}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -461,15 +470,34 @@ CachedDir::CachedDir(string_view fname, bool recursive)
     _baseDir = fs_resolve_path(_baseDir);
     _baseDir += "/";
 
-    fs_iterate_dir(_baseDir, recursive, [this](string_view path, size_t size, uint64_t write_time) {
+    (void)Reindex();
+}
+
+auto CachedDir::Reindex() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    unordered_map<string, FileEntry> files_tree;
+    vector<string> files_tree_names;
+
+    fs_iterate_dir(_baseDir, _recursive, [&](string_view path, size_t size, uint64_t write_time) {
         FileEntry fe;
         fe.FileName = strex("{}{}", _baseDir, path);
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
-        _filesTree.emplace(path, std::move(fe));
-        _filesTreeNames.emplace_back(path);
+        files_tree.emplace(path, std::move(fe));
+        files_tree_names.emplace_back(path);
     });
+
+    const bool changed = files_tree.size() != _filesTree.size() || std::ranges::any_of(files_tree, [this](const auto& entry) {
+        const auto it = _filesTree.find(entry.first);
+        return it == _filesTree.end() || it->second.FileSize != entry.second.FileSize || it->second.WriteTime != entry.second.WriteTime;
+    });
+
+    _filesTree = std::move(files_tree);
+    _filesTreeNames = std::move(files_tree_names);
+    return changed;
 }
 
 auto CachedDir::IsFileExists(string_view path) const -> bool

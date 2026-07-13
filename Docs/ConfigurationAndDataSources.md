@@ -102,6 +102,8 @@ Client startup has one extra resolution step for installed layouts: `ResolveUser
 - `ReadFile()`, `ReadFileText()`, and `ReadFileHeader()`;
 - `FileReader` helpers for endian-aware binary reads.
 
+Cached directory mounts snapshot their file index when mounted. Long-running tools can call `FileSystem::ReindexDataSources()` to ask every mounted source to refresh that snapshot; the method returns `true` when indexed paths, sizes, or write times changed. Sources that do not cache disk state keep the default no-op behavior. Custom sources can override `DataSource::Reindex()`; `BakerDataSource` uses it to rebuild input mounts and bake newly added or changed resources on demand.
+
 Mount order matters for lookup behavior. When changing it, verify the runtime/tool path that owns the resource pack, not only the parser.
 
 Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top in client/updater paths. The updater writes resource patches into that overlay, so current files win lookup/hash checks without modifying the install directory. Native runtime binary update paths are owned by [ClientUpdater.md](ClientUpdater.md).

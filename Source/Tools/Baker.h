@@ -118,6 +118,7 @@ public:
     [[nodiscard]] auto GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t> override;
     [[nodiscard]] auto GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string> override;
+    [[nodiscard]] auto Reindex() -> bool override;
 
 private:
     struct ResourcesInputEntry
@@ -137,6 +138,7 @@ private:
 
     ptr<BakingSettings> _settings;
     vector<ResourcesInputEntry> _inputResources {};
+    unordered_map<string, pair<size_t, uint64_t>> _inputFileIndex {}; // Resource pack/path and input file size/write time
     FileSystem _outputResources {};
     mutable mutex _outputFilesLocker {};
     unordered_map<string, uint64_t> _outputFiles FO_TSA_GUARDED_BY(_outputFilesLocker) {}; // Path and input file last write time
