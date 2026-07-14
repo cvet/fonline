@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 28
+///@ MigrationRule Version 0 0 29
 
 // Emit the typed build/version constants from EngineConfig.gen.h here, where fo::string_view_nt exists.
 // The configuration macros from the same file were already pulled in at the top of BasicCore.h.

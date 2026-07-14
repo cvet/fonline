@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "EngineBase.h"
+#include "TextPack.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -71,6 +72,35 @@ TEST_CASE("EngineMetadata")
         CHECK(proto_map_type.IsEntityProto);
         CHECK_FALSE(proto_map_type.IsFixedType);
         CHECK(proto_map_type.Size == sizeof(hstring::hash_t));
+    }
+
+    SECTION("ValueTypeLayoutMatchesNativeTextPackKey")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterValueType("TextPackName");
+        meta.RegisterValueType("TextPackKey");
+        meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
+        meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
+
+        const BaseTypeDesc& hstring_type = meta.GetBaseType("hstring");
+        CHECK(hstring_type.Size == sizeof(hstring::hash_t));
+        CHECK(hstring_type.Size == sizeof(hstring));
+
+        const BaseTypeDesc& text_key_type = meta.GetBaseType("TextPackKey");
+        REQUIRE(text_key_type.StructLayout);
+        CHECK(text_key_type.Size == sizeof(hstring::hash_t) * 4);
+        CHECK(text_key_type.Size == sizeof(TextPackKey));
+
+        const auto& fields = text_key_type.StructLayout->Fields;
+        REQUIRE(fields.size() == 4);
+        CHECK(fields[0].Offset == 0);
+        CHECK(fields[1].Offset == sizeof(hstring::hash_t));
+        CHECK(fields[2].Offset == sizeof(hstring::hash_t) * 2);
+        CHECK(fields[3].Offset == sizeof(hstring::hash_t) * 3);
+        CHECK(fields[0].Offset == offsetof(TextPackKey, Collection));
+        CHECK(fields[1].Offset == offsetof(TextPackKey, Key1));
+        CHECK(fields[2].Offset == offsetof(TextPackKey, Key2));
+        CHECK(fields[3].Offset == offsetof(TextPackKey, Key3));
     }
 
     SECTION("MissingMigrationRuleReturnsEmpty")
