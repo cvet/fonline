@@ -126,6 +126,68 @@ TEST_CASE("TextureAtlasSpaceNode")
         CHECK(root.Children.empty());
         CHECK_FALSE(root.IsBusyRecursively());
     }
+
+    SECTION("FreeClearsSpriteMeshMetadata")
+    {
+        TextureAtlas::SpaceNode root {nullptr, {0, 0}, {6, 6}};
+        root.Busy = true;
+        SpriteMeshData mesh;
+        root.SpriteMesh = &mesh;
+
+        root.Free();
+
+        CHECK_FALSE(root.Busy);
+        CHECK(root.SpriteMesh == nullptr);
+    }
+
+    SECTION("DumpOverlayDrawsTriangleWireframeAndVertices")
+    {
+        const isize32 atlas_size = {6, 6};
+        const ucolor background {0, 0, 0, 255};
+        vector<ucolor> pixels(numeric_cast<size_t>(atlas_size.square()), background);
+        TextureAtlas::SpaceNode root {nullptr, {0, 0}, atlas_size};
+        root.Busy = true;
+        const SpriteMeshData mesh {
+            .Vertices = {{0, 0}, {4, 0}, {0, 4}},
+            .Indices = {0, 1, 2},
+        };
+        root.SpriteMesh = &mesh;
+
+        root.DrawDumpOverlay(pixels, atlas_size);
+
+        const auto pixel = [&pixels, atlas_size](int32_t x, int32_t y) -> ucolor { return pixels[numeric_cast<size_t>(y) * atlas_size.width + x]; };
+        CHECK(pixel(1, 1) == ucolor {0, 255, 255, 255});
+        CHECK(pixel(5, 1) == ucolor {0, 255, 255, 255});
+        CHECK(pixel(1, 5) == ucolor {0, 255, 255, 255});
+        CHECK(pixel(3, 1) == ucolor {255, 0, 255, 255});
+        CHECK(pixel(3, 3) == ucolor {255, 0, 255, 255});
+        CHECK(pixel(2, 2) == background);
+    }
+
+    SECTION("DumpOverlayDistinguishesQuadAndEmptyGeometry")
+    {
+        const isize32 atlas_size = {6, 6};
+        const ucolor background {0, 0, 0, 255};
+        vector<ucolor> quad_pixels(numeric_cast<size_t>(atlas_size.square()), background);
+        TextureAtlas::SpaceNode quad {nullptr, {0, 0}, atlas_size};
+        quad.Busy = true;
+
+        quad.DrawDumpOverlay(quad_pixels, atlas_size);
+
+        CHECK(quad_pixels[1 * atlas_size.width + 3] == ucolor {255, 255, 0, 255});
+        CHECK(quad_pixels[3 * atlas_size.width + 3] == background);
+
+        vector<ucolor> empty_pixels(numeric_cast<size_t>(atlas_size.square()), background);
+        TextureAtlas::SpaceNode empty {nullptr, {0, 0}, atlas_size};
+        empty.Busy = true;
+        const SpriteMeshData empty_mesh;
+        empty.SpriteMesh = &empty_mesh;
+
+        empty.DrawDumpOverlay(empty_pixels, atlas_size);
+
+        CHECK(empty_pixels[3 * atlas_size.width + 3] == ucolor {255, 0, 0, 255});
+        CHECK(empty_pixels[1 * atlas_size.width + 3] == background);
+    }
 }
 
 FO_END_NAMESPACE

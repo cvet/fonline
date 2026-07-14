@@ -154,7 +154,11 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes sound-name mappings.
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
-- `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default image/animation resources.
+- `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
+  image/animation resources, including the optional per-frame silhouette mesh
+  produced by `ImageBaker`. A source-backed sprite uses that mesh for ordinary
+  full-image draws; an explicit empty mesh skips the draw, while a missing/quad
+  mesh keeps the four-vertex path used by runtime-generated atlas sprites.
 - `ModelSpriteFactory` turns model resources into atlas-backed sprites by rendering model frames into a render target.
 - `ParticleSpriteFactory` does the same for particle resources.
 - `EffectManager` loads default/minimal effects, resolves script-selected effects, and updates per-frame effect buffers.
@@ -164,6 +168,13 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
 For 3D critter views, idle refresh plays alive-state animations from the beginning. Dead condition idles freeze on their final frame. Other non-alive condition idles freeze on their first frame, so embedding projects should author that first frame as the intended resting pose for the condition.
 
 These managers are renderer-facing but not renderer-specific. They talk through `IAppRender` / `Renderer` abstractions, so the same client logic can run against OpenGL, Direct3D, or the null renderer depending on platform/build configuration.
+
+Sprite mesh geometry is independent of the pixel-exact hit mask. `FillAtlas`
+still derives hit testing directly from source alpha and `Render.SpriteHitValue`;
+contour simplification/dilation only changes which triangles are submitted for
+drawing. Cropped regions, repeated patterns, fonts, render-target blits, and
+padded custom-effect/contour draws intentionally construct quads because their
+sampling rectangle is not the source sprite silhouette.
 
 ### Fonts and Inline Color Tags
 

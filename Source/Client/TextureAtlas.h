@@ -36,6 +36,7 @@
 #include "Common.h"
 #include "RenderTarget.h"
 #include "Rendering.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -64,12 +65,17 @@ public:
 
         auto FindPosition(isize32 size) -> nptr<SpaceNode>;
         void Free() noexcept;
+        void DrawDumpOverlay(span<ucolor> pixels, isize32 atlas_size) const;
 
         nptr<SpaceNode> Parent {};
         ipos32 Pos {};
         isize32 Size {};
         bool Busy {};
+        nptr<const SpriteMeshData> SpriteMesh {};
         vector<unique_ptr<SpaceNode>> Children {};
+
+    private:
+        static void DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_size, ipos32 from, ipos32 to, ucolor color) noexcept;
     };
 
     explicit TextureAtlas(AtlasType type, ptr<RenderTarget> rt) noexcept;
@@ -85,6 +91,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() noexcept -> ptr<RenderTarget> { return _rt; }
     [[nodiscard]] auto GetTexture() const noexcept -> ptr<const RenderTexture> { return _rt->GetTexture(); }
     [[nodiscard]] auto GetTexture() noexcept -> ptr<RenderTexture> { return _rt->GetTexture(); }
+    [[nodiscard]] auto GetLayout() const noexcept -> ptr<const SpaceNode> { return &_rootNode; }
     [[nodiscard]] auto GetLayout() noexcept -> ptr<SpaceNode> { return &_rootNode; }
 
 private:

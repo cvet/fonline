@@ -38,6 +38,7 @@
 #include "Client.h"
 #include "CritterView.h"
 #include "DataSerialization.h"
+#include "DefaultSprites.h"
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
 
@@ -279,6 +280,275 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
     CHECK(result == 0);
+}
+
+TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    const frect32 atlas_rect = {0.25f, 0.5f, 0.5f, 0.25f};
+    const frect32 draw_rect = {100.0f, 200.0f, 20.0f, 40.0f};
+    const ucolor color_left = {10, 20, 30, 40};
+    const ucolor color_right = {110, 120, 130, 140};
+
+    SECTION("Absent mesh keeps the legacy quad")
+    {
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+
+        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+
+        REQUIRE(index_count == 6);
+        REQUIRE(draw_buf->VertCount == 4);
+        REQUIRE(draw_buf->IndCount == 6);
+        CHECK(draw_buf->Indices[0] == 0);
+        CHECK(draw_buf->Indices[1] == 1);
+        CHECK(draw_buf->Indices[2] == 3);
+        CHECK(draw_buf->Indices[3] == 1);
+        CHECK(draw_buf->Indices[4] == 2);
+        CHECK(draw_buf->Indices[5] == 3);
+        CHECK(draw_buf->Vertices[0].Color == color_left);
+        CHECK(draw_buf->Vertices[1].Color == color_left);
+        CHECK(draw_buf->Vertices[2].Color == color_right);
+        CHECK(draw_buf->Vertices[3].Color == color_right);
+    }
+
+    SECTION("Explicit empty mesh emits no draw data")
+    {
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+
+        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+
+        CHECK(index_count == 0);
+        CHECK(draw_buf->VertCount == 0);
+        CHECK(draw_buf->IndCount == 0);
+    }
+
+    SECTION("Mesh maps positions UVs indices and horizontal light colors")
+    {
+        SpriteMeshData mesh;
+        mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
+        mesh.Indices = {0, 1, 2};
+
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+        draw_buf->Vertices.resize(2);
+        draw_buf->VertCount = 2;
+        draw_buf->Indices.resize(1);
+        draw_buf->Indices[0] = 0;
+        draw_buf->IndCount = 1;
+
+        const size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
+
+        REQUIRE(index_count == 3);
+        REQUIRE(draw_buf->VertCount == 5);
+        REQUIRE(draw_buf->IndCount == 4);
+        CHECK(draw_buf->Indices[1] == 2);
+        CHECK(draw_buf->Indices[2] == 3);
+        CHECK(draw_buf->Indices[3] == 4);
+
+        const Vertex2D& left = draw_buf->Vertices[2];
+        const Vertex2D& center = draw_buf->Vertices[3];
+        const Vertex2D& right = draw_buf->Vertices[4];
+        CHECK(left.PosX == Catch::Approx(100.0f));
+        CHECK(left.PosY == Catch::Approx(200.0f));
+        CHECK(left.TexU == Catch::Approx(0.25f));
+        CHECK(left.TexV == Catch::Approx(0.5f));
+        CHECK(left.Color == color_left);
+        CHECK(center.PosX == Catch::Approx(110.0f));
+        CHECK(center.PosY == Catch::Approx(220.0f));
+        CHECK(center.TexU == Catch::Approx(0.5f));
+        CHECK(center.TexV == Catch::Approx(0.625f));
+        CHECK(center.Color == (ucolor {60, 70, 80, 90}));
+        CHECK(right.PosX == Catch::Approx(120.0f));
+        CHECK(right.PosY == Catch::Approx(200.0f));
+        CHECK(right.TexU == Catch::Approx(0.75f));
+        CHECK(right.TexV == Catch::Approx(0.5f));
+        CHECK(right.Color == color_right);
+    }
+
+    SECTION("Live atlas node observes sprite mesh metadata for dump lifetime")
+    {
+        TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
+        atlas_node.Busy = true;
+        SpriteMeshData mesh;
+        mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
+        mesh.Indices = {0, 1, 2};
+        function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
+        unique_del_nptr<TextureAtlas::SpaceNode> atlas_node_owner {&atlas_node, std::move(free_node)};
+
+        {
+            auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_node_owner), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+            auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+
+            REQUIRE(atlas_node.SpriteMesh != nullptr);
+            CHECK(atlas_node.SpriteMesh->Vertices.size() == 3);
+            CHECK(sprite->FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
+        }
+
+        CHECK_FALSE(atlas_node.Busy);
+        CHECK(atlas_node.SpriteMesh == nullptr);
+    }
+
+    SECTION("Moving an atlas sprite rebinds the mesh observer")
+    {
+        TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
+        atlas_node.Busy = true;
+        SpriteMeshData mesh;
+        mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
+        mesh.Indices = {0, 1, 2};
+        function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
+        unique_del_nptr<TextureAtlas::SpaceNode> atlas_node_owner {&atlas_node, std::move(free_node)};
+
+        {
+            AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_node_owner), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
+            const nptr<const SpriteMeshData> source_mesh = atlas_node.SpriteMesh;
+            AtlasSprite moved {std::move(source)};
+
+            REQUIRE(atlas_node.SpriteMesh != nullptr);
+            CHECK(atlas_node.SpriteMesh != source_mesh);
+            auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+            CHECK(moved.FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
+        }
+
+        CHECK_FALSE(atlas_node.Busy);
+        CHECK(atlas_node.SpriteMesh == nullptr);
+    }
+}
+
+TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
+{
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    SpriteMeshData mesh;
+    mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
+    mesh.Indices = {0, 1, 2};
+
+    const vector<uint8_t> valid_blob = BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, mesh);
+    constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
+    constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
+    constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
+    constexpr size_t mesh_vertices_offset = mesh_index_count_offset + sizeof(uint32_t);
+    constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
+
+    const auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
+        data[offset] = numeric_cast<uint8_t>(value & 0xFF);
+        data[offset + 1] = numeric_cast<uint8_t>(value >> 8);
+    };
+    const auto write_u32 = [](vector<uint8_t>& data, size_t offset, uint32_t value) {
+        data[offset] = numeric_cast<uint8_t>(value & 0xFF);
+        data[offset + 1] = numeric_cast<uint8_t>((value >> 8) & 0xFF);
+        data[offset + 2] = numeric_cast<uint8_t>((value >> 16) & 0xFF);
+        data[offset + 3] = numeric_cast<uint8_t>(value >> 24);
+    };
+
+    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
+    source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
+    source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
+    source->AddFile("ValidMesh.png", valid_blob);
+
+    vector<uint8_t> bad_version = valid_blob;
+    bad_version[1]++;
+    source->AddFile("BadVersion.png", std::move(bad_version));
+
+    vector<uint8_t> bad_kind = valid_blob;
+    bad_kind[mesh_kind_offset] = 0xFF;
+    source->AddFile("BadKind.png", std::move(bad_kind));
+
+    vector<uint8_t> bad_vertex_count = valid_blob;
+    write_u16(bad_vertex_count, mesh_vertex_count_offset, uint16_t {2});
+    source->AddFile("BadVertexCount.png", std::move(bad_vertex_count));
+
+    vector<uint8_t> bad_index_count = valid_blob;
+    write_u32(bad_index_count, mesh_index_count_offset, uint32_t {4});
+    source->AddFile("BadIndexCount.png", std::move(bad_index_count));
+
+    vector<uint8_t> implausible_index_count = valid_blob;
+    write_u32(implausible_index_count, mesh_index_count_offset, uint32_t {21});
+    source->AddFile("ImplausibleIndexCount.png", std::move(implausible_index_count));
+
+    vector<uint8_t> bad_coordinate = valid_blob;
+    write_u16(bad_coordinate, mesh_vertices_offset, uint16_t {3});
+    source->AddFile("BadCoordinate.png", std::move(bad_coordinate));
+
+    vector<uint8_t> bad_index = valid_blob;
+    write_u16(bad_index, mesh_indices_offset, uint16_t {3});
+    source->AddFile("BadIndex.png", std::move(bad_index));
+
+    vector<uint8_t> degenerate_triangle = valid_blob;
+    write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2, uint16_t {1});
+    write_u16(degenerate_triangle, mesh_vertices_offset + 2 * sizeof(uint16_t) * 2 + sizeof(uint16_t), uint16_t {0});
+    source->AddFile("DegenerateTriangle.png", std::move(degenerate_triangle));
+
+    SpriteMeshData inconsistent_winding_mesh;
+    inconsistent_winding_mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}, {2, 2}};
+    inconsistent_winding_mesh.Indices = {0, 1, 2, 1, 2, 3};
+    source->AddFile("InconsistentWinding.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Mesh, inconsistent_winding_mesh));
+
+    vector<uint8_t> trailing_data = valid_blob;
+    trailing_data.emplace_back(uint8_t {0});
+    source->AddFile("TrailingData.png", std::move(trailing_data));
+
+    vector<uint8_t> truncated_payload = valid_blob;
+    truncated_payload.resize(mesh_indices_offset);
+    source->AddFile("TruncatedPayload.png", std::move(truncated_payload));
+
+    client->SprMngr.GetResources()->AddCustomSource(std::move(source));
+    DefaultSpriteFactory factory {&client->SprMngr};
+    const auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.ToHashedString(path), AtlasType::MapSprites); };
+
+    auto valid_sprite = load("ValidMesh.png");
+    REQUIRE(static_cast<bool>(valid_sprite));
+    auto valid_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    CHECK(valid_sprite->FillData(valid_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 3);
+
+    auto quad_sprite = load("Quad.png");
+    REQUIRE(static_cast<bool>(quad_sprite));
+    auto quad_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    CHECK(quad_sprite->FillData(quad_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 6);
+
+    auto empty_sprite = load("Empty.png");
+    REQUIRE(static_cast<bool>(empty_sprite));
+    auto empty_draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+    CHECK(empty_sprite->FillData(empty_draw_buf, frect32 {0.0f, 0.0f, 2.0f, 2.0f}, {ucolor {0, 0, 0}, ucolor {255, 255, 255}}) == 0);
+
+    CHECK_THROWS(load("BadVersion.png"));
+    CHECK_THROWS(load("BadKind.png"));
+    CHECK_THROWS(load("BadVertexCount.png"));
+    CHECK_THROWS(load("BadIndexCount.png"));
+    CHECK_THROWS(load("ImplausibleIndexCount.png"));
+    CHECK_THROWS(load("BadCoordinate.png"));
+    CHECK_THROWS(load("BadIndex.png"));
+    CHECK_THROWS(load("DegenerateTriangle.png"));
+    CHECK_THROWS(load("InconsistentWinding.png"));
+    CHECK_THROWS(load("TrailingData.png"));
+    CHECK_THROWS(load("TruncatedPayload.png"));
+}
+
+TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
+{
+    auto settings = MakeClientTestSettings();
+    settings.DrawWireframe = true;
+    auto client = MakeClientEngine(settings);
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    SpriteMeshData mesh;
+    mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
+    mesh.Indices = {0, 1, 2};
+
+    auto atlas = client->SprMngr.GetAtlasMngr()->CreateAtlas(AtlasType::OneImage, {16, 16});
+    auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, nullptr, frect32 {0.0f, 0.0f, 0.625f, 0.625f}, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+
+    client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
+    CHECK_NOTHROW(client->SprMngr.Flush());
 }
 
 FO_END_NAMESPACE

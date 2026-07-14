@@ -155,6 +155,48 @@ The stub layer is not a full renderer. It exists so tests and non-graphical flow
 
 `Source/Frontend/Rendering.cpp` owns backend-independent helper behavior, including draw-buffer allocation checks and effect configuration parsing. It reads effect sections such as `Effect` and `EffectInfo`, pass counts, blend settings, and script-visible buffers before backend-specific code consumes shader files.
 
+`EffectUsage::QuadSprite` is a historical effect-slot name, not a four-vertex
+topology restriction. The sprite draw buffer is an indexed triangle list, and
+source-backed `AtlasSprite` frames may emit their baked silhouette vertices and
+indices instead of the implicit 4-vertex/6-index rectangle. All renderer
+backends consume the same buffer; no backend-specific polygon path exists.
+
+Local mesh coordinates remain relative to the full logical bitmap, not its
+opaque bounding box. Screen position and atlas UV are both affine mappings of
+the same local coordinate, so scaling, rotation, map projection, standing-sprite
+depth, and egg flags continue to operate over every emitted vertex. Map lighting
+also preserves the old quad plane: `DrawSprites` still provides the left/right
+endpoint colours, and a mesh vertex at local X receives
+`lerp(left, right, clamp(localX / spriteWidth, 0, 1))`. This is signed horizontal
+distance from the bitmap centre expressed as a normalized coordinate; it is not
+radial distance or distance from the opaque contour. Because `Vertex2D::Color`
+is RGBA8, intermediate mesh vertices may differ from ideal quad interpolation by
+at most one channel unit due to rounding.
+
+Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
+patterns, padded custom-effect/outline draws, fonts, texture/render-target
+blits, and runtime-generated model/particle atlas sprites retain explicit quads.
+Effects that need to create pixels outside the source silhouette must use such a
+padded/quad path rather than an ordinary full-sprite draw.
+
+`Game.DumpAtlases()` and the mapper's **Dump atlases** command annotate the
+read-back TGA copy with the live allocation geometry; the runtime atlas texture
+is not modified. Magenta lines show triangle edges, cyan pixels show mesh
+vertices, yellow rectangles identify implicit quad geometry, and a red X marks
+an explicitly empty baked frame. `AtlasSprite` owns its mesh metadata; the live
+atlas allocation keeps a nullable non-owning observer into that data and clears
+it when the space is released, so a dump cannot display stale geometry after an
+atlas slot is reused.
+
+`Render.DrawWireframe` enables a backend-independent runtime geometry
+overlay. `SpriteManager` copies the actual submitted triangle edges after
+positioning, scaling, rotation, map projection, and standing-sprite depth
+adjustments, then draws them as an opaque magenta primitive line list over the
+normal sprite pass. This also exposes the two triangles of ordinary quad
+sprites, so it is independent of `SpriteMesh.Enabled`. The toggle is disabled
+by default and does not modify the sprite draw buffer, texture atlas, or baked
+resource.
+
 ## Render backends
 
 ### Null renderer

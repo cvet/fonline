@@ -41,6 +41,7 @@
 #include "DataSource.h"
 #include "FileSystem.h"
 #include "Settings.h"
+#include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -246,15 +247,16 @@ namespace BakerTests
         return protos_data;
     }
 
-    // Minimal valid baked sprite blob (the magic-42 single-frame format read by
+    // Minimal valid baked sprite blob (the versioned single-frame format read by
     // DefaultSpriteFactory::LoadSprite). Produces a width x height fully-opaque white image so that
     // headless font/sprite binding succeeds under NullRenderer without shipping real baked art.
-    inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1) -> vector<uint8_t>
+    inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
         auto writer = DataWriter(sprite_data);
 
-        writer.Write<uint8_t>(uint8_t {42}); // Header magic
+        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
         writer.Write<uint16_t>(uint16_t {1}); // Frames count
         writer.Write<uint16_t>(uint16_t {0}); // Ticks
         writer.Write<uint8_t>(uint8_t {1}); // Directions
@@ -277,7 +279,22 @@ namespace BakerTests
             writer.Write<uint8_t>(uint8_t {255}); // A
         }
 
-        writer.Write<uint8_t>(uint8_t {42}); // Frame magic
+        writer.Write<uint8_t>(static_cast<uint8_t>(mesh_kind));
+
+        if (mesh_kind == SpriteMeshKind::Mesh) {
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
+            writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
+
+            for (const ipos32 vertex : mesh.Vertices) {
+                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+            }
+            for (const uint16_t index : mesh.Indices) {
+                writer.Write<uint16_t>(index);
+            }
+        }
+
+        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
         return sprite_data;
     }
@@ -482,7 +499,11 @@ namespace BakerTests
                 .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),
-                .WriteData = [this](string_view path, const_span<uint8_t> data) { Outputs[string(path)] = vector<uint8_t> {data.begin(), data.end()}; },
+                .WriteData =
+                    [this](string_view path, const_span<uint8_t> data) {
+                        Outputs[string(path)] = vector<uint8_t> {data.begin(), data.end()};
+                        return BakingWriteResult::Changed;
+                    },
                 .BakedFiles = baked_files_ptr,
                 .ForceSyncMode = true,
             });
@@ -507,7 +528,7 @@ namespace BakerTests
 
     inline auto MakeRequestedBakers(const vector<string>& request_bakers, TestRig& rig, string_view pack_name = "TestPack") -> vector<unique_ptr<BaseBaker>>
     {
-        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) {}, &rig.BakedFiles);
+        return BaseBaker::SetupBakers(request_bakers, string(pack_name), rig.Settings, [](string_view, uint64_t) { return true; }, [](string_view, const_span<uint8_t>) { return BakingWriteResult::Changed; }, &rig.BakedFiles);
     }
 }
 

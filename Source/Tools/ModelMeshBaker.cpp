@@ -226,7 +226,7 @@ struct BakerAnimSet
 };
 
 ModelMeshBaker::ModelMeshBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 }

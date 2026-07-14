@@ -35,6 +35,7 @@
 #include "Application.h"
 #include "ImGuiStuff.h"
 #include "SparkExtension.h"
+#include "SpriteResource.h"
 #include "VisualParticles.h"
 
 #include "SPARK.h"
@@ -51,28 +52,15 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
         const auto file = editor->BakedResources.ReadFile(path);
         FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
         auto reader = file.GetReader();
+        SpriteResourceData resource = ReadSpriteResource(reader);
+        FO_VERIFY_AND_THROW(resource.FrameCount == 1, "Particle editor texture must contain exactly one sprite frame", resource.FrameCount);
+        FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Particle editor texture must contain exactly one direction", resource.Directions.size());
 
-        const auto check_number = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
+        const SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();
+        FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Particle editor texture cannot be a sprite reference");
 
-        (void)reader.GetLEUInt16();
-        (void)reader.GetLEUInt16();
-        (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetUInt8();
-        const auto w = reader.GetLEUInt16();
-        const auto h = reader.GetLEUInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-
-        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
-        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
-
-        auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        auto data_ptr = make_nptr(data.data());
-        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
-        tex->UpdateTextureRegion({}, {w, h}, pixels);
+        auto tex = GetApp()->Render.CreateTexture(frame.Size, true, false);
+        tex->UpdateTextureRegion({}, frame.Size, frame.Pixels);
 
         auto tex_ptr = tex.as_ptr();
         loaded_textures_ptr->emplace_back(std::move(tex));

@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "BakingReport.h"
 #include "DataSource.h"
 #include "EngineBase.h"
 #include "FileSystem.h"
@@ -48,7 +49,7 @@ class Properties;
 class ScriptSystem;
 
 using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = function<void(string_view, const_span<uint8_t>)>;
+using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<uint8_t>)>;
 
 struct BakingContext
 {
@@ -58,12 +59,14 @@ struct BakingContext
     AsyncWriteDataCallback WriteData {};
     nptr<const FileSystem> BakedFiles {};
     optional<bool> ForceSyncMode {};
+    shared_ptr<BakingReport> Report {};
+    string BakerName {};
 };
 
 class BaseBaker
 {
 public:
-    explicit BaseBaker(shared_ptr<BakingContext> ctx);
+    explicit BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name);
     BaseBaker(const BaseBaker&) = delete;
     BaseBaker(BaseBaker&&) noexcept = delete;
     auto operator=(const BaseBaker&) = delete;
@@ -75,11 +78,18 @@ public:
 
     virtual void BakeFiles(const FileCollection& files, string_view target_path = "") const = 0;
 
-    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files) -> vector<unique_ptr<BaseBaker>>;
+    static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
     [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
+    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->Report != nullptr; }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
+
+    void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
+    void AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count = 1) const;
+    void RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportSettings& settings) const;
+    void RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const;
+    void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
     shared_ptr<BakingContext> _context;
 };
@@ -100,6 +110,7 @@ private:
     void BakeAllInternal();
 
     ptr<BakingSettings> _settings;
+    shared_ptr<BakingReport> _report {};
 };
 
 class BakerDataSource final : public DataSource

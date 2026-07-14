@@ -36,6 +36,8 @@
 #include "ConfigFile.h"
 #include "FileSystem.h"
 #include "Settings.h"
+#include "SpriteMeshing.h"
+#include "SpriteResource.h"
 
 #include "png.h"
 
@@ -71,6 +73,10 @@ static auto ImageVectorDataAt(vector<T>& data, size_t pos) noexcept -> ptr<T>
 
 [[nodiscard]] static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
 [[nodiscard]] static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+
+[[nodiscard]] static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot;
+[[nodiscard]] static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
+static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot);
 
 // clang-format off
 alignas(ucolor) static uint8_t FoPalette[] = {
@@ -129,7 +135,7 @@ static_assert(sizeof(FoPalette) == 1024);
 // clang-format on
 
 ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
-    BaseBaker(std::move(ctx))
+    BaseBaker(std::move(ctx), NAME)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -160,6 +166,18 @@ void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_ex
 void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
     FO_STACK_TRACE_ENTRY();
+
+    if (IsBakingReportEnabled()) {
+        const SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
+        RecordSpriteMeshBakingSettings(SpriteMeshBakingReportSettings {
+            .Enabled = mesh_config.Enabled,
+            .AlphaThreshold = mesh_config.AlphaThreshold,
+            .MaxTriangles = mesh_config.MaxTriangles,
+            .AreaSavingsWeight = mesh_config.AreaSavingsWeight,
+            .BaseDilation = SPRITE_MESH_DILATION,
+            .MaximumPadding = SPRITE_MESH_MAXIMUM_PADDING,
+        });
+    }
 
     vector<pair<File, LoadFunc>> files_to_bake;
     files_to_bake.reserve(files.GetFilesCount());
@@ -234,46 +252,233 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     vector<uint8_t> data;
     auto writer = DataWriter(data);
 
-    constexpr auto check_number = numeric_cast<uint8_t>(42);
     const auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
-
-    writer.Write<uint8_t>(check_number);
+    const SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
+    const string output_path = collection.NewName.empty() ? string(fname) : collection.NewName;
+    const bool report_enabled = IsBakingReportEnabled();
+    vector<SpriteMeshBakingFrameReport> frame_reports;
+    uint64_t shared_frame_references = 0;
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
     writer.Write<uint16_t>(collection.SequenceSize);
     writer.Write<uint16_t>(collection.AnimTicks);
     writer.Write<uint8_t>(dirs);
 
     for (const auto dir : iterate_range(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        int32_t frame_padding = 0;
+        vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
+        vector<int32_t> mesh_build_paddings(sequence.Frames.size());
+
+        if (mesh_config.Enabled) {
+            for (size_t frame_index = 0; frame_index < sequence.Frames.size(); frame_index++) {
+                const FrameShot& shot = sequence.Frames[frame_index];
+                if (shot.Shared) {
+                    continue;
+                }
+
+                optional<FrameShot> maximum_padded_shot;
+                ptr<const FrameShot> mesh_shot = &shot;
+
+                if (shot.Width > 0 && shot.Height > 0) {
+                    maximum_padded_shot = PadSpriteFrame(shot, SPRITE_MESH_MAXIMUM_PADDING);
+                    mesh_shot = &*maximum_padded_shot;
+                    mesh_build_paddings[frame_index] = SPRITE_MESH_MAXIMUM_PADDING;
+                }
+
+                const int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                prepared_meshes[frame_index] = BuildSpriteMesh(mesh_shot->Data, {mesh_shot->Width, mesh_shot->Height}, mesh_config, reference_quad_double_area);
+                frame_padding = std::max(frame_padding, ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]));
+            }
+        }
+
         writer.Write<int16_t>(sequence.OffsX);
-        writer.Write<int16_t>(sequence.OffsY);
+        writer.Write<int16_t>(numeric_cast<int16_t>(numeric_cast<int32_t>(sequence.OffsY) + frame_padding));
 
         for (int32_t i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
             writer.Write<bool>(shot.Shared);
 
             if (!shot.Shared) {
-                writer.Write<uint16_t>(shot.Width);
-                writer.Write<uint16_t>(shot.Height);
-                writer.Write<int16_t>(shot.NextX);
-                writer.Write<int16_t>(shot.NextY);
-                if (!shot.Data.empty()) {
-                    writer.WriteBytes({shot.Data.data(), shot.Data.size()});
+                optional<FrameShot> padded_shot;
+                ptr<const FrameShot> bake_shot = &shot;
+
+                if (frame_padding > 0) {
+                    padded_shot = PadSpriteFrame(shot, frame_padding);
+                    bake_shot = &*padded_shot;
                 }
-                FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
+
+                FO_VERIFY_AND_THROW(bake_shot->Data.size() == numeric_cast<size_t>(bake_shot->Width) * bake_shot->Height * 4, "Animation frame RGBA payload size does not match frame dimensions", bake_shot->Data.size(), bake_shot->Width, bake_shot->Height);
+                BakedSpriteMesh mesh;
+
+                if (prepared_meshes[numeric_cast<size_t>(i)].has_value() && prepared_meshes[numeric_cast<size_t>(i)]->Kind != SpriteMeshKind::Quad) {
+                    mesh = std::move(*prepared_meshes[numeric_cast<size_t>(i)]);
+                    TranslateSpriteMesh(mesh, frame_padding - mesh_build_paddings[numeric_cast<size_t>(i)], *bake_shot);
+                }
+                else {
+                    const int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
+                    mesh = BuildSpriteMesh(bake_shot->Data, {bake_shot->Width, bake_shot->Height}, mesh_config, reference_quad_double_area);
+                }
+
+                if (report_enabled) {
+                    optional<SpriteMeshBakingCandidateReport> best_rejected_candidate;
+
+                    if (mesh.BestRejectedCandidate.has_value()) {
+                        const SpriteMeshCandidateSummary& candidate = *mesh.BestRejectedCandidate;
+                        best_rejected_candidate = SpriteMeshBakingCandidateReport {
+                            .SelectionOrigin = string(SpriteMeshCandidateSourceName(candidate.Source)),
+                            .TriangleCount = candidate.TriangleCount,
+                            .VertexCount = candidate.VertexCount,
+                            .SubmittedGeometryDoubleArea = candidate.DoubleArea,
+                            .Score = candidate.Score,
+                            .SimplifyTolerance = candidate.SimplifyTolerance,
+                            .ActualDilation = candidate.ActualDilation,
+                        };
+                    }
+
+                    frame_reports.emplace_back(SpriteMeshBakingFrameReport {
+                        .SourcePath = string(fname),
+                        .OutputPath = output_path,
+                        .Direction = dir,
+                        .FrameIndex = numeric_cast<uint32_t>(i),
+                        .Form = mesh.Kind == SpriteMeshKind::Mesh ? "mesh" :
+                            mesh.Kind == SpriteMeshKind::Empty    ? "empty" :
+                                                                    "quad",
+                        .SelectionOrigin = string(SpriteMeshCandidateSourceName(mesh.Source)),
+                        .QuadReason = string(SpriteMeshQuadReasonName(mesh.QuadReason)),
+                        .TriangleCount = numeric_cast<uint32_t>(mesh.Data.Indices.size() / 3),
+                        .VertexCount = numeric_cast<uint32_t>(mesh.Data.Vertices.size()),
+                        .SourceComponentCount = mesh.SourceComponentCount,
+                        .DilatedComponentCount = mesh.DilatedComponentCount,
+                        .Padding = frame_padding,
+                        .SimplifyTolerance = mesh.SimplifyTolerance,
+                        .ActualDilation = mesh.ActualDilation,
+                        .SourceFramePixels = numeric_cast<uint64_t>(shot.Width) * shot.Height,
+                        .BakedCanvasPixels = numeric_cast<uint64_t>(bake_shot->Width) * bake_shot->Height,
+                        .VisiblePixels = mesh.VisiblePixels,
+                        .SubmittedGeometryDoubleArea = mesh.DoubleArea,
+                        .SelectionScore = mesh.SelectionScore,
+                        .BestRejectedCandidate = std::move(best_rejected_candidate),
+                    });
+                }
+
+                writer.Write<uint16_t>(bake_shot->Width);
+                writer.Write<uint16_t>(bake_shot->Height);
+                writer.Write<int16_t>(bake_shot->NextX);
+                writer.Write<int16_t>(bake_shot->NextY);
+
+                if (!bake_shot->Data.empty()) {
+                    writer.WriteBytes({bake_shot->Data.data(), bake_shot->Data.size()});
+                }
+
+                writer.Write<uint8_t>(static_cast<uint8_t>(mesh.Kind));
+
+                if (mesh.Kind == SpriteMeshKind::Mesh) {
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.Vertices.size()));
+                    writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Data.Indices.size()));
+
+                    for (const ipos32 vertex : mesh.Data.Vertices) {
+                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+                    }
+                    for (const uint16_t index : mesh.Data.Indices) {
+                        writer.Write<uint16_t>(index);
+                    }
+                }
             }
             else {
+                shared_frame_references += report_enabled ? 1 : 0;
                 writer.Write<uint16_t>(shot.SharedIndex);
             }
         }
     }
 
-    writer.Write<uint8_t>(check_number);
+    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
-    if (!collection.NewName.empty()) {
-        _context->WriteData(collection.NewName, data);
+    _context->WriteData(output_path, data);
+
+    if (!report_enabled) {
+        return;
     }
-    else {
-        _context->WriteData(fname, data);
+
+    AddBakingReportCounter("collections");
+    AddBakingReportCounter("directions", dirs);
+    AddBakingReportCounter("frameSlots", numeric_cast<uint64_t>(frame_reports.size()) + shared_frame_references);
+    AddBakingReportCounter("uniqueFrames", numeric_cast<uint64_t>(frame_reports.size()));
+    AddBakingReportCounter("sharedFrameReferences", shared_frame_references);
+    AddBakingReportHistogramValue("sourceFormats", strex(fname).get_file_extension());
+
+    for (const SpriteMeshBakingFrameReport& frame_report : frame_reports) {
+        RecordSpriteMeshBakingFrame(frame_report);
+    }
+    if (shared_frame_references != 0) {
+        RecordSharedSpriteMeshBakingFrames(shared_frame_references);
+    }
+}
+
+static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(padding > 0, "Sprite frame padding must be positive", padding);
+    FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
+
+    const int32_t padded_width = numeric_cast<int32_t>(shot.Width) + padding * 2;
+    const int32_t padded_height = numeric_cast<int32_t>(shot.Height) + padding * 2;
+    FO_VERIFY_AND_THROW(padded_width <= std::numeric_limits<uint16_t>::max() && padded_height <= std::numeric_limits<uint16_t>::max(), "Sprite frame padding exceeds the serialized dimension range", shot.Width, shot.Height, padding);
+
+    ImageBaker::FrameShot result;
+    result.Width = numeric_cast<uint16_t>(padded_width);
+    result.Height = numeric_cast<uint16_t>(padded_height);
+    result.NextX = shot.NextX;
+    result.NextY = shot.NextY;
+    result.Data.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+
+    const size_t source_row_size = numeric_cast<size_t>(shot.Width) * 4;
+    const size_t destination_row_size = numeric_cast<size_t>(result.Width) * 4;
+    const size_t destination_x_offset = numeric_cast<size_t>(padding) * 4;
+
+    for (uint16_t y = 0; y < shot.Height; y++) {
+        const size_t source_offset = numeric_cast<size_t>(y) * source_row_size;
+        const size_t destination_offset = numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * destination_row_size + destination_x_offset;
+        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
+    }
+
+    return result;
+}
+
+static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (mesh.Kind != SpriteMeshKind::Mesh || mesh.Data.Indices.empty()) {
+        return 0;
+    }
+
+    int32_t required_padding = 0;
+
+    for (const ipos32 vertex : mesh.Data.Vertices) {
+        const int32_t relative_x = vertex.x - build_padding;
+        const int32_t relative_y = vertex.y - build_padding;
+        required_padding = std::max({required_padding, -relative_x, relative_x - shot.Width, -relative_y, relative_y - shot.Height});
+    }
+
+    FO_VERIFY_AND_THROW(required_padding <= SPRITE_MESH_MAXIMUM_PADDING, "Resolved sprite mesh padding exceeds the internal maximum", required_padding, SPRITE_MESH_MAXIMUM_PADDING);
+    return required_padding;
+}
+
+static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (mesh.Kind != SpriteMeshKind::Mesh || offset == 0) {
+        return;
+    }
+
+    for (ipos32& vertex : mesh.Data.Vertices) {
+        vertex.x += offset;
+        vertex.y += offset;
+        FO_VERIFY_AND_THROW(vertex.x >= 0 && vertex.x <= shot.Width && vertex.y >= 0 && vertex.y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
     }
 }
 

@@ -37,6 +37,10 @@
 FO_BEGIN_NAMESPACE
 
 static constexpr int32_t ATLAS_SPRITES_PADDING = 1;
+static constexpr ucolor ATLAS_DUMP_QUAD_COLOR {255, 255, 0, 255};
+static constexpr ucolor ATLAS_DUMP_EMPTY_COLOR {255, 0, 0, 255};
+static constexpr ucolor ATLAS_DUMP_MESH_COLOR {255, 0, 255, 255};
+static constexpr ucolor ATLAS_DUMP_VERTEX_COLOR {0, 255, 255, 255};
 
 TextureAtlas::TextureAtlas(AtlasType type, ptr<RenderTarget> rt) noexcept :
     _type {type},
@@ -110,6 +114,7 @@ void TextureAtlas::SpaceNode::Free() noexcept
     FO_STACK_TRACE_ENTRY();
 
     Busy = false;
+    SpriteMesh = nullptr;
 
     // Collapse free children
     if (!Children.empty()) {
@@ -143,6 +148,90 @@ void TextureAtlas::SpaceNode::Free() noexcept
     // Populate collapsing to root
     if (Children.empty() && Parent && !Parent->Busy) {
         Parent->Free();
+    }
+}
+
+void TextureAtlas::SpaceNode::DrawDumpOverlay(span<ucolor> pixels, isize32 atlas_size) const
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(atlas_size.width > 0 && atlas_size.height > 0, "Atlas dump dimensions must be positive", atlas_size);
+    FO_VERIFY_AND_THROW(pixels.size() == numeric_cast<size_t>(atlas_size.width) * atlas_size.height, "Atlas dump pixel count does not match atlas dimensions", pixels.size(), atlas_size);
+
+    if (Busy) {
+        const ipos32 sprite_origin = {Pos.x + ATLAS_SPRITES_PADDING, Pos.y + ATLAS_SPRITES_PADDING};
+        const ipos32 sprite_end = {Pos.x + Size.width - ATLAS_SPRITES_PADDING, Pos.y + Size.height - ATLAS_SPRITES_PADDING};
+
+        if (!SpriteMesh) {
+            DrawAtlasDumpLine(pixels, atlas_size, sprite_origin, {sprite_end.x, sprite_origin.y}, ATLAS_DUMP_QUAD_COLOR);
+            DrawAtlasDumpLine(pixels, atlas_size, {sprite_end.x, sprite_origin.y}, sprite_end, ATLAS_DUMP_QUAD_COLOR);
+            DrawAtlasDumpLine(pixels, atlas_size, sprite_end, {sprite_origin.x, sprite_end.y}, ATLAS_DUMP_QUAD_COLOR);
+            DrawAtlasDumpLine(pixels, atlas_size, {sprite_origin.x, sprite_end.y}, sprite_origin, ATLAS_DUMP_QUAD_COLOR);
+        }
+        else if (SpriteMesh->Indices.empty()) {
+            DrawAtlasDumpLine(pixels, atlas_size, sprite_origin, sprite_end, ATLAS_DUMP_EMPTY_COLOR);
+            DrawAtlasDumpLine(pixels, atlas_size, {sprite_end.x, sprite_origin.y}, {sprite_origin.x, sprite_end.y}, ATLAS_DUMP_EMPTY_COLOR);
+        }
+        else {
+            for (size_t i = 0; i + 2 < SpriteMesh->Indices.size(); i += 3) {
+                const uint16_t index_a = SpriteMesh->Indices[i];
+                const uint16_t index_b = SpriteMesh->Indices[i + 1];
+                const uint16_t index_c = SpriteMesh->Indices[i + 2];
+
+                if (index_a >= SpriteMesh->Vertices.size() || index_b >= SpriteMesh->Vertices.size() || index_c >= SpriteMesh->Vertices.size()) {
+                    continue;
+                }
+
+                const ipos32 a = sprite_origin + SpriteMesh->Vertices[index_a];
+                const ipos32 b = sprite_origin + SpriteMesh->Vertices[index_b];
+                const ipos32 c = sprite_origin + SpriteMesh->Vertices[index_c];
+                DrawAtlasDumpLine(pixels, atlas_size, a, b, ATLAS_DUMP_MESH_COLOR);
+                DrawAtlasDumpLine(pixels, atlas_size, b, c, ATLAS_DUMP_MESH_COLOR);
+                DrawAtlasDumpLine(pixels, atlas_size, c, a, ATLAS_DUMP_MESH_COLOR);
+            }
+
+            for (const ipos32 vertex : SpriteMesh->Vertices) {
+                const ipos32 vertex_pos = sprite_origin + vertex;
+                if (atlas_size.is_valid_pos(vertex_pos)) {
+                    pixels[numeric_cast<size_t>(vertex_pos.y) * atlas_size.width + vertex_pos.x] = ATLAS_DUMP_VERTEX_COLOR;
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < Children.size(); i++) {
+        Children[i]->DrawDumpOverlay(pixels, atlas_size);
+    }
+}
+
+void TextureAtlas::SpaceNode::DrawAtlasDumpLine(span<ucolor> pixels, isize32 atlas_size, ipos32 from, ipos32 to, ucolor color) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const int32_t dx = std::abs(to.x - from.x);
+    const int32_t sx = from.x < to.x ? 1 : -1;
+    const int32_t dy = -std::abs(to.y - from.y);
+    const int32_t sy = from.y < to.y ? 1 : -1;
+    int32_t error = dx + dy;
+
+    while (true) {
+        if (atlas_size.is_valid_pos(from)) {
+            pixels[numeric_cast<size_t>(from.y) * atlas_size.width + from.x] = color;
+        }
+
+        if (from == to) {
+            break;
+        }
+
+        const int32_t double_error = error * 2;
+        if (double_error >= dy) {
+            error += dy;
+            from.x += sx;
+        }
+        if (double_error <= dx) {
+            error += dx;
+            from.y += sy;
+        }
     }
 }
 
@@ -254,7 +343,7 @@ void TextureAtlasManager::DumpAtlases() const
     }
 
     const auto time = nanotime::now().desc(true);
-    const string dir = strex("{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
+    const string dir = strex("TexDump_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}_{}.{:03}mb", //
         time.year, time.month, time.day, time.hour, time.minute, time.second, //
         atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
 
@@ -281,6 +370,7 @@ void TextureAtlasManager::DumpAtlases() const
 
         const string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
         auto tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
+        atlas->GetLayout()->DrawDumpOverlay(tex_data, atlas->GetSize());
         WriteSimpleTga(fname, atlas->GetSize(), std::move(tex_data));
         count++;
     }
