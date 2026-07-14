@@ -50,7 +50,7 @@ static auto FailUnexpectedRuntimePromotion(string_view) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    FAIL("Runtime promotion must not be called");
+    FAIL_CHECK("Runtime promotion must not be called");
     return false;
 }
 
