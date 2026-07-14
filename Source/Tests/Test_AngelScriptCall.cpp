@@ -429,15 +429,56 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
     CHECK(release_count == 1);
 }
 
-TEST_CASE("VoidScriptFuncDoesNotStoreReturnCleaner")
+TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
 {
     CHECK(sizeof(ScriptFunc<void>) < sizeof(ScriptFunc<nptr<void>>));
 
-    ScriptFuncDesc func_desc;
-    func_desc.ReturnValueCleaner = [](ptr<void>) { FO_UNREACHABLE_PLACE(); };
+    constexpr size_t CALLBACK_COUNT = 64;
 
-    ScriptFunc<void> func {&func_desc};
-    CHECK(func);
+    int32_t call_count = 0;
+    int32_t failed_call_count = 0;
+    auto cleanup_token = SafeAlloc::MakeShared<int32_t>(1);
+    weak_ptr<int32_t> cleanup_token_weak = cleanup_token;
+
+    ScriptFuncDesc func_desc;
+    func_desc.Call = [&call_count](FuncCallData& call) {
+        ignore_unused(call);
+        call_count++;
+    };
+    func_desc.ReturnValueCleaner = [cleanup_token](ptr<void> ret_data) {
+        ignore_unused(cleanup_token, ret_data);
+        FO_UNREACHABLE_PLACE();
+    };
+
+    vector<function<void()>> deferred_callbacks;
+    deferred_callbacks.reserve(CALLBACK_COUNT);
+
+    for (size_t i = 0; i < CALLBACK_COUNT; i++) {
+        ScriptFunc<void> callback_func;
+        callback_func = ScriptFunc<void> {&func_desc};
+
+        auto stored_func = SafeAlloc::MakeShared<ScriptFunc<void>>(std::move(callback_func));
+        deferred_callbacks.emplace_back([stored_func, &failed_call_count] {
+            if (!stored_func->Call()) {
+                failed_call_count++;
+            }
+        });
+    }
+
+    func_desc.ReturnValueCleaner = {};
+    cleanup_token.reset();
+
+    CHECK_FALSE(cleanup_token_weak.lock());
+
+    for (auto& callback : deferred_callbacks) {
+        callback();
+    }
+
+    CHECK(failed_call_count == 0);
+    CHECK(call_count == CALLBACK_COUNT);
+
+    deferred_callbacks.clear();
+    CHECK_FALSE(cleanup_token_weak.lock());
 }
 
 #endif
