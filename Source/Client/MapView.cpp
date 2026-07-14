@@ -353,7 +353,7 @@ void MapView::LoadStaticData()
             item_props.RestoreAllData(props_data);
 
             auto item_props_ptr = make_nptr(&item_props);
-            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto.as_ptr(), item_props_ptr);
+            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);
             static_item->SetStatic(true);
             AddItemInternal(static_item);
         }
@@ -681,7 +681,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
     item->SetStatic(false);
@@ -712,7 +712,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -729,7 +729,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -748,7 +748,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
 
     item->SetStatic(false);
     item->SetHex(hex);
@@ -2083,7 +2083,7 @@ auto MapView::MeasureMapBorders(ptr<const ItemHexView> item) -> bool
 
     auto item_spr = item->GetSprite();
     FO_VERIFY_AND_THROW(item_spr, "Item is missing its sprite");
-    return MeasureMapBorders(item_spr.as_ptr(), item->GetSpriteOffset());
+    return MeasureMapBorders(item_spr, item->GetSpriteOffset());
 }
 
 void MapView::RecacheHexFlags(mpos hex)
@@ -3351,7 +3351,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
 
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Critter prototype is missing");
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto.as_ptr());
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
     cr->SetHex(hex);
@@ -3380,7 +3380,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Prope
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDir(dir);

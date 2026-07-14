@@ -1196,8 +1196,8 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
 
     for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
         auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-        const auto field_raw_data = field_props.GetRawData(field_prop.as_ptr());
-        const auto is_default = IsDefaultPropertyRawData(field_prop.as_ptr(), field_raw_data);
+        const auto field_raw_data = field_props.GetRawData(field_prop);
+        const auto is_default = IsDefaultPropertyRawData(field_prop, field_raw_data);
 
         field_raw_entries[i] = field_raw_data;
         field_is_default[i] = is_default;

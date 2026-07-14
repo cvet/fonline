@@ -286,7 +286,7 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     ptr<MapSprite> last_spr = this;
 
     while (last_spr->_extraChainChild) {
-        last_spr = last_spr->_extraChainChild.as_ptr();
+        last_spr = last_spr->_extraChainChild;
     }
 
     last_spr->_extraChainChild = mspr;

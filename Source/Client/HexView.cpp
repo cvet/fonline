@@ -211,13 +211,13 @@ void HexView::RefreshSprite()
     FO_STACK_TRACE_ENTRY();
 
     if (_mapSprValid) {
-        SetupSprite(_mapSpr.as_ptr());
+        SetupSprite(_mapSpr);
     }
 
     if (_extraMapSpr) {
         for (auto&& [mspr, valid] : *_extraMapSpr) {
             if (valid) {
-                SetupSprite(mspr.as_ptr());
+                SetupSprite(mspr);
             }
         }
     }

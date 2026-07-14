@@ -199,7 +199,7 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     REQUIRE(static_cast<bool>(critter_proto));
 
     auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto.as_ptr());
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
 
     REQUIRE(client->GetEntity(player->GetId()) == player);
     REQUIRE(client->GetEntity(critter->GetId()) == critter);

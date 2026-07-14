@@ -278,7 +278,7 @@ FO_SCRIPT_API bool Mapper_Game_SetEntityProperty(ptr<MapperEngine> mapper, ptr<C
         throw ScriptException("Unknown property", propName);
     }
 
-    return mapper->ApplyEntityPropertyText(entity, prop.as_ptr(), valueText);
+    return mapper->ApplyEntityPropertyText(entity, prop, valueText);
 }
 
 ///@ ExportMethod

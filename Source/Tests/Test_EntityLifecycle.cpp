@@ -66,10 +66,36 @@ namespace
             ReceiveCallback(buf);
         }
 
+        void ResetSentPacketCount() noexcept
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            _sentPacketCount.store(0, std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return _sentPacketCount.load(std::memory_order_relaxed);
+        }
+
     protected:
-        void DispatchImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+        void DispatchImpl() override
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            const const_span<uint8_t> data = SendCallback();
+
+            if (!data.empty()) {
+                _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
 
         void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+
+    private:
+        std::atomic<size_t> _sentPacketCount {};
     };
 
     static auto MakeSettings() -> GlobalSettings
@@ -421,7 +447,7 @@ namespace EntityLifecycle
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -799,7 +825,7 @@ TEST_CASE("EntityInitEvents")
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
         REQUIRE(cr->GetMapId() == map->GetId());
         REQUIRE(map->GetCritter(cr->GetId()) == cr.get());
 
@@ -1033,13 +1059,13 @@ TEST_CASE("EntityManagerCppApi")
 
         auto typed_found = server->EntityMngr.Get<Critter>(cr_id);
         REQUIRE(typed_found);
-        CHECK(typed_found.as_ptr() == cr);
+        CHECK(typed_found == cr);
 
         const EntityManager& const_entity_mngr = server->EntityMngr;
         auto const_typed_found = const_entity_mngr.Get<Critter>(cr_id);
         REQUIRE(const_typed_found);
         ptr<const Critter> const_cr = cr;
-        CHECK(const_typed_found.as_ptr() == const_cr);
+        CHECK(const_typed_found == const_cr);
 
         auto wrong_type = server->EntityMngr.Get<Item>(cr_id);
         CHECK_FALSE(static_cast<bool>(wrong_type));
@@ -1446,7 +1472,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto player = CreateLoggedPlayer(server, "Player1");
         auto registered_player = server->EntityMngr.GetPlayer(player->GetId());
         REQUIRE(registered_player);
-        CHECK(registered_player.as_ptr() == player);
+        CHECK(registered_player == player);
     }
 
     SECTION("LoginPlayerToNewRecordProducesUniqueIds")
@@ -1627,7 +1653,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
         REQUIRE(cr->GetPlayer() == player);
@@ -1642,7 +1668,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(4));
 
-        SendStopCritterMove(test_connection.as_ptr(), server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
 
         int32_t dir_calls = 0;
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
@@ -1660,6 +1686,61 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(set_mode_func.Call(0));
         server->StopCritterMoving(cr.get());
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    SECTION("StopMoveFailedReconciliationSendsAuthoritativePosition")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveCorrection");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        const mpos server_hex {20, 20};
+        mpos blocked_client_hex = server_hex;
+        REQUIRE(GeometryHelper::MoveHexByDir(blocked_client_hex, hdir::NorthWest, map->GetSize()));
+
+        server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+        REQUIRE(cr->GetPlayer() == player);
+
+        map->SetHexManualBlock(blocked_client_hex, true, true);
+
+        const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        const vector<uint16_t> control_steps {3};
+        server->StartCritterMoving(cr.get(), uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        REQUIRE(cr->IsMoving());
+
+        test_connection->ResetSentPacketCount();
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), blocked_client_hex, ipos16 {}, mdir {});
+
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        const array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        ctx->SyncEntities(sync_entities);
+
+        CHECK(cr->GetHex() == server_hex);
+        CHECK(test_connection->GetSentPacketCount() > 0);
+
+        server->SwitchPlayerCritter(player, nullptr);
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
     }

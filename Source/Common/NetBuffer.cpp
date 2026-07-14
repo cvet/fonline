@@ -149,7 +149,7 @@ void NetOutBuffer::Push(nptr<const void> buf, size_t len)
 
     GrowBuf(len);
     auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
-    CopyBuf(buf.as_ptr(), target, EncryptKey(numeric_cast<int32_t>(len)), len);
+    CopyBuf(buf, target, EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufEndPos += len;
 }
 
@@ -314,7 +314,7 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
 
     auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
-    CopyBuf(source, buf.as_ptr(), EncryptKey(numeric_cast<int32_t>(len)), len);
+    CopyBuf(source, buf, EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufReadPos += len;
 }
 

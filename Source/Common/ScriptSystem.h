@@ -345,16 +345,14 @@ public:
             return false;
         }
 
-        auto func = _func.as_nptr();
-        FO_STRONG_ASSERT(func, "Script function is null");
-        return func->DelegateObj != 0;
+        FO_STRONG_ASSERT(_func, "Script function is null");
+        return _func->DelegateObj != 0;
     }
     [[nodiscard]] auto GetName() const noexcept -> ScriptFuncName
     {
         if (_func) {
-            auto func = _func.as_nptr();
-            FO_STRONG_ASSERT(func, "Script function is null");
-            return ScriptFuncName(func->Name, func->DelegateObj);
+            FO_STRONG_ASSERT(_func, "Script function is null");
+            return ScriptFuncName(_func->Name, _func->DelegateObj);
         }
 
         return ScriptFuncName();
@@ -365,9 +363,8 @@ public:
             return false;
         }
 
-        auto func = _func.as_nptr();
-        FO_STRONG_ASSERT(func, "Script function is null");
-        return func->AttributeChecker(attribute);
+        FO_STRONG_ASSERT(_func, "Script function is null");
+        return _func->AttributeChecker(attribute);
     }
 
     [[nodiscard]] auto GetResult() noexcept -> TRet
@@ -382,8 +379,7 @@ public:
             return false;
         }
 
-        auto func = _func.as_nptr();
-        FO_STRONG_ASSERT(func, "Script function is null");
+        FO_STRONG_ASSERT(_func, "Script function is null");
 
         if constexpr (std::is_same_v<TRet, void>) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};
@@ -394,7 +390,7 @@ public:
             call.ArgsData = args_data;
 
             try {
-                func->Call(call);
+                _func->Call(call);
                 return true;
             }
             catch (const std::exception& ex) {
@@ -411,7 +407,7 @@ public:
             call.RetData = NativeDataProvider::NormalizeArg(_ret, temp_storage[storage_index]);
 
             try {
-                func->Call(call);
+                _func->Call(call);
                 return true;
             }
             catch (const std::exception& ex) {
@@ -516,7 +512,7 @@ namespace NativeDataProvider
     {
         FO_VERIFY_AND_THROW(call.RetData, "Script call has no return value storage");
 
-        const auto ret_object = ReadHandleSlot(call.RetData.as_ptr());
+        const auto ret_object = ReadHandleSlot(call.RetData);
 
         if (!ret_object) {
             throw ScriptException("Non-nullable method returned null", method_name, type_name);
@@ -654,7 +650,7 @@ namespace NativeDataCaller
         if constexpr (!std::is_void_v<R>) {
             R&& r = fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
             optional<std::remove_cvref_t<R>> temp_r = std::move(r);
-            ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData.as_ptr(), *accessor, temp_r);
+            ReturnArg<std::add_lvalue_reference_t<R>>(call.RetData, *accessor, temp_r);
         }
         else {
             fn(ConvertArg<Args>(call.ArgsData[I], *accessor, std::get<I>(temp_data))...);
@@ -957,8 +953,7 @@ template<typename T, typename U, typename TContainer>
     result.reserve(entries.size());
 
     for (size_t i = 0; i < entries.size(); i++) {
-        auto entry_ptr = entries[i].as_ptr();
-        auto mutable_entry = make_ptr(const_cast<U*>(std::addressof(*entry_ptr)));
+        auto mutable_entry = make_ptr(const_cast<U*>(std::addressof(*entries[i])));
         result.emplace_back(mutable_entry);
     }
 

@@ -74,7 +74,7 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
         const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
         tex->UpdateTextureRegion({}, {w, h}, pixels);
 
-        auto tex_ptr = tex.as_nptr();
+        auto tex_ptr = tex.as_ptr();
         loaded_textures_ptr->emplace_back(std::move(tex));
 
         return {tex_ptr, {0.0f, 0.0f, 1.0f, 1.0f}};

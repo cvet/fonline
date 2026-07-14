@@ -176,9 +176,22 @@ if(FO_BUILD_BAKER)
             WRITE_BUILD_HASH)
 
         if(FO_LINUX)
-            # Keep engine symbols pulled from static archives private to the plugin. Otherwise ELF
-            # symbol interposition lets dlclose destroy host-owned CommonLib globals.
-            TargetLinkOptions(${FO_DEV_NAME}_BakerLib PRIVATE -Wl,--exclude-libs,ALL)
+            # The baker is loaded into hosts built with different allocator/sanitizer settings. Keep
+            # every implementation symbol local so the plugin cannot interpose its allocator or
+            # engine globals on the host; FO_BakeResources is the complete C ABI boundary.
+            SetValue(bakerLibExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/exports/BakerLib.map")
+            SetValue(verifyDynamicExports "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/VerifyDynamicExports.cmake")
+            TargetLinkOptions(${FO_DEV_NAME}_BakerLib PRIVATE
+                -Wl,--exclude-libs,ALL
+                "-Wl,--version-script,${bakerLibExports}")
+            AddCustomCommand(TARGET ${FO_DEV_NAME}_BakerLib POST_BUILD
+                COMMAND ${CMAKE_COMMAND}
+                    "-DNM_EXECUTABLE=${CMAKE_NM}"
+                    "-DLIBRARY_PATH=$<TARGET_FILE:${FO_DEV_NAME}_BakerLib>"
+                    "-DEXPECTED_EXPORTS=FO_BakeResources"
+                    -P "${verifyDynamicExports}"
+                COMMENT "Verify ${FO_DEV_NAME}_BakerLib public exports"
+                VERBATIM)
         endif()
     endif()
 endif()

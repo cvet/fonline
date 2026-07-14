@@ -226,7 +226,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     CHECK(item->GetProtoId() == item_pid);
     auto found_item = server->EntityMngr.GetItem(item_id);
     REQUIRE(found_item);
-    CHECK(found_item.as_ptr() == item);
+    CHECK(found_item == item);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > initial_entity_count);
 
@@ -376,9 +376,9 @@ TEST_CASE("ServerCritterLifecycleOperations")
     REQUIRE(found_cr1);
     REQUIRE(found_cr2);
     REQUIRE(found_cr3);
-    CHECK(found_cr1.as_ptr() == cr1);
-    CHECK(found_cr2.as_ptr() == cr2);
-    CHECK(found_cr3.as_ptr() == cr3);
+    CHECK(found_cr1 == cr1);
+    CHECK(found_cr2 == cr2);
+    CHECK(found_cr3 == cr3);
 
     // Script alive/dead check
     auto is_alive_func = server->FindFunc<bool, ptr<Critter>>(fn("ServerItemsTest::TestCritterIsAlive"));

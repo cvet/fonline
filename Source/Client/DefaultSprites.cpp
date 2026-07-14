@@ -204,7 +204,7 @@ auto SpriteSheet::GetCurSpr() const -> ptr<const Sprite>
     ptr<const SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex];
@@ -217,7 +217,7 @@ auto SpriteSheet::GetCurSpr() -> ptr<Sprite>
     ptr<SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex];
@@ -252,7 +252,7 @@ auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     ptr<const SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex]->FillData(dbuf, pos, colors);
@@ -536,7 +536,8 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     if (pixels) {
         const size_t width = numeric_cast<size_t>(size.width);
         const size_t height = numeric_cast<size_t>(size.height);
-        const auto pixel_data = make_span(pixels.as_ptr(), width * height);
+        auto pixel_ptr = pixels.as_ptr();
+        const auto pixel_data = make_span(pixel_ptr, width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 

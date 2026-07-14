@@ -56,7 +56,7 @@ Baking turns project resources and configuration into runtime-ready output. The 
 At runtime/source level, baking is owned by:
 
 - `Source/Applications/BakerApp.cpp` — executable app wrapper that constructs `MasterBaker` and calls `BakeAll()`.
-- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. On Linux this is the shared library's only public engine entry point; symbols pulled from static engine libraries stay local to the plugin so loading and unloading it cannot interpose or destroy host runtime state.
+- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. On Linux a linker export map makes this the shared library's only public symbol, and a post-build symbol check enforces that ABI. All allocator and engine implementation symbols bind locally, so loading a release baker into a sanitizer host cannot interpose on host allocation or global runtime state.
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 
 ## CMake entry points

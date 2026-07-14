@@ -1147,7 +1147,7 @@ FO_SCRIPT_API bool Server_Map_CheckPlaceForItem(ptr<Map> self, mpos hex, hstring
         throw ScriptException("Invalid item proto id arg", pid);
     }
 
-    return self->IsValidPlaceForItem(hex, proto_ptr.as_ptr());
+    return self->IsValidPlaceForItem(hex, proto_ptr);
 }
 
 // SyncScope: requires self; reads map placement rules and item prototype data.

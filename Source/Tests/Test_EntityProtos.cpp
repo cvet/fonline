@@ -85,8 +85,8 @@ TEST_CASE("EntityProtos")
         REQUIRE(static_cast<bool>(item_registrator));
         REQUIRE(static_cast<bool>(critter_registrator));
 
-        ProtoItem item_proto {knife_pid, item_registrator.as_ptr()};
-        ProtoCritter critter_proto {raider_pid, critter_registrator.as_ptr()};
+        ProtoItem item_proto {knife_pid, item_registrator};
+        ProtoCritter critter_proto {raider_pid, critter_registrator};
 
         CHECK(item_proto.GetProtoId() == knife_pid);
         CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
@@ -106,7 +106,7 @@ TEST_CASE("EntityProtos")
         REQUIRE(static_cast<bool>(registrator));
 
         const hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
-        ProtoCustomEntity proto {custom_pid, registrator.as_ptr()};
+        ProtoCustomEntity proto {custom_pid, registrator};
 
         CHECK(proto.GetProtoId() == custom_pid);
         CHECK(proto.GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
@@ -125,7 +125,7 @@ TEST_CASE("EntityProtos")
         optional<TestEntityHolder> holder;
 
         {
-            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrator.as_ptr());
+            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrator);
             holder.emplace(proto);
         }
 
@@ -145,7 +145,7 @@ TEST_CASE("EntityProtos")
         auto registrator = meta.GetPropertyRegistrator("TestEntity");
         REQUIRE(static_cast<bool>(registrator));
 
-        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrator.as_ptr());
+        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrator);
         std::atomic_bool reader_started {false};
         std::atomic_bool saw_destroying {false};
         std::atomic_bool saw_destroyed {false};

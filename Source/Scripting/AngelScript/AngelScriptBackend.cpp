@@ -73,7 +73,7 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     const string_view type = message->type == AngelScript::asMSGTYPE_WARNING ? "warning" : (message->type == AngelScript::asMSGTYPE_INFORMATION ? "info" : "error");
     auto as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
     FO_VERIFY_AND_THROW(as_engine, "AngelScript engine callback parameter is null");
-    auto backend = GetScriptBackend(as_engine.as_ptr());
+    auto backend = GetScriptBackend(as_engine);
     auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     const string_view orig_file = Preprocessor::ResolveOriginalFile(message->row, lnt.get());
     const uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
@@ -734,7 +734,7 @@ void AngelScriptBackend::BindRequiredStuff()
         for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
             nptr<AngelScript::asIScriptFunction> func = mod->GetFunctionByIndex(i);
             FO_VERIFY_AND_THROW(func, "Module function lookup returned null");
-            auto func_desc = IndexScriptFunc(func.as_ptr());
+            auto func_desc = IndexScriptFunc(func);
 
             _scriptSys->AddGlobalScriptFunc(func_desc);
 

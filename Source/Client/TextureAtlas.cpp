@@ -240,7 +240,7 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
 
     const ipos32 pos = {atlas_node->Pos.x + ATLAS_SPRITES_PADDING, atlas_node->Pos.y + ATLAS_SPRITES_PADDING};
 
-    return {atlas.as_ptr(), take_not_null(atlas_node), pos};
+    return {atlas, take_not_null(atlas_node), pos};
 }
 
 void TextureAtlasManager::DumpAtlases() const

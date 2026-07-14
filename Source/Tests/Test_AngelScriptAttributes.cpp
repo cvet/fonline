@@ -458,7 +458,7 @@ namespace
     {
         REQUIRE(func);
 
-        auto user_data = GetFunctionAttributesUserData(func.as_ptr());
+        auto user_data = GetFunctionAttributesUserData(func);
         if (expected.size() == 0) {
             CHECK_FALSE(static_cast<bool>(user_data));
             return;
@@ -1582,8 +1582,8 @@ void NamespacedCall()
         auto mod = BuildModule(engine, "HelperFuncNames", Script, messages);
 
         EngineMetadata meta {[] { }};
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
-        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()").as_ptr(), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void FreeCall()"), meta.Hashes) == meta.Hashes.ToHashedString("FreeCall"));
+        CHECK(GetScriptFuncName(FindScriptFunction(mod, "void HelperNs::NamespacedCall()"), meta.Hashes) == meta.Hashes.ToHashedString("HelperNs::NamespacedCall"));
     }
 
     SECTION("BindsAndStripsAttributes")
@@ -1650,8 +1650,8 @@ void NamespacedCall()
 
         auto func = FindScriptFunction(mod, "void AttrTest::WithPriority()");
         CheckAttributes(func, {"Primary(2)", "Secondary"});
-        CHECK(HasFunctionAttribute(func.as_ptr(), "Primary"));
-        CHECK(FindFunctionAttribute(func.as_ptr(), "Primary") == "Primary(2)");
+        CHECK(HasFunctionAttribute(func, "Primary"));
+        CHECK(FindFunctionAttribute(func, "Primary") == "Primary(2)");
     }
 
     SECTION("KeepsTopLevelAttributesOutsideClosedClass")
@@ -1731,16 +1731,16 @@ void NamespacedCall()
         const auto records = DeserializeFunctionAttributeRecords(reader);
         reader.VerifyEnd();
 
-        const auto bind_error = BindFunctionAttributeRecords(load_mod.as_ptr(), records);
+        const auto bind_error = BindFunctionAttributeRecords(load_mod, records);
         INFO(bind_error);
         REQUIRE(bind_error.empty());
-        CHECK(ValidateAttributedFunctionUsage(load_mod.as_ptr()).empty());
+        CHECK(ValidateAttributedFunctionUsage(load_mod).empty());
 
-        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Foo()"), {"Primary"});
-        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "int AttrTest::Multi(int)"), {"One", "Two"});
-        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Overload()"), {"NoArgs"});
-        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Overload(int)"), {"WithInt"});
-        CheckAttributes(FindScriptFunction(load_mod.as_ptr(), "void AttrTest::Plain()"), {});
+        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Foo()"), {"Primary"});
+        CheckAttributes(FindScriptFunction(load_mod, "int AttrTest::Multi(int)"), {"One", "Two"});
+        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Overload()"), {"NoArgs"});
+        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Overload(int)"), {"WithInt"});
+        CheckAttributes(FindScriptFunction(load_mod, "void AttrTest::Plain()"), {});
     }
 
     SECTION("RejectsInvalidPlacement")

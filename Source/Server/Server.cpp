@@ -1262,7 +1262,7 @@ void ServerEngine::SyncWholeWorld(SyncContext& ctx)
     sync_entities.reserve(entities.size());
 
     for (auto& entity : entities) {
-        sync_entities.emplace_back(entity.as_ptr());
+        sync_entities.emplace_back(entity);
     }
 
     ctx.SyncEntities(sync_entities);
@@ -2505,7 +2505,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
         for (const auto item_id : prev_cr->GetVisibleItems()) {
             if (!cr->IsSeeItem(item_id)) {
                 if (auto item = EntityMngr.GetItem(item_id)) {
-                    cr->Send_RemoveItemFromMap(item.as_ptr());
+                    cr->Send_RemoveItemFromMap(item);
                 }
             }
         }
@@ -2551,7 +2551,7 @@ void ServerEngine::SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr
             }
 
             if (auto item = EntityMngr.GetItem(item_id)) {
-                cr->Send_AddItemOnMap(item.as_ptr());
+                cr->Send_AddItemOnMap(item);
             }
         }
     }
@@ -3143,14 +3143,14 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
     if (speed == 0) {
         WriteLog("Process_Move: zero speed, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
         return;
     }
 
     if (cr->GetIsAttached()) {
         WriteLog("Process_Move: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
-        player->Send_Attachments(cr.as_ptr());
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Attachments(cr);
+        player->Send_Moving(cr);
         return;
     }
 
@@ -3159,7 +3159,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr.as_ptr(), corrected_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, corrected_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3172,7 +3172,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
     if (move_result == EventResult::StopChain) {
         WriteLog("Process_Move: move rejected by script, player '{}', critter '{}' ({}) on map '{}', speed {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), speed);
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
         return;
     }
 
@@ -3180,11 +3180,11 @@ void ServerEngine::Process_Move(ptr<Player> player)
     const auto cr_hex = cr->GetHex();
 
     if (cr_hex != start_hex) {
-        const auto find_result = MapMngr.FindPath(map.as_ptr(), cr, cr_hex, start_hex, cr->GetMultihex(), 0);
+        const auto find_result = MapMngr.FindPath(map, cr, cr_hex, start_hex, cr->GetMultihex(), 0);
 
         if (find_result.Result != FindPathOutput::ResultType::Ok) {
             WriteLog("Process_Move: async fix pathfinding failed, player '{}', critter '{}' ({}) on map '{}', server_hex ({},{}), client_hex ({},{})", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, start_hex.x, start_hex.y);
-            player->Send_Moving(cr.as_ptr());
+            player->Send_Moving(cr);
             return;
         }
 
@@ -3226,7 +3226,7 @@ void ServerEngine::Process_Move(ptr<Player> player)
 
         if (valid_step_count == 0) {
             WriteLog("Process_Move: all steps blocked, player '{}', critter '{}' ({}) on map '{}', hex ({},{}), multihex {}, total_steps {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), cr_hex.x, cr_hex.y, multihex, steps.size());
-            player->Send_Moving(cr.as_ptr());
+            player->Send_Moving(cr);
             return;
         }
 
@@ -3257,13 +3257,13 @@ void ServerEngine::Process_Move(ptr<Player> player)
     const auto clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
 
     nptr<const Player> initiator = player;
-    StartCritterMoving(cr.as_ptr(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
+    StartCritterMoving(cr, numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
 
     if (path_truncated) {
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
     }
     if (corrected_speed != numeric_cast<int32_t>(speed)) {
-        player->Send_MovingSpeed(cr.as_ptr());
+        player->Send_MovingSpeed(cr);
     }
 }
 
@@ -3314,13 +3314,13 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
 
     if (cr->GetIsAttached()) {
         WriteLog("Process_StopMove: critter is attached, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
-        player->Send_Attachments(cr.as_ptr());
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Attachments(cr);
+        player->Send_Moving(cr);
         return;
     }
 
     if (!cr->IsMoving()) {
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
         return;
     }
 
@@ -3329,7 +3329,7 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr.as_ptr(), zero_speed);
+    const EventResult move_result = OnPlayerMoveCritter.Fire(player, cr, zero_speed);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3342,13 +3342,13 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     }
     if (move_result == EventResult::StopChain) {
         WriteLog("Process_StopMove: stop rejected by script, player '{}', critter '{}' ({}) on map '{}'", player->GetName(), cr->GetName(), cr_id, map->GetName());
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
         return;
     }
 
     const uint32_t stop_moving_uid = cr->GetMovingUid();
 
-    ReconcileCritterStopPosition(player, cr.as_ptr(), map.as_ptr(), client_hex, client_hex_offset, client_dir);
+    const bool stop_position_reconciled = ReconcileCritterStopPosition(player, cr, map, client_hex, client_hex_offset, client_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3360,12 +3360,17 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
     if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
-        player->Send_Moving(cr.as_ptr());
+        player->Send_Moving(cr);
+        return;
+    }
+
+    if (!stop_position_reconciled) {
+        StopCritterMoving(cr);
         return;
     }
 
     nptr<const Player> ignore_player = player;
-    StopCritterMoving(cr.as_ptr(), MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr.as_ptr()); }); });
+    StopCritterMoving(cr, MovingState::Stopped, [ignore_player, cr]() mutable { cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); }); });
 }
 
 void ServerEngine::Process_Dir(ptr<Player> player)
@@ -3415,7 +3420,7 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     ValidateEntityAccess(player);
     ValidateEntityAccess(cr);
 
-    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr.as_ptr(), checked_dir);
+    const EventResult dir_result = OnPlayerDirCritter.Fire(player, cr, checked_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -3428,12 +3433,12 @@ void ServerEngine::Process_Dir(ptr<Player> player)
     }
     if (dir_result == EventResult::StopChain) {
         WriteLog("Process_Dir: dir rejected by script, player '{}', critter '{}' ({}) on map '{}', angle {}", player->GetName(), cr->GetName(), cr_id, map->GetName(), dir.angle());
-        player->Send_Dir(cr.as_ptr());
+        player->Send_Dir(cr);
         return;
     }
 
     cr->ChangeDir(checked_dir);
-    cr->SendAndBroadcast(player, [cr](ptr<Player> p) { p->Send_Dir(cr.as_ptr()); });
+    cr->SendAndBroadcast(player, [cr](ptr<Player> p) { p->Send_Dir(cr); });
 }
 
 void ServerEngine::Process_Property(ptr<Player> player)
@@ -4404,7 +4409,7 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
 
     try {
         if (map && !cr->GetIsAttached()) {
-            ProcessCritterMovingBySteps(cr, map.as_ptr());
+            ProcessCritterMovingBySteps(cr, map);
         }
         else {
             const auto reason = cr->GetIsAttached() ? MovingState::Attached : MovingState::GenericError;

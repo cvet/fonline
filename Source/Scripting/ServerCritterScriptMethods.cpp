@@ -123,7 +123,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex)
     }
 
     if (hex != self->GetHex()) {
-        self->GetEngine()->MapMngr.TransferToMap(self, map.as_ptr(), hex, self->GetDir(), 2);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
     }
 }
 
@@ -149,7 +149,7 @@ FO_SCRIPT_API void Server_Critter_TransferToHex(ptr<Critter> self, mpos hex, mdi
             self->ChangeDir(dir);
         }
 
-        self->GetEngine()->MapMngr.TransferToMap(self, map.as_ptr(), hex, self->GetDir(), 2);
+        self->GetEngine()->MapMngr.TransferToMap(self, map, hex, self->GetDir(), 2);
     }
     else if (self->GetDir() != dir) {
         self->ChangeDir(dir);

@@ -401,7 +401,7 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
         ScriptFuncDesc func_desc;
         func_desc.Call = [returned_obj](FuncCallData& call) {
             FO_VERIFY_AND_THROW(call.RetData, "Missing return storage");
-            NativeDataProvider::WriteHandleSlot(call.RetData.as_ptr(), returned_obj);
+            NativeDataProvider::WriteHandleSlot(call.RetData, returned_obj);
         };
         func_desc.ReturnValueCleaner = [&release_count, returned_obj](ptr<void> ret_data) {
             const nptr<void> stored_obj = NativeDataProvider::ReadHandleSlot(ret_data);

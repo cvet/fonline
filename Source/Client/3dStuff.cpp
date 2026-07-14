@@ -1744,7 +1744,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                         }
 
                         // Skip equal influence side
-                        bool influence_side = !!FindModelBone(unskin_bone1.as_ptr(), combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
+                        bool influence_side = !!FindModelBone(unskin_bone1, combined_mesh->SkinBones[iround<int32_t>(v.BlendIndices[b])]->Name);
 
                         if (v_side == influence_side) {
                             continue;
@@ -2866,7 +2866,7 @@ auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<Mode
     }
 
     for (size_t i = 0; i < bone->Children.size(); i++) {
-        auto child_bone = FindModelBone(bone->Children[i].as_ptr(), bone_name);
+        auto child_bone = FindModelBone(bone->Children[i], bone_name);
 
         if (child_bone) {
             return child_bone;

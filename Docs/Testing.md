@@ -76,6 +76,13 @@ needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
 defect detector.
 
+Applications that load `BakerLib` while running under a sanitizer must use a baker
+built with the same `San_*` configuration. Hiding the plugin's ELF exports prevents
+direct symbol interposition, but calls implemented inside the shared C++ runtime may
+still allocate through the host and return to an inline deallocator in the plugin.
+Matching configurations keep the sanitizer runtime and allocator contract identical
+on both sides of that module boundary.
+
 On MSVC, the `San_Address`/`Debug_San_Address` configs additionally link executables with
 `/STACK:8388608` (`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake`):
 ASan's stack-frame inflation overflows the 1 MiB Windows executable default on recursion

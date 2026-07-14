@@ -2284,7 +2284,8 @@ void Application::EndFrame()
                     auto tex_data = cast_from_void<const ucolor*>(im_tex->GetPixels());
                     FO_VERIFY_AND_THROW(tex_data, "ImGui texture pixel data is null");
                     const size_t tex_pixels_count = numeric_cast<size_t>(tex_size.width) * tex_size.height;
-                    const auto tex_pixels = make_span(tex_data.as_ptr(), tex_pixels_count);
+                    auto tex_data_ptr = tex_data.as_ptr();
+                    const auto tex_pixels = make_span(tex_data_ptr, tex_pixels_count);
                     font_tex->UpdateTextureRegion({}, tex_size, tex_pixels);
                     im_tex->SetTexID(make_nptr(font_tex.get()).void_cast());
                     im_tex->SetStatus(ImTextureStatus_OK);
@@ -2299,7 +2300,8 @@ void Application::EndFrame()
                     const size_t update_size_in_pixels = update_size.height != 0 ? (numeric_cast<size_t>(update_size.height - 1) * update_pitch) + numeric_cast<size_t>(update_size.width) : 0;
                     auto tex = cast_from_void<RenderTexture*>(im_tex->GetTexID());
                     FO_VERIFY_AND_THROW(tex, "ImGui texture id does not reference a render texture");
-                    const auto update_pixels = make_span(update_data.as_ptr(), update_size_in_pixels);
+                    auto update_data_ptr = update_data.as_ptr();
+                    const auto update_pixels = make_span(update_data_ptr, update_size_in_pixels);
                     tex->UpdateTextureRegion(update_pos, update_size, update_pixels, true);
                     im_tex->SetStatus(ImTextureStatus_OK);
                 }

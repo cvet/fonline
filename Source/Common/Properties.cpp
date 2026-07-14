@@ -2015,7 +2015,7 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsInt(prop.as_ptr());
+    return GetPlainDataValueAsInt(prop);
 }
 
 auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
@@ -2034,7 +2034,7 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsAny(prop.as_ptr());
+    return GetPlainDataValueAsAny(prop);
 }
 
 void Properties::SetValueAsInt(int32_t property_index, int32_t value)

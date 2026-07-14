@@ -426,7 +426,7 @@ void DebuggerEndpointServer::Impl::ProcessLine(ptr<AngelScript::asIScriptContext
                     const int32_t base_type_id = var_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
 
                     if (is_handle) {
-                        auto obj = NativeDataProvider::ReadHandleSlot(var_addr.as_ptr());
+                        auto obj = NativeDataProvider::ReadHandleSlot(var_addr);
                         var.Value = obj ? GetScriptObjectInfo(obj, base_type_id) : string {"null"};
                     }
                     else {

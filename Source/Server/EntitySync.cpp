@@ -669,7 +669,7 @@ static auto FindLockOwner(ptr<ServerEntity> entity, nptr<EntityLock> lock) noexc
     auto owner = entity.hold_ref();
 
     for (auto parent = entity->GetParentRaw(); parent && parent->GetEntityLock() == lock; parent = parent->GetParentRaw()) {
-        owner = parent.as_ptr().hold_ref();
+        owner = require_refcount_ptr(parent);
     }
 
     return owner;
@@ -895,7 +895,7 @@ void SyncContext::SyncEntities(span<const nptr<ServerEntity>> entities)
                 }
 
                 new_holds.emplace_back(parent_lock);
-                new_hold_owners.emplace_back(parent.as_ptr().hold_ref());
+                new_hold_owners.emplace_back(require_refcount_ptr(parent));
             }
         }
 
@@ -1094,7 +1094,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
         }
 
         add_marks.emplace_back(parent_lock);
-        add_mark_owners.emplace_back(parent.as_ptr().hold_ref());
+        add_mark_owners.emplace_back(require_refcount_ptr(parent));
     }
 
     vector<pair<ptr<EntityLock>, bool>> ops; // bool = is-exclusive

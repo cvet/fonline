@@ -218,7 +218,7 @@ static void Global_NameOf(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("NameOf: argument must be a function reference");
     }
 
-    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 0).as_ptr());
+    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 0));
 
     if (!func) {
         throw ScriptException("NameOf: function reference is null");

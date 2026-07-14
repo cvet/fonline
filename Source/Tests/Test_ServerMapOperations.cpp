@@ -4641,7 +4641,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4672,7 +4672,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -5180,7 +5180,7 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     const auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 
-    auto static_map = server->MapMngr.GetStaticMap(map_proto.as_ptr());
+    auto static_map = server->MapMngr.GetStaticMap(map_proto);
 
     REQUIRE(static_map->CritterBillets.size() == 1);
     CHECK(static_map->CritterBillets.front().first == ident_t {11});

@@ -648,7 +648,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
         CHECK(load_module->LoadByteCode(&reader) >= 0);
 
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
+        const auto load_metrics = RunScenario(load_module, load_state);
 
         CHECK(build_metrics.FirstObservedId == 200);
         CHECK(build_metrics.LastObservedId == 100);
@@ -704,7 +704,7 @@ TEST_CASE("AngelScriptBytecode", "[angelscript][bytecode]")
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
+        const auto load_metrics = RunScenario(load_module, load_state);
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);
@@ -2728,7 +2728,7 @@ void CallCalleeNullableWithNull()
 
         // Execute loaded bytecode and verify identical results
         ResourceTrackerState load_state {};
-        const auto load_metrics = RunScenario(load_module.as_ptr(), load_state);
+        const auto load_metrics = RunScenario(load_module, load_state);
 
         CHECK(load_metrics.FirstObservedId == build_metrics.FirstObservedId);
         CHECK(load_metrics.LastObservedId == build_metrics.LastObservedId);

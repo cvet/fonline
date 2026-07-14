@@ -897,7 +897,7 @@ void ClientEngine::Net_OnAddCritter()
             _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
         }
 
-        auto global_cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto.as_ptr());
+        auto global_cr = SafeAlloc::MakeRefCounted<CritterView>(this, cr_id, proto);
         global_cr->RestoreData(_tempPropertiesData);
         _globalMapCritters.emplace_back(global_cr);
 
@@ -924,7 +924,7 @@ void ClientEngine::Net_OnAddCritter()
         auto proto = GetProtoItem(item_pid);
         FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-        auto item = cr->AddReceivedInvItem(item_id, proto.as_ptr(), item_slot, _tempPropertiesData);
+        auto item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
         ReceiveCustomEntities(item);
     }
@@ -1059,7 +1059,7 @@ void ClientEngine::Net_OnRemoveCritter()
         OnCritterOut.Fire(cr);
         _globalMapCritters.erase(_globalMapCritters.begin() + numeric_cast<ptrdiff_t>(erase_index));
 
-        if (GetChosen().as_ptr() == cr) {
+        if (GetChosen() == cr) {
             _chosen.reset();
         }
 
@@ -1295,7 +1295,7 @@ void ClientEngine::Net_OnCritterMoveItem()
             auto proto = GetProtoItem(item_pid);
             FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-            auto item = cr->AddReceivedInvItem(item_id, proto.as_ptr(), item_slot, _tempPropertiesData);
+            auto item = cr->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
             ReceiveCustomEntities(item);
         }
@@ -1491,7 +1491,7 @@ void ClientEngine::Net_OnChosenAddItem()
     auto proto = GetProtoItem(item_pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = chosen->AddReceivedInvItem(item_id, proto.as_ptr(), item_slot, _tempPropertiesData);
+    auto item = chosen->AddReceivedInvItem(item_id, proto, item_slot, _tempPropertiesData);
 
     ReceiveCustomEntities(item);
 
@@ -1828,7 +1828,7 @@ void ClientEngine::Net_OnSomeItems()
         auto proto = GetProtoItem(pid);
         FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto.as_ptr());
+        auto item = SafeAlloc::MakeRefCounted<ItemView>(this, item_id, proto);
         item->RestoreData(_tempPropertiesData);
 
         ReceiveCustomEntities(item);
@@ -1892,7 +1892,7 @@ void ClientEngine::Net_OnAddCustomEntity()
         holder = this;
     }
 
-    auto entity = CreateCustomEntityView(holder.as_ptr(), holder_entry, id, pid, _tempPropertiesDataCustomEntity);
+    auto entity = CreateCustomEntityView(holder, holder_entry, id, pid, _tempPropertiesDataCustomEntity);
 
     OnCustomEntityIn.Fire(entity);
 }
@@ -1959,7 +1959,7 @@ void ClientEngine::ReceiveCustomEntities(nptr<Entity> holder)
             _conn.InBuf->ReadPropsData(_tempPropertiesDataCustomEntity);
 
             if (holder) {
-                auto entity = CreateCustomEntityView(holder.as_ptr(), entry, id, pid, _tempPropertiesDataCustomEntity);
+                auto entity = CreateCustomEntityView(holder, entry, id, pid, _tempPropertiesDataCustomEntity);
 
                 ReceiveCustomEntities(entity);
             }
@@ -1995,10 +1995,10 @@ auto ClientEngine::CreateCustomEntityView(ptr<Entity> holder, hstring entry, ide
 
     refcount_ptr<CustomEntityView> entity = [&]() -> refcount_ptr<CustomEntityView> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator.as_ptr(), proto.as_ptr());
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProtoView>(this, id, registrator, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator.as_ptr(), nullptr, nullptr);
+        return SafeAlloc::MakeRefCounted<CustomEntityView>(this, id, registrator, nullptr, nullptr);
     }();
 
     entity->RestoreData(data);

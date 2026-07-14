@@ -197,19 +197,19 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator");
 
         if (type_name == ProtoLocation::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator.as_ptr(), nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoLocation>(pid, registrator, nullptr);
         }
         if (type_name == ProtoMap::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator.as_ptr(), nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoMap>(pid, registrator, nullptr);
         }
         if (type_name == ProtoCritter::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator.as_ptr(), nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoCritter>(pid, registrator, nullptr);
         }
         if (type_name == ProtoItem::ENTITY_TYPE_NAME) {
-            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator.as_ptr(), nullptr);
+            return SafeAlloc::MakeRefCounted<ProtoItem>(pid, registrator, nullptr);
         }
 
-        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator.as_ptr(), nullptr);
+        return SafeAlloc::MakeRefCounted<ProtoCustomEntity>(pid, registrator, nullptr);
     };
 
     for (const auto& [type_name, file_protos] : all_file_protos) {

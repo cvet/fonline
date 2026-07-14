@@ -91,9 +91,11 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     }
 
     _sprMngr.BeginScene();
+
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
+
     _sprMngr.EndScene();
 
     // Load font
@@ -172,7 +174,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {

@@ -124,7 +124,7 @@ auto FileHeader::Copy() const -> FileHeader
 
     FO_VERIFY_AND_THROW(_isLoaded, "Resource is not loaded");
 
-    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource.as_ptr());
+    return FileHeader(_filePath, _fileSize, _writeTime, _dataSource);
 }
 
 File::File(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds, unique_del_ptr<const uint8_t>&& buf) :
@@ -159,7 +159,7 @@ auto File::GetStr() const -> string
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        MemCopy(result.data(), _fileBuf.as_ptr(), result.size());
+        MemCopy(result.data(), _fileBuf, result.size());
     }
 
     return result;
@@ -176,7 +176,7 @@ auto File::GetData() const -> vector<uint8_t>
     result.resize(_fileSize);
 
     if (!result.empty()) {
-        MemCopy(result.data(), _fileBuf.as_ptr(), result.size());
+        MemCopy(result.data(), _fileBuf, result.size());
     }
 
     return result;

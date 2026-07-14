@@ -526,6 +526,17 @@ TEST_CASE("SmartPointers")
         CHECK(maybe_borrowed_from_owner->Value == 82);
     }
 
+    SECTION("ExplicitBorrowSurvivesOwnerMove")
+    {
+        auto source_owner = SafeAlloc::MakeUnique<PtrDerived>(83);
+        auto borrowed = source_owner.as_ptr();
+
+        auto destination_owner = std::move(source_owner);
+
+        CHECK(borrowed.get() == destination_owner.get());
+        CHECK(borrowed->Value == 83);
+    }
+
     SECTION("UniqueOwningPointersDynCastToBorrowDirectly")
     {
         unique_ptr<PtrBase> owned_ptr = SafeAlloc::MakeUnique<PtrCrossDerived>(83, 84);

@@ -487,7 +487,7 @@ FO_SCRIPT_API void Server_Game_DestroyEntity(ptr<ServerEngine> server, ident_t i
         ValidateEntityAccess(entity);
         ValidateEntityAccess(entity->GetParentRaw());
 
-        server->EntityMngr.DestroyEntity(entity.as_ptr());
+        server->EntityMngr.DestroyEntity(entity);
     }
 }
 
@@ -514,7 +514,7 @@ FO_SCRIPT_API void Server_Game_DestroyEntities(ptr<ServerEngine> server, readonl
             ValidateEntityAccess(entity);
             ValidateEntityAccess(entity->GetParentRaw());
 
-            server->EntityMngr.DestroyEntity(entity.as_ptr());
+            server->EntityMngr.DestroyEntity(entity);
         }
     }
 }
@@ -574,7 +574,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
         ValidateEntityAccess(item);
         ValidateEntityAccess(item->GetParentRaw());
 
-        server->ItemMngr.DestroyItem(item.as_ptr());
+        server->ItemMngr.DestroyItem(item);
     }
 }
 
@@ -591,7 +591,7 @@ FO_SCRIPT_API void Server_Game_DestroyItem(ptr<ServerEngine> server, ident_t ite
         const int32_t cur_count = item->GetCount();
 
         if (count >= cur_count) {
-            server->ItemMngr.DestroyItem(item.as_ptr());
+            server->ItemMngr.DestroyItem(item);
         }
         else {
             item->SetCount(cur_count - count);
@@ -625,7 +625,7 @@ FO_SCRIPT_API void Server_Game_DestroyItems(ptr<ServerEngine> server, readonly_v
                 ValidateEntityAccess(item);
                 ValidateEntityAccess(item->GetParentRaw());
 
-                server->ItemMngr.DestroyItem(item.as_ptr());
+                server->ItemMngr.DestroyItem(item);
             }
         }
     }
@@ -659,7 +659,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritter(ptr<ServerEngine> server, ident_t 
             if (!cr->GetControlledByPlayer()) {
                 ValidateEntityAccess(cr->GetParentRaw());
 
-                server->CrMngr.DestroyCritter(cr.as_ptr());
+                server->CrMngr.DestroyCritter(cr);
             }
         }
     }
@@ -696,7 +696,7 @@ FO_SCRIPT_API void Server_Game_DestroyCritters(ptr<ServerEngine> server, readonl
                 if (!cr->GetControlledByPlayer()) {
                     ValidateEntityAccess(cr->GetParentRaw());
 
-                    server->CrMngr.DestroyCritter(cr.as_ptr());
+                    server->CrMngr.DestroyCritter(cr);
                 }
             }
         }
@@ -806,7 +806,7 @@ FO_SCRIPT_API void Server_Game_DestroyLocation(ptr<ServerEngine> server, ident_t
         ValidateEntityAccess(loc);
         ValidateEntityAccess(loc->GetParentRaw());
 
-        server->MapMngr.DestroyLocation(loc.as_ptr());
+        server->MapMngr.DestroyLocation(loc);
     }
 }
 
@@ -832,7 +832,7 @@ FO_SCRIPT_API void Server_Game_DestroyMap(ptr<ServerEngine> server, ident_t mapI
         ValidateEntityAccess(map);
         ValidateEntityAccess(map->GetParentRaw());
 
-        server->MapMngr.DestroyMap(map.as_ptr());
+        server->MapMngr.DestroyMap(map);
     }
 }
 

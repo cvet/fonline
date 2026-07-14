@@ -267,7 +267,7 @@ namespace
 
         nptr<AngelScript::asIScriptModule> module = engine->GetModule(string {module_name}.c_str(), AngelScript::asGM_ONLY_IF_EXISTS);
         REQUIRE(module != nullptr);
-        return module.as_ptr();
+        return module;
     }
 
     static void RunScriptFunction(ptr<AngelScript::asIScriptEngine> engine, ptr<AngelScript::asIScriptModule> module, string_view declaration)
@@ -1925,8 +1925,8 @@ void BuildCycle()
 }
 )");
 
-    RunScriptFunction(engine.as_ptr(), module, "void BuildCycle()");
-    RequireFullGarbageCollection(engine.as_ptr());
+    RunScriptFunction(engine, module, "void BuildCycle()");
+    RequireFullGarbageCollection(engine);
     ShutdownAndCheckGcDiagnostics(engine, messages);
     engine = nullptr;
 }
@@ -1997,7 +1997,7 @@ void ExerciseDeferredReceiverLifetime()
 }
 )");
 
-    RunScriptFunction(engine.as_ptr(), module, "void ExerciseDeferredReceiverLifetime()");
+    RunScriptFunction(engine, module, "void ExerciseDeferredReceiverLifetime()");
     CHECK(tracker.DestructedObjects == 1);
     ShutdownAndCheckGcDiagnostics(engine, messages);
     engine = nullptr;
@@ -2052,7 +2052,7 @@ void BuildCascade()
 }
 )");
 
-    RunScriptFunction(engine.as_ptr(), module, "void BuildCascade()");
+    RunScriptFunction(engine, module, "void BuildCascade()");
     ShutdownAndCheckGcDiagnostics(engine, messages);
     engine = nullptr;
     CHECK(tracker.DestructedObjects == 97);
@@ -2483,7 +2483,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
             CHECK_THROWS_WITH((*filtered_values == *filtered_other), Catch::Matchers::ContainsSubstring("Type does not have a matching opEquals or opCmp method"));
         }
 
-        int_arr->EnumReferences(as_engine.as_ptr());
+        int_arr->EnumReferences(as_engine);
         int_arr->ReleaseAllHandles();
         CHECK(int_arr->IsEmpty());
     }

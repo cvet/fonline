@@ -153,21 +153,21 @@ auto VideoClip::IsStopped() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _impl.as_ptr()->Stopped;
+    return _impl->Stopped;
 }
 
 auto VideoClip::IsPaused() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _impl.as_ptr()->Paused;
+    return _impl->Paused;
 }
 
 auto VideoClip::IsLooped() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _impl.as_ptr()->Looped;
+    return _impl->Looped;
 }
 
 auto VideoClip::GetTime() const -> timespan
@@ -196,7 +196,7 @@ void VideoClip::Stop()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl.as_ptr()->Stopped = true;
+    _impl->Stopped = true;
 }
 
 void VideoClip::Pause()
@@ -226,14 +226,14 @@ void VideoClip::SetLooped(bool enabled)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl.as_ptr()->Looped = enabled;
+    _impl->Looped = enabled;
 }
 
 void VideoClip::SetTime(timespan time)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl.as_ptr()->StartTime = nanotime::now() - time;
+    _impl->StartTime = nanotime::now() - time;
 }
 
 auto VideoClip::RenderFrame() -> const vector<ucolor>&

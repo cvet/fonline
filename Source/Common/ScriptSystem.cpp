@@ -164,7 +164,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
         for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
             auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto field_raw_data = GetProps()->GetRawData(field_prop.as_ptr());
+            const auto field_raw_data = GetProps()->GetRawData(field_prop);
 
             bool is_default = field_raw_data.empty();
 

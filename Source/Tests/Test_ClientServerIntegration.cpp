@@ -788,18 +788,18 @@ TEST_CASE("ClientReportsLazyUnresolvedHashAndLearnsWithoutDisconnect")
     auto critter_registrator = client->GetPropertyRegistrator(CritterView::ENTITY_TYPE_NAME);
     REQUIRE(static_cast<bool>(critter_registrator));
 
-    auto critter_props = Properties(critter_registrator.as_ptr());
+    auto critter_props = Properties(critter_registrator);
     auto model_name_prop = critter_registrator->GetPropertyByIndex(CritterView::ModelName_RegIndex);
     REQUIRE(static_cast<bool>(model_name_prop));
 
     const hstring::hash_t unresolved_hash = reported.as_hash();
-    critter_props.SetRawData(model_name_prop.as_ptr(), {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
+    critter_props.SetRawData(model_name_prop, {reinterpret_cast<const uint8_t*>(&unresolved_hash), sizeof(unresolved_hash)});
 
     auto proto = client->GetProtoCritter(client->Hashes.ToHashedString("UnitTestSharedCritter"));
     REQUIRE(static_cast<bool>(proto));
 
     auto critter_props_ptr = make_nptr(&critter_props);
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto.as_ptr(), critter_props_ptr);
+    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {}, proto, critter_props_ptr);
     const auto get_client_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
 
     // Trigger the same client unresolved-hash reporter without forcing a slow script exception.

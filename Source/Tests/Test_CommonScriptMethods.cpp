@@ -2319,8 +2319,8 @@ TEST_CASE("CommonCppApiTests")
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
-        server->ItemMngr.DestroyItem(item2.as_ptr());
-        server->ItemMngr.DestroyItem(item1.as_ptr());
+        server->ItemMngr.DestroyItem(item2);
+        server->ItemMngr.DestroyItem(item1);
         server->CrMngr.DestroyCritter(cr);
     }
 
