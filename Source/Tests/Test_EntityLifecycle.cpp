@@ -1660,7 +1660,7 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
         const vector<uint16_t> control_steps {3};
-        server->StartCritterMoving(cr.get(), uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
         const uint32_t moving_uid = cr->GetMovingUid();
 

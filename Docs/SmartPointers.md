@@ -57,7 +57,7 @@ target->Foo();                                    // checked nptr, direct deref
 UseTarget(target);                                // UseTarget takes ptr<Critter>
 ```
 
-If a separate borrowed value is genuinely needed after the check (for type deduction, use after an owner is moved, or a copyable lambda capture), materialize that borrow explicitly with `auto value = checked_value.as_ptr();` / `auto maybe_value = owner.as_nptr();`. The explicit conversion tells the reader that the local is a borrow rather than another owner. When a call, assignment, member, or typed return already supplies `ptr<T>` / `nptr<T>`, pass the wrapper directly. `SmartPointerAudit::RedundantExplicitBorrowConversion` enforces this distinction.
+Explicit `.as_ptr()` / `.as_nptr()` conversions are also valid when they make the borrow visible, resolve overload or template deduction, materialize a value for use after an owner is moved, or create a copyable lambda capture. Implicit conversion remains available when the destination `ptr<T>` / `nptr<T>` type is already unambiguous.
 
 When the source is a raw `T*`, use the global helper and keep the local declaration deduced:
 
