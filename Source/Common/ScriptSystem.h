@@ -295,24 +295,30 @@ public:
     ScriptFunc() noexcept = default;
 
     explicit ScriptFunc(ptr<ScriptFuncDesc> func) noexcept :
-        _func {MakeBorrowedScriptFuncDesc(func)},
-        _returnValueCleaner {func->ReturnValueCleaner}
+        _func {MakeBorrowedScriptFuncDesc(func)}
     {
+        if constexpr (!std::is_same_v<TRet, void>) {
+            _returnValueCleaner = func->ReturnValueCleaner;
+        }
     }
 
     explicit ScriptFunc(unique_del_nptr<ScriptFuncDesc> func) noexcept :
-        _func {std::move(func)},
-        _returnValueCleaner {_func ? _func->ReturnValueCleaner : ScriptFuncDesc::ReturnValueCleanerType {}}
+        _func {std::move(func)}
     {
+        if constexpr (!std::is_same_v<TRet, void>) {
+            _returnValueCleaner = _func ? _func->ReturnValueCleaner : ScriptFuncDesc::ReturnValueCleanerType {};
+        }
     }
 
     ScriptFunc(const ScriptFunc&) = delete;
     ScriptFunc(ScriptFunc&& other) noexcept :
         _func {std::move(other._func)},
-        _returnValueCleaner {std::move(other._returnValueCleaner)},
         _ret {std::move(other._ret)}
     {
-        other._returnValueCleaner = {};
+        if constexpr (!std::is_same_v<TRet, void>) {
+            _returnValueCleaner = std::move(other._returnValueCleaner);
+            other._returnValueCleaner = {};
+        }
     }
     auto operator=(const ScriptFunc&) = delete;
     auto operator=(ScriptFunc&& other) noexcept -> ScriptFunc&
@@ -320,9 +326,12 @@ public:
         if (this != std::addressof(other)) {
             ClearStoredReturn();
             _func = std::move(other._func);
-            _returnValueCleaner = std::move(other._returnValueCleaner);
             _ret = std::move(other._ret);
-            other._returnValueCleaner = {};
+
+            if constexpr (!std::is_same_v<TRet, void>) {
+                _returnValueCleaner = std::move(other._returnValueCleaner);
+                other._returnValueCleaner = {};
+            }
         }
 
         return *this;
@@ -423,8 +432,10 @@ private:
         }
     }
 
+    using ReturnValueCleanerStorage = std::conditional_t<std::is_same_v<TRet, void>, std::nullptr_t, ScriptFuncDesc::ReturnValueCleanerType>;
+
     unique_del_nptr<ScriptFuncDesc> _func {};
-    ScriptFuncDesc::ReturnValueCleanerType _returnValueCleaner {};
+    [[no_unique_address]] ReturnValueCleanerStorage _returnValueCleaner {};
     std::conditional_t<std::is_same_v<TRet, void>, int, TRet> _ret {};
 };
 

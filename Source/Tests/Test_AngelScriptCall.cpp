@@ -429,6 +429,17 @@ TEST_CASE("ScriptFuncCleansStoredReturnHandle")
     CHECK(release_count == 1);
 }
 
+TEST_CASE("VoidScriptFuncDoesNotStoreReturnCleaner")
+{
+    CHECK(sizeof(ScriptFunc<void>) < sizeof(ScriptFunc<nptr<void>>));
+
+    ScriptFuncDesc func_desc;
+    func_desc.ReturnValueCleaner = [](ptr<void>) { FO_UNREACHABLE_PLACE(); };
+
+    ScriptFunc<void> func {&func_desc};
+    CHECK(func);
+}
+
 #endif
 
 FO_END_NAMESPACE
