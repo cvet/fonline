@@ -159,11 +159,9 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
         }
         auto map = RequireParent<Map>(cr, "Critter ownership, map not found");
 
-
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
         return std::move(map);
     } break;
@@ -171,7 +169,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
         if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
-
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
         return ResolveItemMap(cont);
@@ -194,13 +191,11 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
             return nullptr;
         }
 
-
         auto map = RequireParent<Map>(cr, "Critter ownership, map not found");
         hex = cr->GetHex();
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
-
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
         hex = item->GetHex();
         return std::move(map);
@@ -209,7 +204,6 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
         if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
-
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
         return ResolveItemMapPosition(cont, hex);
@@ -225,7 +219,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
         return std::move(cr);
     } break;
@@ -235,7 +228,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
         if (item->GetId() == item->GetContainerId()) {
             throw ScriptException("Container ownership, crosslink");
         }
-
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
         return ResolveItemCritter(cont);
