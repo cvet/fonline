@@ -1725,6 +1725,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
                     // Get vertex side
                     const auto diff = v.Position - sp;
                     auto v_side = (glm::dot(diff, diff) <= sphere_square_radius);
+
                     if (revert_shape) {
                         v_side = !v_side;
                     }
@@ -1759,6 +1760,7 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
 
                         // Move influence to other bones
                         v.BlendWeights[b] = 0.0f;
+
                         for (auto& blend_weight : v.BlendWeights) {
                             blend_weight += blend_weight / (1.0f - w) * w;
                         }
