@@ -458,7 +458,7 @@ TEST_CASE("VoidScriptFuncDoesNotRetainReturnCleanerAcrossDeferredLifetime")
         callback_func = ScriptFunc<void> {&func_desc};
 
         auto stored_func = SafeAlloc::MakeShared<ScriptFunc<void>>(std::move(callback_func));
-        deferred_callbacks.emplace_back([stored_func, &failed_call_count] {
+        deferred_callbacks.emplace_back([stored_func, &failed_call_count]() mutable {
             if (!stored_func->Call()) {
                 failed_call_count++;
             }
