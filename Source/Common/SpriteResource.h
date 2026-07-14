@@ -37,7 +37,7 @@
 FO_BEGIN_NAMESPACE
 
 constexpr uint8_t SPRITE_RESOURCE_MAGIC = 43;
-constexpr uint8_t SPRITE_RESOURCE_VERSION = 1;
+constexpr uint8_t SPRITE_RESOURCE_VERSION = 2;
 
 enum class SpriteMeshKind : uint8_t
 {
@@ -48,6 +48,8 @@ enum class SpriteMeshKind : uint8_t
 
 struct SpriteMeshData
 {
+    isize32 SourceSize {};
+    ipos32 SourceOffset {};
     vector<ipos32> Vertices {};
     vector<uint16_t> Indices {};
 };
@@ -55,6 +57,7 @@ struct SpriteMeshData
 struct SpriteResourceFrameData
 {
     optional<uint16_t> SharedFrameIndex {};
+    ipos32 Offset {};
     isize32 Size {};
     ipos32 NextOffset {};
     vector<ucolor> Pixels {};
@@ -63,7 +66,6 @@ struct SpriteResourceFrameData
 
 struct SpriteResourceDirectionData
 {
-    ipos32 Offset {};
     vector<SpriteResourceFrameData> Frames {};
 };
 
@@ -74,8 +76,13 @@ struct SpriteResourceData
     vector<SpriteResourceDirectionData> Directions {};
 };
 
-class FileReader;
+struct SpriteResourceImageData
+{
+    isize32 Size {};
+    vector<ucolor> Pixels {};
+};
 
-[[nodiscard]] auto ReadSpriteResource(FileReader& reader) -> SpriteResourceData;
+[[nodiscard]] auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData;
+[[nodiscard]] auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData;
 
 FO_END_NAMESPACE

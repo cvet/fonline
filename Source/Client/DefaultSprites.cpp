@@ -145,14 +145,15 @@ auto AtlasSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
         const float32_t height = numeric_cast<float32_t>(_size.height);
         const ucolor color_left = std::get<0>(colors);
         const ucolor color_right = std::get<1>(colors);
-        FO_STRONG_ASSERT(_size.width > 0, "Sprite mesh color interpolation width must be positive", _size.width);
-        const uint32_t color_width = numeric_cast<uint32_t>(_size.width);
+        FO_STRONG_ASSERT(mesh.SourceSize.width > 0 && mesh.SourceSize.height > 0, "Sprite mesh logical source dimensions must be positive", mesh.SourceSize);
+        const uint32_t color_width = numeric_cast<uint32_t>(mesh.SourceSize.width);
 
         for (const ipos32 local_pos : mesh.Vertices) {
             const float32_t nx = numeric_cast<float32_t>(local_pos.x) / width;
             const float32_t ny = numeric_cast<float32_t>(local_pos.y) / height;
-            FO_STRONG_ASSERT(local_pos.x >= 0 && local_pos.x <= _size.width, "Sprite mesh color interpolation position is outside the sprite", local_pos.x, _size.width);
-            const uint32_t color_x = numeric_cast<uint32_t>(local_pos.x);
+            FO_STRONG_ASSERT(local_pos.x >= 0 && local_pos.x <= _size.width && local_pos.y >= 0 && local_pos.y <= _size.height, "Sprite mesh position is outside the cropped sprite frame", local_pos, _size);
+            const int32_t source_x = std::clamp(local_pos.x + mesh.SourceOffset.x, 0, mesh.SourceSize.width);
+            const uint32_t color_x = numeric_cast<uint32_t>(source_x);
             const auto interpolate_component = [color_x, color_width](uint8_t left_component, uint8_t right_component) noexcept -> uint8_t {
                 const uint32_t weighted = numeric_cast<uint32_t>(left_component) * (color_width - color_x) + numeric_cast<uint32_t>(right_component) * color_x;
                 return numeric_cast<uint8_t>((weighted + color_width / 2) / color_width);
@@ -503,8 +504,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         return nullptr;
     }
 
-    auto reader = file.GetReader();
-    SpriteResourceData resource = ReadSpriteResource(reader);
+    SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
     const uint8_t direction_count = numeric_cast<uint8_t>(resource.Directions.size());
     FO_VERIFY_AND_THROW(direction_count == 1 || direction_count == GameSettings::MAP_DIR_COUNT, "Sprite file direction count is unsupported", direction_count, GameSettings::MAP_DIR_COUNT);
 
@@ -518,17 +518,17 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
             auto dir_anim = anim->GetDir(dir);
             FO_VERIFY_AND_THROW(dir_anim, "Sprite sheet is missing the requested direction");
             SpriteResourceDirectionData& direction = resource.Directions[i];
-            dir_anim->_offset = direction.Offset;
 
             for (uint16_t j = 0; j < resource.FrameCount; j++) {
                 SpriteResourceFrameData& frame = direction.Frames[j];
 
                 if (!frame.SharedFrameIndex.has_value()) {
                     dir_anim->_sprOffset[j] = frame.NextOffset;
-                    auto spr = FillAtlas(atlas_type, frame.Size, direction.Offset, frame.Pixels.data(), std::move(frame.Mesh));
+                    auto spr = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
 
                     if (j == 0) {
                         dir_anim->_size = frame.Size;
+                        dir_anim->_offset = frame.Offset;
                     }
 
                     dir_anim->_spr[j] = std::move(spr);
@@ -547,7 +547,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
         SpriteResourceDirectionData& direction = resource.Directions.front();
         SpriteResourceFrameData& frame = direction.Frames.front();
         FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Single-frame sprite resource cannot contain a shared-frame reference");
-        result = FillAtlas(atlas_type, frame.Size, direction.Offset, frame.Pixels.data(), std::move(frame.Mesh));
+        result = FillAtlas(atlas_type, frame.Size, frame.Offset, frame.Pixels.data(), std::move(frame.Mesh));
     }
 
     return result;

@@ -331,6 +331,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
     SECTION("Mesh maps positions UVs indices and horizontal light colors")
     {
         SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
@@ -371,11 +372,30 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK(right.Color == color_right);
     }
 
+    SECTION("Cropped mesh preserves source-relative horizontal light colors")
+    {
+        SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
+        mesh.SourceOffset = {2, 0};
+        mesh.Vertices = {{0, 0}, {3, 10}, {6, 0}};
+        mesh.Indices = {0, 1, 2};
+
+        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
+
+        REQUIRE(sprite->FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
+        REQUIRE(draw_buf->VertCount == 3);
+        CHECK(draw_buf->Vertices[0].Color == (ucolor {30, 40, 50, 60}));
+        CHECK(draw_buf->Vertices[1].Color == (ucolor {60, 70, 80, 90}));
+        CHECK(draw_buf->Vertices[2].Color == (ucolor {90, 100, 110, 120}));
+    }
+
     SECTION("Live atlas node observes sprite mesh metadata for dump lifetime")
     {
         TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
         atlas_node.Busy = true;
         SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
         function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
@@ -399,6 +419,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
         atlas_node.Busy = true;
         SpriteMeshData mesh;
+        mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
         function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
@@ -428,6 +449,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     SpriteMeshData mesh;
+    mesh.SourceSize = {2, 2};
     mesh.Vertices = {{0, 0}, {2, 0}, {0, 2}};
     mesh.Indices = {0, 1, 2};
 
@@ -435,7 +457,9 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     constexpr size_t mesh_kind_offset = 20 + 2 * 2 * sizeof(ucolor);
     constexpr size_t mesh_vertex_count_offset = mesh_kind_offset + 1;
     constexpr size_t mesh_index_count_offset = mesh_vertex_count_offset + sizeof(uint16_t);
-    constexpr size_t mesh_vertices_offset = mesh_index_count_offset + sizeof(uint32_t);
+    constexpr size_t mesh_source_size_offset = mesh_index_count_offset + sizeof(uint32_t);
+    constexpr size_t mesh_source_offset_offset = mesh_source_size_offset + sizeof(uint16_t) * 2;
+    constexpr size_t mesh_vertices_offset = mesh_source_offset_offset + sizeof(int32_t) * 2;
     constexpr size_t mesh_indices_offset = mesh_vertices_offset + 3 * sizeof(uint16_t) * 2;
 
     const auto write_u16 = [](vector<uint8_t>& data, size_t offset, uint16_t value) {
@@ -473,6 +497,14 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     vector<uint8_t> implausible_index_count = valid_blob;
     write_u32(implausible_index_count, mesh_index_count_offset, uint32_t {21});
     source->AddFile("ImplausibleIndexCount.png", std::move(implausible_index_count));
+
+    vector<uint8_t> bad_source_size = valid_blob;
+    write_u16(bad_source_size, mesh_source_size_offset, uint16_t {0});
+    source->AddFile("BadSourceSize.png", std::move(bad_source_size));
+
+    vector<uint8_t> bad_source_offset = valid_blob;
+    write_u32(bad_source_offset, mesh_source_offset_offset, uint32_t {2});
+    source->AddFile("BadSourceOffset.png", std::move(bad_source_offset));
 
     vector<uint8_t> bad_coordinate = valid_blob;
     write_u16(bad_coordinate, mesh_vertices_offset, uint16_t {3});
@@ -524,6 +556,8 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK_THROWS(load("BadVertexCount.png"));
     CHECK_THROWS(load("BadIndexCount.png"));
     CHECK_THROWS(load("ImplausibleIndexCount.png"));
+    CHECK_THROWS(load("BadSourceSize.png"));
+    CHECK_THROWS(load("BadSourceOffset.png"));
     CHECK_THROWS(load("BadCoordinate.png"));
     CHECK_THROWS(load("BadIndex.png"));
     CHECK_THROWS(load("DegenerateTriangle.png"));
@@ -541,6 +575,7 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
     SpriteMeshData mesh;
+    mesh.SourceSize = {10, 10};
     mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
     mesh.Indices = {0, 1, 2};
 

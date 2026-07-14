@@ -15,6 +15,7 @@ FO_BEGIN_NAMESPACE
 
 struct BakedImageFrame
 {
+    ipos32 Offset {};
     uint16_t Width {};
     uint16_t Height {};
     int16_t NextX {};
@@ -28,8 +29,6 @@ struct BakedImageSequence
 {
     uint16_t SequenceSize {};
     uint16_t AnimTicks {};
-    int16_t OffsX {};
-    int16_t OffsY {};
     vector<BakedImageFrame> Frames {};
 };
 
@@ -831,6 +830,10 @@ static void ReadSpriteMesh(DataReader& reader, BakedImageFrame& frame)
 
     const uint16_t vertex_count = reader.Read<uint16_t>();
     const uint32_t index_count = reader.Read<uint32_t>();
+    frame.Mesh.SourceSize.width = reader.Read<uint16_t>();
+    frame.Mesh.SourceSize.height = reader.Read<uint16_t>();
+    frame.Mesh.SourceOffset.x = reader.Read<int32_t>();
+    frame.Mesh.SourceOffset.y = reader.Read<int32_t>();
     frame.Mesh.Vertices.reserve(vertex_count);
     frame.Mesh.Indices.reserve(index_count);
 
@@ -859,11 +862,11 @@ static void SkipSpriteMesh(DataReader& reader)
     CHECK(reader.Read<uint16_t>() == 1);
     CHECK(reader.Read<uint16_t>() == 100);
     CHECK(reader.Read<uint8_t>() == 1);
-    CHECK(reader.Read<int16_t>() == 0);
-    CHECK(reader.Read<int16_t>() == 0);
     CHECK_FALSE(reader.Read<bool>());
 
     BakedImageFrame frame;
+    frame.Offset.x = reader.Read<int16_t>();
+    frame.Offset.y = reader.Read<int16_t>();
     frame.Width = reader.Read<uint16_t>();
     frame.Height = reader.Read<uint16_t>();
     frame.NextX = reader.Read<int16_t>();
@@ -891,14 +894,14 @@ static void SkipSpriteMesh(DataReader& reader)
     sequence.SequenceSize = reader.Read<uint16_t>();
     sequence.AnimTicks = reader.Read<uint16_t>();
     CHECK(reader.Read<uint8_t>() == 1);
-    sequence.OffsX = reader.Read<int16_t>();
-    sequence.OffsY = reader.Read<int16_t>();
     sequence.Frames.reserve(sequence.SequenceSize);
 
     for (uint16_t i = 0; i < sequence.SequenceSize; i++) {
         CHECK_FALSE(reader.Read<bool>());
 
         auto& frame = sequence.Frames.emplace_back();
+        frame.Offset.x = reader.Read<int16_t>();
+        frame.Offset.y = reader.Read<int16_t>();
         frame.Width = reader.Read<uint16_t>();
         frame.Height = reader.Read<uint16_t>();
         frame.NextX = reader.Read<int16_t>();
@@ -924,7 +927,7 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     BakerTests::OverrideSetting(rig.Settings.AreaSavingsWeight, area_savings_weight);
 }
 
-[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask") -> vector<uint8_t>
+[[nodiscard]] static auto BakeAlphaMask(BakerTests::TestRig& rig, const vector<string>& rows, string_view path = "gfx/mesh.mask", ipos32 offset = {}) -> vector<uint8_t>
 {
     REQUIRE(!rows.empty());
     REQUIRE(!rows.front().empty());
@@ -961,12 +964,14 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
 
     ImageBaker baker {rig.MakeContext()};
     baker.AddLoader(
-        [width, height, rgba](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
+        [width, height, rgba, offset](string_view fname, string_view opt, FileReader reader, const FileCollection& files) {
             ignore_unused(fname, opt, reader, files);
 
             ImageBaker::FrameCollection collection;
             collection.SequenceSize = 1;
             collection.AnimTicks = 100;
+            collection.Main.OffsX = numeric_cast<int16_t>(offset.x);
+            collection.Main.OffsY = numeric_cast<int16_t>(offset.y);
             collection.Main.Frames.resize(1);
             collection.Main.Frames[0] = ImageBaker::FrameShot {.Width = width, .Height = height, .Data = rgba};
             return collection;
@@ -1012,6 +1017,11 @@ static void ConfigureSpriteMesh(BakerTests::TestRig& rig, bool enabled = true, i
     }
 
     return false;
+}
+
+[[nodiscard]] static auto SourcePointToBakedMeshPoint(const BakedImageFrame& frame, fpos32 source_point) -> fpos32
+{
+    return {source_point.x - numeric_cast<float32_t>(frame.Mesh.SourceOffset.x), source_point.y - numeric_cast<float32_t>(frame.Mesh.SourceOffset.y)};
 }
 
 TEST_CASE("ImageBaker")
@@ -1062,13 +1072,12 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"........", ".####...", ".####...", ".##.....", ".##.....", ".##.....", "........", "........"}));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() > 6);
         CHECK(frame.Mesh.Indices.size() % 3 == 0);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 1.5f, padding + 1.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 4.5f, padding + 4.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 1.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
     }
 
     SECTION("SpriteMeshPreservesHole")
@@ -1077,11 +1086,10 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {"#########", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#.......#", "#########"}));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 0.5f, padding + 0.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 4.5f, padding + 4.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {0.5f, 0.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 4.5f})));
     }
 
     SECTION("SpriteMeshPreservesSeparateIslands")
@@ -1090,12 +1098,11 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, {".........", ".........", ".#.....#.", ".........", "........."}));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
 
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 1.5f, padding + 2.5f}));
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 7.5f, padding + 2.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 4.5f, padding + 2.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 2.5f})));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {7.5f, 2.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {4.5f, 2.5f})));
     }
 
     SECTION("SpriteMeshSettingsControlGeneration")
@@ -1140,7 +1147,7 @@ TEST_CASE("ImageBaker")
         const BakedImageFrame shallow_notch_frame = ReadSingleFrame(BakeAlphaMask(shallow_notch, shallow_notch_rows));
 
         REQUIRE(shallow_notch_frame.MeshKind == SpriteMeshKind::Mesh);
-        CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, {15.5f, 29.5f}));
+        CHECK_FALSE(IsPointInsideBakedMesh(shallow_notch_frame, SourcePointToBakedMeshPoint(shallow_notch_frame, {15.5f, 29.5f})));
 
         vector<string> shallow_diagonal_rows(40, string(80, '.'));
         for (size_t x = 2; x < 78; x++) {
@@ -1157,10 +1164,10 @@ TEST_CASE("ImageBaker")
             for (size_t x = 0; x < shallow_diagonal_rows[y].size(); x++) {
                 if (shallow_diagonal_rows[y][x] == '#') {
                     CAPTURE(x, y);
-                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.01f}));
-                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.01f}));
-                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.99f}));
-                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.99f}));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.01f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.01f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.01f, numeric_cast<float32_t>(y) + 0.99f})));
+                    CHECK(IsPointInsideBakedMesh(shallow_diagonal_frame, SourcePointToBakedMeshPoint(shallow_diagonal_frame, {numeric_cast<float32_t>(x) + 0.99f, numeric_cast<float32_t>(y) + 0.99f})));
                 }
             }
         }
@@ -1179,7 +1186,6 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(edge_coverage);
         const BakedImageSequence edge_coverage_sequence = ReadSingleDirSequence(BakeAlphaMask(edge_coverage, edge_coverage_rows));
         const BakedImageFrame& edge_coverage_frame = edge_coverage_sequence.Frames.front();
-        const float32_t edge_padding = numeric_cast<float32_t>(edge_coverage_sequence.OffsY);
 
         REQUIRE(edge_coverage_frame.MeshKind == SpriteMeshKind::Mesh);
         for (size_t sample_y = 0; sample_y < edge_coverage_rows.size(); sample_y++) {
@@ -1189,10 +1195,10 @@ TEST_CASE("ImageBaker")
                 }
 
                 CAPTURE(sample_x, sample_y);
-                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + edge_padding + 0.01f, numeric_cast<float32_t>(sample_y) + edge_padding + 0.01f}));
-                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + edge_padding + 0.99f, numeric_cast<float32_t>(sample_y) + edge_padding + 0.01f}));
-                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + edge_padding + 0.01f, numeric_cast<float32_t>(sample_y) + edge_padding + 0.99f}));
-                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + edge_padding + 0.99f, numeric_cast<float32_t>(sample_y) + edge_padding + 0.99f}));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.01f, numeric_cast<float32_t>(sample_y) + 0.01f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.99f, numeric_cast<float32_t>(sample_y) + 0.01f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.01f, numeric_cast<float32_t>(sample_y) + 0.99f})));
+                CHECK(IsPointInsideBakedMesh(edge_coverage_frame, SourcePointToBakedMeshPoint(edge_coverage_frame, {numeric_cast<float32_t>(sample_x) + 0.99f, numeric_cast<float32_t>(sample_y) + 0.99f})));
             }
         }
 
@@ -1211,11 +1217,10 @@ TEST_CASE("ImageBaker")
         REQUIRE(preferred_quad_sequence.Frames.size() == 1);
         const BakedImageFrame& preferred_quad_frame = preferred_quad_sequence.Frames.front();
 
-        CHECK(preferred_quad_sequence.OffsX == 0);
-        CHECK(preferred_quad_sequence.OffsY == 5);
-        CHECK(preferred_quad_frame.Width == 91);
-        CHECK(preferred_quad_frame.Height == 51);
         REQUIRE(preferred_quad_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_quad_frame.Mesh.SourceSize == isize32 {81, 41});
+        CHECK(preferred_quad_frame.Width <= 91);
+        CHECK(preferred_quad_frame.Height <= 51);
         CHECK(preferred_quad_frame.Mesh.Vertices.size() == 4);
         CHECK(preferred_quad_frame.Mesh.Indices.size() == 6);
 
@@ -1223,7 +1228,7 @@ TEST_CASE("ImageBaker")
             for (size_t x = 0; x < diamond_rows[y].size(); x++) {
                 if (diamond_rows[y][x] == '#') {
                     CAPTURE(x, y);
-                    CHECK(IsPointInsideBakedMesh(preferred_quad_frame, {numeric_cast<float32_t>(x) + 5.5f, numeric_cast<float32_t>(y) + 5.5f}));
+                    CHECK(IsPointInsideBakedMesh(preferred_quad_frame, SourcePointToBakedMeshPoint(preferred_quad_frame, {numeric_cast<float32_t>(x) + 0.5f, numeric_cast<float32_t>(y) + 0.5f})));
                 }
             }
         }
@@ -1242,10 +1247,8 @@ TEST_CASE("ImageBaker")
         REQUIRE(preferred_triangle_sequence.Frames.size() == 1);
         const BakedImageFrame& preferred_triangle_frame = preferred_triangle_sequence.Frames.front();
 
-        CHECK(preferred_triangle_sequence.OffsY == 0);
-        CHECK(preferred_triangle_frame.Width == 61);
-        CHECK(preferred_triangle_frame.Height == 61);
         REQUIRE(preferred_triangle_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_triangle_frame.Mesh.SourceSize == isize32 {61, 61});
         CHECK(preferred_triangle_frame.Mesh.Vertices.size() == 3);
         CHECK(preferred_triangle_frame.Mesh.Indices.size() == 3);
 
@@ -1258,9 +1261,14 @@ TEST_CASE("ImageBaker")
 
         TestRig preferred_rectangle;
         ConfigureSpriteMesh(preferred_rectangle, true, 0, 2);
-        const BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows)).Frames.front();
+        const BakedImageFrame preferred_rectangle_frame = ReadSingleDirSequence(BakeAlphaMask(preferred_rectangle, rectangle_rows, "gfx/mesh.mask", {7, -8})).Frames.front();
 
         REQUIRE(preferred_rectangle_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(preferred_rectangle_frame.Width < 61);
+        CHECK(preferred_rectangle_frame.Height < 31);
+        CHECK(preferred_rectangle_frame.Mesh.SourceSize == isize32 {61, 31});
+        CHECK(preferred_rectangle_frame.Offset.x == 7 + numeric_cast<int32_t>(preferred_rectangle_frame.Width) / 2 - 61 / 2 + preferred_rectangle_frame.Mesh.SourceOffset.x);
+        CHECK(preferred_rectangle_frame.Offset.y == -8 + numeric_cast<int32_t>(preferred_rectangle_frame.Height) - 31 + preferred_rectangle_frame.Mesh.SourceOffset.y);
         CHECK(preferred_rectangle_frame.Mesh.Vertices.size() == 4);
         CHECK(preferred_rectangle_frame.Mesh.Indices.size() == 6);
 
@@ -1291,11 +1299,11 @@ TEST_CASE("ImageBaker")
         REQUIRE(adaptive_padding_sequence.Frames.size() == 1);
         const BakedImageFrame& adaptive_padding_frame = adaptive_padding_sequence.Frames.front();
 
-        CHECK(adaptive_padding_sequence.OffsY > 0);
-        CHECK(adaptive_padding_sequence.OffsY <= 20);
-        CHECK(adaptive_padding_frame.Width == 107 + adaptive_padding_sequence.OffsY * 2);
-        CHECK(adaptive_padding_frame.Height == 160 + adaptive_padding_sequence.OffsY * 2);
         REQUIRE(adaptive_padding_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(adaptive_padding_frame.Mesh.SourceSize == isize32 {107, 160});
+        CHECK(adaptive_padding_frame.Mesh.SourceOffset.x >= -20);
+        CHECK(adaptive_padding_frame.Mesh.SourceOffset.y >= -20);
+        CHECK((adaptive_padding_frame.Mesh.SourceOffset.x < 0 || adaptive_padding_frame.Mesh.SourceOffset.y < 0 || adaptive_padding_frame.Mesh.SourceOffset.x + adaptive_padding_frame.Width > 107 || adaptive_padding_frame.Mesh.SourceOffset.y + adaptive_padding_frame.Height > 160));
         CHECK(adaptive_padding_frame.Mesh.Vertices.size() == 3);
         CHECK(adaptive_padding_frame.Mesh.Indices.size() == 3);
 
@@ -1341,21 +1349,21 @@ TEST_CASE("ImageBaker")
         const BakedImageFrame component_budget_frame = ReadSingleDirSequence(BakeAlphaMask(component_budget, door_rows)).Frames.front();
         REQUIRE(component_budget_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(component_budget_frame.Mesh.Indices.size() == 12);
-        CHECK_FALSE(IsPointInsideBakedMesh(component_budget_frame, {55.5f, 35.5f}));
+        CHECK_FALSE(IsPointInsideBakedMesh(component_budget_frame, SourcePointToBakedMeshPoint(component_budget_frame, {55.5f, 35.5f})));
 
         TestRig low_area_weight;
         ConfigureSpriteMesh(low_area_weight, true, 0, 4, 1.0f);
         const BakedImageFrame low_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(low_area_weight, door_rows)).Frames.front();
         REQUIRE(low_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(low_area_weight_frame.Mesh.Indices.size() == 6);
-        CHECK(IsPointInsideBakedMesh(low_area_weight_frame, {55.5f, 35.5f}));
+        CHECK(IsPointInsideBakedMesh(low_area_weight_frame, SourcePointToBakedMeshPoint(low_area_weight_frame, {55.5f, 35.5f})));
 
         TestRig high_area_weight;
         ConfigureSpriteMesh(high_area_weight, true, 0, 4, 64.0f);
         const BakedImageFrame high_area_weight_frame = ReadSingleDirSequence(BakeAlphaMask(high_area_weight, door_rows)).Frames.front();
         REQUIRE(high_area_weight_frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(high_area_weight_frame.Mesh.Indices.size() == 12);
-        CHECK_FALSE(IsPointInsideBakedMesh(high_area_weight_frame, {55.5f, 35.5f}));
+        CHECK_FALSE(IsPointInsideBakedMesh(high_area_weight_frame, SourcePointToBakedMeshPoint(high_area_weight_frame, {55.5f, 35.5f})));
 
         TestRig triangle_uncapped;
         ConfigureSpriteMesh(triangle_uncapped);
@@ -1394,12 +1402,11 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig, true, 10, 16, 64.0f);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 6);
         CHECK(frame.Mesh.Indices.size() <= 12);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 2.5f, padding + 100.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 40.5f, padding + 100.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
 
     SECTION("SpriteMeshExpandedSimplificationBuildsConcaveWallCandidate")
@@ -1439,14 +1446,13 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig, true, 10, 16, 200.0f);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Vertices.size() <= 7);
         CHECK(frame.Mesh.Indices.size() >= 12);
         CHECK(frame.Mesh.Indices.size() <= 15);
         CHECK(BakedMeshDoubleArea(frame) < 8000);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 2.5f, padding + 100.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 40.5f, padding + 100.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {2.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
 
     SECTION("SpriteMeshExpandedSimplificationEnclosesThinLShape")
@@ -1479,13 +1485,12 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig, true, 10, 16, 100.0f);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() > 6);
         CHECK(frame.Mesh.Indices.size() <= 27);
         CHECK(BakedMeshDoubleArea(frame) <= 5454);
-        CHECK(IsPointInsideBakedMesh(frame, {padding + 1.5f, padding + 100.5f}));
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 40.5f, padding + 100.5f}));
+        CHECK(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {1.5f, 100.5f})));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {40.5f, 100.5f})));
     }
 
     SECTION("SpriteMeshClustersMoreComponentsThanTriangleBudget")
@@ -1507,10 +1512,9 @@ TEST_CASE("ImageBaker")
         ConfigureSpriteMesh(rig, true, 0, 4, 200.0f);
         const BakedImageSequence sequence = ReadSingleDirSequence(BakeAlphaMask(rig, rows));
         const BakedImageFrame& frame = sequence.Frames.front();
-        const float32_t padding = numeric_cast<float32_t>(sequence.OffsY);
         REQUIRE(frame.MeshKind == SpriteMeshKind::Mesh);
         CHECK(frame.Mesh.Indices.size() <= 12);
-        CHECK_FALSE(IsPointInsideBakedMesh(frame, {padding + 55.5f, padding + 15.5f}));
+        CHECK_FALSE(IsPointInsideBakedMesh(frame, SourcePointToBakedMeshPoint(frame, {55.5f, 15.5f})));
     }
 
     SECTION("SpriteMeshUnsafeTouchingTopologyFallsBackToQuad")
@@ -1579,18 +1583,20 @@ TEST_CASE("ImageBaker")
         CHECK(reader.Read<uint16_t>() == 2);
         CHECK(reader.Read<uint16_t>() == 100);
         CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<int16_t>() == 0);
-        CHECK(reader.Read<int16_t>() == 0);
         CHECK_FALSE(reader.Read<bool>());
 
         BakedImageFrame first_frame;
+        first_frame.Offset.x = reader.Read<int16_t>();
+        first_frame.Offset.y = reader.Read<int16_t>();
         first_frame.Width = reader.Read<uint16_t>();
         first_frame.Height = reader.Read<uint16_t>();
         (void)reader.Read<int16_t>();
         (void)reader.Read<int16_t>();
-        (void)reader.ReadBytes(5 * 5 * 4);
+        (void)reader.ReadBytes(numeric_cast<size_t>(first_frame.Width) * first_frame.Height * 4);
         ReadSpriteMesh(reader, first_frame);
         CHECK(first_frame.MeshKind == SpriteMeshKind::Mesh);
+        CHECK(first_frame.Offset.x == numeric_cast<int32_t>(first_frame.Width) / 2 - 5 / 2 + first_frame.Mesh.SourceOffset.x);
+        CHECK(first_frame.Offset.y == numeric_cast<int32_t>(first_frame.Height) - 5 + first_frame.Mesh.SourceOffset.y);
 
         CHECK(reader.Read<bool>());
         CHECK(reader.Read<uint16_t>() == 0);
@@ -1727,9 +1733,9 @@ TEST_CASE("ImageBaker")
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
-        CHECK(sequence.OffsX == 7);
-        CHECK(sequence.OffsY == -8);
         REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Offset == ipos32 {7, -8});
+        CHECK(sequence.Frames[1].Offset == ipos32 {7, -8});
         CHECK(sequence.Frames[0].NextX == 2);
         CHECK(sequence.Frames[0].NextY == -3);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {4, 8, 12, 255});
@@ -1798,9 +1804,9 @@ TEST_CASE("ImageBaker")
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<int16_t>() == 10 + dir);
             CHECK(reader.Read<int16_t>() == -20 - dir);
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<int16_t>() == dir + 1);
@@ -1850,6 +1856,7 @@ TEST_CASE("ImageBaker")
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             if (dir == 0) {
                 CHECK(reader.Read<int16_t>() == 1);
                 CHECK(reader.Read<int16_t>() == -1);
@@ -1859,7 +1866,6 @@ TEST_CASE("ImageBaker")
                 CHECK(reader.Read<int16_t>() == -10 - dir);
             }
 
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<int16_t>() == 2);
@@ -1898,9 +1904,8 @@ TEST_CASE("ImageBaker")
 
         CHECK(sequence.SequenceSize == 60);
         CHECK(sequence.AnimTicks == 6000);
-        CHECK(sequence.OffsX == 3);
-        CHECK(sequence.OffsY == -4);
         REQUIRE(sequence.Frames.size() == 60);
+        CHECK(sequence.Frames.front().Offset == ipos32 {3, -4});
         CHECK(sequence.Frames.front().Width == 6);
         CHECK(sequence.Frames.front().Height == 1);
         CHECK(sequence.Frames.front().Data.size() == 24);
@@ -2211,9 +2216,9 @@ TEST_CASE("ImageBaker")
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
-            CHECK(reader.Read<int16_t>() == 0);
-            CHECK(reader.Read<int16_t>() == 0);
             CHECK_FALSE(reader.Read<bool>());
+            CHECK(reader.Read<int16_t>() == 0);
+            CHECK(reader.Read<int16_t>() == 0);
 
             const auto width = reader.Read<uint16_t>();
             const auto height = reader.Read<uint16_t>();
@@ -2277,9 +2282,9 @@ NextY_1=8
 
         CHECK(sequence.SequenceSize == 2);
         CHECK(sequence.AnimTicks == 400);
-        CHECK(sequence.OffsX == 3);
-        CHECK(sequence.OffsY == 4);
         REQUIRE(sequence.Frames.size() == 2);
+        CHECK(sequence.Frames[0].Offset == ipos32 {3, 4});
+        CHECK(sequence.Frames[1].Offset == ipos32 {3, 4});
         CHECK(sequence.Frames[0].NextX == 5);
         CHECK(sequence.Frames[0].NextY == 6);
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
@@ -2307,9 +2312,8 @@ OffsetX=5
 
         CHECK(sequence.SequenceSize == 1);
         CHECK(sequence.AnimTicks == 100);
-        CHECK(sequence.OffsX == 0);
-        CHECK(sequence.OffsY == 0);
         REQUIRE(sequence.Frames.size() == 1);
+        CHECK(sequence.Frames[0].Offset == ipos32 {});
         CHECK(sequence.Frames[0].Data == vector<uint8_t> {255, 0, 0, 255});
 
         TestRig direction_gap;
@@ -2434,6 +2438,7 @@ Frm=one.toy
         CHECK(reader.Read<uint8_t>() == GameSettings::MAP_DIR_COUNT);
 
         for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            CHECK_FALSE(reader.Read<bool>());
             const int16_t offs_x = reader.Read<int16_t>();
             const int16_t offs_y = reader.Read<int16_t>();
 
@@ -2446,7 +2451,6 @@ Frm=one.toy
                 CHECK(offs_y == 19 + dir);
             }
 
-            CHECK_FALSE(reader.Read<bool>());
             CHECK(reader.Read<uint16_t>() == 1);
             CHECK(reader.Read<uint16_t>() == 1);
             (void)reader.Read<int16_t>();

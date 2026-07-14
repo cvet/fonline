@@ -275,14 +275,17 @@ triangle delta, and averages per mesh.
 `area` keeps exact integer doubled areas as the canonical values, then adds
 pixel-area and percentage views. It compares original unpadded quad area,
 submitted geometry area, and visible pixels, and reports both total frame-area
-savings and reduction of transparent overdraw. `padding` separately reports
-the serialized texture canvas, added RGBA pixels and bytes, padded-frame count,
-maximum padding, and the padding histogram; padding therefore cannot be hidden
-inside a favorable geometry-area result.
+savings and reduction of transparent overdraw. `cropping` reports how many
+mesh frames serialize a smaller canvas than their source plus the saved RGBA
+pixels and bytes. `padding` separately reports the serialized texture canvas,
+frames that still expand beyond their source, added RGBA pixels and bytes,
+padded-frame count, maximum padding, and the padding histogram. Expansion and
+cropping are accumulated independently, so savings in one frame cannot hide
+padding overhead in another.
 
 The section also contains selection-score minimum/average/maximum values and
 the fixed quad score, plus a per-resource classification (`mesh_only`,
-`quad_only`, `empty_only`, or `mixed`). Four deterministic top-25 lists retain
+`quad_only`, `empty_only`, or `mixed`). Five deterministic top-25 lists retain
 the frame identity and all relevant geometry fields for direct investigation:
 
 - `largestMissedSavings`: retained quads ranked by the absolute number of
@@ -291,15 +294,17 @@ the frame identity and all relevant geometry fields for direct investigation:
 - `largestRejectedCandidateSavings`: score-rejected candidates ranked by the
   frame area they would actually save if selected;
 - `mostComplexMeshes`: meshes ranked by triangle count, then vertex count;
+- `largestCroppingSavings`: mesh frames ranked by serialized texture pixels
+  removed by their exact geometry bounds;
 - `largestPaddingOverhead`: frames ranked by added serialized canvas pixels.
 
 Each top-list row includes separate source and actual baked-output paths,
 direction, frame index, form, selection origin or quad reason, triangles,
 vertices, source and dilated components, padding, chosen tolerance/dilation,
 source and baked canvas pixels, visible pixels, submitted doubled area,
-potential transparent pixels, padding overhead, and selection score where one
-exists. Full tie-breaking includes both paths, direction, and frame index, so
-the top lists remain deterministic under parallel baking.
+potential transparent pixels, padding overhead, cropping savings, and selection
+score where one exists. Full tie-breaking includes both paths, direction, and
+frame index, so the top lists remain deterministic under parallel baking.
 
 ## Built-in baker types
 
@@ -349,23 +354,25 @@ RGBA frame, its dimensions, and the resolved mesh settings, then owns mask
 construction, component and contour analysis, candidate generation,
 triangulation, validation, scoring, and the diagnostic result. `ImageBaker`
 owns image-format decoding, frame sequences and shared frames, adaptive
-sequence padding, mesh serialization, and baking-report integration. This
+per-frame padding and cropping, mesh serialization, and baking-report
+integration. This
 keeps polygonization independent of `ImageBaker::FrameShot` and allows the
 geometry builder to be exercised without an image-resource container.
 
 Geometric safety is internal policy rather than project tuning. The baker uses
 a one-pixel mask guard band and may probe up to 20 pixels of temporary padding
-when a candidate needs room beyond the source bounds. It serializes only the
-smallest symmetric border required by the selected vertices and compensates the
-vertical sprite offset, preserving the original on-screen anchor. A quad or
-empty result does not acquire adaptive padding. Candidate profitability is
-always compared against the original unpadded frame, so increasing the search
-area cannot manufacture an artificial saving. Each unique frame is first
-searched on the maximum temporary canvas. A retained non-quad mesh is then
-translated into the final smaller sequence canvas without repeating candidate
-generation. A maximum-canvas quad is re-evaluated on that final canvas, because
-the bounded contour search can produce a useful border-sensitive candidate at
-the actual serialized size.
+when a candidate needs room beyond the source bounds. After selecting a mesh,
+it takes the exact bounds of the final vertices, crops the RGBA payload to those
+bounds, and translates the vertices to the cropped frame origin. The serialized
+per-frame offset is adjusted on both axes so the logical root remains at the
+same screen position even when different animation frames have different
+bounds. A quad or empty result is not cropped or padded. Candidate profitability
+is always compared against the original unpadded frame, so increasing the
+search area cannot manufacture an artificial saving. Each unique frame is
+searched on the maximum temporary canvas, then the retained mesh is translated
+into its minimum required canvas without repeating candidate generation. A
+maximum-canvas quad is re-evaluated on the unpadded frame, because the bounded
+contour search can produce a useful border-sensitive candidate there.
 
 Mesh generation builds enclosing candidates for every reachable triangle count
 from one through `MaxTriangles`. It starts with exact convex-hull support lines.
@@ -440,16 +447,26 @@ optional Earcut Delaunay refinement pass is deliberately not used: it changes
 neither triangle count nor covered area and does not promise bit-identical
 output across compilers.
 
-Baked sprite blobs have an explicit engine-owned magic/version and store the
-mesh kind after each unique frame's RGBA payload. `SpriteResource` owns this
-shared format contract, mesh data type, and strict whole-resource decoder used
-by the client, particle editor, and project-side server image loader. The
-decoder returns animation timing, directions, frame offsets, shared-frame
-references, RGBA pixels, and optional mesh geometry. Mesh records use fixed-width
-local pixel coordinates and indices; shared animation frames continue to refer
-to the original frame and do not duplicate either pixels or geometry. The
-runtime rejects legacy or malformed blobs rather than guessing
-their layout.
+Baked sprite blobs have an explicit engine-owned magic/version and store each
+unique frame's individual draw offset before its cropped RGBA payload, followed
+by the mesh kind. `SpriteResource` owns this shared format contract, mesh data
+type, and strict whole-resource decoder used by the client, particle editor,
+and project-side server image loader. Its public entry point accepts the exact
+resource byte span and creates its own reader, so decoding is independent of
+any caller-owned stream position while footer and trailing-data checks remain
+scoped to that resource slice. The decoder returns animation timing,
+directions, per-frame offsets, shared-frame references, RGBA pixels, and
+optional mesh geometry. Mesh records use fixed-width cropped-frame coordinates
+and indices plus the original logical source size and the cropped-frame origin
+within that source. The origin may be negative when selected geometry uses the
+internal safety border. The decoder requires mesh vertices to occupy the exact
+serialized frame bounds. Shared animation frames continue to refer to the
+original frame and do not duplicate its offset, pixels, or geometry. The
+runtime rejects legacy or malformed blobs rather than guessing their layout.
+Consumers that sample the image as a plain rectangular texture rather than a
+sprite (`ParticleEditor` and project-side server image sampling) restore the
+cropped payload into the original logical canvas so their size and pixel-coordinate
+contracts do not change.
 After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.

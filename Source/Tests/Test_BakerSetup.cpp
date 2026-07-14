@@ -669,11 +669,26 @@ Bakers = {}
     CHECK(submitted_double_area <= baseline_double_area);
     CHECK(area.at("savedDoubleArea") == numeric_cast<int64_t>(baseline_double_area - submitted_double_area));
 
+    const uint64_t source_texture_pixels = baseline_double_area / 2;
+    const nlohmann::json& padding = sprite_mesh.at("padding");
+    const uint64_t serialized_texture_pixels = padding.at("serializedTexturePixels").get<uint64_t>();
+    const uint64_t expected_added_texture_pixels = serialized_texture_pixels > source_texture_pixels ? serialized_texture_pixels - source_texture_pixels : 0;
+    const uint64_t expected_cropped_texture_pixels = source_texture_pixels > serialized_texture_pixels ? source_texture_pixels - serialized_texture_pixels : 0;
+    CHECK(padding.at("addedTexturePixels") == expected_added_texture_pixels);
+    CHECK(padding.at("framesExpanded") == (expected_added_texture_pixels != 0 ? 1 : 0));
+
+    const nlohmann::json& cropping = sprite_mesh.at("cropping");
+    CHECK(cropping.at("savedTexturePixels") == expected_cropped_texture_pixels);
+    CHECK(cropping.at("savedTextureBytesRgba") == expected_cropped_texture_pixels * 4);
+    CHECK(cropping.at("framesCropped") == (expected_cropped_texture_pixels != 0 ? 1 : 0));
+    CHECK(sprite_mesh.at("largestCroppingSavings").is_array());
+
     const nlohmann::json& diagnostic_rows = mesh_frames != 0 ? sprite_mesh.at("mostComplexMeshes") : sprite_mesh.at("largestMissedSavings");
     REQUIRE(diagnostic_rows.size() == 1);
     const nlohmann::json& diagnostic_row = diagnostic_rows.front();
     CHECK((diagnostic_row.at("dilatedComponents").is_number_integer() || diagnostic_row.at("dilatedComponents").is_null()));
     CHECK((diagnostic_row.at("selectionScore").is_number() || diagnostic_row.at("selectionScore").is_null()));
+    CHECK(diagnostic_row.at("croppingSavedPixels").is_number_unsigned());
 
     const nlohmann::json& art_pack = FindBakerSetupReportEntry(report.at("packs"), "Art");
     const nlohmann::json& pack_image = FindBakerSetupReportEntry(art_pack.at("bakers"), ImageBaker::NAME);

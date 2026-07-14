@@ -45,6 +45,7 @@ constexpr size_t BAKING_REPORT_TOP_ENTRY_COUNT = 25;
 static void KeepLargestMissedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 static void KeepLargestRejectedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 static void KeepMostComplexSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
+static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 
 BakingReport::BakingReport(ptr<const BakingSettings> settings) :
@@ -221,6 +222,14 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
         stats.PaddingHistogram[stored_frame.Padding]++;
         stats.SourceFramePixels += stored_frame.SourceFramePixels;
         stats.BakedCanvasPixels += stored_frame.BakedCanvasPixels;
+        if (stored_frame.BakedCanvasPixels < stored_frame.SourceFramePixels) {
+            stats.CroppedFrames++;
+            stats.CroppedTexturePixels += stored_frame.SourceFramePixels - stored_frame.BakedCanvasPixels;
+        }
+        else if (stored_frame.BakedCanvasPixels > stored_frame.SourceFramePixels) {
+            stats.ExpandedFrames++;
+            stats.ExpandedTexturePixels += stored_frame.BakedCanvasPixels - stored_frame.SourceFramePixels;
+        }
         stats.VisiblePixels += stored_frame.VisiblePixels;
         stats.SubmittedGeometryDoubleArea += stored_frame.SubmittedGeometryDoubleArea;
         stats.SourceComponentHistogram[stored_frame.SourceComponentCount]++;
@@ -265,6 +274,7 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
             KeepLargestRejectedSpriteFrames(stats.LargestRejectedCandidateSavings, stored_frame);
         }
 
+        KeepLargestCroppedSpriteFrames(stats.LargestCroppingSavings, stored_frame);
         KeepLargestPaddingSpriteFrames(stats.LargestPaddingOverhead, stored_frame);
     };
 
@@ -444,6 +454,25 @@ static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
     }
 }
 
+static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (frame.BakedCanvasPixels >= frame.SourceFramePixels) {
+        return;
+    }
+
+    frames.emplace_back(frame);
+    std::ranges::sort(frames, [](const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) {
+        const uint64_t left_savings = left.SourceFramePixels - left.BakedCanvasPixels;
+        const uint64_t right_savings = right.SourceFramePixels - right.BakedCanvasPixels;
+        return left_savings != right_savings ? left_savings > right_savings : IsBakingReportSpriteFrameIdentityLess(left, right);
+    });
+    if (frames.size() > BAKING_REPORT_TOP_ENTRY_COUNT) {
+        frames.resize(BAKING_REPORT_TOP_ENTRY_COUNT);
+    }
+}
+
 using BakingReportJson = nlohmann::ordered_json;
 
 static auto SumBakingReportPathSizes(const map<string, uint64_t>& path_sizes) noexcept -> uint64_t
@@ -567,6 +596,7 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
         {"submittedGeometryAreaPixels", numeric_cast<float64_t>(frame.SubmittedGeometryDoubleArea) / 2.0},
         {"potentialTransparentPixels", frame.SourceFramePixels >= frame.VisiblePixels ? frame.SourceFramePixels - frame.VisiblePixels : 0},
         {"paddingAddedPixels", frame.BakedCanvasPixels >= frame.SourceFramePixels ? frame.BakedCanvasPixels - frame.SourceFramePixels : 0},
+        {"croppingSavedPixels", frame.SourceFramePixels >= frame.BakedCanvasPixels ? frame.SourceFramePixels - frame.BakedCanvasPixels : 0},
     };
     result["dilatedComponents"] = nullptr;
     if (frame.DilatedComponentCount.has_value()) {
@@ -744,7 +774,6 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         {"savedTransparentPercent", baseline_transparent_double_area > 0 ? numeric_cast<float64_t>(baseline_transparent_double_area - remaining_transparent_double_area) * 100.0 / numeric_cast<float64_t>(baseline_transparent_double_area) : 0.0},
     };
 
-    const uint64_t padding_added_pixels = stats.BakedCanvasPixels >= stats.SourceFramePixels ? stats.BakedCanvasPixels - stats.SourceFramePixels : 0;
     const uint64_t zero_padding_frames = stats.PaddingHistogram.contains(0) ? stats.PaddingHistogram.at(0) : 0;
     int32_t maximum_padding = 0;
     if (!stats.PaddingHistogram.empty()) {
@@ -754,9 +783,16 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
         {"framesPadded", unique_frames >= zero_padding_frames ? unique_frames - zero_padding_frames : 0},
         {"maximum", maximum_padding},
         {"serializedTexturePixels", stats.BakedCanvasPixels},
-        {"addedTexturePixels", padding_added_pixels},
-        {"addedTextureBytesRgba", padding_added_pixels * 4},
+        {"framesExpanded", stats.ExpandedFrames},
+        {"addedTexturePixels", stats.ExpandedTexturePixels},
+        {"addedTextureBytesRgba", stats.ExpandedTexturePixels * 4},
         {"histogram", MakeBakingReportNumericDistribution(stats.PaddingHistogram, unique_frames, "padding")},
+    };
+
+    result["cropping"] = {
+        {"framesCropped", stats.CroppedFrames},
+        {"savedTexturePixels", stats.CroppedTexturePixels},
+        {"savedTextureBytesRgba", stats.CroppedTexturePixels * 4},
     };
 
     result["selectionScore"] = MakeBakingReportScoreJson(stats.SelectedScores);
@@ -795,6 +831,10 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
     result["mostComplexMeshes"] = BakingReportJson::array();
     for (const SpriteMeshBakingFrameReport& frame : stats.MostComplexMeshes) {
         result["mostComplexMeshes"].push_back(MakeBakingReportSpriteFrameJson(frame));
+    }
+    result["largestCroppingSavings"] = BakingReportJson::array();
+    for (const SpriteMeshBakingFrameReport& frame : stats.LargestCroppingSavings) {
+        result["largestCroppingSavings"].push_back(MakeBakingReportSpriteFrameJson(frame));
     }
     result["largestPaddingOverhead"] = BakingReportJson::array();
     for (const SpriteMeshBakingFrameReport& frame : stats.LargestPaddingOverhead) {

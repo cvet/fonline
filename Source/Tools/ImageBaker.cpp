@@ -43,40 +43,13 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto BytesAsText(nptr<const uint8_t> data) noexcept -> nptr<const char>
-{
-    FO_STACK_TRACE_ENTRY();
+static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
+static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
 
-    return data.reinterpret_as<const char>();
-}
-
-static auto ImageSpanBytesAt(span<const uint8_t> data, size_t pos) noexcept -> ptr<const uint8_t>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Image byte offset is out of range");
-
-    auto data_pos = make_ptr(data.data() + pos);
-    return data_pos;
-}
-
-template<typename T>
-static auto ImageVectorDataAt(vector<T>& data, size_t pos) noexcept -> ptr<T>
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    FO_STRONG_ASSERT(pos < data.size(), "Image element index is out of range");
-
-    auto data_pos = make_ptr(data.data() + pos);
-    return data_pos;
-}
-
-[[nodiscard]] static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
-[[nodiscard]] static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>;
-
-[[nodiscard]] static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot;
-[[nodiscard]] static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
+static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot;
+static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t;
 static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot);
+static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>;
 
 // clang-format off
 alignas(ucolor) static uint8_t FoPalette[] = {
@@ -266,9 +239,9 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
     for (const auto dir : iterate_range(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        int32_t frame_padding = 0;
         vector<optional<BakedSpriteMesh>> prepared_meshes(sequence.Frames.size());
         vector<int32_t> mesh_build_paddings(sequence.Frames.size());
+        vector<int32_t> frame_paddings(sequence.Frames.size());
 
         if (mesh_config.Enabled) {
             for (size_t frame_index = 0; frame_index < sequence.Frames.size(); frame_index++) {
@@ -288,18 +261,16 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
                 const int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
                 prepared_meshes[frame_index] = BuildSpriteMesh(mesh_shot->Data, {mesh_shot->Width, mesh_shot->Height}, mesh_config, reference_quad_double_area);
-                frame_padding = std::max(frame_padding, ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]));
+                frame_paddings[frame_index] = ResolveSpriteFramePadding(shot, *prepared_meshes[frame_index], mesh_build_paddings[frame_index]);
             }
         }
-
-        writer.Write<int16_t>(sequence.OffsX);
-        writer.Write<int16_t>(numeric_cast<int16_t>(numeric_cast<int32_t>(sequence.OffsY) + frame_padding));
 
         for (int32_t i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
             writer.Write<bool>(shot.Shared);
 
             if (!shot.Shared) {
+                const int32_t frame_padding = frame_paddings[numeric_cast<size_t>(i)];
                 optional<FrameShot> padded_shot;
                 ptr<const FrameShot> bake_shot = &shot;
 
@@ -319,6 +290,28 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                     const int64_t reference_quad_double_area = numeric_cast<int64_t>(shot.Width) * shot.Height * 2;
                     mesh = BuildSpriteMesh(bake_shot->Data, {bake_shot->Width, bake_shot->Height}, mesh_config, reference_quad_double_area);
                 }
+
+                optional<FrameShot> cropped_shot;
+
+                if (mesh.Kind == SpriteMeshKind::Mesh) {
+                    cropped_shot = CropSpriteFrameToMeshBounds(*bake_shot, shot, frame_padding, mesh);
+
+                    if (cropped_shot.has_value()) {
+                        bake_shot = &*cropped_shot;
+                    }
+                }
+
+                const ipos32 source_offset {sequence.OffsX, sequence.OffsY};
+                const isize32 source_size {shot.Width, shot.Height};
+                const isize32 cropped_size {bake_shot->Width, bake_shot->Height};
+                FO_VERIFY_AND_THROW(mesh.Kind != SpriteMeshKind::Mesh || (source_size.width > 0 && source_size.height > 0 && cropped_size.width > 0 && cropped_size.height > 0), "Sprite frame offset resolution requires positive dimensions", source_size, cropped_size);
+
+                const ipos32 frame_offset = mesh.Kind == SpriteMeshKind::Mesh ?
+                    ipos32 {
+                        source_offset.x + cropped_size.width / 2 - source_size.width / 2 + mesh.Data.SourceOffset.x,
+                        source_offset.y + cropped_size.height - source_size.height + mesh.Data.SourceOffset.y,
+                    } :
+                    source_offset;
 
                 if (report_enabled) {
                     optional<SpriteMeshBakingCandidateReport> best_rejected_candidate;
@@ -362,6 +355,8 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                     });
                 }
 
+                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x));
+                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.y));
                 writer.Write<uint16_t>(bake_shot->Width);
                 writer.Write<uint16_t>(bake_shot->Height);
                 writer.Write<int16_t>(bake_shot->NextX);
@@ -376,6 +371,10 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                 if (mesh.Kind == SpriteMeshKind::Mesh) {
                     writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.Vertices.size()));
                     writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Data.Indices.size()));
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.width));
+                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.height));
+                    writer.Write<int32_t>(mesh.Data.SourceOffset.x);
+                    writer.Write<int32_t>(mesh.Data.SourceOffset.y);
 
                     for (const ipos32 vertex : mesh.Data.Vertices) {
                         writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
@@ -480,6 +479,59 @@ static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const Ima
         vertex.y += offset;
         FO_VERIFY_AND_THROW(vertex.x >= 0 && vertex.x <= shot.Width && vertex.y >= 0 && vertex.y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
     }
+}
+
+static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(mesh.Kind == SpriteMeshKind::Mesh && !mesh.Data.Vertices.empty() && !mesh.Data.Indices.empty(), "Sprite frame cropping requires a non-empty mesh");
+    FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
+
+    ipos32 minimum_vertex {shot.Width, shot.Height};
+    ipos32 maximum_vertex {};
+
+    for (const ipos32 vertex : mesh.Data.Vertices) {
+        FO_VERIFY_AND_THROW(vertex.x >= 0 && vertex.x <= shot.Width && vertex.y >= 0 && vertex.y <= shot.Height, "Sprite mesh vertex lies outside the frame selected for cropping", vertex, shot.Width, shot.Height);
+        minimum_vertex.x = std::min(minimum_vertex.x, vertex.x);
+        minimum_vertex.y = std::min(minimum_vertex.y, vertex.y);
+        maximum_vertex.x = std::max(maximum_vertex.x, vertex.x);
+        maximum_vertex.y = std::max(maximum_vertex.y, vertex.y);
+    }
+
+    const isize32 cropped_size = {maximum_vertex.x - minimum_vertex.x, maximum_vertex.y - minimum_vertex.y};
+    FO_VERIFY_AND_THROW(cropped_size.width > 0 && cropped_size.height > 0, "Sprite mesh bounds must have positive dimensions", minimum_vertex, maximum_vertex);
+
+    mesh.Data.SourceSize = {source_shot.Width, source_shot.Height};
+    mesh.Data.SourceOffset = {minimum_vertex.x - padding, minimum_vertex.y - padding};
+
+    for (ipos32& vertex : mesh.Data.Vertices) {
+        vertex -= minimum_vertex;
+    }
+
+    if (minimum_vertex == ipos32 {} && cropped_size == isize32 {shot.Width, shot.Height}) {
+        return std::nullopt;
+    }
+
+    ImageBaker::FrameShot result;
+    result.Width = numeric_cast<uint16_t>(cropped_size.width);
+    result.Height = numeric_cast<uint16_t>(cropped_size.height);
+    result.NextX = shot.NextX;
+    result.NextY = shot.NextY;
+    result.Data.resize(numeric_cast<size_t>(result.Width) * result.Height * 4);
+
+    const size_t source_row_size = numeric_cast<size_t>(shot.Width) * 4;
+    const size_t cropped_row_size = numeric_cast<size_t>(result.Width) * 4;
+    const size_t source_x_offset = numeric_cast<size_t>(minimum_vertex.x) * 4;
+
+    for (uint16_t y = 0; y < result.Height; y++) {
+        const size_t source_y = numeric_cast<size_t>(numeric_cast<int32_t>(y) + minimum_vertex.y);
+        const size_t source_offset = source_y * source_row_size + source_x_offset;
+        const size_t destination_offset = numeric_cast<size_t>(y) * cropped_row_size;
+        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
+    }
+
+    return optional<ImageBaker::FrameShot> {std::move(result)};
 }
 
 auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection
@@ -1637,7 +1689,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             const int32_t name_len = reader.GetLEInt32();
             FO_VERIFY_AND_THROW(name_len >= 0, "ART sequence name length is negative", name_len);
             const_span<uint8_t> name_data = reader.GetCurDataSpan(numeric_cast<size_t>(name_len));
-            const auto name = string(!name_data.empty() ? BytesAsText(ImageSpanBytesAt(name_data, 0)).get() : "", name_data.size());
+            const auto name = string(!name_data.empty() ? make_ptr(name_data.data()).reinterpret_as<const char>().get() : "", name_data.size());
             reader.GoForward(name_data.size());
             auto index = reader.GetLEUInt16();
 
@@ -2493,7 +2545,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
     int32_t height = 0;
     const_span<uint8_t> png_data = reader.GetDataSpan();
     FO_VERIFY_AND_THROW(!png_data.empty(), "PNG file has no data to load");
-    auto png_data_ptr = ImageSpanBytesAt(png_data, 0);
+    auto png_data_ptr = make_ptr(png_data.data());
     auto data = PngLoad(png_data_ptr, width, height);
 
     FrameCollection collection;
@@ -2615,11 +2667,11 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
         result.resize(numeric_cast<size_t>(width) * height * 4);
 
         for (png_uint_32 i = 0; i < height; i++) {
-            auto row = ImageVectorDataAt(result, numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
+            auto row = make_ptr(result.data() + numeric_cast<size_t>(i) * numeric_cast<size_t>(width) * 4);
             row_pointers[i] = row.get();
         }
 
-        auto rows = ImageVectorDataAt(row_pointers, 0);
+        auto rows = make_ptr(row_pointers.data());
         png_read_image(png_ptr.get(), rows.get());
         png_read_end(png_ptr.get(), info_ptr.get());
         png_destroy_read_struct(png_ptr.get_pp(), info_ptr.get_pp(), static_cast<png_infopp>(nullptr));
@@ -2645,7 +2697,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
     const auto read_tga = [&](ptr<void> out, size_t len) {
         if (cur_pos + len <= data.size()) {
             if (len != 0) {
-                auto source = ImageSpanBytesAt(data, cur_pos);
+                auto source = make_ptr(data.data() + cur_pos);
                 MemCopy(out, source, len);
             }
 
@@ -2699,7 +2751,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
 
     if (type == 2) {
         if (read_size != 0) {
-            auto read_data_begin = ImageVectorDataAt(read_data, 0);
+            auto read_data_begin = make_ptr(read_data.data());
             read_tga(make_nptr(read_data_begin.get()).void_cast(), numeric_cast<size_t>(read_size));
         }
     }
@@ -2736,7 +2788,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
                 }
 
                 if (to_read != 0) {
-                    auto read_data_pos = ImageVectorDataAt(read_data, numeric_cast<size_t>(bytes_read));
+                    auto read_data_pos = make_ptr(read_data.data() + numeric_cast<size_t>(bytes_read));
                     read_tga(make_nptr(read_data_pos.get()).void_cast(), numeric_cast<size_t>(to_read));
                 }
                 bytes_read += run_len;

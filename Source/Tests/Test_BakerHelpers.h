@@ -261,10 +261,9 @@ namespace BakerTests
         writer.Write<uint16_t>(uint16_t {0}); // Ticks
         writer.Write<uint8_t>(uint8_t {1}); // Directions
 
+        writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
         writer.Write<int16_t>(int16_t {0}); // Offset x
         writer.Write<int16_t>(int16_t {0}); // Offset y
-
-        writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
         writer.Write<uint16_t>(width);
         writer.Write<uint16_t>(height);
         writer.Write<int16_t>(int16_t {0}); // Frame x
@@ -284,6 +283,10 @@ namespace BakerTests
         if (mesh_kind == SpriteMeshKind::Mesh) {
             writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
             writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.width > 0 ? mesh.SourceSize.width : width));
+            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.height > 0 ? mesh.SourceSize.height : height));
+            writer.Write<int32_t>(mesh.SourceOffset.x);
+            writer.Write<int32_t>(mesh.SourceOffset.y);
 
             for (const ipos32 vertex : mesh.Vertices) {
                 writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));

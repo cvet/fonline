@@ -51,16 +51,16 @@ static auto CreateParticleEditorTextureLoader(ptr<FOEditor> editor, vector<uniqu
     return [editor, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
         const auto file = editor->BakedResources.ReadFile(path);
         FO_VERIFY_AND_THROW(file, "Particle editor could not read sprite resource", path);
-        auto reader = file.GetReader();
-        SpriteResourceData resource = ReadSpriteResource(reader);
+        SpriteResourceData resource = ReadSpriteResource(file.GetDataSpan());
         FO_VERIFY_AND_THROW(resource.FrameCount == 1, "Particle editor texture must contain exactly one sprite frame", resource.FrameCount);
         FO_VERIFY_AND_THROW(resource.Directions.size() == 1, "Particle editor texture must contain exactly one direction", resource.Directions.size());
 
-        const SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();
+        SpriteResourceFrameData& frame = resource.Directions.front().Frames.front();
         FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Particle editor texture cannot be a sprite reference");
+        SpriteResourceImageData image = ExtractSpriteResourceFrameImage(std::move(frame));
 
-        auto tex = GetApp()->Render.CreateTexture(frame.Size, true, false);
-        tex->UpdateTextureRegion({}, frame.Size, frame.Pixels);
+        auto tex = GetApp()->Render.CreateTexture(image.Size, true, false);
+        tex->UpdateTextureRegion({}, image.Size, image.Pixels);
 
         auto tex_ptr = tex.as_ptr();
         loaded_textures_ptr->emplace_back(std::move(tex));

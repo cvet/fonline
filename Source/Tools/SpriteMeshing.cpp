@@ -185,6 +185,8 @@ auto BuildSpriteMesh(const vector<uint8_t>& rgba, isize32 size, const SpriteMesh
 
     result.Kind = SpriteMeshKind::Mesh;
     result.Data = std::move(search_result.Best->Mesh);
+    result.Data.SourceSize = size;
+    result.Data.SourceOffset = {};
     result.Source = search_result.Best->Source;
     result.DoubleArea = numeric_cast<uint64_t>(search_result.Best->DoubleArea);
     result.SimplifyTolerance = search_result.Best->SimplifyTolerance;

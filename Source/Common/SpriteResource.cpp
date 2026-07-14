@@ -37,11 +37,11 @@ FO_BEGIN_NAMESPACE
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>;
 
-auto ReadSpriteResource(FileReader& reader) -> SpriteResourceData
+auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(reader.GetCurPos() == 0, "Sprite resource reader must start at the beginning of the resource", reader.GetCurPos(), reader.GetSize());
+    FileReader reader {data};
 
     const uint8_t header_magic = reader.GetUInt8();
     FO_VERIFY_AND_THROW(header_magic == SPRITE_RESOURCE_MAGIC, "Sprite resource header magic is invalid", header_magic, SPRITE_RESOURCE_MAGIC);
@@ -74,8 +74,6 @@ auto ReadSpriteResource(FileReader& reader) -> SpriteResourceData
 
     for (uint8_t direction_index = 0; direction_index < direction_count; direction_index++) {
         SpriteResourceDirectionData& direction = resource.Directions[direction_index];
-        direction.Offset.x = reader.GetLEInt16();
-        direction.Offset.y = reader.GetLEInt16();
         direction.Frames.resize(resource.FrameCount);
 
         for (uint16_t frame_index = 0; frame_index < resource.FrameCount; frame_index++) {
@@ -90,6 +88,8 @@ auto ReadSpriteResource(FileReader& reader) -> SpriteResourceData
                 continue;
             }
 
+            frame.Offset.x = reader.GetLEInt16();
+            frame.Offset.y = reader.GetLEInt16();
             frame.Size.width = reader.GetLEUInt16();
             frame.Size.height = reader.GetLEUInt16();
             frame.NextOffset.x = reader.GetLEInt16();
@@ -104,6 +104,39 @@ auto ReadSpriteResource(FileReader& reader) -> SpriteResourceData
     FO_VERIFY_AND_THROW(reader.GetCurPos() == reader.GetSize(), "Sprite resource contains trailing data", reader.GetCurPos(), reader.GetSize());
 
     return resource;
+}
+
+auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Cannot extract image pixels from a shared sprite frame", frame.SharedFrameIndex.value_or(0));
+
+    if (!frame.Mesh.has_value() || frame.Mesh->Indices.empty()) {
+        return SpriteResourceImageData {.Size = frame.Size, .Pixels = std::move(frame.Pixels)};
+    }
+
+    const SpriteMeshData& mesh = *frame.Mesh;
+    SpriteResourceImageData image;
+    image.Size = mesh.SourceSize;
+    const uint64_t logical_pixel_count = numeric_cast<uint64_t>(image.Size.width) * image.Size.height;
+    image.Pixels.resize(numeric_cast<size_t>(logical_pixel_count));
+
+    const int32_t source_begin_x = std::max(mesh.SourceOffset.x, 0);
+    const int32_t source_begin_y = std::max(mesh.SourceOffset.y, 0);
+    const int32_t frame_begin_x = std::max(-mesh.SourceOffset.x, 0);
+    const int32_t frame_begin_y = std::max(-mesh.SourceOffset.y, 0);
+    const int32_t copy_width = std::min(frame.Size.width - frame_begin_x, image.Size.width - source_begin_x);
+    const int32_t copy_height = std::min(frame.Size.height - frame_begin_y, image.Size.height - source_begin_y);
+    FO_VERIFY_AND_THROW(copy_width > 0 && copy_height > 0, "Cropped sprite frame does not contain logical source pixels", frame.Size, mesh.SourceOffset, mesh.SourceSize);
+
+    for (int32_t y = 0; y < copy_height; y++) {
+        const size_t frame_offset = numeric_cast<size_t>(frame_begin_y + y) * frame.Size.width + frame_begin_x;
+        const size_t image_offset = numeric_cast<size_t>(source_begin_y + y) * image.Size.width + source_begin_x;
+        MemCopy(image.Pixels.data() + image_offset, frame.Pixels.data() + frame_offset, numeric_cast<size_t>(copy_width) * sizeof(ucolor));
+    }
+
+    return image;
 }
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>
@@ -127,19 +160,39 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
     FO_VERIFY_AND_THROW(index_count >= 3 && index_count % 3 == 0, "Sprite mesh index count must contain complete triangles", index_count);
     FO_VERIFY_AND_THROW(index_count <= numeric_cast<uint32_t>(vertex_count) * 6u, "Sprite mesh contains implausibly many indices", vertex_count, index_count);
 
-    const uint64_t payload_size = numeric_cast<uint64_t>(vertex_count) * sizeof(uint16_t) * 2 + numeric_cast<uint64_t>(index_count) * sizeof(uint16_t);
+    const uint64_t payload_size = sizeof(uint16_t) * 2 + sizeof(int32_t) * 2 + numeric_cast<uint64_t>(vertex_count) * sizeof(uint16_t) * 2 + numeric_cast<uint64_t>(index_count) * sizeof(uint16_t);
     const size_t remaining_size = reader.GetSize() - reader.GetCurPos();
     FO_VERIFY_AND_THROW(payload_size <= remaining_size, "Sprite mesh payload is truncated", payload_size, remaining_size, vertex_count, index_count);
 
     SpriteMeshData mesh;
+    mesh.SourceSize.width = reader.GetLEUInt16();
+    mesh.SourceSize.height = reader.GetLEUInt16();
+    mesh.SourceOffset.x = reader.GetLEInt32();
+    mesh.SourceOffset.y = reader.GetLEInt32();
+    FO_VERIFY_AND_THROW(mesh.SourceSize.width > 0 && mesh.SourceSize.height > 0, "Sprite mesh logical source dimensions must be positive", mesh.SourceSize);
+
+    const int64_t source_end_x = numeric_cast<int64_t>(mesh.SourceOffset.x) + size.width;
+    const int64_t source_end_y = numeric_cast<int64_t>(mesh.SourceOffset.y) + size.height;
+    FO_VERIFY_AND_THROW(mesh.SourceOffset.x < mesh.SourceSize.width && source_end_x > 0 && mesh.SourceOffset.y < mesh.SourceSize.height && source_end_y > 0, "Sprite mesh cropped frame does not intersect its logical source", mesh.SourceOffset, mesh.SourceSize, size);
     mesh.Vertices.reserve(vertex_count);
+
+    ipos32 minimum_vertex {size.width, size.height};
+    ipos32 maximum_vertex {};
 
     for (uint16_t i = 0; i < vertex_count; i++) {
         const uint16_t x = reader.GetLEUInt16();
         const uint16_t y = reader.GetLEUInt16();
         FO_VERIFY_AND_THROW(x <= size.width && y <= size.height, "Sprite mesh vertex is outside the sprite frame", i, x, y, size);
         mesh.Vertices.emplace_back(numeric_cast<int32_t>(x), numeric_cast<int32_t>(y));
+        minimum_vertex.x = std::min(minimum_vertex.x, numeric_cast<int32_t>(x));
+        minimum_vertex.y = std::min(minimum_vertex.y, numeric_cast<int32_t>(y));
+        maximum_vertex.x = std::max(maximum_vertex.x, numeric_cast<int32_t>(x));
+        maximum_vertex.y = std::max(maximum_vertex.y, numeric_cast<int32_t>(y));
     }
+
+    const ipos32 expected_minimum_vertex {};
+    const ipos32 expected_maximum_vertex {size.width, size.height};
+    FO_VERIFY_AND_THROW(minimum_vertex == expected_minimum_vertex && maximum_vertex == expected_maximum_vertex, "Sprite mesh vertices must occupy the complete cropped frame bounds", minimum_vertex, maximum_vertex, size);
 
     mesh.Indices.resize(numeric_cast<size_t>(index_count));
 

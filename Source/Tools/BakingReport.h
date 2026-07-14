@@ -141,6 +141,10 @@ struct BakingReportSpriteMeshStats
     map<string, BakingReportSpriteResourceStats> Resources {};
     uint64_t SourceFramePixels {};
     uint64_t BakedCanvasPixels {};
+    uint64_t CroppedFrames {};
+    uint64_t CroppedTexturePixels {};
+    uint64_t ExpandedFrames {};
+    uint64_t ExpandedTexturePixels {};
     uint64_t VisiblePixels {};
     uint64_t SubmittedGeometryDoubleArea {};
     uint64_t Vertices {};
@@ -153,6 +157,7 @@ struct BakingReportSpriteMeshStats
     vector<SpriteMeshBakingFrameReport> LargestMissedSavings {};
     vector<SpriteMeshBakingFrameReport> LargestRejectedCandidateSavings {};
     vector<SpriteMeshBakingFrameReport> MostComplexMeshes {};
+    vector<SpriteMeshBakingFrameReport> LargestCroppingSavings {};
     vector<SpriteMeshBakingFrameReport> LargestPaddingOverhead {};
 };
 

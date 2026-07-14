@@ -161,17 +161,21 @@ source-backed `AtlasSprite` frames may emit their baked silhouette vertices and
 indices instead of the implicit 4-vertex/6-index rectangle. All renderer
 backends consume the same buffer; no backend-specific polygon path exists.
 
-Local mesh coordinates remain relative to the full logical bitmap, not its
-opaque bounding box. Screen position and atlas UV are both affine mappings of
-the same local coordinate, so scaling, rotation, map projection, standing-sprite
-depth, and egg flags continue to operate over every emitted vertex. Map lighting
-also preserves the old quad plane: `DrawSprites` still provides the left/right
-endpoint colours, and a mesh vertex at local X receives
-`lerp(left, right, clamp(localX / spriteWidth, 0, 1))`. This is signed horizontal
-distance from the bitmap centre expressed as a normalized coordinate; it is not
-radial distance or distance from the opaque contour. Because `Vertex2D::Color`
-is RGBA8, intermediate mesh vertices may differ from ideal quad interpolation by
-at most one channel unit due to rounding.
+Local mesh coordinates are relative to the exact bounding box of the selected
+geometry. The baked frame carries the original logical bitmap size and the
+cropped-frame origin within it, while its individual sprite offset preserves
+the original logical root. Screen position and atlas UV are affine mappings of
+the same cropped coordinate, so scaling, rotation, map projection,
+standing-sprite depth, and egg flags continue to operate over every emitted
+vertex without retaining unused texture rows or columns. Map lighting also
+preserves the old full-bitmap quad plane: `DrawSprites` still provides the
+left/right endpoint colours, and a mesh vertex at cropped local X receives
+`lerp(left, right, clamp((localX + sourceOffsetX) / sourceWidth, 0, 1))`.
+This is signed horizontal distance from the original bitmap centre expressed as
+a normalized coordinate; it is not distance from the cropped bounds or opaque
+contour. Because `Vertex2D::Color` is RGBA8, intermediate mesh vertices may
+differ from ideal quad interpolation by at most one channel unit due to
+rounding.
 
 Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
 patterns, padded custom-effect/outline draws, fonts, texture/render-target
