@@ -37,34 +37,34 @@
 
 FO_BEGIN_NAMESPACE
 
-AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data) :
+AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
-    _atlasNode {std::move(atlas_node)},
     _atlasRect {atlas_rect},
     _hitTestData {std::move(hit_data)},
-    _meshData {std::move(mesh_data)}
+    _meshData {std::move(mesh_data)},
+    _atlasAllocation {std::move(atlas_allocation)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_atlasNode) {
-        _atlasNode->SpriteMesh = _meshData ? &*_meshData : nullptr;
+    if (_atlasAllocation) {
+        _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
     }
 }
 
 AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
     Sprite(std::move(other)),
     _atlas {other._atlas},
-    _atlasNode {std::move(other._atlasNode)},
     _atlasRect {other._atlasRect},
     _hitTestData {std::move(other._hitTestData)},
-    _meshData {std::move(other._meshData)}
+    _meshData {std::move(other._meshData)},
+    _atlasAllocation {std::move(other._atlasAllocation)}
 {
     FO_STACK_TRACE_ENTRY();
 
     other._atlas = nullptr;
-    if (_atlasNode) {
-        _atlasNode->SpriteMesh = _meshData ? &*_meshData : nullptr;
+    if (_atlasAllocation) {
+        _atlasAllocation->SetSpriteMesh(_meshData ? nptr<const SpriteMeshData> {&*_meshData} : nullptr);
     }
 }
 
@@ -78,13 +78,13 @@ AtlasSprite::~AtlasSprite()
             const auto rnd_color = ucolor {numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255))};
 
             vector<ucolor> color_data;
-            color_data.resize(_atlasNode->Size.square());
+            color_data.resize(_atlasAllocation->GetSize().square());
 
             for (size_t i = 0; i < color_data.size(); i++) {
                 color_data[i] = rnd_color;
             }
 
-            _atlas->_mainTex->UpdateTextureRegion(_atlasNode->Pos, _atlasNode->Size, color_data);
+            _atlas->_mainTex->UpdateTextureRegion(_atlasAllocation->GetPosition(), _atlasAllocation->GetSize(), color_data);
         }
         catch (...) {
         }
@@ -560,7 +560,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     FO_VERIFY_AND_THROW(size.width > 0, "Atlas sprite width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Atlas sprite height must be positive", size.height);
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
+    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, size);
 
     vector<bool> hit_test_data;
 
@@ -613,7 +613,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
-    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_node), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
+    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
 }
 
 FO_END_NAMESPACE

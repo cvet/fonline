@@ -390,54 +390,54 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         CHECK(draw_buf->Vertices[2].Color == (ucolor {90, 100, 110, 120}));
     }
 
-    SECTION("Live atlas node observes sprite mesh metadata for dump lifetime")
+    SECTION("Live atlas allocation observes sprite mesh metadata for dump lifetime")
     {
-        TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
-        atlas_node.Busy = true;
+        TextureAtlasLayout layout {{12, 12}};
+        auto atlas_allocation = layout.Allocate({12, 12});
+        REQUIRE(atlas_allocation);
+        const nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
         SpriteMeshData mesh;
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
-        function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
-        unique_del_nptr<TextureAtlas::SpaceNode> atlas_node_owner {&atlas_node, std::move(free_node)};
 
         {
-            auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_node_owner), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+            auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
             auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
-            REQUIRE(atlas_node.SpriteMesh != nullptr);
-            CHECK(atlas_node.SpriteMesh->Vertices.size() == 3);
+            REQUIRE(allocation_observer->GetSpriteMesh());
+            CHECK(allocation_observer->GetSpriteMesh()->Vertices.size() == 3);
             CHECK(sprite->FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         }
 
-        CHECK_FALSE(atlas_node.Busy);
-        CHECK(atlas_node.SpriteMesh == nullptr);
+        CHECK_FALSE(allocation_observer->IsActive());
+        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
     }
 
-    SECTION("Moving an atlas sprite rebinds the mesh observer")
+    SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
     {
-        TextureAtlas::SpaceNode atlas_node {nullptr, {0, 0}, {12, 12}};
-        atlas_node.Busy = true;
+        TextureAtlasLayout layout {{12, 12}};
+        auto atlas_allocation = layout.Allocate({12, 12});
+        REQUIRE(atlas_allocation);
+        const nptr<TextureAtlasLayout::Allocation> allocation_observer = atlas_allocation.as_nptr();
         SpriteMeshData mesh;
         mesh.SourceSize = {10, 10};
         mesh.Vertices = {{0, 0}, {5, 5}, {10, 0}};
         mesh.Indices = {0, 1, 2};
-        function<void(TextureAtlas::SpaceNode*)> free_node = [](TextureAtlas::SpaceNode* node) noexcept { node->Free(); };
-        unique_del_nptr<TextureAtlas::SpaceNode> atlas_node_owner {&atlas_node, std::move(free_node)};
 
         {
-            AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_node_owner), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
-            const nptr<const SpriteMeshData> source_mesh = atlas_node.SpriteMesh;
+            AtlasSprite source {&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)}};
+            const nptr<const SpriteMeshData> source_mesh = allocation_observer->GetSpriteMesh();
             AtlasSprite moved {std::move(source)};
 
-            REQUIRE(atlas_node.SpriteMesh != nullptr);
-            CHECK(atlas_node.SpriteMesh != source_mesh);
+            REQUIRE(allocation_observer->GetSpriteMesh());
+            CHECK(allocation_observer->GetSpriteMesh() != source_mesh);
             auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
             CHECK(moved.FillData(draw_buf, draw_rect, {color_left, color_right}) == 3);
         }
 
-        CHECK_FALSE(atlas_node.Busy);
-        CHECK(atlas_node.SpriteMesh == nullptr);
+        CHECK_FALSE(allocation_observer->IsActive());
+        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
     }
 }
 
@@ -579,8 +579,18 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
     mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
     mesh.Indices = {0, 1, 2};
 
-    auto atlas = client->SprMngr.GetAtlasMngr()->CreateAtlas(AtlasType::OneImage, {16, 16});
-    auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, nullptr, frect32 {0.0f, 0.0f, 0.625f, 0.625f}, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+    auto [atlas, atlas_allocation, atlas_pos] = client->SprMngr.GetAtlasMngr()->FindAtlasPlace(AtlasType::OneImage, {10, 10});
+    CHECK(atlas->GetSize() == isize32 {12, 12});
+    CHECK(atlas_pos == ipos32 {1, 1});
+    CHECK(atlas_allocation->GetPosition() == ipos32 {0, 0});
+    CHECK(atlas_allocation->GetSize() == isize32 {12, 12});
+    const frect32 sprite_atlas_rect {
+        numeric_cast<float32_t>(atlas_pos.x) / numeric_cast<float32_t>(atlas->GetSize().width),
+        numeric_cast<float32_t>(atlas_pos.y) / numeric_cast<float32_t>(atlas->GetSize().height),
+        10.0f / numeric_cast<float32_t>(atlas->GetSize().width),
+        10.0f / numeric_cast<float32_t>(atlas->GetSize().height),
+    };
+    auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
 
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());

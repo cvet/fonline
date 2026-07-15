@@ -192,6 +192,23 @@ atlas allocation keeps a nullable non-owning observer into that data and clears
 it when the space is released, so a dump cannot display stale geometry after an
 atlas slot is reused.
 
+Runtime atlas allocation remains per image, but `TextureAtlasLayout` uses
+dynamic MaxRects placement instead of an order-sensitive guillotine tree. It
+retains overlapping maximal free rectangles and chooses the best short-side
+fit, then long-side fit and wasted area, without rotating images. The manager
+evaluates that fit across every existing atlas of the requested type before it
+creates another page; equal page-level scores keep the older atlas. The packed
+rectangle already includes the one-pixel texture border, so the algorithm does
+not change filtering padding, sprite pixels, or UV calculation.
+
+Each live sprite owns an engine `unique_del_*` handle to an encapsulated,
+stable-address `TextureAtlasLayout::Allocation`. Releasing it clears the mesh
+observer in constant time and marks the derived free-rectangle list dirty. The
+next allocation rebuilds that list once from all still-live rectangles, in a
+deterministic order, so batches of unloads are coalesced and no surviving
+sprite, pixel region, or UV ever moves. This runtime-only layout change does
+not add settings or alter sprite-resource serialization.
+
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
 positioning, scaling, rotation, map projection, and standing-sprite depth

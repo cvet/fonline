@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 class AtlasSprite : public Sprite
 {
 public:
-    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data = std::nullopt);
+    explicit AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlasLayout::Allocation> atlas_allocation, frect32 atlas_rect, vector<bool>&& hit_data, optional<SpriteMeshData> mesh_data = std::nullopt);
     AtlasSprite(const AtlasSprite&) = delete;
     AtlasSprite(AtlasSprite&& other) noexcept;
     auto operator=(const AtlasSprite&) = delete;
@@ -63,10 +63,10 @@ public:
 
 protected:
     nptr<TextureAtlas> _atlas {};
-    unique_del_nptr<TextureAtlas::SpaceNode> _atlasNode {};
     frect32 _atlasRect {};
     vector<bool> _hitTestData {};
     optional<SpriteMeshData> _meshData {};
+    unique_del_nptr<TextureAtlasLayout::Allocation> _atlasAllocation {};
 };
 
 class SpriteSheet final : public Sprite

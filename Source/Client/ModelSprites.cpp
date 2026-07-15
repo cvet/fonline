@@ -135,13 +135,13 @@ void ModelSprite::SetSize(isize32 size)
     _model->SetupFrame(size);
     const int16_t new_offset_y = numeric_cast<int16_t>(size.height / 4);
 
-    if (_atlasNode) {
-        _atlasNode.reset(); // Frees the previous atlas slot via the owning handle's deleter
-        _atlas = nullptr;
+    if (_atlasAllocation) {
+        _atlasAllocation.reset(); // Frees the previous atlas slot via the owning handle's deleter
+        _atlas.reset();
         _atlasRect = {};
     }
 
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, size);
+    auto&& [atlas, atlas_allocation, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, size);
 
     frect32 new_rect;
     new_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
@@ -152,7 +152,7 @@ void ModelSprite::SetSize(isize32 size)
     _size = size;
     _offset.y = new_offset_y;
     _atlas = atlas;
-    _atlasNode = std::move(atlas_node);
+    _atlasAllocation = std::move(atlas_allocation);
     _atlasRect = new_rect;
 }
 
