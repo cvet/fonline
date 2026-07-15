@@ -933,7 +933,7 @@ auto Critter::CanSeeItemOnMap(ptr<const Item> item) const -> bool
 
     auto map = require_refcount_ptr(GetParent<Map>());
 
-    return CheckItemVisibilityHook(_engine, map.as_ptr(), this, item);
+    return CheckItemVisibilityHook(_engine, map, this, item);
 }
 
 void Critter::ChangeDir(mdir dir)

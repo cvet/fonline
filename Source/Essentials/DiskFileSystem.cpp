@@ -322,7 +322,7 @@ auto fs_hash_file(string_view path) -> optional<uint64_t>
 
         if (read_size != 0) {
             auto hash_bytes = read_buf.reinterpret_as<const uint8_t>();
-            hash = step(hash, hash_bytes.as_ptr(), read_size);
+            hash = step(hash, hash_bytes, read_size);
         }
 
         if (stream.bad()) {

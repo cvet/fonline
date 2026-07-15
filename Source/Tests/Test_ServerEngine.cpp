@@ -673,7 +673,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(cr->GetProtoId() == critter_pid);
     auto registered_cr = server->EntityMngr.GetCritter(cr_id);
     REQUIRE(registered_cr);
-    CHECK(registered_cr.as_ptr() == cr);
+    CHECK(registered_cr == cr);
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count + 1);
     CHECK(server->EntityMngr.GetEntitiesCount() > entity_count);
 
@@ -683,7 +683,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(player_id != ident_t {});
     auto registered_player = server->EntityMngr.GetPlayer(player_id);
     REQUIRE(registered_player);
-    CHECK(registered_player.as_ptr() == player);
+    CHECK(registered_player == player);
 
     server->CrMngr.DestroyCritter(cr);
 
@@ -928,7 +928,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
         CHECK(cr->GetControlledByPlayer());
         auto registered_cr = server->EntityMngr.GetCritter(cr_id);
         REQUIRE(registered_cr);
-        CHECK(registered_cr.as_ptr() == cr);
+        CHECK(registered_cr == cr);
 
         server->UnloadCritter(cr);
 
@@ -1366,9 +1366,9 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     REQUIRE(cr_a_parent);
     REQUIRE(cr_b_parent);
     REQUIRE(cr_c_parent);
-    REQUIRE(cr_a_parent.as_ptr() == map_entity);
-    REQUIRE(cr_b_parent.as_ptr() == map_entity);
-    REQUIRE(cr_c_parent.as_ptr() == map_entity);
+    REQUIRE(cr_a_parent == map_entity);
+    REQUIRE(cr_b_parent == map_entity);
+    REQUIRE(cr_c_parent == map_entity);
 
     server->Unlock();
     locked = false;
@@ -2065,7 +2065,7 @@ TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
     sync_holders.reserve(holders.size());
 
     for (auto cr : holders) {
-        sync_holders.emplace_back(cr.as_ptr());
+        sync_holders.emplace_back(cr);
     }
 
     auto ctx = server->RequireCurrentSyncContext();
@@ -2147,7 +2147,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
         // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split.
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
 
-        auto moved = server->ItemMngr.MoveItem(source.as_ptr(), 1, h2);
+        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
         REQUIRE(moved != nullptr);
 
         auto src_after = h1->GetInvItemByPid(coin_pid);
@@ -2170,7 +2170,7 @@ TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
         // re-validation (count >= GetCount()) trips and the split is undone.
         REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
 
-        auto moved = server->ItemMngr.MoveItem(source.as_ptr(), 1, h2);
+        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
         CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
 
         auto src_after = h1->GetInvItemByPid(coin_pid);

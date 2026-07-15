@@ -100,6 +100,12 @@ FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> 
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
+{
+    return engine->GetModelAnimDuration(modelName, stateAnim, actionAnim);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API int32_t Common_Game_Random(ptr<BaseEngine> engine, int32_t minValue, int32_t maxValue)
 {
     return engine->Random(minValue, maxValue);

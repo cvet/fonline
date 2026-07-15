@@ -61,6 +61,9 @@ extern auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
 extern auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view;
 extern auto GetClientRuntimeLivePath() -> string;
 extern auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string;
+extern auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string;
+extern auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>;
+extern auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool;
 extern auto GetCurrentClientRuntimeLibraryName() -> string;
 extern void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept;
 extern void ShowUpdaterFailure(UpdaterResult result);

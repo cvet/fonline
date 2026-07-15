@@ -66,10 +66,36 @@ namespace
             ReceiveCallback(buf);
         }
 
+        void ResetSentPacketCount() noexcept
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            _sentPacketCount.store(0, std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return _sentPacketCount.load(std::memory_order_relaxed);
+        }
+
     protected:
-        void DispatchImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+        void DispatchImpl() override
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            const const_span<uint8_t> data = SendCallback();
+
+            if (!data.empty()) {
+                _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
 
         void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+
+    private:
+        std::atomic<size_t> _sentPacketCount {};
     };
 
     static auto MakeSettings() -> GlobalSettings
@@ -99,9 +125,13 @@ namespace EntityLifecycle
     int ItemFinishCalls = 0;
     int CritterFinishCalls = 0;
     int LocationFinishCalls = 0;
+    int CritterPreLoadCalls = 0;
     int CritterLoadCalls = 0;
     int CritterUnloadCalls = 0;
     int CritterUnloadSawOnMapCalls = 0;
+    int CritterLoadOrder = 0;
+    bool CritterPreLoadTransferBlocked = false;
+    bool CritterPreLoadSawControllable = false;
     int DestroyOnInitMode = 0;
     int DestroyOnFinishMode = 0;
     int CritterLifecycleEventMode = 0;
@@ -118,6 +148,7 @@ namespace EntityLifecycle
     {
         Game.OnInit.Subscribe(OnInit);
         Game.OnItemInit.Subscribe(OnItemInit);
+        Game.OnCritterPreLoad.Subscribe(OnCritterPreLoad);
         Game.OnCritterInit.Subscribe(OnCritterInit);
         Game.OnLocationInit.Subscribe(OnLocationInit);
         Game.OnItemFinish.Subscribe(OnItemFinish);
@@ -125,6 +156,7 @@ namespace EntityLifecycle
         Game.OnLocationFinish.Subscribe(OnLocationFinish);
         Game.OnCritterLoad.Subscribe(OnCritterLoad);
         Game.OnCritterUnload.Subscribe(OnCritterUnload);
+        Game.OnGlobalMapCritterIn.Subscribe(OnGlobalMapCritterIn);
         Game.OnPlayerLogin.Subscribe(OnPlayerLogin);
         Game.OnPlayerLogout.Subscribe(OnPlayerLogout);
         Game.OnPlayerDirCritter.Subscribe(OnPlayerDirCritter);
@@ -148,9 +180,38 @@ namespace EntityLifecycle
     }
 
     [[Event]]
+    void OnCritterPreLoad(Critter cr)
+    {
+        CritterPreLoadCalls++;
+        CritterPreLoadSawControllable = cr.ControlledByPlayer;
+
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = cr.MapId == ZERO_IDENT && CritterLoadOrder == 0 ? 1 : -1;
+
+            try {
+                cr.TransferToGlobal();
+            }
+            catch {
+                CritterPreLoadTransferBlocked = true;
+            }
+        }
+        else if (CritterLifecycleEventMode == 4) {
+            cr.MakeControllable(false);
+            Game.DestroyCritter(cr);
+        }
+        else if (CritterLifecycleEventMode == 5) {
+            cr.TransferToGlobal();
+        }
+    }
+
+    [[Event]]
     void OnCritterInit(Critter cr, bool firstTime)
     {
         CritterInitCalls++;
+
+        if (CritterLifecycleEventMode == 3 && !firstTime) {
+            CritterLoadOrder = CritterLoadOrder == 2 ? 3 : -3;
+        }
 
         if (DestroyOnInitMode == 2) {
             Game.DestroyCritter(cr);
@@ -173,9 +234,13 @@ namespace EntityLifecycle
     int GetItemFinishCalls() { return ItemFinishCalls; }
     int GetCritterFinishCalls() { return CritterFinishCalls; }
     int GetLocationFinishCalls() { return LocationFinishCalls; }
+    int GetCritterPreLoadCalls() { return CritterPreLoadCalls; }
     int GetCritterLoadCalls() { return CritterLoadCalls; }
     int GetCritterUnloadCalls() { return CritterUnloadCalls; }
     int GetCritterUnloadSawOnMapCalls() { return CritterUnloadSawOnMapCalls; }
+    int GetCritterLoadOrder() { return CritterLoadOrder; }
+    bool GetCritterPreLoadTransferBlocked() { return CritterPreLoadTransferBlocked; }
+    bool GetCritterPreLoadSawControllable() { return CritterPreLoadSawControllable; }
     int GetPlayerLoginCalls() { return PlayerLoginCalls; }
     int GetPlayerLogoutCalls() { return PlayerLogoutCalls; }
     int GetPlayerDestroyedAfterLoginDisconnectCalls() { return PlayerDestroyedAfterLoginDisconnectCalls; }
@@ -211,9 +276,13 @@ namespace EntityLifecycle
         ItemFinishCalls = 0;
         CritterFinishCalls = 0;
         LocationFinishCalls = 0;
+        CritterPreLoadCalls = 0;
         CritterLoadCalls = 0;
         CritterUnloadCalls = 0;
         CritterUnloadSawOnMapCalls = 0;
+        CritterLoadOrder = 0;
+        CritterPreLoadTransferBlocked = false;
+        CritterPreLoadSawControllable = false;
         DestroyOnInitMode = 0;
         DestroyOnFinishMode = 0;
         CritterLifecycleEventMode = 0;
@@ -261,6 +330,10 @@ namespace EntityLifecycle
     {
         CritterLoadCalls++;
 
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = CritterLoadOrder == 3 ? 4 : -4;
+        }
+
         if (CritterLifecycleEventMode == 2) {
             cr.MakeControllable(false);
             Game.DestroyCritter(cr);
@@ -277,6 +350,14 @@ namespace EntityLifecycle
                 CritterUnloadSawOnMapCalls++;
                 cr.TransferToGlobal();
             }
+        }
+    }
+
+    [[Event]]
+    void OnGlobalMapCritterIn(Critter cr)
+    {
+        if (CritterLifecycleEventMode == 3) {
+            CritterLoadOrder = CritterLoadOrder == 1 ? 2 : -2;
         }
     }
 
@@ -366,7 +447,7 @@ namespace EntityLifecycle
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -744,7 +825,7 @@ TEST_CASE("EntityInitEvents")
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
         REQUIRE(cr->GetMapId() == map->GetId());
         REQUIRE(map->GetCritter(cr->GetId()) == cr.get());
 
@@ -796,6 +877,116 @@ TEST_CASE("EntityInitEvents")
         int32_t load_calls = 0;
         REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterLoadCalls"), load_calls));
         CHECK(load_calls == 1);
+    }
+
+    SECTION("CritterPreLoadRunsBeforeWorldEntryInitializationAndLoad")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(3));
+
+        auto loaded_cr = server->LoadCritter(cr_id, true);
+
+        int32_t pre_load_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadCalls"), pre_load_calls));
+        CHECK(pre_load_calls == 1);
+
+        int32_t load_order = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterLoadOrder"), load_order));
+        CHECK(load_order == 4);
+
+        bool transfer_blocked = false;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadTransferBlocked"), transfer_blocked));
+        CHECK(transfer_blocked);
+
+        bool saw_controllable = false;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterPreLoadSawControllable"), saw_controllable));
+        CHECK(saw_controllable);
+
+        server->UnloadCritter(loaded_cr);
+        server->DestroyUnloadedCritter(cr_id);
+    }
+
+    SECTION("CritterPreLoadMayDropPersistedCritterWithoutLoadError")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->DbStorage.WaitCommitChanges();
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(4));
+
+        bool is_error = false;
+        auto dropped_cr = server->EntityMngr.LoadCritter(cr_id, true, is_error);
+
+        CHECK_FALSE(is_error);
+        CHECK_FALSE(static_cast<bool>(dropped_cr));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        server->DbStorage.WaitCommitChanges();
+        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        CHECK(std::ranges::find(persisted_cr_ids, cr_id) == persisted_cr_ids.end());
+    }
+
+    SECTION("CritterPreLoadExceptionFailsLoadWithoutDeletingPersistedRecord")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+
+        server->EntityMngr.MakePersistent(cr, true, true);
+        server->DbStorage.WaitCommitChanges();
+        const ident_t cr_id = cr->GetId();
+
+        server->UnloadCritter(cr);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        REQUIRE(reset_func.Call());
+
+        auto set_mode_func = server->FindFunc<void, int32_t>(fn("EntityLifecycle::SetCritterLifecycleEventMode"));
+        REQUIRE(set_mode_func);
+        REQUIRE(set_mode_func.Call(5));
+
+        REQUIRE_THROWS_AS(server->LoadCritter(cr_id, true), GenericException);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+
+        int32_t init_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterInitCalls"), init_calls));
+        CHECK(init_calls == 0);
+
+        server->DbStorage.WaitCommitChanges();
+        const auto persisted_cr_ids = server->DbStorage.GetAllIntIds(fn("Critters"));
+        CHECK(std::ranges::find(persisted_cr_ids, cr_id) != persisted_cr_ids.end());
+
+        server->DestroyUnloadedCritter(cr_id);
     }
 }
 
@@ -868,13 +1059,13 @@ TEST_CASE("EntityManagerCppApi")
 
         auto typed_found = server->EntityMngr.Get<Critter>(cr_id);
         REQUIRE(typed_found);
-        CHECK(typed_found.as_ptr() == cr);
+        CHECK(typed_found == cr);
 
         const EntityManager& const_entity_mngr = server->EntityMngr;
         auto const_typed_found = const_entity_mngr.Get<Critter>(cr_id);
         REQUIRE(const_typed_found);
         ptr<const Critter> const_cr = cr;
-        CHECK(const_typed_found.as_ptr() == const_cr);
+        CHECK(const_typed_found == const_cr);
 
         auto wrong_type = server->EntityMngr.Get<Item>(cr_id);
         CHECK_FALSE(static_cast<bool>(wrong_type));
@@ -1281,7 +1472,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto player = CreateLoggedPlayer(server, "Player1");
         auto registered_player = server->EntityMngr.GetPlayer(player->GetId());
         REQUIRE(registered_player);
-        CHECK(registered_player.as_ptr() == player);
+        CHECK(registered_player == player);
     }
 
     SECTION("LoginPlayerToNewRecordProducesUniqueIds")
@@ -1462,14 +1653,14 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         auto cr = server->CreateCritter(fn("TestCritter"), true);
 
-        server->MapMngr.TransferToMap(cr, map.as_ptr(), mpos {20, 20}, mdir {}, std::nullopt);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
         server->SwitchPlayerCritter(player, cr);
         REQUIRE(player->GetControlledCritter() == cr.get());
         REQUIRE(cr->GetPlayer() == player);
 
         const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
         const vector<uint16_t> control_steps {3};
-        server->StartCritterMoving(cr.get(), uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        server->StartCritterMoving(cr, uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
         REQUIRE(cr->IsMoving());
         const uint32_t moving_uid = cr->GetMovingUid();
 
@@ -1477,7 +1668,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func);
         REQUIRE(set_mode_func.Call(4));
 
-        SendStopCritterMove(test_connection.as_ptr(), server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), cr->GetHex(), ipos16 {}, mdir {});
 
         int32_t dir_calls = 0;
         REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &fn, &dir_calls] { return server->CallFunc(fn("EntityLifecycle::GetPlayerDirCritterCalls"), dir_calls) && dir_calls == 1; }));
@@ -1495,6 +1686,61 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         REQUIRE(set_mode_func.Call(0));
         server->StopCritterMoving(cr.get());
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    SECTION("StopMoveFailedReconciliationSendsAuthoritativePosition")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "StopMoveCorrection");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        const mpos server_hex {20, 20};
+        mpos blocked_client_hex = server_hex;
+        REQUIRE(GeometryHelper::MoveHexByDir(blocked_client_hex, hdir::NorthWest, map->GetSize()));
+
+        server->MapMngr.TransferToMap(cr, map, server_hex, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+        REQUIRE(cr->GetPlayer() == player);
+
+        map->SetHexManualBlock(blocked_client_hex, true, true);
+
+        const vector<mdir> move_steps {hdir::East, hdir::East, hdir::East};
+        const vector<uint16_t> control_steps {3};
+        server->StartCritterMoving(cr.get(), uint16_t {1}, move_steps, control_steps, ipos16 {}, player);
+        REQUIRE(cr->IsMoving());
+
+        test_connection->ResetSentPacketCount();
+        SendStopCritterMove(test_connection, server, map->GetId(), cr->GetId(), blocked_client_hex, ipos16 {}, mdir {});
+
+        REQUIRE(WaitForUnlockedServerCondition(server, server_locked, [&server, &cr] {
+            auto ctx = server->RequireCurrentSyncContext();
+            ctx->EnsureEntitySynced(cr);
+            return !cr->IsMoving();
+        }));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        const array<nptr<ServerEntity>, 3> sync_entities {player, cr, map};
+        ctx->SyncEntities(sync_entities);
+
+        CHECK(cr->GetHex() == server_hex);
+        CHECK(test_connection->GetSentPacketCount() > 0);
+
+        server->SwitchPlayerCritter(player, nullptr);
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
     }

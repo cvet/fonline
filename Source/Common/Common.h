@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 28
+///@ MigrationRule Version 0 0 30
 
 // Emit the typed build/version constants from EngineConfig.gen.h here, where fo::string_view_nt exists.
 // The configuration macros from the same file were already pulled in at the top of BasicCore.h.
@@ -436,7 +436,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 1;
+static constexpr uint32_t FO_UPDATER_VERSION = 2;
 
 enum class UpdatePlatform : uint8_t
 {

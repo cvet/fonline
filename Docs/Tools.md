@@ -103,7 +103,7 @@ Built-in baker implementations:
 - `Source/Tools/TextBaker.*` — bakes text packs.
 - `Source/Tools/ProtoTextBaker.*` — bakes prototype text data.
 - `Source/Tools/ModelMeshBaker.*` — bakes model mesh data when 3D support is enabled.
-- `Source/Tools/ModelInfoBaker.*` — bakes model description/animation metadata when 3D support is enabled.
+- `Source/Tools/ModelInfoBaker.*` — bakes model descriptions and the common model-animation duration table when 3D support is enabled.
 - `Source/Tools/AngelScriptBaker.*` — compiles/bakes AngelScript bytecode resources when AngelScript support is enabled.
 - `Source/Tools/ManagedScriptBaker.*` — when Managed support is enabled, generates C# API scaffolding from engine metadata, copies managed core support into project-local generated C# files, writes one unified IDE project (`.gen.csproj`, with per-target `Configuration` blocks) plus a matching solution (`.gen.sln`), compiles target-specific managed assemblies, and relies on the CMake `SetupManagedRuntime` target to prepare the Mono runtime used by managed-linked applications.
 

@@ -511,9 +511,7 @@ void SpriteManager::EnableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->EnableScissor(_scissorRect);
     }
 }
@@ -522,9 +520,7 @@ void SpriteManager::DisableScissor()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const_span<ptr<RenderTarget>> rt_stack = _rtMngr.GetRenderTargetStack();
-
-    if (!_scissorStack.empty() && !rt_stack.empty() && rt_stack.back() == _rtMain) {
+    if (!_scissorStack.empty()) {
         _render->DisableScissor();
     }
 }
@@ -659,7 +655,7 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
@@ -721,7 +717,7 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
         hf = size.height;
     }
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
@@ -757,7 +753,7 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
         return false;
     }
 
-    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
 
@@ -867,7 +863,7 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
 
     color = ApplyColorBrightness(color);
 
-    auto effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface.as_ptr());
+    auto effect = atlas_spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     const auto last_right_offs = atlas_spr->GetAtlasRect().width / width;
     const auto last_bottom_offs = atlas_spr->GetAtlasRect().height / height;

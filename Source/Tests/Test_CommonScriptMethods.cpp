@@ -154,6 +154,23 @@ namespace CommonMethods
         return 0;
     }
 
+    int TestGetModelAnimDuration()
+    {
+        timespan walk = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        if (walk.milliseconds != 500) return -1;
+
+        timespan run = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Run);
+        if (run.milliseconds != 250) return -2;
+
+        timespan missingAction = Game.GetModelAnimDuration("Critters/Test.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Idle);
+        if (missingAction.milliseconds != 0) return -3;
+
+        timespan missingModel = Game.GetModelAnimDuration("Critters/Missing.fo3d".hstr(), CritterStateAnim::Unarmed, CritterActionAnim::Walk);
+        if (missingModel.milliseconds != 0) return -4;
+
+        return 0;
+    }
+
     // ========== Proto Getters ==========
 
     int TestGetProtoItems()
@@ -1768,6 +1785,7 @@ namespace CommonMethods
         runtime_source->AddFile("CommonMethodsContainer.fopro-bin-server", container_blob);
         runtime_source->AddFile("CommonMethodsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("CommonMethods.fos-bin-server", script_blob);
+        runtime_source->AddFile("ModelAnimInfo.foinfo", "[Critters/Test.fo3d]\nStateAnims = 1 1\nActionAnims = 3 5\nDurationsMs = 500 250\n");
 
         FileSystem resources;
         resources.AddCustomSource(std::move(runtime_source));
@@ -1897,6 +1915,14 @@ TEST_CASE("GeometryDirectionAngles")
     {
         RUN_CM_FUNC("TestGetHexInterval");
     }
+}
+
+TEST_CASE("ModelAnimationInfoLookup")
+{
+    MAKE_CM_SERVER();
+
+    CHECK(server->Hashes.CheckHashedString("Critters/Test.fo3d"));
+    RUN_CM_FUNC("TestGetModelAnimDuration");
 }
 
 // ========== Proto Getter Tests ==========
@@ -2319,8 +2345,8 @@ TEST_CASE("CommonCppApiTests")
         const auto& inv = cr->GetInvItems();
         CHECK(inv.size() >= 2);
 
-        server->ItemMngr.DestroyItem(item2.as_ptr());
-        server->ItemMngr.DestroyItem(item1.as_ptr());
+        server->ItemMngr.DestroyItem(item2);
+        server->ItemMngr.DestroyItem(item1);
         server->CrMngr.DestroyCritter(cr);
     }
 

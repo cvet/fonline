@@ -76,6 +76,7 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
     auto fields_registrator = base_type.RefType->FieldsRegistrator;
     FO_VERIFY_AND_THROW(fields_registrator == _registrator, "Dynamic ref-type raw data belongs to a different fields registrator", fields_registrator->GetTypeName(), _registrator->GetTypeName());
 
+    _cachedRawDataDirty = true;
     _props.emplace(_registrator);
     auto props = GetProps();
 
@@ -163,7 +164,7 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
         for (size_t i = 1; i < fields_registrator->GetPropertiesCount(); i++) {
             auto field_prop = fields_registrator->GetPropertyByIndex(numeric_cast<int32_t>(i));
-            const auto field_raw_data = GetProps()->GetRawData(field_prop.as_ptr());
+            const auto field_raw_data = GetProps()->GetRawData(field_prop);
 
             bool is_default = field_raw_data.empty();
 

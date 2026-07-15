@@ -1169,15 +1169,21 @@ EmbeddedFile::EmbeddedFile()
     };
     ffunc.opaque = nullptr;
 
-    _zipHandle = unzOpen2("", &ffunc);
+    auto zip_handle = make_nptr(unzOpen2("", &ffunc));
+    const auto close_on_fail = scope_fail([&zip_handle]() noexcept {
+        if (zip_handle) {
+            unzClose(zip_handle.get());
+            zip_handle = nullptr;
+        }
+    });
 
-    if (!_zipHandle) {
+    if (!zip_handle) {
         throw DataSourceException("Can't read embedded file");
     }
 
     unz_global_info gi;
 
-    if (unzGetGlobalInfo(_zipHandle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
+    if (unzGetGlobalInfo(zip_handle.get(), &gi) != UNZ_OK || gi.number_entry == 0) {
         throw DataSourceException("Read embedded file tree failed (unzGetGlobalInfo)");
     }
 
@@ -1187,11 +1193,11 @@ EmbeddedFile::EmbeddedFile()
     char name_buf[4096];
 
     for (uLong i = 0; i < gi.number_entry; i++) {
-        if (unzGetFilePos(_zipHandle.get(), &pos) != UNZ_OK) {
+        if (unzGetFilePos(zip_handle.get(), &pos) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetFilePos)");
         }
 
-        if (unzGetCurrentFileInfo(_zipHandle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
+        if (unzGetCurrentFileInfo(zip_handle.get(), &info, name_buf, sizeof(name_buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGetCurrentFileInfo)");
         }
 
@@ -1204,10 +1210,12 @@ EmbeddedFile::EmbeddedFile()
             _filesTreeNames.emplace_back(std::move(name));
         }
 
-        if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle.get()) != UNZ_OK) {
+        if (i + 1 < gi.number_entry && unzGoToNextFile(zip_handle.get()) != UNZ_OK) {
             throw DataSourceException("Read embedded file tree failed (unzGoToNextFile)");
         }
     }
+
+    _zipHandle = std::move(zip_handle);
 }
 
 EmbeddedFile::~EmbeddedFile()

@@ -531,7 +531,7 @@ MapperEngine::MapperEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 
     for (const auto& res_pack : Settings->GetResourcePacks()) {
         for (const auto& dir : res_pack.InputDirs) {
-            MapsFileSys.AddDirSource(dir, res_pack.RecursiveInput, true, true);
+            MapsFileSys.AddDirSource(dir, true, true, true);
         }
     }
 
@@ -1428,7 +1428,7 @@ auto MapperEngine::GetUndoContext(nptr<MapView> map, bool create) -> nptr<UndoCo
         return nullptr;
     }
 
-    return &UndoContexts[map.as_ptr()];
+    return &UndoContexts[map];
 }
 
 auto MapperEngine::GetUndoContext(nptr<const MapView> map, bool create) const -> nptr<const UndoContext>
@@ -1582,6 +1582,7 @@ auto MapperEngine::ExecuteUndo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
+    auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
     const auto ok = op.Undo(this, &active_map);
     UndoRedoInProgress = false;
 
@@ -1623,6 +1624,7 @@ auto MapperEngine::ExecuteRedo() -> bool
 
     ptr<MapView> active_map = map;
     UndoRedoInProgress = true;
+    auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
     const auto ok = op.Redo(this, &active_map);
     UndoRedoInProgress = false;
 
@@ -1694,7 +1696,7 @@ void MapperEngine::RestoreEntityBufChildren(const EntityBuf& entity_buf, ptr<Ite
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& child_buf : entity_buf.Children) {
-        auto inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>().as_ptr(), child_buf->StackId, child_buf->GetProps());
+        auto inner_item = item->AddMapperInnerItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->StackId, child_buf->GetProps());
         RestoreEntityBufChildren(*child_buf, inner_item);
     }
 }
@@ -1712,7 +1714,7 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
             auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), entity_buf.Hex, entity_buf.Dir, entity_buf.GetProps(), entity_buf.Id);
 
             for (const auto& child_buf : entity_buf.Children) {
-                auto inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>().as_ptr(), child_buf->Slot, child_buf->GetProps());
+                auto inv_item = cr->AddMapperInvItem(child_buf->Id, child_buf->Proto.dyn_cast<const ProtoItem>(), child_buf->Slot, child_buf->GetProps());
                 RestoreEntityBufChildren(*child_buf, inv_item);
             }
 
@@ -1729,13 +1731,13 @@ auto MapperEngine::RestoreEntityBuf(const EntityBuf& entity_buf, nptr<Entity> ow
     }
 
     if (auto cr = owner.dyn_cast<CritterView>()) {
-        auto item = cr->AddMapperInvItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>().as_ptr(), entity_buf.Slot, entity_buf.GetProps());
+        auto item = cr->AddMapperInvItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.Slot, entity_buf.GetProps());
         RestoreEntityBufChildren(entity_buf, item);
         return item;
     }
 
     if (auto item_owner = owner.dyn_cast<ItemView>()) {
-        auto item = item_owner->AddMapperInnerItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>().as_ptr(), entity_buf.StackId, entity_buf.GetProps());
+        auto item = item_owner->AddMapperInnerItem(entity_buf.Id, entity_buf.Proto.dyn_cast<const ProtoItem>(), entity_buf.StackId, entity_buf.GetProps());
         RestoreEntityBufChildren(entity_buf, item);
         return item;
     }
@@ -1807,13 +1809,13 @@ auto MapperEngine::RestoreMapSnapshot(ptr<ptr<MapView>> map, string_view map_nam
     FO_STACK_TRACE_ENTRY();
 
     auto old_map = *map;
-    UnloadMap(old_map, false);
 
     auto restored_map = LoadMapFromText(map_name, map_text);
     if (!restored_map) {
         return false;
     }
 
+    UnloadMap(old_map, false);
     RemapUndoContext(old_map, restored_map);
     ShowMap(restored_map);
     *map = restored_map;
@@ -2445,7 +2447,7 @@ void MapperEngine::DrawContentWindowImGui()
                         FO_VERIFY_AND_THROW(cur_map, "Current map is null");
 
                         if (auto owner = cur_map->GetCritter(InContItem->GetCritterId())) {
-                            owner->DeleteInvItem(InContItem.as_ptr());
+                            owner->DeleteInvItem(InContItem);
                         }
                     }
                 }
@@ -2455,7 +2457,7 @@ void MapperEngine::DrawContentWindowImGui()
                         FO_VERIFY_AND_THROW(cur_map, "Current map is null");
 
                         if (auto owner = cur_map->GetItem(InContItem->GetContainerId())) {
-                            owner->DestroyInnerItem(InContItem.as_ptr());
+                            owner->DestroyInnerItem(InContItem);
                         }
                     }
                 }
@@ -3088,6 +3090,7 @@ void MapperEngine::DrawInspectorImGui()
 
         for (size_t j = 1; j < SelectedEntities.size(); j++) {
             auto selected_entity = SelectedEntities[j].as_ptr();
+
             if (is_same_inspector_entity_type(selected_entity)) {
                 action(selected_entity);
             }
@@ -3194,10 +3197,10 @@ void MapperEngine::DrawInspectorImGui()
 
                 ImGui::TableNextRow(ImGuiTableRowFlags_None, ImGui::GetFrameHeightWithSpacing() + 2.0f);
 
-                auto value = entity->GetProperties()->SavePropertyToText(prop.as_ptr());
+                auto value = entity->GetProperties()->SavePropertyToText(prop);
                 const auto is_const = prop->IsCoreProperty() && !prop->IsMutable();
                 const auto selected = InspectorSelectedLine == line;
-                const auto same_as_proto = IsInspectorValueSameAsProto(entity.as_ptr(), prop.as_ptr(), value);
+                const auto same_as_proto = IsInspectorValueSameAsProto(entity, prop, value);
                 const auto label = strex("{} ({})", prop->GetName(), prop->GetViewTypeName()).str();
 
                 ImGui::TableNextColumn();
@@ -3227,7 +3230,7 @@ void MapperEngine::DrawInspectorImGui()
                         focus_edit_line = line;
                     }
 
-                    auto struct_layout = GetInspectorStructLayout(prop.as_ptr());
+                    auto struct_layout = GetInspectorStructLayout(prop);
 
                     auto commit_requested = false;
                     auto cancel_requested = false;
@@ -3644,7 +3647,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        return mapper->ApplyEntityPropertyText(target.as_ptr(), apply_prop.as_ptr(), old_value);
+                        return mapper->ApplyEntityPropertyText(target, apply_prop, old_value);
                     },
                     [entity_id, prop_name, new_value](ptr<MapperEngine> mapper, ptr<ptr<MapView>> active_map) {
                         auto target = mapper->FindEntityById(*active_map, entity_id);
@@ -3657,7 +3660,7 @@ void MapperEngine::ApplyInspectorPropertyEdit(ptr<Entity> entity)
                             return false;
                         }
 
-                        return mapper->ApplyEntityPropertyText(target.as_ptr(), apply_prop.as_ptr(), new_value);
+                        return mapper->ApplyEntityPropertyText(target, apply_prop, new_value);
                     }});
         }
     }
@@ -3786,7 +3789,7 @@ auto MapperEngine::HandleMapLeftMouseDown() -> bool
 
     auto entity = cur_map->GetEntityAtScreen(MousePos, 0, true);
     auto clicked_entity = entity.first;
-    const auto clicked_selected = clicked_entity && SelectedEntitiesSet.contains(clicked_entity.as_ptr());
+    const auto clicked_selected = clicked_entity && SelectedEntitiesSet.contains(clicked_entity);
 
     if (clicked_selected) {
         MouseHoldMode = INT_MOVE_SELECTION;
@@ -4349,7 +4352,7 @@ void MapperEngine::SelectAdd(ptr<ClientEntity> entity, optional<mpos> hex, bool 
     // Break from merged mesh
     if (!SelectEntireEntity && hex.has_value()) {
         if (auto item = corrected_entity.dyn_cast<ItemHexView>()) {
-            auto broken_item = TryBreakItemFromMultihexMesh(cur_map, item.as_ptr(), hex.value());
+            auto broken_item = TryBreakItemFromMultihexMesh(cur_map, item, hex.value());
 
             if (!broken_item) {
                 return;
@@ -4779,6 +4782,7 @@ void MapperEngine::SelectDelete()
         }
 
         UndoRedoInProgress = true;
+        auto progress_guard = scope_fail([this]() noexcept { UndoRedoInProgress = false; });
         for (ptr<ClientEntity> entity : copy_hold_ref(SelectedEntities)) {
             DeleteEntity(entity);
         }
@@ -4932,7 +4936,7 @@ auto MapperEngine::CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<
     }
     else {
         SetActivePanelMode(INT_MODE_INCONT);
-        InContItem = created_item.as_ptr().hold_ref();
+        InContItem = created_item.hold_ref();
     }
 
     SetMapDirty(GetCurMap());
@@ -4994,7 +4998,7 @@ auto MapperEngine::CloneEntity(ptr<Entity> entity) -> nptr<Entity>
             auto inv_item_proto = inv_item->GetProto().dyn_cast<const ProtoItem>();
             FO_VERIFY_AND_THROW(inv_item_proto, "Inventory item prototype is not an item prototype");
 
-            auto inv_item_clone = cr_clone->AddMapperInvItem(cur_map->GenTempEntityId(), inv_item_proto.as_ptr(), inv_item->GetCritterSlot(), {});
+            auto inv_item_clone = cr_clone->AddMapperInvItem(cur_map->GenTempEntityId(), inv_item_proto, inv_item->GetCritterSlot(), {});
             CloneInnerItems(cur_map, inv_item_clone, inv_item);
         }
 
@@ -5062,7 +5066,7 @@ void MapperEngine::CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<
         auto inner_item_proto = inner_item->GetProto().dyn_cast<const ProtoItem>();
         FO_VERIFY_AND_THROW(inner_item_proto, "Inner item prototype is not an item prototype");
 
-        auto inner_item_clone = to_item->AddMapperInnerItem(map->GenTempEntityId(), inner_item_proto.as_ptr(), stack_id, from_item->GetProperties());
+        auto inner_item_clone = to_item->AddMapperInnerItem(map->GenTempEntityId(), inner_item_proto, stack_id, from_item->GetProperties());
         CloneInnerItems(map, inner_item_clone, inner_item);
     }
 }
@@ -5787,7 +5791,7 @@ void MapperEngine::BufferPaste()
 
         add_item_inner_items = [&add_item_inner_items, &cur_map](const EntityBuf& item_entity_buf, ptr<ItemView> item) {
             for (const auto& child_buf : item_entity_buf.Children) {
-                auto inner_item = item->AddMapperInnerItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>().as_ptr(), {}, child_buf->GetProps());
+                auto inner_item = item->AddMapperInnerItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), {}, child_buf->GetProps());
                 add_item_inner_items(*child_buf, inner_item);
             }
         };
@@ -5796,7 +5800,7 @@ void MapperEngine::BufferPaste()
             auto cr = cur_map->AddMapperCritter(entity_buf.Proto->GetProtoId(), hex, mdir(), entity_buf.GetProps());
 
             for (const auto& child_buf : entity_buf.Children) {
-                auto inv_item = cr->AddMapperInvItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>().as_ptr(), CritterItemSlot::Inventory, child_buf->GetProps());
+                auto inv_item = cr->AddMapperInvItem(cur_map->GenTempEntityId(), child_buf->Proto.dyn_cast<const ProtoItem>(), CritterItemSlot::Inventory, child_buf->GetProps());
                 add_item_inner_items(*child_buf, inv_item);
             }
 
@@ -6479,7 +6483,7 @@ void MapperEngine::ParseCommand(string_view command)
             auto registrator = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME);
             FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
 
-            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrator.as_ptr());
+            auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString("new"), registrator);
             pmap->SetSize({GameSettings::DEFAULT_MAP_SIZE, GameSettings::DEFAULT_MAP_SIZE});
 
             auto map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
@@ -6622,7 +6626,7 @@ auto MapperEngine::LoadMapFromText(string_view map_name, const string& map_text)
     auto registrator = GetPropertyRegistrator(MapProperties::ENTITY_TYPE_NAME);
     FO_VERIFY_AND_THROW(registrator, "Map property registrator is not available");
 
-    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator.as_ptr());
+    auto pmap = SafeAlloc::MakeRefCounted<ProtoMap>(Hashes.ToHashedString(map_name), registrator);
     pmap->GetPropertiesForEdit()->ApplyFromText(proto_map_section);
 
     auto new_map = SafeAlloc::MakeRefCounted<MapView>(this, ident_t {}, pmap, GetApp()->MainWindow.GetSize());
@@ -6718,7 +6722,7 @@ auto MapperEngine::IsMapDirty(nptr<MapView> map) const -> bool
         return false;
     }
 
-    return DirtyMaps.contains(map.as_ptr());
+    return DirtyMaps.contains(map);
 }
 
 void MapperEngine::SetMapDirty(nptr<MapView> map, bool dirty)

@@ -37,10 +37,10 @@
 
 FO_BEGIN_NAMESPACE
 
-AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
+AtlasSprite::AtlasSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset, nptr<TextureAtlas> atlas, unique_del_nptr<TextureAtlas::SpaceNode> atlas_node, frect32 atlas_rect, vector<bool>&& hit_data) :
     Sprite(spr_mngr, size, offset),
     _atlas {atlas},
-    _atlasNode {atlas_node},
+    _atlasNode {std::move(atlas_node)},
     _atlasRect {atlas_rect},
     _hitTestData {std::move(hit_data)}
 {
@@ -51,9 +51,24 @@ AtlasSprite::~AtlasSprite()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_atlasNode) {
-        _atlasNode->Free();
+#if 0 // For debug purposes
+    if constexpr (FO_DEBUG) {
+        try {
+            const auto rnd_color = ucolor {numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255))};
+
+            vector<ucolor> color_data;
+            color_data.resize(_atlasNode->Size.square());
+
+            for (size_t i = 0; i < color_data.size(); i++) {
+                color_data[i] = rnd_color;
+            }
+
+            _atlas->_mainTex->UpdateTextureRegion(_atlasNode->Pos, _atlasNode->Size, color_data);
+        }
+        catch (...) {
+        }
     }
+#endif
 }
 
 auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
@@ -189,7 +204,7 @@ auto SpriteSheet::GetCurSpr() const -> ptr<const Sprite>
     ptr<const SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex];
@@ -202,7 +217,7 @@ auto SpriteSheet::GetCurSpr() -> ptr<Sprite>
     ptr<SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex];
@@ -237,7 +252,7 @@ auto SpriteSheet::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
     ptr<const SpriteSheet> dir_sheet = this;
 
     if (_curDir != hdir::NorthEast && _dirs[_curDir.value() - 1]) {
-        dir_sheet = _dirs[_curDir.value() - 1].as_ptr();
+        dir_sheet = _dirs[_curDir.value() - 1];
     }
 
     return dir_sheet->_spr[_curIndex]->FillData(dbuf, pos, colors);
@@ -521,7 +536,8 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     if (pixels) {
         const size_t width = numeric_cast<size_t>(size.width);
         const size_t height = numeric_cast<size_t>(size.height);
-        const auto pixel_data = make_span(pixels.as_ptr(), width * height);
+        auto pixel_ptr = pixels.as_ptr();
+        const auto pixel_data = make_span(pixel_ptr, width * height);
         auto tex = atlas->GetTexture();
         tex->UpdateTextureRegion(pos, size, pixel_data);
 
@@ -566,7 +582,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
-    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, atlas_node, atlas_rect, std::move(hit_test_data));
+    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_node), atlas_rect, std::move(hit_test_data));
 }
 
 FO_END_NAMESPACE

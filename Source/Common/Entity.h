@@ -193,8 +193,8 @@ public:
     [[nodiscard]] auto GetTypeNamePlural() const noexcept -> hstring { return _props.GetRegistrator()->GetTypeNamePlural(); }
     [[nodiscard]] auto GetProperties() const noexcept -> ptr<const Properties> { return &_props; }
     [[nodiscard]] auto GetPropertiesForEdit() noexcept -> ptr<Properties> { return &_props; }
-    [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying; }
-    [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed; }
+    [[nodiscard]] auto IsDestroying() const noexcept -> bool { return _isDestroying.load(std::memory_order_acquire); }
+    [[nodiscard]] auto IsDestroyed() const noexcept -> bool { return _isDestroyed.load(std::memory_order_acquire); }
     [[nodiscard]] auto GetValueAsInt(ptr<const Property> prop) const -> int32_t;
     [[nodiscard]] auto GetValueAsInt(int32_t prop_index) const -> int32_t;
     [[nodiscard]] auto GetValueAsAny(ptr<const Property> prop) const -> any_t;
@@ -261,8 +261,8 @@ private:
     optional<map<string, vector<EventCallbackData>>> _events {};
     optional<TimeEventList> _timeEvents {};
     optional<InnerEntityMap> _innerEntities {};
-    bool _isDestroying {};
-    bool _isDestroyed {};
+    std::atomic_bool _isDestroying {};
+    std::atomic_bool _isDestroyed {};
     mutable std::atomic_int _refCounter {1};
 };
 

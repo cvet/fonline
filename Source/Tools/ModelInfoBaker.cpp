@@ -231,12 +231,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
 
-    // The both-sides ModelAnimInfo pack emits a single ConfigFile of per-model animation cycle durations
-    // (read server-side via Game.ReadConfigSection); the full model-info binary stays client-only in CrittersArt.
-    if (_context->PackName == "ModelAnimInfo") {
-        BakeModelAnimInfo(*_context, files, target_path);
-        return;
-    }
+    BakeModelAnimInfo(*_context, files, target_path);
 
     vector<File> filtered_files;
 
@@ -1262,9 +1257,19 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
 
         unordered_map<string, BakedModelMeshInfo> mesh_cache;
         set<pair<int32_t, int32_t>> seen;
+        unordered_map<int32_t, int32_t> state_anim_equals;
+        unordered_map<int32_t, int32_t> action_anim_equals;
+        vector<tuple<int32_t, int32_t, int32_t>> raw_durations;
         string states;
         string actions;
         string durations;
+
+        for (const auto& [from, to] : description.StateAnimEquals) {
+            state_anim_equals.try_emplace(from, to);
+        }
+        for (const auto& [from, to] : description.ActionAnimEquals) {
+            action_anim_equals.try_emplace(from, to);
+        }
 
         for (const BakerModelDescriptionAnimEntry& anim_entry : description.AnimEntries) {
             if (!seen.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
@@ -1298,10 +1303,62 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             }
 
             const float32_t effective_duration = speed > 0.0f ? clip_duration / speed : clip_duration;
+            const int32_t effective_duration_ms = iround<int32_t>(effective_duration * 1000.0f);
 
-            states += strex(" {}", anim_entry.StateAnim);
-            actions += strex(" {}", anim_entry.ActionAnim);
-            durations += strex(" {}", iround<int32_t>(effective_duration * 1000.0f));
+            if (effective_duration_ms <= 0) {
+                continue;
+            }
+
+            raw_durations.emplace_back(anim_entry.StateAnim, anim_entry.ActionAnim, effective_duration_ms);
+        }
+
+        // Match ModelInformation::GetAnimationIndexEx: both alias maps are applied once before the
+        // animation lookup, and an alias has priority over an exact entry with the same source key.
+        // Materialize every input pair that resolves to a baked entry so common runtimes do not need
+        // the client-only model description to answer the typed duration query.
+        set<pair<int32_t, int32_t>> output_pairs;
+
+        for (const auto& [state_anim, action_anim, duration_ms] : raw_durations) {
+            vector<int32_t> resolved_state_inputs;
+            vector<int32_t> resolved_action_inputs;
+            set<int32_t> seen_state_inputs;
+            set<int32_t> seen_action_inputs;
+
+            if (state_anim_equals.count(state_anim) == 0) {
+                resolved_state_inputs.emplace_back(state_anim);
+                seen_state_inputs.emplace(state_anim);
+            }
+            for (const auto& [from, to] : description.StateAnimEquals) {
+                const auto it = state_anim_equals.find(from);
+
+                if (it != state_anim_equals.end() && it->second == to && to == state_anim && seen_state_inputs.emplace(from).second) {
+                    resolved_state_inputs.emplace_back(from);
+                }
+            }
+
+            if (action_anim_equals.count(action_anim) == 0) {
+                resolved_action_inputs.emplace_back(action_anim);
+                seen_action_inputs.emplace(action_anim);
+            }
+            for (const auto& [from, to] : description.ActionAnimEquals) {
+                const auto it = action_anim_equals.find(from);
+
+                if (it != action_anim_equals.end() && it->second == to && to == action_anim && seen_action_inputs.emplace(from).second) {
+                    resolved_action_inputs.emplace_back(from);
+                }
+            }
+
+            for (const int32_t resolved_state : resolved_state_inputs) {
+                for (const int32_t resolved_action : resolved_action_inputs) {
+                    const auto [it, inserted] = output_pairs.emplace(resolved_state, resolved_action);
+                    ignore_unused(it);
+                    FO_VERIFY_AND_THROW(inserted, "Model animation aliases resolve to duplicate output entry", file.GetPath(), resolved_state, resolved_action);
+
+                    states += strex(" {}", resolved_state);
+                    actions += strex(" {}", resolved_action);
+                    durations += strex(" {}", duration_ms);
+                }
+            }
         }
 
         if (states.empty()) {

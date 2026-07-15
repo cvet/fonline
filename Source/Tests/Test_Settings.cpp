@@ -68,7 +68,8 @@ TEST_CASE("Settings")
             "Name = CommonPack\n"
             "InputDirs = dirA dirB\n"
             "InputFiles = fileA fileB\n"
-            "RecursiveInput = true\n"
+            "IncludePatterns = **/*.fos *.fos\n"
+            "ExcludePatterns = **/Generated/** **/_*\n"
             "Bakers = BakerA BakerB\n"
             "[ResourcePack]\n"
             "Name = ServerPack\n"
@@ -96,7 +97,12 @@ TEST_CASE("Settings")
         REQUIRE(packs[0].InputFiles.size() == 2);
         CHECK(packs[0].InputFiles[0] == strex("cfg").combine_path("fileA").str());
         CHECK(packs[0].InputFiles[1] == strex("cfg").combine_path("fileB").str());
-        CHECK(packs[0].RecursiveInput);
+        REQUIRE(packs[0].IncludePatterns.size() == 2);
+        CHECK(packs[0].IncludePatterns[0] == "**/*.fos");
+        CHECK(packs[0].IncludePatterns[1] == "*.fos");
+        REQUIRE(packs[0].ExcludePatterns.size() == 2);
+        CHECK(packs[0].ExcludePatterns[0] == "**/Generated/**");
+        CHECK(packs[0].ExcludePatterns[1] == "**/_*");
         REQUIRE(packs[0].Bakers.size() == 2);
         CHECK(packs[0].Bakers[0] == "BakerA");
         CHECK(packs[0].Bakers[1] == "BakerB");

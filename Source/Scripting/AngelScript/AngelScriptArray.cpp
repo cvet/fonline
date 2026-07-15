@@ -151,7 +151,7 @@ static auto ScriptArray_Create(AngelScript::asITypeInfo* ti) -> ScriptArray*
 
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    auto arr = ScriptArray::Create(type_info.as_ptr());
+    auto arr = ScriptArray::Create(type_info);
     return arr.release_ownership();
 }
 
@@ -161,7 +161,7 @@ static auto ScriptArray_CreateWithLength(AngelScript::asITypeInfo* ti, int32_t l
 
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
-    auto arr = ScriptArray::Create(type_info.as_ptr(), length);
+    auto arr = ScriptArray::Create(type_info, length);
     return arr.release_ownership();
 }
 
@@ -173,7 +173,7 @@ static auto ScriptArray_CreateList(AngelScript::asITypeInfo* ti, void* init_list
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
     nptr<void> init_list_ptr = init_list;
     FO_VERIFY_AND_THROW(init_list_ptr, "Array init list is null");
-    auto arr = ScriptArray::Create(type_info.as_ptr(), init_list_ptr.as_ptr());
+    auto arr = ScriptArray::Create(type_info, init_list_ptr);
     return arr.release_ownership();
 }
 
@@ -184,12 +184,14 @@ static auto ScriptArray_CreateWithDefault(AngelScript::asITypeInfo* ti, int32_t 
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Array type info is null");
     nptr<void> def_val_ptr = def_val;
+
     if (length == 0) {
-        auto arr = ScriptArray::Create(type_info.as_ptr(), length);
+        auto arr = ScriptArray::Create(type_info, length);
         return arr.release_ownership();
     }
+
     FO_VERIFY_AND_THROW(def_val_ptr, "Array default value is null");
-    auto arr = ScriptArray::Create(type_info.as_ptr(), length, def_val_ptr.as_ptr());
+    auto arr = ScriptArray::Create(type_info, length, def_val_ptr);
     return arr.release_ownership();
 }
 
@@ -672,9 +674,8 @@ void ScriptArray::Construct(int32_t start, int32_t end)
         FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
         for (int32_t index = start; index < end; index++) {
-            auto slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
             const nptr<void> new_obj = engine->CreateScriptObject(sub_type.get());
-            *slot = new_obj.get_no_const();
+            NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
             if (!new_obj) {
                 return;
@@ -1206,6 +1207,8 @@ void ScriptArray::Sort(int32_t start_at, int32_t count, bool asc)
 
         int32_t j = i - 1;
 
+        auto restore_hole = scope_fail([&]() noexcept { safe_call([&] { Copy(GetArrayItemPointer(j + 1), tmp); }); });
+
         while (j >= start && Less(GetDataPointer(tmp), At(j), asc, ctx)) {
             Copy(GetArrayItemPointer(j + 1), GetArrayItemPointer(j));
             j--;
@@ -1228,11 +1231,9 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                auto dst_slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
-                auto src_slot = NativeDataProvider::GetHandleSlot(src.GetArrayItemPointer(index));
-                const nptr<void> old_obj = *dst_slot;
-                const nptr<void> new_obj = *src_slot;
-                *dst_slot = new_obj.get_no_const();
+                const nptr<void> old_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+                const nptr<void> new_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+                NativeDataProvider::WriteHandleSlot(GetArrayItemPointer(index), new_obj);
 
                 if (new_obj) {
                     engine->AddRefScriptObject(new_obj.get_no_const(), sub_type.get());
@@ -1250,9 +1251,9 @@ void ScriptArray::CopyBuffer(const ScriptArray& src)
             FO_VERIFY_AND_THROW(sub_type, "Array sub-type info not found");
 
             for (int32_t index = 0; index < count; index++) {
-                auto dst_slot = NativeDataProvider::GetHandleSlot(GetArrayItemPointer(index));
-                auto src_slot = NativeDataProvider::GetHandleSlot(src.GetArrayItemPointer(index));
-                engine->AssignScriptObject(*dst_slot, *src_slot, sub_type.get());
+                const nptr<void> dst_obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(index));
+                const nptr<void> src_obj = NativeDataProvider::ReadHandleSlot(src.GetArrayItemPointer(index));
+                engine->AssignScriptObject(dst_obj.get_no_const(), src_obj.get_no_const(), sub_type.get());
             }
         }
     }
@@ -1380,7 +1381,7 @@ void ScriptArray::EnumReferences(ptr<AngelScript::asIScriptEngine> engine)
 
     if ((_subTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         for (int32_t i = 0; i < GetSize(); i++) {
-            const auto obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
+            const nptr<void> obj = NativeDataProvider::ReadHandleSlot(GetArrayItemPointer(i));
 
             if (obj) {
                 engine->GCEnumCallback(obj.get_no_const());
@@ -1628,7 +1629,7 @@ static auto ScriptArray_Factory(AngelScript::asITypeInfo* ti, const ScriptArray*
         throw ScriptException("Array arg is null");
     }
 
-    auto clone = ScriptArray::Create(type_info.as_ptr());
+    auto clone = ScriptArray::Create(type_info);
     *clone = *other_ptr;
     return clone.release_ownership();
 }

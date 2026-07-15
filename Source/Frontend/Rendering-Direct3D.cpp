@@ -404,7 +404,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle
         swap_chain_desc.BufferDesc.Width = 0;
         swap_chain_desc.BufferDesc.Height = 0;
         swap_chain_desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        swap_chain_desc.BufferDesc.RefreshRate.Numerator = 144;
+        swap_chain_desc.BufferDesc.RefreshRate.Numerator = 0;
         swap_chain_desc.BufferDesc.RefreshRate.Denominator = 1;
         swap_chain_desc.Flags = 0;
         swap_chain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -972,9 +972,6 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         screen_height = vp_height;
     }
     else {
-        _ctx->CurRenderTarget = _ctx->MainRenderTarget;
-        _ctx->CurDepthStencil = nullptr;
-
         const auto back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->BackBufSize.width), numeric_cast<float32_t>(_ctx->BackBufSize.height));
         const auto screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
         const auto fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(_ctx->BackBufSize.height) * screen_aspect : numeric_cast<float32_t>(_ctx->BackBufSize.height) * back_buf_aspect);
@@ -986,6 +983,9 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         vp_height = fit_height;
         screen_width = _ctx->Settings->ScreenWidth;
         screen_height = _ctx->Settings->ScreenHeight;
+
+        _ctx->CurRenderTarget = _ctx->MainRenderTarget;
+        _ctx->CurDepthStencil = nullptr;
     }
 
     _ctx->D3DDeviceContext->OMSetRenderTargets(1, _ctx->CurRenderTarget.get_pp(), _ctx->CurDepthStencil.get());
@@ -1158,11 +1158,14 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
     const auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get_no_const(), 0, D3D11_MAP_READ, 0, &tex_resource);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for the one-pixel staging texture", d3d_map_staging_texture, pos, Size);
 
+    auto staging_unmap = scope_fail([&]() noexcept { d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0); });
+
     auto mapped_data = make_nptr(tex_resource.pData);
     FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
     const ucolor result = *mapped_data.reinterpret_as<ucolor>();
 
     d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0);
+    staging_unmap.release();
 
     return result;
 }
@@ -1275,8 +1278,6 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
         return;
     }
 
-    StaticDataChanged = false;
-
     // Fill vertex buffer
     size_t upload_vertices;
     size_t vert_size;
@@ -1319,6 +1320,8 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     const auto d3d_map_vertex_buffer = _ctx->D3DDeviceContext->Map(VertexBuf.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &vertices_resource);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_vertex_buffer), "Direct3D Map failed for a dynamic vertex buffer", d3d_map_vertex_buffer, upload_vertices, vert_size, VertexBufSize, usage);
 
+    auto vertex_unmap = scope_fail([&]() noexcept { _ctx->D3DDeviceContext->Unmap(VertexBuf.get(), 0); });
+
     auto vertices_dst = make_nptr(vertices_resource.pData);
     FO_VERIFY_AND_THROW(vertices_dst, "Mapped subresource data pointer is null");
 
@@ -1336,6 +1339,7 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     }
 
     _ctx->D3DDeviceContext->Unmap(VertexBuf.get(), 0);
+    vertex_unmap.release();
 
     // Fill index buffer
     const auto upload_indices = custom_indices_size.value_or(IndCount);
@@ -1360,6 +1364,8 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     const auto d3d_map_index_buffer = _ctx->D3DDeviceContext->Map(IndexBuf.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &indices_resource);
     FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_index_buffer), "Direct3D Map failed for a dynamic index buffer", d3d_map_index_buffer, upload_indices, sizeof(vindex_t), IndexBufSize);
 
+    auto index_unmap = scope_fail([&]() noexcept { _ctx->D3DDeviceContext->Unmap(IndexBuf.get(), 0); });
+
     if (upload_indices != 0) {
         auto indices_dst = make_nptr(indices_resource.pData);
         FO_VERIFY_AND_THROW(indices_dst, "Mapped subresource data pointer is null");
@@ -1367,6 +1373,9 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
     }
 
     _ctx->D3DDeviceContext->Unmap(IndexBuf.get(), 0);
+    index_unmap.release();
+
+    StaticDataChanged = false;
 }
 
 Direct3D_Effect::~Direct3D_Effect()
@@ -1460,6 +1469,8 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         const auto d3d_map_cbuffer = _ctx->D3DDeviceContext->Map(buf_handle.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &cbuffer_resource);
         FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_cbuffer), "Direct3D Map failed for an effect constant buffer", d3d_map_cbuffer, sizeof(buf));
 
+        auto cbuffer_unmap = scope_fail([&]() noexcept { _ctx->D3DDeviceContext->Unmap(buf_handle.get(), 0); });
+
         auto cbuffer_dst = make_nptr(cbuffer_resource.pData);
         FO_VERIFY_AND_THROW(cbuffer_dst, "Mapped subresource data pointer is null");
         using BufferType = std::remove_cvref_t<decltype(buf)>;
@@ -1477,6 +1488,7 @@ void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index,
         }
 
         _ctx->D3DDeviceContext->Unmap(buf_handle.get(), 0);
+        cbuffer_unmap.release();
     };
 
     if (_needProjBuf && !ProjBuf.has_value()) {

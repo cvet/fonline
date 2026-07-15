@@ -80,10 +80,9 @@ void FogShape::Prepare(const Input& input)
     _lastCheckShootBlocks = input.CheckShootBlocks;
 
     if (_rebuildFog) {
-        _rebuildFog = false;
-
         vector<PrimitivePoint> points;
         BuildPoints(input, points);
+        _rebuildFog = false;
         StartTransition(std::move(points), input.FrameTime, input.FogTransitionDuration);
     }
 

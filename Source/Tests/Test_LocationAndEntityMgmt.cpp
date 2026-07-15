@@ -788,7 +788,7 @@ namespace LocEntity
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -1146,7 +1146,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(server->EntityMngr.GetItem(item_id) == nullptr);
 
         bool is_error = false;
-        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, is_error);
+        auto loaded_holder = server->EntityMngr.LoadCritter(cr_id, false, is_error);
         REQUIRE(loaded_holder);
         auto loaded = loaded_holder;
         FO_VERIFY_AND_THROW(loaded, "Loaded entity is null");
@@ -1154,7 +1154,7 @@ TEST_CASE("LoadUnloadCritter")
         CHECK(is_error);
         CHECK(loaded->GetItemIds().empty());
         CHECK_FALSE(loaded->HasItems());
-        CHECK(server->EntityMngr.GetCritter(cr_id).as_ptr() == loaded);
+        CHECK(server->EntityMngr.GetCritter(cr_id) == loaded);
 
         loaded->MarkAsDestroying();
         server->UnloadCritterInnerEntities(loaded);
@@ -1228,7 +1228,7 @@ TEST_CASE("LoadUnloadCritter")
 
         (void)container->TakeAllInnerItems();
         inner->MarkAsDestroyed();
-        server->EntityMngr.UnregisterItem(inner.as_ptr(), false);
+        server->EntityMngr.UnregisterItem(inner, false);
         container->MarkAsDestroyed();
         server->EntityMngr.UnregisterItem(container, false);
 
@@ -1791,7 +1791,7 @@ TEST_CASE("ItemCppApiAdvanced")
         REQUIRE(static_cast<bool>(item));
 
         const auto item_id = item->GetId();
-        server->ItemMngr.DestroyItem(item.as_ptr());
+        server->ItemMngr.DestroyItem(item);
 
         auto gone = server->EntityMngr.GetItem(item_id);
         CHECK_FALSE(static_cast<bool>(gone));

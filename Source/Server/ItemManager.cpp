@@ -114,7 +114,7 @@ auto ItemManager::CreateItem(hstring pid, int32_t count, nptr<const Properties> 
         throw ItemManagerException("Item proto not found", pid);
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto.as_ptr(), props);
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, ident_t {}, proto, props);
     _engine->EntityMngr.RegisterItem(item);
 
     item->SetStatic(false);

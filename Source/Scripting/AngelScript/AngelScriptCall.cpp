@@ -88,7 +88,7 @@ auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<Sc
     auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(data);
 
     if (func) {
-        auto func_desc = IndexScriptFunc(func.as_ptr());
+        auto func_desc = IndexScriptFunc(func);
         FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
         return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()));
     }
@@ -277,6 +277,21 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
 
     if (!is_void_ret) {
         func_desc->Ret = ResolveScriptFuncType(as_engine, ret_type_id, ret_flags, true);
+
+        if (func_desc->Ret.Kind == ComplexTypeKind::Simple) {
+            nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
+
+            if (as_ret_type && (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0) {
+                func_desc->ReturnValueCleaner = [as_engine, as_ret_type](ptr<void> ret_data) mutable {
+                    auto cur_obj = NativeDataProvider::ReadHandleSlot(ret_data);
+
+                    if (cur_obj) {
+                        as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
+                        NativeDataProvider::WriteHandleSlot(ret_data, nullptr);
+                    }
+                };
+            }
+        }
     }
 
     const bool call_supported = (is_void_ret || !!func_desc->Ret) && !std::ranges::any_of(func_desc->Args, [](auto&& a) { return !a.Type; });
@@ -362,10 +377,10 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             if (is_array || is_dict) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
                 FO_VERIFY_AND_THROW(ret_obj, "Missing AngelScript return object");
-                *NativeDataProvider::GetHandleSlot(call.RetData) = ret_obj.get();
+                NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
             }
             else if (is_ref_type) {
-                *NativeDataProvider::GetHandleSlot(call.RetData) = nullptr;
+                NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
             }
             else if (is_value_type) {
                 nptr<void> ret_obj = as_engine->CreateScriptObject(as_ret_type.get());
@@ -395,14 +410,14 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             nptr<void> ret_obj = call.RetData;
 
             if (is_ref_type) {
-                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData.as_ptr());
+                ret_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
             }
 
             if (ret_obj) {
                 as_engine->ReleaseScriptObject(ret_obj.get(), as_ret_type.get());
 
                 if (is_ref_type) {
-                    *NativeDataProvider::GetHandleSlot(call.RetData) = nullptr;
+                    NativeDataProvider::WriteHandleSlot(call.RetData, nullptr);
                 }
             }
         }
@@ -533,14 +548,13 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     nptr<void> ret_obj = ctx->GetReturnObject();
 
                     if (is_ref_type) {
-                        auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
-                        nptr<void> cur_obj = *cur_obj_slot;
+                        nptr<void> cur_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
 
                         if (cur_obj) {
                             as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
                         }
 
-                        *cur_obj_slot = ret_obj.get();
+                        NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
                         as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
                     }
                     else {
@@ -643,46 +657,37 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if ((ret_type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
                     nptr<AngelScript::asITypeInfo> as_ret_type = as_engine->GetTypeInfoById(ret_type_id);
                     FO_VERIFY_AND_THROW(as_ret_type, "Missing AngelScript return type info");
+                    const bool is_ref_type = (as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0;
                     nptr<void> ret_obj = ctx->GetReturnObject();
-                    ptr<void> ret_data = call.RetData.as_ptr();
 
-                    if (func_desc->Ret.Kind == ComplexTypeKind::Array) {
-                        call.Accessor->ClearArray(ret_data);
+                    if (is_ref_type && func_desc->Ret.Kind == ComplexTypeKind::Array) {
+                        auto arr = cast_from_void<ScriptArray*>(ret_obj.get());
+                        FO_VERIFY_AND_THROW(arr, "Returned AngelScript array handle is null");
+                        const int32_t arr_size = arr->GetSize();
+                        call.Accessor->ClearArray(call.RetData);
 
-                        if (ret_obj) {
-                            nptr<ScriptArray> nullable_arr = cast_from_void<ScriptArray*>(ret_obj.get_no_const());
-                            auto arr = nullable_arr.as_ptr();
-                            const int32_t arr_size = arr->GetSize();
-
-                            for (int32_t j = 0; j < arr_size; j++) {
-                                call.Accessor->AddArrayElement(ret_data, arr->At(j));
-                            }
+                        for (int32_t j = 0; j < arr_size; j++) {
+                            call.Accessor->AddArrayElement(call.RetData, arr->At(j));
                         }
                     }
-                    else if (func_desc->Ret.Kind == ComplexTypeKind::Dict) {
-                        FO_VERIFY_AND_THROW(func_desc->Ret.KeyType, "Dictionary return type has no key type");
+                    else if (is_ref_type && (func_desc->Ret.Kind == ComplexTypeKind::Dict || func_desc->Ret.Kind == ComplexTypeKind::DictOfArray)) {
+                        auto dict = cast_from_void<ScriptDict*>(ret_obj.get());
+                        FO_VERIFY_AND_THROW(dict, "Returned AngelScript dictionary handle is null");
+                        ptr<const map<void*, void*, ScriptDict::ScriptDictComparator>> dict_map = dict->GetMap();
+                        call.Accessor->ClearDict(call.RetData);
 
-                        call.Accessor->ClearDict(ret_data);
-
-                        if (ret_obj) {
-                            nptr<ScriptDict> nullable_dict = cast_from_void<ScriptDict*>(ret_obj.get_no_const());
-                            auto dict = nullable_dict.as_ptr();
-                            ptr<const map<void*, void*, ScriptDict::ScriptDictComparator>> dict_map = dict->GetMap();
-
-                            for (const auto& kv : *dict_map) {
-                                call.Accessor->AddDictElement(ret_data, kv.first, kv.second);
-                            }
+                        for (const auto& kv : *dict_map) {
+                            call.Accessor->AddDictElement(call.RetData, kv.first, kv.second);
                         }
                     }
-                    else if ((as_ret_type->GetFlags() & AngelScript::asOBJ_REF) != 0) {
-                        auto cur_obj_slot = NativeDataProvider::GetHandleSlot(call.RetData.as_ptr());
-                        const nptr<void> cur_obj = *cur_obj_slot;
+                    else if (is_ref_type) {
+                        auto cur_obj = NativeDataProvider::ReadHandleSlot(call.RetData);
 
                         if (cur_obj) {
-                            as_engine->ReleaseScriptObject(cur_obj.get_no_const(), as_ret_type.get());
+                            as_engine->ReleaseScriptObject(cur_obj.get(), as_ret_type.get());
                         }
 
-                        *cur_obj_slot = ret_obj.get();
+                        NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
 
                         if (ret_obj) {
                             as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());

@@ -449,7 +449,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
         return nullptr;
     }
 
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto.as_ptr());
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, loc_id, loc_proto);
 
     if (!PropertiesSerializator::LoadFromDocument(loc->GetPropertiesForEdit(), loc_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore location {} {} properties", loc_pid, loc_id);
@@ -486,7 +486,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
                     map->SetLocMapIndex(expected_loc_map_index);
                 }
 
-                loc->RestoreMap(map.as_ptr());
+                loc->RestoreMap(map);
             }
             else {
                 map_ids_changed = true;
@@ -555,7 +555,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
         bool cr_ids_changed = false;
 
         for (const auto& cr_id : cr_ids) {
-            auto cr = LoadCritter(cr_id, is_error);
+            auto cr = LoadCritter(cr_id, false, is_error);
 
             if (cr) {
                 cr->SetMapId(map->GetId());
@@ -565,7 +565,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
                     cr->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
-                map->AddCritter(cr.as_ptr());
+                map->AddCritter(cr);
             }
             else {
                 cr_ids_changed = true;
@@ -592,7 +592,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
                     item->SetHex(map->GetSize().clamp_pos(hex));
                 }
 
-                map->SetItem(item.as_ptr());
+                map->SetItem(item);
             }
             else {
                 item_ids_changed = true;
@@ -617,7 +617,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
     return std::move(map);
 }
 
-auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refcount_nptr<Critter>
+auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -635,7 +635,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
         return nullptr;
     }
 
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto.as_ptr());
+    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, cr_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(cr->GetPropertiesForEdit(), cr_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore critter {} {} properties", cr_pid, cr_id);
@@ -667,7 +667,7 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
                 FO_VERIFY_AND_THROW(inv_item->GetOwnership() == ItemOwnership::CritterInventory, "Loaded critter inventory item has a non-inventory ownership state", inv_item->GetId(), cr->GetId(), inv_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inv_item->GetCritterId() == cr->GetId(), "Loaded inventory item belongs to a different critter");
 
-                cr->SetItem(inv_item.as_ptr());
+                cr->SetItem(inv_item);
             }
             else {
                 item_ids_changed = true;
@@ -682,11 +682,38 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refco
         // Inner entities
         auto holder = cr;
         LoadInnerEntities(holder, is_error);
+
+        // Give scripts a fully restored critter before it is attached to a map or exposed through
+        // world-entry and regular initialization events. This is the persistence-migration boundary.
+        // Player-bound critters are marked before the event so handlers observe the real controllable state.
+        if (!is_error) {
+            ValidateEntityAccess(cr);
+
+            if (for_player) {
+                cr->MarkIsForPlayer();
+            }
+
+            cr->LockMapTransfers();
+            auto restore_transfers = scope_exit([cr]() mutable noexcept { cr->UnlockMapTransfers(); });
+
+            if (_engine->OnCritterPreLoad.Fire(cr) == Entity::EventResult::StopChain) {
+                WriteLog(LogType::Warning, "Critter {} {} pre-load failed", cr_pid, cr_id);
+                is_error = true;
+            }
+        }
     }
     catch (const std::exception& ex) {
         WriteLog(LogType::Warning, "Failed during restore critter content {} {}", cr_pid, cr_id);
         ReportExceptionAndContinue(ex);
         is_error = true;
+    }
+
+    if (cr->IsDestroyed()) {
+        if (!is_error) {
+            WriteLog(LogType::Info, "Critter {} {} dropped during pre-load", cr_pid, cr_id);
+        }
+
+        return nullptr;
     }
 
     return std::move(cr);
@@ -710,7 +737,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
         return nullptr;
     }
 
-    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<Item>(_engine, item_id, proto);
 
     if (!PropertiesSerializator::LoadFromDocument(item->GetPropertiesForEdit(), item_doc, _engine->Hashes, *_engine)) {
         WriteLog(LogType::Warning, "Failed to restore item {} {} properties", item_pid, item_id);
@@ -742,7 +769,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
                 FO_VERIFY_AND_THROW(inner_item->GetOwnership() == ItemOwnership::ItemContainer, "Loaded container item has a non-container ownership state", inner_item->GetId(), item->GetId(), inner_item->GetOwnership());
                 FO_VERIFY_AND_THROW(inner_item->GetContainerId() == item->GetId(), "Loaded inner item belongs to a different container");
 
-                item->SetItemToContainer(inner_item.as_ptr());
+                item->SetItemToContainer(inner_item);
             }
             else {
                 inner_item_ids_changed = true;
@@ -823,7 +850,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
                     custom_entity->SetParent(holder_entity);
                 }
 
-                holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity.as_ptr());
+                holder->AddInnerEntity(custom_entity->GetCustomHolderEntry(), custom_entity);
 
                 // Propagate holder's lock to loaded custom entity. ServerEntity holders supply
                 // their own lock; engine-as-holder supplies the engine's singleton lock.
@@ -839,7 +866,7 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
                 }
 
                 // Inner entities
-                LoadInnerEntities(custom_entity.as_ptr(), is_error);
+                LoadInnerEntities(custom_entity, is_error);
             }
             else {
                 inner_entity_ids_changed = true;
@@ -1572,10 +1599,10 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
 
     refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
         if (proto) {
-            return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrator.as_ptr(), proto.as_ptr());
+            return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, ident_t {}, registrator, proto);
         }
 
-        return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator.as_ptr(), nullptr);
+        return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, ident_t {}, registrator, nullptr);
     }();
 
     RegisterCustomEntity(entity);
@@ -1633,10 +1660,10 @@ auto EntityManager::LoadCustomEntity(hstring type_name, ident_t id, bool& is_err
         FO_VERIFY_AND_THROW(registrator, "Missing property registrator for custom entity type");
         refcount_ptr<CustomEntity> entity = [&]() -> refcount_ptr<CustomEntity> {
             if (proto) {
-                return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrator.as_ptr(), proto.as_ptr());
+                return SafeAlloc::MakeRefCounted<CustomEntityWithProto>(_engine, id, registrator, proto);
             }
 
-            return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator.as_ptr(), nullptr);
+            return SafeAlloc::MakeRefCounted<CustomEntity>(_engine, id, registrator, nullptr);
         }();
 
         if (!PropertiesSerializator::LoadFromDocument(entity->GetPropertiesForEdit(), doc, _engine->Hashes, *_engine)) {
@@ -1760,7 +1787,7 @@ void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const func
                 const auto entry_sync = custom_entity_holder_type.HolderEntries.at(entry).Sync;
 
                 if (entry_sync == EntityHolderEntrySync::OwnerSync || entry_sync == EntityHolderEntrySync::PublicSync) {
-                    find_players_recursively(custom_entity_holder.as_ptr(), std::min(entry_sync, derived_sync));
+                    find_players_recursively(custom_entity_holder, std::min(entry_sync, derived_sync));
                 }
             }
         }

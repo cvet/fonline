@@ -344,7 +344,7 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
     // Convert data
     auto root_bone = ConvertFbxHierarchy(fbx_scene->root_node);
     ConvertFbxMeshes(root_bone, root_bone, fbx_scene->root_node);
-    const auto animations = ConvertFbxAnimations(fbx_scene.as_ptr(), fname);
+    const auto animations = ConvertFbxAnimations(fbx_scene, fname);
 
     // Write data
     vector<uint8_t> data;

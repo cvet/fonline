@@ -240,7 +240,7 @@ void MasterBaker::BakeAllInternal()
         pack_bake_context->OutputDir = output_dir;
 
         for (const auto& input_dir : res_pack.InputDirs) {
-            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, res_pack.RecursiveInput);
+            pack_bake_context_ptr->InputFiles.AddDirSource(input_dir, true);
         }
         for (const auto& input_file : res_pack.InputFiles) {
             const auto dir = strex(input_file).extract_dir().str();
@@ -248,7 +248,7 @@ void MasterBaker::BakeAllInternal()
             pack_bake_context_ptr->InputFiles.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
-        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.GetAllFiles();
+        pack_bake_context->FilteredFiles = pack_bake_context->InputFiles.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
 
         const auto bake_checker = [context = pack_bake_context_ptr, &force_baking](string_view path, uint64_t write_time) mutable -> bool {
             // ModelInfoBaker fans BakeChecker calls across PPL tasks, so the path set has
@@ -561,7 +561,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
         res_entry.Bakers = BaseBaker::SetupBakers(res_pack.Bakers, res_pack.Name, *_settings, bake_checker, write_data, &_outputResources);
 
         for (const auto& dir : res_pack.InputDirs) {
-            res_entry.InputDir.AddDirSource(dir, res_pack.RecursiveInput);
+            res_entry.InputDir.AddDirSource(dir, true);
         }
         for (const auto& path : res_pack.InputFiles) {
             const auto dir = strex(path).extract_dir().str();
@@ -569,7 +569,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
             res_entry.InputDir.AddCustomSource(DataSource::MountPack(dir, pack, false));
         }
 
-        res_entry.InputFiles = res_entry.InputDir.GetAllFiles();
+        res_entry.InputFiles = res_entry.InputDir.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns);
     }
 
     // Evaluate output files

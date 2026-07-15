@@ -113,7 +113,7 @@ public:
     void LoadEntities();
     auto LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>;
     auto LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>;
-    auto LoadCritter(ident_t cr_id, bool& is_error) noexcept -> refcount_nptr<Critter>;
+    auto LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>;
     auto LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>;
 
     void CallInit(ptr<Location> loc, bool first_time);

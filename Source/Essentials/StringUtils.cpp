@@ -416,7 +416,7 @@ auto strex::rtrim(string_view chars) noexcept -> strex&
     return *this;
 }
 
-auto strex::erase(char what) -> strex&
+auto strex::erase(char what) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -429,7 +429,7 @@ auto strex::erase(char what) -> strex&
     return *this;
 }
 
-auto strex::erase(char begin, char end) -> strex&
+auto strex::erase(char begin, char end) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -456,7 +456,7 @@ auto strex::erase(char begin, char end) -> strex&
     return *this;
 }
 
-auto strex::replace(char from, char to) -> strex&
+auto strex::replace(char from, char to) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -475,7 +475,7 @@ auto strex::replace(char from, char to) -> strex&
     return *this;
 }
 
-auto strex::replace(char from1, char from2, char to) -> strex&
+auto strex::replace(char from1, char from2, char to) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -487,7 +487,7 @@ auto strex::replace(char from1, char from2, char to) -> strex&
     return *this;
 }
 
-auto strex::replace(string_view from, string_view to) -> strex&
+auto strex::replace(string_view from, string_view to) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -508,7 +508,7 @@ auto strex::replace(string_view from, string_view to) -> strex&
     return *this;
 }
 
-auto strex::lower() -> strex&
+auto strex::lower() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -519,7 +519,7 @@ auto strex::lower() -> strex&
     return *this;
 }
 
-auto strex::upper() -> strex&
+auto strex::upper() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -530,7 +530,7 @@ auto strex::upper() -> strex&
     return *this;
 }
 
-auto strex::lower_utf8() -> strex&
+auto strex::lower_utf8() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -557,7 +557,7 @@ auto strex::lower_utf8() -> strex&
     return *this;
 }
 
-auto strex::upper_utf8() -> strex&
+auto strex::upper_utf8() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -584,7 +584,7 @@ auto strex::upper_utf8() -> strex&
     return *this;
 }
 
-auto strex::assignVolatile(const volatile char* str, size_t len) -> strex&
+auto strex::assignVolatile(const volatile char* str, size_t len) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -599,7 +599,7 @@ auto strex::assignVolatile(const volatile char* str, size_t len) -> strex&
     return *this;
 }
 
-auto strex::join(const_span<string_view> parts) -> strex&
+auto strex::join(const_span<string_view> parts) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -626,7 +626,7 @@ auto strex::join(const_span<string_view> parts) -> strex&
     return *this;
 }
 
-auto strex::join(const_span<string> parts) -> strex&
+auto strex::join(const_span<string> parts) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1030,7 +1030,7 @@ auto strvex::to_bool() const noexcept -> bool
     return to_int64() != 0;
 }
 
-auto strex::format_path() -> strex&
+auto strex::format_path() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1091,7 +1091,7 @@ auto strex::format_path() -> strex&
     return *this;
 }
 
-auto strex::extract_dir() -> strex&
+auto strex::extract_dir() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1131,7 +1131,7 @@ auto strex::extract_file_name() noexcept -> strex&
     return *this;
 }
 
-auto strex::get_file_extension() -> strex&
+auto strex::get_file_extension() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1185,7 +1185,7 @@ auto strex::change_file_name(string_view new_name) -> strex&
     return *this;
 }
 
-auto strex::change_file_extension(string_view new_ext) -> strex&
+auto strex::change_file_extension(string_view new_ext) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1200,7 +1200,7 @@ auto strex::change_file_extension(string_view new_ext) -> strex&
     return *this;
 }
 
-auto strex::combine_path(string_view path) -> strex&
+auto strex::combine_path(string_view path) noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1221,7 +1221,7 @@ auto strex::combine_path(string_view path) -> strex&
     return *this;
 }
 
-auto strex::normalize_path_slashes() -> strex&
+auto strex::normalize_path_slashes() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -1232,7 +1232,7 @@ auto strex::normalize_path_slashes() -> strex&
     return *this;
 }
 
-auto strex::normalize_line_endings() -> strex&
+auto strex::normalize_line_endings() noexcept -> strex&
 {
     FO_NO_STACK_TRACE_ENTRY();
 

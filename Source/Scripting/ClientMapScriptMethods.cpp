@@ -88,7 +88,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         disable_egg = proto->GetDisableEgg();
     }
 
-    auto mspr = self->AddMapSprite(anim.as_ptr(), mapSpr->Hex, draw_order, draw_order_hy_offset, //
+    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
         mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 

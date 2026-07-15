@@ -33,6 +33,7 @@
 
 #include "EngineBase.h"
 
+#include "ConfigFile.h"
 #include "ImGuiStuff.h"
 
 FO_BEGIN_NAMESPACE
@@ -176,6 +177,12 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     const auto it = _entityTypes.find(Hashes.ToHashedString(name));
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
+    FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Entity type name conflicts with an already registered base type", name);
+    FO_VERIFY_AND_THROW(!has_protos || !_baseTypes.contains(strex("Proto{}", name)), "Entity proto type name conflicts with an already registered base type", name);
+    FO_VERIFY_AND_THROW(!has_statics || !_baseTypes.contains(strex("Static{}", name)), "Entity static type name conflicts with an already registered base type", name);
+    FO_VERIFY_AND_THROW(!has_abstract || !_baseTypes.contains(strex("Abstract{}", name)), "Entity abstract type name conflicts with an already registered base type", name);
+    FO_VERIFY_AND_THROW(exported || _enums.count(strex("{}Property", name)) == 0, "Entity property enum type is already registered", name);
+    FO_VERIFY_AND_THROW(exported || !_baseTypes.contains(strex("{}Property", name)), "Entity property type name conflicts with an already registered base type", name);
 
     auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
@@ -231,6 +238,11 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
     const auto it = _fixedTypes.find(Hashes.ToHashedString(name));
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
+    FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Fixed type name conflicts with an already registered base type", name);
+
+    if (!exported) {
+        RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
+    }
 
     auto registrator = SafeAlloc::MakeUnique<PropertyRegistrator>(name, _side, &Hashes, this);
 
@@ -245,10 +257,6 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     const auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
-
-    if (!exported) {
-        RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
-    }
 
     RegisterBaseType(name);
 
@@ -265,13 +273,13 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Holder entry registration references an unknown holder entity type", holder_type, target_type, entry);
     FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
 
-    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
-
     auto registrator = GetPropertyRegistratorForEdit(holder_type);
     ptr<const Property> prop = persistent ? //
         registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "Persistent", "CoreProperty"}) : //
         registrator->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
     RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
+
+    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
 }
 
 void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
@@ -281,22 +289,28 @@ void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(IsValidBaseType(underlying_type), "Invalid enum underlying base type");
     FO_VERIFY_AND_THROW(_enums.count(name) == 0, "Enum type is already registered", name);
+    FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Enum type name conflicts with an already registered base type", name);
 
     unordered_map<int32_t, string> key_values_rev;
+    unordered_map<string, int32_t> new_full_names;
 
     for (auto&& [key, value] : key_values) {
         FO_VERIFY_AND_THROW(key != "None" || value <= 0, "Enum entry named None cannot have a positive value", name, key, value);
         FO_VERIFY_AND_THROW(key_values_rev.count(value) == 0, "Enum registration contains duplicate numeric values", name, key, value);
         key_values_rev.emplace(value, key);
         string full_key = strex("{}::{}", name, key);
-        FO_VERIFY_AND_THROW(_enumsFullName.count(full_key) == 0, "Enum full-name entry is already registered", name, key, full_key);
-        _enumsFullName.emplace(std::move(full_key), value);
+        FO_VERIFY_AND_THROW(_enumsFullName.count(full_key) == 0 && new_full_names.count(full_key) == 0, "Enum full-name entry is already registered", name, key, full_key);
+        new_full_names.emplace(std::move(full_key), value);
     }
 
     auto name_str = string(name);
     _enums.emplace(name_str, std::move(key_values));
     _enumsRev.emplace(name_str, std::move(key_values_rev));
     _enumsUnderlyingType.emplace(std::move(name_str), &GetBaseType(underlying_type));
+
+    for (auto&& [full_key, value] : new_full_names) {
+        _enumsFullName.emplace(std::move(full_key), value);
+    }
 
     RegisterBaseType(name);
 }
@@ -325,6 +339,7 @@ void EngineMetadata::RegisterValueType(string_view name)
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_structLayouts.count(string(name)) == 0, "Value type is already registered", name);
+    FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Value type name conflicts with an already registered base type", name);
 
     StructLayoutDesc layout_desc;
     _structLayouts.emplace(name, std::move(layout_desc));
@@ -345,24 +360,28 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
     FO_VERIFY_AND_THROW(type.Size == 0, "Type size must be zero before layout registration");
     auto& layout_desc = _structLayouts.at(name_str);
     FO_VERIFY_AND_THROW(layout_desc.Size == 0, "Struct layout size must be zero before field registration");
-    size_t offset = 0;
+
+    vector<FieldDesc> fields;
+    size_t total_size = 0;
 
     for (const auto& [field_name, field_type] : layout) {
         FO_VERIFY_AND_THROW(!field_name.empty(), "Value type layout contains a field with an empty name", name, field_type, layout.size());
         FO_VERIFY_AND_THROW(IsValidBaseType(field_type), "Value type layout contains an unknown field base type", name, field_name, field_type);
-        auto& field = layout_desc.Fields.emplace_back();
+        auto& field = fields.emplace_back();
         field.Name = field_name;
         field.Type = GetBaseType(field_type);
         FO_VERIFY_AND_THROW(field.Type.IsPrimitive || field.Type.IsEnum || field.Type.IsSimpleStruct || field.Type.IsHashedString, "Struct field type is not supported in fixed layout");
         FO_VERIFY_AND_THROW(field.Type.Size != 0, "Struct field type has zero size");
-        FO_VERIFY_AND_THROW(offset % field.Type.Size == 0, "Value type layout data is not aligned", name, field.Name);
-        field.Offset = offset;
-        offset += field.Type.Size;
-        layout_desc.Size += field.Type.Size;
-        type.Size += field.Type.Size;
+        FO_VERIFY_AND_THROW(total_size % field.Type.Size == 0, "Value type layout data is not aligned", name, field.Name);
+        field.Offset = total_size;
+        total_size += field.Type.Size;
     }
 
-    FO_VERIFY_AND_THROW(type.Size != 0, "Registered type has zero size");
+    FO_VERIFY_AND_THROW(total_size != 0, "Registered type has zero size");
+
+    layout_desc.Fields = std::move(fields);
+    layout_desc.Size = total_size;
+    type.Size = total_size;
     type.StructLayout = &layout_desc;
     type.IsSimpleStruct = layout_desc.Fields.size() == 1;
     type.IsComplexStruct = layout_desc.Fields.size() > 1;
@@ -374,6 +393,7 @@ void EngineMetadata::RegisterRefType(string_view name)
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(_refTypes.count(name) == 0, "RefType is already registered", name);
+    FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "RefType name conflicts with an already registered base type", name);
 
     RefTypeDesc ref_type;
     _refTypes.emplace(name, std::move(ref_type));
@@ -1114,6 +1134,25 @@ auto EngineMetadata::GetProtoEntities(hstring type_name) const noexcept -> const
     return _protoMngr.GetProtoEntities(type_name);
 }
 
+auto EngineMetadata::GetModelAnimDuration(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) const -> timespan
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const auto model_it = _modelAnimDurations.find(model_name);
+
+    if (model_it == _modelAnimDurations.end()) {
+        return {};
+    }
+
+    const auto anim_it = model_it->second.find({state_anim, action_anim});
+
+    if (anim_it == model_it->second.end()) {
+        return {};
+    }
+
+    return anim_it->second;
+}
+
 void EngineMetadata::RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1132,6 +1171,58 @@ void EngineMetadata::RegisterProtos(const FileSystem& resources)
     _protoMngr.LoadFromResources(resources);
 }
 
+void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+
+    constexpr string_view resource_path = "ModelAnimInfo.foinfo";
+
+    if (!resources.IsFileExists(resource_path)) {
+        WriteLog(LogType::Info, "Model animation durations document '{}' is not present", resource_path);
+        return;
+    }
+
+    auto config = ConfigFile(resource_path, resources.ReadFileText(resource_path));
+    unordered_map<hstring, unordered_map<pair<CritterStateAnim, CritterActionAnim>, timespan>> model_anim_durations;
+
+    for (const auto& [model_name, values] : *config.GetSections()) {
+        if (model_name.empty()) {
+            continue;
+        }
+
+        const auto get_value = [&values](string_view key) -> string_view {
+            const auto it = values.find(key);
+            return it != values.end() ? it->second : string_view {};
+        };
+
+        const auto state_anims = strvex(get_value("StateAnims")).split_to_int32(' ');
+        const auto action_anims = strvex(get_value("ActionAnims")).split_to_int32(' ');
+        const auto durations_ms = strvex(get_value("DurationsMs")).split_to_int32(' ');
+
+        FO_VERIFY_AND_THROW(!state_anims.empty(), "Model animation info section has no entries", model_name);
+        FO_VERIFY_AND_THROW(state_anims.size() == action_anims.size() && action_anims.size() == durations_ms.size(), "Model animation info arrays have different sizes", model_name, state_anims.size(), action_anims.size(), durations_ms.size());
+
+        const auto model_name_hashed = Hashes.ToHashedString(model_name);
+        const auto [model_it, model_inserted] = model_anim_durations.try_emplace(model_name_hashed);
+        FO_VERIFY_AND_THROW(model_inserted, "Duplicate model animation info section", model_name);
+        auto& model_durations = model_it->second;
+
+        for (size_t i = 0; i < state_anims.size(); i++) {
+            const auto state_anim = static_cast<CritterStateAnim>(numeric_cast<uint16_t>(state_anims[i]));
+            const auto action_anim = static_cast<CritterActionAnim>(numeric_cast<uint16_t>(action_anims[i]));
+            FO_VERIFY_AND_THROW(durations_ms[i] > 0, "Model animation duration must be positive", model_name, state_anims[i], action_anims[i], durations_ms[i]);
+
+            const auto [it, inserted] = model_durations.emplace(pair {state_anim, action_anim}, std::chrono::milliseconds {durations_ms[i]});
+            ignore_unused(it);
+            FO_VERIFY_AND_THROW(inserted, "Duplicate model animation info entry", model_name, state_anims[i], action_anims[i]);
+        }
+    }
+
+    _modelAnimDurations = std::move(model_anim_durations);
+}
+
 BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, const MeatdataRegistrator& registrator) :
     EngineMetadata(registrator),
     ScriptSystem(),
@@ -1146,6 +1237,7 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FO_STACK_TRACE_ENTRY();
 
     RegisterProtos(Resources);
+    RegisterModelAnimInfo(Resources);
     FinalizeRegistration();
 }
 

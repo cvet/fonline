@@ -355,7 +355,7 @@ void MapView::LoadStaticData()
             item_props.RestoreAllData(props_data);
 
             auto item_props_ptr = make_nptr(&item_props);
-            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto.as_ptr(), item_props_ptr);
+            auto static_item = SafeAlloc::MakeRefCounted<ItemHexView>(this, static_id, item_proto, item_props_ptr);
             static_item->SetStatic(true);
             AddItemInternal(static_item);
         }
@@ -683,7 +683,7 @@ auto MapView::AddReceivedItem(ident_t id, hstring pid, mpos hex, const vector<ve
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id, proto);
 
     item->RestoreData(data);
     item->SetStatic(false);
@@ -714,7 +714,7 @@ auto MapView::AddMapperItem(hstring pid, mpos hex, nptr<const Properties> props,
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     item->SetHex(hex);
 
@@ -731,7 +731,7 @@ auto MapView::AddMapperTile(hstring pid, mpos hex, uint8_t layer, bool is_roof) 
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, GenTempEntityId(), proto);
 
     item->SetHex(hex);
     item->SetIsTile(true);
@@ -750,7 +750,7 @@ auto MapView::AddLocalItem(hstring pid, mpos hex) -> ptr<ItemHexView>
     auto proto = _engine->GetProtoItem(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto.as_ptr());
+    auto item = SafeAlloc::MakeRefCounted<ItemHexView>(this, ident_t {}, proto);
 
     item->SetStatic(false);
     item->SetHex(hex);
@@ -2085,7 +2085,7 @@ auto MapView::MeasureMapBorders(ptr<const ItemHexView> item) -> bool
 
     auto item_spr = item->GetSprite();
     FO_VERIFY_AND_THROW(item_spr, "Item is missing its sprite");
-    return MeasureMapBorders(item_spr.as_ptr(), item->GetSpriteOffset());
+    return MeasureMapBorders(item_spr, item->GetSpriteOffset());
 }
 
 void MapView::RecacheHexFlags(mpos hex)
@@ -3353,7 +3353,7 @@ auto MapView::AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, co
 
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Critter prototype is missing");
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto.as_ptr());
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id, proto);
 
     cr->RestoreData(data);
     cr->SetHex(hex);
@@ -3382,7 +3382,7 @@ auto MapView::AddMapperCritter(hstring pid, mpos hex, mdir dir, nptr<const Prope
     auto proto = _engine->GetProtoCritter(pid);
     FO_VERIFY_AND_THROW(proto, "Missing prototype instance");
 
-    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto.as_ptr(), props);
+    auto cr = SafeAlloc::MakeRefCounted<CritterHexView>(this, id ? id : GenTempEntityId(), proto, props);
 
     cr->SetHex(hex);
     cr->ChangeDir(dir);
@@ -3399,15 +3399,19 @@ auto MapView::AddCritterInternal(ptr<CritterHexView> cr) -> ptr<CritterHexView>
             cr->InheritAlphaFrom(prev_cr);
             DestroyCritter(prev_cr);
         }
-
-        _crittersMap.emplace(cr->GetId(), cr);
     }
 
     cr->SetMapId(GetId());
     cr->Init();
 
-    vec_add_unique_value(_critters, cr.hold_ref());
     AddCritterToField(cr);
+
+    vec_add_unique_value(_critters, cr.hold_ref());
+
+    if (cr->GetId()) {
+        _crittersMap.emplace(cr->GetId(), cr);
+    }
+
     return cr;
 }
 
@@ -3483,23 +3487,38 @@ auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find
     vector<ptr<CritterHexView>> critters;
 
     const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
-    unordered_set<ptr<const CritterHexView>> seen;
-    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-    for (int32_t i = 0; i < hexes_in_radius; i++) {
-        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
-            const auto& field = _hexField->GetCellForReading(cur_hex);
+    if (numeric_cast<size_t>(hexes_in_radius) < _critters.size()) {
+        unordered_set<ptr<const CritterHexView>> seen;
+        seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-            if (field.Critters.empty()) {
-                continue;
-            }
+        for (int32_t i = 0; i < hexes_in_radius; i++) {
+            if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+                const auto& field = _hexField->GetCellForReading(cur_hex);
 
-            auto field2 = _hexField->GetCellForWriting(cur_hex);
-
-            for (ptr<CritterHexView> cr : field2->Critters) {
-                if (seen.insert(cr).second && cr->CheckFind(find_type)) {
-                    critters.emplace_back(cr);
+                if (field.Critters.empty()) {
+                    continue;
                 }
+
+                auto field2 = _hexField->GetCellForWriting(cur_hex);
+
+                for (ptr<CritterHexView> cr : field2->Critters) {
+                    if (seen.insert(cr).second && cr->CheckFind(find_type)) {
+                        critters.emplace_back(cr);
+                    }
+                }
+            }
+        }
+    }
+    else {
+        critters.reserve(_critters.size());
+
+        for (refcount_ptr<CritterHexView>& cr_ref : _critters) {
+            auto cr = cr_ref.as_ptr();
+            const int32_t distance = GeometryHelper::GetDistance(hex, cr->GetHex()) - cr->GetMultihex();
+
+            if (distance <= radius && cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
             }
         }
     }

@@ -243,7 +243,7 @@ auto ScriptType::GetBaseType() const -> refcount_nptr<ScriptType>
         return nullptr;
     }
 
-    return SafeAlloc::MakeRefCounted<ScriptType>(base.as_ptr());
+    return SafeAlloc::MakeRefCounted<ScriptType>(base);
 }
 
 auto ScriptType::GetInterfaceCount() const -> int32_t
@@ -260,7 +260,7 @@ auto ScriptType::GetInterface(int32_t index) const -> refcount_nptr<ScriptType>
     if (index >= 0 && index < numeric_cast<int32_t>(_typeInfo->GetInterfaceCount())) {
         nptr<AngelScript::asITypeInfo> type_info = _typeInfo->GetInterface(index);
         FO_VERIFY_AND_THROW(type_info, "Missing interface type info");
-        return SafeAlloc::MakeRefCounted<ScriptType>(type_info.as_ptr());
+        return SafeAlloc::MakeRefCounted<ScriptType>(type_info);
     }
 
     return nullptr;
@@ -350,7 +350,7 @@ auto ScriptType::GetEnumNames() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
     FO_VERIFY_AND_THROW(array_type, "Missing string array type info");
-    auto result = ScriptArray::Create(array_type.as_ptr());
+    auto result = ScriptArray::Create(array_type);
 
     if (enum_type) {
         for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
@@ -373,7 +373,7 @@ auto ScriptType::GetEnumValues() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("int[]");
     FO_VERIFY_AND_THROW(array_type, "Missing int array type info");
-    auto result = ScriptArray::Create(array_type.as_ptr());
+    auto result = ScriptArray::Create(array_type);
 
     if (enum_type) {
         for (int32_t i = 0; i < numeric_cast<int32_t>(enum_type->enumValues.GetLength()); i++) {
@@ -525,7 +525,7 @@ auto ScriptTypeOf::ConvertToType() -> refcount_nptr<ScriptType>
         return nullptr;
     }
 
-    return SafeAlloc::MakeRefCounted<ScriptType>(_typeInfo.as_ptr());
+    return SafeAlloc::MakeRefCounted<ScriptType>(_typeInfo);
 }
 
 static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
@@ -538,7 +538,7 @@ static auto CreateAngelScriptLoadedModules() -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("string[]");
     FO_VERIFY_AND_THROW(array_type, "Missing string array type info");
-    auto modules = ScriptArray::Create(array_type.as_ptr());
+    auto modules = ScriptArray::Create(array_type);
 
     for (int32_t i = 0; i < numeric_cast<int32_t>(engine->GetModuleCount()); i++) {
         nptr<AngelScript::asIScriptModule> module = engine->GetModuleByIndex(i);
@@ -596,7 +596,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
     ptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
     nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("reflection::type[]");
     FO_VERIFY_AND_THROW(array_type, "Missing reflection type array type info");
-    auto enums = ScriptArray::Create(array_type.as_ptr());
+    auto enums = ScriptArray::Create(array_type);
 
     if (global) {
         const auto count = engine->GetEnumCount();
@@ -605,7 +605,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             nptr<AngelScript::asITypeInfo> enum_type = engine->GetEnumByIndex(i);
             FO_VERIFY_AND_THROW(enum_type, "Missing global enum type at index");
 
-            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type.as_ptr());
+            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
             auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }
@@ -623,7 +623,7 @@ static auto CreateEnumsInternal(bool global, nptr<const char> module_name) -> re
             nptr<AngelScript::asITypeInfo> enum_type = module->GetEnumByIndex(i);
             FO_VERIFY_AND_THROW(enum_type, "Missing module enum type at index");
 
-            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type.as_ptr());
+            auto type = SafeAlloc::MakeRefCounted<ScriptType>(enum_type);
             auto value = make_ptr(type.get_pp()).reinterpret_as<void>();
             enums->InsertLast(value);
         }
@@ -765,7 +765,7 @@ static auto GetGenericOutObjectSlot(ptr<AngelScript::asIScriptGeneric> gen, Ange
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return NativeDataProvider::GetHandleSlot(GetGenericArgAddress(gen, arg_index).as_ptr());
+    return NativeDataProvider::GetHandleSlot(GetGenericArgAddress(gen, arg_index));
 }
 
 static void ScriptType_Instantiate_Generic(AngelScript::asIScriptGeneric* gen)
@@ -801,6 +801,7 @@ void RegisterAngelScriptReflection(ptr<AngelScript::asIScriptEngine> as_engine)
 
     int32_t as_result = 0;
     FO_AS_VERIFY(as_engine->SetDefaultNamespace("reflection"));
+    auto restore_ns = scope_fail([&as_engine]() noexcept { (void)as_engine->SetDefaultNamespace(""); });
 
     FO_AS_VERIFY(as_engine->RegisterObjectType("type", sizeof(ScriptType), AngelScript::asOBJ_REF));
     FO_AS_VERIFY(as_engine->RegisterObjectBehaviour("type", AngelScript::asBEHAVE_ADDREF, "void f()", FO_SCRIPT_METHOD(ScriptType, AddRef), FO_SCRIPT_METHOD_CONV));

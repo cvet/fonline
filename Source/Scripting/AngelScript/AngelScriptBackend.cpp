@@ -73,7 +73,7 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
     const string_view type = message->type == AngelScript::asMSGTYPE_WARNING ? "warning" : (message->type == AngelScript::asMSGTYPE_INFORMATION ? "info" : "error");
     auto as_engine = cast_from_void<AngelScript::asIScriptEngine*>(param);
     FO_VERIFY_AND_THROW(as_engine, "AngelScript engine callback parameter is null");
-    auto backend = GetScriptBackend(as_engine.as_ptr());
+    auto backend = GetScriptBackend(as_engine);
     auto lnt = cast_from_void<const Preprocessor::LineNumberTranslator*>(as_engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     const string_view orig_file = Preprocessor::ResolveOriginalFile(message->row, lnt.get());
     const uint32_t orig_line = Preprocessor::ResolveOriginalLine(message->row, lnt.get());
@@ -104,32 +104,6 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* raw_func)
     if (func_desc) {
         CleanupScriptFuncDesc(func_desc);
     }
-}
-
-static auto GetGlobalHandleSlot(ptr<AngelScript::asIScriptModule> mod, AngelScript::asUINT var_index) noexcept -> nptr<void*>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    static_assert(sizeof(void*) == sizeof(void**));
-
-    nptr<void> slot_address = mod->GetAddressOfGlobalVar(var_index);
-    return slot_address ? std::bit_cast<void**>(slot_address.get()) : nullptr;
-}
-
-static auto ReadGlobalFunctionHandle(ptr<void*> slot) noexcept -> ptr<AngelScript::asIScriptFunction>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<void> value = *slot;
-    FO_STRONG_ASSERT(value, "Global function handle slot is empty");
-    return cast_from_void<AngelScript::asIScriptFunction*>(value.get());
-}
-
-static void WriteGlobalHandleSlot(ptr<void*> slot, nptr<void> value) noexcept
-{
-    FO_STACK_TRACE_ENTRY();
-
-    *slot = value.get();
 }
 
 template<typename Allocator>
@@ -174,28 +148,17 @@ AngelScriptBackend::~AngelScriptBackend()
         cb();
     }
 
-    _cleanupCallbacks.clear();
-
     _contextMngr.reset();
 
-    if (_meta && _meta->GetSide() == EngineSideKind::ClientSide && _asEngine) {
-        for (int32_t pass = 0; pass < 8; pass++) {
-            _asEngine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
-        }
-    }
-    else {
-        ReleaseScriptGlobalsAndReportGC();
+    if (_asEngine) {
+        const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
+        FO_STRONG_ASSERT(as_engine_ref_count == 0, "AngelScript engine was not fully released", as_engine_ref_count);
     }
 
     _meta.reset();
     _scriptSys.reset();
     _engine.reset();
     _entityMngr.reset();
-
-    if (_asEngine) {
-        const auto as_engine_ref_count = _asEngine->ShutDownAndRelease();
-        FO_STRONG_ASSERT(as_engine_ref_count == 0, "AngelScript engine was not fully released", as_engine_ref_count);
-    }
 
     for (const auto& cb : _postCleanupCallbacks) {
         cb();
@@ -777,7 +740,7 @@ void AngelScriptBackend::BindRequiredStuff()
         for (AngelScript::asUINT i = 0; i < mod->GetFunctionCount(); i++) {
             nptr<AngelScript::asIScriptFunction> func = mod->GetFunctionByIndex(i);
             FO_VERIFY_AND_THROW(func, "Module function lookup returned null");
-            auto func_desc = IndexScriptFunc(func.as_ptr());
+            auto func_desc = IndexScriptFunc(func);
 
             _scriptSys->AddGlobalScriptFunc(func_desc);
 
@@ -831,24 +794,6 @@ void AngelScriptBackend::BindRequiredStuff()
         _contextMngr->SetDelayedScheduler([engine](timespan delay, function<void()> body) mutable { //
             engine->ScheduleDelayedCallback(delay, std::move(body));
         });
-
-        if (_meta->GetSide() == EngineSideKind::ClientSide) {
-            nptr<AngelScript::asIScriptModule> nullable_mod = _asEngine->GetModule("Root", AngelScript::asGM_ONLY_IF_EXISTS);
-            FO_VERIFY_AND_THROW(!!nullable_mod, "Missing AngelScript root module for client GUI cleanup callback");
-            auto mod = nullable_mod.as_ptr();
-            nptr<AngelScript::asIScriptFunction> nullable_finish_func = mod->GetFunctionByDecl("void Gui::EngineCallback_Finish()");
-
-            if (nullable_finish_func) {
-                auto finish_func = nullable_finish_func.as_ptr();
-                auto finish_func_desc = IndexScriptFunc(finish_func);
-                FO_VERIFY_AND_THROW(finish_func_desc->Call, "Client GUI cleanup function has no native call handler");
-
-                AddCleanupCallback([func = refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(finish_func.get())]() mutable {
-                    FuncCallData call {.Accessor = &NativeDataProvider::NATIVE_DATA_ACCESSOR};
-                    ScriptFuncCall(func, call);
-                });
-            }
-        }
     }
 }
 
@@ -878,126 +823,6 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
 
     priority = parsed_priority;
     return true;
-}
-
-void AngelScriptBackend::ReleaseScriptGlobalsAndReportGC()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (!_asEngine) {
-        return;
-    }
-
-    // Drop every script-side reference held by module global variables, then run a full GC so the now-unrooted
-    // object graphs are reclaimed before final shutdown. AngelScript also releases globals during module
-    // discard, but doing it explicitly here (while the engine is fully alive) lets the collector collapse the
-    // graphs in a normal multi-iteration cycle, so the engine cleans up after itself without per-system manual
-    // cleanup in game scripts.
-    size_t released_globals = 0;
-
-    for (AngelScript::asUINT module_index = 0; module_index < _asEngine->GetModuleCount(); module_index++) {
-        nptr<AngelScript::asIScriptModule> mod = _asEngine->GetModuleByIndex(module_index);
-
-        if (!mod) {
-            continue;
-        }
-
-        for (AngelScript::asUINT var_index = 0; var_index < mod->GetGlobalVarCount(); var_index++) {
-            int32_t type_id = 0;
-
-            if (mod->GetGlobalVar(var_index, nullptr, nullptr, &type_id, nullptr) < 0) {
-                continue;
-            }
-
-            nptr<AngelScript::asITypeInfo> type_info = _asEngine->GetTypeInfoById(type_id);
-
-            if (!type_info) {
-                continue; // Primitive global, nothing to release
-            }
-
-            const nptr<AngelScript::asIScriptFunction> funcdef = type_info->GetFuncdefSignature();
-            const bool is_funcdef = !!funcdef;
-            // Only funcdef handles and reference-typed object globals store a pointer in the slot. Value-type
-            // object globals keep their instance inline (as do enums/primitives), so reading the slot as a
-            // pointer would over-read the inline value; those are destructed by the standard module teardown.
-            // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
-            // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
-            // standard module teardown skips it. Value-type object globals store the instance inline (often
-            // smaller than a pointer), so dereferencing the slot as a pointer would read past that inline
-            // storage; leave them to the standard module teardown. Skip them before touching the slot.
-            const bool is_ref_object = (type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0 && (type_info->GetFlags() & AngelScript::asOBJ_REF) != 0;
-
-            if (!is_funcdef && !is_ref_object) {
-                continue;
-            }
-
-            auto slot = GetGlobalHandleSlot(mod.as_ptr(), var_index);
-
-            if (!slot || !*slot) {
-                continue;
-            }
-
-            // Funcdef globals (function handles / delegates) and reference-typed globals (handles, arrays,
-            // dictionaries, script classes) store a pointer in the slot; release it and null the slot so the
-            // standard module teardown skips it. Value-type object globals store the instance inline and are
-            // destructed by the module teardown, so they are left untouched here.
-            if (is_funcdef) {
-                auto func = ReadGlobalFunctionHandle(slot.as_ptr());
-                func->Release();
-                WriteGlobalHandleSlot(slot, nullptr);
-                released_globals++;
-            }
-            else if ((type_info->GetFlags() & AngelScript::asOBJ_REF) != 0) {
-                _asEngine->ReleaseScriptObject(*slot, type_info.get());
-                WriteGlobalHandleSlot(slot, nullptr);
-                released_globals++;
-            }
-        }
-    }
-
-    // Collapse object graphs that were kept alive only by the released globals. A single asGC_FULL_CYCLE
-    // runs the collector to completion, but destructors can release the last reference to other objects,
-    // so iterate until the live count stops dropping.
-    AngelScript::asUINT gc_size = 0;
-    _asEngine->GetGCStatistics(&gc_size);
-
-    for (int32_t pass = 0; pass < 8 && gc_size != 0; pass++) {
-        _asEngine->GarbageCollect(AngelScript::asGC_FULL_CYCLE);
-
-        AngelScript::asUINT new_gc_size = 0;
-        _asEngine->GetGCStatistics(&new_gc_size);
-
-        if (new_gc_size == gc_size) {
-            break; // Steady state — survivors are not collectable from the script side
-        }
-
-        gc_size = new_gc_size;
-    }
-
-    // Report any GC objects that survive (kept alive by references the collector cannot reclaim, e.g. a
-    // pre-existing GUI screen-graph cycle). The subsequent ShutDownAndRelease force-releases them; the
-    // by-type summary here confirms the global release ran and points at the owning system.
-    if (gc_size != 0) {
-        unordered_map<string, size_t> survivors_by_type;
-
-        for (AngelScript::asUINT i = 0; i < gc_size; i++) {
-            nptr<AngelScript::asITypeInfo> type_info;
-
-            if (_asEngine->GetObjectInGC(i, nullptr, nullptr, type_info.get_pp()) >= 0) {
-                if (!type_info) {
-                    continue;
-                }
-
-                survivors_by_type[type_info->GetName()]++;
-            }
-        }
-
-        WriteLog("AngelScript shutdown: released {} global var(s), {} GC object(s) still alive:", released_globals, gc_size);
-
-        for (const auto& [type_name, type_count] : survivors_by_type) {
-            WriteLog("- {} x {}", type_count, type_name);
-        }
-    }
 }
 
 void AngelScriptBackend::AddCleanupCallback(function<void()> callback)

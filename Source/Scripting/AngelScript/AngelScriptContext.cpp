@@ -107,7 +107,7 @@ static void CleanupScriptContext(AngelScript::asIScriptContext* raw_ctx)
 
     FO_VERIFY_AND_THROW(raw_ctx != nullptr, "Missing script execution context");
     auto ctx = make_ptr(raw_ctx);
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx.as_ptr());
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
 
     if (ctx_ext) {
         CleanupScriptContextExtendedData(ctx_ext);
@@ -251,7 +251,8 @@ auto AngelScriptContextManager::RequestContext() -> ptr<AngelScript::asIScriptCo
     }
 
     auto ctx = _freeContexts.back();
-    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx.as_ptr());
+    auto ctx_ptr = ctx.as_ptr();
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx_ptr);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
 
     _freeContexts.pop_back();
@@ -338,7 +339,8 @@ void AngelScriptContextManager::ReturnContext(ptr<AngelScript::asIScriptContext>
                 continue;
             }
 
-            auto other_ext = AngelScriptContextExtendedData::Get(other.as_ptr());
+            auto other_ptr = other.as_ptr();
+            auto other_ext = AngelScriptContextExtendedData::Get(other_ptr);
             FO_VERIFY_AND_THROW(other_ext, "Context extended data is null");
 
             if (other_ext->Parent == ctx.get()) {

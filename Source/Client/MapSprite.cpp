@@ -286,7 +286,7 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
     ptr<MapSprite> last_spr = this;
 
     while (last_spr->_extraChainChild) {
-        last_spr = last_spr->_extraChainChild.as_ptr();
+        last_spr = last_spr->_extraChainChild;
     }
 
     last_spr->_extraChainChild = mspr;
@@ -466,7 +466,7 @@ void MapSpriteHolder::StopDraw()
     if (Valid) [[likely]] {
         FO_VERIFY_AND_THROW(MSpr, "Map sprite holder has no sprite");
         MSpr->Invalidate();
-        FO_VERIFY_AND_THROW(!Valid, "Map sprite holder must be invalidated after stopping draw");
+        FO_STRONG_ASSERT(!Valid, "Map sprite holder must be invalidated after stopping draw");
     }
 
     MSpr.reset();

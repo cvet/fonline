@@ -65,7 +65,8 @@ host) drives a uniform two-stage updater UI:
 ```
 LF_Client.exe (host)
     â”‚
-    â”‚  1. Resolve runtime path (`GetClientRuntimeLivePath()` from current exe name, or --ClientLibPath)
+    â”‚  1. Resolve runtime path (`GetClientRuntimeLivePath()` from current exe name; an installed
+    â”‚     client may select a persisted per-user runtime bootstrap; --ClientLibPath overrides both)
     â”‚  2. ApplyStagedBinaryUpdate(<runtime>) â€” promote pending `<runtime>-staging` over `<runtime>`
     â”‚     (also recovers a crashed-mid-update install on first boot)
     â”‚  3. Platform::LoadModule(<runtime>) â†’ FO_QueryClientRuntimeExports(...)
@@ -84,14 +85,16 @@ LF_Client.exe (host)
 No sibling DLL / LoadModule fails, or ForceEmbeddedRuntime is set:    â”€â”€â”€ embedded fallback
     Embedded client runs the same RunClientRuntime in the host module. After it
     signals ReloadRequested, the host tears down its own Application instance and goes
-    to the reload step below.
+    to the restart step below.
 
-Reload step (taken on either Case after ReloadRequested) — PromoteStagedReloadForRestart:
+Restart step (taken on either Case after ReloadRequested) — PromoteStagedReloadForRestart:
     The runtime already asked the user to restart (ShowUpdaterRestartRequired). The host runs
     ApplyStagedBinaryUpdate(RequestedRuntimePath), renaming `<runtime>-staging` over `<runtime>`
-    when a staged file exists (atomic .bak rollback), and then EXITS. The update is applied on the
-    next launch, which loads the promoted runtime as its single InitApp. The update is not applied
-    in-process. See "Self-update applies on the next launch" below for why.
+    when a staged file exists (atomic .bak rollback). For an installed client it then persists that
+    absolute runtime path in the per-user bootstrap selector and EXITS. The update is applied on the
+    next launch, which resolves the selector before settings and loads the promoted runtime as its
+    single InitApp. The update is not applied in-process. See "Self-update applies on the next launch"
+    below for why.
 ```
 
 `ApplyStagedBinaryUpdate` is idempotent: if no `<live>-staging` file exists it returns
@@ -112,9 +115,9 @@ and headless clients. `Client.ForceEmbeddedRuntime` is honored from the command 
 a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
 embedded on a standalone client pass it on the command line.
 
-Because the regular client loads the `<live>` DLL into its own process, a self-update must reload that
-same path after staging the new module — see "Reload must map a fresh module" below for how the host
-keeps that reload from re-initializing a stale module.
+Because the regular client loads the `<live>` DLL into its own process, it cannot safely reload that
+same path after staging a new module. The host promotes the file and exits so the next process performs
+the only post-update load.
 
 The implicit bundled-DLL load intentionally does **not** require the DLL's gameplay compatibility string
 to match the host executable's built-in string. The executable is frozen in deployed installs, while the
@@ -142,7 +145,7 @@ DLL has its own global data, so those few lines go to stdout only; the host alre
 load/accept/enter handoff to the file, and once the DLL's `InitApp` runs, its `WriteLog` appends to the
 shared file too.
 
-After a successful Case 1 binary update + reload, the embedded host's `Application` instance
+After a successful Case 1 binary update + restart request, the embedded host's `Application` instance
 is destroyed (`App.reset()` in `RunClientRuntime`) before the host loads the freshly
 downloaded DLL. This keeps a single SDL window alive at any one time â€” the host's window
 disappears, then the DLL's `InitApp` creates a fresh one. Without this teardown the two
@@ -191,17 +194,21 @@ A fresh launch sidesteps both: the new process loads the promoted runtime as its
 `InitApp` in a clean address space, and its compatibility now matches the server, so it syncs resources
 and enters the game without staging another update.
 
-> **Installed (writable-root) clients.** A self-updated installed client loads its frozen install-dir
-> base DLL first and the runtime requests a switch to the writable-root DLL on every launch (see the
-> installed-vs-portable section). With user-restart, that switch also surfaces the restart prompt, so an
-> installed client would prompt on each launch until that path-switch is handled without a process
-> restart. Portable clients (zip / staging deployments) are unaffected. Track this before shipping the
-> writable-root self-update to installed (Wix) builds.
+> **Installed (writable-root) clients.** After promotion, the host records the writable live DLL in a
+> small selector under `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/`. On the next
+> launch an `INSTALLED` host reads and validates that selector before `InitApp`, then loads the writable
+> DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
+> names a different runtime, or points to neither a live nor staged file. Portable clients never consult
+> this selector.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
 > DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
 > fixed in place by any server or DLL update — it needs a one-time manual reinstall of a client carrying
-> the fix, after which self-updates work again.
+> the fix, after which self-updates work again. Updater protocol generation 2 and host/runtime ABI 3
+> form the hard safety boundary: generation-1 clients are rejected before any native module transfer,
+> and ABI-2 hosts cannot load an ABI-3 runtime. This prevents a frozen unsafe host from reaching a
+> second `InitApp`. The frozen generation-1 runtime shows its existing base-client update instruction;
+> generation-2 and newer runtimes use the explicit latest-full-package wording below.
 
 ## Host CLI surface
 
@@ -217,20 +224,31 @@ The bundled runtime library name is **derived from the host executable name** at
 
 [../Source/Client/ClientRuntimeApi.h](../Source/Client/ClientRuntimeApi.h) is the only contract between host and runtime. Both sides agree on:
 
-- `FO_CLIENT_RUNTIME_HOST_ABI_VERSION` â€” bumped when the structs in this header change shape.
+- `FO_CLIENT_RUNTIME_HOST_ABI_VERSION` â€” bumped when the structs change shape or the required host
+  lifecycle behavior changes. ABI 3 requires the promote-and-exit policy and rejects ABI-2 hosts that
+  may attempt an in-process runtime reload.
 - `ClientRuntimeMetadata` â€” runtime name, build hash, gameplay compatibility version.
 - `ClientRuntimeExports` â€” entry table returned by `FO_QueryClientRuntimeExports(host_abi_version, *exports)`.
 - `ClientRuntimeResult` â€” how the runtime communicates back to the host (`Shutdown`, `ReloadRequested`, `FatalError`).
 
-A runtime that wants to hand control back for reload sets `ResultKind = ReloadRequested` and fills `RequestedRuntimePath`; the host then re-loads with that path. The host does **not** validate the new module's compatibility version against its own built-in `FO_COMPATIBILITY_VERSION` on a reload â€” by definition the just-staged DLL is the carrier of a *new* compat version, so the new module's metadata is the authority.
+A runtime that has staged a self-update sets `ResultKind = ReloadRequested` and fills
+`RequestedRuntimePath`. Despite the ABI name, the host does not load that module again in the running
+process: it promotes the staged file, exits, and lets the next user launch load the updated runtime as
+its only `InitApp`.
 
-The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is the updater's binary output path `Updater::GetRuntimeLivePath()` = `<Updater::_binaryDir>/<runtime_name><ext>` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll` for a portable client, or `<UserWritablePath>/LastFrontier.dll` for an installed one). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's reload/startup pass. The host promotes via `MakeClientRuntimeStagingPath(runtime_live_path)` â†’ `runtime_live_path` rename, where `runtime_live_path` is the path the host is about to load — `GetClientRuntimeLivePath()` (the exe-dir base) on the initial load, or the runtime-supplied `RequestedRuntimePath` on a reload. `RequestedRuntimePath` in the returned `ClientRuntimeResult` is the post-swap path (`<live>`), not the staging path, because `LoadModule` is called *after* the host applies the swap.
+The runtime stages a new module as `<live>-staging` next to the live module, where `<live>` is the updater's binary output path `Updater::GetRuntimeLivePath()` = `<Updater::_binaryDir>/<runtime_name><ext>` (the full live path including the platform runtime extension, e.g. `<exe_dir>/LastFrontier.dll` for a portable client, or `<UserWritablePath>/LastFrontier.dll` for an installed one). After each binary payload is fully downloaded and hash-validated, the updater also makes a best-effort attempt to promote that staged file to the live path immediately; if the live file is locked, the `-staging` file is left in place for the host's startup/exit-time promotion pass. The host promotes via `MakeClientRuntimeStagingPath(runtime_live_path)` â†’ `runtime_live_path` rename: at startup this is the path selected from the exe-dir default, installed-client bootstrap, or explicit CLI; after `ReloadRequested` it is the runtime-supplied `RequestedRuntimePath`. `RequestedRuntimePath` is the post-swap path (`<live>`), not the staging path. The host promotes it and exits; `LoadModule` happens only in the next process.
+
+**Linux module isolation.** The runtime `.so` must stay loadable with `dlopen` from an engine host executable that exports its own engine symbols (`-rdynamic` for stack-trace symbolization). Two build rules keep that true. First, engine runtime modules link with `-Wl,-Bsymbolic` (`AddSharedApplication` in [../BuildTools/cmake/helpers/Build.cmake](../BuildTools/cmake/helpers/Build.cmake)), so the module binds global references — the global-data registry, allocator, logging — to its own definitions instead of interposing on the host executable's exported copies; each module keeps private engine state, mirroring the Windows DLL model (without this, the module's `CreateGlobalData` resolves to the host's already-fired copy and the module crashes on its first global-data access). Second, vendored rpmalloc does not force initial-exec TLS on Linux (`(FOnline Patch)` in `ThirdParty/rpmalloc/rpmalloc/rpmalloc.c`): an IE-model TLS relocation makes glibc place the module's entire TLS segment into the limited static TLS surplus at `dlopen`, which fails with `cannot allocate memory in static TLS block`. The host/runtime C ABI keeps allocation ownership module-local (all strings are copied at the boundary), so per-module allocator state is safe.
 
 A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) is staged side-by-side as `<live>.pdb-staging` and usually promotes immediately because PDBs are not held by the loaded runtime module; if it is locked by a debugger or another process, `ApplyStagedBinaryUpdate` retries after the main DLL swap succeeds. The PDB swap is best-effort â€” failure only degrades stack traces, so it never blocks the runtime swap, while the DLL swap remains backup-rename-rollback atomic. The client-side filter accepts a server file whose basename starts with `<runtime_name>.`, so the DLL (`LastFrontier.dll`) and its PDB sibling (`LastFrontier.dll.pdb`) both match and ride the same `UpdateFileTarget::ClientBinaries` channel. **The runtime DLL and its `<live>.pdb` are fetched only together, in binaries mode** (when the DLL is actually being updated) — a client whose DLL is already current does not pull `<live>.pdb` on its own. **The host PDB (`<host_name>.pdb`, e.g. `LastFrontier.pdb`) is also delivered, but the client fetches it only to recover a *missing* local copy and never overwrites a present one.** The host exe is frozen and its PDB is build-specific, so the server's host PDB matches only an up-to-date host: an up-to-date client re-downloads a matching PDB, while an older host's matching local PDB is never clobbered (a non-matching server-build PDB is written only when the local one is absent, where the debugger ignores it by GUID). `accept_binaries` is `_binariesMode || CanSelfUpdateNativeModules(...)`, so host-PDB recovery also works on a normal resource-sync connect.
 
 ## Updater protocol
 
-Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when the wire format changes. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
+Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when
+the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
+generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
+in-process runtime reload. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
+changes with every build.
 
 ### Handshake
 
@@ -354,17 +372,15 @@ is **not** gated off — both portable and installed clients self-update on ever
 `CanSelfUpdateNativeModules()` is true.
 
 Because the host resolves and loads the runtime DLL *before* settings (so it cannot compute `<root>` itself —
-`Common.GameName` is only known after `InitApp`), the switch to the writable runtime rides the existing
-**reload channel**: the host always loads the install-dir base DLL first, then the runtime (which has settings,
-so it knows `<root>`) stages/promotes the update under `<root>` and returns `<root>/<runtime_name><ext>` as
-`ClientRuntimeResult::RequestedRuntimePath`; the host reloads exactly that path (`Updater::GetRuntimeLivePath`
-feeds `Data->StagedRuntimePath`). A consequence: an installed client that has self-updated loads its frozen
-install-dir base DLL on every launch, then relaunches into the current writable DLL — the updater confirms the
-writable copy by its cached hash, so there is no re-download, just one extra process launch (the relaunched
-process loads `<root>/<runtime_name><ext>` via `FO_CLIENT_RELOAD_PATH` and its compatibility now matches, so it
-does not relaunch again). During that updater pass the writable DLL is not the currently loaded module (the host
-loaded the exe-dir base), so the immediate post-download promote usually succeeds and the relaunch-pass
-`ApplyStagedBinaryUpdate` is a no-op on the already-promoted file.
+`Common.GameName` is only known after `InitApp`), the runtime returns the writable live path through
+`ClientRuntimeResult::RequestedRuntimePath`. The host promotes that path, validates that it is absolute and
+has the current executable-derived runtime filename, writes it to the installed-client bootstrap selector,
+and exits; it never loads it again in the same process. On the next launch the `INSTALLED` host reads the
+selector from `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/<runtime><ext>.path` before
+settings, accepts it only when the live file or its `-staging` sibling exists, and loads that runtime directly.
+Missing, oversized, relative, newline-containing, wrong-basename, and stale selectors fall back to the frozen
+install-dir runtime. `--ClientLibPath` remains the final explicit override. Portable clients update their
+exe-dir sibling runtime and neither write nor read the installed selector.
 
 **Trigger:** the installer drops an `INSTALLED` file next to the exe; when `Client.UserWritablePath`
 is empty and that marker is present, the client switches to `*` automatically. The portable zip has no
@@ -414,17 +430,15 @@ LF_Client.exe main
     â”‚     â”‚     â”œâ”€â”€ On BinariesStaged: set ResultKind = ReloadRequested, RequestedRuntimePath
     â”‚     â”‚     â”œâ”€â”€ On any other non-success result: ShowUpdaterFailure(result) and quit
     â”‚     â”‚     â””â”€â”€ unload of DLL (scope_exit) frees the loaded module
-    â”‚     â””â”€â”€ If ResultKind == ReloadRequested: RelaunchForReload
-    â”‚           â””â”€â”€ ApplyStagedBinaryUpdate(requested path) then Platform::RelaunchSelfAndWait
-    â”‚             starts a FRESH host process (FO_CLIENT_RELOAD_PATH = requested path,
-    â”‚             exe-dir for portable / writable root for installed) and waits for it
+    â”‚     â””â”€â”€ If ResultKind == ReloadRequested: PromoteStagedReloadForRestart
+    â”‚           â””â”€â”€ ApplyStagedBinaryUpdate(requested path), then exit
     â”‚
     â””â”€â”€ If LoadModule failed (CASE 1: no DLL yet, packaged install):
           if !CanFallbackToEmbeddedClient(requested): return false
           RunEmbeddedClient(argc, argv, *)               # host-module RunClientRuntime
           (same single-Updater flow as the DLL; host module's App.reset() runs after
-           ReloadRequested so SDL state is gone before the relaunch)
-          if ResultKind == ReloadRequested â†’ RelaunchForReload (fresh process)
+           ReloadRequested before the host promotes the runtime and exits)
+          if ResultKind == ReloadRequested â†’ promote staged runtime, then exit
 ```
 
 A single `Updater` instance handles both gameplay-resources and native-binaries syncs.
@@ -447,20 +461,20 @@ instead of looping back to the game which would only reject the connection again
 | Symptom | First signal |
 |---------|--------------|
 | Host can't find runtime, no fallback possible | embedded host's resource updater fails to download anything; client message box `Failed to update native client modules for binary target <target>` |
-| Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; client message box `Client updater outdated, please update the base client` |
-| Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime then opens the binary updater UI and downloads the current host's module to `<live>-staging`, tries to promote unlocked staged files immediately, or reloads immediately if `<live>` already matches the server payload |
+| Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
+| Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `LogType::Warning`), client gets disconnected |
 | Server has no native update for this target | message box `Server doesn't provide a native client update for binary target <target>` |
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
-| Self-update does not enter the game (downloads, then the client closes) | A host built before the relaunch fix attempted an in-process same-path reload: the OS returned the still-resident previous module (build-hash guard aborted → clean exit) or, if a fresh module was forced, the second `InitApp` crashed in SDL window/audio re-init (`0xC0000005`, "window creation failed"). The current host relaunches a fresh process instead (`RelaunchForReload`); look for `relaunching fresh process for reload, generation N -> N+1` followed by the child's `reload generation N+1` + `client_entered_game`. Deployed frozen hosts predating the fix still need a one-time manual reinstall |
-| Self-update relaunches repeatedly then gives up | client log `reload generation N reached the limit 8, refusing to relaunch again` — the server kept reporting the relaunched client outdated (e.g. a forced compatibility override, or a server/client variant-name mismatch so the served runtime is never the one the client loads). Fix the compatibility/name mismatch; the cap (`MAX_RELOAD_GENERATIONS`) only bounds the loop |
+| Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |
+| Self-update downloads and then waits on the update screen | This is the expected native flow. Close the client after the restart prompt; the host promotes the staged runtime and exits, and the next user launch starts the updated runtime with one clean `InitApp`. Hosts predating this policy are rejected by updater generation 2 / runtime ABI 3 and require the latest full client package instead of attempting the unsafe second initialization |
 | Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), `dbghelp`/`backward-cpp` cannot find the PDB and frames in the runtime resolve to addresses only |
 | Stack trace shows raw addresses for **host** (`<host>.exe`) frames after a self-update, while runtime-DLL frames resolve | The on-disk `<host_name>.pdb` doesn't match the frozen exe (CodeView GUID differs) — typically a leftover from an old updater build that clobbered the matching host PDB with a newer server-build one. The current updater never overwrites a present host PDB and fetches one only when the local copy is missing, so the fix is to delete the mismatched `<host_name>.pdb`: an up-to-date host then re-downloads the matching one; otherwise restore the host PDB shipped with that exe build (matching CodeView GUID). A mis-walked stack through unsymbolized host frames can also surface bogus top frames (e.g. attributing the fault to an unrelated system DLL) |
 
 Local validation steps:
 
-1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
+1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs_hash_file` parity with `fs_hash_data` and `fs_make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `Platform::GetUserDataBase`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and `ResolveUserWritablePath` fail-safe/creation behavior.
 2. Build both `LF_Client` and `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux).
 3. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.
@@ -468,9 +482,9 @@ Local validation steps:
 6. Point `--ClientLibPath` to an invalid path, no `--ClientLibCompatibilityVersion` â†’ host falls back to embedded client (Case 1).
 7. Build a packaged server (e.g. `Daily`) and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that `ClientResources` pack list contains the resource zips.
 8. Interrupt a client mid-download (kill the network) and reconnect â€” the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
-9. Force a Case 2 â†’ reload: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical), the host renames `<live>-staging` over `<live>`. If the OS maps the freshly-swapped runtime, the new module loads and reaches the game without a process restart; if the OS returns the still-resident old module, the host aborts cleanly and the next launch loads the already-promoted runtime.
+9. Force a Case 2 â†’ restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `LF_Client.exe`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
-11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs.
+11. Installed-layout smoke: place an `INSTALLED` marker next to the client executable (or build the Windows `Wix` package), leave `Client.UserWritablePath` empty, and launch. The resolved writable root should be the per-OS user-data dir plus `Common.GameName`; cache/log/resource overlay writes should go there, while the install-dir resources remain read-only inputs. Force a native update, close at the restart prompt, and launch again: the host should log `selected installed runtime ... from bootstrap ...`, load the writable-root runtime directly, and not show the same update prompt again. Delete or corrupt the selector and confirm the host safely falls back to the install-dir runtime.
 
 ## See Also
 

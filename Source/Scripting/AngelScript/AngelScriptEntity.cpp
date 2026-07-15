@@ -168,7 +168,7 @@ static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> in
         throw ScriptException("Property is disabled");
     }
 
-    return entity->GetValueAsInt(prop.as_ptr());
+    return entity->GetValueAsInt(prop);
 }
 
 static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t value)
@@ -215,7 +215,7 @@ static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> an
         throw ScriptException("Property is disabled");
     }
 
-    return entity->GetValueAsAny(prop.as_ptr());
+    return entity->GetValueAsAny(prop);
 }
 
 static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value)
@@ -658,7 +658,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1).as_ptr());
+    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
 
     if (!func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -705,7 +705,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
 
         auto context_mngr = backend->GetContextMngr();
         FO_VERIFY_AND_THROW(context_mngr, "Missing script context manager");
-        auto ctx = context_mngr->PrepareContext(func.as_ptr());
+        auto ctx = context_mngr->PrepareContext(func);
         const uint64_t ctx_generation = context_mngr->GetContextGeneration(ctx);
         auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
         ctx->SetArgObject(0, entity.get()); // May be null for protos
@@ -717,7 +717,7 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
         const auto run_ok = context_mngr->RunContext(ctx, false);
         FO_VERIFY_AND_THROW(run_ok, "Script context execution failed");
 
-        auto prop_data = ConvertScriptToPropsObject(prop.as_ptr(), ctx->GetAddressOfReturnValue());
+        auto prop_data = ConvertScriptToPropsObject(prop, ctx->GetAddressOfReturnValue());
         prop_data.StoreIfPassed();
         return prop_data;
     });
@@ -753,7 +753,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
         throw ScriptException("Invalid function object", prop->GetName());
     }
 
-    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1).as_ptr());
+    auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericArgAddress(gen, 1));
 
     if (!func) {
         throw ScriptException("Invalid function object", prop->GetName());
@@ -821,7 +821,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto context_mngr = backend->GetContextMngr();
             FO_VERIFY_AND_THROW(context_mngr, "Missing script context manager");
-            auto ctx = context_mngr->PrepareContext(func.as_ptr());
+            auto ctx = context_mngr->PrepareContext(func);
             const uint64_t ctx_generation = context_mngr->GetContextGeneration(ctx);
             auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
@@ -854,7 +854,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
             auto context_mngr = backend->GetContextMngr();
             FO_VERIFY_AND_THROW(context_mngr, "Missing script context manager");
-            auto ctx = context_mngr->PrepareContext(func.as_ptr());
+            auto ctx = context_mngr->PrepareContext(func);
             const uint64_t ctx_generation = context_mngr->GetContextGeneration(ctx);
             auto return_ctx = scope_exit([&, ctx_generation]() noexcept { context_mngr->ReturnContext(ctx, ctx_generation); });
 
@@ -990,7 +990,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
     FO_VERIFY_AND_THROW(return_type_id == AngelScript::asTYPEID_VOID || (return_type && return_type->GetName() == string_view("EventResult")), "Entity event callback has unsupported return type", return_type_id);
     auto priority = GetGenericAddressArgAs<const Entity::EventPriority>(gen, 1);
 
-    auto func_desc = IndexScriptFunc(func.as_ptr());
+    auto func_desc = IndexScriptFunc(func);
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
     Entity::EventCallbackData event_data;
@@ -1352,7 +1352,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
             const string_view handle_str = handle_str_storage;
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
-                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop.as_ptr()), handle_str, prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
 
                 if (!prop->IsVirtual() || prop->IsNullGetterForProto()) {
@@ -1370,7 +1370,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 
             if (!prop->IsDisabled() && !prop->IsComponentItself() && prop->IsMutable()) {
                 const string_view set_handle_str = !handle_str.empty() && handle_str[0] == '@' ? (prop->IsNullable() ? string_view {"@?+"} : string_view {"@+"}) : handle_str;
-                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop.as_ptr()), set_handle_str).str();
+                const auto decl_set = strex("void set_{}({}{})", prop->GetNameWithoutComponent(), MakeScriptPropertyName(prop), set_handle_str).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : class_name.c_str(), decl_set.c_str(), FO_SCRIPT_GENERIC(Entity_SetPropertyValue), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
             }
         }
@@ -1403,7 +1403,7 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
             const string_view handle_str = handle_str_storage;
 
             if (!prop->IsDisabled() && !prop->IsComponentItself()) {
-                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop.as_ptr()), handle_str, prop->GetNameWithoutComponent()).str();
+                const auto decl_get = strex("{}{} get_{}() const", MakeScriptPropertyName(prop), handle_str, prop->GetNameWithoutComponent()).str();
                 FO_AS_VERIFY(as_engine->RegisterObjectMethod(prop->IsInComponent() ? strex("{}{}Component", type_name_str, prop->GetComponentName()).c_str() : type_name_storage.c_str(), decl_get.c_str(), FO_SCRIPT_GENERIC(Entity_GetPropertyValue), FO_SCRIPT_GENERIC_CONV, make_nptr(prop.get()).void_cast()));
             }
         }

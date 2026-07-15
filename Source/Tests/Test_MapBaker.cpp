@@ -22,7 +22,7 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
     auto registrator = proto_engine.GetPropertyRegistrator(type_name);
     REQUIRE(static_cast<bool>(registrator));
 
-    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+    ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
     proto.SetSize(msize {50, 50});
     proto.GetProperties()->StoreAllData(props_data, str_hashes);
 

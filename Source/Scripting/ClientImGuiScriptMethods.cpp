@@ -118,7 +118,9 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
     const auto item_rect = MakeItemRect(min_pos, max_pos);
 
     client_ptr->SprMngr.PushScissor(item_rect);
+    auto scissor_guard = scope_fail([&]() noexcept { safe_call([&] { client_ptr->SprMngr.PopScissor(); }); });
     client_ptr->SprMngr.DrawSpriteSizeExt(sprite, {min_pos.x, min_pos.y}, image_size, false, false, true, ResolveTintColor(tint_color));
+    scissor_guard.release();
     client_ptr->SprMngr.PopScissor();
 }
 
@@ -142,7 +144,9 @@ static void DrawItemSprite(ptr<ClientEngine> client_ptr, uint32_t spr_id, fsize3
     const auto item_rect = MakeItemRect(min_pos, max_pos);
 
     client_ptr->SprMngr.PushScissor(item_rect);
-    const auto drawn = client_ptr->SprMngr.DrawSpriteRegion(sprite.as_ptr(), uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
+    auto scissor_guard = scope_fail([&]() noexcept { safe_call([&] { client_ptr->SprMngr.PopScissor(); }); });
+    const auto drawn = client_ptr->SprMngr.DrawSpriteRegion(sprite, uv0, uv1, {min_pos.x, min_pos.y}, image_size, ResolveTintColor(tint_color));
+    scissor_guard.release();
     client_ptr->SprMngr.PopScissor();
 
     if (!drawn) {

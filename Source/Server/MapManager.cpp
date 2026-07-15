@@ -66,10 +66,10 @@ void MapManager::LoadFromResources()
             throw MapManagerException("Map proto not found for static map", map_pid);
         }
 
-        static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, &map_file_header]() FO_DEFERRED {
+        static_map_loadings.emplace_back(map_proto, run_async(strex("LoadStaticMap-{}", map_proto->GetName()), [this, map_proto, map_file_header_copy = map_file_header.Copy()]() FO_DEFERRED {
             ScopedSyncContext sync_ctx;
 
-            auto map_file = File::Load(map_file_header);
+            auto map_file = File::Load(map_file_header_copy);
             auto reader = DataReader(map_file.GetDataSpan());
 
             const auto map_size = map_proto->GetSize();
@@ -121,7 +121,7 @@ void MapManager::LoadFromResources()
                         cr_props.RestoreAllData(props_data);
 
                         auto cr_props_ptr = make_nptr(&cr_props);
-                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, cr_proto.as_ptr(), cr_props_ptr);
+                        auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, cr_proto, cr_props_ptr);
                         cr->SetEntityLock(nullptr);
 
                         static_map->CritterBillets.emplace_back(cr_id, cr);
@@ -164,7 +164,7 @@ void MapManager::LoadFromResources()
                         item_props.RestoreAllData(props_data);
 
                         auto item_props_ptr = make_nptr(&item_props);
-                        auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine, ident_t {}, item_proto.as_ptr(), item_props_ptr);
+                        auto item = SafeAlloc::MakeRefCounted<StaticItem>(_engine, ident_t {}, item_proto, item_props_ptr);
                         item->SetEntityLock(nullptr);
                         static_map->ItemBillets.emplace_back(item_id, item);
 
@@ -443,7 +443,7 @@ auto MapManager::CreateLocation(hstring proto_id, const_span<hstring> map_pids, 
         throw GenericException("Location proto not found", proto_id);
     }
 
-    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto.as_ptr(), props);
+    auto loc = SafeAlloc::MakeRefCounted<Location>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterLocation(loc);
 
@@ -494,8 +494,8 @@ auto MapManager::CreateMap(hstring proto_id, ptr<Location> loc) -> ptr<Map>
         throw GenericException("Map proto not found", proto_id);
     }
 
-    auto static_map = GetStaticMap(map_proto.as_ptr());
-    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto.as_ptr(), loc, static_map);
+    auto static_map = GetStaticMap(map_proto);
+    auto map = SafeAlloc::MakeRefCounted<Map>(_engine, ident_t {}, map_proto, loc, static_map);
 
     _engine->EntityMngr.RegisterMap(map);
     loc->AddMap(map);
@@ -657,7 +657,7 @@ void MapManager::DestroyMap(ptr<Map> map)
 
     auto loc = map->GetLocation();
     FO_VERIFY_AND_THROW(loc, "Missing location instance");
-    auto loc_ptr = loc.as_ptr().hold_ref();
+    auto loc_ptr = loc.hold_ref();
     ValidateEntityAccess(loc_ptr);
     ValidateEntityAccess(map);
     loc_ptr->OnMapRemoved.Fire(map);
@@ -1178,7 +1178,7 @@ void MapManager::RemoveCritterFromMap(ptr<Critter> cr, nptr<Map> map)
 
     if (map != nullptr) {
         FO_VERIFY_AND_THROW(cr->GetMapId() == map->GetId(), "Critter belongs to a different map");
-        auto map_holder = map.as_ptr().hold_ref();
+        auto map_holder = map.hold_ref();
         ignore_unused(map_holder);
         ValidateEntityAccess(map);
         ValidateEntityAccess(cr);
@@ -1282,8 +1282,8 @@ void MapManager::ProcessVisibleCritters(ptr<Critter> cr)
         ValidateEntityAccess(map);
 
         for (ptr<Critter> target : copy_hold_ref(map->GetCritters())) {
-            ProcessCritterLook(map.as_ptr(), cr, target);
-            ProcessCritterLook(map.as_ptr(), target, cr);
+            ProcessCritterLook(map, cr, target);
+            ProcessCritterLook(map, target, cr);
         }
     }
     else {

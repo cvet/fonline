@@ -592,7 +592,7 @@ void CritterHexView::Process()
             ipos32 new_anchor_disp = pos;
 
             if (_walkAnchorAnim) {
-                const auto old_total = sum_total(_walkAnchorAnim.as_ptr());
+                const auto old_total = sum_total(_walkAnchorAnim);
                 const int64_t old_total_dot_total = numeric_cast<int64_t>(old_total.x) * old_total.x + numeric_cast<int64_t>(old_total.y) * old_total.y;
 
                 if (old_total_dot_total > 0) {

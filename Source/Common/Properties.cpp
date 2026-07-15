@@ -2015,7 +2015,7 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsInt(prop.as_ptr());
+    return GetPlainDataValueAsInt(prop);
 }
 
 auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
@@ -2034,7 +2034,7 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
     if (prop->IsDisabled()) {
         throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
-    return GetPlainDataValueAsAny(prop.as_ptr());
+    return GetPlainDataValueAsAny(prop);
 }
 
 void Properties::SetValueAsInt(int32_t property_index, int32_t value)
@@ -2465,6 +2465,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
     }
 
     bool is_component_marker = false;
+    vector<pair<string_view, int32_t>> pending_groups;
 
     for (size_t i = 3; i < tokens.size(); i++) {
         if (tokens[i] == "Group") {
@@ -2478,16 +2479,7 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
                 i += 2;
             }
 
-            if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
-                it->second.emplace_back(pair {ptr<const Property> {prop}, priority});
-
-                std::ranges::stable_sort(it->second, [](auto&& a, auto&& b) -> bool {
-                    return a.second < b.second; // Sort by priority
-                });
-            }
-            else {
-                _propertyGroups.emplace(group, vector<pair<ptr<const Property>, int32_t>> {pair {ptr<const Property> {prop}, priority}});
-            }
+            pending_groups.emplace_back(group, priority);
 
             i += 2;
         }
@@ -2580,7 +2572,6 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         FO_VERIFY_AND_THROW(prop->_componentName.empty(), "Component marker property must not itself be component-qualified", _typeName, prop->GetName(), prop->_componentName);
         FO_VERIFY_AND_THROW(prop->IsBaseTypeBool(), "Component marker property must be backed by bool", _typeName, prop->GetName(), prop->_viewTypeName);
         FO_VERIFY_AND_THROW(prop->IsPlainData(), "Component marker property must be plain data", _typeName, prop->GetName(), prop->_viewTypeName);
-        _registeredComponents.emplace(prop->_propName, ptr<const Property> {prop});
     }
 
     FO_VERIFY_AND_THROW(!(prop->_isOwnerSync || prop->_isPublicSync || prop->_isNoSync) || prop->_isCommon, "Synchronized property is not marked as common");
@@ -2611,11 +2602,14 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         disabled = true;
     }
 
-    // PlainData property data offset
+    // PlainData property data offset — search for a free slot without mutating any member yet
     const size_t prev_public_space_size = _publicPodDataSpace.size();
     const size_t prev_protected_space_size = _protectedPodDataSpace.size();
 
     optional<size_t> pod_data_base_offset;
+    bool pod_is_public = false;
+    bool pod_is_protected = false;
+    size_t pod_fit_size = 0;
 
     if (prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
         const bool is_public = prop->IsPublicSync();
@@ -2646,25 +2640,49 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
         const size_t fit_size = ((space_pos + prop->GetBaseSize() + 7) / 8) * 8;
 
-        if (fit_size > space.size()) {
-            space.resize(fit_size);
-        }
-
-        for (size_t i = 0; i < prop->GetBaseSize(); i++) {
-            space[space_pos + i] = true;
-        }
+        // Validate the projected POD storage alignment on a local before the resize is committed below
+        const size_t projected_space_size = fit_size > space.size() ? fit_size : space.size();
+        const size_t projected_whole_pod_size = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size() - space.size() + projected_space_size;
+        FO_VERIFY_AND_THROW((projected_whole_pod_size % 8) == 0, "Property POD storage size lost required 8-byte alignment after registering property", _typeName, prop->GetName(), projected_whole_pod_size);
 
         pod_data_base_offset = space_pos;
-
-        _wholePodDataSize = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size();
-        FO_VERIFY_AND_THROW((_wholePodDataSize % 8) == 0, "Property POD storage size lost required 8-byte alignment after registering property", _typeName, prop->GetName(), _wholePodDataSize);
+        pod_is_public = is_public;
+        pod_is_protected = is_protected;
+        pod_fit_size = fit_size;
     }
 
-    // Complex property data index
+    // Complex property data index — read the slot index only, container growth is deferred to the tail
     optional<size_t> complex_data_index;
 
     if (!prop->IsPlainData() && !disabled && !prop->IsVirtual()) {
         complex_data_index = _complexProperties.size();
+    }
+
+    // Other tokens (assigned onto the local property; registrator containers stay untouched until the tail)
+    prop->_regIndex = reg_index;
+    prop->_complexDataIndex = complex_data_index;
+    prop->_podDataOffset = pod_data_base_offset;
+    prop->_isDisabled = disabled;
+
+    FO_VERIFY_AND_THROW(_registeredPropertiesLookup.count(prop->_propName) == 0, "Property name is already registered for this registrator", _typeName, prop->_propName, prop->_regIndex);
+
+    // Commit tail: every step below mutates registrator state without throwing, so a throw from any
+    // validation above leaves the registrator completely unchanged (strong exception safety)
+    if (pod_data_base_offset.has_value()) {
+        auto& space = pod_is_public ? _publicPodDataSpace : (pod_is_protected ? _protectedPodDataSpace : _privatePodDataSpace);
+
+        if (pod_fit_size > space.size()) {
+            space.resize(pod_fit_size);
+        }
+
+        for (size_t i = 0; i < prop->GetBaseSize(); i++) {
+            space[*pod_data_base_offset + i] = true;
+        }
+
+        _wholePodDataSize = _publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size();
+    }
+
+    if (complex_data_index.has_value()) {
         _complexProperties.emplace_back(ptr<Property> {prop});
 
         if (prop->IsPublicSync()) {
@@ -2679,15 +2697,6 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
             _publicProtectedComplexDataPropsLookup.emplace(reg_index);
         }
     }
-
-    // Other tokens
-    prop->_regIndex = reg_index;
-    prop->_complexDataIndex = complex_data_index;
-    prop->_podDataOffset = pod_data_base_offset;
-    prop->_isDisabled = disabled;
-
-    FO_VERIFY_AND_THROW(_registeredPropertiesLookup.count(prop->_propName) == 0, "Property name is already registered for this registrator", _typeName, prop->_propName, prop->_regIndex);
-    _registeredPropertiesLookup.emplace(prop->_propName, ptr<const Property> {prop});
 
     // Fix plain data data offsets
     if (prop->_podDataOffset.has_value()) {
@@ -2727,6 +2736,8 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
         }
     }
 
+    _registeredPropertiesLookup.emplace(prop->_propName, ptr<const Property> {prop});
+
     if (!prop->IsDisabled()) {
         if (!prop->IsVirtual()) {
             if (prop->IsPlainData()) {
@@ -2745,6 +2756,23 @@ auto PropertyRegistrator::RegisterProperty(const span<const string_view>& tokens
 
         if (prop->IsBaseTypeHash() || prop->IsBaseTypeProtoReference() || prop->IsDictKeyHash()) {
             _hashProperties.emplace_back(ptr<Property> {prop});
+        }
+    }
+
+    if (is_component_marker) {
+        _registeredComponents.emplace(prop->_propName, ptr<const Property> {prop});
+    }
+
+    for (const auto& [group, priority] : pending_groups) {
+        if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
+            it->second.emplace_back(pair {ptr<const Property> {prop}, priority});
+
+            std::ranges::stable_sort(it->second, [](auto&& a, auto&& b) -> bool {
+                return a.second < b.second; // Sort by priority
+            });
+        }
+        else {
+            _propertyGroups.emplace(group, vector<pair<ptr<const Property>, int32_t>> {pair {ptr<const Property> {prop}, priority}});
         }
     }
 

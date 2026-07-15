@@ -159,12 +159,10 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
         }
 
         auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
-
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
-
         return std::move(map);
     } break;
     case ItemOwnership::ItemContainer: {
@@ -173,7 +171,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
         }
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
-
         return ResolveItemMap(cont);
     } break;
     default:
@@ -195,13 +192,11 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
         }
 
         auto map = RequireParent<Map>(cr.as_ptr(), "Critter ownership, map not found");
-
         hex = cr->GetHex();
         return std::move(map);
     } break;
     case ItemOwnership::MapHex: {
         auto map = RequireParent<Map>(item, "Hex ownership, map not found");
-
         hex = item->GetHex();
         return std::move(map);
     } break;
@@ -211,7 +206,6 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
         }
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
-
         return ResolveItemMapPosition(cont, hex);
     } break;
     default:
@@ -226,7 +220,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
-
         return std::move(cr);
     } break;
     case ItemOwnership::MapHex:
@@ -237,7 +230,6 @@ static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
         }
 
         auto cont = RequireParent<Item>(item, "Container ownership, container not found");
-
         return ResolveItemCritter(cont);
     } break;
     default:

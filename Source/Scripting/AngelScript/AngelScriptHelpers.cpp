@@ -1881,7 +1881,7 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrator, "Reference type has no fields registrator");
 
-    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator.as_ptr());
+    auto ref_instance = SafeAlloc::MakeRefCounted<DynamicRefTypeInstance>(base_type.RefType->FieldsRegistrator);
     ref_instance->LoadFromRawData(base_type, raw_data);
 
     return ref_instance;

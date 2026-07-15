@@ -92,6 +92,8 @@ protected:
         }
 
         FO_VERIFY_AND_THROW(cursor, "Initialized key-value cursor is null");
+        const auto release_cursor = scope_exit([&]() noexcept { unqlite_kv_cursor_release(db.get(), cursor.get()); });
+
         const auto kv_cursor_first_entry = unqlite_kv_cursor_first_entry(cursor.get());
 
         if (kv_cursor_first_entry != UNQLITE_OK && kv_cursor_first_entry != UNQLITE_DONE) {

@@ -177,6 +177,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnMapCritterOut, ptr<Map> /*map*/, ptr<Critter> /*cr*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnCritterPreLoad, ptr<Critter> /*cr*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterInit, ptr<Critter> /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterFinish, ptr<Critter> /*cr*/);

@@ -104,6 +104,9 @@ struct ModelBone
     mat44 CombinedTransformationMatrix {};
 };
 
+auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>;
+auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>;
+
 struct ModelCutData
 {
     struct Shape

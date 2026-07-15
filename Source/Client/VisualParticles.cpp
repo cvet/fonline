@@ -294,9 +294,10 @@ void ParticleSystem::Respawn()
 {
     FO_STACK_TRACE_ENTRY();
 
-    _impl->System = SPK::SPKObject::copy(_impl->BaseSystem);
-    _impl->System->initialize();
+    auto&& system = SPK::SPKObject::copy(_impl->BaseSystem);
+    system->initialize();
 
+    _impl->System = system;
     _elapsedTime = 0.0;
     _lastDrawTime = GetTime();
     _forceDraw = true;

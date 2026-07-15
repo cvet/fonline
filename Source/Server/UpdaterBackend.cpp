@@ -46,15 +46,18 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
 {
     FO_STACK_TRACE_ENTRY();
 
-    _updateFiles.clear();
-    _commonUpdateFiles.clear();
-    _commonUpdateFilesDesc.clear();
-    _binaryTargetUpdateFiles.clear();
-    _binaryTargetUpdateFilesDesc.clear();
-
     WriteLog("Load client data packs for synchronization");
 
-    const auto add_sync_file = [&settings, this](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
+    // Build the update state into function-locals first, then swap it into the members in a no-throw
+    // commit tail. This keeps the load strongly exception-safe: any throw mid-load unwinds the locals
+    // and leaves all five members untouched instead of half-cleared/half-rebuilt.
+    vector<UpdateFileData> update_files;
+    vector<UpdateFileInfo> common_update_files;
+    vector<uint8_t> common_update_files_desc;
+    map<string, vector<UpdateFileInfo>> binary_target_update_files;
+    map<string, vector<uint8_t>> binary_target_update_files_desc;
+
+    const auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
         auto file = fs_open_ifstream(disk_path);
@@ -88,10 +91,10 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             data.Hash = *file_hash;
         }
 
-        _updateFiles.emplace_back(std::move(data));
+        update_files.emplace_back(std::move(data));
 
         UpdateFileInfo info {};
-        info.FileIndex = numeric_cast<uint32_t>(_updateFiles.size() - 1);
+        info.FileIndex = numeric_cast<uint32_t>(update_files.size() - 1);
         info.ClientPath = string(client_path);
         info.Target = target;
         return info;
@@ -104,7 +107,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             const auto pack_name = strex("{}.zip", resource_entry).str();
             const auto pack_disk_path = fs_path_to_string(client_resources_dir / pack_name);
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
-            _commonUpdateFiles.emplace_back(std::move(info));
+            common_update_files.emplace_back(std::move(info));
         }
     }
 
@@ -127,16 +130,16 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
                 const auto disk_path = fs_path_to_string(binary_entry.path());
                 const auto client_file_name = fs_path_to_string(binary_entry.path().filename());
                 auto info = add_sync_file(disk_path, client_file_name, UpdateFileTarget::ClientBinaries);
-                _binaryTargetUpdateFiles[string(binary_target_name)].emplace_back(std::move(info));
+                binary_target_update_files[string(binary_target_name)].emplace_back(std::move(info));
             }
         }
     }
 
-    const auto build_update_desc = [this](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
+    const auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
         auto writer = DataWriter(desc);
 
-        const auto write_file_info = [this, &writer](const UpdateFileInfo& info) {
-            const auto& data = _updateFiles[info.FileIndex];
+        const auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
+            const auto& data = update_files[info.FileIndex];
             writer.Write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
             writer.WriteStringBytes(info.ClientPath);
             writer.Write<uint64_t>(data.Size);
@@ -145,7 +148,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
             writer.Write<uint32_t>(info.FileIndex);
         };
 
-        for (const auto& info : _commonUpdateFiles) {
+        for (const auto& info : common_update_files) {
             write_file_info(info);
         }
 
@@ -158,12 +161,21 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings)
         writer.Write<int16_t>(const_numeric_cast<int16_t>(-1));
     };
 
-    build_update_desc(_commonUpdateFilesDesc, nullptr);
+    build_update_desc(common_update_files_desc, nullptr);
 
-    for (auto& [binary_target_name, files] : _binaryTargetUpdateFiles) {
-        auto& desc = _binaryTargetUpdateFilesDesc[binary_target_name];
+    for (auto& [binary_target_name, files] : binary_target_update_files) {
+        auto& desc = binary_target_update_files_desc[binary_target_name];
         build_update_desc(desc, &files);
     }
+
+    // No-throw commit tail: swap the fully-built locals into the members. Container swap is
+    // unconditionally noexcept for the engine containers with their stateless allocator, so this
+    // tail cannot throw and cannot itself leave the members in a half-updated state.
+    _updateFiles.swap(update_files);
+    _commonUpdateFiles.swap(common_update_files);
+    _commonUpdateFilesDesc.swap(common_update_files_desc);
+    _binaryTargetUpdateFiles.swap(binary_target_update_files);
+    _binaryTargetUpdateFilesDesc.swap(binary_target_update_files_desc);
 }
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>

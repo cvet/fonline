@@ -4337,45 +4337,6 @@ void CleanupObjectGraph(Object obj)
     obj._Active = false;
 }
 
-void EngineCallback_Finish()
-{
-    EngineCallback_InputLost();
-
-    DropMenu = null;
-    CurConsole = null;
-    DragAndDropHandlers.clear();
-    FocusedObjects.clear();
-    PressedObject = null;
-    LastPressedObject = null;
-    HoveredObject = null;
-    FindNextTextInputSkipObj = null;
-
-    HideAllScreens();
-
-    ScreenCreators = {};
-
-    Screen? cursorScreen = CursorScreen;
-    if (cursorScreen != null) {
-        cursorScreen.Remove();
-        CleanupObjectGraph(cursorScreen);
-        CursorScreen = null;
-        cursorScreen = null;
-    }
-
-    for (int i = Screens.length() - 1; i >= 0; i--) {
-        Screen screen = Screens[i];
-        screen.Remove();
-        CleanupObjectGraph(screen);
-    }
-
-    Screens.clear();
-    FocusedObjects.clear();
-    PressedObject = null;
-    LastPressedObject = null;
-    HoveredObject = null;
-    FindNextTextInputSkipObj = null;
-}
-
 void EngineCallback_Draw()
 {
     for (int i = 0; i < Screens.length(); i++) {

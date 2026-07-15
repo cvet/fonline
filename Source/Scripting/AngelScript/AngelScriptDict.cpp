@@ -303,7 +303,18 @@ static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return ScriptDict_TemplateCallbackExt(ti, 0, dont_garbage_collect) && ScriptDict_TemplateCallbackExt(ti, 1, dont_garbage_collect);
+    bool key_dont_garbage_collect = false;
+    bool value_dont_garbage_collect = false;
+
+    if (!ScriptDict_TemplateCallbackExt(ti, 0, key_dont_garbage_collect)) {
+        return false;
+    }
+    if (!ScriptDict_TemplateCallbackExt(ti, 1, value_dont_garbage_collect)) {
+        return false;
+    }
+
+    dont_garbage_collect = key_dont_garbage_collect && value_dont_garbage_collect;
+    return true;
 }
 
 static auto GetDictSubTypeForPrecache(ptr<AngelScript::asITypeInfo> type_info, AngelScript::asUINT index) -> nptr<AngelScript::asITypeInfo>
@@ -365,13 +376,13 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
 {
     FO_STACK_TRACE_ENTRY();
 
+    for (const auto& kv : other._data) {
+        Set(kv.first, kv.second);
+    }
+
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
         ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
         engine->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
-    }
-
-    for (const auto& kv : other._data) {
-        Set(kv.first, kv.second);
     }
 }
 
@@ -547,9 +558,10 @@ void ScriptDict::Set(ptr<void> key, ptr<void> value)
         _data.emplace(key_copy.get(), value_copy.get());
     }
     else {
-        DestroyObject(_typeInfo, 1, it->second);
         auto value_copy = CopyObject(_typeInfo, 1, value);
+        ptr<void> old_value = it->second;
         it->second = value_copy.get();
+        DestroyObject(_typeInfo, 1, old_value);
     }
 }
 
@@ -573,9 +585,11 @@ auto ScriptDict::Remove(ptr<void> key) -> bool
     const auto it = _data.find(key.get());
 
     if (it != _data.end()) {
-        DestroyObject(_typeInfo, 0, it->first);
-        DestroyObject(_typeInfo, 1, it->second);
+        ptr<void> key_obj = it->first;
+        ptr<void> value_obj = it->second;
         _data.erase(it);
+        DestroyObject(_typeInfo, 0, key_obj);
+        DestroyObject(_typeInfo, 1, value_obj);
         return true;
     }
 
@@ -590,9 +604,11 @@ auto ScriptDict::RemoveValues(ptr<void> value) -> int32_t
 
     for (auto it = _data.begin(); it != _data.end();) {
         if (Equals(_valueTypeId, _valueTypeData, _typeInfo->GetEngine(), it->second, value)) {
-            DestroyObject(_typeInfo, 0, it->first);
-            DestroyObject(_typeInfo, 1, it->second);
+            ptr<void> key_obj = it->first;
+            ptr<void> value_obj = it->second;
             it = _data.erase(it);
+            DestroyObject(_typeInfo, 0, key_obj);
+            DestroyObject(_typeInfo, 1, value_obj);
             result++;
         }
         else {
@@ -607,12 +623,14 @@ void ScriptDict::Clear()
 {
     FO_STACK_TRACE_ENTRY();
 
-    for (const auto& kv : _data) {
-        DestroyObject(_typeInfo, 0, kv.first);
-        DestroyObject(_typeInfo, 1, kv.second);
+    while (!_data.empty()) {
+        auto node = _data.begin();
+        ptr<void> key = node->first;
+        ptr<void> value = node->second;
+        _data.erase(node);
+        DestroyObject(_typeInfo, 0, key);
+        DestroyObject(_typeInfo, 1, value);
     }
-
-    _data.clear();
 }
 
 auto ScriptDict::Get(ptr<void> key) const -> ptr<void>
@@ -701,7 +719,7 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
     FO_VERIFY_AND_THROW(arr_type, "Array type not found");
-    auto arr = ScriptArray::Create(arr_type.as_ptr());
+    auto arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
 
@@ -722,7 +740,7 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     auto arr_type = make_nptr(engine->GetTypeInfoByDecl(arr_type_name.c_str()));
     FO_VERIFY_AND_THROW(arr_type, "Array type not found");
-    auto arr = ScriptArray::Create(arr_type.as_ptr());
+    auto arr = ScriptArray::Create(arr_type);
 
     arr->Reserve(GetSize());
 
@@ -812,30 +830,28 @@ bool ScriptDict::GetFlag() const
     return _gcFlag.load(std::memory_order_relaxed);
 }
 
+static void EnumStoredReference(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id, ptr<void> storage)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
+        return;
+    }
+
+    const nptr<void> reference = (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0 ? NativeDataProvider::ReadHandleSlot(storage) : nptr<void> {storage};
+
+    if (reference) {
+        engine->GCEnumCallback(reference.get_no_const());
+    }
+}
+
 void ScriptDict::EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const
 {
     FO_STACK_TRACE_ENTRY();
 
-    const bool keys_handle = (_keyTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0;
-    const bool values_handle = (_valueTypeId & AngelScript::asTYPEID_MASK_OBJECT) != 0;
-
-    if (keys_handle || values_handle) {
-        for (const auto& kv : _data) {
-            if (keys_handle) {
-                const nptr<void> key = kv.first;
-
-                if (key) {
-                    engine->GCEnumCallback(key.get_no_const());
-                }
-            }
-            if (values_handle) {
-                const nptr<void> value = kv.second;
-
-                if (value) {
-                    engine->GCEnumCallback(value.get_no_const());
-                }
-            }
-        }
+    for (const auto& kv : _data) {
+        EnumStoredReference(engine, _keyTypeId, kv.first);
+        EnumStoredReference(engine, _valueTypeId, kv.second);
     }
 }
 
@@ -1194,7 +1210,7 @@ static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
-    auto dict = ScriptDict::Create(type_info.as_ptr());
+    auto dict = ScriptDict::Create(type_info);
     return dict.release_ownership();
 }
 
@@ -1206,7 +1222,7 @@ static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list)
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
     nptr<void> init_list_ptr = init_list;
     FO_VERIFY_AND_THROW(init_list_ptr, "Dictionary init list is null");
-    auto dict = ScriptDict::Create(type_info.as_ptr(), init_list_ptr.as_ptr());
+    auto dict = ScriptDict::Create(type_info, init_list_ptr);
     return dict.release_ownership();
 }
 
@@ -1222,7 +1238,7 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
         throw ScriptException("Dict arg is null");
     }
 
-    auto clone = ScriptDict::Create(type_info.as_ptr());
+    auto clone = ScriptDict::Create(type_info);
     *clone = *other_ptr;
     return clone.release_ownership();
 }

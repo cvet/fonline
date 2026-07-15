@@ -149,7 +149,7 @@ void NetOutBuffer::Push(nptr<const void> buf, size_t len)
 
     GrowBuf(len);
     auto target = make_ptr(_bufData.data()).offset(_bufEndPos);
-    CopyBuf(buf.as_ptr(), target, EncryptKey(numeric_cast<int32_t>(len)), len);
+    CopyBuf(buf, target, EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufEndPos += len;
 }
 
@@ -243,7 +243,7 @@ void NetOutBuffer::EndMsg()
     auto msg_signature_source = make_ptr(_bufData.data()).offset(_startedBufPos);
     auto msg_signature_target = make_ptr(&msg_signature).reinterpret_as<uint8_t>();
     CopyBuf(msg_signature_source, msg_signature_target, EncryptKey(sizeof(msg_signature)), sizeof(msg_signature));
-    FO_VERIFY_AND_THROW(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
+    FO_STRONG_ASSERT(msg_signature == NETMSG_SIGNATURE, "Outgoing network message signature was corrupted before finalizing length", msg_signature, NETMSG_SIGNATURE, _startedBufPos, _bufEndPos);
 
     // Write actual message length
     auto msg_len_source = make_ptr(&msg_len).reinterpret_as<uint8_t>();
@@ -314,7 +314,7 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
     FO_VERIFY_AND_THROW(buf, "Network buffer pop received a null destination for a non-empty read");
 
     auto source = make_ptr(_bufData.data()).offset(_bufReadPos);
-    CopyBuf(source, buf.as_ptr(), EncryptKey(numeric_cast<int32_t>(len)), len);
+    CopyBuf(source, buf, EncryptKey(numeric_cast<int32_t>(len)), len);
     _bufReadPos += len;
 }
 

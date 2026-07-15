@@ -226,6 +226,7 @@ TEST_CASE("BakerDataSource")
 
     REQUIRE(fs_write_file(runtime_input_path, string_view {"runtime-source"}));
     REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/Nested/child.json").str(), string_view {"nested-source"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/_scratch.json").str(), string_view {"scratch"}));
     REQUIRE(fs_write_file(stale_input_path, string_view {"stale-source"}));
     REQUIRE(fs_write_file(stale_output_path, string_view {"stale-output"}));
     REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/readme.txt").str(), string_view {"ignored"}));
@@ -245,7 +246,8 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **/*.json
+ExcludePatterns = **/_*.json
 Bakers = {}
 )",
             output_dir, RawCopyBaker::NAME)
@@ -261,6 +263,7 @@ Bakers = {}
     CHECK(data_source.IsFileExists("Data/runtime.json"));
     CHECK(data_source.IsFileExists("Data/stale.json"));
     CHECK(data_source.IsFileExists("Data/Nested/child.json"));
+    CHECK_FALSE(data_source.IsFileExists("Data/_scratch.json"));
     CHECK_FALSE(data_source.IsFileExists("Data/readme.txt"));
 
     size_t size = 0;
@@ -323,13 +326,16 @@ TEST_CASE("BakerMasterRawCopy")
     const string input_dir = strex(temp_dir).combine_path("input").str();
     const string output_dir = strex(temp_dir).combine_path("output").str();
     const string source_path = strex(input_dir).combine_path("Data/keep.json").str();
+    const string excluded_source_path = strex(input_dir).combine_path("Data/_scratch.json").str();
     const string output_path = strex(output_dir).combine_path("Core/Data/keep.json").str();
+    const string excluded_output_path = strex(output_dir).combine_path("Core/Data/_scratch.json").str();
     const string outdated_path = strex(output_dir).combine_path("Core/Data/obsolete.json").str();
     const string build_hash_path = strex(output_dir).combine_path("Resources.build-hash").str();
 
     ignore_unused(fs_remove_dir_tree(temp_dir));
 
     REQUIRE(fs_write_file(source_path, string_view {"raw-copy"}));
+    REQUIRE(fs_write_file(excluded_source_path, string_view {"scratch"}));
     REQUIRE(fs_write_file(outdated_path, string_view {"obsolete"}));
 
     GlobalSettings settings {true};
@@ -341,7 +347,8 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **/*.json
+ExcludePatterns = **/_*.json
 Bakers = {}
 )",
             output_dir, RawCopyBaker::NAME)
@@ -353,6 +360,7 @@ Bakers = {}
     REQUIRE(first_baker.BakeAll());
     REQUIRE(fs_read_file(output_path).has_value());
     CHECK(*fs_read_file(output_path) == "raw-copy");
+    CHECK_FALSE(fs_exists(excluded_output_path));
     CHECK_FALSE(fs_exists(outdated_path));
     CHECK(fs_read_file(build_hash_path).has_value());
 
@@ -367,6 +375,52 @@ Bakers = {}
     CHECK(*fs_read_file(output_path) == "raw-copy");
     CHECK(fs_last_write_time(output_path) >= output_write_time_before_rebake);
     CHECK(fs_read_file(build_hash_path).has_value());
+
+    CHECK(fs_remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("BakerResourcePacksCanSplitSharedInputDirectoryByGlob")
+{
+    const string temp_dir = MakeTempBakerSetupDir("resource_pack_glob_split");
+    const string input_dir = strex(temp_dir).combine_path("input").str();
+    const string output_dir = strex(temp_dir).combine_path("output").str();
+
+    ignore_unused(fs_remove_dir_tree(temp_dir));
+
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/json-keep.json").str(), string_view {"json"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/text-keep.json").str(), string_view {"text"}));
+    REQUIRE(fs_write_file(strex(input_dir).combine_path("Data/private/secret.json").str(), string_view {"secret"}));
+
+    GlobalSettings settings {true};
+    settings.ApplyDefaultSettings();
+
+    auto config = ConfigFile("ResourcePackGlobSplit.fomain",
+        strex(R"(Baking.BakeOutput = {}
+Baking.SingleThreadBaking = true
+[ResourcePack]
+Name = Json
+InputDirs = input
+IncludePatterns = **/json-*.json
+ExcludePatterns = **/private/**
+Bakers = {}
+[ResourcePack]
+Name = Text
+InputDirs = input
+IncludePatterns = **/text-*.json
+Bakers = {}
+)",
+            output_dir, RawCopyBaker::NAME, RawCopyBaker::NAME)
+            .str());
+
+    settings.ApplyConfigFile(config, temp_dir);
+
+    MasterBaker baker {&settings};
+    REQUIRE(baker.BakeAll());
+    CHECK(fs_read_file(strex(output_dir).combine_path("Json/Data/json-keep.json").str()).has_value());
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/text-keep.json").str()));
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Json/Data/private/secret.json").str()));
+    CHECK(fs_read_file(strex(output_dir).combine_path("Text/Data/text-keep.json").str()).has_value());
+    CHECK_FALSE(fs_exists(strex(output_dir).combine_path("Text/Data/json-keep.json").str()));
 
     CHECK(fs_remove_dir_tree(temp_dir));
 }
@@ -398,7 +452,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)
@@ -441,7 +495,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = input
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)
@@ -477,7 +531,7 @@ Baking.SingleThreadBaking = true
 [ResourcePack]
 Name = Core
 InputDirs = missing
-RecursiveInput = true
+IncludePatterns = **
 Bakers = {}
 )",
                 output_dir, RawCopyBaker::NAME)

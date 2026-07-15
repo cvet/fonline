@@ -132,24 +132,28 @@ void ModelSprite::SetSize(isize32 size)
         return;
     }
 
+    _model->SetupFrame(size);
+    const int16_t new_offset_y = numeric_cast<int16_t>(size.height / 4);
+
     if (_atlasNode) {
-        _atlasNode->Free();
-        _atlasNode.reset();
+        _atlasNode.reset(); // Frees the previous atlas slot via the owning handle's deleter
+        _atlas = nullptr;
+        _atlasRect = {};
     }
 
-    _model->SetupFrame(size);
+    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, size);
+
+    frect32 new_rect;
+    new_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
+    new_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
+    new_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
+    new_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
     _size = size;
-    _offset.y = numeric_cast<int16_t>(size.height / 4);
-
-    auto&& [atlas, atlas_node, pos] = _sprMngr->GetAtlasMngr()->FindAtlasPlace(_atlasType, _size);
-
+    _offset.y = new_offset_y;
     _atlas = atlas;
-    _atlasNode = atlas_node;
-    _atlasRect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
-    _atlasRect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);
-    _atlasRect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
-    _atlasRect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
+    _atlasNode = std::move(atlas_node);
+    _atlasRect = new_rect;
 }
 
 void ModelSprite::DrawToAtlas()
@@ -245,6 +249,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     }();
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
+    auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
     _sprMngr->GetRtMngr().ClearCurrentRenderTarget(ucolor::clear, true);
 
     // Draw model
@@ -252,6 +257,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     // Restore render target
     _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_model_rt_on_fail.release();
 
     // Copy render
     const int32_t l = iround<int32_t>(model_spr->GetAtlasRect().x * numeric_cast<float32_t>(model_spr->GetAtlas()->GetSize().width));
@@ -261,8 +267,10 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     const irect32 region_to = irect32(l, t, w, h);
 
     _sprMngr->GetRtMngr().PushRenderTarget(model_spr->GetAtlas()->GetRenderTarget());
+    auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
     _sprMngr->DrawRenderTarget(rt_model, false, nullptr, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
+    pop_atlas_rt_on_fail.release();
 }
 
 FO_END_NAMESPACE

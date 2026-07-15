@@ -679,6 +679,14 @@ macro(AddSharedApplication target sourceFile)
 
 	SetupApplicationTarget(${target} ${appSharedArgs})
 
+	if(FO_LINUX)
+		# Runtime modules are dlopen'ed by an engine host executable that exports its own engine
+		# symbols (-rdynamic for stack traces). Bind the module's global references to its own
+		# definitions so it keeps private global data and allocator state instead of interposing
+		# on the host's copies; the host/runtime C ABI never transfers ownership across modules.
+		TargetLinkOptions(${target} PRIVATE -Wl,-Bsymbolic)
+	endif()
+
 	if(APP_SHARED_NO_PREFIX)
 		set_target_properties(${target} PROPERTIES PREFIX "")
 	endif()

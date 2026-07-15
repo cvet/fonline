@@ -911,6 +911,52 @@ namespace MapOpsTest
         return 0;
     }
 
+    int TestMapGetCrittersInLargeRadius()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter first = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter second = map.AddCritter("TestCritter".hstr(), mpos(90, 90), mdir(0));
+        if (first is null || second is null) return -3;
+
+        nanotime start = Game.GetPrecisionTime();
+
+        for (int i = 0; i < 41; i++) {
+            array<Critter> critters = map.GetCrittersInRadius(mpos(50, 50), 500, CritterFindType::Any);
+            if (critters.length() != 2) return -4;
+        }
+
+        if ((Game.GetPrecisionTime() - start).milliseconds >= 100) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapGetCrittersInRadiusIncludesMultihexOverlap()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestMultihexCritter".hstr(), mpos(53, 50), mdir(0));
+        if (cr is null) return -3;
+
+        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
+        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -4;
+
+        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
+        if (!outside.isEmpty()) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
     void TestMapGetCrittersInRadiusNegativeRadiusThrows()
     {
         Location loc = CreateTestLocation();
@@ -4641,7 +4687,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4672,7 +4718,7 @@ namespace MapOpsTest
         auto registrator = proto_engine.GetPropertyRegistrator(type_name);
         REQUIRE(static_cast<bool>(registrator));
 
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator.as_ptr()};
+        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrator};
         proto.SetStackable(true);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
@@ -4783,7 +4829,15 @@ namespace MapOpsTest
         const auto client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
         const auto client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        const auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
+        REQUIRE(static_cast<bool>(critter_registrator));
+        const auto multihex_property = critter_registrator->FindProperty("Multihex");
+        REQUIRE(static_cast<bool>(multihex_property));
+        const vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
+            {"TestCritter", {}},
+            {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
+        };
+        const auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         const auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
         const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
         const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
@@ -5005,6 +5059,16 @@ TEST_CASE("MapCritterOperations")
         RUN_FUNC("MapOpsTest::TestMapGetCrittersOnHex");
     }
 
+    SECTION("GetCrittersInLargeRadius")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInLargeRadius");
+    }
+
+    SECTION("GetCrittersInRadiusIncludesMultihexOverlap")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusIncludesMultihexOverlap");
+    }
+
     SECTION("GetCrittersInRadiusNegativeRadiusThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapGetCrittersInRadiusNegativeRadiusThrows", "Radius arg must not be negative");
@@ -5180,7 +5244,7 @@ TEST_CASE("MapManagerLoadsStaticMapEntities")
     const auto map_proto = server->GetProtoMap(static_map_pid);
     REQUIRE(map_proto);
 
-    auto static_map = server->MapMngr.GetStaticMap(map_proto.as_ptr());
+    auto static_map = server->MapMngr.GetStaticMap(map_proto);
 
     REQUIRE(static_map->CritterBillets.size() == 1);
     CHECK(static_map->CritterBillets.front().first == ident_t {11});

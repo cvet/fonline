@@ -43,10 +43,17 @@ static constexpr string_view StrCantConnectToServer = "Can't connect to the serv
 static constexpr string_view StrConnectionEstablished = "Connection established";
 static constexpr string_view StrConnectionFailure = "Connection failure!";
 static constexpr string_view StrFilesystemError = "File system error!";
-static constexpr string_view StrUpdaterOutdated = "Client updater outdated, please update the base client";
+static constexpr string_view StrServerMissingNativeUpdate = "Server doesn't provide a native client update for binary target {}. Please update the client manually";
+static constexpr string_view StrUpdaterOutdated = "Client updater is incompatible with this server. Please install the latest full client package.";
+static constexpr string_view StrPlatformUnsupported = "Client outdated, please update via your app store";
+static constexpr string_view StrNativeUpdateFailed = "Failed to update native client modules for binary target {}. Please update the client manually";
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
+static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
+static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
+
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
@@ -88,9 +95,11 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     }
 
     _sprMngr.BeginScene();
+
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
+
     _sprMngr.EndScene();
 
     // Load font
@@ -169,7 +178,7 @@ auto Updater::Process() -> bool
     _sprMngr.BeginScene();
 
     if (_splashPic) {
-        _sprMngr.DrawSpriteSize(_splashPic.as_ptr(), {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
+        _sprMngr.DrawSpriteSize(_splashPic, {0, 0}, {_settings->ScreenWidth, _settings->ScreenHeight}, true, true, Color::Neutral);
     }
 
     if (elapsed_time >= _settings->UpdaterInfoDelay) {
@@ -970,6 +979,74 @@ auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
     return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
 }
 
+auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
+
+    if (!target.has_value()) {
+        return string(fallback_runtime_path);
+    }
+
+    const string staging_path = MakeClientRuntimeStagingPath(target.value());
+    const bool live_exists = fs_exists(target.value()) && !fs_is_dir(target.value());
+    const bool staging_exists = fs_exists(staging_path) && !fs_is_dir(staging_path);
+    return live_exists || staging_exists ? target.value() : string(fallback_runtime_path);
+}
+
+auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return std::nullopt;
+    }
+
+    const optional<uint64_t> file_size = fs_file_size(bootstrap_file_path);
+
+    if (!file_size.has_value() || file_size.value() == 0 || file_size.value() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    const optional<string> content = fs_read_file(bootstrap_file_path);
+
+    if (!content.has_value() || content->size() > ClientRuntimeBootstrapMaxSize) {
+        return std::nullopt;
+    }
+
+    return NormalizeClientRuntimeBootstrapTarget(content.value(), expected_runtime_file_name);
+}
+
+auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!fs_is_absolute_path(bootstrap_file_path)) {
+        return false;
+    }
+
+    const optional<string> normalized_path = NormalizeClientRuntimeBootstrapTarget(runtime_path, expected_runtime_file_name);
+
+    if (!normalized_path.has_value() || normalized_path->size() + 1 > ClientRuntimeBootstrapMaxSize) {
+        return false;
+    }
+
+    // Write-then-rename so a crash or a concurrent reader never observes a partially written selector
+    const string temp_path = strex("{}.tmp", bootstrap_file_path).str();
+
+    if (!fs_write_file(temp_path, strex("{}\n", normalized_path.value()).str())) {
+        return false;
+    }
+
+    if (!fs_rename(temp_path, bootstrap_file_path)) {
+        fs_remove_file(temp_path);
+        return false;
+    }
+
+    return true;
+}
+
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -1035,16 +1112,16 @@ void ShowUpdaterFailure(UpdaterResult result)
 
     switch (result) {
     case UpdaterResult::ServerMissingNativeUpdate:
-        Application::ShowErrorMessage(strex("Server doesn't provide a native client update for binary target {}. Please update the client manually", target_name).str(), "", true);
+        Application::ShowErrorMessage(strex(strex::dynamic_format, StrServerMissingNativeUpdate, target_name).str(), StrErrorMessageCaption, true);
         break;
     case UpdaterResult::UpdaterOutdated:
-        Application::ShowErrorMessage("Client updater outdated, please update the base client", "", true);
+        Application::ShowErrorMessage(StrUpdaterOutdated, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::PlatformUnsupported:
-        Application::ShowErrorMessage("Client outdated, please update via your app store", "", true);
+        Application::ShowErrorMessage(StrPlatformUnsupported, StrErrorMessageCaption, true);
         break;
     case UpdaterResult::Failed:
-        Application::ShowErrorMessage(strex("Failed to update native client modules for binary target {}. Please update the client manually", target_name).str(), "", true);
+        Application::ShowErrorMessage(strex(strex::dynamic_format, StrNativeUpdateFailed, target_name).str(), StrErrorMessageCaption, true);
         break;
     case UpdaterResult::ResourcesReady:
     case UpdaterResult::BinariesStaged:
@@ -1066,6 +1143,23 @@ auto GetClientRuntimeLibraryExtension() noexcept -> string_view
 #else
     return {};
 #endif
+}
+
+static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string trimmed_path = strex(runtime_path).trim().str();
+
+    if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs_is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
+        return std::nullopt;
+    }
+
+    if (strex(trimmed_path).extract_file_name().str() != expected_runtime_file_name) {
+        return std::nullopt;
+    }
+
+    return fs_resolve_path(trimmed_path);
 }
 
 FO_END_NAMESPACE

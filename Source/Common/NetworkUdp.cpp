@@ -168,12 +168,13 @@ auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vecto
         }
 
         PendingPacket packet;
-        packet.Sequence = _nextOutgoingSequence++;
+        packet.Sequence = _nextOutgoingSequence;
         packet.Payload.assign(new_data.begin() + consumed, new_data.begin() + consumed + chunk_size);
         packet.LastSend = now;
         packet.SendCount = 1;
-        _pendingBytes += chunk_size;
         EmitPendingPacket(packet, packets);
+        _nextOutgoingSequence++;
+        _pendingBytes += chunk_size;
         _pendingPackets.emplace_back(std::move(packet));
         consumed += chunk_size;
     }
