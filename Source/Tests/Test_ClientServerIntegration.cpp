@@ -555,7 +555,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
 {
     using namespace TestClientServerIntegration;
 
-    const auto port = IntegrationTestPort.fetch_add(1);
+    const uint16_t port = IntegrationTestPort.fetch_add(1);
     auto server_settings = MakeServerTestSettings(port);
     BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
     auto server = MakeServerEngine(server_settings);
@@ -610,7 +610,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
                 REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<bool>());
-                const auto response_encrypt_key = response.Read<uint32_t>();
+                const uint32_t response_encrypt_key = response.Read<uint32_t>();
                 CHECK(response_encrypt_key != 0);
                 response.SetEncryptKey(response_encrypt_key);
 
