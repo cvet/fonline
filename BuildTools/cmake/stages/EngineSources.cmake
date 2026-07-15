@@ -144,7 +144,8 @@ if(FO_MANAGED_SCRIPTING)
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
-        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp")
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs")
 endif()
 
 AppendList(FO_SERVER_BASE_SOURCE

@@ -213,14 +213,17 @@ mkdir "%ROOT%\ClientAssemblies" 2>nul
 mkdir "%ROOT%\MapperAssemblies" 2>nul
 > "%ROOT%\ServerAssemblies\TestPack.Server.dll" echo entry-Server
 > "%ROOT%\ServerAssemblies\SharedDependency.dll" echo helper-Server
+> "%ROOT%\ServerAssemblies\FOnline.ManagedHost.dll" echo host-Server
 > "%ROOT%\ServerAssemblies\TestPack.Server.pdb" echo pdb-Server
 > "%ROOT%\ServerAssemblies\TestPack.Server.deps.json" echo deps-Server
 > "%ROOT%\ClientAssemblies\TestPack.Client.dll" echo entry-Client
 > "%ROOT%\ClientAssemblies\SharedDependency.dll" echo helper-Client
+> "%ROOT%\ClientAssemblies\FOnline.ManagedHost.dll" echo host-Client
 > "%ROOT%\ClientAssemblies\TestPack.Client.pdb" echo pdb-Client
 > "%ROOT%\ClientAssemblies\TestPack.Client.deps.json" echo deps-Client
 > "%ROOT%\MapperAssemblies\TestPack.Mapper.dll" echo entry-Mapper
 > "%ROOT%\MapperAssemblies\SharedDependency.dll" echo helper-Mapper
+> "%ROOT%\MapperAssemblies\FOnline.ManagedHost.dll" echo host-Mapper
 > "%ROOT%\MapperAssemblies\TestPack.Mapper.pdb" echo pdb-Mapper
 > "%ROOT%\MapperAssemblies\TestPack.Mapper.deps.json" echo deps-Mapper
 exit /b 0
@@ -234,14 +237,17 @@ fi
 mkdir -p "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies" "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies" "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies"
 printf 'entry-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.dll"
 printf 'helper-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/SharedDependency.dll"
+printf 'host-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/FOnline.ManagedHost.dll"
 printf 'pdb-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.pdb"
 printf 'deps-Server\n' > "$FO_FAKE_MSBUILD_ROOT/ServerAssemblies/TestPack.Server.deps.json"
 printf 'entry-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.dll"
 printf 'helper-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/SharedDependency.dll"
+printf 'host-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/FOnline.ManagedHost.dll"
 printf 'pdb-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.pdb"
 printf 'deps-Client\n' > "$FO_FAKE_MSBUILD_ROOT/ClientAssemblies/TestPack.Client.deps.json"
 printf 'entry-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.dll"
 printf 'helper-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/SharedDependency.dll"
+printf 'host-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/FOnline.ManagedHost.dll"
 printf 'pdb-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.pdb"
 printf 'deps-Mapper\n' > "$FO_FAKE_MSBUILD_ROOT/MapperAssemblies/TestPack.Mapper.deps.json"
 )");
@@ -280,12 +286,14 @@ TEST_CASE("ManagedScriptBaker")
     ScopedTempDirectory temp_dir;
     const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
     const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
 
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "CoreTagged.cs", "namespace FOnline {\n    ///@ Enum CoreMirrorTag A\n    public static class CoreTagged {}\n}\n");
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
 
     const std::filesystem::path server_source = script_dir / "ServerOnly.cs";
     const std::filesystem::path client_source = script_dir / "ClientOnly.cs";
@@ -342,7 +350,7 @@ TEST_CASE("ManagedScriptBaker")
         MakeMetadataBlob({
             {"Entity", {{"ManagedInner", "HasProtos"}, {"ManagedGlobal"}}},
             {"EntityHolder", {{"Server", "Critter", "ManagedInner", "ManagedEntry"}, {"Server", "Game", "ManagedGlobal", "ManagedGlobal"}}},
-            {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}}},
+            {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
             {"Property", {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0"}}},
         }));
@@ -373,6 +381,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK_FALSE(std::filesystem::exists(script_dir / "UnitProject.csproj"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "UnitProject.sln"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.csproj"));
+    CHECK(std::filesystem::exists(script_dir / "FOnline.ManagedHost.gen.csproj"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
     CHECK_FALSE(std::filesystem::exists(script_dir / "ServerEnums.cs"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
@@ -393,6 +402,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(solution.find("# <auto-generated />") != string::npos);
     CHECK(solution.find("Do not edit it manually") != string::npos);
     CHECK(solution.find("Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"UnitProject\", \"UnitProject.gen.csproj\"") != string::npos);
+    CHECK(solution.find("Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"FOnline.ManagedHost\", \"FOnline.ManagedHost.gen.csproj\"") != string::npos);
     CHECK(solution.find("Server|AnyCPU = Server|AnyCPU") != string::npos);
     CHECK(solution.find("Client|AnyCPU = Client|AnyCPU") != string::npos);
     CHECK(solution.find("Mapper|AnyCPU = Mapper|AnyCPU") != string::npos);
@@ -421,6 +431,11 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("System.Core") != string::npos);
     CHECK(unified_project.find("System.Xml") != string::npos);
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
+    CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
+
+    const string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
+    CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
+    CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
 
     const string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");
     CHECK(server_enums.find("// <auto-generated />") == 0);
@@ -500,6 +515,9 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_events.find("public delegate void GameOnManagedArrayEventHandler(List<int> values)") != string::npos);
     CHECK(server_events.find("object[] __args = new object[]\n                {\n                    values,\n                };") != string::npos);
     CHECK(server_events.find("public delegate void GameOnManagedDictEventHandler(Dictionary<string, string> values)") != string::npos);
+    CHECK(server_events.find("public delegate void GameOnManagedMutablePositionEventHandler(\n        int first,\n        int second,\n        ref int third") != string::npos);
+    CHECK(server_events.find("third = (int)__args[2];") != string::npos);
+    CHECK(server_events.find("third = (int)__args[0];") == string::npos);
 
     const string client_settings = ReadTextFile(script_dir / "ClientSettings.gen.cs");
     CHECK(client_settings.find("public static List<int> View_GlobalDayColorTime") != string::npos);
@@ -538,10 +556,17 @@ TEST_CASE("ManagedScriptBaker")
     std::filesystem::remove(script_dir / "UnitProject.gen.sln", ec);
     WriteTextFile(script_dir / "NoWorkObsolete.gen.cs", MakeManagedGeneratedCs("namespace Demo { public static class NoWorkObsoleteGeneratedCode {} }\n"));
 
-    ManagedScriptBaker no_work_baker(rig.MakeContext("TestPack", [](string_view, uint64_t) { return false; }));
+    unordered_set<string> checked_output_paths;
+    ManagedScriptBaker no_work_baker(rig.MakeContext("TestPack", [&](string_view path, uint64_t) {
+        checked_output_paths.emplace(path);
+        return false;
+    }));
     REQUIRE_NOTHROW(no_work_baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
     CHECK(rig.Outputs.empty());
+    CHECK(checked_output_paths.contains("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll"));
+    CHECK(checked_output_paths.contains("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.csproj"));
     CHECK(std::filesystem::exists(script_dir / "ServerEnums.gen.cs"));
     CHECK(std::filesystem::exists(script_dir / "UnitProject.gen.sln"));
@@ -557,6 +582,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     ScopedTempDirectory temp_dir;
     const std::filesystem::path managed_source_dir = temp_dir.Path() / "ManagedSupport";
     const std::filesystem::path core_scripts_dir = managed_source_dir / "CoreScripts";
+    const std::filesystem::path managed_host_source = managed_source_dir / "ManagedHost" / "ManagedLoadContextHost.cs";
     const std::filesystem::path script_dir = temp_dir.Path() / "Scripts" / "Managed";
     const std::filesystem::path shared_source = script_dir / "Shared.cs";
     const std::filesystem::path fake_msbuild_root = temp_dir.Path() / "Baking" / "TestPack" / "Assemblies";
@@ -565,6 +591,7 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
     WriteTextFile(core_scripts_dir / "Attributes.cs", "namespace FOnline { public sealed class ModuleInitAttribute : System.Attribute { public ModuleInitAttribute(int priority = 0) {} } }\n");
     WriteTextFile(core_scripts_dir / "Initializator.cs", "namespace FOnline { public static class Initializator { static void Initialize() {} } }\n");
     WriteTextFile(core_scripts_dir / "Native.cs", "namespace FOnline { internal static class Native {} }\n");
+    WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(shared_source, "namespace Demo { public static class Shared {} }\n");
 
     ScopedCurrentPath current_path(temp_dir.Path());
@@ -587,16 +614,19 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
 
     CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/TestPack.Server.dll")).find("entry-Server") != string::npos);
     CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/SharedDependency.dll")).find("helper-Server") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/ServerAssemblies/FOnline.ManagedHost.dll")).find("host-Server") != string::npos);
     CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.pdb"));
     CHECK_FALSE(rig.Outputs.contains("Assemblies/ServerAssemblies/TestPack.Server.deps.json"));
 
     CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/TestPack.Client.dll")).find("entry-Client") != string::npos);
     CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/SharedDependency.dll")).find("helper-Client") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/ClientAssemblies/FOnline.ManagedHost.dll")).find("host-Client") != string::npos);
     CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.pdb"));
     CHECK_FALSE(rig.Outputs.contains("Assemblies/ClientAssemblies/TestPack.Client.deps.json"));
 
     CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/TestPack.Mapper.dll")).find("entry-Mapper") != string::npos);
     CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/SharedDependency.dll")).find("helper-Mapper") != string::npos);
+    CHECK(BytesToText(rig.Outputs.at("Assemblies/MapperAssemblies/FOnline.ManagedHost.dll")).find("host-Mapper") != string::npos);
     CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.pdb"));
     CHECK_FALSE(rig.Outputs.contains("Assemblies/MapperAssemblies/TestPack.Mapper.deps.json"));
 #endif

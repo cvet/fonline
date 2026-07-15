@@ -71,6 +71,9 @@ constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ';';
 #else
 constexpr char MANAGED_ASSEMBLY_PATH_SEPARATOR = ':';
 #endif
+constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME = "FOnline.ManagedHost.dll";
+constexpr string_view MANAGED_HOST_NAMESPACE = "FOnline.ManagedHost";
+constexpr string_view MANAGED_HOST_CLASS_NAME = "ManagedLoadContextHost";
 
 // Thread-affine active backend: threads are partitioned by engine ownership, so the thread-local slot never
 // observes a foreign engine. Every native->managed invocation runs under ActiveBackendScope, making this the
@@ -305,6 +308,7 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
 
 // Assembly loading, runtime configuration and resource cache
 static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view target_name) -> bool;
+static auto IsManagedHostAssemblyFileName(string_view file_name) noexcept -> bool;
 static auto CollectAssemblyResources(const FileSystem& resources, string_view target_name) -> vector<ManagedAssemblyResource>;
 static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool;
 static auto FindManagedRuntimeDir() -> optional<std::filesystem::path>;
@@ -320,6 +324,7 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
 
 // Low-level Mono/string primitives
 static auto GetDomainOrThrow(void* domain) -> MonoDomain*;
+static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesystem::path>& paths) -> MonoArray*;
 static auto ToStringAndFree(MonoString* text) -> string;
 static auto ManagedObjectToString(MonoObject* obj) -> string;
 static void ThrowIfManagedException(MonoObject* exception, string_view context);
@@ -562,7 +567,6 @@ struct ManagedAssemblyResource
     string ResourcePath {};
     string FileName {};
     vector<uint8_t> Data {};
-    bool IsEntry {};
 };
 
 // ---------------------------------------------------------------------------------------------------
@@ -703,14 +707,8 @@ static auto NativeGetHash(MonoString* text) -> uint64_t
         return 0;
     }
 
-    // Intern into the calling engine only, so the hash can be resolved back to text there; interning into
-    // foreign engines would pollute their hash tables. The hash function itself is deterministic and
-    // engine-independent, so a thread without an active backend computes the same value directly.
-    if (ActiveBackend != nullptr && ActiveBackend->GetMetadata() != nullptr) {
-        return ActiveBackend->GetMetadata()->Hashes.ToHashedString(value).as_hash();
-    }
-
-    return hashing_ex::hash(value.data(), value.length());
+    auto backend = GetActiveBackendOrThrow();
+    return backend->GetMetadata()->Hashes.ToHashedString(value).as_hash();
 }
 
 static auto NativeGetHashStr(uint64_t value) -> MonoString*
@@ -3153,6 +3151,9 @@ static void CopyManagedStructToPropertyData(ptr<const ManagedScriptBackend> back
         if (field_desc.Type.IsHashedString) {
             hstring::hash_t hash {};
             mono_field_get_value(value, field, &hash);
+
+            const hstring resolved_hash = ResolveManagedHashValue(backend, hash);
+            hash = resolved_hash.as_hash();
             MemCopy(raw_data + field_desc.Offset, &hash, sizeof(hash));
         }
         else if (field_desc.Type.IsStruct && field_desc.Type.StructLayout != nullptr) {
@@ -3464,7 +3465,7 @@ static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseT
     FO_STACK_TRACE_ENTRY();
 
     if (type.Name == "any") {
-        return mono_get_object_class();
+        return mono_get_string_class();
     }
     if (type.IsString) {
         return mono_get_string_class();
@@ -3580,7 +3581,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
         return &storage.Text;
     }
     if (base_type.IsHashedString) {
-        storage.Hash = backend->GetMetadata()->Hashes.ResolveHash(ExtractHashValue(value));
+        storage.Hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
         return &storage.Hash;
     }
     if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
@@ -3925,8 +3926,8 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsHashedString) {
-        const hstring::hash_t hash = ExtractHashValue(value);
-        prop_data.SetAs(hash);
+        const hstring hash = ResolveManagedHashValue(backend, ExtractHashValue(value));
+        prop_data.SetAs(hash.as_hash());
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
         const hstring::hash_t proto_hash = ExtractProtoHashFromManagedEntity(value);
@@ -4547,7 +4548,14 @@ static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hst
         return {};
     }
 
-    return backend->GetMetadata()->Hashes.ResolveHash(value);
+    bool failed = false;
+    const hstring backend_value = backend->GetMetadata()->Hashes.ResolveHash(value, &failed);
+
+    if (!failed) {
+        return backend_value;
+    }
+
+    throw ScriptSystemException("Managed hstring is not interned in the active backend", value);
 }
 
 // === Assembly loading, runtime configuration and resource cache ===
@@ -4557,6 +4565,13 @@ static auto IsManagedEntryAssemblyFileName(string_view file_name, string_view ta
     FO_STACK_TRACE_ENTRY();
 
     return file_name.ends_with(strex(".{}.dll", target_name).str());
+}
+
+static auto IsManagedHostAssemblyFileName(string_view file_name) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return file_name == MANAGED_HOST_ASSEMBLY_FILE_NAME;
 }
 
 static auto CollectAssemblyResources(const FileSystem& resources, string_view target_name) -> vector<ManagedAssemblyResource>
@@ -4579,7 +4594,6 @@ static auto CollectAssemblyResources(const FileSystem& resources, string_view ta
             .ResourcePath = resource_path,
             .FileName = file_name,
             .Data = assembly_file.GetData(),
-            .IsEntry = IsManagedEntryAssemblyFileName(file_name, target_name),
         });
     }
 
@@ -4872,6 +4886,32 @@ static auto GetDomainOrThrow(void* domain) -> MonoDomain*
     return mdomain;
 }
 
+static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesystem::path>& paths) -> MonoArray*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto* result = mono_array_new(domain, mono_get_string_class(), paths.size());
+
+    if (result == nullptr) {
+        throw ScriptSystemException("Can't create Managed assembly path array");
+    }
+
+    for (size_t i = 0; i < paths.size(); i++) {
+        std::error_code ec;
+        const auto absolute_path = std::filesystem::absolute(paths[i], ec).lexically_normal();
+        const string path = fs_path_to_string(ec ? paths[i].lexically_normal() : absolute_path);
+        auto* managed_path = mono_string_new(domain, path.c_str());
+
+        if (managed_path == nullptr) {
+            throw ScriptSystemException("Can't create Managed assembly path string", path);
+        }
+
+        mono_array_setref(result, i, managed_path);
+    }
+
+    return result;
+}
+
 static auto ToStringAndFree(MonoString* text) -> string
 {
     FO_STACK_TRACE_ENTRY();
@@ -4921,6 +4961,138 @@ static void ThrowIfManagedException(MonoObject* exception, string_view context)
 // ManagedScriptBackend member functions
 // ---------------------------------------------------------------------------------------------------
 
+auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_loadScopeGcHandle == 0, "Managed load scope is already created");
+
+    auto* domain = GetDomainOrThrow(_domain.get());
+    const string host_path = fs_path_to_string(host_assembly_path);
+    auto* host_assembly = mono_domain_assembly_open(domain, host_path.c_str());
+
+    if (host_assembly == nullptr) {
+        throw ScriptSystemException("Failed to load Managed load-context host assembly", host_path);
+    }
+
+    auto* host_image = mono_assembly_get_image(host_assembly);
+
+    if (host_image == nullptr) {
+        throw ScriptSystemException("Managed load-context host image is null", host_path);
+    }
+
+    auto* host_class = mono_class_from_name(host_image, MANAGED_HOST_NAMESPACE.data(), MANAGED_HOST_CLASS_NAME.data());
+
+    if (host_class == nullptr) {
+        throw ScriptSystemException("Managed load-context host class not found");
+    }
+
+    auto* create_method = mono_class_get_method_from_name(host_class, "CreateLoadScope", 3);
+    auto* get_entries_method = mono_class_get_method_from_name(host_class, "GetEntryAssemblies", 1);
+
+    if (create_method == nullptr || get_entries_method == nullptr) {
+        throw ScriptSystemException("Managed load-context host methods not found");
+    }
+
+    const string context_name = strex("FOnline.{}.{}", GetTargetName(_meta->GetSide()), reinterpret_cast<uintptr_t>(this)).str();
+    auto* managed_context_name = mono_string_new(domain, context_name.c_str());
+    auto* managed_assembly_paths = MakeManagedPathArray(domain, assembly_paths);
+    auto* managed_entry_paths = MakeManagedPathArray(domain, entry_assembly_paths);
+
+    if (managed_context_name == nullptr) {
+        throw ScriptSystemException("Can't create Managed load-context name");
+    }
+
+    const ActiveBackendScope active_backend {this};
+    void* create_args[] = {managed_context_name, managed_assembly_paths, managed_entry_paths};
+    MonoObject* exception = nullptr;
+    MonoObject* load_scope = mono_runtime_invoke(create_method, nullptr, create_args, &exception);
+    ThrowIfManagedException(exception, "Managed load-context creation failed");
+
+    if (load_scope == nullptr) {
+        throw ScriptSystemException("Managed load-context host returned a null scope");
+    }
+
+    _managedHostImage = host_image;
+    _loadScopeGcHandle = mono_gchandle_new(load_scope, false);
+
+    if (_loadScopeGcHandle == 0) {
+        throw ScriptSystemException("Can't root Managed load-context scope");
+    }
+
+    void* get_entries_args[] = {load_scope};
+    exception = nullptr;
+    auto* entry_assembly_objects = reinterpret_cast<MonoArray*>(mono_runtime_invoke(get_entries_method, nullptr, get_entries_args, &exception));
+    ThrowIfManagedException(exception, "Managed entry assembly query failed");
+
+    if (entry_assembly_objects == nullptr || mono_array_length(entry_assembly_objects) != entry_assembly_paths.size()) {
+        throw ScriptSystemException("Managed load-context returned an invalid entry assembly list");
+    }
+
+    vector<nptr<void>> entry_assemblies;
+    entry_assemblies.reserve(entry_assembly_paths.size());
+
+    for (size_t i = 0; i < entry_assembly_paths.size(); i++) {
+        auto* reflection_assembly = mono_array_get(entry_assembly_objects, MonoReflectionAssembly*, i);
+        auto* assembly = reflection_assembly != nullptr ? mono_reflection_assembly_get_assembly(reflection_assembly) : nullptr;
+
+        if (assembly == nullptr) {
+            throw ScriptSystemException("Managed load-context returned a null entry assembly", entry_assembly_paths[i].string());
+        }
+
+        entry_assemblies.emplace_back(assembly);
+    }
+
+    return entry_assemblies;
+}
+
+void ManagedScriptBackend::ReleaseLoadScope() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const uint32_t load_scope_handle = _loadScopeGcHandle;
+    _loadScopeGcHandle = 0;
+
+    if (load_scope_handle == 0) {
+        _managedHostImage = nullptr;
+        return;
+    }
+
+    try {
+        auto* domain = static_cast<MonoDomain*>(_domain.get());
+        auto* host_image = static_cast<MonoImage*>(_managedHostImage.get());
+        auto* load_scope = mono_gchandle_get_target(load_scope_handle);
+
+        if (domain != nullptr && host_image != nullptr && load_scope != nullptr && mono_thread_attach(domain) != nullptr) {
+            auto* host_class = mono_class_from_name(host_image, MANAGED_HOST_NAMESPACE.data(), MANAGED_HOST_CLASS_NAME.data());
+            auto* release_method = host_class != nullptr ? mono_class_get_method_from_name(host_class, "ReleaseLoadScope", 1) : nullptr;
+
+            if (release_method == nullptr) {
+                WriteLog("Managed load-context release method not found");
+            }
+            else {
+                const ActiveBackendScope active_backend {this};
+                void* release_args[] = {load_scope};
+                MonoObject* exception = nullptr;
+                mono_runtime_invoke(release_method, nullptr, release_args, &exception);
+
+                if (exception != nullptr) {
+                    WriteLog("Managed load-context release failed: {}", ManagedObjectToString(exception));
+                }
+            }
+        }
+    }
+    catch (const std::exception& ex) {
+        WriteLog("Managed load-context release failed: {}", ex.what());
+    }
+    catch (...) {
+        WriteLog("Managed load-context release failed with an unknown exception");
+    }
+
+    mono_gchandle_free(load_scope_handle);
+    _managedHostImage = nullptr;
+}
+
 ManagedScriptBackend::~ManagedScriptBackend()
 {
     FO_STACK_TRACE_ENTRY();
@@ -4932,6 +5104,11 @@ ManagedScriptBackend::~ManagedScriptBackend()
             mono_gchandle_free(gc_handle);
         }
     }
+
+    _globalFuncGcHandles.clear();
+    _globalFuncs.clear();
+    _images.clear();
+    ReleaseLoadScope();
 
     // Mono VM state is process-wide. Server/client/mapper backends may coexist
     // in one process, so shutdown is left to process teardown.
@@ -5075,54 +5252,80 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     const auto restored_assembly_paths = RestoreAssemblyResources(resource_assemblies);
 
     vector<std::filesystem::path> assembly_paths;
+    vector<std::filesystem::path> entry_assembly_paths;
+    optional<std::filesystem::path> host_assembly_path;
 
-    for (const ManagedAssemblyResource& resource : resource_assemblies) {
-        if (!resource.IsEntry) {
-            continue;
+    const auto append_assembly_path = [&](const std::filesystem::path& assembly_path) {
+        const string file_name = strex("{}", assembly_path.filename().string()).str();
+
+        if (IsManagedHostAssemblyFileName(file_name)) {
+            if (host_assembly_path.has_value() && *host_assembly_path != assembly_path) {
+                throw ScriptSystemException("Multiple Managed load-context host assemblies found");
+            }
+
+            host_assembly_path = assembly_path;
+            return;
         }
 
+        assembly_paths.emplace_back(assembly_path);
+
+        if (IsManagedEntryAssemblyFileName(file_name, target_name)) {
+            entry_assembly_paths.emplace_back(assembly_path);
+        }
+    };
+
+    for (const ManagedAssemblyResource& resource : resource_assemblies) {
         if (const auto it = restored_assembly_paths.find(resource.ResourcePath); it != restored_assembly_paths.end()) {
-            assembly_paths.emplace_back(it->second);
+            append_assembly_path(it->second);
         }
     }
 
     // Bake-time fallback: a validation engine (proto/map/dialog baker) restores managed to reflect over script
     // funcs, but the assemblies the managed baker just compiled live on disk under the bake output and are not
     // yet mounted into the resource FileSystem it sees. Scan the bake output tree for the entry assembly.
-    if (assembly_paths.empty() && !bake_output_dir.empty()) {
-        assembly_paths = CollectBakeOutputAssemblyPaths(bake_output_dir, target_name);
+    if (entry_assembly_paths.empty() && !bake_output_dir.empty()) {
+        assembly_paths.clear();
+        entry_assembly_paths.clear();
+        host_assembly_path.reset();
+
+        for (const std::filesystem::path& assembly_path : CollectBakeOutputAssemblyPaths(bake_output_dir, target_name)) {
+            append_assembly_path(assembly_path);
+        }
     }
 
     size_t loaded_count = 0;
 
-    for (const std::filesystem::path& assembly_path : assembly_paths) {
-        const std::string assembly_path_str = assembly_path.string();
-        auto* assembly = mono_domain_assembly_open(domain, assembly_path_str.c_str());
-
-        if (assembly == nullptr) {
-            throw ScriptSystemException("Failed to load Managed assembly", assembly_path.string());
+    if (!entry_assembly_paths.empty()) {
+        if (!host_assembly_path.has_value()) {
+            throw ScriptSystemException("Managed load-context host assembly not found", string(MANAGED_HOST_ASSEMBLY_FILE_NAME));
         }
 
-        auto* image = mono_assembly_get_image(assembly);
+        const vector<nptr<void>> entry_assemblies = CreateLoadScope(*host_assembly_path, assembly_paths, entry_assembly_paths);
 
-        if (image == nullptr) {
-            throw ScriptSystemException("Managed image is null for loaded assembly", assembly_path.string());
+        for (const nptr<void>& entry_assembly : entry_assemblies) {
+            auto* assembly = static_cast<MonoAssembly*>(entry_assembly.get_no_const());
+
+            auto* image = mono_assembly_get_image(assembly);
+
+            if (image == nullptr) {
+                throw ScriptSystemException("Managed image is null for loaded entry assembly");
+            }
+
+            _images.emplace_back(image);
+            InvokeInitializator(assembly, "InitializeEarly");
+
+            auto init_func = SafeAlloc::MakeUnique<ScriptFuncDesc>();
+            init_func->Call = [this, assembly](FuncCallData& call) {
+                FO_STACK_TRACE_ENTRY();
+
+                ignore_unused(call);
+                InvokeInitializator(assembly, "Initialize");
+            };
+            unique_del_nptr<ScriptFuncDesc> init_func_desc = make_unique_del_ptr(std::move(init_func).release(), [](ScriptFuncDesc* desc) { delete desc; });
+            _scriptSys->AddInitFunc(ScriptFunc<void>(std::move(init_func_desc)), 0);
+
+            loaded_count++;
         }
-
-        _images.emplace_back(image);
-        InvokeInitializator(assembly, "InitializeEarly");
-
-        auto init_func = SafeAlloc::MakeUnique<ScriptFuncDesc>();
-        init_func->Call = [this, assembly](FuncCallData& call) {
-            FO_STACK_TRACE_ENTRY();
-
-            ignore_unused(call);
-            InvokeInitializator(assembly, "Initialize");
-        };
-        unique_del_nptr<ScriptFuncDesc> init_func_desc = make_unique_del_ptr(std::move(init_func).release(), [](ScriptFuncDesc* desc) { delete desc; });
-        _scriptSys->AddInitFunc(ScriptFunc<void>(std::move(init_func_desc)), 0);
-
-        loaded_count++;
     }
 
     if (loaded_count == 0u) {

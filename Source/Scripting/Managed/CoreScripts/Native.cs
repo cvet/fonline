@@ -148,6 +148,14 @@ namespace FOnline
                     adaptedArgs = adaptedArgs ?? (object[])args.Clone();
                     adaptedArgs[i] = StringifyList(sourceList);
                 }
+                else if (parameterType == typeof(List<object>) &&
+                    args[i] is IEnumerable sourceObjectList &&
+                    !(args[i] is List<object>) &&
+                    !(args[i] is string))
+                {
+                    adaptedArgs = adaptedArgs ?? (object[])args.Clone();
+                    adaptedArgs[i] = ObjectList(sourceObjectList);
+                }
             }
 
             return adaptedArgs ?? args;
@@ -179,6 +187,18 @@ namespace FOnline
             foreach (object entry in source)
             {
                 result.Add(entry?.ToString() ?? string.Empty);
+            }
+
+            return result;
+        }
+
+        private static List<object> ObjectList(IEnumerable source)
+        {
+            List<object> result = new List<object>();
+
+            foreach (object entry in source)
+            {
+                result.Add(entry);
             }
 
             return result;

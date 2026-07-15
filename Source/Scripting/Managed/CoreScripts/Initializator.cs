@@ -13,9 +13,17 @@ namespace FOnline
     public static class Initializator
     {
         private const string ManagedModuleInitOwnerMarker = "FO_MANAGED_MODULE_INIT_OWNER";
+        private static bool _initializedEarly;
 
         static void InitializeEarly()
         {
+            if (_initializedEarly)
+            {
+                throw new InvalidOperationException(
+                    "Managed entry assembly was initialized more than once in one load context");
+            }
+
+            _initializedEarly = true;
             ScriptFuncRegistration.RegisterEngineAttributeFuncs();
             RemoteCallScriptFuncs.RegisterRemoteCalls();
             RunScriptFuncRegistrars();

@@ -66,6 +66,7 @@ public:
 
 private:
     static void GenerateTargetApiFiles(const EngineMetadata& meta, const std::filesystem::path& project_dir, string_view target_name);
+    static void GenerateManagedHostProjectFile(const std::filesystem::path& project_dir, string_view target_framework, const std::filesystem::path& source_file);
     static void GenerateUnifiedProjectFile(const std::filesystem::path& project_dir, const std::filesystem::path& assemblies_output_dir, string_view pack_name, string_view project_name, string_view target_framework, const map<string, vector<std::filesystem::path>>& source_files, const map<string, vector<string>>& references);
     static void GenerateSolutionFile(const std::filesystem::path& project_dir, string_view solution_name, const vector<string>& project_names);
     static auto CollectSourceFiles(const FileCollection& files, const vector<std::filesystem::path>& dir_source_files, const vector<string>& extra_sources, string_view assembly_name, string_view target_name) -> vector<std::filesystem::path>;

@@ -59,6 +59,8 @@ public:
     void AddRemoteCallHandlerGcHandle(uint32_t gc_handle) { _globalFuncGcHandles.emplace_back(gc_handle); }
 
 private:
+    auto CreateLoadScope(const std::filesystem::path& host_assembly_path, const vector<std::filesystem::path>& assembly_paths, const vector<std::filesystem::path>& entry_assembly_paths) -> vector<nptr<void>>;
+    void ReleaseLoadScope() noexcept;
     void InvokeInitializator(void* assembly, const char* method_name);
     void CreateAliveFlag();
     void ReleaseAliveFlag();
@@ -66,9 +68,11 @@ private:
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {};
     nptr<void> _domain {};
+    nptr<void> _managedHostImage {};
     vector<nptr<void>> _images {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _globalFuncGcHandles {};
+    uint32_t _loadScopeGcHandle {};
     uint32_t _aliveFlagGcHandle {};
 };
 
