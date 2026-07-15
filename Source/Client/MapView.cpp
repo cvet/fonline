@@ -3508,7 +3508,7 @@ auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find
             }
         }
     }
-    else  {
+    else {
         critters.reserve(_critters.size());
 
         for (refcount_ptr<CritterHexView>& cr_ref : _critters) {

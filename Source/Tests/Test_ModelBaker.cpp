@@ -705,6 +705,36 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(config.find("Critters/NoAnim.fo3d") == string::npos);
     }
 
+    SECTION("Materializes model animation aliases with client lookup semantics")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", R"(Model Body.fbx
+Anim 1 3 ModelFile Base
+Anim 0 3 ModelFile Base
+Anim 1 5 ModelFile Base
+AnimSpeed 1 3 2
+AnimSpeed 0 3 4
+AnimSpeed 1 5 5
+StateAnimEqual 0 1
+ActionAnimEqual 3 5
+ActionAnimEqual 5 3
+ActionAnimEqual 4 6
+)",
+            7);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Base"}));
+
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        CHECK(config.find("StateAnims = 1 0 1 0\n") != string::npos);
+        CHECK(config.find("ActionAnims = 5 5 3 3\n") != string::npos);
+        CHECK(config.find("DurationsMs = 500 500 200 200\n") != string::npos);
+        CHECK(config.find("ActionAnims = 4") == string::npos);
+        CHECK(config.find("DurationsMs = 250") == string::npos);
+    }
+
     SECTION("Applies include replacements in model descriptions")
     {
         TestRig rig;
