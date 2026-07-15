@@ -415,8 +415,8 @@ namespace FOnline
         }
 
         // Mirrors the engine std::formatter<ucolor> ("0x{:x}", Essentials/ExtendedTypes.h) that backs AngelScript's
-        // value->string path (Type_GetStr / Type_AnyConv via strex), so a ported `"@color " + color` yields
-        // `@color 0x<hex>@` exactly as before (the FontManager @color tag parser reads the value with strtoul base 16).
+        // value->string path (Type_GetStr / Type_AnyConv via strex), so a ported `"@color:" + color` yields
+        // `@color:0x<hex>@` exactly as before (the FontManager @color tag parser reads the value with strtoul base 16).
         public override string ToString() => $"0x{value:x}";
     }
 

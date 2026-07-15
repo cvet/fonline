@@ -1643,24 +1643,29 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
         throw ScriptSystemException("Managed method not found", owner_type_name, method_name_str, method_index, args_count);
     }
 
+    const bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
+    const size_t first_method_arg = is_ref_type_factory ? 0 : 1;
     array<void*, MAX_CALL_ARGS> args_data {};
     array<ManagedNativeValue, MAX_CALL_ARGS> native_args {};
     Entity* self_entity = entity.get();
     void* self_ref = entity_ptr;
-    args_data[0] = is_ref_type_method ? &self_ref : make_ptr(&self_entity).void_cast();
 
-    if (is_ref_type_method && self_ref == nullptr) {
+    if (!is_ref_type_factory) {
+        args_data[0] = is_ref_type_method ? &self_ref : make_ptr(&self_entity).void_cast();
+    }
+
+    if (is_ref_type_method && !is_ref_type_factory && self_ref == nullptr) {
         throw ScriptSystemException("Managed ref type target is null", owner_type_name, method_name_str);
     }
 
     for (size_t i = 0; i < args_count; i++) {
         auto* arg = mono_array_get(get_args(), MonoObject*, i);
-        args_data[i + 1] = ConvertManagedObjectToNative(backend, method->Args[i].Type, arg, native_args[i]);
+        args_data[i + first_method_arg] = ConvertManagedObjectToNative(backend, method->Args[i].Type, arg, native_args[i]);
     }
 
     vector<ptr<void>> args_ptrs;
-    args_ptrs.reserve(args_count + 1);
-    for (size_t arg_idx = 0; arg_idx < args_count + 1; arg_idx++) {
+    args_ptrs.reserve(args_count + first_method_arg);
+    for (size_t arg_idx = 0; arg_idx < args_count + first_method_arg; arg_idx++) {
         args_ptrs.emplace_back(args_data[arg_idx]);
     }
 
@@ -1720,7 +1725,7 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
         if (!method->Ret && mutable_args_count == 1) {
             for (size_t i = 0; i < args_count; i++) {
                 if (method->Args[i].Type.IsMutable) {
-                    return BoxNativeCallValue(backend, method->Args[i].Type, args_data[i + 1], call.Accessor.get());
+                    return BoxNativeCallValue(backend, method->Args[i].Type, args_data[i + first_method_arg], call.Accessor.get());
                 }
             }
 
@@ -1746,7 +1751,7 @@ static auto NativeCallMethod(MonoString* owner_type, MonoString* method_name, in
                 continue;
             }
 
-            MonoObject* arg = BoxNativeCallValue(backend, method->Args[i].Type, args_data[i + 1], call.Accessor.get());
+            MonoObject* arg = BoxNativeCallValue(backend, method->Args[i].Type, args_data[i + first_method_arg], call.Accessor.get());
             mono_array_setref(get_result(), result_index, arg);
             result_index++;
         }

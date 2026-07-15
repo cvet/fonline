@@ -509,6 +509,10 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_settings.find("global::FOnline.Native.GetSettingByteList(") != string::npos);
     CHECK(client_settings.find("\"View.GlobalDayColor\"") != string::npos);
 
+    const string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
+    CHECK(client_types.find("public static MapSpriteHolder __Factory()") != string::npos);
+    CHECK(client_types.find("\"__Factory\",\n                2,\n                IntPtr.Zero,") != string::npos);
+
     const string server_types = ReadTextFile(script_dir / "ServerTypes.gen.cs");
     CHECK(server_types.find("public partial struct hstring") != string::npos);
     CHECK(server_types.find("public static hstring FromString(string value)") != string::npos);

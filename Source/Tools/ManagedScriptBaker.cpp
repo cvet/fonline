@@ -2915,9 +2915,10 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
         return;
     }
 
+    const bool is_method_static = is_static || (is_ref_type_owner && method.Name == "__Factory");
     string declaration_prefix = "public ";
 
-    if (is_static) {
+    if (is_method_static) {
         declaration_prefix += "static ";
     }
     // Emit the nullable return annotation in the signature only; `ret` stays non-nullable for the
@@ -2927,14 +2928,14 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
 
     AppendCsCallableDeclaration(out, CS_INDENT, declaration_prefix, method_name, arg_declarations, "");
 
-    if (is_static && method.Name == "Log" && method.Args.size() == 1 && ret == "void" && MakeCsTypeName(method.Args.front().Type) == "string") {
+    if (is_method_static && method.Name == "Log" && method.Args.size() == 1 && ret == "void" && MakeCsTypeName(method.Args.front().Type) == "string") {
         unordered_set<string> used_arg_names;
         const string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
         out << CS_INDENT << "    global::FOnline.Native.Log(" << arg_name << ");\n";
         out << CS_INDENT << "}\n";
     }
-    else if (is_static && method.Name == "GetHashStr" && method.Args.size() == 1 && ret == "string" && MakeCsTypeName(method.Args.front().Type) == "ulong") {
+    else if (is_method_static && method.Name == "GetHashStr" && method.Args.size() == 1 && ret == "string" && MakeCsTypeName(method.Args.front().Type) == "ulong") {
         unordered_set<string> used_arg_names;
         const string arg_name = MakeUniqueCsIdentifier(method.Args.front().Name.empty() ? "arg0" : method.Args.front().Name, used_arg_names);
         out << CS_INDENT << "{\n";
@@ -2944,7 +2945,7 @@ static void AppendMethod(std::ostringstream& out, const MethodDesc& method, size
     else if (allow_native_bridge && IsManagedBridgeMethod(method)) {
         const string owner_literal = EscapeCsStringLiteral(owner_type_name);
         const string method_literal = EscapeCsStringLiteral(method.Name);
-        const string entity_ptr = string {MakeTargetPtrExpression(is_static, is_ref_type_owner)};
+        const string entity_ptr = string {MakeTargetPtrExpression(is_method_static, is_ref_type_owner)};
         const bool has_mutable_args = HasMutableArgs(method.Args);
         const size_t mutable_args_count = CountMutableArgs(method.Args);
         const string body_indent = strex("{}    ", CS_INDENT).str();
