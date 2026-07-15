@@ -1191,23 +1191,37 @@ auto Map::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find_typ
     vector<ptr<Critter>> critters;
 
     const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
-    unordered_set<ident_t> seen;
-    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-    for (int32_t i = 0; i < hexes_in_radius; i++) {
-        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
-            const auto& field = _hexField->GetCellForReading(cur_hex);
+    if (numeric_cast<size_t>(hexes_in_radius) < _critters.size()) {
+        unordered_set<ident_t> seen;
+        seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-            if (!field.HasCritter) {
-                continue;
-            }
+        for (int32_t i = 0; i < hexes_in_radius; i++) {
+            if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, numeric_cast<int32_t>(i), _mapSize)) {
+                const auto& field = _hexField->GetCellForReading(cur_hex);
 
-            auto field2 = _hexField->GetCellForWriting(cur_hex);
-
-            for (auto cr : field2->Critters) {
-                if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
-                    critters.emplace_back(cr);
+                if (!field.HasCritter) {
+                    continue;
                 }
+
+                auto field2 = _hexField->GetCellForWriting(cur_hex);
+
+                for (auto cr : field2->Critters) {
+                    if (seen.insert(cr->GetId()).second && cr->CheckFind(find_type)) {
+                        critters.emplace_back(cr);
+                    }
+                }
+            }
+        }
+    }
+    else {
+        critters.reserve(_critters.size());
+
+        for (auto cr : _critters) {
+            const int32_t distance = GeometryHelper::GetDistance(hex, cr->GetHex()) - cr->GetMultihex();
+
+            if (distance <= radius && cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
             }
         }
     }
