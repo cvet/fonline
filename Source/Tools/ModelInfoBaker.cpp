@@ -231,12 +231,7 @@ void ModelInfoBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     FO_VERIFY_AND_THROW(_context->BakedFiles, "Baker context has no baked file registry");
 
-    // The both-sides ModelAnimInfo pack emits a single ConfigFile of per-model animation cycle durations
-    // (read server-side via Game.ReadConfigSection); the full model-info binary stays client-only in CrittersArt.
-    if (_context->PackName == "ModelAnimInfo") {
-        BakeModelAnimInfo(*_context, files, target_path);
-        return;
-    }
+    BakeModelAnimInfo(*_context, files, target_path);
 
     vector<File> filtered_files;
 

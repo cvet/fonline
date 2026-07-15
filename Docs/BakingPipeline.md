@@ -118,10 +118,12 @@ The abstract base for individual baker implementations. Each baker provides:
 - `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
-- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
+- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `5`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+`ModelInfoBaker` emits the regular baked model descriptions together with a common `ModelAnimInfo.foinfo` table containing each model's effective `(state, action)` cycle durations after authored `AnimSpeed` is applied. Any pack can select `ModelInfo`; behavior never branches on `PackName`. Put that pack on every runtime side that needs model metadata. `EngineMetadata` registers the duration table alongside prototypes at startup, including model names in its hash storage; common scripts query it through `Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The method returns a `timespan`, or zero when the resource, model, or tuple is absent. The config representation is an internal baker/runtime contract and should not be parsed by embedding-project scripts.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
 

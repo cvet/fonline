@@ -604,9 +604,11 @@ TEST_CASE("ModelInfoBakerOrchestration")
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        REQUIRE(checks.size() == 2);
-        CHECK(checks[0] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        REQUIRE(checks.size() == 3);
+        CHECK(checks[0] == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50});
         CHECK(checks[1] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        CHECK(checks[2] == pair<string, uint64_t> {"Critters/Test.fo3d", 50});
+        CHECK(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
         CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
         CHECK(rig.Outputs.count("Critters/TEMPLATE_Anim.fo3d") == 0);
     }
@@ -658,7 +660,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         AddModelInfoMetadata(empty_rig);
         empty_rig.AddSourceFile("Critters/TEMPLATE_Test.fo3d", "Model Body.fbx\n", 1);
 
-        ModelInfoBaker empty_baker(empty_rig.MakeContext("ModelAnimInfo"));
+        ModelInfoBaker empty_baker(empty_rig.MakeContext("ArbitraryPack"));
         CHECK_NOTHROW(empty_baker.BakeFiles(empty_rig.GetAllSourceFiles(), ""));
         CHECK(empty_rig.Outputs.empty());
 
@@ -667,36 +669,37 @@ TEST_CASE("ModelInfoBakerOrchestration")
         skipped_rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\n", 10);
         skipped_rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
 
-        ModelInfoBaker skipped_baker(skipped_rig.MakeContext("ModelAnimInfo", [](string_view, uint64_t) { return false; }));
+        ModelInfoBaker skipped_baker(skipped_rig.MakeContext("ArbitraryPack", [](string_view, uint64_t) { return false; }));
         CHECK_NOTHROW(skipped_baker.BakeFiles(skipped_rig.GetAllSourceFiles(), ""));
         CHECK(skipped_rig.Outputs.empty());
     }
 
-    SECTION("Writes ModelAnimInfo config with speed-adjusted durations")
+    SECTION("Writes model descriptions and ModelAnimInfo config with speed-adjusted durations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile ~Idle\nAnim 0 1 ModelFile Duplicate\nAnim 2 3 ModelFile Base\nAnim 4 5 ModelFile Missing\n", 50);
-        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nInclude TEMPLATE_Anim.fo3d\nAnimSpeed 0 1 2\nAnimSpeed 2 3 4\n", 7);
+        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile ~Idle\nAnim 0 1 ModelFile Duplicate\nAnim 0 3 ModelFile Base\n", 50);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nInclude TEMPLATE_Anim.fo3d\nAnimSpeed 0 1 2\nAnimSpeed 0 3 4\n", 7);
         rig.AddSourceFile("Critters/NoAnim.fo3d", "Model Body.fbx\n", 8);
         rig.AddSourceFile("Critters/Readme.txt", "ignored", 100);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}, {}, {}, {}, {"Body"}));
 
         vector<pair<string, uint64_t>> checks;
-        ModelInfoBaker baker(rig.MakeContext("ModelAnimInfo", [&checks](string_view path, uint64_t write_time) {
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack", [&checks](string_view path, uint64_t write_time) {
             checks.emplace_back(string(path), write_time);
             return true;
         }));
 
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
-        REQUIRE(checks.size() == 1);
-        CHECK(checks.front() == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50});
+        CHECK(std::ranges::find(checks, pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50}) != checks.end());
         REQUIRE(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
+        CHECK(rig.Outputs.count("Critters/Test.fo3d") == 1);
+        CHECK(rig.Outputs.count("Critters/NoAnim.fo3d") == 1);
 
         const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
         CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
-        CHECK(config.find("StateAnims = 0 2\n") != string::npos);
+        CHECK(config.find("StateAnims = 0 0\n") != string::npos);
         CHECK(config.find("ActionAnims = 1 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 250\n") != string::npos);
         CHECK(config.find("Critters/NoAnim.fo3d") == string::npos);
@@ -739,7 +742,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Missing.fbx\nAnim 0 1 ModelFile Idle\n", 7);
 
-        ModelInfoBaker baker(rig.MakeContext("ModelAnimInfo"));
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"));
         CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Other.foinfo"));
         CHECK(rig.Outputs.empty());
     }
@@ -756,7 +759,7 @@ TEST_CASE("ModelInfoBakerOrchestration")
             return checks == 1;
         }));
 
-        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), "Critters/Test.fo3d"));
         CHECK(checks == 2);
         CHECK(rig.Outputs.empty());
     }
