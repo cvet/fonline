@@ -208,7 +208,7 @@ static void SetSettingValueFromString(MonoString* name, string value);
 static auto InvokeManagedCallbackHandler(ptr<ManagedScriptBackend> backend, MonoObject* handler, MonoArray* args_array) -> MonoObject*;
 static auto ResolveVirtualPropertyForCallback(ptr<ManagedScriptBackend> backend, MonoString* owner_type, MonoString* property_name, bool require_virtual, bool require_marshalable_value) -> ptr<const Property>;
 static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call);
-static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* ret_data, const DataAccessor* accessor);
+static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
 static auto CreateManagedCallbackDesc(const ManagedCallbackBridgeData* callback) -> unique_del_nptr<ScriptFuncDesc>;
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*;
 
@@ -2533,27 +2533,25 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
     ThrowIfManagedException(exception, "Managed callback failed");
 
     if (ret) {
-        CopyManagedCallbackReturnValue(backend, ret, result, call.RetData.get(), call.Accessor.get());
+        CopyManagedCallbackReturnValue(backend, ret, result, call);
     }
 }
 
-static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* ret_data, const DataAccessor* accessor)
+static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call)
 {
     FO_STACK_TRACE_ENTRY();
 
     if (!type) {
         return;
     }
-    if (ret_data == nullptr) {
-        throw ScriptSystemException("Managed callback return storage is null");
-    }
+
+    ptr<void> ret_data = call.RetData.as_ptr();
+    ptr<const DataAccessor> accessor = call.Accessor;
 
     if (type.Kind == ComplexTypeKind::Array) {
         // Rebuild the caller's array from the managed List return (the reverse of BoxNativeCallValue's Array read).
         // Uses the accessor's ClearArray/AddArrayElement write API, so collection-returning [ScriptCallable] bridges
         // (e.g. Purchases::SelectUningestedWebOrdersManaged -> hstring[]) work the same as an AngelScript array return.
-        FO_VERIFY_AND_THROW(accessor, "Managed callback array return requires a data accessor");
-
         accessor->ClearArray(ret_data);
 
         const size_t array_size = value != nullptr ? GetManagedListCount(backend, value) : 0;
@@ -2577,26 +2575,38 @@ static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, co
     void* native_value = ConvertManagedSimpleObjectToNative(backend, base_type, value, storage);
 
     if (base_type.IsString) {
-        *static_cast<string*>(ret_data) = *static_cast<string*>(native_value);
+        *ret_data.reinterpret_as<string>() = *static_cast<string*>(native_value);
     }
     else if (base_type.IsHashedString) {
-        *static_cast<hstring*>(ret_data) = *static_cast<hstring*>(native_value);
+        *ret_data.reinterpret_as<hstring>() = *static_cast<hstring*>(native_value);
     }
     else if (base_type.IsEntity || base_type.IsFixedType || base_type.IsEntityProto) {
         auto* entity = *static_cast<Entity**>(native_value);
 
-        if (accessor != nullptr && accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX && entity != nullptr) {
+        if (accessor->GetBackendIndex() == ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX && entity != nullptr) {
             entity->AddRef();
         }
 
-        *static_cast<Entity**>(ret_data) = entity;
+        *ret_data.reinterpret_as<Entity*>() = entity;
     }
     else if (base_type.IsRefType) {
         if (IsDynamicManagedRefType(base_type)) {
-            throw ScriptSystemException("Managed callback dynamic ref type returns are not supported yet", base_type.Name);
-        }
+            nptr<DynamicRefTypeInstance> ref_instance = *static_cast<DynamicRefTypeInstance**>(native_value);
+            NativeDataProvider::WriteTypedHandleSlot(ret_data, ref_instance);
 
-        *static_cast<void**>(ret_data) = *static_cast<void**>(native_value);
+            if (ref_instance) {
+                if (accessor->GetBackendIndex() == ScriptSystemBackend::MANAGED_BACKEND_INDEX) {
+                    refcount_nptr<DynamicRefTypeInstance> return_owner = std::move(storage.DynamicRefType);
+                    call.RetValueOwner.Reset([return_owner = std::move(return_owner)]() mutable noexcept { return_owner = nullptr; });
+                }
+                else {
+                    (void)storage.DynamicRefType.release_ownership();
+                }
+            }
+        }
+        else {
+            *NativeDataProvider::GetHandleSlot(ret_data) = *static_cast<void**>(native_value);
+        }
     }
     else if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
         MemCopy(ret_data, native_value, base_type.Size);
