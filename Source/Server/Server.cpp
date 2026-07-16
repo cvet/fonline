@@ -2385,7 +2385,11 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         }
 
         WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
+        // Recreate the old chosen as an ordinary critter view. RemoveCritter clears the client's
+        // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false.
+        player->Send_RemoveCritter(prev_cr);
         player->DetachCritter();
+        player->Send_AddCritter(prev_cr);
         return;
     }
 

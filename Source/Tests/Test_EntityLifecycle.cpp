@@ -71,6 +71,8 @@ namespace
             FO_NO_STACK_TRACE_ENTRY();
 
             _sentPacketCount.store(0, std::memory_order_relaxed);
+            _sentAddCritterCount.store(0, std::memory_order_relaxed);
+            _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
         }
 
         [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
@@ -78,6 +80,20 @@ namespace
             FO_NO_STACK_TRACE_ENTRY();
 
             return _sentPacketCount.load(std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            switch (msg) {
+            case NetMessage::AddCritter:
+                return _sentAddCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::RemoveCritter:
+                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
+            default:
+                return 0;
+            }
         }
 
     protected:
@@ -89,6 +105,36 @@ namespace
 
             if (!data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
+
+                constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+                size_t offset = 0;
+
+                while (offset < data.size()) {
+                    FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
+
+                    uint32_t signature {};
+                    uint32_t message_size {};
+                    NetMessage message {};
+                    MemCopy(&signature, data.data() + offset, sizeof(signature));
+                    MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+                    MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+
+                    FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
+                    FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset,
+                                        "Invalid outgoing network message size",
+                                        message_size,
+                                        data.size(),
+                                        offset);
+
+                    if (message == NetMessage::AddCritter) {
+                        _sentAddCritterCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    else if (message == NetMessage::RemoveCritter) {
+                        _sentRemoveCritterCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+
+                    offset += message_size;
+                }
             }
         }
 
@@ -96,6 +142,8 @@ namespace
 
     private:
         std::atomic<size_t> _sentPacketCount {};
+        std::atomic<size_t> _sentAddCritterCount {};
+        std::atomic<size_t> _sentRemoveCritterCount {};
     };
 
     static auto MakeSettings() -> GlobalSettings
@@ -1711,6 +1759,43 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         prev_cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(prev_cr);
+    }
+
+    SECTION("DetachPlayerCritterResendsPreviousChosenAsOrdinaryCritter")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "ChosenDetach");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        test_connection->Dispatch();
+        test_connection->ResetSentPacketCount();
+        server->SwitchPlayerCritter(player, nullptr);
+        test_connection->Dispatch();
+
+        CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
+        CHECK_FALSE(static_cast<bool>(cr->GetPlayer()));
+        CHECK(test_connection->GetSentPacketCount() > 0);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::RemoveCritter) == 1);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
+
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
     }
 
     SECTION("StopMoveDirEventMayDetachPlayerBeforeStoppingMovement")
