@@ -21,6 +21,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * LibreSSL - [4.3.2](https://www.libressl.org)
 * mongo-c-driver - [mongo-c-driver-2.3.1](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
+* ozz-animation - [0.16.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.16.0), with the exact upstream revision and pruning list recorded in its manifest
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
 * ufbx - [ufbx-0.22.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)

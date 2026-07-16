@@ -288,6 +288,76 @@ StatusMessage("+ GLM")
 AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
 AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
 
+# ozz-animation
+# Server applications link ClientLib, and FO_BUILD_SERVER enables
+# FO_BUILD_CLIENT_LIB in Init.cmake.
+if(FO_ENABLE_3D AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    SetValue(FO_OZZ_DIR "${FO_ENGINE_ROOT}/ThirdParty/ozz-animation")
+    SetValue(FO_OZZ_BASE_SOURCE
+        "${FO_OZZ_DIR}/src/base/containers/string_archive.cc"
+        "${FO_OZZ_DIR}/src/base/encode/group_varint.cc"
+        "${FO_OZZ_DIR}/src/base/io/archive.cc"
+        "${FO_OZZ_DIR}/src/base/io/stream.cc"
+        "${FO_OZZ_DIR}/src/base/log.cc"
+        "${FO_OZZ_DIR}/src/base/maths/box.cc"
+        "${FO_OZZ_DIR}/src/base/maths/math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math.cc"
+        "${FO_OZZ_DIR}/src/base/maths/simd_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/maths/soa_math_archive.cc"
+        "${FO_OZZ_DIR}/src/base/memory/allocator.cc"
+        "${FO_OZZ_DIR}/src/base/platform.cc")
+    SetValue(FO_OZZ_ANIMATION_SOURCE
+        "${FO_OZZ_DIR}/src/animation/runtime/animation.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/animation_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_aim_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/ik_two_bone_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/local_to_model_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/motion_blending_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/skeleton_utils.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_sampling_job.cc"
+        "${FO_OZZ_DIR}/src/animation/runtime/track_triggering_job.cc")
+
+    AddStaticThirdPartyLibrary(ozz_base
+        SOURCE_LIST FO_OZZ_BASE_SOURCE
+        INCLUDE_DIRS "${FO_OZZ_DIR}/include")
+    AppendList(FO_COMMON_LIBS ozz_base)
+    AddStaticThirdPartyLibrary(ozz_animation
+        SOURCE_LIST FO_OZZ_ANIMATION_SOURCE
+        LINK_LIBS ozz_base)
+    TargetIncludeDirectories(ozz_animation PRIVATE "${FO_OZZ_DIR}/src")
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS ozz_animation)
+    endif()
+
+    if(FO_BUILD_BAKER_LIB)
+        SetValue(FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            "${FO_OZZ_DIR}/src/animation/offline/additive_animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/animation_optimizer.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/motion_extractor.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_animation_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_skeleton_archive.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/raw_track_utils.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/skeleton_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_builder.cc"
+            "${FO_OZZ_DIR}/src/animation/offline/track_optimizer.cc")
+        AddStaticThirdPartyLibrary(ozz_animation_offline
+            SOURCE_LIST FO_OZZ_ANIMATION_OFFLINE_SOURCE
+            APPEND_TO FO_BAKER_LIBS
+            LINK_LIBS ozz_animation)
+        TargetIncludeDirectories(ozz_animation_offline PRIVATE "${FO_OZZ_DIR}/src")
+    endif()
+endif()
+
 # ufbx
 if(FO_ENABLE_3D AND FO_BUILD_BAKER_LIB)
     SetValue(FO_UFBX_DIR "${FO_ENGINE_ROOT}/ThirdParty/ufbx")
