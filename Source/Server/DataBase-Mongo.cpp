@@ -56,8 +56,7 @@ public:
         auto client_guard = scope_fail([&]() noexcept { mongoc_client_destroy(client.get()); });
 
         mongoc_uri_destroy(mongo_uri.get());
-        auto app_name = make_ptr(FO_DEV_NAME.c_str());
-        mongoc_client_set_appname(client.get(), app_name.get());
+        mongoc_client_set_appname(client.get(), FO_DEV_NAME);
 
         const string db_name_text = string(db_name);
         auto db_name_ptr = make_ptr(db_name_text.c_str());

@@ -93,8 +93,8 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     exports->Metadata.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeMetadata));
     exports->Metadata.HostAbiVersion = FO_CLIENT_RUNTIME_HOST_ABI_VERSION;
     exports->Metadata.RuntimeName = runtime_name.c_str();
-    exports->Metadata.BuildHash = FO_BUILD_HASH.c_str();
-    exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION.c_str();
+    exports->Metadata.BuildHash = FO_BUILD_HASH;
+    exports->Metadata.CompatibilityVersion = FO_COMPATIBILITY_VERSION;
     exports->Run = &RunClientRuntimeAbi;
 
     WriteLog("Client runtime DLL: exports ready, runtime {}, build {}, compatibility {}, ABI {}", runtime_name, FO_BUILD_HASH, FO_COMPATIBILITY_VERSION, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
