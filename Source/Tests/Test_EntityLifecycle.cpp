@@ -101,10 +101,16 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const const_span<uint8_t> data = SendCallback();
+            const const_span<uint8_t> encoded_data = SendCallback();
 
-            if (!data.empty()) {
+            if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
+
+                const_span<uint8_t> data = encoded_data;
+                if (!_settings->DisableZlibCompression) {
+                    _decompressor.Decompress(encoded_data, _unpackedData);
+                    data = _unpackedData;
+                }
 
                 constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
                 size_t offset = 0;
@@ -120,11 +126,7 @@ namespace
                     MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
 
                     FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
-                    FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset,
-                                        "Invalid outgoing network message size",
-                                        message_size,
-                                        data.size(),
-                                        offset);
+                    FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
 
                     if (message == NetMessage::AddCritter) {
                         _sentAddCritterCount.fetch_add(1, std::memory_order_relaxed);
@@ -144,6 +146,8 @@ namespace
         std::atomic<size_t> _sentPacketCount {};
         std::atomic<size_t> _sentAddCritterCount {};
         std::atomic<size_t> _sentRemoveCritterCount {};
+        StreamDecompressor _decompressor {};
+        vector<uint8_t> _unpackedData {};
     };
 
     static auto MakeSettings() -> GlobalSettings
