@@ -11,7 +11,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * glslang - [glslang-1.4.321.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.12.0](https://github.com/azadkuh/nlohmann_json_release)
 * SDL - [SDL-3.4.12](https://github.com/libsdl-org/SDL)
-* small_vector - [small_vector](https://github.com/gharveymn/small_vector)
+* small_vector - [small_vector-0.10.2](https://github.com/gharveymn/small_vector)
 * SPIRV-Cross - [SPIRV-Cross-1.4.309.0](https://github.com/KhronosGroup/SPIRV-Cross)
 * tracy - [tracy-0.13.1](https://github.com/wolfpld/tracy)
 * Theora - [libtheora-1.2.0](https://www.theora.org)
