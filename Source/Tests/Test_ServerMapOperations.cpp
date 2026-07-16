@@ -471,6 +471,19 @@ namespace MapOpsTest
         Game.CreateLocation("MissingLocation".hstr(), mapPids, props);
     }
 
+    // An init script that cannot be resolved must fail loudly instead of leaving the entity silently uninitialized
+    void TestCreateLocationMissingInitScriptThrows()
+    {
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::MissingLocationInit".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
+    }
+
+    void TestCreateLocationMismatchedInitScriptThrows()
+    {
+        dict<LocationProperty, any> props = {{LocationProperty::InitScript, "MapOpsTest::AllowItemPathGag".hstr()}};
+        Game.CreateLocation("TestLocation".hstr(), props);
+    }
+
     int TestGameDestroyItemByIdCountOverload()
     {
         Location loc = CreateTestLocation();
@@ -5316,6 +5329,16 @@ TEST_CASE("MapLocationRelationship")
     SECTION("CreateLocationInvalidProtoMapPropsThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationInvalidProtoMapPropsThrows", "Invalid location proto id arg");
+    }
+
+    SECTION("CreateLocationMissingInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMissingInitScriptThrows", "Init function not found or has a mismatched signature");
+    }
+
+    SECTION("CreateLocationMismatchedInitScriptThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestCreateLocationMismatchedInitScriptThrows", "Init function not found or has a mismatched signature");
     }
 
     SECTION("GameGetLocations")

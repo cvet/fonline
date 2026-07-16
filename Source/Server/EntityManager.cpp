@@ -972,7 +972,8 @@ void EntityManager::CallInit(ptr<Location> loc, bool first_time)
     _engine->OnLocationInit.Fire(loc, first_time);
 
     if (!loc->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), loc, loc->GetInitScript(), first_time);
+        // An unresolvable init script throws; a false result means the script itself threw and was already reported
+        (void)ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), loc, loc->GetInitScript(), first_time);
     }
 
     if (!loc->IsDestroyed()) {
@@ -1002,7 +1003,8 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
     _engine->OnMapInit.Fire(map, first_time);
 
     if (!map->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), map, map->GetInitScript(), first_time);
+        // An unresolvable init script throws; a false result means the script itself threw and was already reported
+        (void)ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), map, map->GetInitScript(), first_time);
     }
 
     if (!map->IsDestroyed()) {
@@ -1040,7 +1042,8 @@ void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
     _engine->OnCritterInit.Fire(cr, first_time);
 
     if (!cr->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), cr, cr->GetInitScript(), first_time);
+        // An unresolvable init script throws; a false result means the script itself threw and was already reported
+        (void)ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), cr, cr->GetInitScript(), first_time);
     }
 
     if (!cr->IsDestroyed()) {
@@ -1070,7 +1073,8 @@ void EntityManager::CallInit(ptr<Item> item, bool first_time)
     _engine->OnItemInit.Fire(item, first_time);
 
     if (!item->IsDestroyed()) {
-        ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), item, item->GetInitScript(), first_time);
+        // An unresolvable init script throws; a false result means the script itself threw and was already reported
+        (void)ScriptHelpers::CallInitScript(ptr<ScriptSystem>(_engine), item, item->GetInitScript(), first_time);
     }
 
     if (!item->IsDestroyed() && item->HasInnerItems()) {

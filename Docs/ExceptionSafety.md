@@ -22,6 +22,7 @@ After §1, the exceptions that can propagate through a running server are:
 - `VerificationException` from `FO_VERIFY_AND_THROW(cond, …)` / the script `verify(…)` macro.
 - Engine exceptions: `EntitySyncException`, `DataBaseException`, `GenericException`, manager exceptions, etc.
 - Exceptions raised from an AngelScript callback that runs *directly* in native code (init scripts via `CallInit`), and the post-event re-validation `FO_VERIFY_AND_THROW` checks.
+- `ScriptException` from `ScriptHelpers::CallInitScript` when an entity's `InitScript` cannot be resolved to a function with the expected signature. This is an engine-raised refusal, not a script-raised throw: it fails loudly rather than leaving the entity silently uninitialized. It reaches `CallInit` (and therefore entity creation and world load), while a *throwing* init script does not — `ScriptFunc::Call` is `noexcept`, reports the script's exception via `ReportExceptionAndContinue`, and returns `false`.
 
 The server runs all gameplay work as jobs on a `WorkerPool`. `WorkerPool::WorkerEntry` (`Source/Server/WorkerPool.cpp`) wraps each job body in `try { job() } catch (const std::exception&) { ReportExceptionAndContinue (log only) } catch (...) { FO_UNKNOWN_EXCEPTION -> terminate }`. So a `std::exception` from a job **does not crash the server** — it is logged, the job's `SyncContext` is released (locks dropped), and the worker proceeds. Whatever half-state existed at the throw point stays live in the world. This is exactly why the rules below matter.
 
