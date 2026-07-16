@@ -71,6 +71,8 @@ namespace
             FO_NO_STACK_TRACE_ENTRY();
 
             _sentPacketCount.store(0, std::memory_order_relaxed);
+            _sentAddCritterCount.store(0, std::memory_order_relaxed);
+            _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
         }
 
         [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
@@ -80,15 +82,61 @@ namespace
             return _sentPacketCount.load(std::memory_order_relaxed);
         }
 
+        [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            switch (msg) {
+            case NetMessage::AddCritter:
+                return _sentAddCritterCount.load(std::memory_order_relaxed);
+            case NetMessage::RemoveCritter:
+                return _sentRemoveCritterCount.load(std::memory_order_relaxed);
+            default:
+                return 0;
+            }
+        }
+
     protected:
         void DispatchImpl() override
         {
             FO_NO_STACK_TRACE_ENTRY();
 
-            const const_span<uint8_t> data = SendCallback();
+            const const_span<uint8_t> encoded_data = SendCallback();
 
-            if (!data.empty()) {
+            if (!encoded_data.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
+
+                const_span<uint8_t> data = encoded_data;
+                if (!_settings->DisableZlibCompression) {
+                    _decompressor.Decompress(encoded_data, _unpackedData);
+                    data = _unpackedData;
+                }
+
+                constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+                size_t offset = 0;
+
+                while (offset < data.size()) {
+                    FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
+
+                    uint32_t signature {};
+                    uint32_t message_size {};
+                    NetMessage message {};
+                    MemCopy(&signature, data.data() + offset, sizeof(signature));
+                    MemCopy(&message_size, data.data() + offset + sizeof(signature), sizeof(message_size));
+                    MemCopy(&message, data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+
+                    FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
+                    FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
+
+                    if (message == NetMessage::AddCritter) {
+                        _sentAddCritterCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+                    else if (message == NetMessage::RemoveCritter) {
+                        _sentRemoveCritterCount.fetch_add(1, std::memory_order_relaxed);
+                    }
+
+                    offset += message_size;
+                }
             }
         }
 
@@ -96,6 +144,10 @@ namespace
 
     private:
         std::atomic<size_t> _sentPacketCount {};
+        std::atomic<size_t> _sentAddCritterCount {};
+        std::atomic<size_t> _sentRemoveCritterCount {};
+        StreamDecompressor _decompressor {};
+        vector<uint8_t> _unpackedData {};
     };
 
     static auto MakeSettings() -> GlobalSettings
@@ -1509,7 +1561,90 @@ TEST_CASE("PlayerRegistrationCppApi")
         REQUIRE(set_mode_func.Call(5));
 
         auto unlogined_player = CreatePreparedUnloginedPlayer(server, "RejectReconnectNext");
+        const array<nptr<ServerEntity>, 2> reconnect_cover {player, unlogined_player};
+        server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
         CHECK_THROWS_WITH(server->LoginPlayerToExistentRecord(unlogined_player, player->GetId()), Catch::Matchers::ContainsSubstring("Player reconnect rejected by OnPlayerLogin"));
+    }
+
+    SECTION("LoginPlayerToExistentRecordUsesCallerProvidedLocalMapCover")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto player = CreateLoggedPlayer(server, "ReconnectLocalMap");
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        REQUIRE(reset_func.Call());
+
+        auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectLocalMapNext");
+        const array<nptr<ServerEntity>, 5> reconnect_cover {player, reconnect_unlogined, cr, map, loc};
+        server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
+
+        CHECK(reconnected_player == player);
+        CHECK(reconnect_unlogined->IsDestroyed());
+        CHECK(player->GetControlledCritter() == cr.get());
+        CHECK(cr->GetMapId() == map->GetId());
+
+        int32_t initial_info_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterSendInitialInfoCalls"), initial_info_calls));
+        CHECK(initial_info_calls == 1);
+
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
+    }
+
+    SECTION("LoginPlayerToExistentRecordUsesCallerProvidedGlobalGroupCover")
+    {
+        auto reset_func = server->FindFunc<void>(fn("EntityLifecycle::ResetCounters"));
+        REQUIRE(reset_func);
+        REQUIRE(reset_func.Call());
+
+        auto player = CreateLoggedPlayer(server, "ReconnectGlobalGroup");
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        auto group_member = server->CreateCritter(fn("TestCritter"), false);
+        server->MapMngr.RemoveCritterFromMap(group_member, nullptr);
+        server->MapMngr.AddCritterToMap(group_member, nullptr, {}, mdir {}, cr->GetId());
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+        REQUIRE(cr->GetGlobalMapGroup().size() == 2);
+
+        REQUIRE(reset_func.Call());
+
+        auto reconnect_unlogined = CreatePreparedUnloginedPlayer(server, "ReconnectGlobalGroupNext");
+        const array<nptr<ServerEntity>, 4> reconnect_cover {player, reconnect_unlogined, cr, group_member};
+        server->RequireCurrentSyncContext()->SyncEntities(reconnect_cover);
+        auto reconnected_player = server->LoginPlayerToExistentRecord(reconnect_unlogined, player->GetId());
+
+        CHECK(reconnected_player == player);
+        CHECK(reconnect_unlogined->IsDestroyed());
+        CHECK(player->GetControlledCritter() == cr.get());
+
+        int32_t initial_info_calls = 0;
+        REQUIRE(server->CallFunc(fn("EntityLifecycle::GetCritterSendInitialInfoCalls"), initial_info_calls));
+        CHECK(initial_info_calls == 1);
+
+        server->SwitchPlayerCritter(player, nullptr);
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(group_member);
+        server->CrMngr.DestroyCritter(cr);
     }
 
     SECTION("LoginPlayerToTempSessionThrowsWhenPlayerLoginStopsChain")
@@ -1628,6 +1763,43 @@ TEST_CASE("PlayerRegistrationCppApi")
 
         prev_cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(prev_cr);
+    }
+
+    SECTION("DetachPlayerCritterResendsPreviousChosenAsOrdinaryCritter")
+    {
+        auto test_connection = SafeAlloc::MakeShared<TestNetworkConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "ChosenDetach");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto destroy_loc = scope_exit([&server, &loc]() noexcept {
+            safe_call([&server, &loc] {
+                if (!loc->IsDestroyed()) {
+                    server->MapMngr.DestroyLocation(loc);
+                }
+            });
+        });
+
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto cr = server->CreateCritter(fn("TestCritter"), true);
+        server->MapMngr.TransferToMap(cr, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, cr);
+        REQUIRE(player->GetControlledCritter() == cr.get());
+
+        test_connection->Dispatch();
+        test_connection->ResetSentPacketCount();
+        server->SwitchPlayerCritter(player, nullptr);
+        test_connection->Dispatch();
+
+        CHECK_FALSE(static_cast<bool>(player->GetControlledCritter()));
+        CHECK_FALSE(static_cast<bool>(cr->GetPlayer()));
+        CHECK(test_connection->GetSentPacketCount() > 0);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::RemoveCritter) == 1);
+        CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
+
+        cr->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(cr);
     }
 
     SECTION("StopMoveDirEventMayDetachPlayerBeforeStoppingMovement")

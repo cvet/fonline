@@ -911,6 +911,52 @@ namespace MapOpsTest
         return 0;
     }
 
+    int TestMapGetCrittersInLargeRadius()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter first = map.AddCritter("TestCritter".hstr(), mpos(10, 10), mdir(0));
+        Critter second = map.AddCritter("TestCritter".hstr(), mpos(90, 90), mdir(0));
+        if (first is null || second is null) return -3;
+
+        nanotime start = Game.GetPrecisionTime();
+
+        for (int i = 0; i < 41; i++) {
+            array<Critter> critters = map.GetCrittersInRadius(mpos(50, 50), 500, CritterFindType::Any);
+            if (critters.length() != 2) return -4;
+        }
+
+        if ((Game.GetPrecisionTime() - start).milliseconds >= 100) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    int TestMapGetCrittersInRadiusIncludesMultihexOverlap()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        Critter cr = map.AddCritter("TestMultihexCritter".hstr(), mpos(53, 50), mdir(0));
+        if (cr is null) return -3;
+
+        array<Critter> overlap = map.GetCrittersInRadius(mpos(50, 50), 1, CritterFindType::Any);
+        if (overlap.length() != 1 || overlap[0].Id != cr.Id) return -4;
+
+        array<Critter> outside = map.GetCrittersInRadius(mpos(49, 50), 1, CritterFindType::Any);
+        if (!outside.isEmpty()) return -5;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
     void TestMapGetCrittersInRadiusNegativeRadiusThrows()
     {
         Location loc = CreateTestLocation();
@@ -4783,7 +4829,15 @@ namespace MapOpsTest
         const auto client_item_type = client_proto_engine.Hashes.ToHashedString("Item");
         const auto client_map_type = client_proto_engine.Hashes.ToHashedString("Map");
 
-        const auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
+        const auto critter_registrator = proto_engine.GetPropertyRegistrator(critter_type);
+        REQUIRE(static_cast<bool>(critter_registrator));
+        const auto multihex_property = critter_registrator->FindProperty("Multihex");
+        REQUIRE(static_cast<bool>(multihex_property));
+        const vector<pair<string, function<void(ProtoCritter&)>>> critter_protos = {
+            {"TestCritter", {}},
+            {"TestMultihexCritter", [multihex_property](ProtoCritter& proto) { proto.GetPropertiesForEdit()->SetValue<int32_t>(multihex_property, 2); }},
+        };
+        const auto critter_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         const auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
         const auto item_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "TestItem");
         const auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
@@ -5003,6 +5057,16 @@ TEST_CASE("MapCritterOperations")
     SECTION("GetCrittersOnHex")
     {
         RUN_FUNC("MapOpsTest::TestMapGetCrittersOnHex");
+    }
+
+    SECTION("GetCrittersInLargeRadius")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInLargeRadius");
+    }
+
+    SECTION("GetCrittersInRadiusIncludesMultihexOverlap")
+    {
+        RUN_FUNC("MapOpsTest::TestMapGetCrittersInRadiusIncludesMultihexOverlap");
     }
 
     SECTION("GetCrittersInRadiusNegativeRadiusThrows")

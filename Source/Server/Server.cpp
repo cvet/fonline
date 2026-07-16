@@ -2385,7 +2385,11 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         }
 
         WriteLog(LogType::Info, "Detach player {} from critter {}", player->GetName(), prev_cr->GetName());
+        // Recreate the old chosen as an ordinary critter view. RemoveCritter clears the client's
+        // chosen pointer; after DetachCritter, AddCritter serializes the same critter with is_chosen=false.
+        player->Send_RemoveCritter(prev_cr);
         player->DetachCritter();
+        player->Send_AddCritter(prev_cr);
         return;
     }
 
@@ -2913,6 +2917,7 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
     nptr<Player> player {};
     bool registered_player = false;
     bool reconnect_swapped = false;
+    bool destroy_unlogined_after_login = false;
 
     scope_fail disconnect_on_error {[&]() noexcept {
         if (reconnect_swapped && player) {
@@ -2977,18 +2982,14 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
         }
     }
     else {
-        auto ctx = RequireCurrentSyncContext();
-        const array<nptr<ServerEntity>, 2> sync_entities {player, unlogined_player};
-        ctx->SyncEntities(sync_entities);
+        // The script caller owns synchronization for the complete reconnect graph. Do not narrow
+        // its cover here: OnPlayerLogin and initial-info delivery may need the controlled critter,
+        // map, and location in addition to both player entities.
+        ValidateEntityAccess(player);
+        ValidateEntityAccess(unlogined_player);
 
-        if (player->IsDestroyed()) {
-            disconnect_on_error.release();
-            throw GenericException("Existing player was destroyed during reconnect sync");
-        }
-        if (unlogined_player->IsDestroyed()) {
-            disconnect_on_error.release();
-            throw GenericException("Unlogined player was destroyed during reconnect sync");
-        }
+        FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Existing player was destroyed before reconnect");
+        FO_VERIFY_AND_THROW(!unlogined_player->IsDestroyed(), "Unlogined player was destroyed before reconnect");
 
         // Kick previous
         player->SwapConnection(unlogined_player);
@@ -3010,16 +3011,22 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> unlogined_player, ide
             throw GenericException("Player reconnect rejected by OnPlayerLogin");
         }
 
-        unlogined_player->MarkAsDestroyed();
-
         auto cr = player->GetControlledCritter();
 
         if (cr) {
             SendCritterInitialInfo(cr, nullptr);
         }
+
+        destroy_unlogined_after_login = true;
     }
 
     OnPlayerLogined(player, unlogined_player);
+
+    if (destroy_unlogined_after_login) {
+        // Keep the displaced player alive until scheduling succeeds so scope_fail can still swap
+        // the connection back if OnPlayerLogined throws.
+        unlogined_player->MarkAsDestroyed();
+    }
 
     disconnect_on_error.release();
     return player;

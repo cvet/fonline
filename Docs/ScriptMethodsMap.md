@@ -52,13 +52,13 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/CommonGlobalScriptMethods.cpp`
 
-- Exported methods: 76
+- Exported methods: 77
 - Prefix: `Common_Game_*`
 - Ownership: cross-side global helpers that do not require authoritative server-only state or client-only rendering state.
 - Typical responsibilities:
   - logging and debugger break helpers;
   - quit/invoke helpers;
-  - resource and config reads;
+  - resource and config reads, plus typed lookup of baker-provided model animation durations (`Game.GetModelAnimDuration`);
   - random, time, UTF-8, clipboard, open-link helpers;
   - geometry helpers such as distance, direction, line angle, intervals, trace line;
   - common serialization and formatting helpers.
@@ -196,7 +196,7 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 - Ownership: client-side visible critter/view operations.
 - Typical responsibilities:
   - display name, online/alive/movement/model/visibility state;
-  - animation availability/playback/stop/refresh and per-`(state, action)` clip duration (`GetModelAnimDuration`, real cycle length from the model bakers, used to derive footstep spacing);
+  - animation availability/playback/stop/refresh and per-`(state, action)` duration for the currently loaded model (`Critter.GetModelAnimDuration`);
   - inventory queries on visible client-side critters;
   - text position, particles, animation callbacks, bone positions;
   - local movement helpers.

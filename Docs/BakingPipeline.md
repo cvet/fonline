@@ -324,16 +324,14 @@ frame index, so the top lists remain deterministic under parallel baking.
 - `TextBaker` — `Source/Tools/TextBaker.*`, name `Text`, order `4`
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
-- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, enabled when `FO_ENABLE_3D` is active
+- `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `5`, enabled when `FO_ENABLE_3D` is active
 - `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
-When a resource pack is named `ModelAnimInfo`, `ModelInfoBaker` emits one
-`ModelAnimInfo.foinfo` companion instead of the ordinary per-model binary. Its
-existing state/action/duration arrays remain the script-readable animation
-cycle contract. Bounds schema version 2 adds three required root-space contracts
-to every model section:
+`ModelInfoBaker` emits the regular baked model descriptions together with a
+common `ModelAnimInfo.foinfo` companion. Bounds schema version 2 adds three
+required root-space contracts to every model section:
 
 - `ModelBoundsMin*` / `ModelBoundsMax*` store the aggregate of all emitted
   animation envelopes, with exact static geometry used only when the model has
@@ -361,7 +359,10 @@ by the baker and client: finite/ordered validation, non-point extent checks,
 point and bounds accumulation, eight-corner transformed accumulation, and the
 common `max(0.01, maxAbs * 0.001)` guard. `ModelBoundsCalculator` is limited to
 reading baked model data and sampling geometry; it does not maintain a parallel
-bounds type or bounds-manipulation implementation.
+bounds type or bounds-manipulation implementation. If the default link disables
+every base mesh, the baker retries against the unfiltered source model as a
+conservative layout envelope; genuinely empty or invalid geometry remains a
+baking error.
 
 `DrawSize` and `ViewSize` are no longer `.fo3d` grammar. `ModelInfoBaker`
 rejects those removed tokens instead of serializing authored dimensions; frame
@@ -373,6 +374,19 @@ animation bounds, view-bound idle/fallback selection, calculator/cache counts,
 sections with/without bounds, and a
 maximum-axis-extent histogram (`<1`, `1-2`, `2-3`, `3-5`, `5-10`, `10+` model
 world units) for coverage and density analysis.
+
+The companion also contains each model's effective `(state, action)` cycle
+durations after authored `AnimSpeed` is applied. The duration arrays materialize
+the same one-step `StateAnimEqual` / `ActionAnimEqual` resolution used by the
+client model runtime, including alias priority over an exact entry with the
+alias source key. Any pack can select `ModelInfo`; behavior never branches on
+`PackName`. Put that pack on every runtime side that needs model metadata.
+`EngineMetadata` registers the duration table alongside prototypes at startup,
+including model names in its hash storage; common scripts query it through
+`Game.GetModelAnimDuration(modelName, stateAnim, actionAnim)`. The method returns
+a `timespan`, or zero when the resource, model, or resolved tuple is absent. The
+config representation is an internal baker/runtime contract and should not be
+parsed by embedding-project scripts.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses.
 

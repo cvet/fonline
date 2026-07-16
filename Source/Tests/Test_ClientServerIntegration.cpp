@@ -551,6 +551,88 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     CHECK(exception_reports.load() == 0);
 }
 
+TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
+{
+    using namespace TestClientServerIntegration;
+
+    const uint16_t port = IntegrationTestPort.fetch_add(1);
+    auto server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.DisableZlibCompression, true);
+    auto server = MakeServerEngine(server_settings);
+
+    const auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    const string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(InterthreadListeners.count(port) == 1);
+
+    mutex received_data_lock;
+    vector<uint8_t> received_data;
+    auto send_to_server = InterthreadListeners[port]([&received_data_lock, &received_data](const_span<uint8_t> data) {
+        if (!data.empty()) {
+            scoped_lock locker {received_data_lock};
+            received_data.insert(received_data.end(), data.begin(), data.end());
+        }
+    });
+    REQUIRE(send_to_server);
+    REQUIRE(WaitForServerConnectionCount(server, 1));
+
+    static_assert(FO_UPDATER_VERSION > 1);
+    auto handshake = NetOutBuffer(128);
+    handshake.StartMsg(NetMessage::Handshake);
+    handshake.Write(server_settings.CompatibilityVersion);
+    handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
+    handshake.Write<string_view>("Linux-x64");
+    handshake.Write<uint32_t>(0x12345678);
+    handshake.EndMsg();
+    send_to_server(handshake.GetData());
+
+    bool received_rejection = false;
+    for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
+        vector<uint8_t> response_data;
+        {
+            scoped_lock locker {received_data_lock};
+            response_data = received_data;
+        }
+
+        if (!response_data.empty()) {
+            NetInBuffer response {response_data.size()};
+            response.AddData(response_data);
+
+            if (response.NeedProcess()) {
+                REQUIRE(response.ReadMsg() == NetMessage::HandshakeAnswer);
+                CHECK_FALSE(response.Read<bool>());
+                CHECK(response.Read<bool>());
+                const uint32_t response_encrypt_key = response.Read<uint32_t>();
+                CHECK(response_encrypt_key != 0);
+                response.SetEncryptKey(response_encrypt_key);
+
+                if (response.NeedProcess()) {
+                    REQUIRE(response.ReadMsg() == NetMessage::Disconnect);
+                    response.ShrinkReadBuf();
+                    CHECK(response.GetDataSize() == 0);
+                    received_rejection = true;
+                }
+            }
+        }
+
+        if (!received_rejection) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        }
+    }
+
+    REQUIRE(received_rejection);
+    send_to_server({});
+    REQUIRE(WaitForServerConnectionCount(server, 0));
+}
+
 TEST_CASE("ClientShutdownDisconnectsActiveConnection")
 {
     using namespace TestClientServerIntegration;

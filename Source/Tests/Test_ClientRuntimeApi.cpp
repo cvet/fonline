@@ -62,6 +62,13 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(IsSupportedClientRuntimeAbi(FO_CLIENT_RUNTIME_HOST_ABI_VERSION + 1));
     }
 
+    SECTION("UnsafeInProcessReloadHostAbiIsRejected")
+    {
+        static constexpr uint32_t unsafe_host_abi = 2;
+
+        CHECK_FALSE(IsSupportedClientRuntimeAbi(unsafe_host_abi));
+    }
+
     SECTION("InvalidExportsAreRejected")
     {
         ClientRuntimeExports exports {};

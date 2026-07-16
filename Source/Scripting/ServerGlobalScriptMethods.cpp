@@ -914,7 +914,8 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record and database-backed player id.
+// SyncScope: requires unloginedPlayer plus the prepared main-critter/map/location graph; a live reconnect
+// additionally requires the existing player. Login preserves the caller-provided cover.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
 {

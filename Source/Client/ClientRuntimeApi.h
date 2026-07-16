@@ -37,7 +37,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr uint32_t FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 2;
+static constexpr uint32_t FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3;
 
 enum class ClientRuntimeResultKind : uint32_t
 {

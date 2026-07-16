@@ -2269,9 +2269,15 @@ namespace ScriptMethodsTest
         return 0;
     }
 
+    [[Async]]
     int TestLoginPlayerToExistentRecordFromPreparedPlayer(Player unlogined, ident playerId)
     {
         if (unlogined is null) return -1;
+
+        Player? live_player = Game.GetPlayer(playerId);
+        if (live_player !is null) {
+            Game.Sync(unlogined, live_player);
+        }
 
         Player reconnected_player = Game.LoginPlayerToExistentRecord(unlogined, playerId);
         if (reconnected_player.Id != playerId) return -3;

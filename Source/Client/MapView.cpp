@@ -3485,23 +3485,38 @@ auto MapView::GetCrittersInRadius(mpos hex, int32_t radius, CritterFindType find
     vector<ptr<CritterHexView>> critters;
 
     const int32_t hexes_in_radius = GeometryHelper::HexesInRadius(radius);
-    unordered_set<ptr<const CritterHexView>> seen;
-    seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-    for (int32_t i = 0; i < hexes_in_radius; i++) {
-        if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
-            const auto& field = _hexField->GetCellForReading(cur_hex);
+    if (numeric_cast<size_t>(hexes_in_radius) < _critters.size()) {
+        unordered_set<ptr<const CritterHexView>> seen;
+        seen.reserve(numeric_cast<size_t>(hexes_in_radius));
 
-            if (field.Critters.empty()) {
-                continue;
-            }
+        for (int32_t i = 0; i < hexes_in_radius; i++) {
+            if (mpos cur_hex = hex; GeometryHelper::MoveHexAroundAway(cur_hex, i, _mapSize)) {
+                const auto& field = _hexField->GetCellForReading(cur_hex);
 
-            auto field2 = _hexField->GetCellForWriting(cur_hex);
-
-            for (ptr<CritterHexView> cr : field2->Critters) {
-                if (seen.insert(cr).second && cr->CheckFind(find_type)) {
-                    critters.emplace_back(cr);
+                if (field.Critters.empty()) {
+                    continue;
                 }
+
+                auto field2 = _hexField->GetCellForWriting(cur_hex);
+
+                for (ptr<CritterHexView> cr : field2->Critters) {
+                    if (seen.insert(cr).second && cr->CheckFind(find_type)) {
+                        critters.emplace_back(cr);
+                    }
+                }
+            }
+        }
+    }
+    else {
+        critters.reserve(_critters.size());
+
+        for (refcount_ptr<CritterHexView>& cr_ref : _critters) {
+            auto cr = cr_ref.as_ptr();
+            const int32_t distance = GeometryHelper::GetDistance(hex, cr->GetHex()) - cr->GetMultihex();
+
+            if (distance <= radius && cr->CheckFind(find_type)) {
+                critters.emplace_back(cr);
             }
         }
     }
