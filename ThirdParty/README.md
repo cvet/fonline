@@ -22,7 +22,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * mongo-c-driver - [mongo-c-driver-2.3.1](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
-* ufbx - [ufbx-0.22.0](https://github.com/ufbx/ufbx)
+* ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
 * unordered_dense - [unordered_dense-4.8.1](https://github.com/martinus/unordered_dense)
 * unqlite - [unqlite-1.2.1](https://unqlite.org)
 * websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
