@@ -40,3 +40,4 @@ const char *SDL_GetAppID(void)
 
     return id_str;
 }
+

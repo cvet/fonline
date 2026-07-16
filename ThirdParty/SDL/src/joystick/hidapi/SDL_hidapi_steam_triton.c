@@ -249,7 +249,7 @@ static void HIDAPI_DriverSteamTriton_HandleState(SDL_HIDAPI_Device *device,
 
     bool left_touch_down = (pTritonReport->buttons & TRITON_LEFT_TOUCHPAD_TOUCH) ? true : false;
     bool right_touch_down = (pTritonReport->buttons & TRITON_RIGHT_TOUCHPAD_TOUCH) ? true : false;
-
+ 
     if (left_touch_down || ctx->left_touch_down) {
         if (left_touch_down) {
             ctx->left_touch_x = pTritonReport->sLeftPadX / 65536.0f + 0.5f;
@@ -613,8 +613,8 @@ static bool HIDAPI_DriverSteamTriton_RumbleJoystick(SDL_HIDAPI_Device *device, S
 
     rc = SDL_hid_write(device->dev, buffer, sizeof(buffer));
     if (rc < 0) {
-        SDL_LogError(SDL_LOG_CATEGORY_INPUT,
-            "Steam Controller HID Write FAILED! rc: %d. SDL_Error: %s",
+        SDL_LogError(SDL_LOG_CATEGORY_INPUT, 
+            "Steam Controller HID Write FAILED! rc: %d. SDL_Error: %s", 
             rc, SDL_GetError());
 
         return false;
