@@ -198,10 +198,6 @@ VARIABLE_SETTING(int32_t, Render, FixedFPS, 100); // Fixed frames per second (0 
 FIXED_SETTING(float32_t, Render, CritterTurnAngle, 100.0f); // Critter turn angle
 FIXED_SETTING(float32_t, Render, CritterBodyTurnFactor, 0.6f); // Critter body turn factor
 FIXED_SETTING(float32_t, Render, CritterHeadTurnFactor, 0.4f); // Critter head turn factor
-FIXED_SETTING(int32_t, Render, DefaultModelViewWidth, 0); // Default model view width
-FIXED_SETTING(int32_t, Render, DefaultModelViewHeight, 0); // Default model view height
-FIXED_SETTING(int32_t, Render, DefaultModelDrawWidth, 128); // Default model draw width
-FIXED_SETTING(int32_t, Render, DefaultModelDrawHeight, 128); // Default model draw height
 FIXED_SETTING(int32_t, Render, WalkAnimBaseSpeed, 60); // Walk animation base speed
 FIXED_SETTING(int32_t, Render, RunAnimStartSpeed, 80); // Run animation start speed
 FIXED_SETTING(int32_t, Render, RunAnimBaseSpeed, 120); // Run animation base speed

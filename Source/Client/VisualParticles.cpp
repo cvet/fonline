@@ -113,7 +113,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     }
 
     if (!base_system) {
-        return {};
+        return std::nullopt;
     }
 
     auto&& system = SPK::SPKObject::copy(base_system);
@@ -211,6 +211,95 @@ auto ParticleSystem::GetDrawInScene() const -> bool
     return false;
 }
 
+auto ParticleSystem::GetRenderViewBounds() const noexcept -> optional<ParticleBounds3D>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->System->isAABBComputationEnabled() || _boundsDirty || _impl->System->getNbParticles() == 0) {
+        return std::nullopt;
+    }
+
+    const SPK::Vector3D& aabb_min = _impl->System->getAABBMin();
+    const SPK::Vector3D& aabb_max = _impl->System->getAABBMax();
+    const vec3 raw_min {aabb_min.x, aabb_min.y, aabb_min.z};
+    const vec3 raw_max {aabb_max.x, aabb_max.y, aabb_max.z};
+
+    if (!std::isfinite(raw_min.x) || !std::isfinite(raw_min.y) || !std::isfinite(raw_min.z) || !std::isfinite(raw_max.x) || !std::isfinite(raw_max.y) || !std::isfinite(raw_max.z) || raw_min.x > raw_max.x || raw_min.y > raw_max.y || raw_min.z > raw_max.z) {
+        return std::nullopt;
+    }
+
+    const mat44 view = GetRenderViewMatrix();
+    ParticleBounds3D result;
+    bool initialized = false;
+
+    for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+        const vec3 corner {
+            (corner_index & 1U) != 0 ? raw_max.x : raw_min.x,
+            (corner_index & 2U) != 0 ? raw_max.y : raw_min.y,
+            (corner_index & 4U) != 0 ? raw_max.z : raw_min.z,
+        };
+        const glm::vec4 transformed = view * glm::vec4 {corner, 1.0f};
+
+        if (!std::isfinite(transformed.x) || !std::isfinite(transformed.y) || !std::isfinite(transformed.z) || !is_float_equal(transformed.w, 1.0f)) {
+            return std::nullopt;
+        }
+
+        const vec3 point {transformed};
+
+        if (!initialized) {
+            result.Min = point;
+            result.Max = point;
+            initialized = true;
+        }
+        else {
+            result.Min = glm::min(result.Min, point);
+            result.Max = glm::max(result.Max, point);
+        }
+    }
+
+    return result;
+}
+
+void ParticleSystem::EnableBoundsComputation() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!_impl->System->isAABBComputationEnabled()) {
+        _impl->System->enableAABBComputation(true);
+        _boundsDirty = true;
+    }
+}
+
+void ParticleSystem::RebaseWorldParticles(vec3 delta) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_tiltInProj) {
+        return;
+    }
+
+    FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
+
+    if (delta == vec3 {}) {
+        return;
+    }
+
+    const SPK::Vector3D spark_delta(delta.x, delta.y, delta.z);
+
+    for (size_t group_index = 0; group_index < _impl->System->getNbGroups(); group_index++) {
+        auto&& group = _impl->System->getGroup(group_index);
+
+        for (SPK::GroupIterator particle_it(*group); !particle_it.end(); ++particle_it) {
+            particle_it->position() += spark_delta;
+            particle_it->oldPosition() += spark_delta;
+        }
+    }
+
+    if (_impl->System->isAABBComputationEnabled()) {
+        _boundsDirty = true;
+    }
+}
+
 auto ParticleSystem::GetTime() const -> nanotime
 {
     FO_STACK_TRACE_ENTRY();
@@ -281,12 +370,17 @@ void ParticleSystem::Prewarm()
 
     const float32_t max_lifetime = _impl->System->getGroup(0)->getMaxLifeTime();
     const float32_t init_time = numeric_cast<float32_t>(_particleMngr->Random(0, iround<int32_t>(max_lifetime * 1000.0f))) / 1000.0f;
+    bool updated = false;
 
     for (float32_t dt = 0.0f; dt < init_time;) {
-        _impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
+        (void)_impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
         dt += PREWARM_STEP;
+        updated = true;
     }
 
+    if (updated) {
+        _boundsDirty = false;
+    }
     _elapsedTime += numeric_cast<float64_t>(init_time);
 }
 
@@ -294,13 +388,16 @@ void ParticleSystem::Respawn()
 {
     FO_STACK_TRACE_ENTRY();
 
+    const bool bounds_computation_enabled = _impl->System->isAABBComputationEnabled();
     auto&& system = SPK::SPKObject::copy(_impl->BaseSystem);
     system->initialize();
+    system->enableAABBComputation(bounds_computation_enabled);
 
     _impl->System = system;
     _elapsedTime = 0.0;
     _lastDrawTime = GetTime();
     _forceDraw = true;
+    _boundsDirty = bounds_computation_enabled;
 }
 
 void ParticleSystem::Draw()
@@ -324,18 +421,28 @@ void ParticleSystem::Draw()
     _elapsedTime += numeric_cast<float64_t>(dt);
 
     if (dt > 0.0f) {
-        _impl->System->updateParticles(dt);
+        (void)_impl->System->updateParticles(dt);
+        _boundsDirty = false;
+    }
+    else if (_boundsDirty) {
+        (void)_impl->System->updateParticles(0.0f);
+        _boundsDirty = false;
     }
 
-    const auto view_offset_mat = glm::translate(mat44 {1.0f}, vec3 {-_viewOffset.x, -_viewOffset.y, -_viewOffset.z});
-    const auto cam_rot_mat = _tiltInProj ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
-    mat44 view = cam_rot_mat * view_offset_mat;
-    mat44 proj = _projMatrix;
-
-    _particleMngr->_viewProjMatrix = proj * view;
+    const mat44 view = GetRenderViewMatrix();
+    _particleMngr->_viewProjMatrix = _projMatrix * view;
     _particleMngr->_viewMatrix = view;
 
     _impl->System->renderParticles();
+}
+
+auto ParticleSystem::GetRenderViewMatrix() const noexcept -> mat44
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const mat44 view_offset = glm::translate(mat44 {1.0f}, -_viewOffset);
+    const mat44 camera_rotation = _tiltInProj ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    return camera_rotation * view_offset;
 }
 
 FO_END_NAMESPACE

@@ -36,13 +36,21 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
+#include "ConfigFile.h"
 #include "EngineBase.h"
+#include "ModelSpriteLayout.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
 static auto LoadModelBone(DataReader& reader, HashResolver& hash_resolver) -> unique_ptr<ModelBone>;
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone);
+
+static constexpr int32_t SPRITE_BOUNDS_GUARD_PADDING = 2;
+// Keep in sync with the default 3D_Skinned shadow pass.
+static constexpr float32_t SHADOW_CAMERA_ANGLE_COS = 0.9010770213221f;
+static constexpr float32_t SHADOW_CAMERA_ANGLE_SIN = 0.4336590845875f;
+static constexpr float32_t SHADOW_ANGLE_TAN = 0.2548968037538f;
 
 ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<HashResolver> hash_resolver, ptr<NameResolver> name_resolver, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader) :
     _settings {settings},
@@ -70,6 +78,168 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     for (const auto& bone_name : settings->LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }
+
+    LoadBakedModelBounds();
+}
+
+void ModelManager::LoadBakedModelBounds()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr string_view bounds_file_name = "ModelAnimInfo.foinfo";
+
+    if (!_resources->IsFileExists(bounds_file_name)) {
+        return;
+    }
+
+    const File bounds_file = _resources->ReadFile(bounds_file_name);
+    FO_VERIFY_AND_THROW(bounds_file, "Model animation bounds resource is not readable", bounds_file_name);
+
+    auto bounds_config = ConfigFile(bounds_file_name, bounds_file.GetStr());
+    decltype(_bakedModelBounds) baked_model_bounds;
+    constexpr array<string_view, 12> model_bounds_keys {
+        "ModelBoundsMinX",
+        "ModelBoundsMinY",
+        "ModelBoundsMinZ",
+        "ModelBoundsMaxX",
+        "ModelBoundsMaxY",
+        "ModelBoundsMaxZ",
+        "ViewBoundsMinX",
+        "ViewBoundsMinY",
+        "ViewBoundsMinZ",
+        "ViewBoundsMaxX",
+        "ViewBoundsMaxY",
+        "ViewBoundsMaxZ",
+    };
+    constexpr array<string_view, 8> animation_bounds_keys {
+        "BoundsStateAnims",
+        "BoundsActionAnims",
+        "BoundsMinX",
+        "BoundsMinY",
+        "BoundsMinZ",
+        "BoundsMaxX",
+        "BoundsMaxY",
+        "BoundsMaxZ",
+    };
+
+    for (const auto& [section_name, key_values] : *bounds_config.GetSections()) {
+        if (section_name.empty()) {
+            FO_VERIFY_AND_THROW(key_values.empty(), "Model bounds resource has entries outside a section", bounds_file_name);
+            continue;
+        }
+
+        FO_VERIFY_AND_THROW(key_values.count("BoundsVersion") != 0, "Model bounds section is missing its version", bounds_file_name, section_name);
+
+        for (const string_view key : model_bounds_keys) {
+            FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model bounds section is missing a required key", bounds_file_name, section_name, key);
+        }
+
+        const auto get_value = [&key_values, bounds_file_name, section_name](string_view key) -> string_view {
+            const auto it = key_values.find(key);
+            FO_VERIFY_AND_THROW(it != key_values.end(), "Model animation bounds key lookup failed", bounds_file_name, section_name, key);
+            return it->second;
+        };
+        const auto parse_int_values = [&get_value, bounds_file_name, section_name](string_view key) -> vector<int32_t> {
+            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
+            vector<int32_t> values;
+            values.reserve(tokens.size());
+
+            for (const string_view token : tokens) {
+                int32_t value {};
+                auto token_begin = make_nptr(token.data());
+                ptr<const char> token_end = token_begin.offset(token.size());
+                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
+                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get(), "Model animation bounds integer contains invalid text", bounds_file_name, section_name, key, token);
+                values.emplace_back(value);
+            }
+
+            return values;
+        };
+        const auto parse_float_values = [&get_value, bounds_file_name, section_name](string_view key) -> vector<float32_t> {
+            const vector<string_view> tokens = strvex(get_value(key)).split(' ');
+            vector<float32_t> values;
+            values.reserve(tokens.size());
+
+            for (const string_view token : tokens) {
+                float32_t value {};
+                auto token_begin = make_nptr(token.data());
+                ptr<const char> token_end = token_begin.offset(token.size());
+                const auto parse_result = std::from_chars(token_begin.get(), token_end.get(), value);
+                FO_VERIFY_AND_THROW(parse_result.ec == std::errc {} && parse_result.ptr == token_end.get() && std::isfinite(value), "Model animation bounds scalar contains invalid text", bounds_file_name, section_name, key, token);
+                values.emplace_back(value);
+            }
+
+            return values;
+        };
+
+        const vector<int32_t> versions = parse_int_values("BoundsVersion");
+        FO_VERIFY_AND_THROW(versions.size() == 1 && versions.front() == numeric_cast<int32_t>(MODEL_BOUNDS_VERSION), "Model bounds version is unsupported", bounds_file_name, section_name, versions.size(), versions.empty() ? 0 : versions.front());
+
+        const auto parse_scalar = [&parse_float_values, bounds_file_name, section_name](string_view key) -> float32_t {
+            const vector<float32_t> values = parse_float_values(key);
+            FO_VERIFY_AND_THROW(values.size() == 1, "Model bounds scalar must contain exactly one value", bounds_file_name, section_name, key, values.size());
+            return values.front();
+        };
+        BakedModelBoundsInfo section_info {
+            .ModelBounds =
+                {
+                    .Min = {parse_scalar("ModelBoundsMinX"), parse_scalar("ModelBoundsMinY"), parse_scalar("ModelBoundsMinZ")},
+                    .Max = {parse_scalar("ModelBoundsMaxX"), parse_scalar("ModelBoundsMaxY"), parse_scalar("ModelBoundsMaxZ")},
+                },
+            .ViewBounds =
+                {
+                    .Min = {parse_scalar("ViewBoundsMinX"), parse_scalar("ViewBoundsMinY"), parse_scalar("ViewBoundsMinZ")},
+                    .Max = {parse_scalar("ViewBoundsMaxX"), parse_scalar("ViewBoundsMaxY"), parse_scalar("ViewBoundsMaxZ")},
+                },
+        };
+        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ModelBounds), "Model bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, section_info.ModelBounds.Min.x, section_info.ModelBounds.Min.y, section_info.ModelBounds.Min.z, section_info.ModelBounds.Max.x, section_info.ModelBounds.Max.y, section_info.ModelBounds.Max.z);
+        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ModelBounds), "Model bounds record is degenerate", bounds_file_name, section_name);
+        FO_VERIFY_AND_THROW(IsValidModelBounds(section_info.ViewBounds), "Model view bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, section_info.ViewBounds.Min.x, section_info.ViewBounds.Min.y, section_info.ViewBounds.Min.z, section_info.ViewBounds.Max.x, section_info.ViewBounds.Max.y, section_info.ViewBounds.Max.z);
+        FO_VERIFY_AND_THROW(HasModelBoundsExtent(section_info.ViewBounds), "Model view bounds record is degenerate", bounds_file_name, section_name);
+
+        bool has_animation_bounds = false;
+
+        for (const string_view key : animation_bounds_keys) {
+            has_animation_bounds = has_animation_bounds || key_values.count(key) != 0;
+        }
+
+        if (has_animation_bounds) {
+            for (const string_view key : animation_bounds_keys) {
+                FO_VERIFY_AND_THROW(key_values.count(key) != 0, "Model animation bounds section is missing a required key", bounds_file_name, section_name, key);
+            }
+
+            const vector<int32_t> state_anims = parse_int_values("BoundsStateAnims");
+            const vector<int32_t> action_anims = parse_int_values("BoundsActionAnims");
+            const vector<float32_t> min_x = parse_float_values("BoundsMinX");
+            const vector<float32_t> min_y = parse_float_values("BoundsMinY");
+            const vector<float32_t> min_z = parse_float_values("BoundsMinZ");
+            const vector<float32_t> max_x = parse_float_values("BoundsMaxX");
+            const vector<float32_t> max_y = parse_float_values("BoundsMaxY");
+            const vector<float32_t> max_z = parse_float_values("BoundsMaxZ");
+            const size_t bounds_count = state_anims.size();
+
+            FO_VERIFY_AND_THROW(bounds_count != 0, "Model animation bounds section contains no records", bounds_file_name, section_name);
+            FO_VERIFY_AND_THROW(action_anims.size() == bounds_count && min_x.size() == bounds_count && min_y.size() == bounds_count && min_z.size() == bounds_count && max_x.size() == bounds_count && max_y.size() == bounds_count && max_z.size() == bounds_count, "Model animation bounds arrays have different sizes", bounds_file_name, section_name, bounds_count, action_anims.size(), min_x.size(), min_y.size(), min_z.size(), max_x.size(), max_y.size(), max_z.size());
+            section_info.AnimationBounds.reserve(bounds_count);
+
+            for (size_t i = 0; i < bounds_count; i++) {
+                const ModelBounds3D bounds {
+                    .Min = {min_x[i], min_y[i], min_z[i]},
+                    .Max = {max_x[i], max_y[i], max_z[i]},
+                };
+                FO_VERIFY_AND_THROW(IsValidModelBounds(bounds), "Model animation bounds minimum exceeds maximum or contains a non-finite coordinate", bounds_file_name, section_name, state_anims[i], action_anims[i], bounds.Min.x, bounds.Min.y, bounds.Min.z, bounds.Max.x, bounds.Max.y, bounds.Max.z);
+                FO_VERIFY_AND_THROW(HasModelBoundsExtent(bounds), "Model animation bounds record is degenerate", bounds_file_name, section_name, state_anims[i], action_anims[i]);
+
+                const bool inserted = section_info.AnimationBounds.emplace(std::make_pair(state_anims[i], action_anims[i]), bounds).second;
+                FO_VERIFY_AND_THROW(inserted, "Model animation bounds section contains a duplicate animation pair", bounds_file_name, section_name, state_anims[i], action_anims[i]);
+            }
+        }
+
+        const bool inserted = baked_model_bounds.emplace(string(section_name), std::move(section_info)).second;
+        FO_VERIFY_AND_THROW(inserted, "Model bounds resource contains a duplicate section", bounds_file_name, section_name);
+    }
+
+    _bakedModelBounds = std::move(baked_model_bounds);
 }
 
 auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
@@ -272,11 +442,25 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
     _matRot = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
     _forceDraw = true;
     _lastDrawTime = GetTime();
-    SetupFrame(_modelInfo->_drawSize);
+    SetupFrame({4, 4});
 }
 
 void ModelInstance::SetupFrame(isize32 draw_size)
 {
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(draw_size.width > 0 && draw_size.width <= std::numeric_limits<int32_t>::max() / FRAME_SCALE, "3D model frame width is out of range", draw_size.width);
+    FO_VERIFY_AND_THROW(draw_size.height > 0 && draw_size.height <= std::numeric_limits<int32_t>::max() / FRAME_SCALE, "3D model frame height is out of range", draw_size.height);
+
+    optional<vec3> old_root_pos;
+
+    if (_frameSize.width > 0 && _frameSize.height > 0 && _frameSize.width % FRAME_SCALE == 0 && _frameSize.height % FRAME_SCALE == 0) {
+        const int32_t old_width = _frameSize.width / FRAME_SCALE;
+        const int32_t old_height = _frameSize.height / FRAME_SCALE;
+        old_root_pos = Convert2dTo3d({old_width / 2, old_height - old_height / 4});
+    }
+
+    _spriteBoundsPoseReady = false;
     _frameSize.width = draw_size.width * FRAME_SCALE;
     _frameSize.height = draw_size.height * FRAME_SCALE;
 
@@ -286,6 +470,182 @@ void ModelInstance::SetupFrame(isize32 draw_size)
     const auto proj_width = proj_height * frame_ratio;
 
     _frameProj = _modelMngr->_render->CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
+
+    if (old_root_pos) {
+        const vec3 new_root_pos = Convert2dTo3d({draw_size.width / 2, draw_size.height - draw_size.height / 4});
+        const vec3 rebase_delta = new_root_pos - *old_root_pos;
+        const auto rebase_particles = [&rebase_delta](ptr<ModelInstance> model, const auto& recurse) noexcept -> void {
+            for (auto& model_particle : model->_modelParticles) {
+                model_particle.Particle->RebaseWorldParticles(rebase_delta);
+            }
+
+            for (auto& child : model->_children) {
+                recurse(child.as_ptr(), recurse);
+            }
+        };
+        rebase_particles(this, rebase_particles);
+    }
+}
+
+void ModelInstance::PrepareFrameLayout()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_frameLayoutDirty) {
+        RefreshFrameLayout();
+    }
+}
+
+void ModelInstance::RefreshFrameLayout()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const mat44 post_direction_transform = _matTransBase * _matRot;
+    const mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
+    optional<ModelBounds3D> active_bounds;
+    const auto include_active_tracks = [this, &active_bounds](const optional<ModelAnimationController>& controller, const int32_t (&track_animation_indices)[2]) {
+        if (!controller) {
+            return;
+        }
+
+        for (int32_t track = 0; track < 2; track++) {
+            if (!controller->GetTrackEnable(track)) {
+                continue;
+            }
+
+            const int32_t animation_index = track_animation_indices[track];
+
+            if (animation_index < 0 || numeric_cast<size_t>(animation_index) >= _modelInfo->_animationBounds.size() || !_modelInfo->_animationBounds[numeric_cast<size_t>(animation_index)]) {
+                continue;
+            }
+
+            const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(animation_index)];
+            FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, animation_index);
+        }
+    };
+    include_active_tracks(_bodyAnimController, _bodyTrackAnimationIndices);
+    include_active_tracks(_moveAnimController, _moveTrackAnimationIndices);
+
+    const ModelBounds3D& draw_bounds = active_bounds ? *active_bounds : _modelInfo->_modelBounds;
+    const optional<ModelSpriteLayout> draw_layout = CalculateModelSpriteLayout(draw_bounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, !_shadowDisabled && !_modelInfo->_shadowDisabled);
+    FO_STRONG_ASSERT(draw_layout, "Model sprite layout could not be calculated", _modelInfo->_fileName, draw_bounds.Min.x, draw_bounds.Min.y, draw_bounds.Min.z, draw_bounds.Max.x, draw_bounds.Max.y, draw_bounds.Max.z);
+    _layoutDrawSize = draw_layout->DrawSize;
+
+    const optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(_modelInfo->_modelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+    FO_STRONG_ASSERT(lighting_layout, "Model sprite lighting layout could not be calculated", _modelInfo->_fileName);
+    _lightingDrawSize = lighting_layout->DrawSize;
+
+    const optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(_modelInfo->_viewBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+    FO_STRONG_ASSERT(view_layout, "Model view layout could not be calculated", _modelInfo->_fileName);
+
+    constexpr int32_t view_ground_margin = 8;
+    irect32 view_rect = view_layout->ViewRect;
+    const int64_t computed_bottom = numeric_cast<int64_t>(view_rect.y) + view_rect.height;
+    const int64_t view_bottom = std::max(computed_bottom, numeric_cast<int64_t>(view_ground_margin));
+    const int64_t view_height = view_bottom - view_rect.y;
+    FO_STRONG_ASSERT(view_height > 0 && view_height <= std::numeric_limits<int32_t>::max(), "Model view layout has invalid height", _modelInfo->_fileName, view_rect.y, view_bottom);
+    view_rect.height = numeric_cast<int32_t>(view_height);
+    _viewRect = view_rect;
+
+    if (_frameSize.width != _layoutDrawSize.width * FRAME_SCALE || _frameSize.height != _layoutDrawSize.height * FRAME_SCALE) {
+        SetupFrame(_layoutDrawSize);
+        _forceDraw = true;
+    }
+
+    _frameLayoutDirty = false;
+}
+
+void ModelInstance::RefreshConfigurationLayout()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_parentBone) {
+        return;
+    }
+
+    const auto is_finite_matrix = [](const mat44& matrix) noexcept -> bool {
+        const ptr<const float32_t> values = glm::value_ptr(matrix);
+
+        for (size_t i = 0; i < 16; i++) {
+            if (!std::isfinite(values[i])) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+    const mat44 root_inverse = glm::inverse(_parentMatrix);
+
+    if (!is_finite_matrix(root_inverse)) {
+        return;
+    }
+
+    optional<ModelBounds3D> current_model_bounds;
+    optional<ModelBounds3D> current_view_bounds;
+    const auto include_model_tree = [&](ptr<const ModelInstance> model, const auto& recurse) noexcept -> bool {
+        const bool has_visible_mesh = std::ranges::any_of(model->_allMeshes, [](const auto& mesh) noexcept { return !mesh->Disabled; });
+
+        if (has_visible_mesh) {
+            const mat44 relative_transform = root_inverse * model->_parentMatrix;
+            const ModelBounds3D& model_view_bounds = model == this ? model->_modelInfo->_viewBounds : model->_modelInfo->_modelBounds;
+
+            if (!IncludeTransformedModelBounds(current_model_bounds, model->_modelInfo->_modelBounds, relative_transform) || !IncludeTransformedModelBounds(current_view_bounds, model_view_bounds, relative_transform)) {
+                return false;
+            }
+        }
+
+        for (const auto& child : model->_children) {
+            if (!recurse(child.as_ptr(), recurse)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    if (!include_model_tree(this, include_model_tree)) {
+        return;
+    }
+
+    if (!current_model_bounds || !current_view_bounds) {
+        current_model_bounds = _modelInfo->_modelBounds;
+        current_view_bounds = _modelInfo->_viewBounds;
+    }
+
+    if (_configurationLayoutRevision != _combinedMeshGenerationRevision || !_configurationModelBounds || !_configurationViewBounds) {
+        _configurationModelBounds = *current_model_bounds;
+        _configurationViewBounds = *current_view_bounds;
+        _configurationLayoutRevision = _combinedMeshGenerationRevision;
+    }
+    else {
+        if (!IncludeModelBounds(_configurationModelBounds, *current_model_bounds) || !IncludeModelBounds(_configurationViewBounds, *current_view_bounds)) {
+            return;
+        }
+    }
+
+    const mat44 post_direction_transform = _matTransBase * _matRot;
+    const mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
+    const optional<ModelSpriteLayout> lighting_layout = CalculateModelSpriteLayout(*_configurationModelBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+    const optional<ModelSpriteLayout> view_layout = CalculateModelSpriteLayout(*_configurationViewBounds, post_direction_transform, pre_direction_transform, _modelMngr->_settings->ModelProjFactor, false);
+
+    if (!lighting_layout || !view_layout) {
+        return;
+    }
+
+    _lightingDrawSize = lighting_layout->DrawSize;
+
+    constexpr int32_t view_ground_margin = 8;
+    irect32 view_rect = view_layout->ViewRect;
+    const int64_t computed_bottom = numeric_cast<int64_t>(view_rect.y) + view_rect.height;
+    const int64_t view_bottom = std::max(computed_bottom, numeric_cast<int64_t>(view_ground_margin));
+    const int64_t view_height = view_bottom - view_rect.y;
+
+    if (view_height <= 0 || view_height > std::numeric_limits<int32_t>::max()) {
+        return;
+    }
+
+    view_rect.height = numeric_cast<int32_t>(view_height);
+    _viewRect = view_rect;
 }
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
@@ -355,6 +715,18 @@ auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, cons
 
     out_pos = vec3 {obj_pos.x / obj_pos.w, obj_pos.y / obj_pos.w, obj_pos.z / obj_pos.w};
     return true;
+}
+
+auto ModelInstance::MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const vec3 pos3d = direct_scene ? vec3 {} : Convert2dTo3d(pos);
+    const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
+    const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+    const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
+    const mat44 mat_camera_tilt = direct_scene ? mat44 {1.0f} : _matRot;
+    return mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -532,6 +904,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
                             optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(link.ChildName);
                             FO_VERIFY_AND_THROW(particle, "Particle was not found for a model link", link.ChildName);
+                            particle->EnableBoundsComputation();
                             _modelParticles.emplace_back(ModelParticleSystem {link.Id, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
                         }
 
@@ -684,6 +1057,7 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
         _bodyAnimController->SetTrackEnable(new_track, true);
         _bodyAnimController->SetTrackAnimation(new_track, anim_index, nullptr);
+        _bodyTrackAnimationIndices[new_track] = anim_index;
         _bodyAnimController->SetTrackPosition(new_track, anim_start_time);
         _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, 0.0f);
 
@@ -712,6 +1086,10 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
     // Regenerate mesh for drawing
     if (!_parentBone && mesh_changed) {
         GenerateCombinedMeshes();
+    }
+
+    if (!_parentBone) {
+        RefreshFrameLayout();
     }
 
     return mesh_changed;
@@ -838,6 +1216,8 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     _curMovingAnimIndex = anim_index;
+    _frameLayoutDirty = true;
+    _forceDraw = true;
 
     constexpr float32_t smooth_time = 0.001f;
 
@@ -852,6 +1232,7 @@ void ModelInstance::RefreshMoveAnimation()
 
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackAnimation(new_track, anim_index, &_modelMngr->_legBones);
+        _moveTrackAnimationIndices[new_track] = anim_index;
         _moveAnimController->SetTrackPosition(new_track, 0.0f);
 
         _moveAnimController->AddEventSpeed(new_track, speed, 0.0f, smooth_time);
@@ -937,6 +1318,13 @@ auto ModelInstance::GetMovingAnim() const noexcept -> CritterActionAnim
     }
 }
 
+void ModelInstance::RequestRedraw() noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _forceDraw = true;
+}
+
 auto ModelInstance::IsAnimationPlaying() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -961,16 +1349,341 @@ auto ModelInstance::GetDrawSize() const -> isize32
     return {_frameSize.width / FRAME_SCALE, _frameSize.height / FRAME_SCALE};
 }
 
-auto ModelInstance::GetViewSize() const -> isize32
+auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_frameSize.width <= 0 || _frameSize.height <= 0 || _frameSize.width % FRAME_SCALE != 0 || _frameSize.height % FRAME_SCALE != 0) {
+        return std::nullopt;
+    }
+
+    bool force_full_frame = _modelMngr->_effectMngr->Effects.SkinnedModel != _modelMngr->_effectMngr->Effects.SkinnedModelDefault;
+
+    const int32_t frame_width = _frameSize.width / FRAME_SCALE;
+    const int32_t frame_height = _frameSize.height / FRAME_SCALE;
+    const ipos32 root_pos = {frame_width / 2, frame_height - frame_height / 4};
+    const mat44 root_transformation = _spriteBoundsPoseReady ? _parentMatrix : MakeRootTransformation(root_pos, const_numeric_cast<float32_t>(FRAME_SCALE), false);
+    const vec3 ground_pos = _spriteBoundsPoseReady ? _groundPos : vec3 {root_transformation[3][0], root_transformation[3][1], root_transformation[3][2]};
+    const bool include_shadow = !_shadowDisabled && !_modelInfo->_shadowDisabled;
+    if (include_shadow && (!std::isfinite(ground_pos.x) || !std::isfinite(ground_pos.y) || !std::isfinite(ground_pos.z))) {
+        return std::nullopt;
+    }
+
+    const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
+    const mat44 identity {1.0f};
+    const auto frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
+    bool has_projected_point = false;
+    float32_t min_x {};
+    float32_t min_y {};
+    float32_t max_x {};
+    float32_t max_y {};
+
+    const auto include_projected_point = [&](vec3 world_pos) -> bool {
+        vec3 projected_pos {};
+        if (!ProjectPoint(world_pos, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
+            return false;
+        }
+
+        const auto sprite_x = projected_pos.x / frame_scale;
+        const auto sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
+
+        if (!has_projected_point) {
+            min_x = sprite_x;
+            min_y = sprite_y;
+            max_x = sprite_x;
+            max_y = sprite_y;
+            has_projected_point = true;
+        }
+        else {
+            min_x = std::min(min_x, sprite_x);
+            min_y = std::min(min_y, sprite_y);
+            max_x = std::max(max_x, sprite_x);
+            max_y = std::max(max_y, sprite_y);
+        }
+
+        return true;
+    };
+    const auto include_world_point = [&](vec3 world_pos) -> bool {
+        if (!include_projected_point(world_pos)) {
+            return false;
+        }
+
+        if (include_shadow) {
+            auto shadow_pos = world_pos;
+            auto shadow_distance = (shadow_pos.y - ground_pos.y) * SHADOW_CAMERA_ANGLE_COS;
+            shadow_distance -= (ground_pos.z - shadow_pos.z) * SHADOW_CAMERA_ANGLE_SIN;
+            shadow_pos.y -= shadow_distance * SHADOW_CAMERA_ANGLE_COS;
+            shadow_distance *= SHADOW_ANGLE_TAN;
+            shadow_pos.y += shadow_distance * SHADOW_CAMERA_ANGLE_SIN;
+            shadow_pos.z -= 10.0f;
+
+            if (!include_projected_point(shadow_pos)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    bool has_geometry = false;
+
+    if (_spriteBoundsPoseReady) {
+        for (size_t mesh_index = 0; mesh_index < _actualCombinedMeshesCount; mesh_index++) {
+            const auto combined_mesh = _combinedMeshes[mesh_index].as_ptr();
+
+            if (!combined_mesh->SpriteBoundsValid) {
+                return std::nullopt;
+            }
+            if (!combined_mesh->HasSpriteGeometry) {
+                continue;
+            }
+            force_full_frame = force_full_frame || combined_mesh->DrawEffect;
+
+            has_geometry = true;
+
+            array<mat44, MODEL_MAX_BONES> skin_matrices {};
+
+            for (size_t bone_index = 0; bone_index < combined_mesh->CurBoneMatrix; bone_index++) {
+                if (bone_index >= combined_mesh->SkinBones.size() || !combined_mesh->SkinBones[bone_index]) {
+                    return std::nullopt;
+                }
+
+                skin_matrices[bone_index] = combined_mesh->SkinBones[bone_index]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[bone_index];
+            }
+
+            for (const auto vertex_index : combined_mesh->SpriteVertices) {
+                if (numeric_cast<size_t>(vertex_index) >= combined_mesh->MeshBuf->Vertices3D.size()) {
+                    return std::nullopt;
+                }
+
+                const auto& vertex = combined_mesh->MeshBuf->Vertices3D[vertex_index];
+                glm::vec4 transformed_pos {};
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    const float32_t weight = vertex.BlendWeights[influence];
+
+                    if (weight <= 0.0f) {
+                        continue;
+                    }
+
+                    const size_t bone_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
+                    if (bone_index >= combined_mesh->CurBoneMatrix) {
+                        return std::nullopt;
+                    }
+
+                    transformed_pos += skin_matrices[bone_index] * glm::vec4 {vertex.Position, 1.0f} * weight;
+                }
+
+                if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || !is_float_equal(transformed_pos.w, 1.0f)) {
+                    return std::nullopt;
+                }
+                if (!include_world_point({transformed_pos.x, transformed_pos.y, transformed_pos.z})) {
+                    return std::nullopt;
+                }
+            }
+        }
+    }
+
+    const auto include_track_bounds = [&](const ModelAnimationController& controller, const auto& track_animation_indices) -> bool {
+        for (int32_t track = 0; track < 2; track++) {
+            if (!controller.GetTrackEnable(track)) {
+                continue;
+            }
+
+            const int32_t anim_index = track_animation_indices[track];
+            const bool has_baked_bounds = anim_index >= 0 && numeric_cast<size_t>(anim_index) < _modelInfo->_animationBounds.size() && _modelInfo->_animationBounds[numeric_cast<size_t>(anim_index)].has_value();
+
+            if (!has_baked_bounds) {
+                if (!_spriteBoundsPoseReady) {
+                    return false;
+                }
+
+                continue;
+            }
+
+            const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(anim_index)];
+            has_geometry = true;
+
+            for (int32_t x_side = 0; x_side != 2; x_side++) {
+                for (int32_t y_side = 0; y_side != 2; y_side++) {
+                    for (int32_t z_side = 0; z_side != 2; z_side++) {
+                        const vec3 root_pos_3d {
+                            x_side != 0 ? bounds.Max.x : bounds.Min.x,
+                            y_side != 0 ? bounds.Max.y : bounds.Min.y,
+                            z_side != 0 ? bounds.Max.z : bounds.Min.z,
+                        };
+                        const auto transformed_pos = root_transformation * glm::vec<4, float32_t, glm::defaultp> {root_pos_3d.x, root_pos_3d.y, root_pos_3d.z, 1.0f};
+
+                        if (!std::isfinite(transformed_pos.x) || !std::isfinite(transformed_pos.y) || !std::isfinite(transformed_pos.z) || transformed_pos.w != 1.0f) {
+                            return false;
+                        }
+                        if (!include_world_point({transformed_pos.x, transformed_pos.y, transformed_pos.z})) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    };
+
+    if (_bodyAnimController && !include_track_bounds(*_bodyAnimController, _bodyTrackAnimationIndices)) {
+        return std::nullopt;
+    }
+    if (_moveAnimController && !include_track_bounds(*_moveAnimController, _moveTrackAnimationIndices)) {
+        return std::nullopt;
+    }
+
+    const auto include_particle_bounds = [&](ptr<const ModelInstance> model, const auto& recurse) -> bool {
+        for (const auto& model_particle : model->_modelParticles) {
+            bool has_live_bounds = false;
+
+            if (const optional<ParticleBounds3D> live_bounds = model_particle.Particle->GetRenderViewBounds(); live_bounds) {
+                for (uint32_t corner_index = 0; corner_index < 8; corner_index++) {
+                    const vec3 corner {
+                        (corner_index & 1U) != 0 ? live_bounds->Max.x : live_bounds->Min.x,
+                        (corner_index & 2U) != 0 ? live_bounds->Max.y : live_bounds->Min.y,
+                        (corner_index & 4U) != 0 ? live_bounds->Max.z : live_bounds->Min.z,
+                    };
+
+                    if (!include_projected_point(corner)) {
+                        return false;
+                    }
+                }
+
+                has_live_bounds = true;
+            }
+
+            if (!has_live_bounds) {
+                const mat44 camera_rotation = glm::rotate(mat44 {1.0f}, _modelMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+                const glm::vec4 world_pos = camera_rotation * model_particle.Bone->CombinedTransformationMatrix * glm::vec4 {model_particle.Move, 1.0f};
+                vec3 projected_pos {};
+
+                if (!std::isfinite(world_pos.x) || !std::isfinite(world_pos.y) || !std::isfinite(world_pos.z) || world_pos.w != 1.0f || !ProjectPoint(vec3 {world_pos}, identity, _frameProj, viewport, projected_pos) || !std::isfinite(projected_pos.x) || !std::isfinite(projected_pos.y)) {
+                    return false;
+                }
+
+                const isize32 draw_size = model_particle.Particle->GetDrawSize();
+
+                if (draw_size.width <= 0 || draw_size.height <= 0) {
+                    return false;
+                }
+
+                const float32_t sprite_x = projected_pos.x / frame_scale;
+                const float32_t sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
+                const float32_t particle_left = sprite_x - numeric_cast<float32_t>(draw_size.width) * 0.5f;
+                const float32_t particle_top = sprite_y - numeric_cast<float32_t>(draw_size.height) * 0.75f;
+                const float32_t particle_right = particle_left + numeric_cast<float32_t>(draw_size.width);
+                const float32_t particle_bottom = particle_top + numeric_cast<float32_t>(draw_size.height);
+
+                if (!has_projected_point) {
+                    min_x = particle_left;
+                    min_y = particle_top;
+                    max_x = particle_right;
+                    max_y = particle_bottom;
+                    has_projected_point = true;
+                }
+                else {
+                    min_x = std::min(min_x, particle_left);
+                    min_y = std::min(min_y, particle_top);
+                    max_x = std::max(max_x, particle_right);
+                    max_y = std::max(max_y, particle_bottom);
+                }
+            }
+
+            has_geometry = true;
+            force_full_frame = true;
+        }
+
+        for (const auto& child : model->_children) {
+            if (!recurse(child.as_ptr(), recurse)) {
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    if (!include_particle_bounds(this, include_particle_bounds)) {
+        return std::nullopt;
+    }
+
+    if (!has_geometry || !has_projected_point) {
+        return std::nullopt;
+    }
+
+    const auto frame_width_float = numeric_cast<float32_t>(frame_width);
+    const auto frame_height_float = numeric_cast<float32_t>(frame_height);
+    const auto guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
+    optional<isize32> required_frame_size = CalculateModelSpriteFrameSize(min_x - numeric_cast<float32_t>(root_pos.x) - guard_padding, min_y - numeric_cast<float32_t>(root_pos.y) - guard_padding, max_x - numeric_cast<float32_t>(root_pos.x) + guard_padding, max_y - numeric_cast<float32_t>(root_pos.y) + guard_padding);
+
+    if (!required_frame_size) {
+        return std::nullopt;
+    }
+
+    required_frame_size->width = std::max(required_frame_size->width, _layoutDrawSize.width);
+    required_frame_size->height = std::max(required_frame_size->height, _layoutDrawSize.height);
+    const int32_t left = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_x) - guard_padding, 0.0f, frame_width_float));
+    const int32_t top = force_full_frame ? 0 : iround<int32_t>(std::clamp(std::floor(min_y) - guard_padding, 0.0f, frame_height_float));
+    const int32_t right = force_full_frame ? frame_width : iround<int32_t>(std::clamp(std::ceil(max_x) + guard_padding, 0.0f, frame_width_float));
+    const int32_t bottom = force_full_frame ? frame_height : iround<int32_t>(std::clamp(std::ceil(max_y) + guard_padding, 0.0f, frame_height_float));
+
+    if (right <= left || bottom <= top) {
+        return std::nullopt;
+    }
+
+    const auto collect_enabled_animation_indices = [](const optional<ModelAnimationController>& controller, const int32_t (&track_animation_indices)[2]) -> pair<array<int32_t, 2>, uint8_t> {
+        array<int32_t, 2> animation_indices {-1, -1};
+        uint8_t animation_count = 0;
+
+        if (controller) {
+            for (int32_t track = 0; track < 2; track++) {
+                if (!controller->GetTrackEnable(track)) {
+                    continue;
+                }
+
+                const int32_t animation_index = track_animation_indices[track];
+                if (animation_count != 0 && animation_indices[0] == animation_index) {
+                    continue;
+                }
+
+                animation_indices[animation_count] = animation_index;
+                animation_count++;
+            }
+        }
+
+        if (animation_count == 2 && animation_indices[1] < animation_indices[0]) {
+            std::swap(animation_indices[0], animation_indices[1]);
+        }
+
+        return {animation_indices, animation_count};
+    };
+
+    const auto [body_animation_indices, body_animation_count] = collect_enabled_animation_indices(_bodyAnimController, _bodyTrackAnimationIndices);
+    const auto [move_animation_indices, move_animation_count] = collect_enabled_animation_indices(_moveAnimController, _moveTrackAnimationIndices);
+
+    return ModelSpriteBounds {
+        .Rect = {left, top, right - left, bottom - top},
+        .RequiredFrameSize = *required_frame_size,
+        .EnvelopeId =
+            {
+                .BodyAnimationIndices = body_animation_indices,
+                .MoveAnimationIndices = move_animation_indices,
+                .CombinedMeshGenerationRevision = _combinedMeshGenerationRevision,
+                .BodyAnimationCount = body_animation_count,
+                .MoveAnimationCount = move_animation_count,
+                .ShadowEnabled = include_shadow,
+                .FullFrame = force_full_frame,
+            },
+    };
+}
+
+auto ModelInstance::GetViewRect() const -> irect32
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    const auto draw_width_scale = numeric_cast<float32_t>(_frameSize.width / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.width);
-    const auto draw_height_scale = numeric_cast<float32_t>(_frameSize.height / FRAME_SCALE) / numeric_cast<float32_t>(_modelInfo->_drawSize.height);
-    const auto view_width = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.width) * draw_width_scale);
-    const auto view_height = iround<int32_t>(numeric_cast<float32_t>(_modelInfo->_viewSize.height) * draw_height_scale);
-
-    return {view_width, view_height};
+    return _viewRect;
 }
 
 auto ModelInstance::GetSpeed() const -> float32_t
@@ -1052,6 +1765,16 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             for (size_t i = 0; i < MODEL_MAX_TEXTURES; i++) {
                 mesh->LastTexures[i] = mesh->CurTexures[i];
                 mesh->CurTexures[i] = mesh->DefaultTexures[i];
+            }
+        }
+
+        for (const auto disabled_mesh_name : data.DisabledMesh) {
+            for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
+                auto mesh = _allMeshes[mesh_index].as_ptr();
+
+                if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
+                    mesh->Disabled = true;
+                }
             }
         }
     }
@@ -1232,6 +1955,7 @@ void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
     const auto mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
 
     _matRot = mx * my * mz;
+    RefreshFrameLayout();
 }
 
 void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
@@ -1239,6 +1963,22 @@ void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
     FO_STACK_TRACE_ENTRY();
 
     _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
+    RefreshFrameLayout();
+}
+
+void ModelInstance::EnableShadow(bool enabled)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const bool shadow_disabled = !enabled;
+
+    if (_shadowDisabled == shadow_disabled) {
+        return;
+    }
+
+    _shadowDisabled = shadow_disabled;
+    RefreshFrameLayout();
+    _forceDraw = true;
 }
 
 void ModelInstance::SetSpeed(float32_t speed)
@@ -1251,6 +1991,8 @@ void ModelInstance::SetSpeed(float32_t speed)
 void ModelInstance::GenerateCombinedMeshes()
 {
     FO_STACK_TRACE_ENTRY();
+
+    _spriteBoundsPoseReady = false;
 
     // Generation disabled
     if (!_allowMeshGeneration) {
@@ -1271,6 +2013,9 @@ void ModelInstance::GenerateCombinedMeshes()
         combined_mesh->MeshBuf->VertCount = 0;
         combined_mesh->MeshBuf->Indices.clear();
         combined_mesh->MeshBuf->IndCount = 0;
+        combined_mesh->SpriteVertices.clear();
+        combined_mesh->SpriteBoundsValid = false;
+        combined_mesh->HasSpriteGeometry = false;
     }
 
     _actualCombinedMeshesCount = 0;
@@ -1284,8 +2029,72 @@ void ModelInstance::GenerateCombinedMeshes()
 
     // Finalize meshes
     for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
-        _combinedMeshes[i]->MeshBuf->StaticDataChanged = true;
+        auto combined_mesh = _combinedMeshes[i].as_ptr();
+        const auto& vertices = combined_mesh->MeshBuf->Vertices3D;
+        const auto& indices = combined_mesh->MeshBuf->Indices;
+
+        combined_mesh->SpriteBoundsValid = true;
+        vector<bool> included_vertices(vertices.size());
+
+        for (const auto vertex_index : indices) {
+            if (numeric_cast<size_t>(vertex_index) >= vertices.size()) {
+                combined_mesh->SpriteBoundsValid = false;
+                break;
+            }
+
+            const auto& vertex = vertices[vertex_index];
+            if (!std::isfinite(vertex.Position.x) || !std::isfinite(vertex.Position.y) || !std::isfinite(vertex.Position.z)) {
+                combined_mesh->SpriteBoundsValid = false;
+                break;
+            }
+
+            if (!included_vertices[vertex_index]) {
+                combined_mesh->SpriteVertices.emplace_back(vertex_index);
+                included_vertices[vertex_index] = true;
+            }
+
+            float32_t total_weight = 0.0f;
+
+            for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                const auto weight = vertex.BlendWeights[influence];
+                if (!std::isfinite(weight)) {
+                    combined_mesh->SpriteBoundsValid = false;
+                    break;
+                }
+                if (weight <= 0.0f) {
+                    continue;
+                }
+
+                const auto bone_index_value = vertex.BlendIndices[influence];
+                if (!std::isfinite(bone_index_value) || bone_index_value < 0.0f || bone_index_value >= numeric_cast<float32_t>(combined_mesh->CurBoneMatrix)) {
+                    combined_mesh->SpriteBoundsValid = false;
+                    break;
+                }
+
+                const auto bone_index = numeric_cast<size_t>(iround<int32_t>(bone_index_value));
+                if (numeric_cast<float32_t>(bone_index) != bone_index_value) {
+                    combined_mesh->SpriteBoundsValid = false;
+                    break;
+                }
+
+                total_weight += weight;
+            }
+
+            if (!combined_mesh->SpriteBoundsValid) {
+                break;
+            }
+            if (!is_float_equal(total_weight, 1.0f)) {
+                combined_mesh->SpriteBoundsValid = false;
+                break;
+            }
+
+            combined_mesh->HasSpriteGeometry = true;
+        }
+
+        combined_mesh->MeshBuf->StaticDataChanged = true;
     }
+
+    _combinedMeshGenerationRevision++;
 }
 
 void ModelInstance::FillCombinedMeshes(ptr<const ModelInstance> cur)
@@ -1798,6 +2607,7 @@ void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_sc
 {
     FO_STACK_TRACE_ENTRY();
 
+    _spriteBoundsPoseReady = false;
     _drawProj = proj;
     _directSceneDraw = direct_scene;
     const auto restore_direct_scene = scope_exit([this]() noexcept { _directSceneDraw = false; });
@@ -1822,21 +2632,34 @@ void ModelInstance::DrawFrame(const mat44& proj, float32_t scale, bool direct_sc
     if (draw_particles) {
         DrawAllParticles();
     }
+
+    _spriteBoundsPoseReady = !direct_scene;
 }
 
 void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t scale)
 {
     FO_STACK_TRACE_ENTRY();
 
+    const auto get_enabled_tracks = [](const optional<ModelAnimationController>& controller) noexcept -> uint8_t {
+        uint8_t result = 0;
+
+        if (controller) {
+            for (int32_t track = 0; track < 2; track++) {
+                if (controller->GetTrackEnable(track)) {
+                    result |= numeric_cast<uint8_t>(1U << track);
+                }
+            }
+        }
+
+        return result;
+    };
+    const uint8_t body_tracks_before = get_enabled_tracks(_bodyAnimController);
+    const uint8_t move_tracks_before = get_enabled_tracks(_moveAnimController);
+    const size_t particle_count_before = _modelParticles.size();
+
     // Update world matrix, only for root
     if (!_parentBone) {
-        const vec3 pos3d = _directSceneDraw ? vec3 {} : Convert2dTo3d(pos);
-        const auto mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
-        const auto mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
-        const auto mat_trans = glm::translate(mat44 {1.0f}, pos3d);
-        const mat44 mat_camera_tilt = _directSceneDraw ? mat44 {1.0f} : _matRot;
-
-        _parentMatrix = mat_trans * _matTransBase * mat_camera_tilt * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
+        _parentMatrix = MakeRootTransformation(pos, scale, _directSceneDraw);
         _groundPos = vec3 {_parentMatrix[3][0], _parentMatrix[3][1], _parentMatrix[3][2]};
     }
 
@@ -1926,6 +2749,22 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
     // Move child animations
     for (size_t i = 0; i != _children.size(); ++i) {
         _children[i]->ProcessAnimation(elapsed, pos, 1.0f);
+    }
+
+    if (!_parentBone) {
+        RefreshConfigurationLayout();
+    }
+
+    bool child_layout_changed = false;
+    for (auto& child : _children) {
+        if (child->_frameLayoutDirty) {
+            child->_frameLayoutDirty = false;
+            child_layout_changed = true;
+        }
+    }
+    if (body_tracks_before != get_enabled_tracks(_bodyAnimController) || move_tracks_before != get_enabled_tracks(_moveAnimController) || particle_count_before != _modelParticles.size() || child_layout_changed) {
+        _frameLayoutDirty = true;
+        _forceDraw = true;
     }
 
     // Animation callbacks
@@ -2136,7 +2975,9 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 
     if (auto to_bone = FindBone(bone_name)) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
+            particle->EnableBoundsComputation();
             _modelParticles.emplace_back(ModelParticleSystem {0, SafeAlloc::MakeUnique<ParticleSystem>(std::move(*particle)), to_bone, move, _lookDirAngle});
+            _forceDraw = true;
         }
     }
 }
@@ -2145,11 +2986,6 @@ ModelInformation::ModelInformation(ptr<ModelManager> model_mngr) :
     _modelMngr {model_mngr}
 {
     FO_STACK_TRACE_ENTRY();
-
-    _drawSize.width = _modelMngr->_settings->DefaultModelDrawWidth;
-    _drawSize.height = _modelMngr->_settings->DefaultModelDrawHeight;
-    _viewSize.width = _modelMngr->_settings->DefaultModelViewWidth != 0 ? _modelMngr->_settings->DefaultModelViewWidth : _drawSize.width / 4;
-    _viewSize.height = _modelMngr->_settings->DefaultModelViewHeight != 0 ? _modelMngr->_settings->DefaultModelViewHeight : _viewSize.height / 2;
 }
 
 auto ModelInformation::Load(string_view name) -> bool
@@ -2187,6 +3023,11 @@ auto ModelInformation::Load(string_view name) -> bool
     _fileName = name;
     _hierarchy = hierarchy;
 
+    const optional<ModelBounds3D> hierarchy_bounds = CalculateHierarchyBounds();
+    FO_VERIFY_AND_THROW(hierarchy_bounds, "Model hierarchy bounds could not be calculated", name);
+    _modelBounds = *hierarchy_bounds;
+    _viewBounds = _modelBounds;
+
     return true;
 }
 
@@ -2198,23 +3039,6 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
     const bool disable_animation_interpolation = reader.Read<uint8_t>() != 0;
     _disableBackwardAnim = reader.Read<uint8_t>() != 0;
     _shadowDisabled = reader.Read<uint8_t>() != 0;
-
-    const int32_t draw_width = reader.Read<int32_t>();
-    const int32_t draw_height = reader.Read<int32_t>();
-    const int32_t view_width = reader.Read<int32_t>();
-    const int32_t view_height = reader.Read<int32_t>();
-
-    FO_VERIFY_AND_THROW((draw_width == 0 && draw_height == 0) || (draw_width > 0 && draw_height > 0), "Baked model description contains invalid DrawSize", name, draw_width, draw_height);
-    FO_VERIFY_AND_THROW((view_width == 0 && view_height == 0) || (view_width > 0 && view_height > 0), "Baked model description contains invalid ViewSize", name, view_width, view_height);
-
-    if (draw_width != 0 && draw_height != 0) {
-        _drawSize.width = draw_width;
-        _drawSize.height = draw_height;
-    }
-    if (view_width != 0 && view_height != 0) {
-        _viewSize.width = view_width;
-        _viewSize.height = view_height;
-    }
 
     const string rotation_bone = reader.ReadString();
     _rotationBone = !rotation_bone.empty() ? _modelMngr->GetBoneHashedString(rotation_bone) : hstring {};
@@ -2297,6 +3121,10 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
     _fileName = name;
     _hierarchy = hierarchy;
+    const auto baked_model_bounds_it = _modelMngr->_bakedModelBounds.find(string(name));
+    FO_VERIFY_AND_THROW(baked_model_bounds_it != _modelMngr->_bakedModelBounds.end(), "Model description has no baked bounds", name);
+    _modelBounds = baked_model_bounds_it->second.ModelBounds;
+    _viewBounds = baked_model_bounds_it->second.ViewBounds;
     FO_VERIFY_AND_THROW(!_rotationBone || FindModelBone(_hierarchy->_rootBone, _rotationBone) != nullptr, "Rotation bone was not found in a baked model description", rotation_bone, name);
 
     for (const hstring bone_name : _fastTransitionBones) {
@@ -2399,6 +3227,18 @@ auto ModelInformation::LoadBaked(string_view name, DataReader& reader) -> bool
 
             const int32_t anim_index = _animController->RegisterAnimation(anim, reversed);
             _animIndexes.emplace(anim_pair, anim_index);
+
+            const size_t bounds_index = numeric_cast<size_t>(anim_index);
+            if (_animationBounds.size() <= bounds_index) {
+                _animationBounds.resize(bounds_index + 1);
+            }
+
+            const auto bounds_it = baked_model_bounds_it->second.AnimationBounds.find(std::make_pair(anim_entry.StateAnim, anim_entry.ActionAnim));
+            FO_VERIFY_AND_THROW(bounds_it != baked_model_bounds_it->second.AnimationBounds.end(), "Model animation has no baked bounds", name, anim_entry.StateAnim, anim_entry.ActionAnim);
+
+            if (!_animationBounds[bounds_index]) {
+                _animationBounds[bounds_index] = bounds_it->second;
+            }
         }
 
         const int32_t anim_count = _animController->GetAnimationsCount();
@@ -2603,13 +3443,84 @@ auto ModelInformation::GetAnimationIndexEx(CritterStateAnim state_anim, CritterA
     return -1;
 }
 
+auto ModelInformation::CalculateHierarchyBounds() const -> optional<ModelBounds3D>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_hierarchy, "Missing model hierarchy while calculating bounds", _fileName);
+
+    optional<ModelBounds3D> bounds;
+
+    for (ptr<ModelBone> bone : _hierarchy->_allDrawBones) {
+        FO_VERIFY_AND_THROW(bone->AttachedMesh, "Drawable model bone has no mesh", bone->Name, _fileName);
+        const MeshData& mesh = *bone->AttachedMesh;
+        vector<bool> referenced_vertices(mesh.Vertices.size());
+
+        for (const vindex_t vertex_index : mesh.Indices) {
+            FO_VERIFY_AND_THROW(numeric_cast<size_t>(vertex_index) < mesh.Vertices.size(), "Model mesh index is out of range while calculating bounds", vertex_index, mesh.Vertices.size(), _fileName);
+            referenced_vertices[numeric_cast<size_t>(vertex_index)] = true;
+        }
+
+        FO_VERIFY_AND_THROW(mesh.SkinBones.size() == mesh.SkinBoneOffsets.size(), "Model skin bone and offset counts differ while calculating bounds", mesh.SkinBones.size(), mesh.SkinBoneOffsets.size(), _fileName);
+
+        for (size_t vertex_index = 0; vertex_index < mesh.Vertices.size(); vertex_index++) {
+            if (!referenced_vertices[vertex_index]) {
+                continue;
+            }
+
+            const Vertex3D& vertex = mesh.Vertices[vertex_index];
+            vec3 transformed_point;
+
+            if (mesh.SkinBones.empty()) {
+                const glm::vec4 transformed = bone->GlobalTransformationMatrix * glm::vec4 {vertex.Position, 1.0f};
+                FO_VERIFY_AND_THROW(transformed.w == 1.0f, "Unskinned model vertex has invalid homogeneous coordinate", transformed.w, _fileName);
+                transformed_point = vec3 {transformed};
+            }
+            else {
+                glm::vec4 transformed {};
+                float64_t weight_sum = 0.0;
+
+                for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
+                    const float32_t weight = vertex.BlendWeights[influence];
+
+                    if (weight == 0.0f) {
+                        continue;
+                    }
+
+                    const float32_t raw_index = vertex.BlendIndices[influence];
+                    const int32_t index = iround<int32_t>(raw_index);
+                    FO_VERIFY_AND_THROW(std::isfinite(weight) && weight > 0.0f && std::isfinite(raw_index) && index >= 0 && numeric_cast<size_t>(index) < mesh.SkinBones.size() && is_float_equal(raw_index, numeric_cast<float32_t>(index)), "Model vertex has invalid skin influence while calculating bounds", weight, raw_index, mesh.SkinBones.size(), _fileName);
+                    const nptr<ModelBone> skin_bone = mesh.SkinBones[numeric_cast<size_t>(index)];
+                    FO_VERIFY_AND_THROW(skin_bone, "Model vertex references a missing skin bone while calculating bounds", index, _fileName);
+                    const glm::vec4 influence_point = skin_bone->GlobalTransformationMatrix * mesh.SkinBoneOffsets[numeric_cast<size_t>(index)] * glm::vec4 {vertex.Position, 1.0f};
+                    transformed += influence_point * weight;
+                    weight_sum += weight;
+                }
+
+                FO_VERIFY_AND_THROW(std::abs(weight_sum - 1.0) <= 0.001, "Model vertex skin weights do not sum to one while calculating bounds", weight_sum, _fileName);
+                FO_VERIFY_AND_THROW(is_float_equal(transformed.w, 1.0f), "Skinned model vertex has invalid homogeneous coordinate", transformed.w, _fileName);
+                transformed_point = vec3 {transformed};
+            }
+
+            if (!IncludeModelBoundsPoint(bounds, transformed_point)) {
+                return std::nullopt;
+            }
+        }
+    }
+
+    if (!bounds) {
+        return std::nullopt;
+    }
+
+    return CalculateGuardedModelBounds(*bounds);
+}
+
 auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_hierarchy != nullptr, "Missing required hierarchy");
-    FO_VERIFY_AND_THROW(_drawSize.width > 0 && _drawSize.height > 0, "Model has invalid draw size", _fileName, _drawSize);
-    FO_VERIFY_AND_THROW(_viewSize.width > 0 && _viewSize.height > 0, "Model has invalid view size", _fileName, _viewSize);
+    FO_VERIFY_AND_THROW(IsValidModelBounds(_modelBounds), "Model has invalid baked bounds", _fileName, _modelBounds.Min.x, _modelBounds.Min.y, _modelBounds.Min.z, _modelBounds.Max.x, _modelBounds.Max.y, _modelBounds.Max.z);
 
     auto model = SafeAlloc::MakeUnique<ModelInstance>(_modelMngr, this);
 
@@ -2618,6 +3529,7 @@ auto ModelInformation::CreateInstance() -> unique_ptr<ModelInstance>
 
         if (_rotationBone) {
             model->_moveAnimController.emplace(_animController->Copy());
+            model->_moveAnimController->SetPreserveUnwrittenOutputs(true);
         }
     }
 

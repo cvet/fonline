@@ -106,6 +106,7 @@ public:
     void SetTrackPosition(int32_t track, float32_t position);
     void SetTrackSpeed(int32_t track, float32_t speed);
     void SetInterpolation(bool enabled);
+    void SetPreserveUnwrittenOutputs(bool preserve) noexcept;
     void AdvanceTime(float32_t time);
 
 private:
@@ -113,6 +114,7 @@ private:
     {
         hstring BoneName {};
         nptr<mat44> Matrix {};
+        mat44 BaseMatrix {};
         vector<bool> Valid {};
         vector<float32_t> Factor {};
         vector<vec3> Scale {};
@@ -159,6 +161,7 @@ private:
     vector<Track> _tracks {};
     float32_t _eventsTime {};
     bool _interpolationDisabled {};
+    bool _preserveUnwrittenOutputs {};
 };
 
 template<typename T>

@@ -41,6 +41,10 @@ Read this page together with:
 - `Source/Client/3dAnimation.cpp`
 - `Source/Client/ModelSprites.h`
 - `Source/Client/ModelSprites.cpp`
+- `Source/Client/ModelSpriteLayout.h`
+- `Source/Client/ModelSpriteLayout.cpp`
+- `Source/Common/ModelBounds.h`
+- `Source/Common/ModelBounds.cpp`
 - `Source/Client/ParticleSprites.h`
 - `Source/Client/ParticleSprites.cpp`
 - `Source/Client/RenderTarget.h`
@@ -49,6 +53,7 @@ Read this page together with:
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_ModelBaker.cpp`
 
 ## Runtime owner: `ClientEngine`
 
@@ -159,7 +164,40 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   produced by `ImageBaker`. A source-backed sprite uses that mesh for ordinary
   full-image draws; an explicit empty mesh skips the draw, while a missing/quad
   mesh keeps the four-vertex path used by runtime-generated atlas sprites.
-- `ModelSpriteFactory` turns model resources into atlas-backed sprites by rendering model frames into a render target.
+- `ModelSpriteFactory` turns model resources into atlas-backed sprites. It reads
+  the version 2 aggregate, idle-priority view, and per-animation bounds from
+  `ModelAnimInfo.foinfo`; no authored `.fo3d` `DrawSize` or `ViewSize` remains.
+  Enabled body/movement animation envelopes are projected through the active
+  model transform across every facing direction to derive a power-of-two
+  logical scratch frame large enough for the body and projected shadow. The
+  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
+  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
+  extend both the view/name rectangle and the aggregate horizontal-lighting
+  frame; the envelope resets when mesh composition changes and otherwise only
+  grows. Names, coarse picking, transparent eggs, flying text, and attachments
+  therefore stay inside automatically derived bounds without authored sizes.
+
+  The model is rendered into a reusable 2x scratch target for the automatic
+  frame. Per-animation prediction and exact weighted skinning of referenced
+  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
+  the factory expands it and rerenders before copying; the bounded retry loop
+  fails rather than accepting a clipped frame that does not converge. The
+  cropped sprite offset preserves the fixed model root, hit-test coordinates,
+  and stable horizontal lighting gradient. Scratch-frame setup does not reserve
+  atlas space; allocation happens only after the final crop is known. A changed
+  placement is prepared locally, rendered, and published only after the atlas
+  copy succeeds, while failures request an immediate redraw and retain the old
+  allocation. An atlas
+  slot only expands while its active animation/mesh/shadow envelope identity is
+  unchanged, then may shrink once when a transition settles or mesh composition
+  changes. Model-attached particles enable SPARK live-AABB computation; emitted
+  quads and trails drive bounded frame expansion after their first update, with
+  the advertised canvas retained as the pre-update fallback. Frame changes
+  rebase already emitted atlas-space particles so expansion does not move them,
+  and particles force a full-frame crop. A non-default model effect also disables the tight
+  crop; effects that displace vertices beyond ordinary skinned geometry need a
+  separate conservative rendering contract because bounds schema version 2 does
+  not encode shader displacement.
 - `ParticleSpriteFactory` does the same for particle resources.
 - `EffectManager` loads default/minimal effects, resolves script-selected effects, and updates per-frame effect buffers.
 - `FontManager` loads fonts and formats/draws text, including inline color tags.

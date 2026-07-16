@@ -36,6 +36,7 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
+#include "ModelBoundsCalculator.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -106,10 +107,6 @@ struct BakerModelDescription
     bool DisableAnimationInterpolation {};
     bool DisableBackwardAnim {};
     bool ShadowDisabled {};
-    int32_t DrawWidth {};
-    int32_t DrawHeight {};
-    int32_t ViewWidth {};
-    int32_t ViewHeight {};
     string RotationBone {};
     BakerModelDescriptionLink DefaultLink {};
     vector<BakerModelDescriptionLink> Links {};
@@ -718,26 +715,6 @@ void ModelDescriptionParser::ParseToken(string_view fname, size_t line, string_v
     else if (token == "DisableShadow") {
         description.ShadowDisabled = true;
     }
-    else if (token == "DrawSize") {
-        const string width_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
-        const string height_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
-        description.DrawWidth = ParseModelDescriptionInt(width_value, *_nameResolver, token, fname, line);
-        description.DrawHeight = ParseModelDescriptionInt(height_value, *_nameResolver, token, fname, line);
-
-        if (description.DrawWidth <= 0 || description.DrawHeight <= 0) {
-            throw ModelInfoBakerException(strex("DrawSize in '{}' at line {} must be positive", fname, line));
-        }
-    }
-    else if (token == "ViewSize") {
-        const string width_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
-        const string height_value = TakeModelDescriptionToken(tokens, index, token, fname, line);
-        description.ViewWidth = ParseModelDescriptionInt(width_value, *_nameResolver, token, fname, line);
-        description.ViewHeight = ParseModelDescriptionInt(height_value, *_nameResolver, token, fname, line);
-
-        if (description.ViewWidth <= 0 || description.ViewHeight <= 0) {
-            throw ModelInfoBakerException(strex("ViewSize in '{}' at line {} must be positive", fname, line));
-        }
-    }
     else if (token == "DisableAnimationInterpolation") {
         description.DisableAnimationInterpolation = true;
     }
@@ -817,13 +794,6 @@ static void ValidateModelDescription(const FileCollection& source_files, const F
         throw ModelInfoBakerException(strex("'Model' section not found in file '{}'", fname));
     }
 
-    if ((description.DrawWidth == 0) != (description.DrawHeight == 0)) {
-        throw ModelInfoBakerException(strex("DrawSize in '{}' must specify both dimensions", fname));
-    }
-    if ((description.ViewWidth == 0) != (description.ViewHeight == 0)) {
-        throw ModelInfoBakerException(strex("ViewSize in '{}' must specify both dimensions", fname));
-    }
-
     unordered_map<string, BakedModelMeshInfo> mesh_cache;
     const BakedModelMeshInfo& main_info = GetBakedModelMeshInfo(baked_files, mesh_cache, description.Model);
 
@@ -873,6 +843,12 @@ static void ValidateModelDescriptionAnimations(const NameResolver& name_resolver
 
         if (!BakedModelMeshHasAnimation(anim_info, anim_name)) {
             throw ModelInfoBakerException(strex("Animation '{}' for ({}, {}) in '{}' not found in '{}'", anim_entry.Name, anim_entry.StateAnim, anim_entry.ActionAnim, fname, anim_file));
+        }
+
+        const float32_t duration = GetBakedModelMeshAnimationDuration(anim_info, anim_name);
+
+        if (!std::isfinite(duration) || duration <= 0.0f) {
+            throw ModelInfoBakerException(strex("Animation '{}' for ({}, {}) in '{}' has non-positive duration in '{}'", anim_entry.Name, anim_entry.StateAnim, anim_entry.ActionAnim, fname, anim_file));
         }
     }
 
@@ -941,6 +917,12 @@ static void ValidateModelDescriptionLinkData(const FileSystem& baked_files, unor
     for (const int32_t disabled_layer : link.DisabledLayer) {
         if (disabled_layer < 0 || disabled_layer >= numeric_cast<int32_t>(MODEL_LAYERS_COUNT)) {
             throw ModelInfoBakerException(strex("Disabled layer '{}' in '{}' is out of range [0, {})", disabled_layer, fname, MODEL_LAYERS_COUNT));
+        }
+    }
+
+    for (const string& disabled_mesh : link.DisabledMesh) {
+        if (!disabled_mesh.empty()) {
+            ValidateModelDescriptionMeshReference(target_info, disabled_mesh, "DisableMesh", fname);
         }
     }
 
@@ -1216,6 +1198,22 @@ static auto GetBakedModelMeshAnimationDuration(const BakedModelMeshInfo& info, s
     return 0.0f;
 }
 
+struct ModelAnimInfoBakingStats
+{
+    uint64_t ModelSections {};
+    uint64_t ModelBounds {};
+    uint64_t AnimationEntries {};
+    uint64_t AnimationBounds {};
+    uint64_t AnimationBoundsOmitted {};
+    uint64_t BoundsCalculations {};
+    uint64_t BoundsCacheHits {};
+    uint64_t SectionsWithBounds {};
+    uint64_t SectionsWithoutBounds {};
+    uint64_t ViewBoundsIdle {};
+    uint64_t ViewBoundsFallback {};
+    array<uint64_t, 6> AnimationBoundsMaxExtent {};
+};
+
 static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& files, string_view target_path)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1226,11 +1224,14 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
         return;
     }
 
-    // Collect all (non-template) model descriptions and the newest write time across them and their includes.
+    // Collect all (non-template) model descriptions. This aggregate output depends on every input in the pack:
+    // model descriptions, source meshes, animation clips, and their transitive baking inputs.
     vector<File> fo3d_files;
     uint64_t max_write_time = 0;
 
     for (const FileHeader& file_header : files) {
+        max_write_time = std::max(max_write_time, file_header.GetWriteTime());
+
         if (strex(file_header.GetPath()).get_file_extension() != "fo3d") {
             continue;
         }
@@ -1239,7 +1240,6 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
         }
 
         fo3d_files.emplace_back(File::Load(file_header));
-        max_write_time = std::max(max_write_time, GetModelDescriptionMaxWriteTime(files, file_header.GetPath()));
     }
 
     if (fo3d_files.empty()) {
@@ -1253,6 +1253,8 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
     std::sort(fo3d_files.begin(), fo3d_files.end(), [](const File& a, const File& b) { return a.GetPath() < b.GetPath(); });
 
     const BakerClientEngine client_engine(*ctx.BakedFiles);
+    unordered_map<string, unordered_map<string, unordered_map<string, unordered_map<bool, optional<ModelBounds3D>>>>> animation_bounds_cache;
+    ModelAnimInfoBakingStats stats;
     string config_text;
 
     for (const File& file : fo3d_files) {
@@ -1265,6 +1267,23 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
         string states;
         string actions;
         string durations;
+        string bounds_states;
+        string bounds_actions;
+        string bounds_min_x;
+        string bounds_min_y;
+        string bounds_min_z;
+        string bounds_max_x;
+        string bounds_max_y;
+        string bounds_max_z;
+        const File model_file = ctx.BakedFiles->ReadFile(description.Model);
+
+        if (!model_file) {
+            throw ModelInfoBakerException(strex("Baked model data for bounds is not readable: model '{}' in '{}'", description.Model, file.GetPath()));
+        }
+
+        optional<ModelBounds3D> model_bounds;
+        optional<ModelBounds3D> view_bounds;
+        int32_t view_bounds_priority = -1;
 
         for (const BakerModelDescriptionAnimEntry& anim_entry : description.AnimEntries) {
             if (!seen.emplace(anim_entry.StateAnim, anim_entry.ActionAnim).second) {
@@ -1275,15 +1294,16 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             const BakedModelMeshInfo& anim_info = GetBakedModelMeshInfo(*ctx.BakedFiles, mesh_cache, anim_file);
 
             string anim_name = anim_entry.Name;
+            const bool reversed = !anim_name.empty() && anim_name.front() == '~';
 
-            if (!anim_name.empty() && anim_name.front() == '~') {
+            if (reversed) {
                 anim_name.erase(anim_name.begin());
             }
 
             const float32_t clip_duration = GetBakedModelMeshAnimationDuration(anim_info, anim_name);
 
-            if (clip_duration <= 0.0f) {
-                continue;
+            if (!std::isfinite(clip_duration) || clip_duration <= 0.0f) {
+                throw ModelInfoBakerException(strex("Animation '{}' for ({}, {}) in '{}' has non-positive duration in '{}'", anim_entry.Name, anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), anim_file));
             }
 
             // Authored playback speed scales the cycle (faster speed -> shorter real cycle). The runtime
@@ -1302,20 +1322,150 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             states += strex(" {}", anim_entry.StateAnim);
             actions += strex(" {}", anim_entry.ActionAnim);
             durations += strex(" {}", iround<int32_t>(effective_duration * 1000.0f));
+            stats.AnimationEntries++;
+
+            auto& animation_direction_cache = animation_bounds_cache[file.GetPath()][anim_file][anim_name];
+            auto bounds_it = animation_direction_cache.find(reversed);
+
+            if (bounds_it == animation_direction_cache.end()) {
+                stats.BoundsCalculations++;
+                const File animation_file = ctx.BakedFiles->ReadFile(anim_file);
+
+                if (!animation_file) {
+                    throw ModelInfoBakerException(strex("Baked model data for animation bounds is not readable: model '{}', animation '{}'", description.Model, anim_file));
+                }
+
+                optional<ModelBounds3D> calculated_bounds;
+
+                try {
+                    calculated_bounds = CalculateModelAnimationBounds(model_file.GetDataSpan(), animation_file.GetDataSpan(), anim_name, reversed, description.DefaultLink.DisabledMesh);
+                }
+                catch (const ModelBoundsException& ex) {
+                    throw ModelInfoBakerException(strex("Failed to calculate animation bounds for ({}, {}) in '{}': {}", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath(), ex.what()));
+                }
+
+                bounds_it = animation_direction_cache.emplace(reversed, calculated_bounds).first;
+            }
+            else {
+                stats.BoundsCacheHits++;
+            }
+
+            const optional<ModelBounds3D>& bounds = bounds_it->second;
+
+            if (bounds) {
+                FO_VERIFY_AND_THROW(IncludeModelBounds(model_bounds, *bounds), "Calculated model animation bounds are invalid", file.GetPath(), anim_entry.StateAnim, anim_entry.ActionAnim);
+
+                const bool idle = anim_entry.ActionAnim == static_cast<int32_t>(CritterActionAnim::Idle);
+                const bool unarmed_idle = idle && anim_entry.StateAnim == static_cast<int32_t>(CritterStateAnim::Unarmed);
+                const int32_t view_priority = unarmed_idle ? 2 : idle ? 1 : 0;
+
+                if (view_priority > view_bounds_priority) {
+                    view_bounds = *bounds;
+                    view_bounds_priority = view_priority;
+                }
+
+                stats.AnimationBounds++;
+                bounds_states += strex(" {}", anim_entry.StateAnim);
+                bounds_actions += strex(" {}", anim_entry.ActionAnim);
+                bounds_min_x += strex(" {}", bounds->Min.x);
+                bounds_min_y += strex(" {}", bounds->Min.y);
+                bounds_min_z += strex(" {}", bounds->Min.z);
+                bounds_max_x += strex(" {}", bounds->Max.x);
+                bounds_max_y += strex(" {}", bounds->Max.y);
+                bounds_max_z += strex(" {}", bounds->Max.z);
+
+                const float32_t max_extent = std::max({bounds->Max.x - bounds->Min.x, bounds->Max.y - bounds->Min.y, bounds->Max.z - bounds->Min.z});
+                const size_t bucket = max_extent < 1.0f ? 0 : max_extent < 2.0f ? 1 : max_extent < 3.0f ? 2 : max_extent < 5.0f ? 3 : max_extent < 10.0f ? 4 : 5;
+                stats.AnimationBoundsMaxExtent[bucket]++;
+            }
+            else {
+                stats.AnimationBoundsOmitted++;
+                throw ModelInfoBakerException(strex("Animation bounds could not be calculated for ({}, {}) in '{}'", anim_entry.StateAnim, anim_entry.ActionAnim, file.GetPath()));
+            }
         }
 
-        if (states.empty()) {
-            continue;
+        if (!model_bounds) {
+            try {
+                model_bounds = CalculateModelStaticBounds(model_file.GetDataSpan(), description.DefaultLink.DisabledMesh);
+            }
+            catch (const ModelBoundsException& ex) {
+                throw ModelInfoBakerException(strex("Failed to calculate static model bounds in '{}': {}", file.GetPath(), ex.what()));
+            }
+
+            if (!model_bounds) {
+                throw ModelInfoBakerException(strex("Static model bounds could not be calculated in '{}'", file.GetPath()));
+            }
+
+            view_bounds = model_bounds;
         }
+
+        FO_VERIFY_AND_THROW(view_bounds, "Model view bounds were not selected", file.GetPath());
+
+        if (view_bounds_priority >= 1) {
+            stats.ViewBoundsIdle++;
+        }
+        else {
+            stats.ViewBoundsFallback++;
+        }
+
+        stats.ModelBounds++;
+
+        stats.ModelSections++;
+        stats.SectionsWithBounds++;
 
         config_text += strex("[{}]\n", file.GetPath());
-        config_text += strex("StateAnims ={}\n", states);
-        config_text += strex("ActionAnims ={}\n", actions);
-        config_text += strex("DurationsMs ={}\n\n", durations);
+        config_text += strex("BoundsVersion = {}\n", MODEL_BOUNDS_VERSION);
+        config_text += strex("ModelBoundsMinX = {}\n", model_bounds->Min.x);
+        config_text += strex("ModelBoundsMinY = {}\n", model_bounds->Min.y);
+        config_text += strex("ModelBoundsMinZ = {}\n", model_bounds->Min.z);
+        config_text += strex("ModelBoundsMaxX = {}\n", model_bounds->Max.x);
+        config_text += strex("ModelBoundsMaxY = {}\n", model_bounds->Max.y);
+        config_text += strex("ModelBoundsMaxZ = {}\n", model_bounds->Max.z);
+        config_text += strex("ViewBoundsMinX = {}\n", view_bounds->Min.x);
+        config_text += strex("ViewBoundsMinY = {}\n", view_bounds->Min.y);
+        config_text += strex("ViewBoundsMinZ = {}\n", view_bounds->Min.z);
+        config_text += strex("ViewBoundsMaxX = {}\n", view_bounds->Max.x);
+        config_text += strex("ViewBoundsMaxY = {}\n", view_bounds->Max.y);
+        config_text += strex("ViewBoundsMaxZ = {}\n", view_bounds->Max.z);
+
+        if (!states.empty()) {
+            config_text += strex("StateAnims ={}\n", states);
+            config_text += strex("ActionAnims ={}\n", actions);
+            config_text += strex("DurationsMs ={}\n", durations);
+            config_text += strex("BoundsStateAnims ={}\n", bounds_states);
+            config_text += strex("BoundsActionAnims ={}\n", bounds_actions);
+            config_text += strex("BoundsMinX ={}\n", bounds_min_x);
+            config_text += strex("BoundsMinY ={}\n", bounds_min_y);
+            config_text += strex("BoundsMinZ ={}\n", bounds_min_z);
+            config_text += strex("BoundsMaxX ={}\n", bounds_max_x);
+            config_text += strex("BoundsMaxY ={}\n", bounds_max_y);
+            config_text += strex("BoundsMaxZ ={}\n", bounds_max_z);
+        }
+        config_text += "\n";
     }
 
     const auto data = vector<uint8_t>(config_text.begin(), config_text.end());
     ctx.WriteData(output_path, data);
+
+    if (ctx.Report) {
+        shared_ptr<BakingReport> report = ctx.Report;
+        report->AddCounter(ctx.PackName, ctx.BakerName, "modelSections", stats.ModelSections);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "modelBounds", stats.ModelBounds);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "animationEntries", stats.AnimationEntries);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "animationBounds", stats.AnimationBounds);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "animationBoundsOmitted", stats.AnimationBoundsOmitted);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCalculations", stats.BoundsCalculations);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "boundsCacheHits", stats.BoundsCacheHits);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "sectionsWithBounds", stats.SectionsWithBounds);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "sectionsWithoutBounds", stats.SectionsWithoutBounds);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsIdle", stats.ViewBoundsIdle);
+        report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsFallback", stats.ViewBoundsFallback);
+
+        constexpr array<string_view, 6> extent_buckets {"<1", "1-2", "2-3", "3-5", "5-10", "10+"};
+        for (size_t i = 0; i < extent_buckets.size(); i++) {
+            report->AddHistogramValue(ctx.PackName, ctx.BakerName, "animationBoundsMaxExtent", extent_buckets[i], stats.AnimationBoundsMaxExtent[i]);
+        }
+    }
 }
 
 static void ReadBakedModelMeshBone(DataReader& reader, BakedModelMeshInfo& info)
@@ -1461,10 +1611,6 @@ void BakerModelDescription::Save(DataWriter& writer) const
     writer.Write<uint8_t>(DisableAnimationInterpolation ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(DisableBackwardAnim ? uint8_t {1} : uint8_t {0});
     writer.Write<uint8_t>(ShadowDisabled ? uint8_t {1} : uint8_t {0});
-    writer.Write<int32_t>(DrawWidth);
-    writer.Write<int32_t>(DrawHeight);
-    writer.Write<int32_t>(ViewWidth);
-    writer.Write<int32_t>(ViewHeight);
     writer.WriteString(RotationBone);
     DefaultLink.Save(writer);
     writer.Write<uint32_t>(numeric_cast<uint32_t>(Links.size()));

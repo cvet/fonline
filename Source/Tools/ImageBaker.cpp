@@ -474,10 +474,15 @@ static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const Ima
         return;
     }
 
+    for (const ipos32 vertex : mesh.Data.Vertices) {
+        const int64_t translated_x = numeric_cast<int64_t>(vertex.x) + offset;
+        const int64_t translated_y = numeric_cast<int64_t>(vertex.y) + offset;
+        FO_VERIFY_AND_THROW(translated_x >= 0 && translated_x <= shot.Width && translated_y >= 0 && translated_y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
+    }
+
     for (ipos32& vertex : mesh.Data.Vertices) {
-        vertex.x += offset;
-        vertex.y += offset;
-        FO_VERIFY_AND_THROW(vertex.x >= 0 && vertex.x <= shot.Width && vertex.y >= 0 && vertex.y <= shot.Height, "Translated sprite mesh vertex lies outside the baked frame", vertex, shot.Width, shot.Height, offset);
+        vertex.x = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.x) + offset);
+        vertex.y = numeric_cast<int32_t>(numeric_cast<int64_t>(vertex.y) + offset);
     }
 }
 

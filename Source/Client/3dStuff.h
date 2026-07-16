@@ -41,6 +41,8 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Geometry.h"
+#include "ModelBounds.h"
+#include "ModelSpriteLayout.h"
 #include "Settings.h"
 #include "VisualParticles.h"
 
@@ -56,6 +58,31 @@ enum class ModelAnimFlags : uint8_t
     PlayOnce = 0x04,
     NoSmooth = 0x08,
     NoRotate = 0x10,
+};
+
+struct ModelSpriteBoundsEnvelopeId
+{
+    array<int32_t, 2> BodyAnimationIndices {-1, -1};
+    array<int32_t, 2> MoveAnimationIndices {-1, -1};
+    uint64_t CombinedMeshGenerationRevision {};
+    uint8_t BodyAnimationCount {};
+    uint8_t MoveAnimationCount {};
+    bool ShadowEnabled {};
+    bool FullFrame {};
+};
+
+struct ModelSpriteBounds
+{
+    irect32 Rect {};
+    isize32 RequiredFrameSize {};
+    ModelSpriteBoundsEnvelopeId EnvelopeId {};
+};
+
+struct BakedModelBoundsInfo
+{
+    ModelBounds3D ModelBounds {};
+    ModelBounds3D ViewBounds {};
+    unordered_map<pair<int32_t, int32_t>, ModelBounds3D> AnimationBounds {};
 };
 
 struct ModelBone;
@@ -187,15 +214,15 @@ public:
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
 
-    [[nodiscard]] auto CreateModel(string_view name) -> unique_nptr<ModelInstance>;
-    [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>;
-
+    auto CreateModel(string_view name) -> unique_nptr<ModelInstance>;
+    auto LoadAnimation(string_view anim_fname, string_view anim_name) -> nptr<ModelAnimation>;
     void PreloadModel(string_view name);
 
 private:
-    [[nodiscard]] auto LoadModel(string_view fname) -> nptr<ModelBone>;
-    [[nodiscard]] auto GetInformation(string_view name) -> nptr<ModelInformation>;
-    [[nodiscard]] auto GetHierarchy(string_view name) -> nptr<ModelHierarchy>;
+    void LoadBakedModelBounds();
+    auto LoadModel(string_view fname) -> nptr<ModelBone>;
+    auto GetInformation(string_view name) -> nptr<ModelInformation>;
+    auto GetHierarchy(string_view name) -> nptr<ModelHierarchy>;
 
     ptr<RenderSettings> _settings;
     ptr<FileSystem> _resources;
@@ -212,6 +239,7 @@ private:
     vector<unique_ptr<ModelAnimation>> _loadedAnims {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
+    unordered_map<string, BakedModelBoundsInfo> _bakedModelBounds {};
     float32_t _moveTransitionTime {0.25f};
     float32_t _globalSpeedAdjust {1.0f};
     int32_t _animUpdateThreshold {};
@@ -228,7 +256,7 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
-    constexpr static int32_t FRAME_SCALE = 2;
+    constexpr static int32_t FRAME_SCALE = MODEL_SPRITE_FRAME_SCALE;
 
     ModelInstance() = delete;
     ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation> info);
@@ -249,7 +277,9 @@ public:
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetDrawSize() const -> isize32;
-    [[nodiscard]] auto GetViewSize() const -> isize32;
+    [[nodiscard]] auto GetLightingSize() const noexcept -> isize32 { return _lightingDrawSize; }
+    [[nodiscard]] auto GetSpriteBounds() const -> optional<ModelSpriteBounds>;
+    [[nodiscard]] auto GetViewRect() const -> irect32;
     [[nodiscard]] auto FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<ipos32>;
     [[nodiscard]] auto GetAnimDuration() const -> timespan;
@@ -258,6 +288,8 @@ public:
     [[nodiscard]] auto GetMoveDirAngle() const noexcept -> float32_t { return _moveDirAngle; }
 
     void SetupFrame(isize32 draw_size);
+    void PrepareFrameLayout();
+    void RequestRedraw() noexcept;
     void StartMeshGeneration();
     void PrewarmParticles();
     auto PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool;
@@ -267,7 +299,7 @@ public:
     void SetRotation(float32_t rx, float32_t ry, float32_t rz);
     void SetScale(float32_t sx, float32_t sy, float32_t sz);
     void SetSpeed(float32_t speed);
-    void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
+    void EnableShadow(bool enabled);
     void Draw();
     void Draw(const mat44& proj, float32_t scale);
     void MoveModel(ipos32 offset);
@@ -293,10 +325,12 @@ private:
         size_t CurBoneMatrix {};
         vector<nptr<ModelBone>> SkinBones {};
         vector<mat44> SkinBoneOffsets {};
+        vector<vindex_t> SpriteVertices {};
+        bool SpriteBoundsValid {};
+        bool HasSpriteGeometry {};
         nptr<const MeshTexture> Textures[MODEL_MAX_TEXTURES] {};
     };
 
-    [[nodiscard]] auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
     [[nodiscard]] auto CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool;
     [[nodiscard]] auto ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
     [[nodiscard]] auto UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool;
@@ -304,6 +338,8 @@ private:
     [[nodiscard]] auto GetMovementSpeed() const -> float32_t;
     [[nodiscard]] auto GetTime() const -> nanotime;
 
+    auto CreateCombinedMesh() -> unique_ptr<CombinedMesh>;
+    auto MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44;
     void GenerateCombinedMeshes();
     void FillCombinedMeshes(ptr<const ModelInstance> cur);
     void CombineMesh(ptr<const MeshInstance> mesh_instance, int32_t anim_layer);
@@ -317,26 +353,37 @@ private:
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
+    void RefreshFrameLayout();
+    void RefreshConfigurationLayout();
 
     ptr<ModelManager> _modelMngr;
     isize32 _frameSize {};
+    isize32 _layoutDrawSize {};
+    isize32 _lightingDrawSize {};
+    irect32 _viewRect {};
+    optional<ModelBounds3D> _configurationModelBounds {};
+    optional<ModelBounds3D> _configurationViewBounds {};
+    uint64_t _configurationLayoutRevision {};
     mat44 _frameProj {};
     mat44 _drawProj {};
     CritterStateAnim _curStateAnim {};
     CritterActionAnim _curActionAnim {};
     vector<unique_ptr<CombinedMesh>> _combinedMeshes {};
     size_t _actualCombinedMeshesCount {};
+    uint64_t _combinedMeshGenerationRevision {};
     bool _disableCulling {};
     vector<unique_ptr<MeshInstance>> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
     ptr<ModelInformation> _modelInfo;
     optional<ModelAnimationController> _bodyAnimController {};
     optional<ModelAnimationController> _moveAnimController {};
+    int32_t _bodyTrackAnimationIndices[2] {-1, -1};
+    int32_t _moveTrackAnimationIndices[2] {-1, -1};
     int32_t _curLayers[MODEL_LAYERS_COUNT] {};
     int32_t _curTrack {};
     nanotime _lastDrawTime {};
     mat44 _matRot {};
-    mat44 _matScale {};
+    mat44 _matScale {1.0f};
     mat44 _matScaleBase {};
     mat44 _matRotBase {};
     mat44 _matTransBase {};
@@ -368,6 +415,8 @@ private:
     vector<ModelParticleSystem> _modelParticles {};
     vec3 _moveOffset {};
     bool _forceDraw {};
+    bool _frameLayoutDirty {};
+    bool _spriteBoundsPoseReady {};
     bool _directSceneDraw {};
     vector<ModelAnimationCallback> _animationCallbacks {};
 
@@ -430,17 +479,18 @@ private:
         int32_t LayerValue {};
     };
 
-    [[nodiscard]] auto Load(string_view name) -> bool;
-    [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
-    [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader) const -> BakedModelDescriptionLink;
-    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
-
-    [[nodiscard]] auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
     [[nodiscard]] auto GetAnimationIndex(CritterStateAnim& state_anim, CritterActionAnim& action_anim, nptr<float32_t> speed) -> int32_t;
     [[nodiscard]] auto GetAnimationIndexEx(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<float32_t> speed) const -> int32_t;
-    [[nodiscard]] auto CreateInstance() -> unique_ptr<ModelInstance>;
+
+    auto Load(string_view name) -> bool;
+    auto LoadBaked(string_view name, DataReader& reader) -> bool;
+    auto ReadBakedModelDescriptionLink(DataReader& reader) const -> BakedModelDescriptionLink;
+    auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
+    auto ReadBakedModelDescriptionAnimEntry(DataReader& reader) const -> BakedModelDescriptionAnimEntry;
+    auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    auto CalculateHierarchyBounds() const -> optional<ModelBounds3D>;
+    auto CreateCutShape(ptr<const MeshData> mesh) const -> ModelCutData::Shape;
+    auto CreateInstance() -> unique_ptr<ModelInstance>;
 
     ptr<ModelManager> _modelMngr;
     string _fileName {};
@@ -450,6 +500,9 @@ private:
     unordered_map<CritterStateAnim, CritterStateAnim> _stateAnimEquals {};
     unordered_map<CritterActionAnim, CritterActionAnim> _actionAnimEquals {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, int32_t> _animIndexes {};
+    vector<optional<ModelBounds3D>> _animationBounds {};
+    ModelBounds3D _modelBounds {};
+    ModelBounds3D _viewBounds {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, float32_t> _animSpeed {};
     unordered_map<pair<CritterStateAnim, CritterActionAnim>, vector<pair<int32_t, int32_t>>> _animLayerValues {};
     unordered_set<hstring> _fastTransitionBones {};
@@ -458,8 +511,6 @@ private:
     vector<unique_ptr<ModelCutData>> _cutData {};
     bool _shadowDisabled {};
     bool _disableBackwardAnim {};
-    isize32 _drawSize {};
-    isize32 _viewSize {};
     hstring _rotationBone {};
 };
 

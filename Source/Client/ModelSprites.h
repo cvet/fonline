@@ -68,6 +68,7 @@ public:
     }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _model->IsAnimationPlaying(); }
 
+    auto FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t override;
     void Prewarm() override;
     void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
@@ -78,9 +79,33 @@ public:
     void DrawInScene(fpos32 scene_pos, float32_t depth) const override;
 
 private:
+    struct PreparedFrameCrop
+    {
+        isize32 FrameSize {};
+        irect32 CropRect {};
+        isize32 Size {};
+        ipos32 Offset {};
+        nptr<TextureAtlas> Atlas {};
+        frect32 AtlasRect {};
+        unique_del_nptr<TextureAtlasLayout::Allocation> AtlasAllocation {};
+        bool ReuseAtlasAllocation {};
+        bool BoundedCropEstablished {};
+        optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
+    };
+
+    void SetupFrame(isize32 frame_size);
+    auto PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop;
+    void CommitFrameCrop(PreparedFrameCrop&& prepared_crop);
+    void ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds);
+
     ptr<ModelSpriteFactory> _factory;
     mutable unique_ptr<ModelInstance> _model;
     AtlasType _atlasType {};
+    isize32 _frameSize {};
+    irect32 _cropRect {};
+    optional<isize32> _requestedFrameSize {};
+    bool _boundedCropEstablished {};
+    optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
 };
 
 class ModelSpriteFactory : public SpriteFactory

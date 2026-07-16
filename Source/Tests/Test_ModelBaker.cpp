@@ -11,8 +11,11 @@
 
 #if FO_ENABLE_3D
 #include "3dStuff.h"
+#include "ModelBounds.h"
+#include "ModelBoundsCalculator.h"
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#include "ModelSpriteLayout.h"
 #include "Rendering.h"
 #include "Test_BakerHelpers.h"
 #endif
@@ -33,8 +36,23 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
     writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
 
     if (attached_mesh) {
-        writer.Write<uint32_t>(uint32_t {0}); // Vertices
-        writer.Write<uint32_t>(uint32_t {0}); // Indices
+        array<Vertex3D, 3> vertices {};
+        vertices[0].Position = {0.0f, 0.0f, 0.0f};
+        vertices[1].Position = {1.0f, 0.0f, 0.0f};
+        vertices[2].Position = {0.0f, 1.0f, 0.0f};
+
+        if (!skin_bone_names.empty()) {
+            for (Vertex3D& vertex : vertices) {
+                vertex.BlendWeights[0] = 1.0f;
+                vertex.BlendIndices[0] = 0.0f;
+            }
+        }
+
+        constexpr array<vindex_t, 3> indices {0, 1, 2};
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+        writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+        writer.WriteObjectArray(const_span<vindex_t> {indices});
         writer.WriteString(diffuse_texture);
 
         writer.Write<uint32_t>(numeric_cast<uint32_t>(skin_bone_names.size())); // Skin bones
@@ -51,7 +69,7 @@ static void WriteTestModelBone(DataWriter& writer, string_view name, bool attach
     writer.Write<uint32_t>(uint32_t {0}); // Children
 }
 
-static auto MakeTestBakedModel(string_view file_name, string_view root_bone, bool attached_mesh, initializer_list<string_view> anim_names, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, initializer_list<string_view> animation_output_bones = {}, initializer_list<string_view> animation_hierarchy_bones = {}) -> vector<uint8_t>
+static auto MakeTestBakedModel(string_view file_name, string_view root_bone, bool attached_mesh, initializer_list<string_view> anim_names, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, initializer_list<string_view> animation_output_bones = {}, initializer_list<string_view> animation_hierarchy_bones = {}, float32_t animation_duration = 1.0f) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -64,7 +82,7 @@ static auto MakeTestBakedModel(string_view file_name, string_view root_bone, boo
     for (string_view anim_name : anim_names) {
         writer.WriteString(file_name);
         writer.WriteString(anim_name);
-        writer.Write<float32_t>(1.0f);
+        writer.Write<float32_t>(animation_duration);
 
         writer.Write<uint32_t>(animation_hierarchy_bones.size() == 0 ? uint32_t {0} : uint32_t {1}); // Bones hierarchy
         if (animation_hierarchy_bones.size() != 0) {
@@ -135,6 +153,153 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
     writer.Write<uint32_t>(uint32_t {0}); // Animations
 
     return data;
+}
+
+static auto MakeTestBakedAnimatedTriangle(bool overflowing_scale = false) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> data;
+    auto writer = DataWriter(data);
+
+    writer.WriteString("Root");
+
+    const mat44 identity {1.0f};
+    writer.Write<mat44>(identity);
+    writer.Write<mat44>(identity);
+    writer.Write<uint8_t>(uint8_t {1});
+
+    vector<Vertex3D> vertices(4);
+    vertices[0].Position = vec3 {1.0f, 2.0f, 3.0f};
+    vertices[0].BlendWeights[0] = 1.0f;
+    vertices[1].Position = vec3 {-1.0f, 0.0f, 0.0f};
+    vertices[1].BlendWeights[0] = 1.0f;
+    vertices[2].Position = vec3 {0.0f, 0.0f, 0.0f};
+    vertices[2].BlendWeights[0] = 1.0f;
+    vertices[3].Position = vec3 {1000.0f, 1000.0f, 1000.0f}; // Unreferenced vertices must not affect draw bounds.
+    vertices[3].BlendWeights[0] = 1.0f;
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+    writer.WriteObjectVector(vertices);
+    const vector<vindex_t> indices {vindex_t {0}, vindex_t {1}, vindex_t {2}};
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+    writer.WriteObjectVector(indices);
+    writer.WriteString({});
+    writer.Write<uint32_t>(uint32_t {1}); // Skin bones
+    writer.WriteString({}); // Empty name resolves to the mesh owner bone.
+    writer.Write<uint32_t>(uint32_t {1}); // Skin bone offsets
+    writer.Write<mat44>(identity);
+    writer.Write<uint32_t>(uint32_t {0}); // Children
+
+    writer.Write<uint32_t>(uint32_t {1}); // Animations
+    writer.WriteString("Body.fbx");
+    writer.WriteString("Move");
+    writer.Write<float32_t>(1.0f);
+    writer.Write<uint32_t>(uint32_t {1}); // Bone hierarchies
+    writer.Write<uint32_t>(uint32_t {1});
+    writer.WriteString("Root");
+    writer.Write<uint32_t>(uint32_t {1}); // Bone outputs
+    writer.WriteString("Root");
+
+    const vector<float32_t> times {0.0f, 1.0f};
+    const vector<vec3> scales = overflowing_scale ? vector<vec3> {vec3 {std::numeric_limits<float32_t>::max()}, vec3 {std::numeric_limits<float32_t>::max()}} : vector<vec3> {vec3 {1.0f}, vec3 {2.0f, 1.0f, 1.0f}};
+    const vector<quaternion> rotations {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+    const vector<vec3> translations {vec3 {10.0f, 20.0f, 30.0f}, vec3 {12.0f, 20.0f, 30.0f}};
+
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectVector(times);
+    writer.WriteObjectVector(scales);
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectVector(times);
+    writer.WriteObjectVector(rotations);
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectVector(times);
+    writer.WriteObjectVector(translations);
+
+    return data;
+}
+
+static auto MakeTestBakedWeightedTriangle() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> data;
+    auto writer = DataWriter(data);
+    const mat44 identity {1.0f};
+
+    writer.WriteString("Root");
+    writer.Write<mat44>(identity);
+    writer.Write<mat44>(identity);
+    writer.Write<uint8_t>(uint8_t {1});
+
+    array<Vertex3D, 3> vertices {};
+    vertices[0].Position = {0.0f, 0.0f, 0.0f};
+    vertices[1].Position = {1.0f, 0.0f, 0.0f};
+    vertices[2].Position = {0.0f, 1.0f, 0.0f};
+
+    for (Vertex3D& vertex : vertices) {
+        vertex.BlendIndices[0] = 0.0f;
+        vertex.BlendIndices[1] = 1.0f;
+        vertex.BlendWeights[0] = 0.99f;
+        vertex.BlendWeights[1] = 0.01f;
+    }
+
+    constexpr array<vindex_t, 3> indices {0, 1, 2};
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+    writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+    writer.WriteObjectArray(const_span<vindex_t> {indices});
+    writer.WriteString({});
+    writer.Write<uint32_t>(uint32_t {2});
+    writer.WriteString("Root");
+    writer.WriteString("Child");
+    writer.Write<uint32_t>(uint32_t {2});
+    writer.Write<mat44>(identity);
+    writer.Write<mat44>(identity);
+
+    writer.Write<uint32_t>(uint32_t {1});
+    writer.WriteString("Child");
+    const mat44 child_transform = glm::translate(identity, vec3 {100.0f, 0.0f, 0.0f});
+    writer.Write<mat44>(child_transform);
+    writer.Write<mat44>(child_transform);
+    writer.Write<uint8_t>(uint8_t {0});
+    writer.Write<uint32_t>(uint32_t {0});
+
+    writer.Write<uint32_t>(uint32_t {0});
+    return data;
+}
+
+static auto MakeTestModelAnimation(HashResolver& hash_resolver) -> ModelAnimation
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<uint8_t> data;
+    auto writer = DataWriter(data);
+    writer.WriteString("Test.fbx");
+    writer.WriteString("Move");
+    writer.Write<float32_t>(1.0f);
+    writer.Write<uint32_t>(uint32_t {0}); // Bone hierarchies
+    writer.Write<uint32_t>(uint32_t {1}); // Bone outputs
+    writer.WriteString("Animated");
+
+    const array<float32_t, 1> times {0.0f};
+    const array<vec3, 1> scales {vec3 {1.0f}};
+    const array<quaternion, 1> rotations {quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+    const array<vec3, 1> translations {vec3 {10.0f, 0.0f, 0.0f}};
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectArray(const_span<float32_t> {times});
+    writer.WriteObjectArray(const_span<vec3> {scales});
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectArray(const_span<float32_t> {times});
+    writer.WriteObjectArray(const_span<quaternion> {rotations});
+    writer.Write<uint32_t>(numeric_cast<uint32_t>(times.size()));
+    writer.WriteObjectArray(const_span<float32_t> {times});
+    writer.WriteObjectArray(const_span<vec3> {translations});
+
+    auto reader = DataReader({data.data(), data.size()});
+    ModelAnimation animation;
+    animation.Load(reader, hash_resolver);
+    reader.VerifyEnd();
+    return animation;
 }
 
 static void AddModelInfoMetadata(BakerTests::TestRig& rig)
@@ -676,9 +841,10 @@ TEST_CASE("ModelInfoBakerOrchestration")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile ~Idle\nAnim 0 1 ModelFile Duplicate\nAnim 2 3 ModelFile Base\nAnim 4 5 ModelFile Missing\n", 50);
+        rig.AddSourceFile("Critters/TEMPLATE_Anim.fo3d", "Anim 0 1 ModelFile ~Idle\nAnim 0 1 ModelFile Duplicate\nAnim 2 3 ModelFile Base\n", 50);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nInclude TEMPLATE_Anim.fo3d\nAnimSpeed 0 1 2\nAnimSpeed 2 3 4\n", 7);
         rig.AddSourceFile("Critters/NoAnim.fo3d", "Model Body.fbx\n", 8);
+        rig.AddSourceFile("Critters/Body.fbx", "referenced animation source", 170);
         rig.AddSourceFile("Critters/Readme.txt", "ignored", 100);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}, {}, {}, {}, {"Body"}));
 
@@ -691,15 +857,63 @@ TEST_CASE("ModelInfoBakerOrchestration")
         REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
 
         REQUIRE(checks.size() == 1);
-        CHECK(checks.front() == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 50});
+        CHECK(checks.front() == pair<string, uint64_t> {"ModelAnimInfo.foinfo", 170});
         REQUIRE(rig.Outputs.count("ModelAnimInfo.foinfo") == 1);
 
         const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
         CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
+        CHECK(config.find("BoundsVersion = 2\n") != string::npos);
+        CHECK(config.find("ModelBoundsMinX = ") != string::npos);
         CHECK(config.find("StateAnims = 0 2\n") != string::npos);
         CHECK(config.find("ActionAnims = 1 3\n") != string::npos);
         CHECK(config.find("DurationsMs = 500 250\n") != string::npos);
-        CHECK(config.find("Critters/NoAnim.fo3d") == string::npos);
+        CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
+    }
+
+    SECTION("Writes versioned root-space animation bounds without changing duration arrays")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Move\n", 7);
+        rig.AddSourceFile("Critters/Body.fbx", "source animation dependency", 70);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedAnimatedTriangle());
+
+        auto context = rig.MakeContext("ModelAnimInfo");
+        const auto report = SafeAlloc::MakeShared<BakingReport>(make_ptr(static_cast<const BakingSettings*>(&rig.Settings)));
+        context->Report = report;
+
+        ModelInfoBaker baker(context);
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        CHECK(config.find("StateAnims = 0\n") != string::npos);
+        CHECK(config.find("ActionAnims = 1\n") != string::npos);
+        CHECK(config.find("DurationsMs = 1000\n") != string::npos);
+        CHECK(config.find("BoundsVersion = 2\n") != string::npos);
+        CHECK(config.find("ModelBoundsMinX = 8.967") != string::npos);
+        CHECK(config.find("ModelBoundsMaxX = 14.033") != string::npos);
+        CHECK(config.find("ModelBoundsMaxZ =") != string::npos);
+        CHECK(config.find("ViewBoundsMinX = 8.967") != string::npos);
+        CHECK(config.find("ViewBoundsMaxX = 14.033") != string::npos);
+        CHECK(config.find("BoundsStateAnims = 0\n") != string::npos);
+        CHECK(config.find("BoundsActionAnims = 1\n") != string::npos);
+        CHECK(config.find("BoundsMinX =") != string::npos);
+        CHECK(config.find("BoundsMaxZ =") != string::npos);
+
+        const string report_text = report->Serialize();
+        CHECK(report_text.find("\"modelSections\": 1") != string::npos);
+        CHECK(report_text.find("\"modelBounds\": 1") != string::npos);
+        CHECK(report_text.find("\"animationEntries\": 1") != string::npos);
+        CHECK(report_text.find("\"animationBounds\": 1") != string::npos);
+        CHECK(report_text.find("\"animationBoundsOmitted\": 0") != string::npos);
+        CHECK(report_text.find("\"boundsCalculations\": 1") != string::npos);
+        CHECK(report_text.find("\"boundsCacheHits\": 0") != string::npos);
+        CHECK(report_text.find("\"sectionsWithBounds\": 1") != string::npos);
+        CHECK(report_text.find("\"sectionsWithoutBounds\": 0") != string::npos);
+        CHECK(report_text.find("\"viewBoundsIdle\": 1") != string::npos);
+        CHECK(report_text.find("\"viewBoundsFallback\": 0") != string::npos);
+        CHECK(report_text.find("\"animationBoundsMaxExtent\"") != string::npos);
+        CHECK(report_text.find("\"value\": \"5-10\"") != string::npos);
     }
 
     SECTION("Applies include replacements in model descriptions")
@@ -719,10 +933,6 @@ TEST_CASE("ModelInfoBakerOrchestration")
         (void)reader.Read<uint8_t>(); // DisableAnimationInterpolation
         (void)reader.Read<uint8_t>(); // DisableBackwardAnim
         (void)reader.Read<uint8_t>(); // ShadowDisabled
-        (void)reader.Read<int32_t>(); // DrawWidth
-        (void)reader.Read<int32_t>(); // DrawHeight
-        (void)reader.Read<int32_t>(); // ViewWidth
-        (void)reader.Read<int32_t>(); // ViewHeight
         CHECK(ReadSavedModelInfoString(reader).empty());
         (void)ReadSavedModelInfoLink(reader);
 
@@ -760,6 +970,202 @@ TEST_CASE("ModelInfoBakerOrchestration")
         CHECK(checks == 2);
         CHECK(rig.Outputs.empty());
     }
+#endif
+}
+
+TEST_CASE("ModelBounds")
+{
+#if FO_ENABLE_3D
+    STATIC_CHECK(MODEL_BOUNDS_VERSION == 2);
+
+    const ModelBounds3D point_bounds {
+        .Min = {1.0f, 2.0f, 3.0f},
+        .Max = {1.0f, 2.0f, 3.0f},
+    };
+    CHECK(IsValidModelBounds(point_bounds));
+    CHECK_FALSE(HasModelBoundsExtent(point_bounds));
+
+    const ModelBounds3D line_bounds {
+        .Min = {1.0f, 2.0f, 3.0f},
+        .Max = {4.0f, 2.0f, 3.0f},
+    };
+    CHECK(IsValidModelBounds(line_bounds));
+    CHECK(HasModelBoundsExtent(line_bounds));
+
+    const ModelBounds3D plane_bounds {
+        .Min = {-1.0f, -2.0f, 3.0f},
+        .Max = {4.0f, 5.0f, 3.0f},
+    };
+    CHECK(IsValidModelBounds(plane_bounds));
+    CHECK(HasModelBoundsExtent(plane_bounds));
+
+    ModelBounds3D invalid_bounds = point_bounds;
+    invalid_bounds.Min.x = 2.0f;
+    CHECK_FALSE(IsValidModelBounds(invalid_bounds));
+    invalid_bounds = point_bounds;
+    invalid_bounds.Max.y = std::numeric_limits<float32_t>::infinity();
+    CHECK_FALSE(IsValidModelBounds(invalid_bounds));
+    invalid_bounds = point_bounds;
+    invalid_bounds.Min.z = std::numeric_limits<float32_t>::quiet_NaN();
+    CHECK_FALSE(IsValidModelBounds(invalid_bounds));
+
+    optional<ModelBounds3D> accumulated;
+    REQUIRE(IncludeModelBoundsPoint(accumulated, vec3 {2.0f, 3.0f, 4.0f}));
+    REQUIRE(IncludeModelBoundsPoint(accumulated, vec3 {-1.0f, 5.0f, 1.0f}));
+    REQUIRE(accumulated);
+    CHECK(accumulated->Min == (vec3 {-1.0f, 3.0f, 1.0f}));
+    CHECK(accumulated->Max == (vec3 {2.0f, 5.0f, 4.0f}));
+
+    const ModelBounds3D included {
+        .Min = {-4.0f, 4.0f, -2.0f},
+        .Max = {-2.0f, 8.0f, 6.0f},
+    };
+    REQUIRE(IncludeModelBounds(accumulated, included));
+    CHECK(accumulated->Min == (vec3 {-4.0f, 3.0f, -2.0f}));
+    CHECK(accumulated->Max == (vec3 {2.0f, 8.0f, 6.0f}));
+
+    const ModelBounds3D transformed_source {
+        .Min = {-1.0f, -2.0f, -3.0f},
+        .Max = {2.0f, 4.0f, 5.0f},
+    };
+    optional<ModelBounds3D> transformed;
+    const mat44 negative_scale = glm::scale(mat44 {1.0f}, vec3 {-2.0f, 3.0f, -1.0f});
+    REQUIRE(IncludeTransformedModelBounds(transformed, transformed_source, negative_scale));
+    REQUIRE(transformed);
+    CHECK(transformed->Min == (vec3 {-4.0f, -6.0f, -5.0f}));
+    CHECK(transformed->Max == (vec3 {2.0f, 12.0f, 3.0f}));
+
+    transformed.reset();
+    const mat44 rotation = glm::rotate(mat44 {1.0f}, 90.0f * DEG_TO_RAD_FLOAT, vec3 {0.0f, 0.0f, 1.0f});
+    REQUIRE(IncludeTransformedModelBounds(transformed, ModelBounds3D {.Min = {0.0f, 0.0f, 0.0f}, .Max = {2.0f, 1.0f, 1.0f}}, rotation));
+    REQUIRE(transformed);
+    CHECK(transformed->Min.x == Catch::Approx(-1.0f));
+    CHECK(transformed->Min.y == Catch::Approx(0.0f).margin(0.0001f));
+    CHECK(transformed->Max.x == Catch::Approx(0.0f).margin(0.0001f));
+    CHECK(transformed->Max.y == Catch::Approx(2.0f));
+
+    optional<ModelBounds3D> preserved = point_bounds;
+    mat44 invalid_transform {1.0f};
+    invalid_transform[3][3] = 0.0f;
+    CHECK_FALSE(IncludeTransformedModelBounds(preserved, transformed_source, invalid_transform));
+    REQUIRE(preserved);
+    CHECK(preserved->Min == point_bounds.Min);
+    CHECK(preserved->Max == point_bounds.Max);
+
+    const optional<ModelBounds3D> guarded = CalculateGuardedModelBounds(point_bounds);
+    REQUIRE(guarded);
+    CHECK(guarded->Min.x == Catch::Approx(0.99f));
+    CHECK(guarded->Min.y == Catch::Approx(1.99f));
+    CHECK(guarded->Min.z == Catch::Approx(2.99f));
+    CHECK(guarded->Max.x == Catch::Approx(1.01f));
+    CHECK(guarded->Max.y == Catch::Approx(2.01f));
+    CHECK(guarded->Max.z == Catch::Approx(3.01f));
+#endif
+}
+
+TEST_CASE("ModelBoundsCalculator")
+{
+#if FO_ENABLE_3D
+    const vector<uint8_t> data = MakeTestBakedAnimatedTriangle();
+    const optional<ModelBounds3D> static_bounds = CalculateModelStaticBounds(data);
+    REQUIRE(static_bounds);
+    CHECK(static_bounds->Min.x < static_bounds->Max.x);
+    CHECK(static_bounds->Min.y < static_bounds->Max.y);
+    CHECK(static_bounds->Min.z < static_bounds->Max.z);
+    CHECK_FALSE(CalculateModelStaticBounds(data, {string {}}));
+    CHECK_FALSE(CalculateModelStaticBounds(data, {"Root"}));
+
+    const optional<ModelBounds3D> bounds = CalculateModelAnimationBounds(data, data, "Move", false);
+
+    REQUIRE(bounds);
+    CHECK(bounds->Min.x == Catch::Approx(8.967f));
+    CHECK(bounds->Min.y == Catch::Approx(19.967f));
+    CHECK(bounds->Min.z == Catch::Approx(29.967f));
+    CHECK(bounds->Max.x == Catch::Approx(14.033f));
+    CHECK(bounds->Max.y == Catch::Approx(22.033f));
+    CHECK(bounds->Max.z == Catch::Approx(33.033f));
+
+    const optional<ModelBounds3D> reversed_bounds = CalculateModelAnimationBounds(data, data, "Move", true);
+    REQUIRE(reversed_bounds);
+    CHECK(reversed_bounds->Min.x == Catch::Approx(8.967f));
+    CHECK(reversed_bounds->Max.x == Catch::Approx(17.033f));
+
+    optional<ModelBounds3D> overflowing_bounds;
+    const vector<uint8_t> overflowing_data = MakeTestBakedAnimatedTriangle(true);
+    CHECK_NOTHROW(overflowing_bounds = CalculateModelAnimationBounds(overflowing_data, overflowing_data, "Move", false));
+    CHECK_FALSE(overflowing_bounds);
+
+    CHECK_THROWS_AS(CalculateModelAnimationBounds(data, data, "Missing", false), ModelBoundsException);
+
+    const optional<ModelBounds3D> weighted_bounds = CalculateModelStaticBounds(MakeTestBakedWeightedTriangle());
+    REQUIRE(weighted_bounds);
+    CHECK(weighted_bounds->Min.x == Catch::Approx(0.99f));
+    CHECK(weighted_bounds->Max.x == Catch::Approx(2.01f));
+#endif
+}
+
+TEST_CASE("ModelSpriteLayout")
+{
+#if FO_ENABLE_3D
+    const ModelBounds3D bounds {
+        .Min = {-1.0f, 0.0f, -0.5f},
+        .Max = {1.0f, 2.0f, 0.5f},
+    };
+    const mat44 identity {1.0f};
+    const optional<ModelSpriteLayout> layout = CalculateModelSpriteLayout(bounds, identity, identity, 32.0f, false);
+
+    REQUIRE(layout);
+    CHECK(layout->DrawSize == (isize32 {128, 128}));
+    CHECK(layout->ViewRect == (irect32 {-38, -66, 76, 68}));
+
+    const optional<ModelSpriteLayout> shadow_layout = CalculateModelSpriteLayout(bounds, identity, identity, 32.0f, true);
+    REQUIRE(shadow_layout);
+    CHECK(shadow_layout->DrawSize.width >= layout->DrawSize.width);
+    CHECK(shadow_layout->DrawSize.height >= layout->DrawSize.height);
+    CHECK(shadow_layout->ViewRect == layout->ViewRect);
+
+    const optional<isize32> asymmetric_frame = CalculateModelSpriteFrameSize(-10.0f, -90.0f, 20.0f, 15.0f);
+    REQUIRE(asymmetric_frame);
+    CHECK(*asymmetric_frame == (isize32 {64, 128}));
+    CHECK_FALSE(CalculateModelSpriteFrameSize(-600000000.0f, -1.0f, 600000000.0f, 1.0f));
+#endif
+}
+
+TEST_CASE("ModelAnimationControllerMissingOutputs")
+{
+#if FO_ENABLE_3D
+    HashStorage hash_resolver;
+    ModelAnimation animation = MakeTestModelAnimation(hash_resolver);
+    const hstring animated_bone = hash_resolver.ToHashedString("Animated");
+    const hstring missing_bone = hash_resolver.ToHashedString("Missing");
+
+    const auto initialize_controller = [&](ModelAnimationController& controller, mat44& animated_matrix, mat44& missing_matrix) {
+        controller.RegisterAnimationOutput(animated_bone, animated_matrix);
+        controller.RegisterAnimationOutput(missing_bone, missing_matrix);
+        const int32_t animation_index = controller.RegisterAnimation(make_ptr(&animation), false);
+        controller.SetTrackAnimation(0, animation_index, nullptr);
+        controller.SetTrackEnable(0, true);
+        controller.AddEventWeight(0, 1.0f, 0.0f, 0.0f);
+    };
+
+    mat44 reset_animated = glm::translate(mat44 {1.0f}, vec3 {3.0f, 0.0f, 0.0f});
+    mat44 reset_missing = glm::translate(mat44 {1.0f}, vec3 {4.0f, 0.0f, 0.0f});
+    ModelAnimationController reset_controller {1};
+    initialize_controller(reset_controller, reset_animated, reset_missing);
+    reset_missing = glm::translate(mat44 {1.0f}, vec3 {99.0f, 0.0f, 0.0f});
+    reset_controller.AdvanceTime(0.0f);
+    CHECK(reset_animated[3][0] == Catch::Approx(10.0f));
+    CHECK(reset_missing[3][0] == Catch::Approx(4.0f));
+
+    mat44 preserve_animated = glm::translate(mat44 {1.0f}, vec3 {3.0f, 0.0f, 0.0f});
+    mat44 preserve_missing = glm::translate(mat44 {1.0f}, vec3 {4.0f, 0.0f, 0.0f});
+    ModelAnimationController preserve_controller {1};
+    initialize_controller(preserve_controller, preserve_animated, preserve_missing);
+    preserve_controller.SetPreserveUnwrittenOutputs(true);
+    preserve_missing = glm::translate(mat44 {1.0f}, vec3 {99.0f, 0.0f, 0.0f});
+    preserve_controller.AdvanceTime(0.0f);
+    CHECK(preserve_animated[3][0] == Catch::Approx(10.0f));
+    CHECK(preserve_missing[3][0] == Catch::Approx(99.0f));
 #endif
 }
 
@@ -829,7 +1235,7 @@ TEST_CASE("ModelInfoBakerValidations")
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
 
-    SECTION("Rejects non-positive draw sizes")
+    SECTION("Rejects removed authored draw sizes")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
@@ -839,7 +1245,7 @@ TEST_CASE("ModelInfoBakerValidations")
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
 
-    SECTION("Rejects non-positive view sizes")
+    SECTION("Rejects removed authored view sizes")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
@@ -927,6 +1333,26 @@ TEST_CASE("ModelInfoBakerValidations")
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Run\n", 1);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
+
+        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    }
+
+    SECTION("Rejects disabled mesh references that are not drawable")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nDisableMesh MissingMesh\n", 1);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {}));
+
+        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+    }
+
+    SECTION("Rejects animation stacks with non-positive duration")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nAnim 0 1 ModelFile Idle\n", 1);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}, {}, {}, {}, {}, 0.0f));
 
         CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
     }
@@ -1099,8 +1525,6 @@ Subset LegacySubset
 Root Link Body Mesh Body Texture 0 Body.tga Effect Effects/Test.fofx
 RotX 1 RotY+ 2 RotZ* 3 MoveX 4 MoveY+ 5 MoveZ* 6 Scale 2 Scale+ 0.5 ScaleX* 2 ScaleY 7 ScaleZ+ 8 Scale* 2 Speed 1.25 Speed+ 0.75 Speed* 2
 DisableLayer 2-3 DisableMesh All-Body Cut Cut.fbx All CutShape Body Body ~CutShape
-DrawSize 64 96
-ViewSize 33 44
 RotationBone Body
 FastTransitionBone Body
 DisableShadow
@@ -1133,10 +1557,6 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
         CHECK(reader.Read<uint8_t>() == 1);
         CHECK(reader.Read<uint8_t>() == 1);
         CHECK(reader.Read<uint8_t>() == 1);
-        CHECK(reader.Read<int32_t>() == 64);
-        CHECK(reader.Read<int32_t>() == 96);
-        CHECK(reader.Read<int32_t>() == 33);
-        CHECK(reader.Read<int32_t>() == 44);
         CHECK(ReadSavedModelInfoString(reader) == "Body");
 
         const SavedModelInfoLink default_link = ReadSavedModelInfoLink(reader);
@@ -1213,7 +1633,7 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
     {
         TestRig missing_model_rig;
         AddModelInfoMetadata(missing_model_rig);
-        missing_model_rig.AddSourceFile("Critters/Test.fo3d", "DrawSize 1 1\n", 1);
+        missing_model_rig.AddSourceFile("Critters/Test.fo3d", "DisableShadow\n", 1);
         CHECK_THROWS_AS(BakeModelInfoFiles(missing_model_rig), ModelInfoBakerException);
 
         TestRig root_without_value_rig;

@@ -117,6 +117,7 @@ auto ModelAnimationController::Copy() const -> ModelAnimationController
     clone._tracks.resize(_tracks.size());
     clone._eventsTime = 0.0f;
     clone._interpolationDisabled = _interpolationDisabled;
+    clone._preserveUnwrittenOutputs = _preserveUnwrittenOutputs;
     return clone;
 }
 
@@ -127,6 +128,7 @@ void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44&
     auto& o = _outputs->emplace_back();
     o.BoneName = bone_name;
     o.Matrix = &output_matrix;
+    o.BaseMatrix = output_matrix;
     o.Valid.resize(_tracks.size());
     o.Factor.resize(_tracks.size());
     o.Scale.resize(_tracks.size());
@@ -335,6 +337,13 @@ void ModelAnimationController::SetInterpolation(bool enabled)
     _interpolationDisabled = !enabled;
 }
 
+void ModelAnimationController::SetPreserveUnwrittenOutputs(bool preserve) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _preserveUnwrittenOutputs = preserve;
+}
+
 void ModelAnimationController::AdvanceTime(float32_t time)
 {
     FO_STACK_TRACE_ENTRY();
@@ -439,6 +448,10 @@ void ModelAnimationController::AdvanceTime(float32_t time)
         }
 
         if (base_idx == _tracks.size()) {
+            if (!_preserveUnwrittenOutputs) {
+                *o.Matrix = o.BaseMatrix;
+            }
+
             continue;
         }
 
