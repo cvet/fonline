@@ -19,7 +19,7 @@ Maintenance workflow: [Docs/ThirdPartyMaintenance.md](../Docs/ThirdPartyMaintena
 * imgui - [imgui-1.92.8](https://github.com/ocornut/imgui)
 * libpng - [libpng-1.6.58](https://github.com/pnggroup/libpng)
 * LibreSSL - [4.3.2](https://www.libressl.org)
-* mongo-c-driver - [mongo-c-driver-2.3.1](https://github.com/mongodb/mongo-c-driver)
+* mongo-c-driver - [mongo-c-driver-2.3.3](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
 * rpmalloc - [rpmalloc-1.4.5](https://github.com/mjansson/rpmalloc)
 * ufbx - [ufbx-0.23.0](https://github.com/ufbx/ufbx)
