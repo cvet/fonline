@@ -73,6 +73,7 @@ namespace
             _sentPacketCount.store(0, std::memory_order_relaxed);
             _sentAddCritterCount.store(0, std::memory_order_relaxed);
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
+            _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
 
         [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
@@ -94,6 +95,21 @@ namespace
             default:
                 return 0;
             }
+        }
+
+        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t
+        {
+            FO_NO_STACK_TRACE_ENTRY();
+
+            return _sentTrackedMessageCount.load(std::memory_order_relaxed);
+        }
+
+        [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
+        {
+            FO_STACK_TRACE_ENTRY();
+
+            FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
+            return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
         }
 
     protected:
@@ -135,6 +151,16 @@ namespace
                         _sentRemoveCritterCount.fetch_add(1, std::memory_order_relaxed);
                     }
 
+                    if (message == NetMessage::AddCritter || message == NetMessage::RemoveCritter) {
+                        const size_t tracked_index = _sentTrackedMessageCount.fetch_add(1, std::memory_order_relaxed);
+                        if (tracked_index == 0) {
+                            _firstSentTrackedMessage.store(message, std::memory_order_relaxed);
+                        }
+                        else if (tracked_index == 1) {
+                            _secondSentTrackedMessage.store(message, std::memory_order_relaxed);
+                        }
+                    }
+
                     offset += message_size;
                 }
             }
@@ -148,6 +174,9 @@ namespace
         std::atomic<size_t> _sentRemoveCritterCount {};
         StreamDecompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
+        std::atomic<size_t> _sentTrackedMessageCount {};
+        std::atomic<NetMessage> _firstSentTrackedMessage {};
+        std::atomic<NetMessage> _secondSentTrackedMessage {};
     };
 
     static auto MakeSettings() -> GlobalSettings
@@ -158,7 +187,6 @@ namespace
         settings.ApplyAutoSettings();
 
         BakerTests::ApplySelfContainedServerSettings(settings);
-
         return settings;
     }
 
@@ -1797,6 +1825,9 @@ TEST_CASE("PlayerRegistrationCppApi")
         CHECK(test_connection->GetSentPacketCount() > 0);
         CHECK(test_connection->GetSentMessageCount(NetMessage::RemoveCritter) == 1);
         CHECK(test_connection->GetSentMessageCount(NetMessage::AddCritter) == 1);
+        REQUIRE(test_connection->GetSentTrackedMessageCount() == 2);
+        CHECK(test_connection->GetSentTrackedMessage(0) == NetMessage::RemoveCritter);
+        CHECK(test_connection->GetSentTrackedMessage(1) == NetMessage::AddCritter);
 
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
