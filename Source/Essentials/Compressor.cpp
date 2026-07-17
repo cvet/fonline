@@ -224,8 +224,13 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
     _impl->ZStream.avail_out = numeric_cast<uInt>(result.size());
 
     const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-    FO_VERIFY_AND_THROW(first_inflate == Z_OK, "Initial zlib inflate step did not finish with Z_OK", first_inflate, Z_OK, buf.size(), result.size());
+    const bool malformed_initial_stream = first_inflate == Z_NEED_DICT || first_inflate == Z_DATA_ERROR || first_inflate == Z_BUF_ERROR || first_inflate == Z_STREAM_END;
 
+    if (malformed_initial_stream) {
+        throw DecompressException("Malformed compressed transport stream during initial inflate", first_inflate, buf.size(), result.size());
+    }
+
+    FO_VERIFY_AND_THROW(first_inflate == Z_OK, "Initial zlib inflate step did not finish with Z_OK", first_inflate, Z_OK, buf.size(), result.size());
     size_t uncompr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
 
     while (_impl->ZStream.avail_in != 0) {
@@ -236,8 +241,13 @@ void StreamDecompressor::Decompress(const_span<uint8_t> buf, vector<uint8_t>& re
         _impl->ZStream.avail_out = numeric_cast<uInt>(result.size() - uncompr_len);
 
         const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
-        FO_VERIFY_AND_THROW(next_inflate == Z_OK, "Continuation zlib inflate step did not finish with Z_OK", next_inflate, Z_OK, _impl->ZStream.avail_in, result.size());
+        const bool malformed_continuation_stream = next_inflate == Z_NEED_DICT || next_inflate == Z_DATA_ERROR || next_inflate == Z_BUF_ERROR || next_inflate == Z_STREAM_END;
 
+        if (malformed_continuation_stream) {
+            throw DecompressException("Malformed compressed transport stream during continuation inflate", next_inflate, _impl->ZStream.avail_in, result.size());
+        }
+
+        FO_VERIFY_AND_THROW(next_inflate == Z_OK, "Continuation zlib inflate step did not finish with Z_OK", next_inflate, Z_OK, _impl->ZStream.avail_in, result.size());
         uncompr_len = numeric_cast<size_t>(_impl->ZStream.next_out - output_begin.get());
     }
 
