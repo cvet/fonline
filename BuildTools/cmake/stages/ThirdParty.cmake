@@ -79,9 +79,11 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         SOURCE_LIST FO_RPMALLOC_SOURCE
         APPEND_TO FO_ESSENTIALS_LIBS
         INCLUDE_DIRS "${FO_RPMALLOC_DIR}/rpmalloc")
-    AddCompileDefinitionsList(
-        FO_HAVE_RPMALLOC=${expr_RpmallocEnabled}
-        ENABLE_PRELOAD=${expr_StandaloneRpmallocEnabled})
+    AddCompileDefinitionsList(FO_HAVE_RPMALLOC=${expr_RpmallocEnabled})
+    # The engine routes all allocation through its own global operator new/delete
+    # overrides in MemorySystem.cpp; rpmalloc must not emit its malloc/operator
+    # replacements (ENABLE_OVERRIDE defaults to 1 since rpmalloc 2.0).
+    TargetCompileDefinitions(rpmalloc PRIVATE ENABLE_OVERRIDE=0)
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
     TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
 else()
