@@ -98,6 +98,8 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 
 `Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
 
+Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `StreamDecompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
+
 The public surface is transport-neutral:
 
 - `IsConnecting()` / `IsConnected()`;
