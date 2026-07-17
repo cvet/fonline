@@ -169,7 +169,7 @@ FIXED_SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters bloc
 FIXED_SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING_GROUP_END();
 
-///@ ExportSettings Client
+///@ ExportSettings Common
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(int32_t, Render, Animation3dSmoothTime, 150); // 3D animation smooth time in milliseconds
 FIXED_SETTING(int32_t, Render, Animation3dFPS, 30); // 3D animation frames per second

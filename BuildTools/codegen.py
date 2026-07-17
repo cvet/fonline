@@ -2468,39 +2468,25 @@ def try_get_git_branch() -> str:
 
 def write_engine_config() -> None:
     def write_engine_config_impl() -> None:
-        # Single generated header with two sections, selected by FO_ENGINE_CONFIG_CONSTANTS:
-        #   * default branch  - configuration macros, pulled in at the very top of BasicCore.h instead of
-        #     cluttering the compiler command line (these must exist before BasicCore.h uses FO_USE_NAMESPACE);
-        #   * #else branch    - typed build/version constants, re-included by Common.h once fo::string_view_nt
-        #     exists and inside the fo namespace.
+        # Single generated header with configuration and build/version macros, pulled in at the very top of
+        # BasicCore.h instead of cluttering the compiler command line.
         generated_output.create_file('EngineConfig.gen.h', args.genoutput)
         generated_output.write_line('// FOnline Engine generated configuration. Do not edit.')
-        generated_output.write_line('//')
-        generated_output.write_line('// BasicCore.h includes this for the configuration macros; Common.h re-includes it with')
-        generated_output.write_line('// FO_ENGINE_CONFIG_CONSTANTS defined to emit the typed build/version constants.')
-        generated_output.write_line('')
-        generated_output.write_line('#ifndef FO_ENGINE_CONFIG_CONSTANTS')
         generated_output.write_line('')
 
         for define in args.enginedefine:
             name, separator, value = define.partition('=')
             generated_output.write_line('#define ' + name.strip() + (' ' + value if separator else ''))
 
-        generated_output.write_line('')
-        generated_output.write_line('#else')
-        generated_output.write_line('')
-        generated_output.write_line('static constexpr string_view_nt FO_BUILD_HASH = "' + args.buildhash + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_DEV_NAME = "' + args.devname + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_NICE_NAME = "' + args.nicename + '";')
-        generated_output.write_line('static constexpr string_view_nt FO_GENERATED_SOURCE_DIR = "' + args.genoutput.replace('\\', '/') + '";')
+        generated_output.write_line('#define FO_BUILD_HASH "' + args.buildhash + '"')
+        generated_output.write_line('#define FO_DEV_NAME "' + args.devname + '"')
+        generated_output.write_line('#define FO_NICE_NAME "' + args.nicename + '"')
+        generated_output.write_line('#define FO_GENERATED_SOURCE_DIR "' + args.genoutput.replace('\\', '/') + '"')
 
         compatibility_version = compatibility_hasher.hexdigest()[:16]
-        generated_output.write_line('static constexpr string_view_nt FO_COMPATIBILITY_VERSION = "' + compatibility_version + '";')
+        generated_output.write_line('#define FO_COMPATIBILITY_VERSION "' + compatibility_version + '"')
         log('Compatibility version: ' + compatibility_version)
-        generated_output.write_line('static constexpr string_view_nt FO_GIT_BRANCH = "' + try_get_git_branch() + '";')
-
-        generated_output.write_line('')
-        generated_output.write_line('#endif')
+        generated_output.write_line('#define FO_GIT_BRANCH "' + try_get_git_branch() + '"')
 
     run_codegen_step(write_engine_config_impl, 'Can\'t write engine config')
 

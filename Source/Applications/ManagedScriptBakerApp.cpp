@@ -72,7 +72,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir, res_pack.RecursiveInput);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
@@ -94,7 +94,7 @@ int main(int argc, char** argv)
             auto metadata_baker = MetadataBaker(std::move(baking_ctx));
 
             try {
-                metadata_baker.BakeFiles(res_files.GetAllFiles(), "");
+                metadata_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
                 metadata_files.AddDirSource(strex(GetApp()->Settings.BakeOutput).combine_path(res_pack.Name), false);
             }
             catch (const MetadataBakerException& ex) {
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
             FileSystem res_files;
 
             for (const auto& dir : res_pack.InputDirs) {
-                res_files.AddDirSource(dir, res_pack.RecursiveInput);
+                res_files.AddDirSource(dir, true);
             }
 
             const auto write_file = [&](string_view path, const_span<uint8_t> data) FO_DEFERRED {
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
             auto managed_baker = ManagedScriptBaker(std::move(baking_ctx));
 
             try {
-                managed_baker.BakeFiles(res_files.GetAllFiles(), "");
+                managed_baker.BakeFiles(res_files.FilterFiles(res_pack.IncludePatterns, res_pack.ExcludePatterns), "");
             }
             catch (const ManagedScriptBakerException& ex) {
                 WriteLog("{}", ex.what());

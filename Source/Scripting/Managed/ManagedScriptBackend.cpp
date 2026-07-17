@@ -75,6 +75,10 @@ constexpr string_view MANAGED_HOST_ASSEMBLY_FILE_NAME = "FOnline.ManagedHost.dll
 constexpr string_view MANAGED_HOST_NAMESPACE = "FOnline.ManagedHost";
 constexpr string_view MANAGED_HOST_CLASS_NAME = "ManagedLoadContextHost";
 
+// Embedded Mono can overlap normal execution across load contexts, but concurrent context loading corrupts its
+// loader state. Serialize only assembly loading; managed engines still run in parallel.
+static mutex ManagedAssemblyLoadLocker;
+
 // Thread-affine active backend: threads are partitioned by engine ownership, so the thread-local slot never
 // observes a foreign engine. Every native->managed invocation runs under ActiveBackendScope, making this the
 // one and only resolution of "which engine is executing managed code right now".
@@ -218,6 +222,7 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
 // Event dispatch bridge
 static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst);
 static auto DispatchManagedEvent(const std::shared_ptr<ManagedEventSubscription>& subscription, FuncCallData& call) -> Entity::EventResult;
+static auto DispatchManagedEventInContext(const std::shared_ptr<ManagedEventSubscription>& subscription, FuncCallData& call) -> Entity::EventResult;
 
 // Remote-call argument marshaling
 static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, const vector<ArgDesc>& call_args, MonoArray* args_array, string_view name) -> vector<uint8_t>;
@@ -2749,6 +2754,18 @@ static auto DispatchManagedEvent(const std::shared_ptr<ManagedEventSubscription>
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto* engine = dynamic_cast<BaseEngine*>(subscription->Backend->GetMetadata());
+    FO_VERIFY_AND_THROW(engine, "Managed event dispatch requires an engine context");
+
+    Entity::EventResult result = Entity::EventResult::ContinueChain;
+    engine->RunScriptContext([&] { result = DispatchManagedEventInContext(subscription, call); });
+    return result;
+}
+
+static auto DispatchManagedEventInContext(const std::shared_ptr<ManagedEventSubscription>& subscription, FuncCallData& call) -> Entity::EventResult
+{
+    FO_STACK_TRACE_ENTRY();
+
     const ActiveBackendScope active_backend {subscription->Backend.as_ptr()};
 
     auto* domain = GetDomainOrThrow(subscription->Backend->GetDomain());
@@ -4966,6 +4983,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_loadScopeGcHandle == 0, "Managed load scope is already created");
+    scoped_lock load_locker {ManagedAssemblyLoadLocker};
 
     auto* domain = GetDomainOrThrow(_domain.get());
     const string host_path = fs_path_to_string(host_assembly_path);

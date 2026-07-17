@@ -318,6 +318,29 @@ auto ItemManager::MoveItem(ptr<Item> item, int32_t count, ptr<Critter> to_cr) ->
     auto holder_holder = holder.hold_ref();
     ignore_unused(holder_holder);
 
+    if (count > 0 && item->GetStackable()) {
+        auto result_item = to_cr->GetInvItemByPid(item->GetProtoId());
+
+        if (result_item && result_item != item) {
+            auto result_item_holder = result_item.hold_ref();
+            ignore_unused(result_item_holder);
+
+            const int32_t source_count = item->GetCount();
+            const int32_t result_count = result_item->GetCount();
+            const int32_t transfer_count = std::min(count, source_count);
+
+            _engine->OnCritterItemTransferIn.Fire(to_cr, item, result_item, transfer_count);
+
+            FO_VERIFY_AND_THROW(!item->IsDestroyed() && !item->IsDestroying(), "Critter item transfer event destroyed the source item", item->GetId());
+            FO_VERIFY_AND_THROW(!to_cr->IsDestroyed() && !to_cr->IsDestroying(), "Critter item transfer event destroyed the destination critter", to_cr->GetId());
+            FO_VERIFY_AND_THROW(!result_item->IsDestroyed() && !result_item->IsDestroying(), "Critter item transfer event destroyed the destination stack", result_item->GetId());
+            FO_VERIFY_AND_THROW(GetItemHolder(item) == holder, "Critter item transfer event moved the source item", item->GetId());
+            FO_VERIFY_AND_THROW(item->GetCount() == source_count, "Critter item transfer event changed the source count", item->GetId(), item->GetCount(), source_count);
+            FO_VERIFY_AND_THROW(to_cr->GetInvItemByPid(item->GetProtoId()) == result_item, "Critter item transfer event replaced the destination stack", to_cr->GetId(), item->GetProtoId());
+            FO_VERIFY_AND_THROW(result_item->GetCount() == result_count, "Critter item transfer event changed the destination count", result_item->GetId(), result_item->GetCount(), result_count);
+        }
+    }
+
     if (count >= item->GetCount() || !item->GetStackable()) {
         RemoveItemHolder(item, holder);
 

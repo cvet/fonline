@@ -57,6 +57,7 @@ namespace
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);", 1, "post-commit item move"},
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item_swap, slot);", 1, "post-commit item swap"},
         {"Source/Scripting/ServerCritterScriptMethods.cpp", "self->GetEngine()->OnCritterItemMoved.Fire(self, item, from_slot);", 2, "post-commit item move"},
+        {"Source/Server/ItemManager.cpp", "_engine->OnCritterItemTransferIn.Fire(to_cr, item, result_item, transfer_count);", 1, "pre-merge inventory transfer"},
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterItemMoved.Fire(cr, item, CritterItemSlot::Outside);", 1, "post-commit inventory add"},
         {"Source/Server/CritterManager.cpp", "_engine->OnCritterItemMoved.Fire(cr, item, prev_slot);", 1, "post-commit inventory remove"},
         {"Source/Server/CritterManager.cpp", "_engine->OnMapCritterIn.Fire(map, cr);", 1, "post-attach critter create"},

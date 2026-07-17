@@ -945,16 +945,19 @@ public:
 
     [[nodiscard]] static auto GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>;
 
+    // Returns false only when the init function itself threw; that exception is already reported by ScriptFunc::Call.
+    // An unresolvable init function is a hard error and throws, so it can never degrade into a silent no-op.
     template<typename T>
     static auto CallInitScript(ptr<ScriptSystem> script_sys, ptr<T> entity, hstring init_script, bool first_time) -> bool
     {
         if (init_script) {
-            if (auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script)) {
-                if (!init_func.Call(entity, first_time)) {
-                    return false;
-                }
+            auto init_func = script_sys->FindFunc<void, ptr<T>, bool>(init_script);
+
+            if (!init_func) {
+                throw ScriptException("Init function not found or has a mismatched signature", init_script, T::ENTITY_TYPE_NAME);
             }
-            else {
+
+            if (!init_func.Call(entity, first_time)) {
                 return false;
             }
         }

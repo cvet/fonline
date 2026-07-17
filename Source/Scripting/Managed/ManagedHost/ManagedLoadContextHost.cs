@@ -18,20 +18,12 @@ namespace FOnline.ManagedHost
             ManagedAssemblyLoadContext context = new ManagedAssemblyLoadContext(contextName, assemblyPaths);
             Assembly[] entryAssemblies = new Assembly[entryAssemblyPaths.Length];
 
-            try
+            for (int i = 0; i < entryAssemblyPaths.Length; i++)
             {
-                for (int i = 0; i < entryAssemblyPaths.Length; i++)
-                {
-                    entryAssemblies[i] = context.LoadFromAssemblyPath(Path.GetFullPath(entryAssemblyPaths[i]));
-                }
+                entryAssemblies[i] = context.LoadFromAssemblyPath(Path.GetFullPath(entryAssemblyPaths[i]));
+            }
 
-                return new ManagedLoadScope(context, entryAssemblies);
-            }
-            catch
-            {
-                context.Unload();
-                throw;
-            }
+            return new ManagedLoadScope(context, entryAssemblies);
         }
 
         public static Assembly[] GetEntryAssemblies(object scope)
@@ -68,16 +60,13 @@ namespace FOnline.ManagedHost
 
             public void Release()
             {
-                ManagedAssemblyLoadContext? context = _context;
-
-                if (context == null)
+                if (_context == null)
                 {
                     return;
                 }
 
                 EntryAssemblies = Array.Empty<Assembly>();
                 _context = null;
-                context.Unload();
             }
         }
 
@@ -87,7 +76,7 @@ namespace FOnline.ManagedHost
                 new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             public ManagedAssemblyLoadContext(string name, string[] assemblyPaths)
-                : base(name, isCollectible: true)
+                : base(name, isCollectible: false)
             {
                 for (int i = 0; i < assemblyPaths.Length; i++)
                 {

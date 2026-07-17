@@ -1134,7 +1134,7 @@ auto ManagedScriptBaker::GetManagedGeneratedDir(string_view dir_override) -> std
 
     // Empty targets the build GeneratedSource tree (the same one native codegen writes to), so generated
     // managed scripts stay out of the authored source tree unless the project explicitly roots them there.
-    const std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR.c_str()} / "Managed" : std::filesystem::path {dir_override};
+    const std::filesystem::path generated_dir = dir_override.empty() ? std::filesystem::path {FO_GENERATED_SOURCE_DIR} / "Managed" : std::filesystem::path {dir_override};
 
     std::error_code ec;
     std::filesystem::create_directories(generated_dir, ec);
@@ -2450,7 +2450,7 @@ static void AppendEntityBaseClass(std::ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
 
-    out << "    public partial class Entity\n";
+    out << "    public partial class Entity : System.IEquatable<Entity>\n";
     out << "    {\n";
     out << CS_INDENT << "public ident Id\n";
     out << CS_INDENT << "{\n";
@@ -2509,6 +2509,29 @@ static void AppendEntityBaseClass(std::ostringstream& out)
     out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, string value) where TProp : System.Enum\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, System.Convert.ToInt32(prop), value ?? string.Empty);\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public bool Equals(Entity? other)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return !object.ReferenceEquals(other, null) && _entityPtrValue == other._entityPtrValue && _backend == other._backend;\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public override bool Equals(object? obj)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return obj is Entity other && Equals(other);\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public override int GetHashCode()\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    unchecked\n";
+    out << CS_INDENT << "    {\n";
+    out << CS_INDENT << "        return (_backend.GetHashCode() * 397) ^ _entityPtrValue.GetHashCode();\n";
+    out << CS_INDENT << "    }\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public static bool operator ==(Entity? left, Entity? right)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && left.Equals(right));\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public static bool operator !=(Entity? left, Entity? right)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return !(left == right);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "private IntPtr _entityPtrValue;\n";
     out << CS_INDENT << "private readonly bool[]? _backendAlive;\n";

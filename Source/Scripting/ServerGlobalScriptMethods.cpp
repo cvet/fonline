@@ -914,7 +914,8 @@ FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToTempSession(ptr<ServerEngine>
     return player;
 }
 
-// SyncScope: requires unloginedPlayer; login mutates that player/session record and database-backed player id.
+// SyncScope: requires unloginedPlayer plus the prepared main-critter/map/location graph; a live reconnect
+// additionally requires the existing player. Login preserves the caller-provided cover.
 ///@ ExportMethod
 FO_SCRIPT_API ptr<Player> Server_Game_LoginPlayerToExistentRecord(ptr<ServerEngine> server, ptr<Player> unloginedPlayer, ident_t playerId)
 {
@@ -1817,6 +1818,25 @@ FO_SCRIPT_API int32_t Server_Game_SystemCall(ptr<ServerEngine> server, string_vi
         }
         output += line;
     });
+}
+
+// SyncScope: resolves a live entity by id and replaces current cover with it plus engine auto-widen
+// partners. Returns false without changing cover when the entity is already gone, and rechecks
+// lifecycle after acquisition so callers can safely cross an entity-destruction race.
+///@ ExportMethod Async
+FO_SCRIPT_API bool Server_Game_TrySyncEntity(ptr<ServerEngine> server, ident_t entity_id)
+{
+    refcount_nptr<ServerEntity> entity = server->EntityMngr.GetEntity(entity_id);
+
+    if (!entity || entity->IsDestroyed() || entity->IsDestroying()) {
+        return false;
+    }
+
+    auto ctx = server->RequireCurrentSyncContext();
+    const array<nptr<ServerEntity>, 1> entities {entity};
+    ctx->SyncEntities(entities);
+
+    return !entity->IsDestroyed() && !entity->IsDestroying();
 }
 
 // SyncScope: replaces current cover with entity plus engine auto-widen partners.
