@@ -987,7 +987,7 @@ ActionAnimEqual 4 6
         AddModelInfoMetadata(rig);
         rig.AddSourceFile("Critters/Test.fo3d", R"(Model Body.fbx
 Anim 0 1 ModelFile Idle
-StateAnimEqual 0 2
+StateAnimEqual 0 1
 )",
             7);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
@@ -998,7 +998,7 @@ StateAnimEqual 0 2
         const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
         CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
 
-        // State 0 aliases away to 2 and nothing aliases back to it, so no input pair resolves to a duration.
+        // State 0 aliases away to 1 and nothing aliases back to it, so no input pair resolves to a duration.
         // The leading newline keeps these from matching the Bounds* keys below.
         CHECK(config.find("\nStateAnims =") == string::npos);
         CHECK(config.find("\nActionAnims =") == string::npos);
