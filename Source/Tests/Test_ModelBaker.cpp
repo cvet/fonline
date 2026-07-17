@@ -957,6 +957,60 @@ ActionAnimEqual 4 6
         CHECK(config.find("DurationsMs = 250") == string::npos);
     }
 
+    SECTION("Writes a bounds-only section for a model without animation entries")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/NoAnim.fo3d", "Model Body.fbx\n", 8);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {}));
+
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        CHECK(config.find("[Critters/NoAnim.fo3d]\n") != string::npos);
+        CHECK(config.find("BoundsVersion = 2\n") != string::npos);
+        CHECK(config.find("ModelBoundsMinX =") != string::npos);
+        CHECK(config.find("ViewBoundsMaxZ =") != string::npos);
+
+        // A model with no entries has nothing to time and no per-animation bounds, so the section carries the
+        // static bounds alone. The unanchored substrings also cover the BoundsStateAnims/BoundsActionAnims keys.
+        CHECK(config.find("StateAnims =") == string::npos);
+        CHECK(config.find("ActionAnims =") == string::npos);
+        CHECK(config.find("DurationsMs =") == string::npos);
+        CHECK(config.find("\nBoundsMinX =") == string::npos);
+    }
+
+    SECTION("Writes animation bounds when every animation entry is aliased away")
+    {
+        TestRig rig;
+        AddModelInfoMetadata(rig);
+        rig.AddSourceFile("Critters/Test.fo3d", R"(Model Body.fbx
+Anim 0 1 ModelFile Idle
+StateAnimEqual 0 2
+)",
+            7);
+        rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {"Idle"}));
+
+        ModelInfoBaker baker(rig.MakeContext("ArbitraryPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        const string config = rig.GetOutputText("ModelAnimInfo.foinfo");
+        CHECK(config.find("[Critters/Test.fo3d]\n") != string::npos);
+
+        // State 0 aliases away to 2 and nothing aliases back to it, so no input pair resolves to a duration.
+        // The leading newline keeps these from matching the Bounds* keys below.
+        CHECK(config.find("\nStateAnims =") == string::npos);
+        CHECK(config.find("\nActionAnims =") == string::npos);
+        CHECK(config.find("DurationsMs =") == string::npos);
+
+        // Bounds come from the raw entry rather than alias materialization, and the client hard-requires them
+        CHECK(config.find("BoundsStateAnims = 0\n") != string::npos);
+        CHECK(config.find("BoundsActionAnims = 1\n") != string::npos);
+        CHECK(config.find("\nBoundsMinX =") != string::npos);
+        CHECK(config.find("\nBoundsMaxZ =") != string::npos);
+    }
+
     SECTION("Applies include replacements in model descriptions")
     {
         TestRig rig;
@@ -1280,20 +1334,22 @@ TEST_CASE("ModelInfoBakerValidations")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nDrawSize 10 0\n", 1);
+        // Positive values were valid under the removed contract, so the throw can only mean the token itself is gone
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nDrawSize 64 96\n", 1);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {}));
 
-        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Unknown token"));
     }
 
     SECTION("Rejects removed authored view sizes")
     {
         TestRig rig;
         AddModelInfoMetadata(rig);
-        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nViewSize 10 0\n", 1);
+        // Positive values were valid under the removed contract, so the throw can only mean the token itself is gone
+        rig.AddSourceFile("Critters/Test.fo3d", "Model Body.fbx\nViewSize 33 44\n", 1);
         rig.AddBakedFile("Critters/Body.fbx", MakeTestBakedModel("Critters/Body.fbx", "Body", true, {}));
 
-        CHECK_THROWS_AS(BakeModelInfoFiles(rig), ModelInfoBakerException);
+        CHECK_THROWS_WITH(BakeModelInfoFiles(rig), Catch::Matchers::ContainsSubstring("Unknown token"));
     }
 
     SECTION("Rejects missing rotation bones")

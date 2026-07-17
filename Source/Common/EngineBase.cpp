@@ -1200,8 +1200,6 @@ void EngineMetadata::RegisterModelAnimInfo(const FileSystem& resources)
         const auto state_anims = strvex(get_value("StateAnims")).split_to_int32(' ');
         const auto action_anims = strvex(get_value("ActionAnims")).split_to_int32(' ');
         const auto durations_ms = strvex(get_value("DurationsMs")).split_to_int32(' ');
-
-        FO_VERIFY_AND_THROW(!state_anims.empty(), "Model animation info section has no entries", model_name);
         FO_VERIFY_AND_THROW(state_anims.size() == action_anims.size() && action_anims.size() == durations_ms.size(), "Model animation info arrays have different sizes", model_name, state_anims.size(), action_anims.size(), durations_ms.size());
 
         const auto model_name_hashed = Hashes.ToHashedString(model_name);

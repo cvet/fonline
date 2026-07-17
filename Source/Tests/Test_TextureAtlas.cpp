@@ -275,8 +275,11 @@ TEST_CASE("TextureAtlasLayoutDumpOverlayDistinguishesQuadAndEmptyGeometry")
     CHECK(empty_pixels[1 * atlas_size.width + 3] == background);
 }
 
-TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
+// Representative runtime sprite corpus, shared by the always-on packing efficiency gate and the hidden benchmark
+static auto MakeAtlasCorpus() -> vector<isize32>
 {
+    FO_STACK_TRACE_ENTRY();
+
     vector<isize32> corpus;
     corpus.reserve(768);
     uint32_t random_state = 0x7A11A5u;
@@ -289,77 +292,93 @@ TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
         corpus.emplace_back(width + 2, height + 2);
     }
 
-    const auto run_corpus = [&corpus](bool churn) -> size_t {
-        constexpr isize32 atlas_size = {2048, 8192};
-        vector<unique_ptr<TextureAtlasLayout>> layouts;
-        vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
+    return corpus;
+}
 
-        const auto allocate = [&layouts, &allocations, atlas_size](isize32 size) {
-            nptr<TextureAtlasLayout> best_layout {};
-            optional<TextureAtlasLayout::FitScore> best_fit;
+// Packs the corpus the way the runtime atlas filler does and returns the resulting atlas page count
+static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
 
-            for (auto& layout : layouts) {
-                const optional<TextureAtlasLayout::FitScore> fit = layout->FindBestFitScore(size);
-                if (!fit) {
-                    continue;
-                }
+    constexpr isize32 atlas_size = {2048, 8192};
+    vector<unique_ptr<TextureAtlasLayout>> layouts;
+    vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
 
-                const auto fit_key = std::tie(fit->ShortSideFit, fit->LongSideFit, fit->AreaWaste);
-                if (!best_fit) {
+    const auto allocate = [&layouts, &allocations, atlas_size](isize32 size) {
+        nptr<TextureAtlasLayout> best_layout {};
+        optional<TextureAtlasLayout::FitScore> best_fit;
+
+        for (auto& layout : layouts) {
+            const optional<TextureAtlasLayout::FitScore> fit = layout->FindBestFitScore(size);
+            if (!fit) {
+                continue;
+            }
+
+            const auto fit_key = std::tie(fit->ShortSideFit, fit->LongSideFit, fit->AreaWaste);
+            if (!best_fit) {
+                best_layout = layout;
+                best_fit = fit;
+            }
+            else {
+                const auto best_key = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
+                if (fit_key < best_key) {
                     best_layout = layout;
                     best_fit = fit;
                 }
-                else {
-                    const auto best_key = std::tie(best_fit->ShortSideFit, best_fit->LongSideFit, best_fit->AreaWaste);
-                    if (fit_key < best_key) {
-                        best_layout = layout;
-                        best_fit = fit;
-                    }
-                }
-            }
-
-            if (!best_layout) {
-                layouts.emplace_back(SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size));
-                best_layout = layouts.back();
-            }
-
-            auto allocation = best_layout->Allocate(size);
-            FO_STRONG_ASSERT(allocation, "Texture atlas benchmark rectangle must fit a new page", size);
-            allocations.emplace_back(std::move(allocation));
-        };
-
-        for (const isize32 size : corpus) {
-            allocate(size);
-        }
-
-        if (churn) {
-            for (size_t i = 0; i < allocations.size(); i += 3) {
-                allocations[i].reset();
-            }
-            for (size_t i = 0; i < corpus.size() / 3; i++) {
-                allocate({corpus[i].height, corpus[i].width});
             }
         }
 
-        return layouts.size();
+        if (!best_layout) {
+            layouts.emplace_back(SafeAlloc::MakeUnique<TextureAtlasLayout>(atlas_size));
+            best_layout = layouts.back();
+        }
+
+        auto allocation = best_layout->Allocate(size);
+        FO_STRONG_ASSERT(allocation, "Texture atlas corpus rectangle must fit a new page", size);
+        allocations.emplace_back(std::move(allocation));
     };
 
-    const size_t packed_pages = run_corpus(false);
+    for (const isize32 size : corpus) {
+        allocate(size);
+    }
+
+    if (churn) {
+        for (size_t i = 0; i < allocations.size(); i += 3) {
+            allocations[i].reset();
+        }
+        for (size_t i = 0; i < corpus.size() / 3; i++) {
+            allocate({corpus[i].height, corpus[i].width});
+        }
+    }
+
+    return layouts.size();
+}
+
+TEST_CASE("TextureAtlasLayoutPackingEfficiency", "[texture-atlas]")
+{
+    const vector<isize32> corpus = MakeAtlasCorpus();
+
+    const size_t packed_pages = RunAtlasCorpus(corpus, false);
     CAPTURE(packed_pages);
     CHECK(packed_pages <= 6);
 
-    const size_t churned_pages = run_corpus(true);
+    const size_t churned_pages = RunAtlasCorpus(corpus, true);
     CAPTURE(churned_pages);
     CHECK(churned_pages <= 6);
+}
+
+TEST_CASE("TextureAtlasLayoutPerformance", "[!benchmark][texture-atlas]")
+{
+    const vector<isize32> corpus = MakeAtlasCorpus();
 
     BENCHMARK("Pack representative runtime sprite corpus")
     {
-        return run_corpus(false);
+        return RunAtlasCorpus(corpus, false);
     };
 
     BENCHMARK("Pack and refill after runtime churn")
     {
-        return run_corpus(true);
+        return RunAtlasCorpus(corpus, true);
     };
 }
 

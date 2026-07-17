@@ -1502,6 +1502,9 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             config_text += strex("StateAnims ={}\n", states);
             config_text += strex("ActionAnims ={}\n", actions);
             config_text += strex("DurationsMs ={}\n", durations);
+        }
+
+        if (!bounds_states.empty()) {
             config_text += strex("BoundsStateAnims ={}\n", bounds_states);
             config_text += strex("BoundsActionAnims ={}\n", bounds_actions);
             config_text += strex("BoundsMinX ={}\n", bounds_min_x);
@@ -1511,6 +1514,7 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
             config_text += strex("BoundsMaxY ={}\n", bounds_max_y);
             config_text += strex("BoundsMaxZ ={}\n", bounds_max_z);
         }
+
         config_text += "\n";
     }
 
@@ -1532,6 +1536,7 @@ static void BakeModelAnimInfo(const BakingContext& ctx, const FileCollection& fi
         report->AddCounter(ctx.PackName, ctx.BakerName, "viewBoundsFallback", stats.ViewBoundsFallback);
 
         constexpr array<string_view, 6> extent_buckets {"<1", "1-2", "2-3", "3-5", "5-10", "10+"};
+
         for (size_t i = 0; i < extent_buckets.size(); i++) {
             report->AddHistogramValue(ctx.PackName, ctx.BakerName, "animationBoundsMaxExtent", extent_buckets[i], stats.AnimationBoundsMaxExtent[i]);
         }

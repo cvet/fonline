@@ -597,7 +597,6 @@ SpriteMesh.AreaSavingsWeight = 100.0
 [ResourcePack]
 Name = Art
 InputDirs = input
-RecursiveInput = True
 Bakers = {}
 )",
             output_dir, ImageBaker::NAME)

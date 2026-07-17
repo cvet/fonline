@@ -275,15 +275,18 @@ static auto RoundFrameDimension(uint64_t value) -> optional<int32_t>
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (value > numeric_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
+
+    // Reject beyond the logical limit before the ceiling: std::bit_ceil is undefined once the result is not
+    // representable in its type, so the input must be bounded first. This also subsumes the uint32 range check.
+    if (value > numeric_cast<uint64_t>(max_logical_frame_dimension)) {
         return std::nullopt;
     }
 
     const uint32_t rounded = std::bit_ceil(numeric_cast<uint32_t>(value));
 
-    constexpr uint32_t max_logical_frame_dimension = numeric_cast<uint32_t>(std::numeric_limits<int32_t>::max() / MODEL_SPRITE_FRAME_SCALE);
-
-    if (rounded == 0 || rounded > max_logical_frame_dimension) {
+    // Still reachable: the ceiling of a value just under the limit rounds up past it.
+    if (rounded > max_logical_frame_dimension) {
         return std::nullopt;
     }
 

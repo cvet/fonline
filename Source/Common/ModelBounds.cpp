@@ -131,14 +131,14 @@ auto CalculateGuardedModelBounds(const ModelBounds3D& bounds) -> optional<ModelB
     }
 
     const float64_t max_abs = std::max({
-        std::abs(static_cast<float64_t>(bounds.Min.x)),
-        std::abs(static_cast<float64_t>(bounds.Min.y)),
-        std::abs(static_cast<float64_t>(bounds.Min.z)),
-        std::abs(static_cast<float64_t>(bounds.Max.x)),
-        std::abs(static_cast<float64_t>(bounds.Max.y)),
-        std::abs(static_cast<float64_t>(bounds.Max.z)),
+        std::abs(numeric_cast<float64_t>(bounds.Min.x)),
+        std::abs(numeric_cast<float64_t>(bounds.Min.y)),
+        std::abs(numeric_cast<float64_t>(bounds.Min.z)),
+        std::abs(numeric_cast<float64_t>(bounds.Max.x)),
+        std::abs(numeric_cast<float64_t>(bounds.Max.y)),
+        std::abs(numeric_cast<float64_t>(bounds.Max.z)),
     });
-    const float32_t guard = static_cast<float32_t>(std::max(MODEL_BOUNDS_ABSOLUTE_GUARD, max_abs * MODEL_BOUNDS_RELATIVE_GUARD));
+    const float32_t guard = numeric_cast<float32_t>(std::max(MODEL_BOUNDS_ABSOLUTE_GUARD, max_abs * MODEL_BOUNDS_RELATIVE_GUARD));
     ModelBounds3D guarded = bounds;
     guarded.Min -= vec3 {guard};
     guarded.Max += vec3 {guard};

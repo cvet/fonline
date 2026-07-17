@@ -1365,13 +1365,14 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
     const mat44 root_transformation = _spriteBoundsPoseReady ? _parentMatrix : MakeRootTransformation(root_pos, const_numeric_cast<float32_t>(FRAME_SCALE), false);
     const vec3 ground_pos = _spriteBoundsPoseReady ? _groundPos : vec3 {root_transformation[3][0], root_transformation[3][1], root_transformation[3][2]};
     const bool include_shadow = !_shadowDisabled && !_modelInfo->_shadowDisabled;
+
     if (include_shadow && (!std::isfinite(ground_pos.x) || !std::isfinite(ground_pos.y) || !std::isfinite(ground_pos.z))) {
         return std::nullopt;
     }
 
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     const mat44 identity {1.0f};
-    const auto frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
+    const float32_t frame_scale = const_numeric_cast<float32_t>(FRAME_SCALE);
     bool has_projected_point = false;
     float32_t min_x {};
     float32_t min_y {};
@@ -1384,8 +1385,8 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             return false;
         }
 
-        const auto sprite_x = projected_pos.x / frame_scale;
-        const auto sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
+        const float32_t sprite_x = projected_pos.x / frame_scale;
+        const float32_t sprite_y = (numeric_cast<float32_t>(_frameSize.height) - projected_pos.y) / frame_scale;
 
         if (!has_projected_point) {
             min_x = sprite_x;
@@ -1437,6 +1438,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
             if (!combined_mesh->HasSpriteGeometry) {
                 continue;
             }
+
             force_full_frame = force_full_frame || combined_mesh->DrawEffect;
 
             has_geometry = true;
@@ -1467,6 +1469,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                     }
 
                     const size_t bone_index = numeric_cast<size_t>(iround<int32_t>(vertex.BlendIndices[influence]));
+
                     if (bone_index >= combined_mesh->CurBoneMatrix) {
                         return std::nullopt;
                     }
@@ -1613,9 +1616,9 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
         return std::nullopt;
     }
 
-    const auto frame_width_float = numeric_cast<float32_t>(frame_width);
-    const auto frame_height_float = numeric_cast<float32_t>(frame_height);
-    const auto guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
+    const float32_t frame_width_float = numeric_cast<float32_t>(frame_width);
+    const float32_t frame_height_float = numeric_cast<float32_t>(frame_height);
+    const float32_t guard_padding = const_numeric_cast<float32_t>(SPRITE_BOUNDS_GUARD_PADDING);
     optional<isize32> required_frame_size = CalculateModelSpriteFrameSize(min_x - numeric_cast<float32_t>(root_pos.x) - guard_padding, min_y - numeric_cast<float32_t>(root_pos.y) - guard_padding, max_x - numeric_cast<float32_t>(root_pos.x) + guard_padding, max_y - numeric_cast<float32_t>(root_pos.y) + guard_padding);
 
     if (!required_frame_size) {
@@ -1644,6 +1647,7 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
                 }
 
                 const int32_t animation_index = track_animation_indices[track];
+
                 if (animation_count != 0 && animation_indices[0] == animation_index) {
                     continue;
                 }
@@ -2043,6 +2047,7 @@ void ModelInstance::GenerateCombinedMeshes()
             }
 
             const auto& vertex = vertices[vertex_index];
+
             if (!std::isfinite(vertex.Position.x) || !std::isfinite(vertex.Position.y) || !std::isfinite(vertex.Position.z)) {
                 combined_mesh->SpriteBoundsValid = false;
                 break;
@@ -2056,7 +2061,8 @@ void ModelInstance::GenerateCombinedMeshes()
             float32_t total_weight = 0.0f;
 
             for (size_t influence = 0; influence < MODEL_BONES_PER_VERTEX; influence++) {
-                const auto weight = vertex.BlendWeights[influence];
+                const float32_t weight = vertex.BlendWeights[influence];
+
                 if (!std::isfinite(weight)) {
                     combined_mesh->SpriteBoundsValid = false;
                     break;
@@ -2065,13 +2071,15 @@ void ModelInstance::GenerateCombinedMeshes()
                     continue;
                 }
 
-                const auto bone_index_value = vertex.BlendIndices[influence];
+                const float32_t bone_index_value = vertex.BlendIndices[influence];
+
                 if (!std::isfinite(bone_index_value) || bone_index_value < 0.0f || bone_index_value >= numeric_cast<float32_t>(combined_mesh->CurBoneMatrix)) {
                     combined_mesh->SpriteBoundsValid = false;
                     break;
                 }
 
-                const auto bone_index = numeric_cast<size_t>(iround<int32_t>(bone_index_value));
+                const size_t bone_index = numeric_cast<size_t>(iround<int32_t>(bone_index_value));
+
                 if (numeric_cast<float32_t>(bone_index) != bone_index_value) {
                     combined_mesh->SpriteBoundsValid = false;
                     break;

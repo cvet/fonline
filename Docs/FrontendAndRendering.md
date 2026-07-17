@@ -180,11 +180,11 @@ vertex without retaining unused texture rows or columns. Map lighting also
 preserves the old full-bitmap quad plane: `DrawSprites` still provides the
 left/right endpoint colours, and a mesh vertex at cropped local X receives
 `lerp(left, right, clamp((localX + sourceOffsetX) / sourceWidth, 0, 1))`.
-This is signed horizontal distance from the original bitmap centre expressed as
-a normalized coordinate; it is not distance from the cropped bounds or opaque
-contour. Because `Vertex2D::Color` is RGBA8, intermediate mesh vertices may
-differ from ideal quad interpolation by at most one channel unit due to
-rounding.
+The factor is the vertex's normalized horizontal position within the original
+bitmap — 0 at its left edge, 0.5 at its centre, 1 at its right edge — and is
+not measured from the cropped bounds or the opaque contour. Because
+`Vertex2D::Color` is RGBA8, intermediate mesh vertices may differ from ideal
+quad interpolation by at most one channel unit due to rounding.
 
 Only ordinary full-image sprite draws use baked meshes. Region crops, tiled
 patterns, padded custom-effect/outline draws, fonts, texture/render-target

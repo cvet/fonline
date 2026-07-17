@@ -1,7 +1,11 @@
 FOnline ThirdParty pruning notes
 
-This vendored copy is intentionally trimmed for the engine baker build. When
-updating from upstream, remove these paths again after copying the new version.
+This vendored copy is intentionally trimmed for the engine baker build. The
+retained C++ library is also moved out of the upstream CPP/Clipper2Lib/ subtree
+to this directory root: CPP/Clipper2Lib/include/ -> include/ and
+CPP/Clipper2Lib/src/ -> src/ (upstream root LICENSE and README.md are kept as
+is). When updating from upstream, copy the new version, remove the
+upstream-relative paths listed below, then reapply that move.
 
 Removed paths:
 - CSharp/
