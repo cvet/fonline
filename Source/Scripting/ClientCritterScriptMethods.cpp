@@ -40,6 +40,11 @@
 #include "MapView.h"
 #include "ScriptSystem.h"
 
+#if FO_ENABLE_3D
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
+#endif
+
 FO_BEGIN_NAMESPACE
 
 static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>

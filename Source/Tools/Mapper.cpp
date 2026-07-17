@@ -32,7 +32,6 @@
 //
 
 #include "Mapper.h"
-#include "3dStuff.h"
 #include "AngelScriptScripting.h"
 #include "AnyData.h"
 #include "ConfigFile.h"
@@ -40,6 +39,10 @@
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
 #include "ParticleSprites.h"
+
+#if FO_ENABLE_3D
+#include "ModelSprites.h"
+#endif
 
 FO_BEGIN_NAMESPACE
 

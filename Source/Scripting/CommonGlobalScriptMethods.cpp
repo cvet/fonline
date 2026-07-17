@@ -102,7 +102,15 @@ FO_SCRIPT_API map<string, string> Common_Game_ReadConfigSection(ptr<BaseEngine> 
 ///@ ExportMethod
 FO_SCRIPT_API timespan Common_Game_GetModelAnimDuration(ptr<BaseEngine> engine, hstring modelName, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
+#if FO_ENABLE_3D
     return engine->GetModelAnimDuration(modelName, stateAnim, actionAnim);
+#else
+    ignore_unused(engine);
+    ignore_unused(modelName);
+    ignore_unused(stateAnim);
+    ignore_unused(actionAnim);
+    return {};
+#endif
 }
 
 ///@ ExportMethod

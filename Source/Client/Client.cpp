@@ -35,9 +35,13 @@
 #include "AngelScriptScripting.h"
 #include "DefaultSprites.h"
 #include "MetadataRegistration.h"
-#include "ModelSprites.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+
+#if FO_ENABLE_3D
+#include "ModelInstance.h"
+#include "ModelSprites.h"
+#endif
 
 FO_BEGIN_NAMESPACE
 

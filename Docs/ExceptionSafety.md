@@ -4,10 +4,11 @@ How the engine stays in a consistent state when an exception is thrown, and the 
 
 ## 1. Out-of-memory is not a recoverable error
 
-Engine memory comes from two paths that **terminate the process on exhaustion instead of throwing**:
+Engine memory comes from paths that **terminate the process on exhaustion instead of throwing**:
 
 - `SafeAlloc::MakeRefCounted` / `MakeRaw` / `MakeUnique` / `MakeRawArr` (`Source/Essentials/MemorySystem.h`): nothrow `new`, then drain a fixed backup pool and retry, then `ReportAndExit`. Every entity (`Item`/`Critter`/`Map`/`Location`/`CustomEntity`/…) is allocated this way.
 - `SafeAllocator<T>` (`MemorySystem.h`) backs **every engine container alias** — `vector`, `small_vector`, `unordered_map`/`unordered_set`, `map`/`set`, `list`, `deque`, `string`/`stringstream` (`Source/Essentials/Containers.h`). Its `allocate()` is nothrow + backup-pool retry + `ReportAndExit`. So `emplace`, `emplace_back`, `insert`, `resize`, `reserve`, rehash, complex-property storage growth, and string growth on engine containers **cannot throw `std::bad_alloc` — they terminate at the allocation site.**
+- The private model-animation codec installs an engine-owned allocator from `ModelAnimationData.cpp` before any runtime or offline Ozz object is created. Its aligned byte blocks are backed by `SafeAllocator<uint8_t>`, so Ozz uses the same rpmalloc, backup-pool retry, OOM reporting, and deterministic termination policy as engine containers. The vendored Ozz sources remain identical to the pinned upstream release; each linked host/runtime module installs its own adapter for its own statically linked Ozz state.
 
 **Consequence — do not write rollbacks for allocation.** A code path whose only failure mode is an allocation cannot leave a half-mutated world: it either completes or the process dies deterministically at the failing allocation (which is the fail-fast outcome we want). Treat `std::bad_alloc` as "can't happen"; never add `scope_exit`/`scope_fail` undo logic justified solely by a possible container/string/refcount allocation between two mutations.
 

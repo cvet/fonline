@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "3dStuff.h"
 #include "Application.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
@@ -63,6 +62,10 @@
 #include "VideoClip.h"
 
 FO_BEGIN_NAMESPACE
+
+#if FO_ENABLE_3D
+class ModelSprite;
+#endif
 
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 

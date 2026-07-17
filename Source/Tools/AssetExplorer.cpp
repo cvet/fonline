@@ -77,7 +77,9 @@ void AssetExplorer::OnDraw()
     DrawSection("Items", "foitem");
     DrawSection("Dialogs", "fodlg");
     DrawSection("Interface", "fogui");
+#if FO_ENABLE_3D
     DrawSection("Models", "fo3d");
+#endif
     DrawSection("Texts", "fotxt");
 
     DrawSection("Particles", "fopts");

@@ -137,6 +137,14 @@ AppendList(FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
 
+if(FO_ENABLE_3D)
+    AppendList(FO_COMMON_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Common/ModelAnimationData.cpp"
+        "${FO_ENGINE_ROOT}/Source/Common/ModelAnimationData.h"
+        "${FO_ENGINE_ROOT}/Source/Common/ModelMeshData.cpp"
+        "${FO_ENGINE_ROOT}/Source/Common/ModelMeshData.h")
+endif()
+
 AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.h"
@@ -191,10 +199,6 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerLocationScriptMethods.cpp")
 
 AppendList(FO_CLIENT_BASE_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Client/3dAnimation.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/3dAnimation.h"
-    "${FO_ENGINE_ROOT}/Source/Client/3dStuff.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/3dStuff.h"
     "${FO_ENGINE_ROOT}/Source/Client/Client.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/Client.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientConnection.cpp"
@@ -227,8 +231,6 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/MapSprite.h"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/MapView.h"
-    "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.h"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Interthread.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/NetworkClient-Sockets.cpp"
@@ -264,6 +266,24 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientCritterScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientMapScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ClientLocationScriptMethods.cpp")
+
+if(FO_ENABLE_3D)
+    AppendList(FO_CLIENT_BASE_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Client/ModelAnimation.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelAnimation.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelBakedData.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelBakedData.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelHierarchy.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelHierarchy.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelInformation.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelInformation.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelInstance.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelInstance.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelManager.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelManager.h"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.cpp"
+        "${FO_ENGINE_ROOT}/Source/Client/ModelSprites.h")
+endif()
 
 AppendList(FO_SERVER_SOURCE
     ${FO_SERVER_BASE_SOURCE}
@@ -311,10 +331,6 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/MapBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/MetadataBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/MetadataBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/ModelInfoBaker.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/ModelInfoBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tools/ModelMeshBaker.h"
-    "${FO_ENGINE_ROOT}/Source/Tools/ModelMeshBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ProtoTextBaker.h"
@@ -326,6 +342,18 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ServerStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
+
+if(FO_ENABLE_3D)
+    AppendList(FO_BAKER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelAnimationConverter.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelAnimationConverter.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelInfoBaker.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelInfoBaker.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelMeshBaker.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelMeshBaker.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelSourceLoader.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/ModelSourceLoader.h")
+endif()
 
 AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
@@ -423,7 +451,6 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Movement.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_NetBuffer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_PathFinding.cpp"
@@ -461,3 +488,17 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
+
+if(FO_ENABLE_3D)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationData.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationConverter.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationPoseProcedural.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelMeshData.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSkeletonCompatibility.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelSourceLoader.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_OzzAnimation.cpp")
+endif()

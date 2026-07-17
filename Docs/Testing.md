@@ -148,7 +148,7 @@ notes.
 
 ## Current test inventory
 
-Current count: **81** `Test_*.cpp` suites.
+Current count: **93** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -213,6 +213,7 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
+- `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
@@ -225,8 +226,10 @@ Current count: **81** `Test_*.cpp` suites.
 
 ### Scripting and script-visible APIs
 
+- `Source/Tests/Test_AngelScriptAlignment.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -240,13 +243,53 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ModelMeshData.cpp`
+- `Source/Tests/Test_ModelAnimationData.cpp`
+- `Source/Tests/Test_ModelAnimationConverter.cpp`
+- `Source/Tests/Test_ModelAnimationPoseProcedural.cpp`
+- `Source/Tests/Test_ModelAnimationRuntime.cpp`
+- `Source/Tests/Test_ModelSkeletonCompatibility.cpp`
+- `Source/Tests/Test_ModelSourceLoader.cpp`
+- `Source/Tests/Test_OzzAnimation.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
+
+The model-animation tests divide the production contract explicitly.
+`Test_ModelMeshData.cpp` exercises the mandatory `LFMODMSH` schema-1 mesh-only
+header, including every truncated size and rejection of old headerless data.
+`Test_ClientEngine.cpp` also bakes a position-only OBJ through `ModelMeshBaker`
+and preloads the resulting bytes through the real `ModelManager` parser. This
+crosses the `BakerLib`/`ClientLib` boundary and catches payload-layout drift that
+a second test-only parser could reproduce instead of detecting.
+`Test_ModelSourceLoader.cpp` covers complete source validation, real minimal
+OBJ/ASCII-FBX extraction, per-call cache single-flight behavior, shared results,
+exception fan-out, and missing inputs. `Test_ModelAnimationData.cpp` exercises the
+little-endian archive, joint-remap, and rig-manifest contracts, including
+truncation, count/length bombs, ordering, metadata mismatches, and bindings.
+`Test_ModelAnimationConverter.cpp` covers canonical conversion and the per-instance
+runtime pose: unaligned/owned loading, body blending, movement replacement,
+reverse and nearest sampling, stable storage, canonical resolution, and numeric
+limits. `Test_ModelAnimationPoseProcedural.cpp` covers bounded procedural pre-rotations
+and exact world-matrix overrides; `Test_ModelAnimationRuntime.cpp` covers the
+validated direct-model rest path, canonical contributed-joint lookup, and
+cross-model joint-link resolution without physical bones.
+`Test_ModelBaker.cpp` covers source-backed model-info generation,
+dependency-mtime invalidation, exact animation-geometry exceptions, `Base`,
+reverse, case-insensitive lookup, and clip deduplication. `Test_ModelAnimation.cpp`
+is the timeline/binding behavior gate: controller copies own mutable event state
+while sharing only immutable Ozz clip metadata.
+
+After source-loader, mesh-wire, or converter changes, `ForceBakeResources` is
+the positive real-content gate: it must parse the project's actual selected FBX
+sources and extract their animations successfully. Run ordinary
+`BakeResources` afterward to check that the dependency-mtime contract leaves an
+unchanged tree incremental-clean.
 
 ### Rendering/frontend smoke tests
 

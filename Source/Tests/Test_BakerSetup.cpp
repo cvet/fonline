@@ -14,8 +14,10 @@
 #include "ImageBaker.h"
 #include "MapBaker.h"
 #include "MetadataBaker.h"
+#if FO_ENABLE_3D
 #include "ModelInfoBaker.h"
 #include "ModelMeshBaker.h"
+#endif
 #include "ProtoBaker.h"
 #include "ProtoTextBaker.h"
 #include "RawCopyBaker.h"

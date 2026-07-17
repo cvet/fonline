@@ -40,6 +40,12 @@
 #include "ResourceManager.h"
 #include "Settings.h"
 
+#if FO_ENABLE_3D
+#include "ModelAnimation.h"
+#include "ModelInstance.h"
+#include "ModelSprites.h"
+#endif
+
 FO_BEGIN_NAMESPACE
 
 CritterHexView::CritterHexView(ptr<MapView> map, ident_t id, ptr<const ProtoCritter> proto, nptr<const Properties> props) :
