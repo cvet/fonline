@@ -58,6 +58,7 @@ public:
     [[nodiscard]] auto GetParticle() -> ptr<ParticleSystem> { return _particle; }
     [[nodiscard]] auto IsPlaying() const -> bool override { return _particle->IsActive(); }
 
+    void PlayWithSeed(int32_t seed);
     void Prewarm() override;
     void SetTime(float32_t normalized_time) override;
     void SetDir(mdir dir) override;
@@ -70,6 +71,7 @@ public:
 private:
     ptr<ParticleSpriteFactory> _factory;
     bool _drawInScene {};
+    mutable bool _prewarmPending {};
     mutable unique_ptr<ParticleSystem> _particle;
 };
 
@@ -85,9 +87,12 @@ public:
     auto operator=(ParticleSpriteFactory&&) noexcept -> ParticleSpriteFactory& = delete;
     ~ParticleSpriteFactory() override = default;
 
-    [[nodiscard]] auto GetExtensions() const -> vector<string> override { return {"fopts"}; }
+    [[nodiscard]] auto GetExtensions() const -> vector<string> override;
+    [[nodiscard]] auto SupportsSeededRespawn(string_view path) const -> bool;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    void RetryFailedLoads() override;
+    void InvalidateResource(hstring path) override;
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;

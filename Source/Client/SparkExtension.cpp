@@ -32,8 +32,340 @@
 //
 
 #include "SparkExtension.h"
+
+#if FO_SPARK_PARTICLES
+
 #include "Application.h"
-#include "VisualParticles.h"
+#include "EffectManager.h"
+#include "FileSystem.h"
+
+FO_BEGIN_NAMESPACE
+
+static constexpr float32_t SPARK_PREWARM_STEP = 0.5f;
+
+struct SparkParticleRuntimeBackend::Impl
+{
+    explicit Impl(const ParticleRuntimeServices& services) :
+        Services {services}
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+
+    ParticleRuntimeServices Services;
+    unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
+    std::mt19937 RandomGenerator {MakeSeededRandomGenerator()};
+    mat44 ViewProjectionMatrix {};
+    mat44 ViewMatrix {};
+};
+
+struct SparkParticleRuntimeSystem::Impl
+{
+    Impl(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
+        Runtime {runtime},
+        Path {path},
+        BaseSystem {std::move(base_system)}
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        RecreateRuntimeSystem();
+    }
+
+    void RecreateRuntimeSystem();
+
+    ptr<SparkParticleRuntimeBackend> Runtime;
+    string Path;
+    SPK::Ref<SPK::System> RuntimeSystem {};
+    SPK::Ref<SPK::System> BaseSystem {};
+    mat44 ViewProjectionMatrix {};
+    mat44 ViewMatrix {};
+    bool BaseSystemDetached {};
+};
+
+static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    bool render_dependencies_loaded = true;
+
+    for (size_t i = 0; i < system->getNbGroups(); i++) {
+        auto&& group = system->getGroup(i);
+
+        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
+            render_dependencies_loaded &= renderer->Setup(path, runtime);
+        }
+    }
+
+    return render_dependencies_loaded;
+}
+
+SparkParticleRuntimeBackend::SparkParticleRuntimeBackend(const ParticleRuntimeServices& services) :
+    _impl {SafeAlloc::MakeUnique<Impl>(services)}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    SPK::FO::EnsureSparkParticleObjectsRegistered();
+}
+
+SparkParticleRuntimeBackend::~SparkParticleRuntimeBackend()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto SparkParticleRuntimeBackend::GetExtensions() const -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return {"spark"};
+}
+
+auto SparkParticleRuntimeBackend::SupportsSeededRespawn() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return false;
+}
+
+void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strex(path).get_file_extension() == "spark") {
+        _impl->BaseSystems.erase(string {path});
+    }
+    else {
+        _impl->BaseSystems.clear();
+    }
+}
+
+auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<ParticleRuntimeSystem>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strex(path).get_file_extension() != "spark") {
+        return nullptr;
+    }
+
+    SPK::Ref<SPK::System> base_system;
+
+    if (const auto it = _impl->BaseSystems.find(path); it == _impl->BaseSystems.end()) {
+        if (const auto file = _impl->Services.Resources->ReadFile(path)) {
+            const_span<uint8_t> file_data = file.GetDataSpan();
+            base_system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+
+            if (!base_system) {
+                base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
+            }
+        }
+
+        if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
+            WriteLog("SPARK particle '{}' has a missing render effect or texture", path);
+            base_system = SPK::Ref<SPK::System>();
+        }
+
+        if (base_system) {
+            _impl->BaseSystems.emplace(path, base_system);
+        }
+    }
+    else {
+        base_system = it->second;
+    }
+
+    if (!base_system) {
+        return nullptr;
+    }
+
+    return SafeAlloc::MakeUnique<SparkParticleRuntimeSystem>(this, path, std::move(base_system));
+}
+
+SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
+    _impl {SafeAlloc::MakeUnique<Impl>(runtime, path, std::move(base_system))}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+auto SparkParticleRuntimeSystem::IsActive() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _impl->RuntimeSystem->isActive();
+}
+
+auto SparkParticleRuntimeSystem::GetDrawSize(isize32 default_size) const -> isize32
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t max_draw_width = 0;
+    int32_t max_draw_height = 0;
+
+    for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(i);
+
+        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
+            max_draw_width = std::max(max_draw_width, renderer->GetDrawWidth());
+            max_draw_height = std::max(max_draw_height, renderer->GetDrawHeight());
+        }
+    }
+
+    if (max_draw_width == 0) {
+        max_draw_width = default_size.width;
+    }
+    if (max_draw_height == 0) {
+        max_draw_height = default_size.height;
+    }
+
+    return {max_draw_width, max_draw_height};
+}
+
+auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
+        auto&& group = _impl->RuntimeSystem->getGroup(i);
+        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
+
+        if (renderer && renderer->GetDrawInScene()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
+    const auto view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
+    mat44 result_position_matrix;
+
+    if (!_impl->BaseSystem->getTransform().isLocalIdentity()) {
+        vec3 result_position {};
+        vec3 result_position_scale {};
+        vec3 skew {};
+        glm::vec<4, float32_t, glm::defaultp> perspective {};
+        quaternion rotation {};
+        glm::decompose(view_offset_matrix * setup.World * position_offset_matrix, result_position_scale, rotation, result_position, skew, perspective);
+        const auto result_position_translation_matrix = glm::translate(mat44 {1.0f}, result_position);
+        const auto look_direction_matrix = glm::rotate(mat44 {1.0f}, (setup.LookDirectionAngle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
+        result_position_matrix = result_position_translation_matrix * look_direction_matrix;
+    }
+    else {
+        result_position_matrix = view_offset_matrix * setup.World * position_offset_matrix;
+    }
+
+    result_position_matrix *= glm::scale(mat44 {1.0f}, vec3 {setup.Scale, setup.Scale, setup.Scale});
+
+    ptr<const float32_t> result_position_matrix_values = glm::value_ptr(result_position_matrix);
+    _impl->RuntimeSystem->getTransform().set(result_position_matrix_values.get());
+
+    if (const auto local_position = _impl->BaseSystem->getTransform().getLocalPos(); local_position != SPK::Vector3D()) {
+        _impl->RuntimeSystem->getTransform().setPosition(_impl->RuntimeSystem->getTransform().getLocalPos() + local_position);
+    }
+
+    _impl->RuntimeSystem->updateTransform();
+
+    const auto camera_rotation_matrix = setup.TiltInProjection ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, setup.MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
+    _impl->ViewMatrix = camera_rotation_matrix * glm::translate(mat44 {1.0f}, -setup.ViewOffset);
+    _impl->ViewProjectionMatrix = setup.Projection * _impl->ViewMatrix;
+}
+
+auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!IsActive()) {
+        return 0.0f;
+    }
+
+    FO_VERIFY_AND_THROW(_impl->RuntimeSystem->getNbGroups() != 0, "Cannot prewarm a SPARK particle system without groups", _impl->Path);
+    const float32_t max_lifetime = _impl->RuntimeSystem->getGroup(0)->getMaxLifeTime();
+    const int32_t max_lifetime_ms = iround<int32_t>(max_lifetime * 1000.0f);
+    FO_VERIFY_AND_THROW(max_lifetime_ms >= 0, "SPARK particle system has a negative maximum lifetime", _impl->Path, max_lifetime);
+    const int32_t init_time_ms = std::uniform_int_distribution<int32_t> {0, max_lifetime_ms}(_impl->Runtime->_impl->RandomGenerator);
+    const float32_t init_time = numeric_cast<float32_t>(init_time_ms) / 1000.0f;
+
+    for (float32_t delta_seconds = 0.0f; delta_seconds < init_time; delta_seconds += SPARK_PREWARM_STEP) {
+        _impl->RuntimeSystem->updateParticles(std::min(SPARK_PREWARM_STEP, init_time - delta_seconds));
+    }
+
+    return init_time;
+}
+
+void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!seed.has_value(), "SPARK particle runtime does not support seeded respawn", _impl->Path, seed.value_or(0));
+    _impl->RecreateRuntimeSystem();
+}
+
+void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_impl->RuntimeSystem->isActive() && delta_seconds > 0.0f) {
+        _impl->RuntimeSystem->updateParticles(delta_seconds);
+    }
+}
+
+void SparkParticleRuntimeSystem::RefreshRenderTransform()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void SparkParticleRuntimeSystem::Draw()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_impl->RuntimeSystem->isActive()) {
+        return;
+    }
+
+    _impl->Runtime->_impl->ViewProjectionMatrix = _impl->ViewProjectionMatrix;
+    _impl->Runtime->_impl->ViewMatrix = _impl->ViewMatrix;
+    _impl->RuntimeSystem->renderParticles();
+}
+
+auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_impl->BaseSystemDetached) {
+        _impl->BaseSystem = SPK::SPKObject::copy(_impl->BaseSystem);
+        _impl->BaseSystemDetached = true;
+        _impl->RecreateRuntimeSystem();
+    }
+
+    return _impl->BaseSystem;
+}
+
+void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(system, "Cannot replace a SPARK base system with a null system", _impl->Path);
+    _impl->BaseSystem = std::move(system);
+    _impl->BaseSystemDetached = true;
+    _impl->RecreateRuntimeSystem();
+}
+
+void SparkParticleRuntimeSystem::Impl::RecreateRuntimeSystem()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    (void)SetupSparkSystemRenderers(Path, BaseSystem, Runtime);
+    RuntimeSystem = SPK::SPKObject::copy(BaseSystem);
+    RuntimeSystem->initialize();
+}
+
+FO_END_NAMESPACE
 
 namespace SPK::FO
 {
@@ -136,14 +468,17 @@ namespace SPK::FO
         return SPK_NEW(SparkQuadRenderer);
     }
 
-    auto SparkQuadRenderer::Setup(string_view path, ptr<ParticleManager> particle_mngr) -> bool
+    auto SparkQuadRenderer::Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool
     {
         FO_STACK_TRACE_ENTRY();
 
-        FO_VERIFY_AND_THROW(!_particleMngr, "Particle mngr is already set");
+        if (_runtime) {
+            FO_VERIFY_AND_THROW(_runtime == runtime && _path == path, "SPARK particle renderer is already bound to another runtime", _path, path);
+            return _effect && _texture;
+        }
 
         _path = path;
-        _particleMngr = particle_mngr;
+        _runtime = runtime;
 
         if (!_effectName.empty()) {
             SetEffectName(_effectName);
@@ -193,7 +528,7 @@ namespace SPK::FO
     {
         FO_STACK_TRACE_ENTRY();
 
-        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _particleMngr->_render);
+        return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _runtime->_impl->Services.Render);
     }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer) const
@@ -202,7 +537,11 @@ namespace SPK::FO
 
         ignore_unused(dataSet);
 
-        FO_VERIFY_AND_THROW(_particleMngr, "Particle manager is null");
+        FO_VERIFY_AND_THROW(_runtime, "SPARK particle runtime is null");
+
+        if (!_effect || !_texture) {
+            return;
+        }
 
         FO_VERIFY_AND_THROW(renderBuffer, "Missing required render buffer");
         ptr<RenderBuffer> render_buffer = renderBuffer;
@@ -212,8 +551,8 @@ namespace SPK::FO
         auto spark_render_buffer = nullable_spark_render_buffer.as_ptr();
         spark_render_buffer->PositionAtStart();
 
-        if (_modelView != _particleMngr->_viewMatrix) {
-            _modelView = _particleMngr->_viewMatrix;
+        if (_modelView != _runtime->_impl->ViewMatrix) {
+            _modelView = _runtime->_impl->ViewMatrix;
             _invModelView = glm::inverse(_modelView);
         }
 
@@ -258,7 +597,7 @@ namespace SPK::FO
 
         _effect->ProjBuf = RenderEffect::ProjBuffer();
         ptr<float32_t> projection_matrix = _effect->ProjBuf->ProjMatrix;
-        ptr<const float32_t> projection_matrix_values = glm::value_ptr(_particleMngr->_viewProjMatrix);
+        ptr<const float32_t> projection_matrix_values = glm::value_ptr(_runtime->_impl->ViewProjectionMatrix);
         MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
         _effect->MainTex = _texture;
 
@@ -376,8 +715,8 @@ namespace SPK::FO
 
         _effectName = string(effect_name);
 
-        if (!_effectName.empty() && _particleMngr) {
-            _effect = _particleMngr->_effectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
+        if (!_effectName.empty() && _runtime) {
+            _effect = _runtime->_impl->Services.EffectMngr->LoadEffect(EffectUsage::QuadSprite, _effectName);
         }
         else {
             _effect = nullptr;
@@ -397,9 +736,9 @@ namespace SPK::FO
 
         _textureName = string(tex_name);
 
-        if (!_textureName.empty() && _particleMngr) {
+        if (!_textureName.empty() && _runtime) {
             const string tex_path = strex(_path).extract_dir().combine_path(_textureName);
-            auto&& [tex, tex_data] = _particleMngr->_textureLoader(tex_path);
+            auto&& [tex, tex_data] = _runtime->_impl->Services.TextureLoader(tex_path);
             _texture = tex;
             _textureAtlasOffset = tex_data;
         }
@@ -621,3 +960,5 @@ namespace SPK::FO
     }
 
 }
+
+#endif

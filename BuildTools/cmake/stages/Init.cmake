@@ -37,6 +37,8 @@ DeclareValueOptions(
 
 DeclareBoolOptions(
 	FO_ENABLE_3D "Supporting of 3d models" OFF
+	FO_SPARK_PARTICLES "Supporting of SPARK particles" OFF
+	FO_EFFEKSEER_PARTICLES "Supporting of Effekseer particles" OFF
 	FO_NATIVE_SCRIPTING "Supporting of Native scripting" OFF
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 	FO_MONO_SCRIPTING "Supporting of Mono scripting" OFF
@@ -322,6 +324,8 @@ endif()
 # before their own includes), so they must be defined without first pulling in EngineConfig.gen.h.
 AddCompileDefinitionsList(
 	FO_ENABLE_3D=$<BOOL:${FO_ENABLE_3D}>
+	FO_SPARK_PARTICLES=$<BOOL:${FO_SPARK_PARTICLES}>
+	FO_EFFEKSEER_PARTICLES=$<BOOL:${FO_EFFEKSEER_PARTICLES}>
 	FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}>
 	FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}>
 	FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}>)
@@ -366,6 +370,7 @@ EnableCoreLibraryIfAny(
 	FO_BUILD_CLIENT
 	FO_BUILD_MAPPER
 	FO_BUILD_SERVER
+	FO_BUILD_ASCOMPILER
 	FO_BUILD_BAKER
 	FO_UNIT_TESTS
 	FO_CODE_COVERAGE)

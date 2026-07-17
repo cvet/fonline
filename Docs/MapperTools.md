@@ -9,10 +9,16 @@ This page documents mapper-specific engine behavior and known mapper automation 
 - `Source/Applications/MapperApp.cpp`
 - `Source/Tools/Mapper.h`
 - `Source/Tools/Mapper.cpp`
+- `Source/Tools/ParticleEditor.h`
+- `Source/Tools/ParticleEditor.cpp`
+- `Source/Tools/SparkParticleEditor.h`
+- `Source/Tools/SparkParticleEditor.cpp`
 - `Source/Scripting/MapperGlobalScriptMethods.cpp`
 - `Source/Scripting/CommonGlobalScriptMethods.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
+- `Source/Client/ParticleSprites.h`
+- `Source/Client/VisualParticles.h`
 - `Source/Common/Geometry.cpp`
 - `../../Scripts/MapperRender.fos`
 - `../../Tools/MapPreview/generate_map_preview.py`
@@ -58,17 +64,56 @@ Do not document one game's mapper binary name or content pipeline as universal e
 
 ## Existing project workflows
 
+### Interactive particle preview
+
+Open **Windows -> Particle preview** in the interactive mapper to inspect baked particle resources on the current map. The preview asks the registered particle sprite factory for its supported extensions, so Mapper itself does not know whether SPARK, Effekseer, or no particle runtime is selected. Mapper caches the effect catalog and resource metadata while it has focus. When focus returns after working in an external effect editor, the particle subeditor reindexes Mapper's resource data sources (including `BakerDataSource`) once and compares path, size, and source write time under every effect directory. Added and removed effects update the sorted catalog; a modified active effect or dependency invalidates its sprite/texture cache and recreates the preview with the same placement, seed, scale, offset, and prewarm setting. If the reindex reports no source changes, catalog and preview state are untouched. **Refresh** forces the same invalidation/reload path as a manual fallback. The window does not scan or edit raw particle project files.
+
 ### SPARK particle editor
 
-Open **Windows -> Particle editor** to browse raw `.fopts` sources and open one
+Open **Windows -> SPARK particle editor** to browse raw `.spark` sources and open one
 SPARK graph/preview window per asset. The editor uses Mapper's raw resource
 filesystem for source discovery and saving, and Mapper's baked resources for
-effects and textures. Closing a modified window opens a Save / Discard / Cancel
-confirmation.
+effects and textures. Saving reindexes the baked resource source and invalidates
+the saved asset's sprite cache. Closing a modified window opens a Save / Discard
+/ Cancel confirmation. Effekseer authoring remains external; its cooked effects
+are inspected through the backend-neutral **Particle preview** instead.
 
 Mapper is the engine's central interactive editing application. The former
 generic Editor executable, `EditorLib`, and asset-explorer shell were removed;
 new interactive content tooling belongs in Mapper.
+
+The placement selector supports two map positions:
+
+- **Mouse position** uses the most recent valid mapper `MousePos` captured while the pointer was over the map. Move the pointer onto the desired map hex before pressing **Play** in the floating window.
+- **View center** resolves the center of the current map viewport when **Play** is pressed.
+
+**Scale**, **Offset X/Y**, **Seed**, and **Prewarm** are preview-only controls. **Seed** is enabled only when the selected runtime advertises seeded-respawn support. **Play** loads the selected resource through `SpriteManager::LoadSprite(..., AtlasType::MapSprites)`, verifies that it is a `ParticleSprite`, starts it with the selected runtime's supported respawn path, applies the particle-system scale, optionally prewarms it, and attaches it to the selected hex as a temporary `DrawOrderType::Particles` `MapSprite`. **Restart** rebuilds the preview at its existing hex with the current controls. **Remove** invalidates it.
+
+Effekseer uses the direct-scene path. Its one-second prewarm is deferred until
+the first `DrawInScene` after the current map transform has been set; scheduled
+updates pause while that prewarm is pending, and the update clock is then
+resynchronized so the wait is not counted again.
+
+Startup automation uses the same path and is useful for seeded smoke checks.
+Supply a start map plus the optional preview settings; exact repeatability
+depends on the selected runtime's seeded-respawn support; the seed control is
+disabled when the capability is unavailable:
+
+```powershell
+.\Binaries\Mapper-Windows-win64\LF_Mapper.exe `
+  --Mapper.StartMap Dev/TestRoom.fomap `
+  --Mapper.ParticlePreviewEffect Particles/Effekseer/RuntimeSmoke/Simple_Sprite_FixedYAxis.efk `
+  --Mapper.ParticlePreviewSeed 123 `
+  --Mapper.ParticlePreviewScale 1.0 `
+  --Mapper.ParticlePreviewPrewarm False
+```
+
+`Mapper.ParticlePreviewEffect` is empty by default. When it is set and the start
+map loads, Mapper places the effect at the initial viewport center, opens the
+preview window, and logs `Mapper particle preview started`. Scale is constrained
+to `0.01..100`; the interactive offset remains a window-only control.
+
+The temporary sprite is not a map entity: it does not enter map serialization, dirty tracking, or undo history. `MapperEngine` keeps the loaded `Sprite` alive while `MapView` owns the borrowed `MapSprite`; the map-sprite validity callback prevents stale-pointer access when the view rebuilds. A render-only map rebuild, including window resize, invalidates that borrowed `MapSprite`, so Mapper reattaches the same live preview sprite and preserves its simulation state. Changing the selected resource, switching maps, unloading the owner map, closing the preview window, resetting the ImGui layout, or shutting down the mapper removes the preview. A startup-created preview is preserved across the preview window's first ImGui appearance instead of being mistaken for a stale pre-index state.
 
 ## Headless Map Render
 
@@ -148,7 +193,7 @@ Or, if you prefer not to touch the CLI on every call, override `Mapper.RenderMap
 
 **Frame timing.** `OnLoop` fires before `MapperEngine::DrawMapperFrame()` ([../Source/Tools/Mapper.cpp:730-746](../Source/Tools/Mapper.cpp#L730)), so the first `OnLoop` after `OnStart` reads the previous frame's pixels. `Mapper.RenderWarmupFrames=4` skips a handful of ticks so the new map actually paints into the readable surface; bump it if the dumped TGA looks blank or stale.
 
-**Static item animations.** In mapper mode the editor is a static surface, so `ItemHexView::RefreshAnim` pins every item sprite to its first frame (`Stop()` + `SetTime(0)`) instead of playing the default loop — gated on `MapView::IsMapperMode()`, which is enabled before items load. Doors and containers therefore render closed rather than mid-open, and a capture is identical regardless of `RenderWarmupFrames`. Frame-sequence (FOFRM) and Spine sprites freeze cleanly; model (`.fo3d`) and particle (`.fopts`) sprites keep animating (their `Stop`/`SetTime` are no-ops), but normal walls/doors/containers are frame-sequence sprites.
+**Static item animations.** In mapper mode the editor is a static surface, so `ItemHexView::RefreshAnim` pins every item sprite to its first frame (`Stop()` + `SetTime(0)`) instead of playing the default loop — gated on `MapView::IsMapperMode()`, which is enabled before items load. Doors and containers therefore render closed rather than mid-open, and a capture is identical regardless of `RenderWarmupFrames`. Frame-sequence (FOFRM) and Spine sprites freeze cleanly; model (`.fo3d`) and particle (`.spark`) sprites keep animating (their `Stop`/`SetTime` are no-ops), but normal walls/doors/containers are frame-sequence sprites.
 
 **View bounds.** The preview pipeline renders one mapper frame per map. If a large map is clipped, use a larger viewport, a lower `Mapper.RenderZoomOverride`, an explicit `Mapper.RenderCenterRawHexX/Y`, or a per-map `ViewportCrop` over a larger one-frame viewport; do not stitch several captures together for checkpoint previews.
 

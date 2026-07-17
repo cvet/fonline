@@ -142,7 +142,12 @@ frame selectors fall back to the first available cycle/frame.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
-`ParticleBaker` loads native `.fopts` SPARK XML with the engine's registered
+`ParticleBaker` exposes only the formats whose backend is enabled at build time.
+`FO_SPARK_PARTICLES` enables `.spark`; `FO_EFFEKSEER_PARTICLES` enables `.efk`
+and `.efkefc`. Both options default to `OFF`, in which case the registered baker
+has no particle formats to process.
+
+For SPARK, `ParticleBaker` loads native `.spark` XML with the engine's registered
 `SparkQuadRenderer` type and writes deterministic SPARK binary back to the same
 resource path. Unknown object types, malformed XML, and binary-save failures are
 hard errors; publishing a graph after silently omitting an object is forbidden.
@@ -152,6 +157,13 @@ The binary loader enforces exact memory payload length, bounded object/attribute
 counts, bounds-checked reads, descriptor signatures, and valid typed object
 references, so changing a custom serialized descriptor requires rebaking its
 resources.
+
+The same baker validates cooked Effekseer `.efk` (`SKFE`) and `.efkefc`
+(`EFKE`) resources with the pinned Effekseer core before copying their bytes to
+the same runtime key. Legacy `.efkproj` XML is an authoring input and is not a
+runtime/baker format. This proves the container/parser boundary only: baking
+does not load FOnline atlas textures or enforce the client/Mapper CPU Sprite
+renderer capability policy.
 
 ## Script compilation relationship
 

@@ -21,8 +21,8 @@ The tool layer centers interactive editing in Mapper. It contains:
 - `Source/Tools/*Baker.cpp`
 - `Source/Tools/Mapper.h`
 - `Source/Tools/Mapper.cpp`
-- `Source/Tools/ParticleEditor.h`
-- `Source/Tools/ParticleEditor.cpp`
+- `Source/Tools/SparkParticleEditor.h`
+- `Source/Tools/SparkParticleEditor.cpp`
 - `Source/Applications/BakerApp.cpp`
 - `Source/Applications/ASCompilerApp.cpp`
 - `Source/Applications/MapperApp.cpp`
@@ -35,7 +35,7 @@ The tool layer has three main shapes:
 
 1. **Batch command tools** — `BakerApp.cpp` and `ASCompilerApp.cpp` run deterministic file transformations from project settings and resource packs.
 2. **Interactive runtime tool** — `MapperApp.cpp` creates the frontend window and drives Mapper's per-frame map/content editing loop.
-3. **Reusable processors** — `Source/Tools/*Baker.*`, `Mapper.*`, and Mapper-owned `ParticleEditor.*` implement the reusable work behind the apps.
+3. **Reusable processors** — `Source/Tools/*Baker.*`, `Mapper.*`, and the particle-subeditor implementations provide the reusable work behind the apps.
 
 For CMake target creation and package wiring, see [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md). For resource bake internals, see [BakingPipeline.md](BakingPipeline.md).
 
@@ -80,8 +80,9 @@ Built-in baker implementations:
 - `Source/Tools/RawCopyBaker.*` — copies selected resources without transformation.
 - `Source/Tools/ImageBaker.*` — imports image/sprite/frame formats including classic Fallout-family formats and PNG/TGA.
 - `Source/Tools/EffectBaker.*` — bakes shader/effect sources and shader stages.
-- `Source/Tools/ParticleBaker.*` — converts native SPARK `.fopts` XML to its
-  memory-loadable binary form.
+- `Source/Tools/ParticleBaker.*` — converts native SPARK `.spark` XML to its
+  memory-loadable binary form and validates/copies cooked Effekseer
+  `.efk`/`.efkefc` resources.
 - `Source/Tools/ProtoBaker.*` — bakes prototype files with metadata/script-aware validation.
 - `Source/Tools/MapBaker.*` — bakes map files and validates map/proto relationships.
 - `Source/Tools/TextBaker.*` — bakes text packs.
@@ -102,15 +103,21 @@ Main areas inside `Mapper.cpp` include:
 
 - `MapperMainLoop()` / `DrawMapperFrame()` frame lifecycle;
 - input handling and cursor/hex helpers;
-- ImGui panels for workspace, content, map list, map window, inspector, history, settings, console, script calls, and particle browsing/editing;
+- ImGui panels for workspace, content, map list, map window, inspector, history, settings, console, script calls, and neutral particle-subeditor dispatch;
 - map loading/showing/saving through `LoadMapFromText()`, `LoadMap()`, `ShowMap()`, `SaveCurrentMap()`, and `SaveMap()`;
 - mapper script system integration through mapper metadata and `MapperGlobalScriptMethods.cpp`.
 
 See [MapperTools.md](MapperTools.md) for the mapper lifecycle, extension points, and known headless-render workflow.
 
-### Particle editor
+### SPARK particle editor
 
-`Source/Tools/ParticleEditor.h` / `.cpp` define Mapper's SPARK asset editor. Mapper's **Windows -> Particle editor** browser enumerates raw `.fopts` sources and opens one editor window per selected asset. Each window previews the memory-backed resource, exposes native object parameters (including FOnline's `SparkQuadRenderer`), saves XML back through Mapper's raw resource filesystem, and confirms Save / Discard / Cancel when closing with changes.
+`Source/Tools/ParticleEditor.h` / `.cpp` define the virtual Mapper particle-subeditor boundary and the backend-neutral **Windows -> Particle preview** window. `Source/Tools/SparkParticleEditor.h` / `.cpp` define the SPARK-specific subeditor and asset editor. Its browser enumerates raw `.spark` sources and opens one editor window per selected asset. Each window previews the memory-backed resource, exposes native object parameters (including FOnline's `SparkQuadRenderer`), saves XML back through Mapper's raw resource filesystem, and confirms Save / Discard / Cancel when closing with changes. Effekseer effects are authored externally and use the neutral particle preview.
+
+The SPARK editor is compiled only with `FO_SPARK_PARTICLES`. The neutral preview
+is always part of Mapper, asks the registered particle sprite factory which
+extensions are available, and hides its menu entry when no runtime is enabled.
+Both runtime options default to `OFF`, so an embedding project must opt into the
+particle support it needs.
 
 There is no separate generic Editor application or `EditorLib`; Mapper is the engine's central interactive editing tool.
 
@@ -158,7 +165,8 @@ Mapper UI behavior is less directly covered by focused unit tests. Validate thos
 - Script bytecode compilation: `Source/Tools/AngelScriptBaker.*`, `Source/Applications/ASCompilerApp.cpp`, [Scripting.md](Scripting.md).
 - Metadata tags and generated metadata resources: `Source/Tools/MetadataBaker.*`, [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 - Map editing and headless mapper automation: `Source/Tools/Mapper.*`, `Source/Applications/MapperApp.cpp`, [MapperTools.md](MapperTools.md).
-- Particle editor: `Source/Tools/ParticleEditor.*`, owned and opened by `Source/Tools/Mapper.*`.
+- Particle editor boundary and preview: `Source/Tools/ParticleEditor.*`; Mapper only invokes its neutral lifecycle and drawing hooks.
+- SPARK particle editor implementation: `Source/Tools/SparkParticleEditor.*`, composed behind the neutral particle-editor boundary.
 - Application target wiring: [Applications.md](Applications.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ## Validation checklist

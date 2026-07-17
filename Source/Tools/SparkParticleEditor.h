@@ -35,36 +35,54 @@
 
 #include "Common.h"
 
-#include "Baker.h"
+#if FO_SPARK_PARTICLES
+
+#include "FileSystem.h"
+#include "ParticleEditor.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ParticleBakerException);
+class MapperEngine;
 
-class ParticleBaker final : public BaseBaker
+[[nodiscard]] auto CreateSparkParticleSubEditor(ptr<MapperEngine> mapper) -> unique_ptr<ParticleSubEditor>;
+
+class SparkParticleEditor final
 {
 public:
-    static constexpr string_view_nt NAME = "Particle";
+    SparkParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved);
+    SparkParticleEditor(const SparkParticleEditor&) = delete;
+    SparkParticleEditor(SparkParticleEditor&&) noexcept;
+    auto operator=(const SparkParticleEditor&) = delete;
+    auto operator=(SparkParticleEditor&&) noexcept = delete;
+    ~SparkParticleEditor();
 
-    explicit ParticleBaker(shared_ptr<BakingContext> ctx);
-    ParticleBaker(const ParticleBaker&) = delete;
-    ParticleBaker(ParticleBaker&&) noexcept = delete;
-    auto operator=(const ParticleBaker&) = delete;
-    auto operator=(ParticleBaker&&) noexcept = delete;
-    ~ParticleBaker() override = default;
+    [[nodiscard]] auto GetAssetPath() const noexcept -> string_view { return _assetPath; }
+    [[nodiscard]] auto IsChanged() const noexcept -> bool { return _changed; }
 
-    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
-
-    void BakeFiles(const FileCollection& files, string_view target_path) const override;
+    void BringToFront() noexcept;
+    void Hide() noexcept { _visible = false; }
+    auto Draw() -> bool;
 
 private:
-#if FO_SPARK_PARTICLES
-    void BakeSparkFile(const File& file) const;
-#endif
-#if FO_EFFEKSEER_PARTICLES
-    void BakeEffekseerFile(const File& file) const;
-#endif
+    void DrawContent();
+    void DiscardChanges();
+    auto SaveChanges() -> bool;
+
+    struct Impl;
+    unique_ptr<Impl> _impl;
+    string _assetPath {};
+    string _windowTitle {};
+    string _closePopupTitle {};
+    string _saveError {};
+    function<void(string_view)> _onSaved {};
+    float32_t _dirAngle {};
+    bool _autoReplay {};
+    bool _changed {};
+    bool _bringToFront {};
+    bool _visible {true};
 };
 
 FO_END_NAMESPACE
+
+#endif

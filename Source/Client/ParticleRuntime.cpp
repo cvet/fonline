@@ -31,40 +31,29 @@
 // SOFTWARE.
 //
 
-#pragma once
+#include "ParticleRuntime.h"
 
-#include "Common.h"
-
-#include "Baker.h"
+#include "EffekseerExtension.h"
+#include "SparkExtension.h"
 
 FO_BEGIN_NAMESPACE
 
-FO_DECLARE_EXCEPTION(ParticleBakerException);
-
-class ParticleBaker final : public BaseBaker
+auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>
 {
-public:
-    static constexpr string_view_nt NAME = "Particle";
+    FO_STACK_TRACE_ENTRY();
 
-    explicit ParticleBaker(shared_ptr<BakingContext> ctx);
-    ParticleBaker(const ParticleBaker&) = delete;
-    ParticleBaker(ParticleBaker&&) noexcept = delete;
-    auto operator=(const ParticleBaker&) = delete;
-    auto operator=(ParticleBaker&&) noexcept = delete;
-    ~ParticleBaker() override = default;
+    ignore_unused(services);
 
-    [[nodiscard]] auto GetName() const -> string_view override { return NAME; }
-    [[nodiscard]] auto GetOrder() const -> int32_t override { return 5; }
+    vector<unique_ptr<ParticleRuntimeBackend>> backends;
 
-    void BakeFiles(const FileCollection& files, string_view target_path) const override;
-
-private:
 #if FO_SPARK_PARTICLES
-    void BakeSparkFile(const File& file) const;
+    backends.emplace_back(SafeAlloc::MakeUnique<SparkParticleRuntimeBackend>(services));
 #endif
 #if FO_EFFEKSEER_PARTICLES
-    void BakeEffekseerFile(const File& file) const;
+    backends.emplace_back(SafeAlloc::MakeUnique<EffekseerParticleRuntimeBackend>(services));
 #endif
-};
+
+    return backends;
+}
 
 FO_END_NAMESPACE

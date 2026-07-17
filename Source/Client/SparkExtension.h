@@ -34,18 +34,83 @@
 #pragma once
 
 #include "Common.h"
+
+#if FO_SPARK_PARTICLES
+
+#include "ParticleRuntime.h"
 #include "Rendering.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #include "SPARK.h"
 FO_DISABLE_WARNINGS_POP()
 
+namespace SPK::FO
+{
+    class SparkQuadRenderer;
+}
+
 FO_BEGIN_NAMESPACE
 class IAppRender;
 class RenderEffect;
 class RenderTexture;
 class RenderDrawBuffer;
-class ParticleManager;
+class SparkParticleRuntimeBackend;
+
+class SparkParticleRuntimeSystem final : public ParticleRuntimeSystem
+{
+    friend class SparkParticleRuntimeBackend;
+    friend class SafeAlloc;
+
+public:
+    SparkParticleRuntimeSystem(const SparkParticleRuntimeSystem&) = delete;
+    SparkParticleRuntimeSystem(SparkParticleRuntimeSystem&&) noexcept = delete;
+    auto operator=(const SparkParticleRuntimeSystem&) = delete;
+    auto operator=(SparkParticleRuntimeSystem&&) noexcept = delete;
+    ~SparkParticleRuntimeSystem() override;
+
+    [[nodiscard]] auto IsActive() const -> bool override;
+    [[nodiscard]] auto GetDrawSize(isize32 default_size) const -> isize32 override;
+    [[nodiscard]] auto GetDrawInScene() const -> bool override;
+
+    void Setup(const ParticleRuntimeSetup& setup) override;
+    [[nodiscard]] auto Prewarm() -> float32_t override;
+    void Respawn(optional<int32_t> seed) override;
+    void Update(float32_t delta_seconds) override;
+    void RefreshRenderTransform() override;
+    void Draw() override;
+
+    [[nodiscard]] auto GetEditableBaseSystem() -> SPK::Ref<SPK::System>;
+    void ReplaceBaseSystem(SPK::Ref<SPK::System> system);
+
+private:
+    SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system);
+
+    struct Impl;
+    unique_ptr<Impl> _impl;
+};
+
+class SparkParticleRuntimeBackend final : public ParticleRuntimeBackend
+{
+    friend class SparkParticleRuntimeSystem;
+    friend class SPK::FO::SparkQuadRenderer;
+
+public:
+    explicit SparkParticleRuntimeBackend(const ParticleRuntimeServices& services);
+    SparkParticleRuntimeBackend(const SparkParticleRuntimeBackend&) = delete;
+    SparkParticleRuntimeBackend(SparkParticleRuntimeBackend&&) noexcept = delete;
+    auto operator=(const SparkParticleRuntimeBackend&) = delete;
+    auto operator=(SparkParticleRuntimeBackend&&) noexcept = delete;
+    ~SparkParticleRuntimeBackend() override;
+
+    [[nodiscard]] auto GetExtensions() const -> vector<string> override;
+    [[nodiscard]] auto SupportsSeededRespawn() const -> bool override;
+    void InvalidateResource(string_view path) override;
+    [[nodiscard]] auto Create(string_view path) -> unique_nptr<ParticleRuntimeSystem> override;
+
+private:
+    struct Impl;
+    unique_ptr<Impl> _impl;
+};
 FO_END_NAMESPACE
 
 namespace SPK::FO
@@ -95,7 +160,7 @@ namespace SPK::FO
         static auto Create() -> Ref<SparkQuadRenderer>;
         ~SparkQuadRenderer() override = default;
 
-        [[nodiscard]] auto Setup(string_view path, ptr<ParticleManager> particle_mngr) -> bool;
+        [[nodiscard]] auto Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool;
 
         auto GetDrawWidth() const -> int32_t;
         auto GetDrawHeight() const -> int32_t;
@@ -119,7 +184,7 @@ namespace SPK::FO
         SparkQuadRenderer(const SparkQuadRenderer& renderer) = default;
 
         string _path {};
-        nptr<ParticleManager> _particleMngr {};
+        nptr<FO_NAMESPACE SparkParticleRuntimeBackend> _runtime {};
 
         int32_t _drawWidth {};
         int32_t _drawHeight {};
@@ -155,3 +220,5 @@ namespace SPK::FO
         void computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const override;
     };
 }
+
+#endif

@@ -32,37 +32,80 @@
 //
 
 #include "VisualParticles.h"
-#include "SparkExtension.h"
-
-#include "SPARK.h"
 
 FO_BEGIN_NAMESPACE
 
 struct ParticleManager::Impl
 {
-    unordered_map<string, SPK::Ref<SPK::System>> BaseSystems {};
+    explicit Impl(const ParticleRuntimeServices& services);
+
+    [[nodiscard]] auto FindBackend(string_view extension) -> nptr<ParticleRuntimeBackend>;
+    [[nodiscard]] auto FindBackend(string_view extension) const -> nptr<const ParticleRuntimeBackend>;
+
+    vector<unique_ptr<ParticleRuntimeBackend>> Backends;
 };
 
-struct ParticleSystem::Impl
-{
-    SPK::Ref<SPK::System> System {};
-    SPK::Ref<SPK::System> BaseSystem {};
-};
-
-ParticleSystem::ParticleSystem(ParticleSystem&&) noexcept = default;
-
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, TextureLoader tex_loader) :
-    _impl {SafeAlloc::MakeUnique<Impl>()},
-    _settings {settings},
-    _effectMngr {effect_mngr},
-    _render {render},
-    _resources {resources},
-    _gameTime {game_time},
-    _textureLoader {std::move(tex_loader)}
+ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
+    Backends {CreateParticleRuntimeBackends(services)}
 {
     FO_STACK_TRACE_ENTRY();
 
-    SPK::FO::EnsureSparkParticleObjectsRegistered();
+    unordered_set<string> registered_extensions;
+
+    for (const auto& backend_owner : Backends) {
+        auto backend = backend_owner.as_ptr();
+        const vector<string> extensions = backend->GetExtensions();
+
+        FO_VERIFY_AND_THROW(!extensions.empty(), "Particle runtime backend does not declare any resource extensions");
+
+        for (const string& extension : extensions) {
+            FO_VERIFY_AND_THROW(!extension.empty(), "Particle runtime backend declares an empty resource extension");
+
+            const auto [it, inserted] = registered_extensions.emplace(extension);
+            ignore_unused(it);
+            FO_VERIFY_AND_THROW(inserted, "Particle resource extension is handled by more than one runtime backend", extension);
+        }
+    }
+}
+
+auto ParticleManager::Impl::FindBackend(string_view extension) -> nptr<ParticleRuntimeBackend>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& backend_owner : Backends) {
+        auto backend = backend_owner.as_ptr();
+        const vector<string> extensions = backend->GetExtensions();
+
+        if (std::ranges::find(extensions, extension) != extensions.end()) {
+            return backend;
+        }
+    }
+
+    return nullptr;
+}
+
+auto ParticleManager::Impl::FindBackend(string_view extension) const -> nptr<const ParticleRuntimeBackend>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (const auto& backend_owner : Backends) {
+        auto backend = backend_owner.as_ptr();
+        const vector<string> extensions = backend->GetExtensions();
+
+        if (std::ranges::find(extensions, extension) != extensions.end()) {
+            return backend;
+        }
+    }
+
+    return nullptr;
+}
+
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader) :
+    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader)})},
+    _settings {settings},
+    _gameTime {game_time}
+{
+    FO_STACK_TRACE_ENTRY();
 
     if (_settings->Animation3dFPS != 0) {
         _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
@@ -74,89 +117,96 @@ ParticleManager::~ParticleManager()
     FO_STACK_TRACE_ENTRY();
 }
 
-auto ParticleManager::Random(int32_t min_value, int32_t max_value) -> int32_t
+auto ParticleManager::GetExtensions() const -> vector<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(min_value <= max_value, "Particle random integer range has an inverted min/max", min_value, max_value);
+    vector<string> extensions;
 
-    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+    for (const auto& backend_owner : _impl->Backends) {
+        const vector<string> backend_extensions = backend_owner->GetExtensions();
+        extensions.insert(extensions.end(), backend_extensions.begin(), backend_extensions.end());
+    }
+
+    return extensions;
+}
+
+auto ParticleManager::SupportsSeededRespawn(string_view name) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const string extension = strex(name).get_file_extension();
+    const nptr<const ParticleRuntimeBackend> nullable_backend = _impl->FindBackend(extension);
+    return nullable_backend && nullable_backend->SupportsSeededRespawn();
+}
+
+void ParticleManager::InvalidateResource(string_view name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    for (auto& backend_owner : _impl->Backends) {
+        backend_owner->InvalidateResource(name);
+    }
 }
 
 auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSystem>
 {
     FO_STACK_TRACE_ENTRY();
 
-    SPK::Ref<SPK::System> base_system;
+    const string extension = strex(name).get_file_extension();
+    nptr<ParticleRuntimeBackend> nullable_backend = _impl->FindBackend(extension);
 
-    if (const auto it = _impl->BaseSystems.find(name); it == _impl->BaseSystems.end()) {
-        if (const auto file = _resources->ReadFile(name)) {
-            const_span<uint8_t> file_data = file.GetDataSpan();
-            base_system = SPK::IO::IOManager::get().loadFromBuffer("spk", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
-
-            if (!base_system) {
-                base_system = SPK::IO::IOManager::get().loadFromBuffer("xml", ptr<const uint8_t> {file_data.data()}.reinterpret_as<char>().get(), numeric_cast<unsigned>(file_data.size()));
-            }
-        }
-
-        if (base_system) {
-            bool render_dependencies_loaded = true;
-
-            for (size_t i = 0; i < base_system->getNbGroups(); i++) {
-                auto&& group = base_system->getGroup(i);
-
-                if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
-                    render_dependencies_loaded &= renderer->Setup(name, this);
-                }
-            }
-
-            if (!render_dependencies_loaded) {
-                WriteLog("Particle '{}' has a missing render effect or texture", name);
-                base_system = SPK::Ref<SPK::System>();
-            }
-        }
-
-        _impl->BaseSystems.emplace(name, base_system);
-    }
-    else {
-        base_system = it->second;
-    }
-
-    if (!base_system) {
+    if (!nullable_backend) {
+        WriteLog("Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 
-    auto&& system = SPK::SPKObject::copy(base_system);
-    system->initialize();
+    auto backend = nullable_backend.as_ptr();
+    unique_nptr<ParticleRuntimeSystem> nullable_runtime_system = backend->Create(name);
 
-    ParticleSystem particles {this};
-    auto particles_impl = particles._impl.as_ptr();
-    particles_impl->System = system;
-    particles_impl->BaseSystem = base_system;
+    if (!nullable_runtime_system) {
+        return {};
+    }
 
+    ParticleSystem particles {this, nullable_runtime_system.take_not_null()};
     return std::move(particles);
 }
 
-ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr) :
-    _impl {SafeAlloc::MakeUnique<Impl>()},
+ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<ParticleRuntimeSystem>&& runtime_system) :
+    _runtimeSystem {std::move(runtime_system)},
     _particleMngr {particle_mngr}
 {
     FO_STACK_TRACE_ENTRY();
 
-    _forceDraw = true;
-    _lastDrawTime = GetTime();
+    ResetTiming();
 }
+
+ParticleSystem::ParticleSystem(ParticleSystem&&) noexcept = default;
 
 ParticleSystem::~ParticleSystem()
 {
     FO_STACK_TRACE_ENTRY();
 }
 
-bool ParticleSystem::IsActive() const
+auto ParticleSystem::GetRuntimeSystem() -> ptr<ParticleRuntimeSystem>
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _impl.as_ptr()->System->isActive();
+    return _runtimeSystem;
+}
+
+auto ParticleSystem::GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _runtimeSystem;
+}
+
+auto ParticleSystem::IsActive() const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _runtimeSystem->IsActive();
 }
 
 auto ParticleSystem::GetElapsedTime() const -> float32_t
@@ -166,64 +216,19 @@ auto ParticleSystem::GetElapsedTime() const -> float32_t
     return numeric_cast<float32_t>(_elapsedTime);
 }
 
-auto ParticleSystem::GetBaseSystem() -> nptr<SPK::System>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto impl = _impl.as_ptr();
-    nptr<SPK::System> base_system = impl->BaseSystem.get();
-    return base_system;
-}
-
-void ParticleSystem::SetBaseSystem(nptr<SPK::System> system)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _impl.as_ptr()->BaseSystem = system.get();
-}
-
 auto ParticleSystem::GetDrawSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    int32_t max_draw_width = 0;
-    int32_t max_draw_height = 0;
-
-    for (size_t i = 0; i < impl->System->getNbGroups(); i++) {
-        auto&& group = impl->System->getGroup(i);
-        if (auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer())) {
-            max_draw_width = std::max(max_draw_width, renderer->GetDrawWidth());
-            max_draw_height = std::max(max_draw_height, renderer->GetDrawHeight());
-        }
-    }
-
-    if (max_draw_width == 0) {
-        max_draw_width = _particleMngr->_settings->DefaultParticleDrawWidth;
-    }
-    if (max_draw_height == 0) {
-        max_draw_height = _particleMngr->_settings->DefaultParticleDrawHeight;
-    }
-
-    return {max_draw_width, max_draw_height};
+    const isize32 default_size {_particleMngr->_settings->DefaultParticleDrawWidth, _particleMngr->_settings->DefaultParticleDrawHeight};
+    return _runtimeSystem->GetDrawSize(default_size);
 }
 
 auto ParticleSystem::GetDrawInScene() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-
-    for (size_t i = 0; i < impl->System->getNbGroups(); i++) {
-        auto&& group = impl->System->getGroup(i);
-        auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
-
-        if (renderer && renderer->GetDrawInScene()) {
-            return true;
-        }
-    }
-
-    return false;
+    return _runtimeSystem->GetDrawInScene();
 }
 
 auto ParticleSystem::GetTime() const -> nanotime
@@ -237,125 +242,126 @@ auto ParticleSystem::NeedDraw() const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold) && _impl.as_ptr()->System->isActive();
+    return _renderPending && (!IsActive() || GetTime() - _lastRenderTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold));
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj)
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-
-    if (!impl->System->isActive()) {
+    if (!IsActive()) {
         return;
     }
 
-    _projMatrix = proj;
-    _viewOffset = view_offset;
-    _tiltInProj = tilt_in_proj;
-
-    const auto pos_offset_mat = glm::translate(mat44 {1.0f}, pos_offset);
-    const auto view_offset_mat = glm::translate(mat44 {1.0f}, view_offset);
-
-    mat44 result_pos_mat;
-
-    if (!impl->BaseSystem->getTransform().isLocalIdentity()) {
-        vec3 result_pos_rot {};
-        vec3 result_pos_pos {};
-        vec3 result_pos_scale {};
-        vec3 skew {};
-        glm::vec<4, float32_t, glm::defaultp> perspective {};
-        quaternion rotation {};
-        glm::decompose(view_offset_mat * world * pos_offset_mat, result_pos_scale, rotation, result_pos_pos, skew, perspective);
-        result_pos_rot = glm::eulerAngles(rotation);
-
-        const auto result_pos_pos_mat = glm::translate(mat44 {1.0f}, result_pos_pos);
-        const auto look_dir_mat = glm::rotate(mat44 {1.0f}, (look_dir_angle - 90.0f) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
-
-        result_pos_mat = result_pos_pos_mat * look_dir_mat;
-    }
-    else {
-        result_pos_mat = view_offset_mat * world * pos_offset_mat;
-    }
-
-    ptr<const float32_t> result_pos_matrix_values = glm::value_ptr(result_pos_mat);
-    impl->System->getTransform().set(result_pos_matrix_values.get());
-
-    if (const auto local_pos = impl->BaseSystem->getTransform().getLocalPos(); local_pos != SPK::Vector3D()) {
-        impl->System->getTransform().setPosition(impl->System->getTransform().getLocalPos() + local_pos);
-    }
-
-    impl->System->updateTransform();
+    _runtimeSystem->Setup(ParticleRuntimeSetup {
+        .Projection = proj,
+        .World = world,
+        .PositionOffset = pos_offset,
+        .ViewOffset = view_offset,
+        .LookDirectionAngle = look_dir_angle,
+        .Scale = _scale,
+        .MapCameraAngle = _particleMngr->_settings->MapCameraAngle,
+        .TiltInProjection = tilt_in_proj,
+    });
 }
 
 void ParticleSystem::Prewarm()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-
-    if (!impl->System->isActive()) {
+    if (!IsActive()) {
         return;
     }
 
-    const float32_t max_lifetime = impl->System->getGroup(0)->getMaxLifeTime();
-    const float32_t init_time = numeric_cast<float32_t>(_particleMngr->Random(0, iround<int32_t>(max_lifetime * 1000.0f))) / 1000.0f;
+    const float32_t elapsed_seconds = _runtimeSystem->Prewarm();
+    FO_VERIFY_AND_THROW(std::isfinite(elapsed_seconds) && elapsed_seconds >= 0.0f, "Particle runtime returned an invalid prewarm duration", elapsed_seconds);
 
-    for (float32_t dt = 0.0f; dt < init_time;) {
-        impl->System->updateParticles(std::min(PREWARM_STEP, init_time - dt));
-        dt += PREWARM_STEP;
-    }
-
-    _elapsedTime += numeric_cast<float64_t>(init_time);
+    _elapsedTime += numeric_cast<float64_t>(elapsed_seconds);
+    _forceDraw = true;
+    _renderPending = true;
+    _lastUpdateTime = GetTime();
 }
 
 void ParticleSystem::Respawn()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    impl->System = SPK::SPKObject::copy(impl->BaseSystem);
-    impl->System->initialize();
+    _runtimeSystem->Respawn(std::nullopt);
+    ResetTiming();
+}
 
-    _elapsedTime = 0.0;
-    _lastDrawTime = GetTime();
-    _forceDraw = true;
+void ParticleSystem::Respawn(int32_t seed)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _runtimeSystem->Respawn(seed);
+    ResetTiming();
+}
+
+void ParticleSystem::Update()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const nanotime time = GetTime();
+    float32_t delta_seconds = (time - _lastUpdateTime).to_ms<float32_t>() * 0.001f;
+
+    if (_forceDraw && delta_seconds <= 0.0f) {
+        delta_seconds = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;
+    }
+
+    _lastUpdateTime = time;
+
+    const bool was_active = _runtimeSystem->IsActive();
+    if (!was_active) {
+        return;
+    }
+
+    _runtimeSystem->Update(delta_seconds);
+
+    const bool is_active = _runtimeSystem->IsActive();
+    if (delta_seconds > 0.0f || !is_active) {
+        _renderPending = true;
+    }
+    if (delta_seconds > 0.0f) {
+        _elapsedTime += numeric_cast<float64_t>(delta_seconds);
+    }
+}
+
+void ParticleSystem::RefreshRenderTransform()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _runtimeSystem->RefreshRenderTransform();
 }
 
 void ParticleSystem::Draw()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto impl = _impl.as_ptr();
-    const auto time = GetTime();
-    float32_t dt = (time - _lastDrawTime).to_ms<float32_t>() * 0.001f;
-
-    if (_forceDraw && dt <= 0.0f) {
-        dt = numeric_cast<float32_t>(std::max(_particleMngr->_animUpdateThreshold, 1)) * 0.001f;
-    }
-
-    _lastDrawTime = time;
+    _lastRenderTime = GetTime();
     _forceDraw = false;
+    _renderPending = false;
+    _runtimeSystem->Draw();
+}
 
-    if (!impl->System->isActive()) {
-        return;
-    }
+void ParticleSystem::SetScale(float32_t scale)
+{
+    FO_STACK_TRACE_ENTRY();
 
-    _elapsedTime += numeric_cast<float64_t>(dt);
+    FO_VERIFY_AND_THROW(std::isfinite(scale) && scale > 0.0f, "Particle scale must be finite and positive", scale);
 
-    if (dt > 0.0f) {
-        impl->System->updateParticles(dt);
-    }
+    _scale = scale;
+}
 
-    const auto view_offset_mat = glm::translate(mat44 {1.0f}, vec3 {-_viewOffset.x, -_viewOffset.y, -_viewOffset.z});
-    const auto cam_rot_mat = _tiltInProj ? mat44 {1.0f} : glm::rotate(mat44 {1.0f}, _particleMngr->_settings->MapCameraAngle * DEG_TO_RAD_FLOAT, vec3 {1.0f, 0.0f, 0.0f});
-    mat44 view = cam_rot_mat * view_offset_mat;
-    mat44 proj = _projMatrix;
+void ParticleSystem::ResetTiming()
+{
+    FO_STACK_TRACE_ENTRY();
 
-    _particleMngr->_viewProjMatrix = proj * view;
-    _particleMngr->_viewMatrix = view;
-
-    impl->System->renderParticles();
+    _elapsedTime = 0.0;
+    _forceDraw = true;
+    _renderPending = true;
+    _lastUpdateTime = GetTime();
+    _lastRenderTime = _lastUpdateTime;
 }
 
 FO_END_NAMESPACE

@@ -2053,6 +2053,8 @@ void ModelInstance::ProcessAnimation(float32_t elapsed, ipos32 pos, float32_t sc
         else {
             model_particle.Particle->Setup(proj, model_particle.Bone->CombinedTransformationMatrix, model_particle.Move, model_particle.Rot + _lookDirAngle, view_offset, tilt_in_proj);
         }
+
+        model_particle.Particle->Update();
     }
 
     for (auto it = _modelParticles.begin(); it != _modelParticles.end();) {

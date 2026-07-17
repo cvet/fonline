@@ -225,10 +225,6 @@ public:
     void DrawMapWindowImGui();
     void DrawHistoryWindowImGui();
     void DrawSettingsWindowImGui();
-    void DrawParticleEditorBrowserWindowImGui();
-    void DrawParticleEditorsImGui();
-    void OpenParticleEditor(string_view asset_path);
-    void RefreshParticleEditorResources();
     void HandleLeftMouseDown();
     auto HandleMapLeftMouseDown() -> bool;
     void HandleLeftMouseUp();
@@ -339,6 +335,7 @@ public:
     FO_ENTITY_EVENT(OnInspectorProperties, ptr<Entity> /*entity*/, vector<int32_t>& /*properties*/);
 
     FileSystem MapsFileSys {};
+    ParticleEditorManager ParticleEditors;
     vector<refcount_ptr<MapView>> LoadedMaps {};
     unordered_set<ptr<MapView>> DirtyMaps {};
     unordered_map<ptr<MapView>, UndoContext> UndoContexts {};
@@ -372,7 +369,6 @@ public:
     bool MapWindowVisible {};
     bool HistoryWindowVisible {};
     bool SettingsWindowVisible {};
-    bool ParticleEditorBrowserWindowVisible {};
     bool ResetImGuiSettingsRequested {};
     bool InputLocked {};
     irect32 MainPanelWindowRect {};
@@ -397,10 +393,7 @@ public:
     array<char, 128> ScriptCallFuncBuf {};
     array<char, 256> ScriptCallArgsBuf {};
     array<char, 128> MapBrowserFilterBuf {};
-    array<char, 160> ParticleEditorFilterBuf {};
-    vector<string> ParticleEditorResourcePaths {};
-    vector<unique_ptr<ParticleEditor>> ParticleEditors {};
-    bool ParticleEditorResourcesIndexed {};
+    bool MapperWindowFocused {};
     int32_t TabIndex[INT_MODE_COUNT] {};
     refcount_nptr<ItemView> InContItem {};
     bool PreviewRoofTiles {};

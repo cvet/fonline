@@ -35,42 +35,52 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
-#include "Settings.h"
-
 FO_BEGIN_NAMESPACE
 
-class ParticleEditor final
+class MapperEngine;
+class MapView;
+
+class ParticleSubEditor
 {
 public:
-    ParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved);
-    ParticleEditor(const ParticleEditor&) = delete;
-    ParticleEditor(ParticleEditor&&) noexcept;
-    auto operator=(const ParticleEditor&) = delete;
-    auto operator=(ParticleEditor&&) noexcept = delete;
-    ~ParticleEditor();
+    ParticleSubEditor() = default;
+    ParticleSubEditor(const ParticleSubEditor&) = delete;
+    ParticleSubEditor(ParticleSubEditor&&) noexcept = delete;
+    auto operator=(const ParticleSubEditor&) -> ParticleSubEditor& = delete;
+    auto operator=(ParticleSubEditor&&) noexcept -> ParticleSubEditor& = delete;
+    virtual ~ParticleSubEditor() = default;
 
-    [[nodiscard]] auto GetAssetPath() const noexcept -> string_view { return _assetPath; }
-    [[nodiscard]] auto IsChanged() const noexcept -> bool { return _changed; }
-    void BringToFront() noexcept { _bringToFront = true; }
-    [[nodiscard]] auto Draw() -> bool;
+    virtual void Initialize() { }
+    virtual void Shutdown() { }
+    virtual void ResetLayout() { }
+    virtual void OnFocusGained() { }
+    virtual void OnCurrentMapChanging(nptr<MapView> next_map) { ignore_unused(next_map); }
+    virtual void OnMapUnloading(ptr<MapView> map) { ignore_unused(map); }
+    virtual void DrawMenuItem() = 0;
+    virtual void DrawWindows() = 0;
+};
+
+class ParticleEditorManager final
+{
+public:
+    explicit ParticleEditorManager(ptr<MapperEngine> mapper);
+    ParticleEditorManager(const ParticleEditorManager&) = delete;
+    ParticleEditorManager(ParticleEditorManager&&) noexcept = delete;
+    auto operator=(const ParticleEditorManager&) -> ParticleEditorManager& = delete;
+    auto operator=(ParticleEditorManager&&) noexcept -> ParticleEditorManager& = delete;
+    ~ParticleEditorManager();
+
+    void Initialize();
+    void Shutdown();
+    void ResetLayout();
+    void OnFocusGained();
+    void OnCurrentMapChanging(nptr<MapView> next_map);
+    void OnMapUnloading(ptr<MapView> map);
+    void DrawMenuItems();
+    void DrawWindows();
 
 private:
-    void DrawContent();
-    void DiscardChanges();
-    [[nodiscard]] auto SaveChanges() -> bool;
-
-    struct Impl;
-    unique_ptr<Impl> _impl;
-    string _assetPath {};
-    string _windowTitle {};
-    string _closePopupTitle {};
-    string _saveError {};
-    function<void(string_view)> _onSaved {};
-    float32_t _dirAngle {};
-    bool _autoReplay {};
-    bool _changed {};
-    bool _bringToFront {};
+    vector<unique_ptr<ParticleSubEditor>> _subEditors {};
 };
 
 FO_END_NAMESPACE

@@ -32,1681 +32,632 @@
 //
 
 #include "ParticleEditor.h"
-#include "Application.h"
 #include "ImGuiStuff.h"
-#include "SparkExtension.h"
-#include "VisualParticles.h"
-
-#include "SPARK.h"
+#include "Mapper.h"
+#include "ParticleSprites.h"
+#include "SparkParticleEditor.h"
 
 FO_BEGIN_NAMESPACE
 
-static auto CreateParticleEditorTextureLoader(ptr<FileSystem> baked_resources, vector<unique_ptr<RenderTexture>>& loaded_textures) -> ParticleManager::TextureLoader
+static constexpr int32_t PARTICLE_PREVIEW_OFFSET_LIMIT = 100000;
+
+template<size_t Size>
+static auto ParticleInputBufferView(const array<char, Size>& buffer) -> string_view
 {
     FO_STACK_TRACE_ENTRY();
 
-    ptr<vector<unique_ptr<RenderTexture>>> loaded_textures_ptr {&loaded_textures};
-
-    return [baked_resources, loaded_textures_ptr](string_view path) mutable -> pair<nptr<RenderTexture>, frect32> {
-        const auto file = baked_resources->ReadFile(path);
-
-        if (!file) {
-            WriteLog("Particle editor could not read sprite resource '{}'", path);
-            return {nullptr, {}};
-        }
-
-        auto reader = file.GetReader();
-
-        const auto check_number = reader.GetUInt8();
-        FO_VERIFY_AND_THROW(check_number == 42, "Sprite file header magic is invalid", check_number);
-
-        (void)reader.GetLEUInt16();
-        (void)reader.GetLEUInt16();
-        (void)reader.GetUInt8();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetUInt8();
-        const auto w = reader.GetLEUInt16();
-        const auto h = reader.GetLEUInt16();
-        (void)reader.GetLEInt16();
-        (void)reader.GetLEInt16();
-
-        const_span<uint8_t> data = reader.GetCurDataSpan(numeric_cast<size_t>(w) * h * sizeof(ucolor));
-        FO_VERIFY_AND_THROW(!data.empty(), "Sprite has no pixel data");
-
-        auto tex = GetApp()->Render.CreateTexture({w, h}, true, false);
-        nptr<const uint8_t> data_ptr = data.data();
-        const_span<ucolor> pixels {data_ptr.reinterpret_as<const ucolor>().get(), numeric_cast<size_t>(w) * h};
-        tex->UpdateTextureRegion({}, {w, h}, pixels);
-
-        auto nullable_tex = tex.as_nptr();
-        loaded_textures_ptr->emplace_back(std::move(tex));
-
-        return {nullable_tex, {0.0f, 0.0f, 1.0f, 1.0f}};
-    };
+    const auto end = std::find(buffer.begin(), buffer.end(), '\0');
+    return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
-struct ParticleEditor::Impl
+static auto ParticlePathContainsCaseInsensitive(string_view text, string_view filter) -> bool
 {
-    Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources);
+    FO_STACK_TRACE_ENTRY();
 
-    [[nodiscard]] auto GetEditedSparkSystem() -> SPK::Ref<SPK::System>;
-    [[nodiscard]] auto GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>;
-    [[nodiscard]] auto GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>;
-    [[nodiscard]] auto GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>;
-    [[nodiscard]] auto GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string;
+    if (filter.empty()) {
+        return true;
+    }
 
-    // Generic
-    void DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj);
-    // Core
-    void DrawSparkTransformable(const SPK::Ref<SPK::Transformable>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::System>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Group>& obj);
-    // Interpolators
-    void DrawSparkObject(const SPK::Ref<SPK::FloatDefaultInitializer>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ColorDefaultInitializer>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::FloatRandomInitializer>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ColorRandomInitializer>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::FloatSimpleInterpolator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ColorSimpleInterpolator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::FloatRandomInterpolator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterpolator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj);
-    // Zones
-    void DrawSparkInnerZone(const char* name, const function<SPK::Ref<SPK::Zone>()>& get, const function<void(const SPK::Ref<SPK::Zone>&)>& set);
-    void DrawSparkZone(const SPK::Ref<SPK::Zone>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Point>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Plane>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Ring>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Box>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Cylinder>& obj);
-    // Emitters
-    void DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::RandomEmitter>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::StraightEmitter>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::SphericEmitter>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& obj);
-    // Modifiers
-    void DrawSparkModifier(const SPK::Ref<SPK::Modifier>& obj);
-    void DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModifier>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Gravity>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Friction>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Obstacle>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Rotator>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Collider>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Destroyer>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::RandomForce>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::LinearForce>& obj);
-    // Actions
-    void DrawSparkAction(const SPK::Ref<SPK::Action>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj);
-    void DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj);
-    // Renderers
-    void DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj);
-    // Helpers
-    void DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw);
-    void DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw);
-    void DrawSparkGroupRef(const char* label, const SPK::Ref<SPK::Group>& current, const function<void(const SPK::Ref<SPK::Group>&)>& set);
-    void DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set);
-    void DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group);
+    const string normalized_text = strex(text).lower().str();
+    const string normalized_filter = strex(filter).lower().str();
+    return normalized_text.find(normalized_filter) != string::npos;
+}
 
-    unique_ptr<RenderTexture> RenderTarget;
-    vector<unique_ptr<RenderTexture>> LoadedTextures {};
-    ptr<GlobalSettings> Settings;
-    ptr<FileSystem> RawResources;
-    EffectManager EffectMngr;
-    GameTimer GameTime;
-    ParticleManager ParticleMngr;
-    optional<ParticleSystem> Particle;
-    SPK::Ref<SPK::System> SystemBackup {};
-    bool AddingMode {true};
-    bool RemovingMode {true};
-    bool NamingMode {};
-    vector<string> AllEffects {};
-    vector<string> AllTextures {};
-    string LoadError {};
-    bool Changed {};
+class ParticlePreviewSubEditor final : public ParticleSubEditor
+{
+public:
+    explicit ParticlePreviewSubEditor(ptr<MapperEngine> mapper) :
+        _mapper {mapper}
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+
+    ~ParticlePreviewSubEditor() override { FO_STACK_TRACE_ENTRY(); }
+
+    void Initialize() override;
+    void Shutdown() override;
+    void ResetLayout() override;
+    void OnFocusGained() override;
+    void OnCurrentMapChanging(nptr<MapView> next_map) override;
+    void OnMapUnloading(ptr<MapView> map) override;
+    void DrawMenuItem() override;
+    void DrawWindows() override;
+
+private:
+    void Play(mpos hex);
+    void AttachMapSprite();
+    void Remove();
+    void RefreshResources(bool force_reload = false);
+    auto ResolveHex() -> optional<mpos>;
+
+    ptr<MapperEngine> _mapper;
+    nptr<ParticleSpriteFactory> _nullableParticleFactory {};
+    vector<string> _extensions {};
+    vector<string> _resourcePaths {};
+    unordered_map<string, pair<size_t, uint64_t>> _resourceIndex {};
+    shared_ptr<Sprite> _previewSprite {};
+    nptr<MapView> _previewMap {};
+    nptr<MapSprite> _previewMapSprite {};
+    string _resourcePath {};
+    optional<mpos> _mouseHex {};
+    mpos _previewHex {};
+    ipos32 _offset {};
+    array<char, 160> _filterBuf {};
+    float32_t _scale {1.0f};
+    int32_t _seed {};
+    bool _prewarm {};
+    bool _useMapCenter {true};
+    bool _resourcesIndexed {};
+    bool _mapSpriteValid {};
+    bool _windowVisible {};
+    bool _enabled {};
 };
 
-ParticleEditor::Impl::Impl(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources) :
-    RenderTarget {GetApp()->Render.CreateTexture({200, 200}, true, true)},
-    Settings {settings},
-    RawResources {raw_resources},
-    EffectMngr {settings, baked_resources, &GetApp()->Render},
-    GameTime {settings},
-    ParticleMngr {settings, &EffectMngr, &GetApp()->Render, baked_resources, &GameTime, CreateParticleEditorTextureLoader(baked_resources, LoadedTextures)},
-    Particle {ParticleMngr.CreateParticle(asset_path)}
+void ParticlePreviewSubEditor::Initialize()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (Particle.has_value() && Particle->GetBaseSystem()) {
-        SystemBackup = SPK::SPKObject::copy(SPK::Ref<SPK::System>(Particle->GetBaseSystem().get()));
-    }
-    else {
-        LoadError = strex("Failed to load particle preview for '{}'", asset_path);
-        WriteLog("Particle editor: failed to load preview for '{}'", asset_path);
-    }
-}
+    _nullableParticleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
+    FO_VERIFY_AND_THROW(_nullableParticleFactory, "Particle sprite factory is not registered");
 
-ParticleEditor::ParticleEditor(ParticleEditor&&) noexcept = default;
+    ptr<ParticleSpriteFactory> particle_factory = _nullableParticleFactory.as_ptr();
+    _extensions = particle_factory->GetExtensions();
+    _enabled = !_extensions.empty();
 
-ParticleEditor::ParticleEditor(string_view asset_path, ptr<GlobalSettings> settings, ptr<FileSystem> raw_resources, ptr<FileSystem> baked_resources, function<void(string_view)> on_saved) :
-    _impl {SafeAlloc::MakeUnique<Impl>(asset_path, settings, raw_resources, baked_resources)},
-    _assetPath {asset_path},
-    _windowTitle {strex("Particle Editor - {}###ParticleEditor_{}", asset_path, asset_path)},
-    _closePopupTitle {strex("Unsaved particle changes###ParticleEditorClose_{}", asset_path)},
-    _onSaved {std::move(on_saved)}
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto fofx_files = raw_resources->FilterFiles("fofx");
-
-    for (const auto& file_header : fofx_files) {
-        _impl->AllEffects.emplace_back(string(file_header.GetPath()));
-    }
-
-    auto tex_files = raw_resources->FilterFiles("tga", strex(asset_path).extract_dir());
-
-    for (const auto& file_header : tex_files) {
-        _impl->AllTextures.emplace_back(string(file_header.GetPath().substr(strex(asset_path).extract_dir().length() + 1)));
-    }
-}
-
-ParticleEditor::~ParticleEditor() = default;
-
-auto ParticleEditor::Draw() -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    ImGui::SetNextWindowPos({128.0f, 64.0f}, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize({760.0f, 760.0f}, ImGuiCond_FirstUseEver);
-
-    if (_bringToFront) {
-        ImGui::SetNextWindowFocus();
-        _bringToFront = false;
-    }
-
-    bool opened = true;
-    if (ImGui::Begin(_windowTitle.c_str(), &opened, ImGuiWindowFlags_NoCollapse)) {
-        DrawContent();
-    }
-
-    bool keep_open = true;
-
-    if (!opened && !_changed) {
-        keep_open = false;
-    }
-    else if (!opened) {
-        ImGui::OpenPopup(_closePopupTitle.c_str());
-    }
-
-    if (ImGui::BeginPopupModal(_closePopupTitle.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextWrapped("Save changes to %s before closing?", _assetPath.c_str());
-
-        if (!_saveError.empty()) {
-            ImGui::TextWrapped("%s", _saveError.c_str());
-        }
-
-        if (ImGui::Button("Save and close")) {
-            if (SaveChanges()) {
-                keep_open = false;
-                ImGui::CloseCurrentPopup();
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Discard and close")) {
-            DiscardChanges();
-            keep_open = false;
-            ImGui::CloseCurrentPopup();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            _saveError.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
-    }
-
-    ImGui::End();
-    return keep_open;
-}
-
-void ParticleEditor::DrawContent()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    _impl->GameTime.FrameAdvance(true);
-
-    _impl->Changed = false;
-
-    if (!_impl->Particle.has_value() || !_impl->Particle->GetBaseSystem()) {
-        ImGui::TextWrapped("%s", !_impl->LoadError.empty() ? _impl->LoadError.c_str() : "Particle preview is unavailable");
+    if (!_enabled || _mapper->Settings->ParticlePreviewEffect.empty() || !_mapper->GetCurMap()) {
         return;
     }
 
-    auto&& [draw_width, draw_height] = _impl->Particle->GetDrawSize();
-    const bool can_save_source = strex(_assetPath).get_file_extension() == "fopts";
+    RefreshResources();
+    _resourcePath = _mapper->Settings->ParticlePreviewEffect;
+    _seed = _mapper->Settings->ParticlePreviewSeed;
+    _scale = std::isfinite(_mapper->Settings->ParticlePreviewScale) ? std::clamp(_mapper->Settings->ParticlePreviewScale, 0.01f, 100.0f) : 1.0f;
+    _prewarm = _mapper->Settings->ParticlePreviewPrewarm;
+    _windowVisible = true;
 
-    if (ImGui::BeginChild("Info", {0.0f, numeric_cast<float32_t>(draw_height + 120)})) {
-        ImGui::Checkbox("Adding mode", &_impl->AddingMode);
-        ImGui::SameLine();
-        ImGui::Checkbox("Removing mode", &_impl->RemovingMode);
-        ImGui::SameLine();
-        ImGui::Checkbox("Naming mode", &_impl->NamingMode);
-        ImGui::Checkbox("Auto replay", &_autoReplay);
-        ImGui::Text("Elapsed: %.2f", numeric_cast<float64_t>(_impl->Particle->GetElapsedTime()));
-        ImGui::SameLine();
-        ImGui::SliderFloat("Dir angle", &_dirAngle, 0.0f, 360.0f);
+    if (const optional<mpos> preview_hex = ResolveHex()) {
+        Play(*preview_hex);
+    }
+    else {
+        WriteLog(LogType::Warning, "Mapper startup particle preview cannot resolve a placement hex for '{}'", _resourcePath);
+    }
+}
 
-        if (ImGui::Button("Respawn")) {
-            _impl->Particle->Respawn();
+void ParticlePreviewSubEditor::Shutdown()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    Remove();
+}
+
+void ParticlePreviewSubEditor::ResetLayout()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _windowVisible = false;
+    Remove();
+}
+
+void ParticlePreviewSubEditor::OnFocusGained()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_resourcesIndexed) {
+        RefreshResources();
+    }
+}
+
+void ParticlePreviewSubEditor::OnCurrentMapChanging(nptr<MapView> next_map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_previewMap && _previewMap != next_map) {
+        Remove();
+    }
+
+    _mouseHex.reset();
+}
+
+void ParticlePreviewSubEditor::OnMapUnloading(ptr<MapView> map)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<MapView> map_view = map;
+
+    if (_previewMap == map_view) {
+        Remove();
+    }
+    if (_mapper->GetCurMap() == map_view) {
+        _mouseHex.reset();
+    }
+}
+
+void ParticlePreviewSubEditor::DrawMenuItem()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_enabled) {
+        ImGui::MenuItem("Particle preview", nullptr, &_windowVisible);
+    }
+}
+
+void ParticlePreviewSubEditor::DrawWindows()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!_enabled) {
+        return;
+    }
+    if (!_windowVisible) {
+        Remove();
+        return;
+    }
+
+    if (!_mapSpriteValid && _previewMapSprite) {
+        _previewMapSprite.reset();
+
+        if (_mapper->GetCurMap() && _previewMap && _previewSprite && _mapper->GetCurMap() == _previewMap) {
+            AttachMapSprite();
+        }
+        else {
+            Remove();
+        }
+    }
+
+    if (_mapper->GetCurMap() && !_mapper->IsImGuiMouseCaptured()) {
+        auto cur_map = _mapper->GetCurMap().as_ptr();
+        mpos mouse_hex;
+
+        if (cur_map->GetHexAtScreen(_mapper->MousePos, mouse_hex, nullptr)) {
+            _mouseHex = mouse_hex;
+        }
+        else {
+            _mouseHex.reset();
+        }
+    }
+
+    ImGui::SetNextWindowPos({128.0f, 96.0f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize({480.0f, 600.0f}, ImGuiCond_FirstUseEver);
+
+    if (!ImGui::Begin("Particle Preview", &_windowVisible, 0)) {
+        ImGui::End();
+
+        if (!_windowVisible) {
+            Remove();
         }
 
-        if (_changed) {
-            ImGui::SameLine();
-            if (ImGui::Button("Discard")) {
-                DiscardChanges();
+        return;
+    }
+
+    if (!_resourcesIndexed || (ImGui::IsWindowAppearing() && !_mapSpriteValid)) {
+        RefreshResources();
+    }
+
+    ImGui::InputTextWithHint("##ParticlePreviewFilter", "Search particle resources...", _filterBuf.data(), _filterBuf.size());
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh")) {
+        RefreshResources(true);
+    }
+
+    const string_view particle_filter = ParticleInputBufferView(_filterBuf);
+    const size_t visible_resource_count = std::ranges::count_if(_resourcePaths, [&](const string& particle_path) { return ParticlePathContainsCaseInsensitive(particle_path, particle_filter); });
+    ImGui::Text("Resources: %d", numeric_cast<int32_t>(visible_resource_count));
+
+    if (ImGui::BeginChild("##ParticlePreviewResources", {0.0f, 230.0f}, true)) {
+        for (const string& particle_path : _resourcePaths) {
+            if (!ParticlePathContainsCaseInsensitive(particle_path, particle_filter)) {
+                continue;
             }
 
-            if (can_save_source) {
-                ImGui::SameLine();
-                if (ImGui::Button("Save")) {
-                    (void)SaveChanges();
-                }
-            }
-            else {
-                ImGui::SameLine();
-                ImGui::TextDisabled("Save is unavailable for this source format");
-            }
+            const bool selected = _resourcePath == particle_path;
 
-            if (!_saveError.empty()) {
-                ImGui::TextWrapped("%s", _saveError.c_str());
+            if (ImGui::Selectable(particle_path.c_str(), selected) && !selected) {
+                Remove();
+                _resourcePath = particle_path;
             }
         }
     }
     ImGui::EndChild();
 
-    if (ImGui::BeginChild("Hierarchy")) {
-        _impl->DrawGenericSparkObject(_impl->Particle->GetBaseSystem().get());
-    }
-    ImGui::EndChild();
+    ImGui::Separator();
 
-    _changed |= _impl->Changed;
-
-    if (_impl->Changed) {
-        _impl->Particle->Respawn();
-    }
-
-    const auto frame_width = numeric_cast<float32_t>(draw_width);
-    const auto frame_height = numeric_cast<float32_t>(draw_height);
-    const auto frame_ratio = frame_width / frame_height;
-    const auto proj_height = frame_height * (1.0f / _impl->Settings->ModelProjFactor);
-    const auto proj_width = proj_height * frame_ratio;
-
-    const mat44 proj = GetApp()->Render.CreateOrthoMatrix(0.0f, proj_width, 0.0f, proj_height, -10.0f, 10.0f);
-    const mat44 world = glm::translate(mat44 {1.0f}, vec3 {proj_width / 2.0f, proj_height / 4.0f, 0.0f});
-
-    vec3 pos_offest;
-    pos_offest = vec3();
-
-    vec3 view_offset;
-    view_offset = vec3();
-
-    _impl->Particle->Setup(proj, world, pos_offest, _dirAngle, view_offset);
-
-    auto prev_rt = GetApp()->Render.GetRenderTarget();
-    GetApp()->Render.SetRenderTarget(_impl->RenderTarget);
-    GetApp()->Render.ClearRenderTarget(ucolor::clear, true);
-    _impl->Particle->Draw();
-    GetApp()->Render.SetRenderTarget(prev_rt);
-
-    ptr<ImDrawList> draw_list = ImGui::GetWindowDrawList();
-
-    auto pos = ImGui::GetWindowPos();
-    pos.x += 120.0f;
-    pos.y += 140.0f;
-
-    const auto border_col = ImGui::ColorConvertFloat4ToU32({1.0f, 0.0f, 0.0f, 1.0f});
-
-    draw_list->AddLine({pos.x + frame_width / 2.0f, pos.y}, {pos.x + frame_width / 2.0f, pos.y + frame_height}, border_col);
-    draw_list->AddLine({pos.x, pos.y + frame_height - frame_height / 4.0f}, {pos.x + frame_width, pos.y + frame_height - frame_height / 4.0f}, border_col);
-    if (GetApp()->Render.IsRenderTargetFlipped()) {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 1.0f}, {1.0f, 0.0f});
+    if (_resourcePath.empty()) {
+        ImGui::TextDisabled("Select a particle resource");
     }
     else {
-        draw_list->AddImage(_impl->RenderTarget.get(), pos, {pos.x + frame_width, pos.y + frame_height}, {0.0f, 0.0f}, {1.0f, 1.0f});
-    }
-    draw_list->AddRect({pos.x - 1.0f, pos.y - 1.0f}, {pos.x + frame_width + 2.0f, pos.y + frame_height + 2.0f}, border_col);
-
-    if (!_impl->Particle->IsActive() && _autoReplay) {
-        _impl->Particle->Respawn();
-    }
-}
-
-void ParticleEditor::DiscardChanges()
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "Particle editor has no particle to discard", _assetPath);
-
-    _changed = _impl->Changed = false;
-    _impl->Particle->SetBaseSystem(SPK::System::copy(_impl->SystemBackup).get());
-    _impl->Particle->Respawn();
-    _saveError.clear();
-}
-
-auto ParticleEditor::SaveChanges() -> bool
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (strex(_assetPath).get_file_extension() != "fopts") {
-        _saveError = "Save is unavailable for this source format";
-        return false;
+        ImGui::TextWrapped("Selected: %s", _resourcePath.c_str());
     }
 
-    const auto file = _impl->RawResources->ReadFileHeader(_assetPath);
-    FO_VERIFY_AND_THROW(file, "Particle editor could not resolve raw particle asset for saving", _assetPath);
-
-    nptr<const SPK::IO::Saver> nullable_saver = SPK::IO::IOManager::get().getSaver("xml");
-    FO_VERIFY_AND_THROW(nullable_saver, "Missing required saver");
-    auto saver = nullable_saver.as_ptr();
-
-    const std::string path {file.GetDiskPath()};
-
-    FO_VERIFY_AND_THROW(_impl->Particle.has_value(), "Particle editor has no particle to save", _assetPath);
-    auto nullable_base_system = _impl->Particle->GetBaseSystem();
-    FO_VERIFY_AND_THROW(nullable_base_system, "Particle has no base system to save");
-    auto base_system = nullable_base_system.as_ptr();
-
-    if (!saver->save(path, base_system.get(), path)) {
-        _saveError = strex("Failed to save particle source '{}'", _assetPath);
-        WriteLog(LogType::Error, "Particle editor failed to save '{}'", _assetPath);
-        return false;
+    if (ImGui::RadioButton("Mouse position", !_useMapCenter)) {
+        _useMapCenter = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("View center", _useMapCenter)) {
+        _useMapCenter = true;
     }
 
-    _changed = _impl->Changed = false;
-    _impl->SystemBackup = SPK::System::copy(SPK::Ref<SPK::System>(base_system.get()));
-    _impl->Particle->Respawn();
-    _saveError.clear();
-    _onSaved(_assetPath);
-    return true;
-}
+    const optional<mpos> placement_hex = ResolveHex();
 
-#define DRAW_SPK_FLOAT(label, get, set) \
-    do { \
-        float32_t val = obj->get(); \
-        Changed |= ImGui::InputFloat(label, &val); \
-        obj->set(val); \
-    } while (0)
-#define DRAW_SPK_BOOL(label, get, set) \
-    do { \
-        bool val = obj->get(); \
-        Changed |= ImGui::Checkbox(label, &val); \
-        obj->set(val); \
-    } while (0)
-#define DRAW_SPK_BOOL_BOOL(label1, label2, get1, get2, set) \
-    do { \
-        bool val1 = obj->get1(); \
-        bool val2 = obj->get2(); \
-        Changed |= ImGui::Checkbox(label1, &val1); \
-        Changed |= ImGui::Checkbox(label2, &val2); \
-        obj->set(val1, val2); \
-    } while (0)
-#define DRAW_SPK_FLOAT_FLOAT(label1, label2, get1, get2, set) \
-    do { \
-        float32_t val1 = obj->get1(); \
-        float32_t val2 = obj->get2(); \
-        Changed |= ImGui::InputFloat(label1, &val1); \
-        Changed |= ImGui::InputFloat(label2, &val2); \
-        obj->set(val1, val2); \
-    } while (0)
-#define DRAW_SPK_INT(label, get, set) \
-    do { \
-        int32_t val = numeric_cast<int32_t>(obj->get()); \
-        Changed |= ImGui::InputInt(label, &val); \
-        obj->set(val); \
-    } while (0)
-#define DRAW_SPK_INT_INT(label1, label2, get1, get2, set) \
-    do { \
-        int32_t val1 = numeric_cast<int32_t>(obj->get1()); \
-        int32_t val2 = numeric_cast<int32_t>(obj->get2()); \
-        Changed |= ImGui::InputInt(label1, &val1); \
-        Changed |= ImGui::InputInt(label2, &val2); \
-        obj->set(val1, val2); \
-    } while (0)
-#define DRAW_SPK_FLOAT_BOOL(label1, label2, get1, get2, set) \
-    do { \
-        float32_t val1 = obj->get1(); \
-        bool val2 = obj->get2(); \
-        Changed |= ImGui::InputFloat(label1, &val1); \
-        Changed |= ImGui::Checkbox(label2, &val2); \
-        obj->set(val1, val2); \
-    } while (0)
-#define DRAW_SPK_VECTOR(label, get, set) \
-    do { \
-        float32_t val[3] = {obj->get().x, obj->get().y, obj->get().z}; \
-        Changed |= ImGui::InputFloat3(label, val); \
-        obj->set(SPK::Vector3D(val[0], val[1], val[2])); \
-    } while (0)
-#define DRAW_SPK_VECTOR_VECTOR(label1, label2, get1, get2, set) \
-    do { \
-        float32_t val1[3] = {obj->get1().x, obj->get1().y, obj->get1().z}; \
-        float32_t val2[3] = {obj->get2().x, obj->get2().y, obj->get2().z}; \
-        Changed |= ImGui::InputFloat3(label1, val1); \
-        Changed |= ImGui::InputFloat3(label2, val2); \
-        obj->set(SPK::Vector3D(val1[0], val1[1], val1[2]), SPK::Vector3D(val2[0], val2[1], val2[2])); \
-    } while (0)
-#define DRAW_SPK_COLOR(label, get, set) \
-    do { \
-        int32_t val[4] = {obj->get().r, obj->get().g, obj->get().b, obj->get().a}; \
-        Changed |= ImGui::InputInt4(label, val); \
-        obj->set(SPK::Color(val[0], val[1], val[2], val[3])); \
-    } while (0)
-#define DRAW_SPK_COLOR_COLOR(label1, label2, get1, get2, set) \
-    do { \
-        int32_t val1[4] = {obj->get1().r, obj->get1().g, obj->get1().b, obj->get1().a}; \
-        int32_t val2[4] = {obj->get2().r, obj->get2().g, obj->get2().b, obj->get2().a}; \
-        Changed |= ImGui::InputInt4(label1, val1); \
-        Changed |= ImGui::InputInt4(label2, val2); \
-        obj->set(SPK::Color(val1[0], val1[1], val1[2], val1[3]), SPK::Color(val2[0], val2[1], val2[2], val2[3])); \
-    } while (0)
-#define DRAW_SPK_COMBO(label, get, set, ...) \
-    do { \
-        auto val = static_cast<int32_t>(obj->get()); \
-        const char* items[] = {__VA_ARGS__}; \
-        Changed |= ImGui::Combo(label, &val, items, sizeof(items) / sizeof(items[0])); \
-        obj->set(static_cast<decltype(obj->get())>(val)); \
-    } while (0)
-#define DRAW_SPK_COMBO_COMBO(label1, label2, get1, get2, set) \
-    do { \
-        auto val1 = static_cast<int32_t>(obj->get1()); \
-        auto val2 = static_cast<int32_t>(obj->get2()); \
-        Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
-        Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
-        obj->set(static_cast<decltype(obj->get1())>(val1), static_cast<decltype(obj->get2())>(val2)); \
-    } while (0)
-#define DRAW_SPK_COMBO_COMBO_COMBO(label1, label2, label3, get1, get2, get3, set) \
-    do { \
-        auto val1 = static_cast<int32_t>(obj->get1()); \
-        auto val2 = static_cast<int32_t>(obj->get2()); \
-        auto val3 = static_cast<int32_t>(obj->get3()); \
-        Changed |= ImGui::Combo(label1, &val1, items1, sizeof(items1) / sizeof(items1[0])); \
-        Changed |= ImGui::Combo(label2, &val2, items2, sizeof(items2) / sizeof(items2[0])); \
-        Changed |= ImGui::Combo(label3, &val3, items3, sizeof(items3) / sizeof(items3[0])); \
-        obj->set(static_cast<decltype(obj->get1())>(val1), static_cast<decltype(obj->get2())>(val2), static_cast<decltype(obj->get3())>(val3)); \
-    } while (0)
-#define DRAW_SPK_INTERPOLATOR_FIELD(name, get, set) \
-    DrawSparkNullableField( \
-        name, [obj] { return obj->get(); }, [obj] { obj->set(SPK::Ref<SPK::FloatInterpolator>()); }, \
-        [obj] { \
-            if (ImGui::Button("Add FloatDefaultInitializer")) { \
-                obj->set(SPK::FloatDefaultInitializer::create(0.0f)); \
-            } \
-            if (ImGui::Button("Add FloatRandomInitializer")) { \
-                obj->set(SPK::FloatRandomInitializer::create(0.0f, 0.0f)); \
-            } \
-            if (ImGui::Button("Add FloatSimpleInterpolator")) { \
-                obj->set(SPK::FloatSimpleInterpolator::create(0.0f, 0.0f)); \
-            } \
-            if (ImGui::Button("Add FloatRandomInterpolator")) { \
-                obj->set(SPK::FloatRandomInterpolator::create(0.0f, 0.0f, 0.0f, 0.0f)); \
-            } \
-            if (ImGui::Button("Add FloatGraphInterpolator")) { \
-                obj->set(SPK::FloatGraphInterpolator::create()); \
-            } \
-        })
-
-// Generic
-void ParticleEditor::Impl::DrawGenericSparkObject(const SPK::Ref<SPK::SPKObject>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (NamingMode) {
-        char buf[1000];
-        strcpy(buf, obj->getName().c_str());
-        if (ImGui::InputText("Name", buf, 1000)) {
-            Changed |= true;
-            obj->setName(buf);
-        }
+    if (placement_hex) {
+        ImGui::Text("Placement hex: %d, %d", placement_hex->x, placement_hex->y);
     }
-
-    /*auto shared = obj->isShared();
-    if (ImGui::Checkbox("Shared", &shared)) {
-        Changed |= true;
-        obj->setShared(shared);
-    }*/
-
-#define CHECK_AND_DRAW(cls) \
-    do { \
-        if (auto&& p = SPK::dynamicCast<cls>(obj)) { \
-            DrawSparkObject(p); \
-            return; \
-        } \
-    } while (0)
-    CHECK_AND_DRAW(SPK::System);
-    CHECK_AND_DRAW(SPK::Group);
-    CHECK_AND_DRAW(SPK::FloatDefaultInitializer);
-    CHECK_AND_DRAW(SPK::ColorDefaultInitializer);
-    CHECK_AND_DRAW(SPK::FloatRandomInitializer);
-    CHECK_AND_DRAW(SPK::ColorRandomInitializer);
-    CHECK_AND_DRAW(SPK::FloatSimpleInterpolator);
-    CHECK_AND_DRAW(SPK::ColorSimpleInterpolator);
-    CHECK_AND_DRAW(SPK::FloatRandomInterpolator);
-    CHECK_AND_DRAW(SPK::ColorRandomInterpolator);
-    CHECK_AND_DRAW(SPK::FloatGraphInterpolator);
-    CHECK_AND_DRAW(SPK::ColorGraphInterpolator);
-    CHECK_AND_DRAW(SPK::Point);
-    CHECK_AND_DRAW(SPK::Sphere);
-    CHECK_AND_DRAW(SPK::Plane);
-    CHECK_AND_DRAW(SPK::Ring);
-    CHECK_AND_DRAW(SPK::Box);
-    CHECK_AND_DRAW(SPK::Cylinder);
-    CHECK_AND_DRAW(SPK::StaticEmitter);
-    CHECK_AND_DRAW(SPK::RandomEmitter);
-    CHECK_AND_DRAW(SPK::StraightEmitter);
-    CHECK_AND_DRAW(SPK::SphericEmitter);
-    CHECK_AND_DRAW(SPK::NormalEmitter);
-    CHECK_AND_DRAW(SPK::Gravity);
-    CHECK_AND_DRAW(SPK::Friction);
-    CHECK_AND_DRAW(SPK::Obstacle);
-    CHECK_AND_DRAW(SPK::Rotator);
-    CHECK_AND_DRAW(SPK::Collider);
-    CHECK_AND_DRAW(SPK::Destroyer);
-    CHECK_AND_DRAW(SPK::Vortex);
-    CHECK_AND_DRAW(SPK::EmitterAttacher);
-    CHECK_AND_DRAW(SPK::PointMass);
-    CHECK_AND_DRAW(SPK::RandomForce);
-    CHECK_AND_DRAW(SPK::LinearForce);
-    CHECK_AND_DRAW(SPK::ActionSet);
-    CHECK_AND_DRAW(SPK::SpawnParticlesAction);
-    CHECK_AND_DRAW(SPK::FO::SparkQuadRenderer);
-#undef CHECK_AND_DRAW
-
-    FO_UNREACHABLE_PLACE();
-}
-
-// Core
-void ParticleEditor::Impl::DrawSparkTransformable(const SPK::Ref<SPK::Transformable>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    const auto is_custom_transform = !obj->getTransform().isLocalIdentity();
-
-    if (is_custom_transform) {
-        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 0.8f, 0.0f, 1.0f));
+    else if (!_mapper->GetCurMap()) {
+        ImGui::TextDisabled("Load a map to place the preview");
     }
-
-    if (ImGui::TreeNodeEx("Transform")) {
-        if (is_custom_transform) {
-            ImGui::PopStyleColor();
-        }
-
-        Changed |= ImGui::InputFloat3("Position", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[12])));
-        Changed |= ImGui::InputFloat3("UpAxis", const_cast<float32_t*>(std::addressof(obj->getTransform().getLocal()[4])));
-
-        if (ImGui::Button("Fix transform")) {
-            Changed |= true;
-            obj->getTransform().setPosition(obj->getTransform().getLocalPos());
-        }
-
-        if (is_custom_transform) {
-            if (ImGui::Button("Reset transform")) {
-                Changed |= true;
-                obj->getTransform().reset();
-            }
-        }
-
-        ImGui::TreePop();
+    else if (!_useMapCenter) {
+        ImGui::TextDisabled("Move the pointer over the map to capture a hex");
     }
     else {
-        if (is_custom_transform) {
-            ImGui::PopStyleColor();
-        }
+        ImGui::TextDisabled("The view center is outside the map");
+    }
+
+    ImGui::DragFloat("Scale", &_scale, 0.05f, 0.01f, 100.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    _scale = std::isfinite(_scale) ? std::clamp(_scale, 0.01f, 100.0f) : 1.0f;
+    ImGui::DragInt("Offset X", &_offset.x, 1.0f, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT, "%d", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::DragInt("Offset Y", &_offset.y, 1.0f, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT, "%d", ImGuiSliderFlags_AlwaysClamp);
+    _offset.x = std::clamp(_offset.x, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
+    _offset.y = std::clamp(_offset.y, -PARTICLE_PREVIEW_OFFSET_LIMIT, PARTICLE_PREVIEW_OFFSET_LIMIT);
+
+    const bool seeded_respawn_supported = _resourcePath.empty() || _nullableParticleFactory.as_ptr()->SupportsSeededRespawn(_resourcePath);
+    ImGui::BeginDisabled(!seeded_respawn_supported);
+    ImGui::InputInt("Seed", &_seed);
+    ImGui::EndDisabled();
+
+    if (!seeded_respawn_supported) {
+        ImGui::TextDisabled("The selected particle runtime does not support seeded respawn.");
+    }
+
+    ImGui::Checkbox("Prewarm", &_prewarm);
+    ImGui::TextDisabled("Scale, offset, seed and prewarm apply on Play or Restart.");
+
+    const bool can_play = !_resourcePath.empty() && placement_hex.has_value();
+    ImGui::BeginDisabled(!can_play);
+    if (ImGui::Button("Play")) {
+        Play(*placement_hex);
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!_mapSpriteValid);
+    if (ImGui::Button("Restart")) {
+        Play(_previewHex);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Remove")) {
+        Remove();
+    }
+    ImGui::EndDisabled();
+
+    if (_mapSpriteValid) {
+        ImGui::Text("Active at: %d, %d", _previewHex.x, _previewHex.y);
+    }
+
+    ImGui::End();
+
+    if (!_windowVisible) {
+        Remove();
     }
 }
 
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::System>& obj)
+void ParticlePreviewSubEditor::Play(mpos hex)
 {
     FO_STACK_TRACE_ENTRY();
 
-    DrawSparkTransformable(obj);
-
-    DrawSparkArray(
-        "Groups", true, [obj] { return obj->getNbGroups(); }, [obj](auto i) { return obj->getGroup(i); }, [obj](auto i) { obj->removeGroup(obj->getGroup(i)); },
-        [obj] {
-            if (ImGui::Button("Add group")) {
-                obj->addGroup(SPK::Group::create());
-            }
-            else if (ImGui::Button("Clone group")) {
-                obj->addGroup(SPK::Group::copy(obj->getGroup(obj->getNbGroups() - 1)));
-            }
-        });
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Group>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (auto&& renderer = obj->getRenderer()) {
-        bool val = renderer->isActive();
-        Changed |= ImGui::Checkbox("Active", &val);
-        renderer->setActive(val);
+    if (!_mapper->GetCurMap() || _resourcePath.empty()) {
+        return;
     }
 
-    DrawSparkTransformable(obj);
+    shared_ptr<Sprite> preview_sprite = _mapper->SprMngr.LoadSprite(_resourcePath, AtlasType::MapSprites);
 
-    DRAW_SPK_INT("Capacity", getCapacity, reallocate);
-    DRAW_SPK_FLOAT_FLOAT("Min life time", "Max life time", getMinLifeTime, getMaxLifeTime, setLifeTime);
-    DRAW_SPK_BOOL("Immortal", isImmortal, setImmortal);
-    DRAW_SPK_BOOL("Still", isStill, setStill);
-    DRAW_SPK_BOOL("Distance computation", isDistanceComputationEnabled, enableDistanceComputation);
-    DRAW_SPK_BOOL("Sorting", isSortingEnabled, enableSorting);
-    DRAW_SPK_FLOAT("Radius", getGraphicalRadius, setRadius);
-
-    DrawSparkNullableField(
-        "Color interpolator", [obj] { return obj->getColorInterpolator(); }, [obj] { obj->setColorInterpolator(SPK::Ref<SPK::ColorInterpolator>()); },
-        [obj] {
-            if (ImGui::Button("Add ColorDefaultInitializer")) {
-                obj->setColorInterpolator(SPK::ColorDefaultInitializer::create(SPK::Color()));
-            }
-            if (ImGui::Button("Add ColorRandomInitializer")) {
-                obj->setColorInterpolator(SPK::ColorRandomInitializer::create(SPK::Color(), SPK::Color()));
-            }
-            if (ImGui::Button("Add ColorSimpleInterpolator")) {
-                obj->setColorInterpolator(SPK::ColorSimpleInterpolator::create(SPK::Color(), SPK::Color()));
-            }
-            if (ImGui::Button("Add ColorRandomInterpolator")) {
-                obj->setColorInterpolator(SPK::ColorRandomInterpolator::create(SPK::Color(), SPK::Color(), SPK::Color(), SPK::Color()));
-            }
-            if (ImGui::Button("Add ColorGraphInterpolator")) {
-                obj->setColorInterpolator(SPK::ColorGraphInterpolator::create());
-            }
-        });
-
-    DRAW_SPK_INTERPOLATOR_FIELD("Scale interpolator", getScaleInterpolator, setScaleInterpolator);
-    DRAW_SPK_INTERPOLATOR_FIELD("Mass interpolator", getMassInterpolator, setMassInterpolator);
-    DRAW_SPK_INTERPOLATOR_FIELD("Angle interpolator", getAngleInterpolator, setAngleInterpolator);
-    DRAW_SPK_INTERPOLATOR_FIELD("Texture index interpolator", getTextureIndexInterpolator, setTextureIndexInterpolator);
-    DRAW_SPK_INTERPOLATOR_FIELD("Rotation speed interpolator", getRotationSpeedInterpolator, setRotationSpeedInterpolator);
-
-    DrawSparkArray(
-        "Emitters", false, [obj] { return obj->getNbEmitters(); }, [obj](auto i) { return obj->getEmitter(i); }, [obj](auto i) { obj->removeEmitter(obj->getEmitter(i)); },
-        [obj] {
-            if (ImGui::Button("Add StaticEmitter")) {
-                obj->addEmitter(SPK::StaticEmitter::create());
-            }
-            if (ImGui::Button("Add RandomEmitter")) {
-                obj->addEmitter(SPK::RandomEmitter::create());
-            }
-            if (ImGui::Button("Add StraightEmitter")) {
-                obj->addEmitter(SPK::StraightEmitter::create());
-            }
-            if (ImGui::Button("Add SphericEmitter")) {
-                obj->addEmitter(SPK::SphericEmitter::create());
-            }
-            if (ImGui::Button("Add NormalEmitter")) {
-                obj->addEmitter(SPK::NormalEmitter::create());
-            }
-        });
-
-    DrawSparkArray(
-        "Modifiers", false, [obj] { return obj->getNbModifiers(); }, [obj](auto i) { return obj->getModifier(i); }, [obj](auto i) { obj->removeModifier(obj->getModifier(i)); },
-        [this, obj] {
-            if (ImGui::Button("Add Gravity")) {
-                obj->addModifier(SPK::Gravity::create());
-            }
-            if (ImGui::Button("Add Friction")) {
-                obj->addModifier(SPK::Friction::create());
-            }
-            if (ImGui::Button("Add Obstacle")) {
-                obj->addModifier(SPK::Obstacle::create());
-            }
-            if (ImGui::Button("Add Rotator")) {
-                obj->addModifier(SPK::Rotator::create());
-            }
-            if (ImGui::Button("Add Collider")) {
-                obj->addModifier(SPK::Collider::create());
-            }
-            if (ImGui::Button("Add Destroyer")) {
-                obj->addModifier(SPK::Destroyer::create());
-            }
-            if (ImGui::Button("Add Vortex")) {
-                obj->addModifier(SPK::Vortex::create());
-            }
-            if (ImGui::Button("Add EmitterAttacher")) {
-                obj->addModifier(SPK::EmitterAttacher::create(obj, GetFirstSparkEmitter(obj)));
-            }
-            if (ImGui::Button("Add PointMass")) {
-                obj->addModifier(SPK::PointMass::create());
-            }
-            if (ImGui::Button("Add RandomForce")) {
-                obj->addModifier(SPK::RandomForce::create());
-            }
-            if (ImGui::Button("Add LinearForce")) {
-                obj->addModifier(SPK::LinearForce::create());
-            }
-        });
-
-    DrawSparkNullableField(
-        "Birth action", [obj] { return obj->getBirthAction(); }, [obj] { obj->setBirthAction(SPK::Ref<SPK::Action>()); }, [this, obj] { //
-            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->setBirthAction(action); }, obj);
-        });
-
-    DrawSparkNullableField(
-        "Death action", [obj] { return obj->getDeathAction(); }, [obj] { obj->setDeathAction(SPK::Ref<SPK::Action>()); }, [this, obj] { //
-            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->setDeathAction(action); }, obj);
-        });
-
-    DrawSparkNullableField(
-        "Renderer", [obj] { return obj->getRenderer(); }, [obj] { obj->setRenderer(SPK::Ref<SPK::Renderer>()); },
-        [obj] {
-            if (ImGui::Button("Add SparkQuadRenderer")) {
-                obj->setRenderer(SPK::FO::SparkQuadRenderer::Create());
-            }
-        });
-}
-
-// Interpolators
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatDefaultInitializer>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_FLOAT("Default value", getDefaultValue, setDefaultValue);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorDefaultInitializer>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_COLOR("Default color", getDefaultValue, setDefaultValue);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInitializer>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_FLOAT_FLOAT("Min value", "Max value", getMinValue, getMaxValue, setValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInitializer>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_COLOR_COLOR("Min color", "Max color", getMinValue, getMaxValue, setValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatSimpleInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_FLOAT_FLOAT("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorSimpleInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_COLOR_COLOR("Birth value", "Death value", getBirthValue, getDeathValue, setValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatRandomInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_FLOAT_FLOAT("Birth min value", "Birth max value", getMinBirthValue, getMaxBirthValue, setBirthValues);
-    DRAW_SPK_FLOAT_FLOAT("Death min value", "Death max value", getMinDeathValue, getMaxDeathValue, setDeathValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorRandomInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_COLOR_COLOR("Birth min color", "Birth max color", getMinBirthValue, getMaxBirthValue, setBirthValues);
-    DRAW_SPK_COLOR_COLOR("Death min color", "Death max color", getMinDeathValue, getMaxDeathValue, setDeathValues);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FloatGraphInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
-        int32_t delIndex = -1;
-        int32_t index = 0;
-
-        for (auto it = graph.begin(); it != graph.end(); ++it) {
-            using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
-            string name = strex("{}: {} => {}", entry->x, entry->y0, entry->y1);
-
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                ImGui::InputFloat("Start", &entry->y0);
-                ImGui::InputFloat("End", &entry->y1);
-
-                ImGui::TreePop();
-            }
-
-            if (RemovingMode) {
-                if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
-                    delIndex = index;
-                }
-            }
-
-            index++;
-        }
-
-        if (delIndex != -1) {
-            auto it = graph.begin();
-            for (int32_t i = 0; i < delIndex; i++) {
-                ++it;
-            }
-            graph.erase(it);
-        }
-
-        if (AddingMode) {
-            static float32_t x = 0.0f;
-            ImGui::InputFloat("Position", &x);
-            if (ImGui::Button("Insert entry")) {
-                obj->addEntry(x, 0.0f, 0.0f);
-            }
-        }
-
-        ImGui::TreePop();
+    if (!preview_sprite) {
+        _mapper->AddMess(strex("Particle preview load failed: {}", _resourcePath));
+        return;
     }
 
-    const char* items1[] = {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
-    const char* items2[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
-    DRAW_SPK_COMBO_COMBO("Interpolation type", "Interpolation param", getType, getInterpolatorParam, setType);
+    auto particle_sprite = preview_sprite.dyn_cast<ParticleSprite>();
 
-    DRAW_SPK_BOOL("Looping", isLoopingEnabled, enableLooping);
-    DRAW_SPK_FLOAT("Scale variation", getScaleXVariation, setScaleXVariation);
-    DRAW_SPK_FLOAT("Offset variation", getOffsetXVariation, setOffsetXVariation);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ColorGraphInterpolator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    auto&& graph = obj->getGraph();
-    if (ImGui::TreeNodeEx("Keys", 0, "Keys (%d)", numeric_cast<int32_t>(graph.size()))) {
-        int32_t delIndex = -1;
-        int32_t index = 0;
-
-        for (auto it = graph.begin(); it != graph.end(); ++it) {
-            using Entry = std::remove_const_t<std::remove_reference_t<decltype(*it)>>;
-            ptr<Entry> entry = const_cast<Entry*>(std::addressof(*it));
-            string name = strex("{}: ({}, {}, {}, {}) => ({}, {}, {}, {})", entry->x, entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a, entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a);
-
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(entry.get())).c_str(), ImGuiTreeNodeFlags_DefaultOpen, "%s", name.c_str())) {
-                int32_t c1[] = {entry->y0.r, entry->y0.g, entry->y0.b, entry->y0.a};
-                ImGui::InputInt4("Start", c1);
-                entry->y0.r = numeric_cast<unsigned char>(c1[0]);
-                entry->y0.g = numeric_cast<unsigned char>(c1[1]);
-                entry->y0.b = numeric_cast<unsigned char>(c1[2]);
-                entry->y0.a = numeric_cast<unsigned char>(c1[3]);
-                int32_t c2[] = {entry->y1.r, entry->y1.g, entry->y1.b, entry->y1.a};
-                ImGui::InputInt4("End", c2);
-                entry->y1.r = numeric_cast<unsigned char>(c2[0]);
-                entry->y1.g = numeric_cast<unsigned char>(c2[1]);
-                entry->y1.b = numeric_cast<unsigned char>(c2[2]);
-                entry->y1.a = numeric_cast<unsigned char>(c2[3]);
-
-                ImGui::TreePop();
-            }
-
-            if (RemovingMode) {
-                if (ImGui::Button(strex("Remove at {}", entry->x).c_str())) {
-                    delIndex = index;
-                }
-            }
-
-            index++;
-        }
-
-        if (delIndex != -1) {
-            auto it = graph.begin();
-            for (int32_t i = 0; i < delIndex; i++) {
-                ++it;
-            }
-            graph.erase(it);
-        }
-
-        if (AddingMode) {
-            static float32_t x = 0.0f;
-            ImGui::InputFloat("Position", &x);
-            if (ImGui::Button("Insert entry")) {
-                obj->addEntry(x, SPK::Color(), SPK::Color());
-            }
-        }
-
-        ImGui::TreePop();
+    if (!particle_sprite) {
+        _mapper->AddMess(strex("Particle preview resource is not a particle sprite: {}", _resourcePath));
+        return;
     }
 
-    const char* items1[] = {"INTERPOLATOR_LIFETIME", "INTERPOLATOR_AGE", "INTERPOLATOR_PARAM", "INTERPOLATOR_VELOCITY"};
-    const char* items2[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
-    DRAW_SPK_COMBO_COMBO("Interpolation type", "Interpolation param", getType, getInterpolatorParam, setType);
+    const bool seeded_respawn_supported = _nullableParticleFactory.as_ptr()->SupportsSeededRespawn(_resourcePath);
 
-    DRAW_SPK_BOOL("Looping", isLoopingEnabled, enableLooping);
-    DRAW_SPK_FLOAT("Scale variation", getScaleXVariation, setScaleXVariation);
-    DRAW_SPK_FLOAT("Offset variation", getOffsetXVariation, setOffsetXVariation);
-}
-
-// Zones
-void ParticleEditor::Impl::DrawSparkInnerZone(const char* name, const function<SPK::Ref<SPK::Zone>()>& get, const function<void(const SPK::Ref<SPK::Zone>&)>& set)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    if (ImGui::TreeNodeEx(name)) {
-        if (get()) {
-            DrawGenericSparkObject(get());
-
-            if (RemovingMode) {
-                if (ImGui::Button("Remove zone")) {
-                    Changed |= true;
-                    set(SPK::Ref<SPK::Zone>());
-                }
-            }
-        }
-        else {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("%s", "No zone");
-            ImGui::PopStyleColor();
-
-            if (AddingMode) {
-                if (ImGui::Button("Add Point normal zone")) {
-                    set(SPK::Point::create());
-                }
-                if (ImGui::Button("Add Sphere normal zone")) {
-                    set(SPK::Sphere::create());
-                }
-                if (ImGui::Button("Add Plane normal zone")) {
-                    set(SPK::Plane::create());
-                }
-                if (ImGui::Button("Add Ring normal zone")) {
-                    set(SPK::Ring::create());
-                }
-                if (ImGui::Button("Add Box normal zone")) {
-                    set(SPK::Box::create());
-                }
-                if (ImGui::Button("Add Cylinder normal zone")) {
-                    set(SPK::Cylinder::create());
-                }
-
-                Changed |= !!get();
-            }
-        }
-
-        ImGui::TreePop();
+    if (seeded_respawn_supported) {
+        particle_sprite->PlayWithSeed(_seed);
     }
-}
-
-void ParticleEditor::Impl::DrawSparkZone(const SPK::Ref<SPK::Zone>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkTransformable(obj);
-    DRAW_SPK_VECTOR("Position", getPosition, setPosition);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Point>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Sphere>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-    DRAW_SPK_FLOAT("Sphere Radius", getRadius, setRadius);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Plane>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-    DRAW_SPK_VECTOR("Plane Normal", getNormal, setNormal);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Ring>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-    DRAW_SPK_VECTOR("Ring Normal", getNormal, setNormal);
-    DRAW_SPK_FLOAT_FLOAT("Ring MinRadius", "Ring MaxRadius", getMinRadius, getMaxRadius, setRadius);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Box>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-    DRAW_SPK_VECTOR("Box Dimension", getDimensions, setDimensions);
-    DRAW_SPK_VECTOR_VECTOR("Box FrontAxis", "Box UpAxis", getZAxis, getYAxis, setAxis);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Cylinder>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZone(obj);
-    DRAW_SPK_FLOAT_FLOAT("Cylinder Height", "Cylinder Radius", getHeight, getRadius, setDimensions);
-    DRAW_SPK_VECTOR("Cylinder Axis", getAxis, setAxis);
-}
-
-// Emitters
-void ParticleEditor::Impl::DrawSparkEmitter(const SPK::Ref<SPK::Emitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkTransformable(obj);
-    DRAW_SPK_BOOL("Active", isActive, setActive);
-
-    auto min_tank = obj->getMinTank();
-    const auto min_changed = Changed |= ImGui::InputInt("MinTank", &min_tank);
-    auto max_tank = obj->getMaxTank();
-    Changed |= ImGui::InputInt("MaxTank", &max_tank);
-    if ((min_tank >= 0) != (max_tank >= 0)) {
-        if (min_changed) {
-            max_tank = min_tank;
-        }
-        else {
-            min_tank = max_tank;
-        }
-    }
-    obj->setTank(min_tank, max_tank);
-
-    DRAW_SPK_FLOAT("Flow", getFlow, setFlow);
-    DRAW_SPK_FLOAT_FLOAT("MinForce", "MaxForce", getForceMin, getForceMax, setForce);
-    DRAW_SPK_BOOL("UseFullZone", isFullZone, setUseFullZone);
-    DrawSparkInnerZone("Zone", [obj] { return obj->getZone() != SPK_DEFAULT_ZONE ? obj->getZone() : SPK::Ref<SPK::Zone>(); }, [obj](auto&& zone) { obj->setZone(zone); });
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StaticEmitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkEmitter(obj);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomEmitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkEmitter(obj);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::StraightEmitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkEmitter(obj);
-    DRAW_SPK_VECTOR("StraightEmitter Direction", getDirection, setDirection);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SphericEmitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkEmitter(obj);
-    DRAW_SPK_VECTOR("SphericEmitter Direction", getDirection, setDirection);
-    DRAW_SPK_FLOAT_FLOAT("SphericEmitter MinAngle", "SphericEmitter MaxAngle", getAngleMin, getAngleMax, setAngles);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::NormalEmitter>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkEmitter(obj);
-    DrawSparkInnerZone("NormalEmitter NormalZone", [obj] { return obj->getNormalZone(); }, [obj](auto&& zone) { obj->setNormalZone(zone); });
-    DRAW_SPK_BOOL("NormalEmitter InvertedNormals", isInverted, setInverted);
-}
-
-// Modifiers
-void ParticleEditor::Impl::DrawSparkModifier(const SPK::Ref<SPK::Modifier>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkTransformable(obj);
-    DRAW_SPK_BOOL("Active", isActive, setActive);
-    DRAW_SPK_BOOL("LocalToSystem", isLocalToSystem, setLocalToSystem);
-}
-
-void ParticleEditor::Impl::DrawSparkZonedModifier(const SPK::Ref<SPK::ZonedModifier>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-    DrawSparkInnerZone("Zone", [obj] { return obj->getZone(); }, [obj](auto&& zone) { obj->setZone(zone); });
-    DRAW_SPK_COMBO("ZoneTest", getZoneTest, setZoneTest, "ZONE_TEST_INSIDE", "ZONE_TEST_OUTSIDE", "ZONE_TEST_INTERSECT", "ZONE_TEST_ENTER", "ZONE_TEST_LEAVE", "ZONE_TEST_ALWAYS");
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Gravity>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-    DRAW_SPK_VECTOR("Gravity Value", getValue, setValue);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Friction>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-
-    auto value = obj->value;
-    Changed |= ImGui::InputFloat("Friction Value", &value);
-    obj->value = value;
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Obstacle>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZonedModifier(obj);
-    DRAW_SPK_FLOAT("Obstacle BouncingRatio", getBouncingRatio, setBouncingRatio);
-    DRAW_SPK_FLOAT("Obstacle Friction", getFriction, setFriction);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Rotator>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Collider>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-    DRAW_SPK_FLOAT("Collider Elasticity", getElasticity, setElasticity);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Destroyer>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZonedModifier(obj);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::Vortex>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-
-    DRAW_SPK_VECTOR("Vortex Position", getPosition, setPosition);
-    DRAW_SPK_VECTOR("Vortex Direction", getDirection, setDirection);
-    DRAW_SPK_FLOAT_BOOL("Vortex RotationSpeed", "Vortex RotationSpeedAngular", getRotationSpeed, isRotationSpeedAngular, setRotationSpeed);
-    DRAW_SPK_FLOAT_BOOL("Vortex AttractionSpeed", "Vortex AttractionSpeedLinear", getAttractionSpeed, isAttractionSpeedLinear, setAttractionSpeed);
-    DRAW_SPK_FLOAT("Vortex EyeRadius", getEyeRadius, setEyeRadius);
-    DRAW_SPK_BOOL("Vortex KillingParticles", isParticleKillingEnabled, enableParticleKilling);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::EmitterAttacher>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-
-    DrawSparkEmitterRef("EmitterAttacher BaseEmitter", obj->getEmitter(), [obj](const SPK::Ref<SPK::Emitter>& emitter) { obj->setEmitter(emitter); });
-    DRAW_SPK_BOOL_BOOL("EmitterAttacher OrientationEnabled", "EmitterAttacher RotationEnabled", isEmitterOrientationEnabled, isEmitterRotationEnabled, enableEmitterOrientation);
-    DrawSparkGroupRef("EmitterAttacher TargetGroup", obj->getTargetGroup(), [obj](const SPK::Ref<SPK::Group>& group) { obj->setTargetGroup(group); });
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::PointMass>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-
-    DRAW_SPK_VECTOR("PointMass Position", getPosition, setPosition);
-    DRAW_SPK_FLOAT("PointMass Mass", getMass, setMass);
-    DRAW_SPK_FLOAT("PointMass Offset", getOffset, setOffset);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::RandomForce>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkModifier(obj);
-    DRAW_SPK_VECTOR_VECTOR("RandomForce MinVector", "RandomForce MaxVector", getMinVector, getMaxVector, setVectors);
-    DRAW_SPK_FLOAT_FLOAT("RandomForce MinPeriod", "RandomForce MaxPeriod", getMinPeriod, getMaxPeriod, setPeriods);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::LinearForce>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkZonedModifier(obj);
-    DRAW_SPK_VECTOR("LinearForce Value", getValue, setValue);
-    DRAW_SPK_BOOL_BOOL("LinearForce Relative", "LinearForce RelativeSquaredSpeedUsed", isRelative, isSquaredSpeedUsed, setRelative);
-    const char* items1[] = {"PARAM_SCALE", "PARAM_MASS", "PARAM_ANGLE", "PARAM_TEXTURE_INDEX", "PARAM_ROTATION_SPEED"};
-    const char* items2[] = {"FACTOR_CONSTANT", "FACTOR_LINEAR", "FACTOR_QUADRATIC", "FACTOR_CUBIC"};
-    DRAW_SPK_COMBO_COMBO("LinearForce Param", "LinearForce Factor", getParam, getFactor, setParam);
-    DRAW_SPK_FLOAT("LinearForce Coef", getCoef, setCoef);
-}
-
-// Actions
-void ParticleEditor::Impl::DrawSparkAction(const SPK::Ref<SPK::Action>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DRAW_SPK_BOOL("Active", isActive, setActive);
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::ActionSet>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkAction(obj);
-
-    DrawSparkArray(
-        "Actions", false, [obj] { return obj->getNbActions(); }, [obj](auto i) { return obj->getAction(i); }, [obj](auto i) { obj->removeAction(obj->getAction(i)); }, [this, obj] { //
-            DrawSparkActionAddButtons([obj](const SPK::Ref<SPK::Action>& action) { obj->addAction(action); }, SPK::Ref<SPK::Group>());
-        });
-}
-
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::SpawnParticlesAction>& obj)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    DrawSparkAction(obj);
-
-    int32_t min_nb = numeric_cast<int32_t>(obj->getMinNb());
-    int32_t max_nb = numeric_cast<int32_t>(obj->getMaxNb());
-
-    bool nb_changed = ImGui::InputInt("SpawnParticlesAction MinNb", &min_nb);
-    nb_changed |= ImGui::InputInt("SpawnParticlesAction MaxNb", &max_nb);
-
-    if (nb_changed) {
-        min_nb = std::max(min_nb, 0);
-        max_nb = std::max(max_nb, 0);
-
-        Changed |= true;
-        obj->setNb(numeric_cast<unsigned int>(min_nb), numeric_cast<unsigned int>(max_nb));
+    else {
+        particle_sprite->Play({}, false, false);
     }
 
-    DrawSparkEmitterRef("SpawnParticlesAction BaseEmitter", obj->getEmitter(), [obj](const SPK::Ref<SPK::Emitter>& emitter) { obj->setEmitter(emitter); });
-    DrawSparkGroupRef("SpawnParticlesAction TargetGroup", obj->getTargetGroup(), [obj](const SPK::Ref<SPK::Group>& group) { obj->setTargetGroup(group); });
+    particle_sprite->GetParticle()->SetScale(_scale);
 
-    if (ImGui::Button("SpawnParticlesAction ResetPool")) {
-        Changed |= true;
-        obj->resetPool();
+    if (_prewarm) {
+        preview_sprite->Prewarm();
     }
+
+    Remove();
+
+    _previewSprite = std::move(preview_sprite);
+    _previewMap = _mapper->GetCurMap().as_ptr();
+    _previewHex = hex;
+    AttachMapSprite();
+    WriteLog("Mapper particle preview started: '{}' at ({}, {}), seeded respawn {}, seed {}, scale {}, prewarm {}", _resourcePath, hex.x, hex.y, seeded_respawn_supported, _seed, _scale, _prewarm);
 }
 
-// Renderers
-void ParticleEditor::Impl::DrawSparkObject(const SPK::Ref<SPK::FO::SparkQuadRenderer>& obj)
+void ParticlePreviewSubEditor::AttachMapSprite()
 {
     FO_STACK_TRACE_ENTRY();
 
-    DRAW_SPK_BOOL("Active", isActive, setActive);
+    FO_VERIFY_AND_THROW(_previewSprite, "Particle preview sprite is missing", _resourcePath);
+    FO_VERIFY_AND_THROW(_previewMap && _mapper->GetCurMap() == _previewMap, "Particle preview map is not current", _resourcePath, _previewHex);
+    FO_VERIFY_AND_THROW(!_previewMapSprite, "Particle preview already has a map sprite", _resourcePath, _previewHex);
 
-    bool alpha_test = obj->isRenderingOptionEnabled(SPK::RENDERING_OPTION_ALPHA_TEST);
-    Changed |= ImGui::Checkbox("AlphaTest", &alpha_test);
-    obj->enableRenderingOption(SPK::RENDERING_OPTION_ALPHA_TEST, alpha_test);
+    auto preview_map = _previewMap.as_ptr();
+    _mapSpriteValid = false;
+    _previewMapSprite = preview_map->AddMapSprite(_previewSprite.as_ptr(), _previewHex, DrawOrderType::Particles, 0, _offset, nullptr, nullptr, &_mapSpriteValid);
 
-    bool depth_write = obj->isRenderingOptionEnabled(SPK::RENDERING_OPTION_DEPTH_WRITE);
-    Changed |= ImGui::Checkbox("DepthWrite", &depth_write);
-    obj->enableRenderingOption(SPK::RENDERING_OPTION_DEPTH_WRITE, depth_write);
+    FO_VERIFY_AND_THROW(_mapSpriteValid, "Particle preview map sprite was not activated", _resourcePath, _previewHex);
+}
 
-    DRAW_SPK_INT_INT("DrawWidth", "DrawHeight", GetDrawWidth, GetDrawHeight, SetDrawSize);
+void ParticlePreviewSubEditor::Remove()
+{
+    FO_STACK_TRACE_ENTRY();
 
-    DRAW_SPK_FLOAT("AlphaThreshold", isActive, setActive);
+    FO_VERIFY_AND_THROW(!_mapSpriteValid || _previewMapSprite, "Valid particle preview is missing its map sprite", _resourcePath);
 
-    // Effect
-    {
-        const string_view effect_name = obj->GetEffectName();
+    if (_mapSpriteValid) {
+        _previewMapSprite->Invalidate();
+    }
 
-        int32_t index = -1;
+    _mapSpriteValid = false;
+    _previewMapSprite.reset();
+    _previewMap.reset();
+    _previewSprite.reset();
+}
 
-        if (const auto it = std::ranges::find(AllEffects, effect_name); it != AllEffects.end()) {
-            index = numeric_cast<int32_t>(std::distance(AllEffects.begin(), it));
-        }
+void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
+{
+    FO_STACK_TRACE_ENTRY();
 
-        const string preview = index >= 0 ? AllEffects[numeric_cast<size_t>(index)] : string(effect_name);
+    const bool resources_changed = _mapper->Resources.ReindexDataSources();
 
-        if (ImGui::BeginCombo("Effect", preview.c_str())) {
-            for (size_t i = 0; i < AllEffects.size(); i++) {
-                const bool selected = index == numeric_cast<int32_t>(i);
+    if (_resourcesIndexed && !force_reload && !resources_changed) {
+        return;
+    }
 
-                if (ImGui::Selectable(AllEffects[i].c_str(), selected)) {
-                    Changed |= true;
-                    obj->SetEffectName(AllEffects[i]);
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
+    vector<string> resource_paths;
+    unordered_set<string> resource_dirs;
+    unordered_map<string, pair<size_t, uint64_t>> resource_index;
 
-            ImGui::EndCombo();
+    for (const string& particle_extension : _extensions) {
+        const FileCollection particle_files = _mapper->Resources.FilterFiles(particle_extension);
+        resource_paths.reserve(resource_paths.size() + particle_files.GetFilesCount());
+
+        for (const auto& particle_file : particle_files) {
+            const string particle_path {particle_file.GetPath()};
+            resource_paths.emplace_back(particle_path);
+            resource_dirs.emplace(strex(particle_path).extract_dir().format_path().str());
         }
     }
 
-    // Texture
-    {
-        const string_view texture_name = obj->GetTextureName();
+    std::ranges::sort(resource_paths);
+    resource_paths.erase(std::ranges::unique(resource_paths).begin(), resource_paths.end());
 
-        int32_t index = -1;
+    for (const string& resource_dir : resource_dirs) {
+        const FileCollection dependency_files = _mapper->Resources.FilterFiles("", resource_dir);
 
-        if (const auto it = std::ranges::find(AllTextures, texture_name); it != AllTextures.end()) {
-            index = numeric_cast<int32_t>(std::distance(AllTextures.begin(), it));
-        }
-
-        const string preview = index >= 0 ? AllTextures[numeric_cast<size_t>(index)] : string(texture_name);
-
-        if (ImGui::BeginCombo("Texture", preview.c_str())) {
-            for (size_t i = 0; i < AllTextures.size(); i++) {
-                const bool selected = index == numeric_cast<int32_t>(i);
-
-                if (ImGui::Selectable(AllTextures[i].c_str(), selected)) {
-                    Changed |= true;
-                    obj->SetTextureName(AllTextures[i]);
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-
-            ImGui::EndCombo();
+        for (const auto& dependency_file : dependency_files) {
+            resource_index.insert_or_assign(string(dependency_file.GetPath()), pair {dependency_file.GetSize(), dependency_file.GetWriteTime()});
         }
     }
 
-    DRAW_SPK_FLOAT_FLOAT("ScaleX", "ScaleY", getScaleX, getScaleY, setScale);
-    DRAW_SPK_INT_INT("AtlasDimensionX", "AtlasDimensionY", getAtlasDimensionX, getAtlasDimensionY, setAtlasDimensions);
+    unordered_set<string> changed_paths;
+    size_t added_count = 0;
+    size_t modified_count = 0;
+    size_t removed_count = 0;
 
-    const char* items1[] = {"LOOK_CAMERA_PLANE", "LOOK_CAMERA_POINT", "LOOK_AXIS", "LOOK_POINT"};
-    const char* items2[] = {"UP_CAMERA", "UP_DIRECTION", "UP_AXIS", "UP_POINT"};
-    const char* items3[] = {"LOCK_LOOK", "LOCK_UP"};
-    DRAW_SPK_COMBO_COMBO_COMBO("LookOrientation", "UpOrientation", "LockedAxis", getLookOrientation, getUpOrientation, getLockedAxis, setOrientation);
+    for (const auto& [path, stamp] : resource_index) {
+        if (const auto it = _resourceIndex.find(path); it == _resourceIndex.end()) {
+            changed_paths.emplace(path);
+            added_count++;
+        }
+        else if (it->second != stamp) {
+            changed_paths.emplace(path);
+            modified_count++;
+        }
+    }
 
-    float32_t look[3] = {obj->lookVector.x, obj->lookVector.y, obj->lookVector.z};
-    Changed |= ImGui::InputFloat3("LookVector", look);
-    obj->lookVector = SPK::Vector3D(look[0], look[1], look[2]);
+    for (const auto& [path, stamp] : _resourceIndex) {
+        ignore_unused(stamp);
 
-    float32_t up[3] = {obj->upVector.x, obj->upVector.y, obj->upVector.z};
-    Changed |= ImGui::InputFloat3("UpVector", up);
-    obj->upVector = SPK::Vector3D(up[0], up[1], up[2]);
+        if (!resource_index.contains(path)) {
+            changed_paths.emplace(path);
+            removed_count++;
+        }
+    }
+
+    if (force_reload) {
+        for (const string& path : resource_index | std::views::keys) {
+            changed_paths.emplace(path);
+        }
+    }
+
+    for (const string& changed_path : changed_paths) {
+        _mapper->SprMngr.InvalidateSpriteResource(changed_path);
+    }
+
+    const bool had_index = _resourcesIndexed;
+    const bool preview_was_active = static_cast<bool>(_previewSprite);
+    const mpos preview_hex = _previewHex;
+    bool selected_resource_changed = force_reload;
+
+    if (!_resourcePath.empty() && !selected_resource_changed) {
+        const string selected_dir = strex(_resourcePath).extract_dir().format_path().str();
+        const string selected_dir_prefix = selected_dir.empty() ? string() : strex("{}/", selected_dir).str();
+
+        selected_resource_changed = std::ranges::any_of(changed_paths, [&](const string& changed_path) { return changed_path == _resourcePath || (!selected_dir_prefix.empty() && changed_path.starts_with(selected_dir_prefix)); });
+    }
+
+    _resourcePaths = std::move(resource_paths);
+    _resourceIndex = std::move(resource_index);
+    _resourcesIndexed = true;
+
+    const bool selected_resource_exists = _resourcePath.empty() || std::ranges::find(_resourcePaths, _resourcePath) != _resourcePaths.end();
+
+    if (!selected_resource_exists) {
+        Remove();
+        _mapper->AddMess(strex("Particle preview resource removed: {}", _resourcePath));
+        _resourcePath.clear();
+    }
+    else if (had_index && preview_was_active && selected_resource_changed) {
+        Remove();
+        Play(preview_hex);
+    }
+
+    for (const string& particle_path : _resourcePaths) {
+        _mapper->SprMngr.ForgetFailedSprite(particle_path);
+    }
+
+    if (had_index && (added_count != 0 || modified_count != 0 || removed_count != 0)) {
+        WriteLog("Mapper particle resources reindexed: {} added, {} modified, {} removed", added_count, modified_count, removed_count);
+    }
 }
 
-// Helpers
-void ParticleEditor::Impl::DrawSparkGroupRef(const char* label, const SPK::Ref<SPK::Group>& current, const function<void(const SPK::Ref<SPK::Group>&)>& set)
+auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<SPK::Ref<SPK::Group>> refs {SPK::Ref<SPK::Group>()};
-    vector<string> names {"None"};
-
-    auto groups = GetSparkGroups();
-
-    for (size_t i = 0; i < groups.size(); i++) {
-        refs.emplace_back(groups[i]);
-        names.emplace_back(GetSparkObjectLabel(groups[i], i));
+    if (!_mapper->GetCurMap()) {
+        return std::nullopt;
     }
 
-    if (current && std::ranges::find(refs, current) == refs.end()) {
-        refs.emplace_back(current);
-        names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
+    if (!_useMapCenter) {
+        return _mouseHex;
     }
 
-    int32_t index = 0;
+    auto cur_map = _mapper->GetCurMap().as_ptr();
+    const isize32 screen_size = cur_map->GetScreenSize();
+    const ipos32 screen_center {screen_size.width / 2, screen_size.height / 2};
+    mpos center_hex;
 
-    for (size_t i = 0; i < refs.size(); i++) {
-        if (refs[i] == current) {
-            index = numeric_cast<int32_t>(i);
-            break;
-        }
+    if (!cur_map->GetHexAtScreen(screen_center, center_hex, nullptr)) {
+        return std::nullopt;
     }
 
-    if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
-        for (size_t i = 0; i < names.size(); i++) {
-            const bool selected = index == numeric_cast<int32_t>(i);
-
-            if (ImGui::Selectable(names[i].c_str(), selected)) {
-                Changed |= true;
-                set(refs[i]);
-            }
-            if (selected) {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-
-        ImGui::EndCombo();
-    }
+    return center_hex;
 }
 
-void ParticleEditor::Impl::DrawSparkEmitterRef(const char* label, const SPK::Ref<SPK::Emitter>& current, const function<void(const SPK::Ref<SPK::Emitter>&)>& set)
+ParticleEditorManager::ParticleEditorManager(ptr<MapperEngine> mapper)
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<SPK::Ref<SPK::Emitter>> refs {SPK::Ref<SPK::Emitter>()};
-    vector<string> names {"None"};
-
-    auto groups = GetSparkGroups();
-
-    for (size_t group_index = 0; group_index < groups.size(); group_index++) {
-        auto&& group = groups[group_index];
-        const auto group_name = GetSparkObjectLabel(group, group_index);
-
-        for (size_t emitter_index = 0; emitter_index < group->getNbEmitters(); emitter_index++) {
-            auto&& emitter = group->getEmitter(emitter_index);
-
-            refs.emplace_back(emitter);
-            names.emplace_back(strex("{} / {}", group_name, GetSparkObjectLabel(emitter, emitter_index)));
-        }
-    }
-
-    if (current && std::ranges::find(refs, current) == refs.end()) {
-        refs.emplace_back(current);
-        names.emplace_back(strex("{} (not in edited system)", GetSparkObjectLabel(current, names.size() - 1)));
-    }
-
-    int32_t index = 0;
-
-    for (size_t i = 0; i < refs.size(); i++) {
-        if (refs[i] == current) {
-            index = numeric_cast<int32_t>(i);
-            break;
-        }
-    }
-
-    if (ImGui::BeginCombo(label, names[numeric_cast<size_t>(index)].c_str())) {
-        for (size_t i = 0; i < names.size(); i++) {
-            const bool selected = index == numeric_cast<int32_t>(i);
-
-            if (ImGui::Selectable(names[i].c_str(), selected)) {
-                Changed |= true;
-                set(refs[i]);
-            }
-            if (selected) {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-
-        ImGui::EndCombo();
-    }
+#if FO_SPARK_PARTICLES
+    _subEditors.emplace_back(CreateSparkParticleSubEditor(mapper));
+#endif
+    _subEditors.emplace_back(SafeAlloc::MakeUnique<ParticlePreviewSubEditor>(mapper));
 }
 
-void ParticleEditor::Impl::DrawSparkActionAddButtons(const function<void(const SPK::Ref<SPK::Action>&)>& add, const SPK::Ref<SPK::Group>& preferred_group)
+ParticleEditorManager::~ParticleEditorManager()
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void ParticleEditorManager::Initialize()
 {
     FO_STACK_TRACE_ENTRY();
 
-    const auto target_group = GetSparkFallbackGroup(preferred_group);
-
-    if (ImGui::Button("Add SpawnParticlesAction")) {
-        add(SPK::SpawnParticlesAction::create(1, 1, target_group, GetFirstSparkEmitter(target_group)));
-    }
-    if (ImGui::Button("Add ActionSet")) {
-        add(SPK::ActionSet::create());
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->Initialize();
     }
 }
 
-auto ParticleEditor::Impl::GetEditedSparkSystem() -> SPK::Ref<SPK::System>
+void ParticleEditorManager::Shutdown()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!Particle.has_value()) {
-        return {};
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->Shutdown();
     }
-
-    auto base_system = Particle->GetBaseSystem();
-
-    return base_system ? SPK::Ref<SPK::System>(base_system.get()) : SPK::Ref<SPK::System>();
 }
 
-auto ParticleEditor::Impl::GetSparkGroups() -> vector<SPK::Ref<SPK::Group>>
+void ParticleEditorManager::ResetLayout()
 {
     FO_STACK_TRACE_ENTRY();
 
-    vector<SPK::Ref<SPK::Group>> groups;
-
-    if (auto&& system = GetEditedSparkSystem()) {
-        groups.reserve(system->getNbGroups());
-
-        for (size_t i = 0; i < system->getNbGroups(); i++) {
-            groups.emplace_back(system->getGroup(i));
-        }
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->ResetLayout();
     }
-
-    return groups;
 }
 
-auto ParticleEditor::Impl::GetSparkFallbackGroup(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Group>
+void ParticleEditorManager::OnFocusGained()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (preferred_group) {
-        return preferred_group;
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->OnFocusGained();
     }
-
-    const auto groups = GetSparkGroups();
-    return !groups.empty() ? groups.front() : SPK::Ref<SPK::Group>();
 }
 
-auto ParticleEditor::Impl::GetFirstSparkEmitter(const SPK::Ref<SPK::Group>& preferred_group) -> SPK::Ref<SPK::Emitter>
+void ParticleEditorManager::OnCurrentMapChanging(nptr<MapView> next_map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (preferred_group && preferred_group->getNbEmitters() != 0) {
-        return preferred_group->getEmitter(0);
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->OnCurrentMapChanging(next_map);
     }
-
-    for (auto&& group : GetSparkGroups()) {
-        if (group->getNbEmitters() != 0) {
-            return group->getEmitter(0);
-        }
-    }
-
-    return {};
 }
 
-auto ParticleEditor::Impl::GetSparkObjectLabel(const SPK::Ref<SPK::SPKObject>& obj, size_t index) -> string
+void ParticleEditorManager::OnMapUnloading(ptr<MapView> map)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (!obj) {
-        return "None";
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->OnMapUnloading(map);
     }
-
-    return strex("{} ({})", obj->getName().empty() ? strex("{}", index + 1) : string(obj->getName()), string(obj->getClassName()));
 }
 
-void ParticleEditor::Impl::DrawSparkArray(const char* label, bool opened, const function<size_t()>& get_size, const function<const SPK::Ref<SPK::SPKObject>(size_t)>& get, const function<void(size_t)>& del, const function<void()>& add_draw)
+void ParticleEditorManager::DrawMenuItems()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::TreeNodeEx(label, opened ? ImGuiTreeNodeFlags_DefaultOpen : 0, "%s (%d)", label, numeric_cast<int32_t>(get_size()))) {
-        int32_t delIndex = -1;
-
-        for (size_t i = 0; i < get_size(); i++) {
-            auto&& obj = get(i);
-
-            const string name = strex("{} ({})", obj->getName().empty() ? strex("{}", i + 1) : string(obj->getName()), string(obj->getClassName()));
-
-            if (ImGui::TreeNodeEx(strex("{}", cast_to_void(obj.get())).c_str(), 0, "%s", name.c_str())) {
-                DrawGenericSparkObject(obj);
-                ImGui::TreePop();
-            }
-
-            if (RemovingMode) {
-                if (ImGui::Button(strex("Remove {}", name).c_str())) {
-                    delIndex = numeric_cast<int32_t>(i);
-                }
-            }
-        }
-
-        if (delIndex != -1) {
-            del(delIndex);
-        }
-
-        if (AddingMode) {
-            const auto prev_size = get_size();
-            add_draw();
-            Changed |= (get_size() != prev_size);
-        }
-
-        ImGui::TreePop();
+    for (auto& sub_editor : _subEditors) {
+        sub_editor->DrawMenuItem();
     }
 }
 
-void ParticleEditor::Impl::DrawSparkNullableField(const char* label, const function<SPK::Ref<SPK::SPKObject>()>& get, const function<void()>& del, const function<void()>& add_draw)
+void ParticleEditorManager::DrawWindows()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (ImGui::TreeNodeEx(label, 0, "%s (%s)", label, get() ? get()->getClassName().c_str() : "Not assigned")) {
-        if (get()) {
-            DrawGenericSparkObject(get());
-
-            if (RemovingMode) {
-                if (ImGui::Button("Remove")) {
-                    Changed |= true;
-                    del();
-                }
-            }
+    for (auto& sub_editor : _subEditors) {
+        try {
+            sub_editor->DrawWindows();
         }
-        else {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-            ImGui::Text("No %s", label);
-            ImGui::PopStyleColor();
-
-            if (AddingMode) {
-                add_draw();
-                Changed |= !!get();
-            }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
-
-        ImGui::TreePop();
     }
 }
-
-#undef DRAW_SPK_FLOAT
-#undef DRAW_SPK_BOOL
-#undef DRAW_SPK_BOOL_BOOL
-#undef DRAW_SPK_FLOAT_FLOAT
-#undef DRAW_SPK_INT
-#undef DRAW_SPK_INT_INT
-#undef DRAW_SPK_FLOAT_BOOL
-#undef DRAW_SPK_VECTOR
-#undef DRAW_SPK_VECTOR_VECTOR
-#undef DRAW_SPK_COLOR
-#undef DRAW_SPK_COLOR_COLOR
-#undef DRAW_SPK_COMBO
-#undef DRAW_SPK_COMBO_COMBO
-#undef DRAW_SPK_COMBO_COMBO_COMBO
-#undef DRAW_SPK_INTERPOLATOR_FIELD
 
 FO_END_NAMESPACE

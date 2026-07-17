@@ -487,15 +487,45 @@ if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
     endif()
 endif()
 
-# Spark
-StatusMessage("+ Spark")
-SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
-SetCacheValues(SPARK_STATIC_BUILD ON)
-AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
-AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
-AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
-DisableLibWarnings(SPARK_Core PugiXML)
+# SPARK particle simulation runtime and XML/binary serializer.
+if(FO_SPARK_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ SPARK particle runtime")
+    SetValue(FO_SPARK_DIR "${FO_ENGINE_ROOT}/ThirdParty/spark")
+    SetCacheValues(SPARK_STATIC_BUILD ON)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/engine/core" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddSubdirectory("${FO_SPARK_DIR}/projects/external/pugi" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
+    AddIncludeDirectories("${FO_SPARK_DIR}/spark/include" "${FO_SPARK_DIR}/thirdparty/PugiXML")
+    DisableLibWarnings(SPARK_Core PugiXML)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS SPARK_Core PugiXML)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS SPARK_Core PugiXML)
+    endif()
+endif()
+
+# Effekseer CPU simulation runtime. FOnline owns geometry generation and all
+# graphics backends, so RendererCommon and the upstream renderer libraries are
+# deliberately absent from the vendored tree and build graph.
+if(FO_EFFEKSEER_PARTICLES AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
+    StatusMessage("+ Effekseer particle runtime")
+    SetValue(FO_EFFEKSEER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Effekseer")
+    include("${FO_EFFEKSEER_DIR}/FOnline.cmake")
+    find_package(Threads REQUIRED)
+    AddStaticThirdPartyLibrary(EffekseerCore
+        SOURCE_LIST FO_EFFEKSEER_SOURCE
+        INCLUDE_DIRS "${FO_EFFEKSEER_DIR}/Dev/Cpp/Effekseer"
+        LINK_LIBS Threads::Threads)
+    target_compile_features(EffekseerCore PUBLIC cxx_std_17)
+
+    if(FO_BUILD_CLIENT_LIB)
+        AppendList(FO_CLIENT_LIBS EffekseerCore)
+    endif()
+    if(FO_BUILD_BAKER_LIB)
+        AppendList(FO_BAKER_LIBS EffekseerCore)
+    endif()
+endif()
 
 # glslang & SPIRV-Cross
 if(FO_BUILD_BAKER_LIB)

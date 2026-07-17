@@ -352,12 +352,35 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
 
 A `Sprite` may override `IsDirectDraw()` to render its own geometry **straight into the current scene render target** (with the shared depth buffer) instead of being batched as an atlas quad. Because such a sprite uses its own shader (not the sprite batch's), drawing it at its interleaved draw-order position would split the sprite batch around every one. Instead `SpriteManager::DrawSprites` **collects** direct-draw sprites during the batch loop and replays them in a single `Sprite::DrawInScene(scene_pos, depth)` pass (a `const` method, like `FillData`) *after* the whole sprite batch is flushed — so the batch stays intact. Opaque sprites write depth (`DepthFunc = Always`, `DepthWrite = True`) and direct-draw transparents only test it (`LessEqual`, `DepthWrite = False`), so scene occlusion comes from the shared depth buffer. Direct-draw anchors use the projected `hex + HexOffset + SpriteOffset/TweakOffset + Elevation` map position, deliberately excluding viewport-only `field.Offset`, and keep only a single computed anchor-bias step instead of inheriting their late draw order; otherwise `DrawOrderType::Particles` would become depth-closer than critters/scenery before the particle geometry itself is even considered.
 
-`ParticleSprite` supports **two render types**, chosen per particle system by the `SparkQuadRenderer` `draw in scene` `.fopts` attribute (`ATTRIBUTE_TYPE_BOOL`, default false — alongside `draw size`):
+`ParticleSprite` supports **two render types**, chosen per particle system by the `SparkQuadRenderer` `draw in scene` `.spark` attribute (`ATTRIBUTE_TYPE_BOOL`, default false — alongside `draw size`):
 
-- **Atlas type** (default, `draw in scene` absent/false): `Update()` renders the Spark system to an offscreen atlas (`ParticleSpriteFactory::DrawParticleToAtlas`); the sprite is then drawn as a flat batched quad. `IsDirectDraw()==false`.
-- **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`, `Update()` is a no-op, and `DrawInScene` renders the system directly into `_rtMap` through the map view-proj so particles depth-sort against scene geometry instead of being baked to a flat sprite.
+- **Atlas type** (default, `draw in scene` absent/false): `Update()` advances simulation independently, then refreshes the offscreen atlas (`ParticleSpriteFactory::DrawParticleToAtlas`) at the configured animation cadence; the sprite is drawn as a flat batched quad. `IsDirectDraw()==false`.
+- **Scene type** (`draw in scene = true`): `IsDirectDraw()==true`; `Update()` advances simulation even when the sprite is not visible, and `DrawInScene` refreshes the current scene transform without advancing frame time before rendering directly into `_rtMap` through the map view-proj. Particles therefore keep their lifetime offscreen and depth-sort against scene geometry instead of being baked to a flat sprite.
 
-`ParticleSprite::Play()` respawns its `ParticleSystem` before starting updates, so one-shot SPARK systems can be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+`ParticleSprite::Play()` respawns its backend-neutral `ParticleSystem` before starting updates. The facade delegates through `ParticleRuntimeSystem`; renderer-facing code contains no SPARK/Effekseer dispatch or unnamed default branch. One-shot SPARK systems can therefore be replayed after `Game.PlaySprite(...)` or after `AnimFree`/`AnimLoad` cache reuse.
+
+The same sprite and direct-scene paths also host the core-only Effekseer
+runtime. Effekseer renderer interfaces are used as evaluated-data callbacks,
+not graphics backends: FOnline copies callback values, builds its own
+`RenderDrawBuffer`, selects its own `RenderEffect`, and submits through the
+normal renderer abstraction. This keeps Mapper and game preview on one path and
+requires no Direct3D/OpenGL/Vulkan/SDL GPU code from Effekseer.
+
+The initial callback adapter accepts one Default-material color texture. Its
+requested Linear/Nearest mode must match the loaded FOnline atlas texture, and
+the sampler must request `Clamp`; `Repeat` and `Mirror` are rejected regardless
+of the UV values. Every callback UV rectangle must also stay inside `[0,1]`
+instead of silently sampling neighboring atlas content. Per-effect
+sub-rectangle wrapping is a separate renderer capability.
+
+Effekseer sprites always use the scene type. Direct-scene prewarm is queued
+until the first `DrawInScene` after `Setup` has supplied the current map
+transform. `ParticleSprite::Update()` does not advance the system while that
+request is pending; Effekseer then advances exactly one second and resets the
+wall-clock update origin, avoiding a second advance for time spent offscreen
+before the first draw. `RefreshRenderTransform()` then performs only an
+Effekseer zero-delta transform refresh before drawing; it never enters the
+forced first-tick path used by ordinary scheduled simulation.
 
 The flag flows `SparkQuadRenderer::GetDrawInScene()` → `ParticleSystem::GetDrawInScene()` → `ParticleSpriteFactory::LoadSprite`. Model-bone particles (`ModelInstance::RunParticle`) are a separate path and ignore this attribute.
 

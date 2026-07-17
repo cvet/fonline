@@ -139,7 +139,7 @@ notes.
 
 ## Current test inventory
 
-Current count: **81** `Test_*.cpp` suites.
+Current count: **85** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -216,8 +216,10 @@ Current count: **81** `Test_*.cpp` suites.
 
 ### Scripting and script-visible APIs
 
+- `Source/Tests/Test_AngelScriptAlignment.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -231,8 +233,10 @@ Current count: **81** `Test_*.cpp` suites.
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
 - `Source/Tests/Test_MapBaker.cpp`
+- `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
+- `Source/Tests/Test_ParticleBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
