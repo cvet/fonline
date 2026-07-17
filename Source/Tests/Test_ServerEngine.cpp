@@ -1686,6 +1686,33 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
         CHECK_FALSE(IsEntityAccessValid(map)); // holding descendants does not cover the ancestor
     }
     ctx.Release();
+
+    // Login begins with only the Player covered. PlayerInit switches to the restored critter inside
+    // its nested script context; SwitchPlayerCritter must retain the new pair in the outer context
+    // before the next OnPlayerLogin subscriber reads the critter inventory.
+    {
+        vector<nptr<ServerEntity>> attached_pair {player_a_holder, cr_a};
+        ctx.SyncEntities(attached_pair);
+        cr_a->DetachPlayer();
+    }
+    ctx.Release();
+
+    ctx.SyncEntity(player_a_holder);
+    server->RunScriptContext([&] {
+        auto attach_ctx = server->GetCurrentSyncContext();
+        REQUIRE(static_cast<bool>(attach_ctx));
+        vector<nptr<ServerEntity>> switch_scope {player_a_holder, cr_a, map, loc};
+        attach_ctx->SyncEntities(switch_scope);
+        server->SwitchPlayerCritter(player_a_holder, cr_a);
+    });
+
+    REQUIRE(player_a_holder->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(cr_a->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK_FALSE(item_a->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(ctx.ValidateAccess(cr_a));
+    CHECK(IsEntityAccessValid(cr_a));
+    CHECK(IsEntityAccessValid(item_a));
+    ctx.Release();
 }
 
 // ============================================================================
