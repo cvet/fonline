@@ -224,6 +224,7 @@ public:
 
     [[nodiscard]] static auto GetCurrentOnThisThread() noexcept -> nptr<SyncContext>;
     [[nodiscard]] static auto GetOutermostOnThisThread() noexcept -> nptr<SyncContext>;
+    static void RetainEntityPairInCurrentChain(nptr<ServerEntity> first, nptr<ServerEntity> second);
 
     [[nodiscard]] auto ValidateAccess(nptr<const ServerEntity> entity) const noexcept -> bool;
     [[nodiscard]] auto IsEmpty() const noexcept -> bool { return _heldLocks.empty() && _singletonLocks.empty(); }
@@ -272,8 +273,8 @@ private:
     // destroyed by the same thread that holds its lock (e.g. `Game.DestroyCritter(cr)` from inside
     // a `Sync::Lock(cr)` block) leaves a dangling lock borrow here; the next SyncEntities call
     // would `ReleaseLocks` and crash. Keeping the owner alive via refcount until `ReleaseLocks`
-    // runs guarantees the EntityLock storage outlives the held-lock list. May be null for the
-    // engine singleton lock (the engine is not a ServerEntity).
+    // runs guarantees the EntityLock storage outlives the held-lock list. Entries are never null:
+    // the engine singleton lock lives in the separate `_singletonLocks` bucket, not here.
     vector<refcount_ptr<ServerEntity>> _heldLockOwners {};
     // Hierarchical intention marks: the SEPARATE-lock ancestors of every cover owner (a critter's map
     // and location, an item's map/location, …). Registered as descendant-holds so no other thread can

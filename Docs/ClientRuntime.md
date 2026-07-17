@@ -27,6 +27,7 @@ Read this page together with:
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
+- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`
@@ -118,6 +119,8 @@ Primary view types:
 - custom client entities — created by `CreateCustomEntityView()` when a synced custom entity entry arrives.
 
 `ClientEngine::RegisterEntity()` and `ClientEngine::UnregisterEntity()` maintain the id-to-entity lookup used by network handlers and scripts. `Source/Tests/Test_ClientEngine.cpp` validates that client entities can be registered and removed from the lookup.
+
+Script GUI `ItemView` widgets cache the item handles bound to their cells. `Resort()` keeps a cell only when the source returns the same handle instance; a replacement clone with the same entity id is rebound so item draw callbacks observe its current count and other projected properties.
 
 ## Critter model animation
 

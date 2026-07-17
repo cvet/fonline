@@ -79,6 +79,7 @@ public:
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, int32_t skip_count) noexcept -> refcount_nptr<Location>;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, int32_t skip_count) noexcept -> refcount_nptr<Map>;
     [[nodiscard]] auto FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset = {}, function<bool(ptr<const Item>)> gag_callback = {}) const -> FindPathOutput;
+    [[nodiscard]] auto FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, const_span<mpos> target_hexes, int32_t multihex, function<bool(ptr<const Item>)> gag_callback = {}) const -> FindPathOutput;
     [[nodiscard]] auto TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, int32_t max_dist = 0, float32_t angle = 0.0f, nptr<const Critter> find_cr = nullptr, CritterFindType find_type = CritterFindType::Any, bool check_last_movable = false, bool collect_critters = false) const -> TraceResult;
 
     void LoadFromResources();
