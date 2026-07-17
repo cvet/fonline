@@ -157,8 +157,26 @@ TEST_CASE("DataSerialization")
         writer.Write<uint8_t>(static_cast<uint8_t>(10));
 
         DataReader reader {span {buf}};
+        CHECK(reader.GetUnreadSize() == sizeof(uint8_t));
         CHECK(reader.Read<uint8_t>() == 10);
+        CHECK(reader.GetUnreadSize() == 0);
         CHECK_THROWS_AS(reader.Read<uint8_t>(), DataReadingException);
+    }
+
+    SECTION("SelfDescribingReaderRejectsCountBombsBeforeAllocation")
+    {
+        vector<uint8_t> buf;
+        DataWriter writer {buf};
+        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+
+        DataReader string_reader {span {buf}};
+        CHECK_THROWS_AS(string_reader.ReadString(), DataReadingException);
+
+        DataReader string_vector_reader {span {buf}};
+        CHECK_THROWS_AS(string_vector_reader.ReadStringVector(), DataReadingException);
+
+        DataReader object_vector_reader {span {buf}};
+        CHECK_THROWS_AS(object_vector_reader.ReadSizedObjectVector<uint32_t>(), DataReadingException);
     }
 
     SECTION("VerifyEnd")

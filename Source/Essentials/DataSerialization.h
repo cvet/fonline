@@ -240,6 +240,8 @@ public:
     {
     }
 
+    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _dataBuf.size() - _readPos; }
+
     template<typename T>
         requires(std::is_standard_layout_v<T>)
     auto Read() -> T
@@ -281,7 +283,12 @@ public:
     // Reads a self-describing string written with WriteString (uint32 length prefix + bytes).
     auto ReadString() -> string
     {
-        const auto len = Read<uint32_t>();
+        const uint32_t len = Read<uint32_t>();
+
+        if (len > GetUnreadSize()) {
+            throw DataReadingException("String length exceeds remaining buffer");
+        }
+
         string value;
         value.resize(len);
         ReadStringBytes(value);
@@ -291,7 +298,12 @@ public:
     // Reads a self-describing vector of strings written with WriteStringVector (uint32 count + each element via ReadString).
     auto ReadStringVector() -> vector<string>
     {
-        const auto count = Read<uint32_t>();
+        const uint32_t count = Read<uint32_t>();
+
+        if (count > GetUnreadSize() / sizeof(uint32_t)) {
+            throw DataReadingException("String vector count exceeds remaining buffer");
+        }
+
         vector<string> values;
         values.reserve(count);
 
@@ -309,6 +321,10 @@ public:
         static_assert(std::is_trivially_copyable_v<T>);
 
         if (!out.empty()) {
+            if (out.size() > GetUnreadSize() / sizeof(T)) {
+                throw DataReadingException("Object array size exceeds remaining buffer");
+            }
+
             auto target = MutableObjectsPtr(out);
             ptr<uint8_t> bytes = target.template reinterpret_as<uint8_t>();
             ReadBytes({bytes.get(), out.size() * sizeof(T)});
@@ -322,7 +338,12 @@ public:
     {
         static_assert(std::is_trivially_copyable_v<T>);
 
-        const auto count = Read<uint32_t>();
+        const uint32_t count = Read<uint32_t>();
+
+        if (count > GetUnreadSize() / sizeof(T)) {
+            throw DataReadingException("Object vector count exceeds remaining buffer");
+        }
+
         vector<T> values;
         values.resize(count);
         ReadObjectArray(span<T> {values});
