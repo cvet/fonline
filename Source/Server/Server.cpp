@@ -2415,6 +2415,7 @@ void ServerEngine::SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr)
         prev_cr->DetachPlayer();
     }
 
+    SyncContext::RetainEntityPairInCurrentChain(player, cr);
     cr->AttachPlayer(player);
 
     SendCritterInitialInfo(cr, prev_cr);

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,41 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import codegen as _codegen  # noqa: E402
+
+
+def test_engine_config_is_emitted_as_one_macro_only_header(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    class CompatibilityHasher:
+        @staticmethod
+        def hexdigest() -> str:
+            return "0123456789abcdef-extra"
+
+    output = _codegen.GeneratedOutput()
+    monkeypatch.setattr(_codegen, "args", Namespace(
+        buildhash="build-hash",
+        devname="DEV",
+        enginedefine=["FO_GEOMETRY=1", "FO_EMPTY_DEFINE"],
+        genoutput=str(tmp_path),
+        nicename="Nice Name",
+    ))
+    monkeypatch.setattr(_codegen, "compatibility_hasher", CompatibilityHasher())
+    monkeypatch.setattr(_codegen, "generated_output", output)
+    monkeypatch.setattr(_codegen, "try_get_git_branch", lambda: "test-branch")
+
+    _codegen.write_engine_config()
+
+    generated_lines = output.files[str(tmp_path / "EngineConfig.gen.h")]
+    assert generated_lines == [
+        "// FOnline Engine generated configuration. Do not edit.",
+        "",
+        "#define FO_GEOMETRY 1",
+        "#define FO_EMPTY_DEFINE",
+        '#define FO_BUILD_HASH "build-hash"',
+        '#define FO_DEV_NAME "DEV"',
+        '#define FO_NICE_NAME "Nice Name"',
+        '#define FO_COMPATIBILITY_VERSION "0123456789abcdef"',
+        '#define FO_GIT_BRANCH "test-branch"',
+    ]
+    assert all(not line or line.startswith(("//", "#define ")) for line in generated_lines)
 
 
 def test_split_engine_args_respects_nested_default_commas() -> None:
@@ -52,13 +88,15 @@ def test_parse_export_method_signature_normalizes_null_default(monkeypatch: pyte
         },
     )
 
-    target, entity, name, ret, args, ret_nullable, ret_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
-        "FO_SCRIPT_API string Client_Game_FormatTags(ClientEngine* client, string_view text, CritterView* talker = nullptr)",
+    target, entity, name, ret, args, ret_nullable, ret_wrapper, ret_container_element_wrapper, receiver_wrapper = _codegen.parse_export_method_signature(
+        "FO_SCRIPT_API string Client_Game_FormatTags(nptr<ClientEngine> client, string_view text, nptr<CritterView> talker = nullptr)",
         {"void", "bool", "int32", "string", "Game", "Critter"},
         ["Game", "Critter"],
     )
 
     assert (target, entity, name, ret, ret_nullable) == ("Client", "Game", "FormatTags", "string", False)
+    assert ret_container_element_wrapper == ""
+    assert receiver_wrapper
     assert [(arg.arg_type, arg.name, arg.nullable, arg.default_value) for arg in args] == [
         ("string", "text", False, None),
         ("Critter", "talker", True, "null"),

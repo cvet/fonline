@@ -114,8 +114,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
 
     // Tracy
 #if FO_TRACY
-    auto program_name = make_ptr(FO_NICE_NAME.c_str());
-    TracySetProgramName(program_name.get());
+    TracySetProgramName(FO_NICE_NAME);
 #endif
 
     // Logging
