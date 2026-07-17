@@ -100,9 +100,17 @@ Important `FindPathInput` fields:
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
+- `CheckTarget` — optional exact-goal predicate for multi-target searches. When set, it replaces
+  the single `ToHex` / `Cut` goal check; the first goal reached by BFS is returned in `NewToHex`.
 - `CheckHex` — callback returning block/defer status.
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
+
+`MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
+so a server caller can find the nearest reachable exact target with one BFS instead of launching a
+full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
+the same operation for a raw start hex or a critter and return both the selected target and route
+length through output arguments.
 
 Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
 

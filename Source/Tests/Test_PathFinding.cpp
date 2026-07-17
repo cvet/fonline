@@ -78,6 +78,37 @@ TEST_CASE("PathFinding::FindPath")
         CHECK(output.NewToHex == mpos {8, 5});
     }
 
+    SECTION("TargetCallbackSelectsNearestReachableHex")
+    {
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {});
+        settings.CheckTarget = [](mpos hex) { return hex == mpos {15, 15} || hex == mpos {7, 5}; };
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.Steps.size() == 2);
+        CHECK(output.NewToHex == mpos {7, 5});
+    }
+
+    SECTION("TargetCallbackReplacesSingleTargetValidation")
+    {
+        auto settings = MakeClearSettings(mpos {5, 5}, mpos {100, 100});
+        settings.CheckTarget = [](mpos hex) { return hex == mpos {5, 5}; };
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::AlreadyHere);
+        CHECK(output.NewToHex == mpos {5, 5});
+    }
+
+    SECTION("TargetCallbackSkipsBlockedCandidate")
+    {
+        auto settings = MakeBlockedSettings(mpos {5, 5}, mpos {}, [](mpos hex) { return hex == mpos {6, 5}; });
+        settings.CheckTarget = [](mpos hex) { return hex == mpos {6, 5} || hex == mpos {8, 5}; };
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == mpos {8, 5});
+    }
+
     SECTION("SameHexReturnsAlreadyHere")
     {
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {5, 5});
