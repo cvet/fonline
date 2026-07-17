@@ -2363,6 +2363,29 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         CHECK(sibling_done.load() == int64_t {ITERS});
     }
 
+    SECTION("SingletonOwnedEntityEnsureIsIdempotent")
+    {
+        EntityLock singleton_lock;
+        auto registrator = server->GetPropertyRegistrator("Critter");
+        REQUIRE(registrator);
+        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrator, nullptr);
+        singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
+
+        SyncContext ctx;
+        ctx.Activate();
+        ctx.LockSingleton(make_ptr(&singleton_lock));
+
+        // Game-owned custom entities share Game's singleton lock. Engine operations such as
+        // DestroyEntity call EnsureEntitySynced while Game.Lock() is active; that must reuse the
+        // acquisition already tracked by this context instead of adding it to a second lock bucket.
+        ctx.EnsureEntitySynced(singleton_owned_entity);
+        ctx.UnlockSingleton(make_ptr(&singleton_lock));
+
+        CHECK_FALSE(singleton_lock.IsLockedByCurrentThread());
+        ctx.Release();
+        ctx.Deactivate();
+    }
+
     // Detach so the map refcount drops cleanly before Shutdown.
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;

@@ -147,13 +147,18 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
     const auto map_size = input.MapSize;
 
-    if (!map_size.is_valid_pos(input.FromHex) || !map_size.is_valid_pos(input.ToHex)) {
+    if (!map_size.is_valid_pos(input.FromHex) || (!input.CheckTarget && !map_size.is_valid_pos(input.ToHex))) {
         output.Result = FindPathOutput::ResultType::InvalidHexes;
         return output;
     }
 
-    if (GeometryHelper::CheckDist(input.FromHex, input.ToHex, input.Cut)) {
+    if ((input.CheckTarget && input.CheckTarget(input.FromHex)) || (!input.CheckTarget && GeometryHelper::CheckDist(input.FromHex, input.ToHex, input.Cut))) {
         output.Result = FindPathOutput::ResultType::AlreadyHere;
+
+        if (input.CheckTarget) {
+            output.NewToHex = input.FromHex;
+        }
+
         return output;
     }
 
@@ -190,7 +195,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
         for (size_t i = round_begin; i < round_end; i++) {
             const auto cur_hex = next_hexes[i];
 
-            if (GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut)) {
+            if ((input.CheckTarget && input.CheckTarget(cur_hex)) || (!input.CheckTarget && GeometryHelper::CheckDist(cur_hex, to_hex, input.Cut))) {
                 to_hex = cur_hex;
                 find_ok = true;
                 break;
@@ -423,7 +428,9 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     output.NewToHex = to_hex;
 
     if (input.FreeMovement) {
-        const auto end_offset = EvaluateFreeMovementEndOffset(output.NewToHex, input.ToHex, input.ToHexOffset);
+        const mpos target_hex = input.CheckTarget ? output.NewToHex : input.ToHex;
+        const ipos16 target_hex_offset = input.CheckTarget ? ipos16 {} : input.ToHexOffset;
+        const auto end_offset = EvaluateFreeMovementEndOffset(output.NewToHex, target_hex, target_hex_offset);
         output.EndHexOffset = end_offset.value_or(input.FromHexOffset);
     }
 

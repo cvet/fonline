@@ -1062,7 +1062,7 @@ void SyncContext::EnsureEntitySynced(nptr<ServerEntity> entity)
     // Recursive ownership by another active context is not enough: this context must retain its own
     // acquisition so the lock survives when that nested/inner context releases. This also keeps
     // repeated expansion in the same context idempotent.
-    if (std::ranges::find(_heldLocks, lock) != _heldLocks.end()) {
+    if (std::ranges::find(_heldLocks, lock) != _heldLocks.end() || std::ranges::find(_singletonLocks, lock) != _singletonLocks.end()) {
         return;
     }
 

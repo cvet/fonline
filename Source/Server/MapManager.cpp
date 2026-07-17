@@ -835,6 +835,55 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     return PathFinding::FindPath(settings);
 }
 
+auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, const_span<mpos> target_hexes, int32_t multihex, function<bool(ptr<const Item>)> gag_callback) const -> FindPathOutput
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ValidateEntityAccess(map);
+
+    const auto map_size = map->GetSize();
+    unordered_set<mpos> target_hex_set;
+    target_hex_set.reserve(target_hexes.size());
+
+    for (const mpos target_hex : target_hexes) {
+        if (map_size.is_valid_pos(target_hex)) {
+            target_hex_set.emplace(target_hex);
+        }
+    }
+
+    if (target_hex_set.empty()) {
+        FindPathOutput output;
+        output.Result = FindPathOutput::ResultType::InvalidHexes;
+        return output;
+    }
+
+    FindPathInput settings;
+    settings.FromHex = from_hex;
+    settings.FromHexOffset = from_cr ? from_cr->GetHexOffset() : ipos16 {};
+    settings.MapSize = map_size;
+    settings.MaxLength = _engine->Settings->MaxPathFindLength;
+    settings.Multihex = multihex;
+    settings.FreeMovement = _engine->Settings->MapFreeMovement;
+    settings.CheckTarget = [&target_hex_set](mpos hex) { return target_hex_set.contains(hex); };
+    settings.CheckHex = [&](mpos hex) -> HexBlockResult {
+        if (!map->IsHexMovable(hex)) {
+            if (map->CheckGagItem(hex, gag_callback)) {
+                return HexBlockResult::DeferGag;
+            }
+
+            return HexBlockResult::Blocked;
+        }
+
+        if (map->HasLivingCritter(hex, from_cr)) {
+            return HexBlockResult::DeferCritter;
+        }
+
+        return HexBlockResult::Passable;
+    };
+
+    return PathFinding::FindPath(settings);
+}
+
 void MapManager::TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius)
 {
     FO_STACK_TRACE_ENTRY();
