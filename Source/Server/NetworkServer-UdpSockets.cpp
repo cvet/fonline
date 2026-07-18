@@ -52,6 +52,7 @@ public:
 
     [[nodiscard]] auto GetSessionId() const noexcept -> uint32_t;
     [[nodiscard]] auto HasPendingDisconnect() const noexcept -> bool;
+
     void HandlePacket(const UdpPacketInfo& packet);
     void TickSend(udp_socket& socket, nanotime now);
 
@@ -60,7 +61,7 @@ protected:
     void DisconnectImpl() override;
 
 private:
-    [[nodiscard]] auto MakeOptions() const -> UdpTransportOptions;
+    auto MakeOptions() const -> UdpTransportOptions;
     void SendPackets(udp_socket& socket, const vector<vector<uint8_t>>& packets);
 
     UdpOrderedChannel _channel;
@@ -80,11 +81,11 @@ public:
     auto operator=(NetworkServer_UdpSockets&&) noexcept = delete;
     ~NetworkServer_UdpSockets() override = default;
 
-    void Shutdown() override;
+    void ShutdownImpl() override;
 
 private:
-    [[nodiscard]] uint32_t GenerateSessionId() FO_TSA_REQUIRES(_connectionsLocker);
-    [[nodiscard]] auto MakeEndpointKey(string_view host, uint16_t port) const -> string;
+    uint32_t GenerateSessionId() FO_TSA_REQUIRES(_connectionsLocker);
+    auto MakeEndpointKey(string_view host, uint16_t port) const -> string;
     void Run();
     void ProcessIncomingPackets();
     void HandleConnectPacket(string host, uint16_t port, const UdpPacketInfo& packet);
@@ -262,7 +263,7 @@ NetworkServer_UdpSockets::NetworkServer_UdpSockets(ptr<ServerNetworkSettings> se
     _runThread = run_thread("Network-Udp", [this] { Run(); });
 }
 
-void NetworkServer_UdpSockets::Shutdown()
+void NetworkServer_UdpSockets::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -400,7 +401,9 @@ void NetworkServer_UdpSockets::HandleConnectPacket(string host, uint16_t port, c
     _socket.send_to(connection->GetHost(), connection->GetPort(), accept_packet);
 
     if (is_new_connection) {
-        _connectionCallback(connection);
+        if (TrackConnection(connection)) {
+            _connectionCallback(connection);
+        }
     }
 }
 

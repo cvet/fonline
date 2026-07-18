@@ -35,6 +35,86 @@
 
 FO_BEGIN_NAMESPACE
 
+NetworkServer::NetworkServer() :
+    _connectionRegistry {SafeAlloc::MakeShared<ConnectionRegistry>()}
+{
+    FO_STACK_TRACE_ENTRY();
+}
+
+void NetworkServer::Shutdown()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    optional<vector<shared_ptr<NetworkServerConnection>>> connections = _connectionRegistry->BeginShutdown();
+    if (!connections) {
+        return;
+    }
+
+    for (auto& connection : *connections) {
+        safe_call([&connection] { connection->Disconnect(); });
+    }
+
+    ShutdownImpl();
+}
+
+auto NetworkServer::GetConnectionRegistry() const noexcept -> shared_ptr<ConnectionRegistry>
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return _connectionRegistry;
+}
+
+auto NetworkServer::TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _connectionRegistry->TrackConnection(std::move(connection));
+}
+
+auto NetworkServer::ConnectionRegistry::BeginShutdown() -> optional<vector<shared_ptr<NetworkServerConnection>>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_connectionsLocker};
+
+    if (_shutdownStarted) {
+        return {};
+    }
+
+    vector<shared_ptr<NetworkServerConnection>> connections;
+    connections.reserve(_connections.size());
+
+    for (const auto& weak_connection : _connections) {
+        if (auto connection = weak_connection.lock()) {
+            connections.emplace_back(std::move(connection));
+        }
+    }
+
+    _shutdownStarted = true;
+    _connections.clear();
+    return connections;
+}
+
+auto NetworkServer::ConnectionRegistry::TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(connection, "Missing accepted network connection");
+
+    {
+        scoped_lock locker {_connectionsLocker};
+
+        if (!_shutdownStarted) {
+            std::erase_if(_connections, [](const auto& tracked_connection) { return !tracked_connection.lock(); });
+            _connections.emplace_back(connection);
+            return true;
+        }
+    }
+
+    connection->Disconnect();
+    return false;
+}
+
 NetworkServerConnection::NetworkServerConnection(ptr<ServerNetworkSettings> settings) :
     _settings {settings}
 {
