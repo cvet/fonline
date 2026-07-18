@@ -38,11 +38,8 @@
 #include "DefaultSprites.h"
 #include "ImGuiStuff.h"
 #include "MetadataRegistration.h"
-#include "ParticleSprites.h"
-
-#if FO_ENABLE_3D
 #include "ModelSprites.h"
-#endif
+#include "ParticleSprites.h"
 
 FO_BEGIN_NAMESPACE
 

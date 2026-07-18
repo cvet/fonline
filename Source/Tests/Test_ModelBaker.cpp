@@ -11,7 +11,6 @@
 
 #if FO_ENABLE_3D
 
-#if FO_ENABLE_3D
 #include "ModelAnimation.h"
 #include "ModelAnimationData.h"
 #include "ModelHierarchy.h"
@@ -20,7 +19,6 @@
 #include "ModelMeshData.h"
 #include "Rendering.h"
 #include "Test_BakerHelpers.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 

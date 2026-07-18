@@ -36,15 +36,12 @@
 #include "EffectManager.h"
 #include "ItemView.h"
 #include "MapView.h"
-#include "Movement.h"
-#include "ResourceManager.h"
-#include "Settings.h"
-
-#if FO_ENABLE_3D
 #include "ModelAnimation.h"
 #include "ModelInstance.h"
 #include "ModelSprites.h"
-#endif
+#include "Movement.h"
+#include "ResourceManager.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 

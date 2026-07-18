@@ -38,12 +38,9 @@
 #include "CritterView.h"
 #include "Geometry.h"
 #include "MapView.h"
-#include "ScriptSystem.h"
-
-#if FO_ENABLE_3D
 #include "ModelAnimation.h"
 #include "ModelInstance.h"
-#endif
+#include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
 

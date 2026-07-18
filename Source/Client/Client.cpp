@@ -38,11 +38,6 @@
 #include "Movement.h"
 #include "ParticleSprites.h"
 
-#if FO_ENABLE_3D
-#include "ModelInstance.h"
-#include "ModelSprites.h"
-#endif
-
 FO_BEGIN_NAMESPACE
 
 extern void ClientInitHook(ptr<ClientEngine>);

@@ -36,11 +36,9 @@
 
 #if FO_ENABLE_3D
 
-#if FO_ENABLE_3D
 #include "ModelMeshData.h"
 #include "ModelSourceLoader.h"
 #include "Test_BakerHelpers.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 

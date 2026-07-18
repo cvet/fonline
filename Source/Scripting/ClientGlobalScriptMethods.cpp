@@ -35,14 +35,11 @@
 
 #include "Client.h"
 #include "ImGuiStuff.h"
-#include "ScriptSystem.h"
-
-#if FO_ENABLE_3D
 #include "ModelAnimation.h"
 #include "ModelInstance.h"
 #include "ModelManager.h"
 #include "ModelSprites.h"
-#endif
+#include "ScriptSystem.h"
 
 FO_BEGIN_NAMESPACE
 

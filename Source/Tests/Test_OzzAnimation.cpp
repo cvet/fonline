@@ -38,7 +38,6 @@
 
 #include "ModelAnimationData.h"
 
-#if FO_ENABLE_3D
 #include "ozz/animation/offline/animation_builder.h"
 #include "ozz/animation/offline/raw_animation.h"
 #include "ozz/animation/offline/raw_skeleton.h"
@@ -54,7 +53,6 @@
 #include "ozz/base/maths/soa_transform.h"
 #include "ozz/base/memory/allocator.h"
 #include "ozz/base/memory/unique_ptr.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 

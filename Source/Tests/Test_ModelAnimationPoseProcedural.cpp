@@ -36,10 +36,8 @@
 
 #if FO_ENABLE_3D
 
-#if FO_ENABLE_3D
 #include "ModelAnimation.h"
 #include "ModelAnimationConverter.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 

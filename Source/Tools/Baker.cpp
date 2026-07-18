@@ -44,6 +44,8 @@
 #include "MapLoader.h"
 #include "MetadataBaker.h"
 #include "MetadataRegistration.h"
+#include "ModelInfoBaker.h"
+#include "ModelMeshBaker.h"
 #include "ProtoBaker.h"
 #include "ProtoManager.h"
 #include "ProtoTextBaker.h"
@@ -51,11 +53,6 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "TextBaker.h"
-
-#if FO_ENABLE_3D
-#include "ModelInfoBaker.h"
-#include "ModelMeshBaker.h"
-#endif
 
 FO_BEGIN_NAMESPACE
 

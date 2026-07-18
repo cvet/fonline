@@ -50,6 +50,8 @@
 #include "ItemView.h"
 #include "LocationView.h"
 #include "MapView.h"
+#include "ModelInstance.h"
+#include "ModelSprites.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
@@ -62,10 +64,6 @@
 #include "VideoClip.h"
 
 FO_BEGIN_NAMESPACE
-
-#if FO_ENABLE_3D
-class ModelSprite;
-#endif
 
 FO_DECLARE_EXCEPTION(ResourcesOutdatedException);
 

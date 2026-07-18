@@ -289,8 +289,6 @@ AddIncludeDirectories("${FO_ENGINE_ROOT}/ThirdParty/glm")
 AppendList(FO_ESSENTIALS_SOURCE "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/ThirdParty/glm/util/glm.natvis>")
 
 # ozz-animation
-# Server applications link ClientLib, and FO_BUILD_SERVER enables
-# FO_BUILD_CLIENT_LIB in Init.cmake.
 if(FO_ENABLE_3D AND (FO_BUILD_CLIENT_LIB OR FO_BUILD_BAKER_LIB))
     SetValue(FO_OZZ_DIR "${FO_ENGINE_ROOT}/ThirdParty/ozz-animation")
     SetValue(FO_OZZ_BASE_SOURCE

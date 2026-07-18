@@ -38,13 +38,11 @@
 #include "Client.h"
 #include "CritterView.h"
 #include "DataSerialization.h"
-#if FO_ENABLE_3D
 #include "ModelAnimationData.h"
 #include "ModelManager.h"
 #include "ModelMeshBaker.h"
 #include "ModelMeshData.h"
 #include "ModelSprites.h"
-#endif
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
 
